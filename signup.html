@@ -343,7 +343,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
         </div>
       </div>
       <div class="form-group">
-        <label>Type <span style="font-size:11px;color:var(--muted);font-weight:400;">(select one)</span></label>
+        <label>Type <span style="font-size:11px;color:var(--muted);font-weight:400;">(select all that apply)</span></label>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
           <button type="button" class="type-btn" data-value="mobile-event">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -548,10 +548,7 @@ function backToTypeSelect() {
 
 // ── DJ TYPE TOGGLE BUTTONS ──────────────────────────────
 document.querySelectorAll('.type-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
-    this.classList.add('selected');
-  });
+  btn.addEventListener('click', function() { this.classList.toggle('selected'); });
 });
 
 // ── SLUG LOGIC (DJ only) ────────────────────────────────
@@ -661,7 +658,7 @@ function lookupSignupZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.city || addr.town || addr.village || addr.county || '';
+        const city = addr.suburb || addr.city || addr.town || addr.village || addr.county || '';
         const state = addr.state || '';
         const country = countryName || addr.country || '';
         document.getElementById('dj-city').value = city;
@@ -696,7 +693,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
 
   const types = Array.from(document.querySelectorAll('.type-btn.selected')).map(b => b.dataset.value);
   if (types.length === 0) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please select a DJ type</div>';
+    alertEl.innerHTML = '<div class="alert alert-error">Please select at least one DJ type</div>';
     btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
   }
   const name = document.getElementById('name').value;

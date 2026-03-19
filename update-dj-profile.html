@@ -370,7 +370,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
       </div>
       
       <div class="form-group">
-        <label>Type (Select one)</label>
+        <label>Type (Select all that apply)</label>
         <div class="checkbox-group">
           <label class="checkbox-label">
             <input type="checkbox" name="type" value="mobile-event" id="mobile-checkbox">
@@ -1013,7 +1013,7 @@ function lookupZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.city || addr.town || addr.village || addr.county || '';
+        const city = addr.suburb || addr.city || addr.town || addr.village || addr.county || '';
         const state = addr.state || '';
         const country = countryName || addr.country || '';
         document.getElementById('city').value = city;
@@ -1160,21 +1160,13 @@ document.getElementById('slug-input').addEventListener('input', function() {
   }, 500);
 });
 
-// Toggle mobile specialization (radio behavior — only one type allowed)
+// Toggle mobile specialization
 document.getElementById('mobile-checkbox').addEventListener('change', function() {
-  if (this.checked) {
-    document.getElementById('club-checkbox').checked = false;
-    document.getElementById('club-spec').style.display = 'none';
-  }
   document.getElementById('mobile-spec').style.display = this.checked ? 'block' : 'none';
 });
 
-// Toggle club genres (radio behavior — only one type allowed)
+// Toggle club genres
 document.getElementById('club-checkbox').addEventListener('change', function() {
-  if (this.checked) {
-    document.getElementById('mobile-checkbox').checked = false;
-    document.getElementById('mobile-spec').style.display = 'none';
-  }
   document.getElementById('club-spec').style.display = this.checked ? 'block' : 'none';
 });
 

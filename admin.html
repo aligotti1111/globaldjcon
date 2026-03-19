@@ -417,7 +417,7 @@ function lookupAdminZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.city || addr.town || addr.village || addr.county || '';
+        const city = addr.suburb || addr.city || addr.town || addr.village || addr.county || '';
         const state = addr.state || '';
         document.getElementById('f-city').value = city;
         document.getElementById('f-state').value = state;
