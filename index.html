@@ -54,7 +54,7 @@
   .header-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 20% 50%,rgba(0,245,196,.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(255,45,120,.05) 0%,transparent 50%); }
   .header-inner { position:relative; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1.5rem; }
   .eyebrow { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.25em; color:var(--neon); text-transform:uppercase; margin-bottom:.4rem; opacity:.8; }
-  .logo { font-family:'Bebas Neue',sans-serif; font-size:clamp(3.5rem,8vw,6.5rem); line-height:.85; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,4vw,3.2rem); line-height:.85; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .tagline { font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.15em; color:var(--muted); text-transform:uppercase; margin-top:.6rem; }
   .admin-link { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); background:none; border:1px solid transparent; border-radius:4px; padding:.4rem .7rem; cursor:pointer; transition:all .25s; opacity:.4; }
   .admin-link:hover { opacity:1; border-color:var(--admin); color:var(--admin); }
@@ -102,6 +102,7 @@
 
   /* DJ card */
   .dj-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem; position:relative; overflow:hidden; transition:transform .25s,border-color .25s,box-shadow .25s; animation:fadeUp .35s ease both; }
+  .no-animate .dj-card, .no-animate .dj-list-row { animation:none !important; }
   .dj-card:hover { transform:translateY(-3px); border-color:var(--neon); box-shadow:0 8px 32px rgba(0,245,196,.07),0 0 0 1px rgba(0,245,196,.1); }
   .dj-card.club:hover { border-color:var(--pink); box-shadow:0 8px 32px rgba(255,45,120,.07),0 0 0 1px rgba(255,45,120,.1); }
   .card-glow { position:absolute; top:0; right:0; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(0,245,196,.06) 0%,transparent 70%); pointer-events:none; }
@@ -292,7 +293,7 @@
 
   /* ── PUBLIC LIST VIEW ── */
   .dj-list { display:flex; flex-direction:column; gap:.4rem; }
-  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 1.2fr 1.4fr 90px 80px; align-items:center; gap:1rem; transition:border-color .2s; }
+  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
   .dj-list-row:hover { border-color:var(--neon); }
   .dj-list-row.club { border-left:3px solid var(--pink); }
   .dj-list-row.mobile-event { border-left:3px solid var(--neon); }
@@ -492,7 +493,7 @@ function goTo(view){
   
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
-  if(view==='public') renderPublic();
+  if(view==='public') renderPublic(false);
   if(view==='admin'){ DJS=loadDJs(); renderAdmin(); }
 }
 function goToLogin(){
@@ -541,8 +542,11 @@ function setViewMode(mode) {
   viewMode = mode;
   document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
   document.getElementById('btn-list').classList.toggle('active', mode === 'list');
-  document.getElementById('dj-grid').classList.toggle('list-mode', mode === 'list');
-  renderPublic();
+  const grid = document.getElementById('dj-grid');
+  grid.classList.toggle('list-mode', mode === 'list');
+  grid.classList.add('no-animate');
+  renderPublic(false);
+  setTimeout(() => grid.classList.remove('no-animate'), 50);
 }
 
 // Haversine distance formula
@@ -579,13 +583,13 @@ function findNearMe(){
     pos=>{
       userLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
       sortMode='nearest';
-      btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Near Me ✓`;
+      btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Near Me ✓`;
       btn.disabled=false;
       renderPublic();
     },
     err=>{
       alert('Could not get your location. Please search by zip code instead.');
-      btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Find DJs Near Me`;
+      btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Find DJs Near Me`;
       btn.disabled=false;
     }
   );
@@ -648,8 +652,8 @@ document.addEventListener('click', () => {
   if (menu) menu.style.display = 'none';
 });
 
-async function renderPublic(){
-  DJS = await loadDJs();
+async function renderPublic(reload=false){
+  if(reload || !DJS.length) DJS = await loadDJs();
   let list=DJS.filter(dj=>{
     const t = activeFilters.size === 0 || activeFilters.has(dj.type) || (activeFilters.size === 2);
     const q=searchTerm.toLowerCase();
@@ -757,16 +761,16 @@ function listRowHTML(dj) {
   let contactBtn;
   if (!currentUser) {
     // Not logged in — show Contact DJ, clicking prompts signup
-    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();showSignupPrompt()" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();showSignupPrompt()" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else if (isClaimed) {
     // Logged in + claimed profile — go to DJ profile to send message
-    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else if (dj.email) {
     // Logged in + unclaimed + has email — open mailto
-    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.open('mailto:${dj.email}','_blank')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.open('mailto:${dj.email}','_blank')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else {
     // Logged in + unclaimed + no email — go to profile page
-    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   }
 
   return `
@@ -774,8 +778,8 @@ function listRowHTML(dj) {
     <div class="dll-avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
     <div class="dll-name">${dj.name||'Unknown DJ'}</div>
     <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
-    ${contactBtn}
     <span class="dll-type ${typeClass}">${typeLabel}</span>
+    ${contactBtn}
   </div>`;
 }
 
@@ -869,8 +873,7 @@ document.querySelectorAll('.pill.active').forEach(pill => updatePillText(pill, t
 
 // Load DJs from Supabase
 (async () => {
-  DJS = await loadDJs();
-  renderPublic();
+  await renderPublic(true);
 })();
 
 // Check if admin hash is present and user is logged in
