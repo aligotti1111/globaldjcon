@@ -598,10 +598,27 @@ function findNearMe(){
 // Country flags map
 const COUNTRY_FLAGS = {
   'United States': '🇺🇸',
-  'Canada': '🇨🇦',
   'United Kingdom': '🇬🇧',
+  'Canada': '🇨🇦',
   'Australia': '🇦🇺',
+  'Germany': '🇩🇪',
+  'France': '🇫🇷',
+  'Netherlands': '🇳🇱',
+  'Spain': '🇪🇸',
+  'Italy': '🇮🇹',
+  'Brazil': '🇧🇷',
   'Mexico': '🇲🇽',
+  'Japan': '🇯🇵',
+  'South Africa': '🇿🇦',
+  'New Zealand': '🇳🇿',
+  'Ireland': '🇮🇪',
+  'Sweden': '🇸🇪',
+  'Norway': '🇳🇴',
+  'Denmark': '🇩🇰',
+  'Belgium': '🇧🇪',
+  'Switzerland': '🇨🇭',
+  'Portugal': '🇵🇹',
+  'Other': '🌍',
 };
 const COUNTRY_NAMES = Object.keys(COUNTRY_FLAGS);
 
@@ -837,10 +854,19 @@ document.getElementById('search').addEventListener('input', e => {
   const q = searchTerm.trim();
   if (q.length >= 3) {
     searchGeoTimeout = setTimeout(async () => {
-      const coords = await geocodeCity(q);
-      if (coords) {
-        userLocation = coords;
-        sortMode = 'nearest';
+      // Only geocode if query looks like a location (has digits or is a known place pattern)
+      // Skip geocoding for name searches (letters/spaces only)
+      const looksLikeLocation = /\d/.test(q);
+      if (looksLikeLocation) {
+        const coords = await geocodeCity(q);
+        if (coords) {
+          userLocation = coords;
+          sortMode = 'nearest';
+        }
+      } else {
+        // Name search — clear location so distance doesn't filter results
+        userLocation = null;
+        if (sortMode === 'nearest') sortMode = 'name';
       }
       renderPublic();
     }, 600);
