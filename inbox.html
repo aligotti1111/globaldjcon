@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inbox - Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --black: #050507;
+  --deep: #0a0a10;
+  --card: #13131e;
+  --border: #1e1e30;
+  --neon: #00f5c4;
+  --neon-dim: rgba(0,245,196,0.12);
+  --white: #f0f0f8;
+  --muted: #6b6b88;
+  --error: #ff5f5f;
+  --success: #3ddc84;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+/* NAV */
+header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backdrop-filter:blur(12px); position:sticky; top:0; z-index:100; }
+.header-inner { display:flex; align-items:center; justify-content:space-between; padding:1rem 2rem; }
+.nav-logo { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:.1em; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none; }
+.nav-btns { display:flex; gap:.6rem; align-items:center; }
+.btn { display:inline-flex; align-items:center; gap:.45rem; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; padding:.6rem 1rem; border-radius:6px; border:1px solid; cursor:pointer; text-decoration:none; transition:all .2s; background:transparent; }
+.btn-outline { border-color:var(--border); color:var(--muted); }
+.btn-outline:hover { border-color:var(--neon); color:var(--neon); }
+
+/* INBOX NAV ICON */
+.inbox-nav-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:transparent; transition:all .2s; text-decoration:none; }
+.inbox-nav-btn:hover { border-color:var(--neon); color:var(--neon); }
+.inbox-nav-btn.active { border-color:var(--neon); color:var(--neon); background:var(--neon-dim); }
+.inbox-badge { position:absolute; top:-6px; right:-6px; background:var(--neon); color:var(--black); font-family:'Space Mono',monospace; font-size:.55rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
+
+/* PAGE */
+.page-wrap { max-width:720px; margin:0 auto; padding:3rem 2rem; }
+.page-header { margin-bottom:2rem; }
+.page-header h1 { font-family:'Bebas Neue',sans-serif; font-size:2.8rem; letter-spacing:.03em; background:linear-gradient(135deg,var(--white),var(--neon)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.page-header p { color:var(--muted); font-size:.85rem; margin-top:.3rem; }
+
+/* MESSAGES */
+.messages-list { display:flex; flex-direction:column; gap:.6rem; }
+.msg-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; cursor:pointer; transition:all .2s; }
+.msg-card:hover { border-color:var(--neon); }
+.msg-card.unread { border-left:4px solid var(--neon); background:rgba(0,245,196,0.04); }
+.msg-card.open { border-color:var(--neon); }
+.msg-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:.35rem; }
+.msg-from { font-weight:600; font-size:.9rem; color:var(--white); }
+.msg-card.unread .msg-from { color:var(--neon); }
+.msg-card.unread .msg-from::before { content:'● '; color:var(--neon); font-size:.55rem; vertical-align:middle; }
+.msg-time { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; }
+.msg-subject { font-size:.78rem; color:var(--muted); margin-bottom:.2rem; font-family:'Space Mono',monospace; letter-spacing:.05em; text-transform:uppercase; }
+.msg-card.unread .msg-subject { font-weight:700; color:var(--neon); }
+.msg-card:not(.unread) .msg-subject { color:var(--muted); }
+.msg-preview { font-size:.82rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.msg-body { display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+.msg-card.open .msg-body { display:block; }
+
+/* THREAD */
+.thread-wrap { display:flex; flex-direction:column; gap:.5rem; }
+.bubble { display:flex; flex-direction:column; }
+.bubble.them { align-items:flex-start; }
+.bubble.me { align-items:flex-end; }
+.bubble-inner { max-width:85%; border-radius:10px; padding:.6rem .9rem; }
+.bubble.them .bubble-inner { background:var(--deep); border:1px solid var(--border); }
+.bubble.me .bubble-inner { background:rgba(0,245,196,.1); border:1px solid rgba(0,245,196,.25); }
+.bubble-meta { font-size:.68rem; color:var(--muted); margin-bottom:.25rem; font-family:'Space Mono',monospace; }
+.bubble-text { font-size:.88rem; line-height:1.55; color:var(--white); word-break:break-word; }
+.msg-actions { display:flex; gap:.5rem; margin-top:1rem; }
+.msg-btn { font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.07em; text-transform:uppercase; padding:.4rem .8rem; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+.msg-btn:hover { border-color:var(--error); color:var(--error); }
+.msg-reply-btn { border-color:var(--neon); color:var(--neon); }
+.msg-reply-btn:hover { background:var(--neon-dim); }
+
+.empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+.empty-icon { font-size:3rem; margin-bottom:1rem; }
+.empty-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--white); margin-bottom:.5rem; }
+.empty-sub { font-size:.88rem; }
+
+.filter-tabs { display:flex; gap:.4rem; margin-bottom:1.5rem; }
+.filter-tab { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.07em; text-transform:uppercase; padding:.5rem .9rem; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+.filter-tab.active { border-color:var(--neon); color:var(--neon); background:var(--neon-dim); }
+
+.loading { text-align:center; padding:3rem; color:var(--muted); font-size:.85rem; }
+
+/* REPLY BOX */
+.reply-box { display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+.reply-box.open { display:block; }
+.reply-box textarea { width:100%; background:var(--deep); border:1px solid var(--border); border-radius:6px; padding:.75rem 1rem; color:var(--white); font-size:.88rem; font-family:'DM Sans',sans-serif; resize:vertical; min-height:90px; transition:border-color .2s; }
+.reply-box textarea:focus { outline:none; border-color:var(--neon); }
+.reply-box-actions { display:flex; gap:.5rem; margin-top:.5rem; align-items:center; }
+.reply-send-btn { font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.07em; text-transform:uppercase; padding:.5rem 1rem; border-radius:5px; border:1px solid var(--neon); background:var(--neon-dim); color:var(--neon); cursor:pointer; transition:all .2s; }
+.reply-send-btn:hover { background:rgba(0,245,196,.22); }
+.reply-send-btn:disabled { opacity:.5; cursor:not-allowed; }
+.reply-cancel-btn { font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.07em; text-transform:uppercase; padding:.5rem .8rem; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+.reply-cancel-btn:hover { border-color:var(--error); color:var(--error); }
+.reply-status { font-size:.78rem; color:var(--muted); margin-left:.25rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="/" class="nav-logo">Global DJ Connect</a>
+    <div class="nav-btns">
+      <a href="/" class="btn btn-outline">← Directory</a>
+      <a href="/inbox.html" class="inbox-nav-btn active" title="Inbox" id="nav-inbox-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span class="inbox-badge" id="nav-unread-count" style="display:none;"></span>
+      </a>
+      <button class="btn btn-outline" onclick="navLogout()" id="nav-logout" style="display:none;">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Inbox</h1>
+    <p id="inbox-subtitle">Your messages from party hosts and venues</p>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-tab" onclick="setFilter('unread', this)">Unread</button>
+    <button class="filter-tab" onclick="setFilter('read', this)">Read</button>
+  </div>
+
+  <div id="messages-container">
+    <div class="loading">Loading messages...</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+if (!currentUser) { window.location.href = '/login.html'; }
+
+// allMessages = only top-level (parent_id is null) messages addressed to current user
+// allReplies = all replies (parent_id not null) in any thread the user is part of
+let allMessages = [];
+let allReplies = [];
+let currentFilter = 'all';
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMessages();
+}
+
+async function sendEmail(payload) {
+  try {
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.warn('Email send failed:', e.message);
+  }
+}
+
+function renderThread(parentId, originalMsg) {
+  const replies = allReplies.filter(r => r.parent_id === parentId)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  let html = `<div class="thread-wrap">`;
+
+  // Original message — show on right if current user sent it, left if received
+  const originalIsMe = originalMsg.from_user_id === currentUser.id;
+  html += `<div class="bubble ${originalIsMe ? 'me' : 'them'}">
+    <div class="bubble-inner">
+      <div class="bubble-meta">${originalIsMe ? 'You' : (originalMsg.from_name || 'Anonymous')} · ${timeAgo(originalMsg.created_at)}</div>
+      <div class="bubble-text">${originalMsg.message.replace(/\n/g,'<br>')}</div>
+    </div>
+  </div>`;
+
+  replies.forEach(r => {
+    const isMe = r.from_user_id === currentUser.id;
+    html += `<div class="bubble ${isMe ? 'me' : 'them'}">
+      <div class="bubble-inner">
+        <div class="bubble-meta">${isMe ? 'You' : (r.from_name || 'Anonymous')} · ${timeAgo(r.created_at)}</div>
+        <div class="bubble-text">${r.message.replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+function renderMessages() {
+  const container = document.getElementById('messages-container');
+  let list = allMessages;
+  if (currentFilter === 'unread') list = list.filter(m => 
+    (!m.read && m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id) ||
+    allReplies.some(r => r.parent_id === m.id && !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id)
+  );
+  if (currentFilter === 'read') list = list.filter(m => 
+    m.read || m.from_user_id === currentUser.id
+  );
+
+  if (!list.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No Messages</div><div class="empty-sub">${currentFilter === 'unread' ? 'No unread messages.' : 'Your inbox is empty.'}</div></div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(msg => {
+    const isUnread = (!msg.read && msg.to_user_id === currentUser.id && msg.from_user_id !== currentUser.id) ||
+      allReplies.some(r => r.parent_id === msg.id && !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id);
+    // Show the OTHER person's name in the card header
+    const iSentThis = msg.from_user_id === currentUser.id;
+    // For sent messages, try to get recipient name from first reply's from_name, or use slug
+    const recipientName = msg.to_dj_slug && msg.to_dj_slug !== 'NULL' ? msg.to_dj_slug : 'DJ';
+    const conversationName = iSentThis ? recipientName : (msg.from_name || 'Anonymous');
+    return `
+    <div class="msg-card ${isUnread ? 'unread' : ''}" id="msg-${msg.id}" onclick="openMessage('${msg.id}')">
+      <div class="msg-top">
+        <span class="msg-from">${conversationName}</span>
+        <span class="msg-time">${timeAgo(msg.created_at)}</span>
+      </div>
+      <div class="msg-subject">${msg.subject}</div>
+      <div class="msg-preview">${msg.message}</div>
+
+      <div class="msg-body">
+        <div id="thread-${msg.id}">${renderThread(msg.id, msg)}</div>
+        <!-- Reply box — open by default -->
+        <div class="reply-box open" id="reply-box-${msg.id}">
+          <textarea id="reply-text-${msg.id}" placeholder="Write your reply..." onclick="event.stopPropagation()"></textarea>
+          <div class="reply-box-actions">
+            <button class="reply-send-btn" id="reply-send-${msg.id}" onclick="sendReply(event,'${msg.id}')">↩ Send</button>
+            <span class="reply-status" id="reply-status-${msg.id}"></span>
+            <button class="msg-btn" style="margin-left:auto;" onclick="deleteMessage(event,'${msg.id}')">Delete</button>
+          </div>
+        </div>
+      </div>
+
+    </div>`;
+  }).join('');
+}
+
+function openReply(e, id) {
+  e.stopPropagation();
+  const box = document.getElementById('reply-box-' + id);
+  box.classList.add('open');
+  setTimeout(() => document.getElementById('reply-text-' + id).focus(), 50);
+}
+
+function cancelReply(e, id) {
+  e.stopPropagation();
+  document.getElementById('reply-box-' + id).classList.remove('open');
+  document.getElementById('reply-text-' + id).value = '';
+  document.getElementById('reply-status-' + id).textContent = '';
+}
+
+async function sendReply(e, parentId) {
+  e.stopPropagation();
+  const msg = allMessages.find(m => m.id === parentId);
+  if (!msg) return;
+
+  // If current user sent the original, reply goes to whoever replied in the thread
+  // If current user received it, reply goes back to sender
+  let toUserId, toName, toEmail;
+  if (msg.from_user_id === currentUser.id) {
+    // Current user is the original sender — find the other party from replies
+    const otherReply = allReplies.find(r => r.parent_id === parentId && r.from_user_id !== currentUser.id);
+    toUserId = otherReply ? otherReply.from_user_id : msg.to_user_id;
+    toName = otherReply ? otherReply.from_name : '';
+    toEmail = otherReply ? otherReply.from_email : '';
+  } else {
+    // Current user received it — reply to original sender
+    toUserId = msg.from_user_id || null;
+    toName = msg.from_name || '';
+    toEmail = msg.from_email || '';
+  }
+
+  const subject = msg.subject || '';
+
+  const replyText = document.getElementById('reply-text-' + parentId).value.trim();
+  if (!replyText) return;
+
+  const btn = document.getElementById('reply-send-' + parentId);
+  const statusEl = document.getElementById('reply-status-' + parentId);
+  btn.disabled = true; btn.textContent = 'Sending...'; statusEl.textContent = '';
+
+  try {
+    const { data: inserted, error } = await db.from('messages').insert([{
+      parent_id: parentId,
+      to_user_id: toUserId || null,
+      from_user_id: currentUser.id,
+      from_name: currentUser.name,
+      from_email: currentUser.email,
+      subject: subject.startsWith('Re:') ? subject : 'Re: ' + subject,
+      message: replyText,
+      read: false
+    }]).select().single();
+
+    if (error) throw error;
+
+    // Add to local replies and re-render thread
+    allReplies.push(inserted);
+    const originalMsg = allMessages.find(m => m.id === parentId);
+    document.getElementById('thread-' + parentId).innerHTML = renderThread(parentId, originalMsg);
+
+    // Email notification to recipient
+    if (toEmail) {
+      await sendEmail({
+        type: 'inbox_notification',
+        recipientName: toName || '',
+        recipientEmail: toEmail,
+        senderName: currentUser.name,
+        senderEmail: null,
+        subject: subject.startsWith('Re:') ? subject : 'Re: ' + subject,
+        message: replyText
+      });
+    }
+
+    document.getElementById('reply-text-' + parentId).value = '';
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = '✓ Sent';
+    setTimeout(() => { statusEl.textContent = ''; }, 2000);
+
+  } catch(err) {
+    statusEl.style.color = 'var(--error)';
+    statusEl.textContent = 'Failed: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '↩ Send';
+  }
+}
+
+async function openMessage(id) {
+  const card = document.getElementById('msg-' + id);
+  const isOpen = card.classList.contains('open');
+
+  document.querySelectorAll('.msg-card').forEach(c => {
+    c.classList.remove('open');
+  });
+
+  if (!isOpen) {
+    card.classList.add('open');
+    // Always ensure reply box is open
+    const replyBox = document.getElementById('reply-box-' + id);
+    if (replyBox) replyBox.classList.add('open');
+    // Immediately remove unread styling — user has seen it
+    card.classList.remove('unread');
+
+    // Mark top-level message as read
+    const msg = allMessages.find(m => m.id === id);
+    if (msg && !msg.read && msg.to_user_id === currentUser.id && msg.from_user_id !== currentUser.id) {
+      msg.read = true;
+      await db.from('messages').update({ read: true }).eq('id', id);
+    }
+
+    // Mark all unread replies in this thread as read
+    const unreadReplies = allReplies.filter(r => r.parent_id === id && !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id);
+    if (unreadReplies.length) {
+      unreadReplies.forEach(r => { r.read = true; });
+      await db.from('messages').update({ read: true }).eq('parent_id', id).eq('to_user_id', currentUser.id);
+    }
+
+    updateBadge();
+
+    // Focus reply box
+    setTimeout(() => {
+      const ta = document.getElementById('reply-text-' + id);
+      if (ta) ta.focus();
+    }, 100);
+  }
+}
+
+async function deleteMessage(e, id) {
+  e.stopPropagation();
+  if (!confirm('Delete this conversation?')) return;
+  await db.from('messages').delete().eq('id', id);
+  allMessages = allMessages.filter(m => m.id !== id);
+  allReplies = allReplies.filter(r => r.parent_id !== id);
+  renderMessages();
+  updateBadge();
+}
+
+function updateBadge() {
+  // Only count messages where current user is recipient AND didn't send it themselves
+  const unreadReceived = allMessages.filter(m => !m.read && m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id).length;
+  const unreadReplies = allReplies.filter(r => !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id).length;
+  const unread = unreadReceived + unreadReplies;
+  const badge = document.getElementById('nav-unread-count');
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : unread;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Load messages + replies
+(async function() {
+  try {
+    // Load top-level messages received by current user
+    const { data: received, error: e1 } = await db
+      .from('messages')
+      .select('*')
+      .eq('to_user_id', currentUser.id)
+      .is('parent_id', null)
+      .order('created_at', { ascending: false });
+    if (e1) throw e1;
+
+    // Also load top-level messages SENT by current user (so sender sees replies)
+    const { data: sent, error: e2 } = await db
+      .from('messages')
+      .select('*')
+      .eq('from_user_id', currentUser.id)
+      .is('parent_id', null)
+      .order('created_at', { ascending: false });
+
+    // Merge and deduplicate by id
+    const combined = [...(received || []), ...(sent || [])];
+    const seen = new Set();
+    allMessages = combined.filter(m => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Load all replies in those threads
+    const parentIds = allMessages.map(m => m.id);
+    if (parentIds.length) {
+      const { data: replies } = await db
+        .from('messages')
+        .select('*')
+        .in('parent_id', parentIds)
+        .order('created_at', { ascending: true });
+      allReplies = replies || [];
+    }
+
+    // Render AFTER replies are loaded so unread state is correct
+    renderMessages();
+    updateBadge();
+    const unread = allMessages.filter(m => !m.read && m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id).length +
+                   allReplies.filter(r => !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id).length;
+    document.getElementById('inbox-subtitle').textContent =
+      unread > 0 ? `${unread} unread message${unread > 1 ? 's' : ''}` : 'Your messages from party hosts and venues';
+  } catch(err) {
+    document.getElementById('messages-container').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error</div><div class="empty-sub">' + err.message + '</div></div>';
+  }
+})();
+
+if (currentUser) document.getElementById('nav-logout').style.display = 'inline-flex';
+function navLogout() { localStorage.removeItem('currentUser'); sessionStorage.removeItem('currentUser'); window.location.href = '/'; }
+
+// Poll for new messages every 30 seconds
+setInterval(async () => {
+  if (!currentUser) return;
+  try {
+    // Check unread top-level messages (received, not sent by self)
+    const { data: unreadTop } = await db
+      .from('messages')
+      .select('id, read, from_user_id')
+      .eq('to_user_id', currentUser.id)
+      .neq('from_user_id', currentUser.id)
+      .is('parent_id', null)
+      .eq('read', false);
+
+    // Check unread replies addressed to current user (not sent by self)
+    const { data: unreadReplies } = await db
+      .from('messages')
+      .select('id, read, parent_id, from_user_id')
+      .eq('to_user_id', currentUser.id)
+      .neq('from_user_id', currentUser.id)
+      .not('parent_id', 'is', null)
+      .eq('read', false);
+
+    const count = ((unreadTop || []).length) + ((unreadReplies || []).length);
+    const badge = document.getElementById('nav-unread-count');
+
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'flex';
+
+      // Always reload replies to catch state changes and re-render
+      const allNewIds = [
+        ...(unreadTop || []).map(m => m.id),
+        ...(unreadReplies || []).map(m => m.id)
+      ];
+      const hasNew = allNewIds.some(id =>
+        !allMessages.find(m => m.id === id) && !allReplies.find(r => r.id === id)
+      );
+
+      // Reload if new messages, OR if unread replies aren't reflected in local state
+      const unreadNotShown = (unreadReplies || []).some(r => {
+        const local = allReplies.find(lr => lr.id === r.id);
+        return !local || local.read === true;
+      });
+
+      if (hasNew || unreadNotShown) {
+        const { data: received } = await db.from('messages').select('*').eq('to_user_id', currentUser.id).is('parent_id', null).order('created_at', { ascending: false });
+        const { data: sent } = await db.from('messages').select('*').eq('from_user_id', currentUser.id).is('parent_id', null).order('created_at', { ascending: false });
+        const combined = [...(received || []), ...(sent || [])];
+        const seen = new Set();
+        allMessages = combined.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const parentIds = allMessages.map(m => m.id);
+        if (parentIds.length) {
+          const { data: replies } = await db.from('messages').select('*').in('parent_id', parentIds).order('created_at', { ascending: true });
+          allReplies = replies || [];
+        }
+        renderMessages();
+        document.getElementById('inbox-subtitle').textContent = `${count} unread message${count > 1 ? 's' : ''}`;
+      }
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}, 30000);
+</script>
+</body>
+</html>

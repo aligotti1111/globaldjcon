@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claim Your Profile - Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #050507;
+  --deep: #0a0a10;
+  --card: #13131e;
+  --border: #1e1e30;
+  --neon: #00f5c4;
+  --neon-dim: rgba(0,245,196,0.12);
+  --white: #f0f0f8;
+  --muted: #6b6b88;
+  --amber: #ffb347;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+/* NAV */
+header { position:relative; z-index:10; border-bottom:1px solid var(--border); background:rgba(5,5,7,.85); backdrop-filter:blur(12px); }
+.header-inner { display:flex; align-items:center; justify-content:space-between; padding:1rem 4rem; }
+.nav-logo { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:.1em; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none; }
+.nav-btns { display:flex; gap:.6rem; align-items:center; }
+.btn { display:inline-flex; align-items:center; gap:.45rem; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; padding:.6rem 1rem; border-radius:6px; border:1px solid; cursor:pointer; text-decoration:none; transition:all .2s; white-space:nowrap; background:transparent; }
+.btn svg { width:14px; height:14px; flex-shrink:0; }
+.btn-outline { border-color:var(--border); color:var(--white); }
+.btn-outline:hover { border-color:var(--neon); color:var(--neon); }
+.btn-primary { background:var(--neon); border-color:var(--neon); color:var(--black); font-weight:700; }
+.btn-primary:hover { opacity:.85; }
+
+/* PAGE */
+.page-wrap { max-width:580px; margin:0 auto; padding:4rem 2rem; }
+
+.eyebrow { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); margin-bottom:1rem; }
+h1 { font-family:'Bebas Neue',sans-serif; font-size:3rem; letter-spacing:.04em; line-height:1; margin-bottom:1rem; }
+.subtitle { color:var(--muted); font-size:.95rem; line-height:1.65; margin-bottom:2.5rem; }
+
+.profile-ref { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; margin-bottom:2rem; display:flex; align-items:center; gap:.75rem; }
+.profile-ref svg { color:var(--neon); flex-shrink:0; }
+.profile-ref p { font-size:.88rem; color:var(--muted); }
+.profile-ref strong { color:var(--white); }
+
+/* FORM */
+.form-group { margin-bottom:1.4rem; }
+.form-group label { display:block; font-size:.82rem; margin-bottom:.45rem; color:var(--white); font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; }
+.form-group input, .form-group textarea { width:100%; background:var(--deep); border:1px solid var(--border); border-radius:6px; padding:.75rem 1rem; color:var(--white); font-size:.92rem; font-family:'DM Sans',sans-serif; transition:border-color .2s; }
+.form-group input:focus, .form-group textarea:focus { outline:none; border-color:var(--neon); }
+.form-group textarea { min-height:120px; resize:vertical; }
+
+.submit-btn { width:100%; background:var(--neon); border:none; border-radius:6px; padding:1rem; color:var(--black); font-family:'Space Mono',monospace; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; cursor:pointer; transition:opacity .2s; margin-top:.5rem; }
+.submit-btn:hover { opacity:.85; }
+.submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.alert { padding:.85rem 1rem; border-radius:6px; font-size:.88rem; margin-bottom:1.5rem; border:1px solid; }
+.alert-success { background:rgba(61,220,132,.08); border-color:rgba(61,220,132,.3); color:#3ddc84; }
+.alert-error { background:rgba(255,45,120,.08); border-color:rgba(255,45,120,.3); color:#ff2d78; }
+
+.note { margin-top:1.5rem; font-size:.8rem; color:var(--muted); line-height:1.6; text-align:center; }
+
+@media(max-width:600px) {
+  .header-inner { padding:1rem 1.5rem; }
+  .page-wrap { padding:2.5rem 1.25rem; }
+  h1 { font-size:2.2rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="/" class="nav-logo">Global DJ Connect</a>
+    <div class="nav-btns">
+      <a href="/login.html" class="btn btn-outline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Sign In
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+  <div class="eyebrow">Profile Ownership</div>
+  <h1>Claim Your Profile</h1>
+  <p class="subtitle">Your business was listed on Global DJ Connect. Fill out this form and we'll verify your identity and give you full access to manage your listing.</p>
+
+  <div class="profile-ref" id="profile-ref" style="display:none;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <p>Requesting access to: <strong id="profile-name-display"></strong></p>
+  </div>
+
+  <div id="alert"></div>
+
+  <div id="claim-form">
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="your-name" placeholder="Your full name" required>
+    </div>
+    <div class="form-group">
+      <label>Your Email</label>
+      <input type="email" id="your-email" placeholder="The email you want to log in with" required>
+    </div>
+    <div class="form-group">
+      <label>Business / DJ Name on the Listing</label>
+      <input type="text" id="biz-name" placeholder="Exactly as it appears on the profile" required>
+    </div>
+    <div class="form-group">
+      <label>How can we verify it's you?</label>
+      <textarea id="verify-msg" placeholder="e.g. link to your website, social media, phone number we can call..."></textarea>
+    </div>
+    <input type="hidden" id="profile-slug">
+    <button class="submit-btn" id="submit-btn" onclick="submitClaim()">Send Claim Request</button>
+  </div>
+
+  <p class="note">We typically respond within 1–2 business days. Once verified, you'll receive login credentials to manage your profile.</p>
+</div>
+
+<script>
+// Pre-fill from URL params
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const name = params.get('name');
+  const slug = params.get('slug');
+
+  if (name) {
+    document.getElementById('biz-name').value = name;
+    document.getElementById('profile-name-display').textContent = name;
+    document.getElementById('profile-ref').style.display = 'flex';
+  }
+  if (slug) {
+    document.getElementById('profile-slug').value = slug;
+  }
+})();
+
+async function submitClaim() {
+  const btn = document.getElementById('submit-btn');
+  const alertEl = document.getElementById('alert');
+  const yourName = document.getElementById('your-name').value.trim();
+  const yourEmail = document.getElementById('your-email').value.trim();
+  const bizName = document.getElementById('biz-name').value.trim();
+  const verifyMsg = document.getElementById('verify-msg').value.trim();
+  const slug = document.getElementById('profile-slug').value.trim();
+
+  if (!yourName || !yourEmail || !bizName) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please fill in your name, email, and the business name.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  alertEl.innerHTML = '';
+
+  try {
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'claim_request',
+        claimantName: yourName,
+        claimantEmail: yourEmail,
+        bizName: bizName,
+        slug: slug,
+        verifyMsg: verifyMsg
+      })
+    });
+
+    document.getElementById('claim-form').style.display = 'none';
+    document.getElementById('profile-ref').style.display = 'none';
+    alertEl.innerHTML = `
+      <div class="alert alert-success">
+        ✓ Request sent! We'll review your claim and reach out to <strong>${yourEmail}</strong> within 1–2 business days.
+      </div>`;
+  } catch(err) {
+    alertEl.innerHTML = '<div class="alert alert-error">Something went wrong. Please try again.</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Claim Request';
+  }
+}
+</script>
+
+</body>
+</html>

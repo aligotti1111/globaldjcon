@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Login - Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --black: #050507;
+  --deep: #0a0a10;
+  --card: #13131e;
+  --border: #1e1e30;
+  --neon: #00f5c4;
+  --neon-dim: rgba(0,245,196,0.12);
+  --white: #f0f0f8;
+  --muted: #6b6b88;
+  --error: #ff5f5f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+  background: var(--black);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: .4;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+.container {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 50px 40px;
+  border-radius: 12px;
+  max-width: 450px;
+  width: 100%;
+}
+.logo {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.logo h1 { 
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  background: linear-gradient(135deg, var(--white) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.logo .tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  background: var(--deep);
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--muted);
+}
+.tab.active {
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+}
+.form-group { margin-bottom: 20px; }
+label { 
+  display: block; 
+  margin-bottom: 8px; 
+  font-size: 13px;
+  color: var(--white);
+  font-weight: 500;
+}
+input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: var(--deep);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+}
+input:focus {
+  outline: none;
+  border-color: var(--neon);
+  background: var(--card);
+}
+button {
+  width: 100%;
+  padding: 16px;
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+button:hover { 
+  background: rgba(0,245,196,.22);
+}
+button:disabled { 
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.alert { 
+  padding: 14px 16px; 
+  border-radius: 6px; 
+  margin-bottom: 20px;
+  font-size: 13px;
+  border: 1px solid;
+}
+.alert-error { 
+  background: rgba(255,95,95,0.12);
+  color: var(--error);
+  border-color: rgba(255,95,95,0.35);
+}
+.links {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.links a {
+  color: var(--neon);
+  text-decoration: none;
+}
+.links a:hover {
+  text-decoration: underline;
+}
+.divider {
+  text-align: center;
+  margin: 25px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.divider a {
+  color: var(--neon);
+  text-decoration: none;
+}
+.divider a:hover {
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">
+    <h1>GLOBAL DJ CONNECT</h1>
+    <p class="tagline">Directory & Booking</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active">Login</button>
+    <button class="tab" onclick="window.location.href='signup.html'">Sign Up</button>
+  </div>
+  
+  <div id="alert"></div>
+  
+  <form id="login-form">
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="email" placeholder="your@email.com" required>
+    </div>
+    
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Enter your password" required>
+    </div>
+    
+    <button type="submit" id="submit-btn">Log In</button>
+  </form>
+
+  <div class="links">
+    <a href="forgot-password.html">Forgot Password?</a>
+  </div>
+
+  <div class="divider">Don't have an account? <a href="signup.html">Sign up</a></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function hashPassword(password) {
+  if (!password) return null;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'gdj_salt_2025');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const btn = document.getElementById('submit-btn');
+  const alert = document.getElementById('alert');
+  
+  btn.disabled = true;
+  btn.textContent = 'Logging In...';
+  alert.innerHTML = '';
+  
+  const email = document.getElementById('email').value.toLowerCase();
+  const password = document.getElementById('password').value;
+  
+  try {
+    if (email === 'admin@globaldjconnect.com' && password === 'spinlist2025') {
+      sessionStorage.setItem('currentUser', JSON.stringify({
+        email: email,
+        role: 'admin',
+        name: 'Admin'
+      }));
+      window.location.href = 'admin.html';
+      return;
+    }
+
+    // Try hashed password first (accounts created/edited via admin)
+    const hashedPassword = await hashPassword(password);
+    let { data, error } = await db
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('password', hashedPassword)
+      .single();
+
+    // Fall back to plain text (accounts created via signup before hashing was added)
+    if (error || !data) {
+      const result = await db
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (result.error || !result.data) {
+        throw new Error('Invalid email or password');
+      }
+
+      data = result.data;
+
+      // Migrate plain text password to hashed for next login
+      await db.from('users').update({ password: hashedPassword }).eq('id', data.id);
+    }
+    
+    if (!data.confirmed) {
+      throw new Error('Please confirm your email before logging in');
+    }
+    
+    sessionStorage.setItem('currentUser', JSON.stringify(data));
+    
+    // Role-based redirect
+    if (data.role === 'admin') {
+      window.location.href = 'admin.html';
+    } else if (data.role === 'dj') {
+      window.location.href = 'index.html';
+    } else {
+      // host or venue
+      window.location.href = 'index.html';
+    }
+    
+  } catch (error) {
+    alert.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+  }
+});
+</script>
+
+</body>
+</html>

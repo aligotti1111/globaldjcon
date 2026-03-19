@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black: #050507;
+    --deep: #0a0a10;
+    --card: #13131e;
+    --border: #1e1e30;
+    --neon: #00f5c4;
+    --neon-dim: rgba(0,245,196,0.12);
+    --pink: #ff2d78;
+    --pink-dim: rgba(255,45,120,0.12);
+    --amber: #ffb830;
+    --white: #f0f0f8;
+    --muted: #6b6b88;
+    --success: #3ddc84;
+    --error: #ff5f5f;
+    --admin: #a78bfa;
+    --admin-dim: rgba(167,139,250,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:.4; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"); }
+
+  .view { display:none; }
+  .view.active { display:block; }
+
+  /* ── BUTTONS ── */
+  .btn { display:inline-flex; align-items:center; gap:.45rem; padding:.65rem 1.2rem; border-radius:6px; font-family:'Space Mono',monospace; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; border:none; transition:all .2s; white-space:nowrap; }
+  .btn svg { width:14px; height:14px; flex-shrink:0; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .btn-outline:hover { border-color:var(--neon); color:var(--neon); }
+  .btn-primary { background:var(--neon-dim); border:1px solid var(--neon); color:var(--neon); }
+  .btn-primary:hover { background:rgba(0,245,196,.22); }
+  .btn-admin { background:var(--admin-dim); border:1px solid var(--admin); color:var(--admin); }
+  .btn-admin:hover { background:rgba(167,139,250,.22); }
+  .btn-danger { background:transparent; border:1px solid rgba(255,95,95,.35); color:var(--error); }
+  .btn-danger:hover { border-color:var(--error); background:rgba(255,95,95,.08); }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .btn-ghost:hover { border-color:var(--admin); color:var(--admin); }
+
+  /* ═══════════════════════════════
+     PUBLIC VIEW
+  ═══════════════════════════════ */
+  #view-public header { position:relative; padding:3rem 4rem 2.5rem; border-bottom:1px solid var(--border); overflow:hidden; }
+  #view-public header::after { content:''; position:absolute; bottom:-2px; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon),var(--pink),transparent); animation:scanline 4s ease-in-out infinite; }
+  @keyframes scanline { 0%,100%{opacity:.4;transform:scaleX(.3)} 50%{opacity:1;transform:scaleX(1)} }
+  .header-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 20% 50%,rgba(0,245,196,.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(255,45,120,.05) 0%,transparent 50%); }
+  .header-inner { position:relative; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1.5rem; }
+  .eyebrow { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.25em; color:var(--neon); text-transform:uppercase; margin-bottom:.4rem; opacity:.8; }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:clamp(3.5rem,8vw,6.5rem); line-height:.85; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .tagline { font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.15em; color:var(--muted); text-transform:uppercase; margin-top:.6rem; }
+  .admin-link { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); background:none; border:1px solid transparent; border-radius:4px; padding:.4rem .7rem; cursor:pointer; transition:all .25s; opacity:.4; }
+  .admin-link:hover { opacity:1; border-color:var(--admin); color:var(--admin); }
+
+  /* controls */
+  .controls { padding:1.5rem 4rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:var(--deep); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(20px); }
+  .search-wrap { position:relative; flex:1; min-width:220px; max-width:380px; }
+  .country-indicator { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--deep); border:1px solid var(--border); border-radius:5px; padding:.15rem .4rem; transition:all .2s; line-height:1; z-index:2; }
+  .country-indicator:hover { border-color:var(--neon); }
+  .country-menu { position:absolute; top:calc(100% + 6px); right:0; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.4rem; z-index:200; min-width:180px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  .country-option { display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; border-radius:5px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:.85rem; color:var(--white); transition:background .15s; white-space:nowrap; }
+  .country-option:hover { background:var(--deep); }
+  .country-option.selected { background:var(--neon-dim); color:var(--neon); }
+  .search-wrap svg { position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:var(--muted); width:15px; height:15px; pointer-events:none; }
+  input[type="search"] { width:100%; padding:.7rem 4.5rem .7rem 2.8rem; background:var(--card); border:1px solid var(--border); border-radius:6px; color:var(--white); font-family:'DM Sans',sans-serif; font-size:.88rem; outline:none; transition:border-color .2s,box-shadow .2s; }
+  input[type="search"]::-webkit-search-cancel-button { display:none; }
+  input[type="search"]::-webkit-search-decoration { display:none; }
+  input[type="search"]:focus { border-color:var(--neon); box-shadow:0 0 0 3px rgba(0,245,196,.07); }
+  input[type="search"]::placeholder { color:var(--muted); }
+  .filter-pills { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .pill { padding:.5rem 1.1rem; border-radius:100px; font-family:'Space Mono',monospace; font-size:.67rem; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .pill:hover { border-color:var(--neon); color:var(--neon); }
+  .pill.active { background:var(--neon); border-color:var(--neon); color:var(--black); font-weight:700; box-shadow:0 0 12px rgba(0,245,196,.3); }
+  .pill.pink:hover { border-color:var(--pink); color:var(--pink); }
+  .pill.pink.active { background:var(--pink); border-color:var(--pink); color:#fff; font-weight:700; box-shadow:0 0 12px rgba(255,45,120,.3); }
+  .controls-right { margin-left:auto; display:flex; align-items:center; gap:.75rem; }
+  .count-badge { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.1em; color:var(--muted); }
+  .count-badge span { color:var(--neon); font-size:.8rem; }
+  .sort-select { padding:.55rem 2rem .55rem .85rem; background:var(--card); border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'Space Mono',monospace; font-size:.63rem; letter-spacing:.07em; outline:none; cursor:pointer; transition:border-color .2s; appearance:none; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%236b6b88' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .5rem center; background-size:12px; }
+  .sort-select:focus { border-color:var(--neon); }
+  .sort-select option { background:var(--card); color:var(--white); }
+  .location-group-header { grid-column:1/-1; font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); padding:.5rem 0 .75rem; border-bottom:1px solid var(--border); margin-bottom:-.2rem; display:flex; align-items:center; gap:.6rem; }
+  .location-group-header::before { content:'📍'; font-size:.8rem; }
+
+  /* public grid */
+  .main { padding:2.5rem 4rem 5rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1.2rem; }
+  .grid.list-mode { display:block; }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+  .empty-state { grid-column:1/-1; text-align:center; padding:5rem 2rem; animation:fadeUp .4s ease both; }
+  .empty-icon { font-size:3rem; margin-bottom:1.5rem; opacity:.4; }
+  .empty-title { font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--muted); margin-bottom:.6rem; }
+  .empty-sub { font-family:'Space Mono',monospace; font-size:.67rem; letter-spacing:.1em; color:var(--muted); line-height:1.9; }
+
+  /* DJ card */
+  .dj-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem; position:relative; overflow:hidden; transition:transform .25s,border-color .25s,box-shadow .25s; animation:fadeUp .35s ease both; }
+  .dj-card:hover { transform:translateY(-3px); border-color:var(--neon); box-shadow:0 8px 32px rgba(0,245,196,.07),0 0 0 1px rgba(0,245,196,.1); }
+  .dj-card.club:hover { border-color:var(--pink); box-shadow:0 8px 32px rgba(255,45,120,.07),0 0 0 1px rgba(255,45,120,.1); }
+  .card-glow { position:absolute; top:0; right:0; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(0,245,196,.06) 0%,transparent 70%); pointer-events:none; }
+  .dj-card.club .card-glow { background:radial-gradient(circle,rgba(255,45,120,.07) 0%,transparent 70%); }
+  .card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; }
+  .avatar { width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.3rem; flex-shrink:0; position:relative; overflow:hidden; }
+  .avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; position:absolute; inset:0; z-index:1; }
+  .dll-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:.95rem; flex-shrink:0; overflow:hidden; position:relative; }
+  .dll-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; position:absolute; inset:0; }
+  .avatar::after { content:''; position:absolute; inset:-2px; border-radius:50%; background:conic-gradient(var(--neon),transparent 60%,var(--neon)); z-index:-1; animation:spin 8s linear infinite; }
+  .dj-card.club .avatar::after { background:conic-gradient(var(--pink),transparent 60%,var(--pink)); }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .type-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; padding:.28rem .65rem; border-radius:100px; background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
+  .dj-card.club .type-badge { background:var(--pink-dim); color:var(--pink); border-color:rgba(255,45,120,.2); }
+  .dj-name { font-family:'Bebas Neue',sans-serif; font-size:1.55rem; letter-spacing:.04em; line-height:1; margin-bottom:.22rem; }
+  .dj-real { font-size:.78rem; color:var(--muted); font-style:italic; margin-bottom:.18rem; }
+  .dj-city { font-size:.76rem; color:var(--muted); margin-bottom:.8rem; }
+  .genres { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.9rem; }
+  .genre-tag { font-family:'Space Mono',monospace; font-size:.57rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .52rem; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:4px; color:var(--muted); }
+  .card-meta { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.9rem; padding-top:.9rem; border-top:1px solid var(--border); }
+  .meta-label { font-family:'Space Mono',monospace; font-size:.52rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:.18rem; }
+  .meta-value { font-size:.8rem; color:var(--white); font-weight:500; }
+  .rating-stars { display:flex; gap:2px; margin-top:.1rem; }
+  .star { width:10px; height:10px; fill:var(--amber); }
+  .star.empty { fill:var(--border); }
+  .contact-section { padding:.85rem 0; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:.4rem; }
+  .contact-row { display:flex; align-items:center; gap:.5rem; font-size:.76rem; color:var(--muted); overflow:hidden; }
+  .contact-row svg { width:12px; height:12px; flex-shrink:0; opacity:.55; }
+  .contact-row a { color:var(--muted); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .18s; }
+  .contact-row a:hover { color:var(--neon); }
+  .dj-card.club .contact-row a:hover { color:var(--pink); }
+  .social-row { display:flex; gap:.4rem; padding-top:.25rem; flex-wrap:wrap; }
+  .social-btn { display:inline-flex; align-items:center; gap:.3rem; padding:.27rem .58rem; border-radius:4px; font-family:'Space Mono',monospace; font-size:.56rem; letter-spacing:.07em; text-transform:uppercase; border:1px solid var(--border); color:var(--muted); text-decoration:none; transition:all .18s; }
+  .social-btn svg { width:10px; height:10px; }
+  .social-btn:hover { border-color:var(--neon); color:var(--neon); background:var(--neon-dim); }
+  .dj-card.club .social-btn:hover { border-color:var(--pink); color:var(--pink); background:var(--pink-dim); }
+  .card-footer { display:flex; align-items:center; justify-content:space-between; padding-top:.9rem; border-top:1px solid var(--border); }
+  .availability { display:flex; align-items:center; gap:.5rem; font-size:.75rem; color:var(--muted); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--success); box-shadow:0 0 7px var(--success); animation:pulse 2s ease-in-out infinite; }
+  .dot.busy { background:var(--amber); box-shadow:0 0 7px var(--amber); }
+  .dot.offline { background:var(--muted); box-shadow:none; animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(.82)} }
+  .rate { font-family:'Space Mono',monospace; font-size:.72rem; color:var(--neon); }
+  .dj-card.club .rate { color:var(--pink); }
+  footer { border-top:1px solid var(--border); padding:1.8rem 4rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+  .footer-logo { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; letter-spacing:.1em; color:var(--muted); }
+  .footer-note { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.13em; color:var(--muted); text-transform:uppercase; }
+
+  /* ═══════════════════════════════
+     LOGIN VIEW
+  ═══════════════════════════════ */
+  #view-login { min-height:100vh; display:none; align-items:center; justify-content:center; }
+  #view-login.active { display:flex; }
+  .login-box { width:100%; max-width:380px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:2.5rem; text-align:center; animation:fadeUp .35s ease both; }
+  .login-icon { font-size:2rem; margin-bottom:1.2rem; opacity:.7; }
+  .login-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:.08em; color:var(--admin); margin-bottom:.3rem; }
+  .login-sub { font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin-bottom:2rem; }
+  .login-field input { width:100%; padding:.8rem 1rem; background:var(--deep); border:1px solid var(--border); border-radius:8px; color:var(--white); font-family:'Space Mono',monospace; font-size:.8rem; outline:none; text-align:center; letter-spacing:.15em; transition:border-color .2s; margin-bottom:.75rem; }
+  .login-field input:focus { border-color:var(--admin); }
+  .login-field input::placeholder { color:var(--muted); letter-spacing:.1em; }
+  .login-error { font-family:'Space Mono',monospace; font-size:.65rem; color:var(--error); letter-spacing:.08em; margin-bottom:.8rem; min-height:1rem; }
+  .login-btn { width:100%; padding:.85rem; background:var(--admin-dim); border:1px solid var(--admin); border-radius:8px; color:var(--admin); font-family:'Space Mono',monospace; font-size:.72rem; letter-spacing:.15em; text-transform:uppercase; cursor:pointer; transition:all .2s; margin-bottom:1rem; }
+  .login-btn:hover { background:rgba(167,139,250,.25); }
+  .back-link { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.1em; color:var(--muted); background:none; border:none; cursor:pointer; text-transform:uppercase; transition:color .2s; }
+  .back-link:hover { color:var(--white); }
+
+  /* ═══════════════════════════════
+     ADMIN VIEW
+  ═══════════════════════════════ */
+  #view-admin { display:none; }
+  #view-admin.active { display:block; }
+  .admin-header { background:var(--deep); border-bottom:1px solid var(--border); padding:1.5rem 4rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; position:relative; }
+  .admin-header::before { content:''; position:absolute; bottom:-2px; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--admin),transparent); }
+  .admin-branding { display:flex; align-items:center; gap:1rem; }
+  .admin-wordmark { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; letter-spacing:.1em; color:var(--admin); }
+  .admin-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.2em; text-transform:uppercase; padding:.3rem .7rem; border-radius:100px; background:var(--admin-dim); border:1px solid rgba(167,139,250,.3); color:var(--admin); }
+  .admin-actions { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+  .admin-body { padding:2.5rem 4rem; max-width:1400px; }
+
+  /* stat bar */
+  .stat-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1rem; margin-bottom:2.5rem; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.2rem 1.5rem; }
+  .stat-number { font-family:'Bebas Neue',sans-serif; font-size:2.4rem; line-height:1; color:var(--admin); }
+  .stat-label { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-top:.2rem; }
+  .stat-card.mobile .stat-number { color:var(--neon); }
+  .stat-card.club .stat-number { color:var(--pink); }
+
+  /* tabs */
+  .admin-tabs { display:flex; gap:.5rem; margin-bottom:2rem; border-bottom:1px solid var(--border); padding-bottom:0; }
+  .tab-btn { font-family:'Space Mono',monospace; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; padding:.7rem 1.4rem; background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); cursor:pointer; transition:all .2s; margin-bottom:-1px; }
+  .tab-btn:hover { color:var(--white); }
+  .tab-btn.active { color:var(--admin); border-bottom-color:var(--admin); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; animation:fadeUp .25s ease both; }
+
+  /* section */
+  .section-title { font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:.08em; color:var(--admin); margin-bottom:1.2rem; display:flex; align-items:center; gap:.65rem; }
+  .section-title svg { width:15px; height:15px; opacity:.7; }
+
+  /* ── MANUAL FORM ── */
+  .form-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:2rem; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  .form-grid.three { grid-template-columns:1fr 1fr 1fr; }
+  .form-group { display:flex; flex-direction:column; gap:.4rem; }
+  .form-group.full { grid-column:1/-1; }
+  .form-label { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .form-label .opt { color:var(--muted); opacity:.5; margin-left:.3rem; font-size:.55rem; }
+  .form-input, .form-select { width:100%; padding:.7rem .9rem; background:var(--deep); border:1px solid var(--border); border-radius:6px; color:var(--white); font-family:'DM Sans',sans-serif; font-size:.88rem; outline:none; transition:border-color .2s,box-shadow .2s; }
+  .form-input:focus, .form-select:focus { border-color:var(--admin); box-shadow:0 0 0 3px var(--admin-dim); }
+  .form-input::placeholder { color:var(--muted); font-size:.82rem; }
+  .form-select { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%236b6b88' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .75rem center; background-size:14px; padding-right:2.2rem; }
+  .form-select option { background:var(--card); }
+  .form-hint { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.05em; color:var(--muted); margin-top:.25rem; line-height:1.6; }
+
+  /* star rating picker */
+  .star-picker { display:flex; gap:.3rem; align-items:center; }
+  .star-pick { font-size:1.3rem; cursor:pointer; filter:grayscale(1) opacity(.4); transition:filter .15s,transform .15s; line-height:1; }
+  .star-pick:hover, .star-pick.on { filter:none; transform:scale(1.15); }
+
+  /* type toggle */
+  .type-toggle { display:flex; gap:.5rem; }
+  .type-opt { flex:1; padding:.65rem; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; text-align:center; }
+  .type-opt:hover { border-color:var(--admin); color:var(--admin); }
+  .type-opt.active-mobile { background:var(--neon-dim); border-color:var(--neon); color:var(--neon); }
+  .type-opt.active-club { background:var(--pink-dim); border-color:var(--pink); color:var(--pink); }
+
+  /* avail toggle */
+  .avail-toggle { display:flex; gap:.5rem; }
+  .avail-opt { flex:1; padding:.6rem; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; text-align:center; }
+  .avail-opt:hover { border-color:var(--admin); color:var(--admin); }
+  .avail-opt.sel-available { background:rgba(61,220,132,.1); border-color:var(--success); color:var(--success); }
+  .avail-opt.sel-busy { background:rgba(255,184,48,.1); border-color:var(--amber); color:var(--amber); }
+  .avail-opt.sel-offline { background:rgba(107,107,136,.12); border-color:var(--muted); color:var(--muted); }
+
+  .form-divider { height:1px; background:var(--border); margin:1.2rem 0; }
+  .form-section-label { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:.8rem; }
+  .form-actions { display:flex; gap:.75rem; align-items:center; padding-top:1.2rem; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .form-fb { font-family:'Space Mono',monospace; font-size:.67rem; letter-spacing:.05em; }
+  .form-fb.ok { color:var(--success); }
+  .form-fb.err { color:var(--error); }
+
+  /* ── CSV IMPORT ── */
+  .import-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.8rem; }
+  .import-hint { font-family:'Space Mono',monospace; font-size:.67rem; line-height:1.9; color:var(--muted); letter-spacing:.03em; margin-bottom:1rem; }
+  .import-hint strong { color:var(--white); }
+  .import-hint code { color:var(--admin); }
+  .col-list { display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 1.2rem; }
+  .col-tag { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.08em; padding:.22rem .55rem; border:1px solid var(--border); border-radius:4px; color:var(--muted); }
+  .col-tag.req { border-color:var(--admin); color:var(--admin); }
+  textarea#csv-input { width:100%; height:190px; background:var(--deep); border:1px solid var(--border); border-radius:8px; color:var(--white); font-family:'Space Mono',monospace; font-size:.7rem; line-height:1.75; padding:1rem; outline:none; resize:vertical; transition:border-color .2s; }
+  textarea#csv-input:focus { border-color:var(--admin); }
+  textarea#csv-input::placeholder { color:var(--muted); }
+  .import-row { display:flex; gap:.75rem; margin-top:1rem; align-items:center; flex-wrap:wrap; }
+  .import-fb { font-family:'Space Mono',monospace; font-size:.67rem; letter-spacing:.05em; }
+  .import-fb.ok { color:var(--success); }
+  .import-fb.err { color:var(--error); }
+
+  /* ── DJ LIST ── */
+  .admin-list { display:flex; flex-direction:column; gap:.55rem; }
+  .admin-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem; transition:border-color .2s; }
+  .ar-type { font-family:'Space Mono',monospace; font-size:.57rem; letter-spacing:.1em; text-transform:uppercase; padding:.22rem .6rem; border-radius:100px; flex-shrink:0; }
+  .ar-type.mobile { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
+  .ar-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
+  .ar-name { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.04em; flex:1.2; }
+  .ar-city { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); flex:1; letter-spacing:.04em; }
+  .ar-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); flex:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ar-avail { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; flex-shrink:0; }
+  .ar-avail.available { color:var(--success); }
+  .ar-avail.busy { color:var(--amber); }
+  .ar-avail.offline { color:var(--muted); }
+  .del-btn { background:none; border:1px solid transparent; border-radius:4px; color:transparent; cursor:pointer; font-size:.72rem; padding:.25rem .5rem; transition:all .2s; flex-shrink:0; line-height:1; }
+  .admin-row:hover .del-btn { color:var(--muted); border-color:var(--border); }
+  .del-btn:hover { color:var(--error) !important; border-color:var(--error) !important; }
+  .empty-admin { text-align:center; padding:3rem; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.1em; color:var(--muted); background:var(--card); border:1px dashed var(--border); border-radius:10px; line-height:1.8; }
+
+  @media(max-width:900px) {
+    #view-public header,.controls,.main,footer,.admin-header,.admin-body { padding-left:1.5rem; padding-right:1.5rem; }
+    .grid,.form-grid,.form-grid.three { grid-template-columns:1fr; }
+    .form-group.full { grid-column:1; }
+    .admin-row { flex-wrap:wrap; }
+    .ar-city,.ar-contact { display:none; }
+  }
+  /* ── VIEW TOGGLE ── */
+  .view-toggle { display:flex; background:var(--deep); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .view-toggle-btn { background:transparent; border:none; color:var(--muted); cursor:pointer; padding:.5rem .65rem; display:flex; align-items:center; transition:all .2s; }
+  .view-toggle-btn:hover { color:var(--white); }
+  .view-toggle-btn.active { background:var(--neon-dim); color:var(--neon); }
+
+  /* ── PUBLIC LIST VIEW ── */
+  .dj-list { display:flex; flex-direction:column; gap:.4rem; }
+  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 1.2fr 1.4fr 90px 80px; align-items:center; gap:1rem; transition:border-color .2s; }
+  .dj-list-row:hover { border-color:var(--neon); }
+  .dj-list-row.club { border-left:3px solid var(--pink); }
+  .dj-list-row.mobile-event { border-left:3px solid var(--neon); }
+  .dll-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:.95rem; flex-shrink:0; overflow:hidden; position:relative; }
+  .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
+  .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
+  .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
+  .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .dll-avail { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; text-align:right; white-space:nowrap; }
+  .dll-avail.available { color:var(--success); }
+  .dll-avail.busy { color:var(--amber); }
+  .dll-avail.offline { color:var(--muted); }
+
+
+/* Inbox nav icon */
+.inbox-nav-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:transparent; transition:all .2s; text-decoration:none; flex-shrink:0; }
+.inbox-nav-btn:hover { border-color:var(--neon); color:var(--neon); }
+.inbox-badge { position:absolute; top:-6px; right:-6px; background:var(--neon); color:var(--black); font-family:'Space Mono',monospace; font-size:.55rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ PUBLIC VIEW ══════════════════════════════════════ -->
+<div id="view-public" class="view active">
+  <header>
+    <div class="header-bg"></div>
+    <div class="header-inner">
+      <div>
+        <div class="eyebrow">&#9632; Connecting Party Hosts & Venues to Premium DJs</div>
+        <div class="logo">Global DJ Connect</div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:center;">
+        <a href="login.html" id="signin-btn" class="btn btn-outline" style="text-decoration:none;padding:.7rem 1.1rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          Sign In
+        </a>
+        <a href="signup.html" id="signup-btn" class="btn btn-primary" style="text-decoration:none;padding:.7rem 1.3rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Create an Account
+        </a>
+        <a href="#" id="view-profile-btn" class="btn btn-outline" style="text-decoration:none;padding:.7rem 1.1rem;display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          View My Profile
+        </a>
+        <a href="update-dj-profile.html" id="profile-btn" class="btn btn-primary" style="text-decoration:none;padding:.7rem 1.1rem;display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Update My Profile
+        </a>
+        <a href="/inbox.html" id="inbox-btn" class="inbox-nav-btn" style="display:none;" title="Inbox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span class="inbox-badge" id="inbox-badge" style="display:none;"></span>
+        </a>
+        <a href="/account-settings.html" id="settings-btn" class="inbox-nav-btn" style="display:none;" title="Account Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </a>
+        <button id="logout-btn" class="btn btn-outline" style="display:none;" onclick="logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Log Out
+        </button>
+      </div>
+    </div>
+  </header>
+  <div class="controls">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="search" placeholder="Search by zip code or name...">
+      <div class="country-indicator" id="country-indicator" onclick="toggleCountryMenu(event)">
+        <span id="country-flag" style="font-size:1rem;">🇺🇸</span>
+        <div class="country-menu" id="country-menu" style="display:none;"></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:.3rem;">
+      <button onclick="findNearMe()" id="near-me-btn" style="background:none;border:none;color:var(--neon);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:0;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+        📍 Find DJs Near Me
+      </button>
+    </div>
+    <div style="width:100%; height:1px; background:var(--border); margin:.5rem 0;"></div>
+    <div class="filter-pills">
+      <button class="pill active" data-filter="mobile-event">Mobile/Wedding/Corporate</button>
+      <button class="pill pink active" data-filter="club">Club/Bar DJs</button>
+    </div>
+    <div class="controls-right">
+      <select class="sort-select" id="sort-select" onchange="sortMode=this.value;renderPublic()">
+        <option value="name">Sort: Name A–Z</option>
+        <option value="location">Sort: Location A–Z</option>
+        <option value="rating">Sort: Top Rated</option>
+        <option value="availability">Sort: Available First</option>
+      </select>
+      <div class="view-toggle">
+        <button class="view-toggle-btn active" id="btn-grid" onclick="setViewMode('grid')" title="Grid view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+        <button class="view-toggle-btn" id="btn-list" onclick="setViewMode('list')" title="List view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+      <span class="count-badge">Showing <span id="showing-count">0</span></span>
+    </div>
+  </div>
+  <div class="main"><div class="grid" id="dj-grid"></div></div>
+  <footer>
+    <div class="footer-logo">Global DJ Connect</div>
+  </footer>
+</div>
+
+<!-- ═══ LOGIN VIEW ═══════════════════════════════════════ -->
+<div id="view-login" class="view">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Admin Panel</div>
+    <div class="login-sub">Global DJ Connect Management</div>
+    <div class="login-field">
+      <input type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <button class="back-link" onclick="goTo('public')">← Back to directory</button>
+  </div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════
+// SUPABASE CONFIGURATION
+// ═══════════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── CONFIG ───────────────────────────────────────────
+const ADMIN_PASSWORD = 'spinlist2025';
+const STORE_KEY = 'spinlist_djs_v1';
+
+// ─── DATA ─────────────────────────────────────────────
+async function loadDJs(){ 
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('role', 'dj')
+    .eq('confirmed', true)
+    .order('name');
+  
+  if (error) {
+    console.error('Error loading DJs:', error);
+    return [];
+  }
+  
+  // Transform Supabase data to match our format
+  return data.map(dj => ({
+    id: dj.id,
+    slug: dj.slug,
+    name: dj.name,
+    type: dj.type,
+    country: dj.country,
+    state: dj.state,
+    city: dj.city,
+    zip: dj.zip,
+    rate: dj.rate,
+    rating: dj.rating || 0,
+    avail: dj.avail || 'available',
+    phone: dj.phone,
+    email: dj.email,
+    website: dj.website,
+    instagram: dj.instagram,
+    tiktok: dj.tiktok,
+    facebook: dj.facebook,
+    soundcloud: dj.soundcloud,
+    bio: dj.bio,
+    avatar_url: dj.avatar_url,
+    travel_distance: dj.travel_distance,
+    event_specialization: dj.event_specialization,
+    club_genres: dj.club_genres
+  }));
+}
+
+async function saveDJs(djList){ 
+  // For admin panel - bulk operations are handled individually
+  console.log('Saved', djList.length, 'DJs to Supabase');
+}
+
+let DJS = [];
+
+// ─── NAVIGATION ───────────────────────────────────────
+function goTo(view){
+  // Check auth for admin panel
+  if(view === 'admin') {
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+    if (!currentUser || currentUser.role !== 'admin') {
+      alert('Please sign in with admin credentials to access the admin panel.');
+      window.location.href = 'login.html';
+      return;
+    }
+  }
+  
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  if(view==='public') renderPublic();
+  if(view==='admin'){ DJS=loadDJs(); renderAdmin(); }
+}
+function goToLogin(){
+  window.location.href = 'login.html';
+}
+
+function doLogin(){
+  window.location.href = 'login.html';
+}
+function logout(){ 
+  localStorage.removeItem('currentUser');
+  sessionStorage.removeItem('currentUser');
+  window.location.reload();
+}
+
+
+// ─── HELPERS ──────────────────────────────────────────
+function djSlug(dj){
+  if(dj.slug) return dj.slug;
+  return (dj.name||'').toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || dj.id;
+}
+function djProfileURL(slug) {
+  const isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+  return isLocal ? 'dj-profile.html?dj='+slug : '/'+slug;
+}
+function initials(n){ return (n||'?').replace(/^DJ\s+/i,'').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'DJ'; }
+function avatarStyle(t){ return t==='club'?'background:linear-gradient(135deg,#1a0813,#2d0d2a);color:var(--pink);':'background:linear-gradient(135deg,#071a14,#0d2a1e);color:var(--neon);'; }
+function starsHTML(r){ let h='<div class="rating-stars">'; for(let i=1;i<=5;i++) h+=`<svg class="star${i>r?' empty':''}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`; return h+'</div>'; }
+function availHTML(a){ return a==='available'?'<span class="dot"></span> Available':a==='busy'?'<span class="dot busy"></span> Booked':'<span class="dot offline"></span> Offline'; }
+const IC={
+  phone:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>`,
+  email:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+  globe:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>`,
+  ig:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>`,
+  sc:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18a3 3 0 010-6c0-.17.01-.34.04-.5A5 5 0 0113 9a3 3 0 016 0h1a3 3 0 010 6H3z"/></svg>`,
+};
+
+// ─── PUBLIC RENDER ────────────────────────────────────
+let activeFilters=new Set(['mobile-event','club']);
+let searchTerm='';
+let sortMode='name';
+let userLocation=null;
+let viewMode='grid';
+
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
+  document.getElementById('btn-list').classList.toggle('active', mode === 'list');
+  document.getElementById('dj-grid').classList.toggle('list-mode', mode === 'list');
+  renderPublic();
+}
+
+// Haversine distance formula
+function calcDistance(lat1,lon1,lat2,lon2){
+  const R=3959; // miles
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Geocode city name or zip to lat/lng
+async function geocodeCity(query){
+  if(!query)return null;
+  try{
+    // Try as postal code first if it looks like a zip
+    const isZip = /^\d{4,10}$/.test(query.trim());
+    const url = isZip
+      ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(query)}&format=json&limit=1`
+      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data&&data[0])return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+  }catch(e){console.error('Geocode error:',e);}
+  return null;
+}
+
+function findNearMe(){
+  const btn=document.getElementById('near-me-btn');
+  if(!navigator.geolocation){alert('Geolocation not supported by your browser');return;}
+  btn.textContent='Getting location...';
+  btn.disabled=true;
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      userLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      sortMode='nearest';
+      btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Near Me ✓`;
+      btn.disabled=false;
+      renderPublic();
+    },
+    err=>{
+      alert('Could not get your location. Please search by zip code instead.');
+      btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Find DJs Near Me`;
+      btn.disabled=false;
+    }
+  );
+}
+
+// Country flags map
+const COUNTRY_FLAGS = {
+  'United States': '🇺🇸',
+  'Canada': '🇨🇦',
+  'United Kingdom': '🇬🇧',
+  'Australia': '🇦🇺',
+  'Mexico': '🇲🇽',
+};
+const COUNTRY_NAMES = Object.keys(COUNTRY_FLAGS);
+
+// Determine active country — logged in user's country or default US
+let activeCountry = 'United States';
+(function() {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (cu && cu.country) activeCountry = cu.country;
+  updateCountryFlag();
+})();
+
+function updateCountryFlag() {
+  const flag = COUNTRY_FLAGS[activeCountry] || '🌍';
+  document.getElementById('country-flag').textContent = flag;
+}
+
+function buildCountryMenu() {
+  const menu = document.getElementById('country-menu');
+  menu.innerHTML = COUNTRY_NAMES.map(c => `
+    <div class="country-option ${c === activeCountry ? 'selected' : ''}" onclick="selectCountry(event, '${c}')">
+      <span>${COUNTRY_FLAGS[c]}</span><span>${c}</span>
+    </div>
+  `).join('');
+}
+
+function toggleCountryMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('country-menu');
+  if (menu.style.display === 'none') {
+    buildCountryMenu();
+    menu.style.display = 'block';
+  } else {
+    menu.style.display = 'none';
+  }
+}
+
+function selectCountry(e, country) {
+  e.stopPropagation();
+  activeCountry = country;
+  updateCountryFlag();
+  document.getElementById('country-menu').style.display = 'none';
+  renderPublic();
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', () => {
+  const menu = document.getElementById('country-menu');
+  if (menu) menu.style.display = 'none';
+});
+
+async function renderPublic(){
+  DJS = await loadDJs();
+  let list=DJS.filter(dj=>{
+    const t = activeFilters.size === 0 || activeFilters.has(dj.type) || (activeFilters.size === 2);
+    const q=searchTerm.toLowerCase();
+    const s=!q||[dj.name,dj.zip].some(v=>(v||'').toLowerCase().includes(q));
+    // Filter by country
+    const countryMatch = !dj.country || dj.country === activeCountry;
+    return t&&s&&countryMatch;
+  });
+
+  // Geocode + distance filter whenever we have a user location
+  if(userLocation){
+    const promises=list.map(async dj=>{
+      if(!dj._coords){
+        const geoTarget = dj.city || dj.zip;
+        if (geoTarget) dj._coords = await geocodeCity(geoTarget);
+      }
+      if(dj._coords){
+        dj._distance=calcDistance(userLocation.lat,userLocation.lng,dj._coords.lat,dj._coords.lng);
+      } else {
+        dj._distance=9999;
+      }
+      return dj;
+    });
+    await Promise.all(promises);
+
+    // Filter out DJs who don't travel far enough to reach the user
+    list=list.filter(dj=>{
+      if(!dj.travel_distance) return true; // no limit set — show them
+      if(dj.travel_distance==='worldwide') return true;
+      const maxMiles=parseInt(dj.travel_distance);
+      if(isNaN(maxMiles)) return true;
+      return (dj._distance||0) <= maxMiles;
+    });
+  }
+
+  // Sort
+  if(sortMode==='nearest'&&userLocation){
+    // Distances already calculated above, just sort
+    list.sort((a,b)=>(a._distance||9999)-(b._distance||9999));
+  } else if(sortMode==='name'){
+    list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  } else if(sortMode==='location'){
+    list.sort((a,b)=>(a.city||'zzz').localeCompare(b.city||'zzz'));
+  } else if(sortMode==='rating'){
+    list.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  } else if(sortMode==='availability'){
+    const order={available:0,busy:1,offline:2};
+    list.sort((a,b)=>(order[a.avail]??1)-(order[b.avail]??1));
+  }
+
+  document.getElementById('showing-count').textContent=list.length;
+  const grid=document.getElementById('dj-grid');
+  if(!DJS.length){ grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🎧</div><div class="empty-title">No DJs Listed Yet</div><div class="empty-sub">Check back soon.</div></div>`; return; }
+  if(!list.length){ grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No Results</div><div class="empty-sub">Try different keywords or adjust the filters.</div></div>`; return; }
+
+  if(viewMode === 'list') {
+    grid.innerHTML = `<div class="dj-list">${list.map(dj => listRowHTML(dj)).join('')}</div>`;
+    return;
+  }
+
+  // Grid view
+  let html='';
+  let lastCity='';
+  list.forEach((dj,i)=>{
+    if(sortMode==='location'){
+      const cityKey=(dj.city||'No Location Set').split(',')[0].trim();
+      if(cityKey!==lastCity){
+        html+=`<div class="location-group-header">${dj.city||'No Location Set'}</div>`;
+        lastCity=cityKey;
+      }
+    }
+    html+=cardHTML(dj,i);
+  });
+  grid.innerHTML=html;
+}
+
+function cardHTML(dj,i){
+  const typeClass=dj.type||'mobile';
+  const typeBadge=dj.type?`<div class="type-badge">${dj.type==='club'?'🎧 Club/Bar':'🎵 Mobile'}</div>`:'';
+  const slug=djSlug(dj);
+  return `
+  <div class="dj-card ${typeClass}" style="animation-delay:${i*.03}s;cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
+    <div class="card-glow"></div>
+    <div class="card-top">
+      <div class="avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
+      ${typeBadge}
+    </div>
+    <div class="dj-name">${dj.name||'Unknown DJ'}</div>
+    ${dj.city||dj.state?`<div class="dj-city">📍 ${[dj.city,dj.state].filter(Boolean).join(', ')}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon);font-weight:500">(${Math.round(dj._distance)} mi away)</span>`:''}</div>`:''}
+    ${dj.rating?`<div class="card-meta"><div>${starsHTML(dj.rating)}</div></div>`:''}
+    <div class="card-footer">
+      ${dj.rate?`<div class="rate">${dj.rate}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function listRowHTML(dj) {
+  const typeLabel = dj.type === 'club' ? '🎧 Club/Bar' : dj.type === 'mobile-event' ? '🎵 Mobile' : '—';
+  const typeClass = dj.type || 'none';
+  const location = [dj.city, dj.state].filter(Boolean).join(', ') || '—';
+  const slug = djSlug(dj);
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  const isClaimed = dj.password && dj.password.length > 0;
+
+  let contactBtn;
+  if (!currentUser) {
+    // Not logged in — show Contact DJ, clicking prompts signup
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();showSignupPrompt()" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+  } else if (isClaimed) {
+    // Logged in + claimed profile — go to DJ profile to send message
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+  } else if (dj.email) {
+    // Logged in + unclaimed + has email — open mailto
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.open('mailto:${dj.email}','_blank')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+  } else {
+    // Logged in + unclaimed + no email — go to profile page
+    contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;padding:.1rem .25rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
+  }
+
+  return `
+  <div class="dj-list-row ${dj.type||''}" style="cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
+    <div class="dll-avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
+    <div class="dll-name">${dj.name||'Unknown DJ'}</div>
+    <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
+    ${contactBtn}
+    <span class="dll-type ${typeClass}">${typeLabel}</span>
+  </div>`;
+}
+
+function showSignupPrompt() {
+  // Show a subtle modal prompting signup
+  const existing = document.getElementById('signup-prompt-modal');
+  if (existing) { existing.remove(); return; }
+  const modal = document.createElement('div');
+  modal.id = 'signup-prompt-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:360px;width:90%;text-align:center;">
+      <p style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--white);margin-bottom:.5rem;">Want to Contact DJs?</p>
+      <p style="color:var(--muted);font-size:.88rem;margin-bottom:1.5rem;line-height:1.6;">Create a free account to message DJs directly and manage your bookings.</p>
+      <a href="/signup.html" style="display:block;background:var(--neon);color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.85rem;border-radius:6px;text-decoration:none;margin-bottom:.75rem;">Create Free Account</a>
+      <a href="/login.html" style="display:block;color:var(--neon);font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;opacity:.7;">Already have an account? Sign In</a>
+      <button onclick="document.getElementById('signup-prompt-modal').remove()" style="margin-top:1rem;background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;">✕ Close</button>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// ─── ADMIN RENDER ─────────────────────────────────────
+function renderAdmin(){ updateStats(); renderAdminList(); }
+
+function renderAdminList(){
+  const list=document.getElementById('admin-list');
+  if(!list) return;
+  if(!DJS.length){ list.innerHTML=`<div class="empty-admin">No DJs yet — use the <strong>Add DJ Manually</strong> or <strong>Import CSV</strong> tabs to get started.</div>`; return; }
+  list.innerHTML=`<div class="admin-list">${DJS.map(dj=>{
+    const hasAccount = dj.email && dj.password && dj.password.length > 0;
+    const accountBadge = hasAccount 
+      ? `<span style="display:inline-block;padding:3px 8px;background:rgba(61,220,132,0.12);color:var(--success);border:1px solid rgba(61,220,132,0.35);border-radius:4px;font-size:10px;font-weight:700;margin-left:8px;">✓ HAS ACCOUNT</span>`
+      : `<span style="display:inline-block;padding:3px 8px;background:rgba(255,95,95,0.12);color:var(--error);border:1px solid rgba(255,95,95,0.35);border-radius:4px;font-size:10px;font-weight:700;margin-left:8px;">⚠ NO ACCOUNT</span>`;
+    
+    return `
+    <div class="admin-row">
+      <span class="ar-type ${dj.type||'mobile'}">${dj.type==='club'?'club/bar':dj.type||'—'}</span>
+      <span class="ar-name">${dj.name||'<em style="color:var(--muted);font-family:DM Sans">Unnamed</em>'}${dj.real?` <span style="font-family:'DM Sans';font-size:.73rem;color:var(--muted);font-weight:400;font-style:italic">(${dj.real})</span>`:''} ${accountBadge}</span>
+      <span class="ar-city">${dj.city||'—'}</span>
+      <span class="ar-contact">${dj.email||dj.phone||'No contact info'}</span>
+      <span class="ar-avail ${dj.avail}">${dj.avail}</span>
+      <button class="edit-btn" onclick="editDJ(${dj.id})" title="Edit" style="background:var(--neon-dim);border-color:var(--neon);color:var(--neon);padding:.4rem .8rem;margin-right:.5rem;">✎</button>
+      <button class="del-btn" onclick="deleteDJ(${dj.id})" title="Delete">✕</button>
+    </div>`
+  }).join('')}</div>`;
+}
+
+// ─── EVENTS ───────────────────────────────────────────
+let searchGeoTimeout = null;
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value;
+  // If search looks like a city or zip, geocode it to enable distance filtering
+  clearTimeout(searchGeoTimeout);
+  const q = searchTerm.trim();
+  if (q.length >= 3) {
+    searchGeoTimeout = setTimeout(async () => {
+      const coords = await geocodeCity(q);
+      if (coords) {
+        userLocation = coords;
+        sortMode = 'nearest';
+      }
+      renderPublic();
+    }, 600);
+  } else {
+    renderPublic();
+  }
+});
+document.querySelectorAll('.pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{
+    const f=pill.dataset.filter;
+    if(activeFilters.has(f)){
+      if(activeFilters.size > 1){ activeFilters.delete(f); pill.classList.remove('active'); updatePillText(pill, false); }
+    } else {
+      activeFilters.add(f); pill.classList.add('active'); updatePillText(pill, true);
+    }
+    renderPublic();
+  });
+});
+
+function updatePillText(pill, active) {
+  const base = pill.dataset.label || pill.textContent.replace('✓ ', '');
+  if (!pill.dataset.label) pill.dataset.label = base;
+  pill.textContent = active ? base + ' ✓' : base;
+}
+
+// Init checkmarks on load
+document.querySelectorAll('.pill.active').forEach(pill => updatePillText(pill, true));
+
+// init
+
+// Load DJs from Supabase
+(async () => {
+  DJS = await loadDJs();
+  renderPublic();
+})();
+
+// Check if admin hash is present and user is logged in
+if (window.location.hash === '#admin') {
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (currentUser && currentUser.role === 'admin') {
+    (async () => {
+      DJS = await loadDJs();
+      goTo('admin');
+    })();
+  } else {
+    window.location.href = 'login.html';
+  }
+}
+
+// Listen for admin access from auth redirect
+window.addEventListener('openAdmin', () => {
+  (async () => {
+    DJS = await loadDJs();
+    goTo('admin');
+  })();
+});
+
+// Check if user is logged in and update header buttons
+(function() {
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  
+  if (currentUser) {
+    document.getElementById('signin-btn').style.display = 'none';
+    document.getElementById('signup-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'inline-flex';
+    document.getElementById('inbox-btn').style.display = 'inline-flex';
+    document.getElementById('settings-btn').style.display = 'inline-flex';
+
+    if (currentUser.role === 'dj') {
+      // DJs get Edit Profile + View My Profile, no settings icon
+      document.getElementById('profile-btn').style.display = 'inline-flex';
+      document.getElementById('settings-btn').style.display = 'none';
+      if (currentUser.slug) {
+        document.getElementById('view-profile-btn').href = '/' + currentUser.slug;
+        document.getElementById('view-profile-btn').style.display = 'inline-flex';
+      }
+    }
+    // Hosts and venues get settings icon only, no profile buttons
+
+    // Load unread count + poll every 30s
+    async function refreshInboxBadge() {
+      try {
+        const { data: top } = await db.from('messages').select('id').eq('to_user_id', currentUser.id).neq('from_user_id', currentUser.id).eq('read', false).is('parent_id', null);
+        const { data: reps } = await db.from('messages').select('id').eq('to_user_id', currentUser.id).neq('from_user_id', currentUser.id).eq('read', false).not('parent_id', 'is', null);
+        const count = ((top || []).length) + ((reps || []).length);
+        const badge = document.getElementById('inbox-badge');
+        if (count > 0) {
+          badge.textContent = count > 99 ? '99+' : count;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      } catch(e) {}
+    }
+    refreshInboxBadge();
+    setInterval(refreshInboxBadge, 30000);
+  }
+})();
+
+</script>
+</body>
+</html>

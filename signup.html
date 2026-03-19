@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up - Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --black: #050507;
+  --deep: #0a0a10;
+  --card: #13131e;
+  --border: #1e1e30;
+  --neon: #00f5c4;
+  --neon-dim: rgba(0,245,196,0.12);
+  --white: #f0f0f8;
+  --muted: #6b6b88;
+  --error: #ff5f5f;
+  --success: #3ddc84;
+  --amber: #ffb347;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+  background: var(--black);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: .4;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+.container {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 50px 40px;
+  border-radius: 12px;
+  max-width: 550px;
+  width: 100%;
+}
+.logo { text-align: center; margin-bottom: 40px; }
+.logo h1 { 
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  background: linear-gradient(135deg, var(--white) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.logo .tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  background: var(--deep);
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--muted);
+}
+.tab.active { background: var(--neon-dim); border: 1px solid var(--neon); color: var(--neon); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+.form-group { margin-bottom: 20px; }
+label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--white); font-weight: 500; }
+input, select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: var(--deep);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+}
+input:focus, select:focus { outline: none; border-color: var(--neon); background: var(--card); }
+select option { background: var(--card); color: var(--white); }
+button {
+  width: 100%;
+  padding: 16px;
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+button:hover { background: rgba(0,245,196,.22); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.alert { padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; border: 1px solid; }
+.alert-success { background: rgba(61,220,132,0.12); color: var(--success); border-color: rgba(61,220,132,0.35); }
+.alert-error { background: rgba(255,95,95,0.12); color: var(--error); border-color: rgba(255,95,95,0.35); }
+
+/* URL Preview Box */
+.url-preview {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.url-preview.visible { display: flex; }
+.url-preview .label { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.url-preview .url { color: var(--neon); word-break: break-all; }
+.url-preview .url.taken { color: var(--error); }
+.url-preview .url.available { color: var(--success); }
+.url-status { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; padding: 3px 8px; border-radius: 100px; }
+.url-status.checking { color: var(--amber); border: 1px solid var(--amber); background: rgba(255,179,71,.1); }
+.url-status.available { color: var(--success); border: 1px solid var(--success); background: rgba(61,220,132,.1); }
+.url-status.taken { color: var(--error); border: 1px solid var(--error); background: rgba(255,95,95,.1); }
+
+.success-view { text-align: center; display: none; }
+.success-view.active { display: block; }
+.success-view h2 { font-family: 'Bebas Neue', sans-serif; font-size: 42px; color: var(--success); margin-bottom: 15px; }
+.success-view p { color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+.success-url { 
+  margin: 20px 0; 
+  padding: 16px; 
+  background: var(--deep); 
+  border: 1px solid var(--neon); 
+  border-radius: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+}
+.success-url .label { color: var(--muted); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 6px; }
+.success-url .url { color: var(--neon); word-break: break-all; }
+.success-view a {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 14px 30px;
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  text-decoration: none;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.success-view a:hover { background: rgba(0,245,196,.22); }
+.divider { text-align: center; margin: 25px 0 0 0; color: var(--muted); font-size: 13px; }
+.divider a { color: var(--neon); text-decoration: none; }
+.divider a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+.type-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.type-btn:hover { border-color: var(--neon); }
+.type-btn.selected { border-color: var(--neon); background: var(--neon-dim); color: var(--neon); }
+
+/* Slug alternatives */
+.slug-alternatives { margin-top: 10px; display: none; }
+.slug-alternatives.visible { display: block; }
+.slug-alt-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--error); margin-bottom: 8px; }
+.slug-alt-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.slug-alt-btn {
+  padding: 6px 12px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .2s;
+  width: auto;
+  margin-top: 0;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+.slug-alt-btn:hover { border-color: var(--neon); color: var(--neon); background: var(--neon-dim); }
+.slug-alt-btn.selected { border-color: var(--neon); color: var(--neon); background: var(--neon-dim); }
+.slug-alt-btn.checking { opacity: .5; cursor: default; }
+.slug-alt-btn.taken { border-color: var(--border); color: var(--muted); opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+
+/* Account type selector */
+.acct-type-btn {
+  display:flex; align-items:center; gap:14px; width:100%;
+  padding:16px; background:var(--deep); border:1px solid var(--border);
+  border-radius:8px; cursor:pointer; transition:all .2s; text-align:left;
+  color:var(--white);
+}
+.acct-type-btn:hover { border-color:var(--neon); background:var(--neon-dim); }
+.acct-type-icon { width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--neon); }
+.acct-type-info { flex:1; }
+.acct-type-name { font-weight:600; font-size:15px; margin-bottom:3px; }
+.acct-type-desc { font-size:12px; color:var(--muted); }
+.acct-type-arrow { color:var(--muted); flex-shrink:0; }
+.acct-type-btn:hover .acct-type-arrow { color:var(--neon); }
+
+/* Back button & form type label */
+.form-back { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; margin-bottom:1.2rem; transition:color .2s; }
+.form-back:hover { color:var(--white); }
+.form-type-label { display:inline-flex; align-items:center; gap:6px; font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--neon); border:1px solid rgba(0,245,196,.25); background:rgba(0,245,196,.07); padding:.3rem .75rem; border-radius:100px; margin-bottom:1.4rem; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div id="signup-view">
+    <div class="logo">
+      <h1>GLOBAL DJ CONNECT</h1>
+      <p class="tagline">Directory & Booking</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab" onclick="window.location.href='login.html'">Login</button>
+      <button class="tab active">Sign Up</button>
+    </div>
+    
+    <div id="alert"></div>
+
+    <!-- STEP 1: Account Type Selector -->
+    <div id="step-type">
+      <div class="form-group">
+        <label style="font-size:14px;margin-bottom:14px;display:block;">What type of account do you need?</label>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button type="button" class="acct-type-btn" data-type="dj" onclick="selectAccountType('dj')">
+            <div class="acct-type-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="acct-type-info">
+              <div class="acct-type-name">DJ <span style="font-size:11px;font-weight:500;color:var(--neon);font-family:Space Mono,monospace;letter-spacing:.05em;">— Free</span></div>
+              <div class="acct-type-desc">Get listed in the directory & accept bookings</div>
+            </div>
+            <svg class="acct-type-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <button type="button" class="acct-type-btn" data-type="host" onclick="selectAccountType('host')">
+            <div class="acct-type-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="acct-type-info">
+              <div class="acct-type-name">Party Host <span style="font-size:11px;font-weight:500;color:var(--neon);font-family:Space Mono,monospace;letter-spacing:.05em;">— Free</span></div>
+              <div class="acct-type-desc">Find & book DJs for your events</div>
+            </div>
+            <svg class="acct-type-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <button type="button" class="acct-type-btn" data-type="venue" onclick="selectAccountType('venue')">
+            <div class="acct-type-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="acct-type-info">
+              <div class="acct-type-name">Venue <span style="font-size:11px;font-weight:500;color:var(--neon);font-family:Space Mono,monospace;letter-spacing:.05em;">— Free</span></div>
+              <div class="acct-type-desc">Add your venue, list opening spots, & book DJs</div>
+            </div>
+            <svg class="acct-type-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: DJ Form -->
+    <form id="form-dj" class="acct-form" style="display:none;">
+      <div class="form-back" onclick="backToTypeSelect()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </div>
+      <div class="form-type-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        DJ Account
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="dj-email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="dj-password" placeholder="Minimum 8 characters" minlength="8">
+      </div>
+      <div class="form-group">
+        <label>DJ / Company Name</label>
+        <input type="text" id="name" placeholder="DJ Nova or Premier Events LLC" autocomplete="off">
+        <div class="url-preview" id="url-preview">
+          <span class="label">Your URL:</span>
+          <span class="url" id="preview-url"></span>
+          <span class="url-status" id="url-status"></span>
+        </div>
+        <div class="slug-alternatives" id="slug-alternatives">
+          <div class="slug-alt-label">That URL is taken — pick one:</div>
+          <div class="slug-alt-options" id="slug-alt-options"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Type <span style="font-size:11px;color:var(--muted);font-weight:400;">(select one)</span></label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+          <button type="button" class="type-btn" data-value="mobile-event">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            Mobile / Wedding / Corporate DJ
+          </button>
+          <button type="button" class="type-btn" data-value="club">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Club / Bar DJ
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Country</label>
+        <select id="dj-country-select">
+          <option value="" data-code="">Select country...</option>
+          <option value="United States" data-code="us">United States</option>
+          <option value="United Kingdom" data-code="gb">United Kingdom</option>
+          <option value="Canada" data-code="ca">Canada</option>
+          <option value="Australia" data-code="au">Australia</option>
+          <option value="Germany" data-code="de">Germany</option>
+          <option value="France" data-code="fr">France</option>
+          <option value="Netherlands" data-code="nl">Netherlands</option>
+          <option value="Spain" data-code="es">Spain</option>
+          <option value="Italy" data-code="it">Italy</option>
+          <option value="Brazil" data-code="br">Brazil</option>
+          <option value="Mexico" data-code="mx">Mexico</option>
+          <option value="Japan" data-code="jp">Japan</option>
+          <option value="South Africa" data-code="za">South Africa</option>
+          <option value="New Zealand" data-code="nz">New Zealand</option>
+          <option value="Ireland" data-code="ie">Ireland</option>
+          <option value="Sweden" data-code="se">Sweden</option>
+          <option value="Norway" data-code="no">Norway</option>
+          <option value="Denmark" data-code="dk">Denmark</option>
+          <option value="Belgium" data-code="be">Belgium</option>
+          <option value="Switzerland" data-code="ch">Switzerland</option>
+          <option value="Portugal" data-code="pt">Portugal</option>
+          <option value="Other" data-code="">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Zip / Postal Code</label>
+        <input type="text" id="dj-zip" placeholder="e.g. 10001" oninput="lookupSignupZip(this.value)">
+        <div id="signup-zip-result" style="margin-top:.45rem;font-size:.78rem;color:#3ddc84;font-family:'Space Mono',monospace;min-height:1.1rem;letter-spacing:.04em;"></div>
+        <input type="hidden" id="dj-city">
+        <input type="hidden" id="dj-state">
+        <input type="hidden" id="dj-country">
+      </div>
+      <div class="form-group">
+        <label>Distance Willing to Travel</label>
+        <select id="dj-travel">
+          <option value="">Select distance...</option>
+          <option value="worldwide">Worldwide</option>
+          <option value="10">10 miles</option>
+          <option value="15">15 miles</option>
+          <option value="20">20 miles</option>
+          <option value="25">25 miles</option>
+          <option value="30">30 miles</option>
+          <option value="35">35 miles</option>
+          <option value="40">40 miles</option>
+          <option value="45">45 miles</option>
+          <option value="50">50 miles</option>
+          <option value="55">55 miles</option>
+          <option value="60">60 miles</option>
+          <option value="65">65 miles</option>
+          <option value="70">70 miles</option>
+          <option value="75">75 miles</option>
+          <option value="80">80 miles</option>
+          <option value="85">85 miles</option>
+          <option value="90">90 miles</option>
+          <option value="95">95 miles</option>
+          <option value="100">100 miles</option>
+          <option value="125">125 miles</option>
+          <option value="150">150 miles</option>
+          <option value="175">175 miles</option>
+          <option value="200">200 miles</option>
+        </select>
+      </div>
+      <button type="submit" id="submit-dj">Create DJ Account</button>
+    </form>
+
+    <!-- STEP 2: Party Host Form -->
+    <form id="form-host" class="acct-form" style="display:none;">
+      <div class="form-back" onclick="backToTypeSelect()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </div>
+      <div class="form-type-label" style="color:var(--amber);border-color:rgba(255,179,71,.3);background:rgba(255,179,71,.08);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Party Host Account
+      </div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="host-name" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="host-email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="host-password" placeholder="Minimum 8 characters" minlength="8">
+      </div>
+      <div class="form-group">
+        <label>Country</label>
+        <select id="host-country">
+          <option value="">Select country...</option>
+          <option value="United States" selected>United States</option>
+          <option value="Canada">Canada</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="Australia">Australia</option>
+          <option value="Mexico">Mexico</option>
+        </select>
+      </div>
+      <button type="submit" id="submit-host">Create Host Account</button>
+    </form>
+
+    <!-- STEP 2: Venue Form -->
+    <form id="form-venue" class="acct-form" style="display:none;">
+      <div class="form-back" onclick="backToTypeSelect()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </div>
+      <div class="form-type-label" style="color:#a78bfa;border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.08);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Venue Account
+      </div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="venue-contact-name" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label>Venue Name</label>
+        <input type="text" id="venue-name" placeholder="The Grand Ballroom">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="venue-email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="venue-password" placeholder="Minimum 8 characters" minlength="8">
+      </div>
+      <div class="form-group">
+        <label>Country</label>
+        <select id="venue-country">
+          <option value="">Select country...</option>
+          <option value="United States" selected>United States</option>
+          <option value="Canada">Canada</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="Australia">Australia</option>
+          <option value="Mexico">Mexico</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Zip Code</label>
+        <input type="text" id="venue-zip" placeholder="60601">
+      </div>
+      <button type="submit" id="submit-venue">Create Venue Account</button>
+    </form>
+
+    <div class="divider">Already have an account? <a href="login.html">Log in</a></div>
+  </div>
+  
+  <div id="success-view" class="success-view">
+    <div class="logo"><h1>GLOBAL DJ CONNECT</h1></div>
+    <h2>✓ You're Live!</h2>
+    <p>Your DJ profile is now in the directory.</p>
+    <div class="success-url">
+      <div class="label">Your profile URL</div>
+      <div class="url" id="success-url-display"></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);">Share this link to get booked. Log in to fill out your full profile.</p>
+    <a href="login.html">Log In & Complete Profile</a>
+    <div style="margin-top:10px;">
+      <a href="index.html" style="background:transparent;border-color:var(--border);color:var(--muted);">View Directory</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BASE_URL = 'globaldjconnect.com/';
+let currentAccountType = null;
+
+// ── ACCOUNT TYPE SELECTION ──────────────────────────────
+function selectAccountType(type) {
+  currentAccountType = type;
+  document.getElementById('step-type').style.display = 'none';
+  document.getElementById('alert').innerHTML = '';
+  document.querySelectorAll('.acct-form').forEach(f => f.style.display = 'none');
+  document.getElementById('form-' + type).style.display = 'block';
+}
+
+function backToTypeSelect() {
+  document.querySelectorAll('.acct-form').forEach(f => f.style.display = 'none');
+  document.getElementById('step-type').style.display = 'block';
+  document.getElementById('alert').innerHTML = '';
+  currentAccountType = null;
+}
+
+// ── DJ TYPE TOGGLE BUTTONS ──────────────────────────────
+document.querySelectorAll('.type-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+  });
+});
+
+// ── SLUG LOGIC (DJ only) ────────────────────────────────
+function makeSlug(name) {
+  return (name || '').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    || null;
+}
+
+let slugCheckTimeout = null;
+let currentSlug = null;
+let chosenSlug = null;
+let slugAvailable = false;
+
+function generateAlternatives(slug) {
+  const parts = slug.split('-');
+  return [...new Set([
+    parts.join('_'), parts.join(''), parts.join('.'),
+    slug.startsWith('dj-') ? slug : 'dj-' + slug,
+    slug + '-official', slug + '-music', slug + '-mixes'
+  ])].filter(s => s !== slug && s.length > 0).slice(0, 6);
+}
+
+async function checkAndRenderAlternatives(slug) {
+  const altsContainer = document.getElementById('slug-alternatives');
+  const altsEl = document.getElementById('slug-alt-options');
+  const candidates = generateAlternatives(slug);
+  altsEl.innerHTML = candidates.map(s =>
+    `<button type="button" class="slug-alt-btn checking" data-slug="${s}">${BASE_URL}${s}</button>`
+  ).join('');
+  altsContainer.classList.add('visible');
+  for (const candidate of candidates) {
+    const btn = altsEl.querySelector(`[data-slug="${candidate}"]`);
+    const { data } = await db.from('users').select('id').eq('slug', candidate).limit(1);
+    if (data && data.length > 0) {
+      btn.classList.remove('checking'); btn.classList.add('taken'); btn.disabled = true;
+    } else {
+      btn.classList.remove('checking');
+      btn.addEventListener('click', function() {
+        altsEl.querySelectorAll('.slug-alt-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        chosenSlug = this.dataset.slug;
+        slugAvailable = true;
+        document.getElementById('preview-url').textContent = BASE_URL + chosenSlug;
+        document.getElementById('preview-url').className = 'url available';
+        document.getElementById('url-status').textContent = 'Available ✓';
+        document.getElementById('url-status').className = 'url-status available';
+      });
+    }
+  }
+}
+
+document.getElementById('name').addEventListener('input', function() {
+  const slug = makeSlug(this.value);
+  const preview = document.getElementById('url-preview');
+  const previewUrl = document.getElementById('preview-url');
+  const statusEl = document.getElementById('url-status');
+  const altsContainer = document.getElementById('slug-alternatives');
+  if (!slug) {
+    preview.classList.remove('visible'); altsContainer.classList.remove('visible');
+    currentSlug = null; chosenSlug = null; slugAvailable = false; return;
+  }
+  currentSlug = slug; chosenSlug = slug;
+  preview.classList.add('visible'); altsContainer.classList.remove('visible');
+  previewUrl.textContent = BASE_URL + slug;
+  previewUrl.className = 'url';
+  statusEl.textContent = 'Checking...';
+  statusEl.className = 'url-status checking';
+  slugAvailable = false;
+  clearTimeout(slugCheckTimeout);
+  slugCheckTimeout = setTimeout(async () => {
+    const { data } = await db.from('users').select('id').eq('slug', slug).limit(1);
+    if (data && data.length > 0) {
+      previewUrl.className = 'url taken'; statusEl.textContent = 'Taken';
+      statusEl.className = 'url-status taken'; chosenSlug = null; slugAvailable = false;
+      checkAndRenderAlternatives(slug);
+    } else {
+      previewUrl.className = 'url available'; statusEl.textContent = 'Available ✓';
+      statusEl.className = 'url-status available'; chosenSlug = slug; slugAvailable = true;
+      altsContainer.classList.remove('visible');
+    }
+  }, 500);
+});
+
+
+
+// ── ZIP LOOKUP (SIGNUP) ──────────────────────────────────
+let signupZipTimeout = null;
+function lookupSignupZip(zip) {
+  const resultEl = document.getElementById('signup-zip-result');
+  clearTimeout(signupZipTimeout);
+  if (!zip || zip.length < 4) { resultEl.textContent = ''; return; }
+  signupZipTimeout = setTimeout(async () => {
+    resultEl.textContent = 'Looking up...';
+    try {
+      const countrySelect = document.getElementById('dj-country-select');
+      const selectedOption = countrySelect ? countrySelect.options[countrySelect.selectedIndex] : null;
+      const countryCode = selectedOption ? selectedOption.dataset.code : '';
+      const countryName = selectedOption ? selectedOption.value : '';
+      const url = countryCode
+        ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycodes=${countryCode}&format=json&limit=1&addressdetails=1`
+        : `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&format=json&limit=1&addressdetails=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data[0]) {
+        const addr = data[0].address;
+        const city = addr.city || addr.town || addr.village || addr.county || '';
+        const state = addr.state || '';
+        const country = countryName || addr.country || '';
+        document.getElementById('dj-city').value = city;
+        document.getElementById('dj-state').value = state;
+        document.getElementById('dj-country').value = country;
+        resultEl.style.color = '#3ddc84';
+        resultEl.textContent = [city, state, country].filter(Boolean).join(', ');
+      } else {
+        resultEl.style.color = '#6b6b88';
+        resultEl.textContent = 'Zip not found';
+      }
+    } catch(e) { resultEl.textContent = ''; }
+  }, 600);
+}
+
+// ── EMAIL UNIQUENESS CHECK ──────────────────────────────
+async function checkEmailTaken(email) {
+  const { data } = await db.from('users').select('id, role').eq('email', email).limit(1);
+  if (data && data.length > 0) {
+    const role = data[0].role;
+    const roleLabel = role === 'dj' ? 'DJ' : role === 'host' ? 'Party Host' : role === 'venue' ? 'Venue' : role;
+    throw new Error(`This email is already registered as a ${roleLabel} account. Please use a different email or log in.`);
+  }
+}
+
+// ── DJ FORM SUBMIT ──────────────────────────────────────
+document.getElementById('form-dj').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-dj');
+  const alertEl = document.getElementById('alert');
+  btn.disabled = true; btn.textContent = 'Creating Account...'; alertEl.innerHTML = '';
+
+  const types = Array.from(document.querySelectorAll('.type-btn.selected')).map(b => b.dataset.value);
+  if (types.length === 0) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please select a DJ type</div>';
+    btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
+  }
+  const name = document.getElementById('name').value;
+  const finalSlug = chosenSlug || makeSlug(name);
+  if (!slugAvailable || !finalSlug) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please select an available URL from the options below your name.</div>';
+    btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
+  }
+  const { data: existing } = await db.from('users').select('id').eq('slug', finalSlug).limit(1);
+  if (existing && existing.length > 0) {
+    alertEl.innerHTML = '<div class="alert alert-error">That URL was just taken. Please pick another.</div>';
+    btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
+  }
+  try {
+    await checkEmailTaken(document.getElementById('dj-email').value.toLowerCase());
+    const { error } = await db.from('users').insert([{
+      email: document.getElementById('dj-email').value.toLowerCase(),
+      password: document.getElementById('dj-password').value,
+      name, slug: finalSlug, type: types.join(', '),
+      country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
+      city: document.getElementById('dj-city').value,
+      state: document.getElementById('dj-state').value,
+      travel_distance: document.getElementById('dj-travel').value || null,
+      zip: document.getElementById('dj-zip').value,
+      confirmed: true, role: 'dj'
+    }]);
+    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
+    const { data: newUser } = await db.from('users').select('*').eq('email', document.getElementById('dj-email').value.toLowerCase()).single();
+    if (newUser) sessionStorage.setItem('currentUser', JSON.stringify(newUser));
+    // Send welcome email
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'welcome', name: name, email: document.getElementById('dj-email').value.toLowerCase(), role: 'dj', slug: finalSlug })
+    }).catch(() => {});
+    window.location.href = '/' + finalSlug;
+  } catch (err) {
+    alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    btn.disabled = false; btn.textContent = 'Create DJ Account';
+  }
+});
+
+// ── HOST FORM SUBMIT ────────────────────────────────────
+document.getElementById('form-host').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-host');
+  const alertEl = document.getElementById('alert');
+  btn.disabled = true; btn.textContent = 'Creating Account...'; alertEl.innerHTML = '';
+  const name = document.getElementById('host-name').value.trim();
+  const email = document.getElementById('host-email').value.trim();
+  const password = document.getElementById('host-password').value;
+  const country = document.getElementById('host-country').value;
+  if (!name || !email || !password || !country) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
+    btn.disabled = false; btn.textContent = 'Create Host Account'; return;
+  }
+  if (password.length < 8) {
+    alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
+    btn.disabled = false; btn.textContent = 'Create Host Account'; return;
+  }
+  try {
+    await checkEmailTaken(email.toLowerCase());
+    const { error } = await db.from('users').insert([{
+      name, email: email.toLowerCase(), password, country, confirmed: true, role: 'host'
+    }]);
+    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
+    const { data: newHost } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
+    if (newHost) sessionStorage.setItem('currentUser', JSON.stringify(newHost));
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'welcome', name: name, email: email.toLowerCase(), role: 'host' })
+    }).catch(() => {});
+    window.location.href = '/';
+  } catch (err) {
+    alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    btn.disabled = false; btn.textContent = 'Create Host Account';
+  }
+});
+
+// ── VENUE FORM SUBMIT ───────────────────────────────────
+document.getElementById('form-venue').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-venue');
+  const alertEl = document.getElementById('alert');
+  btn.disabled = true; btn.textContent = 'Creating Account...'; alertEl.innerHTML = '';
+  const contactName = document.getElementById('venue-contact-name').value.trim();
+  const venueName = document.getElementById('venue-name').value.trim();
+  const email = document.getElementById('venue-email').value.trim();
+  const password = document.getElementById('venue-password').value;
+  const country = document.getElementById('venue-country').value;
+  const zip = document.getElementById('venue-zip').value.trim();
+  if (!contactName || !venueName || !email || !password || !country || !zip) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
+    btn.disabled = false; btn.textContent = 'Create Venue Account'; return;
+  }
+  if (password.length < 8) {
+    alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
+    btn.disabled = false; btn.textContent = 'Create Venue Account'; return;
+  }
+  try {
+    await checkEmailTaken(email.toLowerCase());
+    const { error } = await db.from('users').insert([{
+      name: contactName, email: email.toLowerCase(), password,
+      country, zip, confirmed: true, role: 'venue',
+      venue_name: venueName
+    }]);
+    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
+    const { data: newVenue } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
+    if (newVenue) sessionStorage.setItem('currentUser', JSON.stringify(newVenue));
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'welcome', name: contactName, email: email.toLowerCase(), role: 'venue' })
+    }).catch(() => {});
+    window.location.href = '/';
+  } catch (err) {
+    alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    btn.disabled = false; btn.textContent = 'Create Venue Account';
+  }
+});
+</script>
+
+
+
+</body>
+</html>
