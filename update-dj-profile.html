@@ -1163,11 +1163,19 @@ document.getElementById('slug-input').addEventListener('input', function() {
 // Toggle mobile specialization
 document.getElementById('mobile-checkbox').addEventListener('change', function() {
   document.getElementById('mobile-spec').style.display = this.checked ? 'block' : 'none';
+  if (this.checked) {
+    document.getElementById('club-checkbox').checked = false;
+    document.getElementById('club-spec').style.display = 'none';
+  }
 });
 
 // Toggle club genres
 document.getElementById('club-checkbox').addEventListener('change', function() {
   document.getElementById('club-spec').style.display = this.checked ? 'block' : 'none';
+  if (this.checked) {
+    document.getElementById('mobile-checkbox').checked = false;
+    document.getElementById('mobile-spec').style.display = 'none';
+  }
 });
 
 
