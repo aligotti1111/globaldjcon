@@ -122,7 +122,7 @@ exports.handler = async (event) => {
     const profileUrl = slug ? `${SITE_URL}/${slug}` : 'N/A';
     emailPayload = {
       from: FROM,
-      reply_to: claimantEmail,
+      reply_to: [claimantEmail],
       to: [ADMIN_EMAIL],
       subject: `Profile Claim Request: ${bizName}`,
       html: emailTemplate(`
@@ -154,7 +154,7 @@ exports.handler = async (event) => {
     }
     emailPayload = {
       from: FROM,
-      reply_to: email,
+      reply_to: [email],
       to: [ADMIN_EMAIL],
       subject: `Contact Form: ${subject}`,
       html: emailTemplate(`
