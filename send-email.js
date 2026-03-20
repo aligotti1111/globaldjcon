@@ -8,17 +8,23 @@ const ADMIN_EMAIL = 'info@globaldjconnect.com';
 const SITE_URL = 'https://globaldjconnect.com';
 
 exports.handler = async (event) => {
-  // Only allow POST
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
-
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
+
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  // Only allow POST
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
 
   let body;
   try {
@@ -148,7 +154,7 @@ exports.handler = async (event) => {
 
   // ── 5. CONTACT US ─────────────────────────────────────────────────
   } else if (type === 'contact_us') {
-    const { name, email, subject, message } = body;
+    const { name, subject, message } = body; const email = (body.email || '').toLowerCase().trim();
     if (!name || !email || !subject || !message) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields for contact_us' }) };
     }
