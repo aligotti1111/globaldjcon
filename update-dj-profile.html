@@ -1284,17 +1284,15 @@ clubGenres.forEach(cb => {
     document.getElementById('video_url_2').value = data.video_url_2 || '';
     document.getElementById('video_url_3').value = data.video_url_3 || '';
     
-    // Load types
+    // Load types (single select — use first type only)
     if (data.type) {
-      const types = data.type.split(',').map(t => t.trim());
-      types.forEach(type => {
-        const checkbox = document.querySelector(`input[name="type"][value="${type}"]`);
-        if (checkbox) {
-          checkbox.checked = true;
-          if (type === 'mobile-event') document.getElementById('mobile-spec').style.display = 'block';
-          if (type === 'club') document.getElementById('club-spec').style.display = 'block';
-        }
-      });
+      const type = data.type.split(',')[0].trim();
+      const checkbox = document.querySelector(`input[name="type"][value="${type}"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+        if (type === 'mobile-event') document.getElementById('mobile-spec').style.display = 'block';
+        if (type === 'club') document.getElementById('club-spec').style.display = 'block';
+      }
     }
     
     // Load mobile party types from event_types
