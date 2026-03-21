@@ -213,11 +213,11 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index
       <div class="form-section-label">DJ Identity</div>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">DJ Name / Company <span class="opt">optional</span></label>
+          <label class="form-label">DJ Name / Company <span style="color:var(--error)">*</span></label>
           <input class="form-input" id="f-company" placeholder="e.g. DJ Nova or Premier Events LLC">
         </div>
         <div class="form-group">
-          <label class="form-label">Country <span class="opt">optional</span></label>
+          <label class="form-label">Country <span style="color:var(--error)">*</span></label>
           <select class="form-input" id="f-country">
             <option value="">Select country...</option>
             <option value="United States" data-code="us">United States</option>
@@ -245,7 +245,7 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Zip / Postal Code <span class="opt">optional</span></label>
+          <label class="form-label">Zip / Postal Code <span style="color:var(--error)">*</span></label>
           <input class="form-input" id="f-zip" placeholder="e.g. 60601" oninput="lookupAdminZip(this.value)">
           <div id="admin-zip-result" style="margin-top:.4rem;font-size:.75rem;color:#3ddc84;font-family:'Space Mono',monospace;min-height:1rem;letter-spacing:.04em;"></div>
         </div>
@@ -404,6 +404,39 @@ function lookupAdminZip(zip) {
   }, 600);
 }
 
+let editZipTimeout = null;
+function lookupEditZip(zip) {
+  const resultEl = document.getElementById('edit-zip-result');
+  clearTimeout(editZipTimeout);
+  if (!zip || zip.length < 4) { resultEl.textContent = ''; return; }
+  editZipTimeout = setTimeout(async () => {
+    resultEl.style.color = '#ffb347';
+    resultEl.textContent = 'Looking up...';
+    try {
+      const countryVal = (document.getElementById('ed-country').value || '').trim();
+      const countryMap = {'United States':'us','United Kingdom':'gb','Canada':'ca','Australia':'au','Germany':'de','France':'fr','Netherlands':'nl','Spain':'es','Italy':'it','Brazil':'br','Mexico':'mx','Japan':'jp','South Africa':'za','New Zealand':'nz','Ireland':'ie','Sweden':'se','Norway':'no','Denmark':'dk','Belgium':'be','Switzerland':'ch','Portugal':'pt'};
+      const countryCode = countryMap[countryVal] || '';
+      const url = countryCode
+        ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycodes=${countryCode}&format=json&limit=1&addressdetails=1`
+        : `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&format=json&limit=1&addressdetails=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data[0]) {
+        const addr = data[0].address;
+        const city = addr.suburb || addr.city || addr.town || addr.village || addr.county || '';
+        const state = addr.state || '';
+        document.getElementById('ed-city').value = city;
+        document.getElementById('ed-state').value = state;
+        resultEl.style.color = '#3ddc84';
+        resultEl.textContent = [city, state, countryVal].filter(Boolean).join(', ');
+      } else {
+        resultEl.style.color = '#6b6b88';
+        resultEl.textContent = 'Zip not found';
+      }
+    } catch(e) { resultEl.textContent = ''; }
+  }, 600);
+}
+
 function makeSlug(name) {
   return (name||'')
     .toLowerCase().trim()
@@ -502,6 +535,26 @@ async function addManual() {
     const fb = document.getElementById('form-fb');
     fb.className = 'form-fb err';
     fb.textContent = 'Fill in at least one field.';
+    return;
+  }
+
+  // Required field validation
+  if (!dj.name) {
+    const fb = document.getElementById('form-fb');
+    fb.className = 'form-fb err';
+    fb.textContent = 'DJ Name is required.';
+    return;
+  }
+  if (!dj.country) {
+    const fb = document.getElementById('form-fb');
+    fb.className = 'form-fb err';
+    fb.textContent = 'Country is required.';
+    return;
+  }
+  if (!dj.zip) {
+    const fb = document.getElementById('form-fb');
+    fb.className = 'form-fb err';
+    fb.textContent = 'Zip / Postal Code is required.';
     return;
   }
 
@@ -676,6 +729,7 @@ async function editDJ(id) {
   document.getElementById('ed-state').value = dj.state || '';
   document.getElementById('ed-country').value = dj.country || '';
   document.getElementById('ed-zip').value = dj.zip || '';
+  document.getElementById('edit-zip-result').textContent = dj.city ? [dj.city, dj.state, dj.country].filter(Boolean).join(', ') : '';
   document.getElementById('ed-dj-start-year').value = dj.dj_start_year || '';
   document.getElementById('ed-travel').value = dj.travel_distance || '';
   document.getElementById('ed-rate').value = dj.rate || '';
@@ -1152,7 +1206,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="dj-edit-group"><label class="dj-edit-label">City</label><input class="dj-edit-input" id="ed-city"></div>
           <div class="dj-edit-group"><label class="dj-edit-label">State / Province</label><input class="dj-edit-input" id="ed-state"></div>
           <div class="dj-edit-group"><label class="dj-edit-label">Country</label><input class="dj-edit-input" id="ed-country"></div>
-          <div class="dj-edit-group"><label class="dj-edit-label">Zip Code</label><input class="dj-edit-input" id="ed-zip"></div>
+          <div class="dj-edit-group"><label class="dj-edit-label">Zip Code</label><input class="dj-edit-input" id="ed-zip" oninput="lookupEditZip(this.value)">
+            <div id="edit-zip-result" style="margin-top:.35rem;font-size:.72rem;color:#3ddc84;font-family:'Space Mono',monospace;min-height:1rem;letter-spacing:.04em;"></div>
+          </div>
           <div class="dj-edit-group"><label class="dj-edit-label">DJ Start Year</label><input class="dj-edit-input" id="ed-dj-start-year" placeholder="e.g. 2005"></div>
           <div class="dj-edit-group"><label class="dj-edit-label">Travel Distance</label>
             <select class="dj-edit-input" id="ed-travel">
