@@ -724,7 +724,6 @@ async function editDJ(id) {
   document.getElementById('ed-name').value = dj.name || '';
   document.getElementById('ed-slug').value = dj.slug || '';
   document.getElementById('ed-type').value = dj.type || '';
-  document.getElementById('ed-avail').value = dj.avail || 'available';
   document.getElementById('ed-city').value = dj.city || '';
   document.getElementById('ed-state').value = dj.state || '';
   document.getElementById('ed-country').value = dj.country || '';
@@ -732,8 +731,6 @@ async function editDJ(id) {
   document.getElementById('edit-zip-result').textContent = dj.city ? [dj.city, dj.state, dj.country].filter(Boolean).join(', ') : '';
   document.getElementById('ed-dj-start-year').value = dj.dj_start_year || '';
   document.getElementById('ed-travel').value = dj.travel_distance || '';
-  document.getElementById('ed-rate').value = dj.rate || '';
-  document.getElementById('ed-rating').value = dj.rating || '';
   document.getElementById('ed-event-types').value = dj.event_types || '';
   document.getElementById('ed-club-genres').value = dj.club_genres || '';
 
@@ -905,15 +902,12 @@ async function saveDJEdit() {
     name:           document.getElementById('ed-name').value.trim(),
     slug:           document.getElementById('ed-slug').value.trim() || null,
     type:           document.getElementById('ed-type').value,
-    avail:          document.getElementById('ed-avail').value,
     city:           document.getElementById('ed-city').value.trim(),
     state:          document.getElementById('ed-state').value.trim(),
     country:        document.getElementById('ed-country').value.trim(),
     zip:            document.getElementById('ed-zip').value.trim(),
     dj_start_year:  document.getElementById('ed-dj-start-year').value.trim() || null,
     travel_distance:document.getElementById('ed-travel').value || null,
-    rate:           document.getElementById('ed-rate').value.trim(),
-    rating:         parseFloat(document.getElementById('ed-rating').value) || 0,
     event_types:    document.getElementById('ed-event-types').value.trim() || null,
     club_genres:    document.getElementById('ed-club-genres').value.trim() || null,
     phone:          document.getElementById('ed-phone').value.trim(),
@@ -1196,16 +1190,35 @@ document.addEventListener('DOMContentLoaded', async () => {
               <option value="club">Club / Bar DJ</option>
             </select>
           </div>
-          <div class="dj-edit-group"><label class="dj-edit-label">Availability</label>
-            <select class="dj-edit-input" id="ed-avail">
-              <option value="available">Available</option>
-              <option value="busy">Booked / Busy</option>
-              <option value="offline">Offline</option>
-            </select>
-          </div>
           <div class="dj-edit-group"><label class="dj-edit-label">City</label><input class="dj-edit-input" id="ed-city"></div>
           <div class="dj-edit-group"><label class="dj-edit-label">State / Province</label><input class="dj-edit-input" id="ed-state"></div>
-          <div class="dj-edit-group"><label class="dj-edit-label">Country</label><input class="dj-edit-input" id="ed-country"></div>
+          <div class="dj-edit-group"><label class="dj-edit-label">Country</label>
+            <select class="dj-edit-input" id="ed-country">
+              <option value="">Select country...</option>
+              <option value="United States">United States</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="Canada">Canada</option>
+              <option value="Australia">Australia</option>
+              <option value="Germany">Germany</option>
+              <option value="France">France</option>
+              <option value="Netherlands">Netherlands</option>
+              <option value="Spain">Spain</option>
+              <option value="Italy">Italy</option>
+              <option value="Brazil">Brazil</option>
+              <option value="Mexico">Mexico</option>
+              <option value="Japan">Japan</option>
+              <option value="South Africa">South Africa</option>
+              <option value="New Zealand">New Zealand</option>
+              <option value="Ireland">Ireland</option>
+              <option value="Sweden">Sweden</option>
+              <option value="Norway">Norway</option>
+              <option value="Denmark">Denmark</option>
+              <option value="Belgium">Belgium</option>
+              <option value="Switzerland">Switzerland</option>
+              <option value="Portugal">Portugal</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
           <div class="dj-edit-group"><label class="dj-edit-label">Zip Code</label><input class="dj-edit-input" id="ed-zip" oninput="lookupEditZip(this.value)">
             <div id="edit-zip-result" style="margin-top:.35rem;font-size:.72rem;color:#3ddc84;font-family:'Space Mono',monospace;min-height:1rem;letter-spacing:.04em;"></div>
           </div>
@@ -1217,8 +1230,6 @@ document.addEventListener('DOMContentLoaded', async () => {
               ${[10,15,20,25,30,35,40,45,50,60,75,100,125,150,175,200].map(n=>`<option value="${n}">${n} miles</option>`).join('')}
             </select>
           </div>
-          <div class="dj-edit-group"><label class="dj-edit-label">Rate</label><input class="dj-edit-input" id="ed-rate" placeholder="e.g. $150/hr"></div>
-          <div class="dj-edit-group"><label class="dj-edit-label">Rating (1–5)</label><input class="dj-edit-input" id="ed-rating" type="number" min="0" max="5" step="0.5"></div>
           <div class="dj-edit-group full"><label class="dj-edit-label">Event Types (comma-separated)</label><input class="dj-edit-input" id="ed-event-types" placeholder="weddings,corporate,birthday"></div>
           <div class="dj-edit-group full"><label class="dj-edit-label">Club Genres (comma-separated)</label><input class="dj-edit-input" id="ed-club-genres" placeholder="hip-hop,edm,open-format"></div>
         </div>
