@@ -257,16 +257,11 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index
           <label class="form-label">City <span class="opt">optional</span></label>
           <input class="form-input" id="f-city" placeholder="Auto-filled by zip">
         </div>
-        <div class="form-group">
-          <label class="form-label">Rate <span class="opt">optional</span></label>
-          <input class="form-input" id="f-rate" placeholder="e.g. $150/hr or $500/set">
-        </div>
       </div>
 
       <div class="form-group" style="margin-bottom:1rem">
         <label class="form-label">DJ Type <span class="opt">optional</span></label>
         <div class="type-toggle">
-          <button class="type-opt" id="type-none" onclick="setType('')">Not Set</button>
           <button class="type-opt" id="type-mobile" onclick="setType('mobile-event')">🎵 Mobile/Event</button>
           <button class="type-opt" id="type-club" onclick="setType('club')">🎧 Club/Bar</button>
         </div>
@@ -307,29 +302,7 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index
         </div>
       </div>
 
-      <div class="form-divider"></div>
-      <div class="form-section-label">Status</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Availability <span class="opt">optional</span></label>
-          <div class="avail-toggle">
-            <button class="avail-opt sel-available" id="avail-available" onclick="setAvail('available')">Available</button>
-            <button class="avail-opt" id="avail-busy" onclick="setAvail('busy')">Booked</button>
-            <button class="avail-opt" id="avail-offline" onclick="setAvail('offline')">Offline</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Rating <span class="opt">optional</span></label>
-          <div class="star-picker" id="star-picker">
-            <span class="star-pick" data-v="1" onclick="setRating(1)">★</span>
-            <span class="star-pick" data-v="2" onclick="setRating(2)">★</span>
-            <span class="star-pick" data-v="3" onclick="setRating(3)">★</span>
-            <span class="star-pick" data-v="4" onclick="setRating(4)">★</span>
-            <span class="star-pick" data-v="5" onclick="setRating(5)">★</span>
-            <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-left:.4rem;letter-spacing:.05em" id="rating-label">Not set</span>
-          </div>
-        </div>
-      </div>
+
 
       <div class="form-actions">
         <button class="btn btn-admin" id="add-btn" onclick="addManual()">
@@ -495,8 +468,6 @@ function setRating(r) {
 function resetForm() {
   document.querySelectorAll('.form-input').forEach(i => i.value = '');
   setType('');
-  setAvail('available');
-  setRating(0);
   document.getElementById('form-fb').textContent = '';
   document.getElementById('add-btn').textContent = '➕  Add DJ';
   document.getElementById('add-btn').onclick = addManual;
@@ -513,10 +484,8 @@ async function addManual() {
     state: get('f-state'),
     city: get('f-city'),
     zip: get('f-zip'),
-    rate: get('f-rate'),
     type: formType,
-    avail: formAvail,
-    rating: formRating,
+    avail: 'available',
     phone: get('f-phone'),
     email: get('f-email') || null,
     password: get('f-password') ? await hashPassword(get('f-password')) : null,
@@ -535,6 +504,16 @@ async function addManual() {
     fb.textContent = 'Fill in at least one field.';
     return;
   }
+
+  // Ensure slug is unique — append number suffix if taken
+  let finalSlug = dj.slug;
+  let suffix = 2;
+  while (true) {
+    const { data: existing } = await db.from('users').select('id').eq('slug', finalSlug).limit(1);
+    if (!existing || existing.length === 0) break;
+    finalSlug = dj.slug + '-' + suffix++;
+  }
+  dj.slug = finalSlug;
 
   const { error } = await db.from('users').insert([dj]);
   if (error) {
@@ -571,11 +550,10 @@ async function importCSV() {
   const rows = lines.slice(1);
   const djs = [];
 
-  rows.forEach(row => {
+  for (const row of rows) {
     const values = row.split(',').map(v => v.trim());
     const dj = { confirmed: true, role: 'dj', avail: 'available' };
-    slug: makeSlug(get('f-company')),
-    
+
     header.forEach((h, i) => {
       const val = values[i] || '';
       if (h === 'name') dj.name = val;
@@ -588,11 +566,22 @@ async function importCSV() {
       else if (h === 'country') dj.country = val;
       else if (h === 'zip') dj.zip = val;
       else if (h === 'company') dj.company = val;
-      else if (h === 'rate') dj.rate = val;
     });
-    
-    if (dj.name || dj.email) djs.push(dj);
-  });
+
+    if (dj.name || dj.email) {
+      // Ensure unique slug
+      let baseSlug = makeSlug(dj.name || dj.email);
+      let finalSlug = baseSlug;
+      let suffix = 2;
+      while (true) {
+        const { data: existing } = await db.from('users').select('id').eq('slug', finalSlug).limit(1);
+        if (!existing || existing.length === 0) break;
+        finalSlug = baseSlug + '-' + suffix++;
+      }
+      dj.slug = finalSlug;
+      djs.push(dj);
+    }
+  }
 
   const { error } = await db.from('users').insert(djs);
   if (error) {
