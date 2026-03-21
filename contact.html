@@ -215,7 +215,7 @@ async function submitContact() {
   alertEl.innerHTML = '';
 
   const name = document.getElementById('contact-name').value.trim();
-  const email = document.getElementById('contact-email').value.trim();
+  const email = document.getElementById('contact-email').value.trim().toLowerCase();
   const subject = document.getElementById('contact-subject').value;
   const message = document.getElementById('contact-message').value.trim();
 
@@ -243,7 +243,7 @@ async function submitContact() {
     document.getElementById('form-view').style.display = 'none';
     document.getElementById('success-view').style.display = 'block';
   } catch (err) {
-    alertEl.innerHTML = `<div class="alert alert-error">Something went wrong. Please try again or email us directly at <a href="mailto:info@globaldjconnect.com" style="color:var(--neon);">info@globaldjconnect.com</a></div>`;
+    alertEl.innerHTML = `<div class="alert alert-error">Error: ${err.message}. Email us at <a href="mailto:info@globaldjconnect.com" style="color:var(--neon);">info@globaldjconnect.com</a></div>`;
     btn.disabled = false;
     btn.textContent = 'Send Message';
   }
