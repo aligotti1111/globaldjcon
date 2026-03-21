@@ -689,7 +689,10 @@ async function renderPublic(reload=false){
       if(!dj._coords){
         const geoTarget = dj.zip || dj.city;
         const djCC = COUNTRY_CODES[dj.country] || '';
-        if (geoTarget) dj._coords = await geocodeCity(geoTarget, djCC);
+        if (geoTarget) {
+          const coords = await geocodeCity(geoTarget, djCC);
+          if (coords) dj._coords = coords; // only cache on success
+        }
       }
       if(dj._coords){
         dj._distance=calcDistance(userLocation.lat,userLocation.lng,dj._coords.lat,dj._coords.lng);
@@ -866,6 +869,7 @@ document.getElementById('search').addEventListener('input', e => {
         if (coords) {
           userLocation = coords;
           sortMode = 'nearest';
+          document.getElementById('sort-select').value = 'nearest';
         }
       } else {
         // Name search — clear location so distance doesn't filter results
