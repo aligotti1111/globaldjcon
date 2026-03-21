@@ -557,15 +557,18 @@ function calcDistance(lat1,lon1,lat2,lon2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// Country code map for geocoding bias
+const COUNTRY_CODES = {'United States':'us','United Kingdom':'gb','Canada':'ca','Australia':'au','Germany':'de','France':'fr','Netherlands':'nl','Spain':'es','Italy':'it','Brazil':'br','Mexico':'mx','Japan':'jp','South Africa':'za','New Zealand':'nz','Ireland':'ie','Sweden':'se','Norway':'no','Denmark':'dk','Belgium':'be','Switzerland':'ch','Portugal':'pt'};
+
 // Geocode city name or zip to lat/lng
-async function geocodeCity(query){
+async function geocodeCity(query, countryCode){
   if(!query)return null;
   try{
-    // Try as postal code first if it looks like a zip
     const isZip = /^\d{4,10}$/.test(query.trim());
+    const cc = countryCode || COUNTRY_CODES[activeCountry] || '';
     const url = isZip
-      ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(query)}&format=json&limit=1`
-      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+      ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(query)}${cc?'&countrycodes='+cc:''}&format=json&limit=1`
+      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}${cc?'&countrycodes='+cc:''}&format=json&limit=1`;
     const res=await fetch(url);
     const data=await res.json();
     if(data&&data[0])return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
@@ -673,7 +676,8 @@ async function renderPublic(reload=false){
   let list=DJS.filter(dj=>{
     const t = activeFilters.size === 0 || activeFilters.has(dj.type) || (activeFilters.size === 2);
     const q=searchTerm.toLowerCase();
-    const s=!q||[dj.name,dj.zip].some(v=>(v||'').toLowerCase().includes(q));
+    const looksLikeLocation = /\d/.test(q);
+    const s=!q||looksLikeLocation||[dj.name,dj.zip].some(v=>(v||'').toLowerCase().includes(q));
     // Filter by country
     const countryMatch = !dj.country || dj.country === activeCountry;
     return t&&s&&countryMatch;
@@ -683,8 +687,9 @@ async function renderPublic(reload=false){
   if(userLocation){
     const promises=list.map(async dj=>{
       if(!dj._coords){
-        const geoTarget = dj.city || dj.zip;
-        if (geoTarget) dj._coords = await geocodeCity(geoTarget);
+        const geoTarget = dj.zip || dj.city;
+        const djCC = COUNTRY_CODES[dj.country] || '';
+        if (geoTarget) dj._coords = await geocodeCity(geoTarget, djCC);
       }
       if(dj._coords){
         dj._distance=calcDistance(userLocation.lat,userLocation.lng,dj._coords.lat,dj._coords.lng);
