@@ -806,20 +806,26 @@ function closeInlineEdit(key) {
 async function saveInlineSocial(key) {
   const input = document.getElementById('input-' + key);
   const val = input.value.trim();
-  if (!val) return;
+  console.log('saveInlineSocial called:', key, val);
+  if (!val) { console.log('empty val, returning'); return; }
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  console.log('currentUser:', currentUser);
   if (!currentUser) { alert('Not logged in'); return; }
-  const btn = input.closest('.inline-edit-popover').querySelector('.inline-save-btn');
-  btn.textContent = 'Saving...'; btn.disabled = true;
+  const popover = document.getElementById('popover-' + key);
+  const btn = popover ? popover.querySelector('.inline-save-btn') : null;
+  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
   try {
     const update = {};
     update[key] = val;
-    const { error } = await db.from('users').update(update).eq('id', currentUser.id);
+    console.log('Updating:', update, 'for user id:', currentUser.id);
+    const { data, error } = await db.from('users').update(update).eq('id', currentUser.id).select();
+    console.log('Update result:', data, error);
     if (error) throw error;
     closeInlineEdit(key);
     window.location.reload();
   } catch(e) {
-    btn.textContent = 'Save'; btn.disabled = false;
+    console.error('Save error:', e);
+    if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
     alert('Error saving: ' + e.message);
   }
 }
