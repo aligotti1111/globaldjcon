@@ -748,24 +748,33 @@ const GENRE_LABELS = {
     ];
     socialDefs.forEach(s => {
       if (!data[s.key]) {
-        missingLinks.push(`<div style="position:relative;display:inline-flex;">
-          <button type="button" title="Add ${s.label}" class="action-btn-placeholder" style="border-color:${s.color};" onclick="openInlineEdit(this,'${s.key}','${s.label}')">+</button>
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative;display:inline-flex;';
+        wrapper.innerHTML = `
+          <button type="button" title="Add ${s.label}" class="action-btn-placeholder" style="border-color:${s.color};">+</button>
           <div class="inline-edit-popover" id="popover-${s.key}">
-            <input type="text" id="input-${s.key}" placeholder="${s.label} URL or handle" onkeydown="if(event.key==='Enter')saveInlineSocial('${s.key}')">
+            <input type="text" id="input-${s.key}" placeholder="${s.label} URL or handle">
             <div class="inline-edit-popover-row">
-              <button class="inline-save-btn" onclick="saveInlineSocial('${s.key}')">Save</button>
-              <button class="inline-cancel-btn" onclick="closeInlineEdit('${s.key}')">✕</button>
+              <button class="inline-save-btn">Save</button>
+              <button class="inline-cancel-btn">✕</button>
             </div>
-          </div>
-        </div>`);
+          </div>`;
+        // Wire up events after DOM insertion
+        const plusBtn = wrapper.querySelector('.action-btn-placeholder');
+        const saveBtn = wrapper.querySelector('.inline-save-btn');
+        const cancelBtn = wrapper.querySelector('.inline-cancel-btn');
+        const inputEl = wrapper.querySelector('input');
+        plusBtn.addEventListener('click', () => openInlineEdit(plusBtn, s.key, s.label));
+        saveBtn.addEventListener('click', () => saveInlineSocial(s.key));
+        cancelBtn.addEventListener('click', () => closeInlineEdit(s.key));
+        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') saveInlineSocial(s.key); });
+        missingLinks.push(wrapper);
       }
     });
     if (missingLinks.length) {
       const copyBtn = actionsEl.querySelector('#copy-btn');
-      missingLinks.forEach(html => {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        actionsEl.insertBefore(tmp.firstChild, copyBtn);
+      missingLinks.forEach(el => {
+        actionsEl.insertBefore(el, copyBtn);
       });
     }
   }
@@ -799,16 +808,18 @@ async function saveInlineSocial(key) {
   const val = input.value.trim();
   if (!val) return;
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  if (!currentUser) return;
+  if (!currentUser) { alert('Not logged in'); return; }
+  const btn = input.closest('.inline-edit-popover').querySelector('.inline-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
   try {
     const update = {};
     update[key] = val;
     const { error } = await db.from('users').update(update).eq('id', currentUser.id);
     if (error) throw error;
     closeInlineEdit(key);
-    // Reload page to show updated social button
     window.location.reload();
   } catch(e) {
+    btn.textContent = 'Save'; btn.disabled = false;
     alert('Error saving: ' + e.message);
   }
 }
