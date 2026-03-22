@@ -818,16 +818,17 @@ async function saveInlineSocial(key) {
   try {
     const update = {};
     update[key] = val;
-    // Fetch fresh user data first to get correct id type
     const { data: userData } = await db.from('users').select('id').eq('email', currentUser.email).single();
     const userId = userData ? userData.id : currentUser.id;
-    const { error } = await db.from('users').update(update).eq('id', userId);
+    alert('Saving ' + key + '=' + val + ' for userId=' + userId + ' (type:' + typeof userId + ')');
+    const { data: result, error } = await db.from('users').update(update).eq('id', userId).select();
+    alert('Result: ' + JSON.stringify(result) + ' Error: ' + JSON.stringify(error));
     if (error) throw error;
     closeInlineEdit(key);
     window.location.reload();
   } catch(e) {
     if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
-    alert('Error saving: ' + e.message);
+    alert('Error: ' + e.message);
   }
 }
 
