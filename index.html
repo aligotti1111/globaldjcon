@@ -291,12 +291,12 @@
     .admin-row { flex-wrap:wrap; }
     .ar-city,.ar-contact { display:none; }
     /* List view on mobile */
-    .dj-list-row { grid-template-columns: 30px 1fr auto auto; gap:.5rem; padding:.6rem .75rem; }
+    .dj-list-row { grid-template-columns: 30px 1fr auto; gap:.5rem; padding:.6rem .75rem; }
     .dll-avatar { width:30px; height:30px; font-size:.8rem; }
     .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.9rem; }
-    .dll-location { display:none; }
+    .dll-location { display:block; font-size:.62rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dll-type { font-size:.5rem; padding:.18rem .4rem; }
-    .dll-contact-btn { font-size:.55rem !important; padding:.25rem .4rem !important; letter-spacing:.03em !important; }
+    .dll-contact-btn { display:none !important; }
   }
   /* ── VIEW TOGGLE ── */
   .view-toggle { display:flex; background:var(--deep); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
@@ -306,11 +306,12 @@
 
   /* ── PUBLIC LIST VIEW ── */
   .dj-list { display:flex; flex-direction:column; gap:.4rem; }
-  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
+  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
   .dj-list-row:hover { border-color:var(--neon); }
   .dj-list-row.club { border-left:3px solid var(--pink); }
   .dj-list-row.mobile-event { border-left:3px solid var(--neon); }
   .dll-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:.95rem; flex-shrink:0; overflow:hidden; position:relative; }
+  .dll-name-wrap { display:flex; flex-direction:column; justify-content:center; min-width:0; }
   .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
@@ -813,8 +814,10 @@ function listRowHTML(dj) {
   return `
   <div class="dj-list-row ${dj.type||''}" style="cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
     <div class="dll-avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
-    <div class="dll-name">${dj.name||'Unknown DJ'}</div>
-    <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
+    <div class="dll-name-wrap">
+      <div class="dll-name">${dj.name||'Unknown DJ'}</div>
+      <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
+    </div>
     <span class="dll-type ${typeClass}">${typeLabel}</span>
     ${contactBtn}
   </div>`;
