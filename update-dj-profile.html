@@ -20,6 +20,16 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; padding:2rem; min-height:100vh; }
 .container { max-width:700px; margin:0 auto; }
+@media(max-width:600px) {
+  body { padding:1rem; }
+  .header h1 { font-size:1.8rem; }
+  .header p { font-size:.7rem; }
+  .card { padding:1.2rem; }
+  .profile-tabs { overflow-x:auto; flex-wrap:nowrap; gap:.25rem; }
+  .profile-tab { flex:0 0 auto; font-size:.55rem; padding:.5rem .6rem; }
+  .back-link { margin-bottom:1rem; font-size:.78rem; }
+  .header { margin-bottom:1rem; }
+}
 .back-link { display:inline-flex; align-items:center; gap:.5rem; color:var(--neon); text-decoration:none; font-size:.85rem; margin-bottom:2rem; }
 .back-link:hover { opacity:.8; }
 .header { margin-bottom:2rem; }
