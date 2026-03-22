@@ -787,16 +787,19 @@ function openInlineEdit(btn, key, label) {
   const popover = document.getElementById('popover-' + key);
   if (popover) {
     popover.classList.add('open');
-    document.getElementById('input-' + key).focus();
-    // Close on outside click
     setTimeout(() => {
-      document.addEventListener('click', function handler(e) {
-        if (!popover.contains(e.target) && e.target !== btn) {
-          popover.classList.remove('open');
-          document.removeEventListener('click', handler);
-        }
-      });
-    }, 10);
+      const inputEl = document.getElementById('input-' + key);
+      if (inputEl) inputEl.focus();
+    }, 50);
+    // Close on outside click — use capture to avoid same-click close
+    const handler = (e) => {
+      if (!popover.contains(e.target) && e.target !== btn) {
+        popover.classList.remove('open');
+        document.removeEventListener('click', handler);
+      }
+    };
+    // Delay adding listener so the triggering click doesn't immediately close it
+    setTimeout(() => document.addEventListener('click', handler), 100);
   }
 }
 function closeInlineEdit(key) {
