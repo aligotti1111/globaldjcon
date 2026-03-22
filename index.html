@@ -290,14 +290,6 @@
     .form-group.full { grid-column:1; }
     .admin-row { flex-wrap:wrap; }
     .ar-city,.ar-contact { display:none; }
-    /* List view on mobile */
-    .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto; gap:.5rem; padding:.6rem .75rem; }
-    .dll-avatar { width:30px; height:30px; font-size:.8rem; }
-    .dll-name-wrap { min-width:0; }
-    .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
-    .dll-location { display:block; font-size:.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .dll-type { font-size:.5rem; padding:.18rem .4rem; align-self:center; }
-    .dll-contact-btn { display:none !important; }
   }
   /* ── VIEW TOGGLE ── */
   .view-toggle { display:flex; background:var(--deep); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
@@ -315,6 +307,16 @@
   .dll-name-wrap { display:flex; flex-direction:column; justify-content:center; min-width:0; }
   .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  @media(max-width:900px) {
+    /* List view on mobile */
+    .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto !important; gap:.5rem !important; padding:.6rem .75rem !important; }
+    .dll-avatar { width:30px !important; height:30px !important; font-size:.8rem !important; }
+    .dll-name-wrap { min-width:0; }
+    .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
+    .dll-location { display:block !important; font-size:.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dll-type { font-size:.5rem !important; padding:.18rem .4rem !important; align-self:center; }
+    .dll-contact-btn { display:none !important; }
+  }
   .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
   .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
   .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
