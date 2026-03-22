@@ -495,6 +495,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
           <span class="url" id="venue-preview-url"></span>
           <span class="url-status" id="venue-url-status"></span>
         </div>
+        <div class="slug-alternatives" id="venue-slug-alternatives">
+          <div class="slug-alt-label">That URL is taken — pick one:</div>
+          <div class="slug-alt-options" id="venue-slug-alt-options"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>Email Address</label>
@@ -698,11 +702,51 @@ function onVenueNameInput(val) {
     if (data && data.length > 0) {
       previewUrl.className = 'url taken'; statusEl.textContent = 'Taken';
       statusEl.className = 'url-status taken'; venueSlugAvailableSignup = false;
+      checkAndRenderVenueAlternatives(slug);
     } else {
       previewUrl.className = 'url available'; statusEl.textContent = 'Available ✓';
       statusEl.className = 'url-status available'; venueSlugAvailableSignup = true;
+      document.getElementById('venue-slug-alternatives').classList.remove('visible');
     }
   }, 500);
+}
+
+// ── VENUE URL ALTERNATIVES ───────────────────────────────
+function generateVenueAlternatives(slug) {
+  return [...new Set([
+    slug + '-venue', slug + '-events', slug + '-official',
+    slug + '-nyc', slug + '-' + new Date().getFullYear(), slug + '-club'
+  ])].filter(s => s !== slug && s.length > 0).slice(0, 6);
+}
+async function checkAndRenderVenueAlternatives(slug) {
+  const altsContainer = document.getElementById('venue-slug-alternatives');
+  const altsEl = document.getElementById('venue-slug-alt-options');
+  const candidates = generateVenueAlternatives(slug);
+  altsEl.innerHTML = candidates.map(s =>
+    `<button type="button" class="slug-alt-btn checking" data-slug="${s}">${BASE_URL}${s}</button>`
+  ).join('');
+  altsContainer.classList.add('visible');
+  for (const candidate of candidates) {
+    const btn = altsEl.querySelector(`[data-slug="${candidate}"]`);
+    const { data } = await db.from('users').select('id').eq('slug', candidate).limit(1);
+    if (data && data.length > 0) {
+      btn.classList.remove('checking'); btn.classList.add('taken'); btn.disabled = true;
+    } else {
+      btn.classList.remove('checking');
+      btn.addEventListener('click', function() {
+        altsEl.querySelectorAll('.slug-alt-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        venueSlugAvailableSignup = true;
+        const chosen = this.dataset.slug;
+        document.getElementById('venue-preview-url').textContent = BASE_URL + chosen;
+        document.getElementById('venue-preview-url').className = 'url available';
+        document.getElementById('venue-url-status').textContent = 'Available ✓';
+        document.getElementById('venue-url-status').className = 'url-status available';
+        // Store chosen slug for use at submit
+        document.getElementById('venue-name').dataset.chosenSlug = chosen;
+      });
+    }
+  }
 }
 
 // ── ZIP LOOKUP (SIGNUP) ──────────────────────────────────
@@ -862,9 +906,10 @@ document.getElementById('form-venue').addEventListener('submit', async function(
   }
   try {
     await checkEmailTaken(email.toLowerCase());
-    // Generate unique slug from venue name
+    // Use chosen alternative slug if selected, otherwise generate from venue name
+    const chosenVenueSlug = document.getElementById('venue-name').dataset.chosenSlug;
     let baseSlug = venueName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || 'venue-' + Date.now();
-    let venueSlug = baseSlug; let slugSuffix = 2;
+    let venueSlug = chosenVenueSlug || baseSlug; let slugSuffix = 2;
     while (true) {
       const { data: ex } = await db.from('users').select('id').eq('slug', venueSlug).limit(1);
       if (!ex || ex.length === 0) break;
