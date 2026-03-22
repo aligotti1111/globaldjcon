@@ -167,17 +167,19 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .tag.neon { border-color:rgba(0,245,196,.25); color:var(--neon); background:var(--neon-dim); }
 .tag.pink { border-color:rgba(255,45,120,.25); color:var(--pink); background:var(--pink-dim); }
 
-.hero-top-row { display:contents; }
-.hero-name-col { flex:1; }
+/* Desktop layout */
+.hero-top-row { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.hero-name-col { display:none; }
+.hero-info { flex:1; min-width:0; }
 .hero-mobile-divider { display:none; }
 
 @media(max-width:900px) {
   .hero,.body { padding-left:1.5rem; padding-right:1.5rem; }
   .hero { flex-direction:column; gap:0; padding-top:1.5rem; padding-bottom:1.5rem; }
-  .hero-top-row { display:flex; align-items:center; gap:1rem; width:100%; }
-  .hero-avatar { width:99px; height:99px; font-size:2.2rem; flex-shrink:0; }
-  .hero-name-col { flex:1; }
-  .hero-name { font-size:1.8rem; }
+  .hero-top-row { display:flex; flex-direction:row; align-items:center; gap:1rem; width:100%; }
+  .hero-avatar { width:99px !important; height:99px !important; font-size:2.2rem; flex-shrink:0; }
+  .hero-name-col { display:block; flex:1; min-width:0; }
+  .hero-info .hero-name, .hero-info .hero-badges { display:none; }
   .hero-info { width:100%; }
   .hero-mobile-divider { display:block; width:100%; height:1px; background:var(--border); margin:.9rem 0 .75rem; }
 }
@@ -311,12 +313,13 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
   <div class="hero">
     <div class="hero-top-row">
       <div class="hero-avatar" id="p-avatar"></div>
-      <div class="hero-name-col">
-        <div class="hero-name" id="p-name"></div>
-        <div class="hero-badges" id="p-badges"></div>
+      <div class="hero-name-col" id="hero-name-col">
+        <!-- name/badges rendered here on mobile via JS clone — desktop uses hero-info -->
       </div>
     </div>
     <div class="hero-info">
+      <div class="hero-name" id="p-name"></div>
+      <div class="hero-badges" id="p-badges"></div>
       <div class="hero-mobile-divider"></div>
       <div class="hero-location" id="p-location"></div>
       <div class="hero-years" id="p-years" style="display:none;"></div>
@@ -325,6 +328,12 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
         <button onclick="openContactModal()" id="contact-me-btn" class="action-btn primary" style="display:none;" title="Message Me">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         </button>
+        <button onclick="copyShareUrl()" id="copy-btn" class="action-btn ghost" title="Copy Link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="18" height="18" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
         <button onclick="copyShareUrl()" id="copy-btn" class="action-btn ghost" title="Copy Link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="18" height="18" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
@@ -609,6 +618,13 @@ const GENRE_LABELS = {
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('profile-content').style.display = 'block';
+
+  // Clone name + badges into hero-name-col for mobile layout
+  const nameCol = document.getElementById('hero-name-col');
+  if (nameCol) {
+    nameCol.innerHTML = document.getElementById('p-name').outerHTML.replace('id="p-name"', 'id="p-name-mobile"') +
+      document.getElementById('p-badges').outerHTML.replace('id="p-badges"', 'id="p-badges-mobile"');
+  }
 
   // Store DJ info for contact modal and show Contact Me button
   contactDjUserId = data.id;
