@@ -502,7 +502,12 @@ const GENRE_LABELS = {
   if (data.dj_start_year) {
     const years = new Date().getFullYear() - parseInt(data.dj_start_year);
     const yrsEl = document.getElementById('p-years');
-    yrsEl.textContent = years <= 1 ? '1 Year as a DJ' : `${years} Years as a DJ`;
+    const isMobile = (data.type || '') === 'mobile-event';
+    if (isMobile) {
+      yrsEl.textContent = years <= 1 ? '1+ Year of Experience' : `${years}+ Years of Experience`;
+    } else {
+      yrsEl.textContent = years <= 1 ? '1+ Year as a DJ' : `${years}+ Years as a DJ`;
+    }
     yrsEl.style.display = 'flex';
   }
 
