@@ -77,56 +77,52 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
 
   <div id="alert-global"></div>
 
-  <!-- Venue-only sections (shown via JS) -->
+  <!-- Venue-only section (shown via JS) -->
   <div class="settings-card" id="venue-name-card" style="display:none;">
-    <h2>Venue Name</h2>
+    <h2>Venue Profile</h2>
     <div id="alert-venue-name"></div>
+    <div id="alert-venue-slug"></div>
+    <div id="alert-venue-address"></div>
+
     <div class="form-group">
       <label>Venue Name</label>
       <input type="text" id="setting-venue-name" placeholder="The Grand Ballroom">
     </div>
-    <button class="save-btn" id="save-venue-name-btn" onclick="saveVenueName()">Save Venue Name</button>
-  </div>
 
-  <div class="settings-card" id="venue-slug-card" style="display:none;">
-    <h2>Profile URL</h2>
-    <div id="alert-venue-slug"></div>
     <div class="form-group">
-      <label>Your Venue URL</label>
+      <label>Profile URL</label>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted);white-space:nowrap;">globaldjconnect.com/</span>
         <input type="text" id="setting-venue-slug" placeholder="the-grand-ballroom" style="flex:1;" oninput="checkVenueSlug(this.value)">
       </div>
       <div id="venue-slug-status" class="hint" style="margin-top:.4rem;"></div>
-      <div class="slug-alternatives" id="venue-slug-alternatives" style="display:none;margin-top:.75rem;">
+      <div id="venue-slug-alternatives" style="display:none;margin-top:.75rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;color:var(--error);margin-bottom:.5rem;text-transform:uppercase;">That URL is taken — try one of these:</div>
         <div id="venue-slug-options" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
       </div>
     </div>
-    <button class="save-btn" id="save-venue-slug-btn" onclick="saveVenueSlug()">Save Profile URL</button>
-  </div>
 
-  <div class="settings-card" id="venue-address-card" style="display:none;">
-    <h2>Venue Address</h2>
-    <div id="alert-venue-address"></div>
     <div class="form-group">
       <label>Street Address</label>
       <input type="text" id="setting-address" placeholder="123 Main St" oninput="debounceAddressLookup()">
       <div id="address-suggestions" style="position:relative;"></div>
     </div>
-    <div class="form-group">
-      <label>City</label>
-      <input type="text" id="setting-city" placeholder="New York">
-    </div>
-    <div class="form-group">
-      <label>State / Province</label>
-      <input type="text" id="setting-state" placeholder="NY">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" id="setting-city" placeholder="New York">
+      </div>
+      <div class="form-group">
+        <label>State / Province</label>
+        <input type="text" id="setting-state" placeholder="NY">
+      </div>
     </div>
     <div class="form-group">
       <label>Zip / Postal Code</label>
       <input type="text" id="setting-zip" placeholder="10001">
     </div>
-    <button class="save-btn" id="save-venue-address-btn" onclick="saveVenueAddress()">Save Address</button>
+
+    <button class="save-btn" id="save-venue-name-btn" onclick="saveVenueAll()">Save Venue Profile</button>
   </div>
 
   <div class="settings-card">
@@ -218,8 +214,6 @@ document.getElementById('account-subtitle').textContent =
 // Venue-specific sections
 if (currentUser.role === 'venue') {
   document.getElementById('venue-name-card').style.display = '';
-  document.getElementById('venue-slug-card').style.display = '';
-  document.getElementById('venue-address-card').style.display = '';
   // Load venue data from DB
   (async () => {
     const { data } = await db.from('users').select('venue_name,slug,address,city,state,zip').eq('id', currentUser.id).single();
@@ -312,6 +306,32 @@ async function savePassword() {
   } finally {
     btn.disabled = false; btn.textContent = 'Update Password';
   }
+}
+
+// ── SAVE ALL VENUE FIELDS ─────────────────────────────────
+async function saveVenueAll() {
+  const btn = document.getElementById('save-venue-name-btn');
+  const venueName = document.getElementById('setting-venue-name').value.trim();
+  const slug = makeVenueSlug(document.getElementById('setting-venue-slug').value);
+  const address = document.getElementById('setting-address').value.trim();
+  const city = document.getElementById('setting-city').value.trim();
+  const state = document.getElementById('setting-state').value.trim();
+  const zip = document.getElementById('setting-zip').value.trim();
+  if (!venueName) { showAlert('alert-venue-name', 'error', 'Venue name is required.'); return; }
+  if (!slug) { showAlert('alert-venue-slug', 'error', 'Profile URL is required.'); return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    // Check slug availability (skip if unchanged)
+    if (slug !== (currentUser.slug || '')) {
+      const { data: ex } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+      if (ex && ex.length > 0) throw new Error('That profile URL is already taken.');
+    }
+    const { error } = await db.from('users').update({ venue_name: venueName, name: venueName, slug, address, city, state, zip }).eq('id', currentUser.id);
+    if (error) throw error;
+    updateStoredUser({ venue_name: venueName, name: venueName, slug, address, city, state, zip });
+    showAlert('alert-venue-name', 'success', '✓ Venue profile saved.');
+  } catch(e) { showAlert('alert-venue-name', 'error', e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save Venue Profile'; }
 }
 
 // ── VENUE NAME ────────────────────────────────────────────
