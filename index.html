@@ -280,10 +280,23 @@
 
   @media(max-width:900px) {
     #view-public header,.controls,.main,footer,.admin-header,.admin-body { padding-left:1.5rem; padding-right:1.5rem; }
+    #view-public header { padding-top:1.5rem; padding-bottom:1.2rem; }
+    .logo { font-size:clamp(1.8rem,6vw,2.8rem); }
+    .header-inner { gap:.75rem; }
+    .controls { padding-top:1rem; padding-bottom:1rem; gap:.6rem; }
+    .controls-right { margin-left:0; }
+    .search-wrap { min-width:0; max-width:100%; flex:1 1 100%; }
     .grid,.form-grid,.form-grid.three { grid-template-columns:1fr; }
     .form-group.full { grid-column:1; }
     .admin-row { flex-wrap:wrap; }
     .ar-city,.ar-contact { display:none; }
+    /* List view on mobile */
+    .dj-list-row { grid-template-columns: 30px 1fr auto auto; gap:.5rem; padding:.6rem .75rem; }
+    .dll-avatar { width:30px; height:30px; font-size:.8rem; }
+    .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.9rem; }
+    .dll-location { display:none; }
+    .dll-type { font-size:.5rem; padding:.18rem .4rem; }
+    .dll-contact-btn { font-size:.55rem !important; padding:.25rem .4rem !important; letter-spacing:.03em !important; }
   }
   /* ── VIEW TOGGLE ── */
   .view-toggle { display:flex; background:var(--deep); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
