@@ -299,7 +299,7 @@
 
   /* ── PUBLIC LIST VIEW ── */
   .dj-list { display:flex; flex-direction:column; gap:.4rem; }
-  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
+  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 1fr 120px 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
   .dj-list-row:hover { border-color:var(--neon); }
   .dj-list-row.club { border-left:3px solid var(--pink); }
   .dj-list-row.mobile-event { border-left:3px solid var(--neon); }
@@ -307,6 +307,9 @@
   .dll-name-wrap { display:flex; flex-direction:column; justify-content:center; min-width:0; }
   .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dll-genres { font-family:'Space Mono',monospace; font-size:.58rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.04em; line-height:1.5; }
+  .dll-genres span { color:var(--white); opacity:.7; }
+  .dll-travel { font-family:'Space Mono',monospace; font-size:.6rem; color:var(--muted); white-space:nowrap; text-align:center; }
   .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
   .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
   .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
@@ -319,6 +322,8 @@
     .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
     .dll-location { display:block !important; font-size:.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dll-type { font-size:.5rem !important; padding:.15rem .35rem !important; align-self:center !important; }
+    .dll-genres { display:none !important; }
+    .dll-travel { display:none !important; }
     .dll-contact-btn { display:none !important; }
   }
   .dll-avail { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; text-align:right; white-space:nowrap; }
@@ -814,6 +819,15 @@ function listRowHTML(dj) {
     contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   }
 
+  // Build genres/events snippet
+  let genreSnippet = '—';
+  if (dj.type === 'club' && dj.club_genres) {
+    genreSnippet = dj.club_genres.split(',').slice(0,3).map(g=>g.trim()).join(', ');
+  } else if (dj.type === 'mobile-event' && dj.event_types) {
+    genreSnippet = dj.event_types.split(',').slice(0,3).map(g=>g.trim()).join(', ');
+  }
+  const travelLabel = dj.travel_distance === 'worldwide' ? '🌍 Worldwide' : dj.travel_distance ? `📍 ${dj.travel_distance} mi` : '—';
+
   return `
   <div class="dj-list-row ${dj.type||''}" style="cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
     <div class="dll-avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
@@ -821,6 +835,8 @@ function listRowHTML(dj) {
       <div class="dll-name">${dj.name||'Unknown DJ'}</div>
       <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
     </div>
+    <div class="dll-genres"><span>${genreSnippet}</span></div>
+    <div class="dll-travel">${travelLabel}</div>
     <span class="dll-type ${typeClass}">${typeLabel}</span>
     ${contactBtn}
   </div>`;
