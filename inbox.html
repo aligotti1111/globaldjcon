@@ -233,6 +233,13 @@ function renderMessages() {
     // For sent messages, try to get recipient name from first reply's from_name, or use slug
     const recipientName = msg.to_dj_slug && msg.to_dj_slug !== 'NULL' ? msg.to_dj_slug : 'DJ';
     const conversationName = iSentThis ? recipientName : (msg.from_name || 'Anonymous');
+    // Find most recent message in thread for sent/received indicator
+    const threadReplies = allReplies.filter(r => r.parent_id === msg.id);
+    const lastMsg = threadReplies.length ? threadReplies[threadReplies.length - 1] : msg;
+    const lastWasMe = lastMsg.from_user_id === currentUser.id;
+    const sentLabel = lastWasMe
+      ? `<span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.05em;">↑ Sent</span>`
+      : `<span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--neon);letter-spacing:.05em;">↓ Received</span>`;
     return `
     <div class="msg-card ${isUnread ? 'unread' : ''}" id="msg-${msg.id}" onclick="openMessage('${msg.id}')">
       <div class="msg-top">
@@ -240,7 +247,10 @@ function renderMessages() {
         <span class="msg-time">${timeAgo(msg.created_at)}</span>
       </div>
       <div class="msg-subject">${msg.subject}</div>
-      <div class="msg-preview">${msg.message}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="msg-preview">${msg.message}</div>
+        <div style="flex-shrink:0;margin-left:.75rem;">${sentLabel}</div>
+      </div>
 
       <div class="msg-body">
         <div id="thread-${msg.id}">${renderThread(msg.id, msg)}</div>
