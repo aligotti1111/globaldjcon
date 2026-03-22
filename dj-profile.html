@@ -271,6 +271,20 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .action-btn-placeholder { display:inline-flex; align-items:center; justify-content:center; min-width:46px; min-height:46px; border-radius:8px; border:1px dashed rgba(255,255,255,.15); color:rgba(255,255,255,.2); cursor:pointer; text-decoration:none; transition:all .2s; font-size:.9rem; position:relative; }
 .action-btn-placeholder:hover { border-color:var(--neon); color:var(--neon); }
 .action-btn-placeholder[title]:hover::after { content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.9); color:var(--white); font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; padding:.3rem .6rem; border-radius:4px; pointer-events:none; z-index:10; }
+/* Inline edit popover */
+.inline-edit-popover { position:absolute; top:calc(100% + 8px); left:0; background:var(--card); border:1px solid var(--neon); border-radius:8px; padding:.75rem; z-index:200; min-width:240px; box-shadow:0 8px 24px rgba(0,0,0,.5); display:none; }
+.inline-edit-popover.open { display:block; }
+.inline-edit-popover input { width:100%; background:var(--deep); border:1px solid var(--border); border-radius:5px; padding:.5rem .75rem; color:var(--white); font-family:'DM Sans',sans-serif; font-size:.85rem; outline:none; margin-bottom:.5rem; }
+.inline-edit-popover input:focus { border-color:var(--neon); }
+.inline-edit-popover-row { display:flex; gap:.4rem; }
+.inline-save-btn { flex:1; padding:.45rem; background:var(--neon); border:none; border-radius:5px; color:var(--black); font-family:'Space Mono',monospace; font-size:.6rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; transition:opacity .2s; }
+.inline-save-btn:hover { opacity:.85; }
+.inline-cancel-btn { padding:.45rem .65rem; background:transparent; border:1px solid var(--border); border-radius:5px; color:var(--muted); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; }
+.inline-cancel-btn:hover { border-color:var(--error); color:var(--error); }
+/* Avatar edit overlay */
+.avatar-edit-overlay { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; cursor:pointer; z-index:2; }
+.hero-avatar:hover .avatar-edit-overlay { opacity:1; }
+.avatar-edit-overlay svg { color:#fff; }
 </style>
 </head>
 <body>
@@ -487,6 +501,8 @@ const GENRE_LABELS = {
   } else {
     avatar.textContent = initials(data.name);
   }
+  // Add edit overlay for own profile (set after isOwnProfile check below)
+  avatar.dataset.avatarUrl = data.avatar_url || '';
 
   // Name
   document.getElementById('p-name').textContent = data.name || 'Unknown DJ';
@@ -689,6 +705,19 @@ const GENRE_LABELS = {
   // Own profile enhancements
   if (isOwnProfile) {
     const editUrl = '/update-dj-profile.html';
+    // Add clickable edit overlay to avatar
+    const avatarEditOverlay = document.createElement('div');
+    avatarEditOverlay.className = 'avatar-edit-overlay';
+    avatarEditOverlay.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg>`;
+    avatarEditOverlay.onclick = () => document.getElementById('avatar-file-inline').click();
+    avatar.style.position = 'relative';
+    avatar.appendChild(avatarEditOverlay);
+    // Hidden file input for inline avatar upload
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.id = 'avatar-file-inline';
+    fileInput.style.display = 'none';
+    fileInput.onchange = () => uploadInlineAvatar(fileInput);
+    document.body.appendChild(fileInput);
 
     // Empty tab CTAs — replace "Coming Soon" / empty states with + add buttons
     const tabCTAs = {
@@ -719,7 +748,16 @@ const GENRE_LABELS = {
     ];
     socialDefs.forEach(s => {
       if (!data[s.key]) {
-        missingLinks.push(`<a href="${editUrl}#social" title="Add ${s.label}" class="action-btn-placeholder" style="border-color:${s.color};">+</a>`);
+        missingLinks.push(`<div style="position:relative;display:inline-flex;">
+          <button type="button" title="Add ${s.label}" class="action-btn-placeholder" style="border-color:${s.color};" onclick="openInlineEdit(this,'${s.key}','${s.label}')">+</button>
+          <div class="inline-edit-popover" id="popover-${s.key}">
+            <input type="text" id="input-${s.key}" placeholder="${s.label} URL or handle" onkeydown="if(event.key==='Enter')saveInlineSocial('${s.key}')">
+            <div class="inline-edit-popover-row">
+              <button class="inline-save-btn" onclick="saveInlineSocial('${s.key}')">Save</button>
+              <button class="inline-cancel-btn" onclick="closeInlineEdit('${s.key}')">✕</button>
+            </div>
+          </div>
+        </div>`);
       }
     });
     if (missingLinks.length) {
@@ -732,6 +770,99 @@ const GENRE_LABELS = {
     }
   }
 })();
+
+// ── INLINE SOCIAL EDIT ────────────────────────────────────
+function openInlineEdit(btn, key, label) {
+  // Close any open popovers first
+  document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
+  const popover = document.getElementById('popover-' + key);
+  if (popover) {
+    popover.classList.add('open');
+    document.getElementById('input-' + key).focus();
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!popover.contains(e.target) && e.target !== btn) {
+          popover.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 10);
+  }
+}
+function closeInlineEdit(key) {
+  const popover = document.getElementById('popover-' + key);
+  if (popover) popover.classList.remove('open');
+}
+async function saveInlineSocial(key) {
+  const input = document.getElementById('input-' + key);
+  const val = input.value.trim();
+  if (!val) return;
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (!currentUser) return;
+  try {
+    const update = {};
+    update[key] = val;
+    const { error } = await db.from('users').update(update).eq('id', currentUser.id);
+    if (error) throw error;
+    closeInlineEdit(key);
+    // Reload page to show updated social button
+    window.location.reload();
+  } catch(e) {
+    alert('Error saving: ' + e.message);
+  }
+}
+
+// ── INLINE AVATAR UPLOAD ──────────────────────────────────
+async function uploadInlineAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (!currentUser) return;
+  const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+  const BUCKET = 'avatars';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = currentUser.id + '/avatar.' + ext;
+  // Show loading state on avatar
+  const avatarEl = document.getElementById('p-avatar');
+  avatarEl.style.opacity = '0.5';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY,
+        'Content-Type': file.type,
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Upload failed'); }
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}?t=${Date.now()}`;
+    const { error } = await db.from('users').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+    if (error) throw error;
+    // Update avatar image immediately
+    let img = avatarEl.querySelector('img');
+    if (!img) {
+      avatarEl.textContent = '';
+      img = document.createElement('img');
+      img.style = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+      avatarEl.appendChild(img);
+      // Re-add overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'avatar-edit-overlay';
+      overlay.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg>';
+      overlay.onclick = () => document.getElementById('avatar-file-inline').click();
+      avatarEl.appendChild(overlay);
+    }
+    img.src = publicUrl;
+    avatarEl.style.opacity = '1';
+  } catch(e) {
+    avatarEl.style.opacity = '1';
+    alert('Upload failed: ' + e.message);
+  }
+}
 
 function copyShareUrl() {
   const url = document.getElementById('share-url-val');
