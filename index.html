@@ -307,6 +307,10 @@
   .dll-name-wrap { display:flex; flex-direction:column; justify-content:center; min-width:0; }
   .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
+  .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
+  .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
+  .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
   @media(max-width:900px) {
     /* List view on mobile */
     .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto !important; gap:.5rem !important; padding:.6rem .75rem !important; }
@@ -314,13 +318,9 @@
     .dll-name-wrap { min-width:0; }
     .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
     .dll-location { display:block !important; font-size:.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .dll-type { font-size:.5rem !important; padding:.18rem .4rem !important; align-self:center; }
+    .dll-type { font-size:.5rem !important; padding:.15rem .35rem !important; align-self:center !important; }
     .dll-contact-btn { display:none !important; }
   }
-  .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
-  .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
-  .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
-  .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
   .dll-avail { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; text-align:right; white-space:nowrap; }
   .dll-avail.available { color:var(--success); }
   .dll-avail.busy { color:var(--amber); }
