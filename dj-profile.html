@@ -129,6 +129,13 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .tab-btn.active { color:var(--neon); border-bottom-color:var(--neon); }
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
+.testimonial-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem; margin-bottom:1rem; }
+.testimonial-blurb { font-size:.9rem; line-height:1.7; color:var(--white); margin-bottom:1rem; font-style:italic; opacity:.9; }
+.testimonial-blurb::before { content:'"'; color:var(--neon); font-size:1.4rem; line-height:0; vertical-align:-.4rem; margin-right:.2rem; }
+.testimonial-blurb::after { content:'"'; color:var(--neon); font-size:1.4rem; line-height:0; vertical-align:-.4rem; margin-left:.2rem; }
+.testimonial-meta { display:flex; align-items:center; gap:.75rem; }
+.testimonial-name { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; color:var(--neon); }
+.testimonial-date { font-family:'Space Mono',monospace; font-size:.6rem; color:var(--muted); letter-spacing:.05em; }
 
 /* About */
 .bio-text { color:var(--white); line-height:1.75; font-size:.95rem; }
@@ -350,6 +357,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
       <button class="tab-btn" id="tab-btn-mixes" onclick="switchTab('mixes',this)">Mixes</button>
       <button class="tab-btn" id="tab-btn-images" onclick="switchTab('images',this)">Photos</button>
       <button class="tab-btn" id="tab-btn-video" onclick="switchTab('video',this)">Video</button>
+      <button class="tab-btn" id="tab-btn-testimonials" onclick="switchTab('testimonials',this)" style="display:none;">Testimonials</button>
     </nav>
 
     <!-- About Tab -->
@@ -377,6 +385,10 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
       <div class="video-list" id="p-video-list">
         <p class="tab-empty">No videos added yet.</p>
       </div>
+    </div>
+
+    <div class="tab-pane" id="tab-testimonials">
+      <div id="p-testimonials-list"></div>
     </div>
 
   </div>
@@ -533,6 +545,25 @@ const GENRE_LABELS = {
   } else {
     // Show Coming Soon if empty
     document.getElementById('p-images-grid').innerHTML = '<p class="tab-empty">Coming Soon</p>';
+  }
+
+  // ── TESTIMONIALS TAB (Mobile DJs only) ─────────────────
+  if ((data.type || '').includes('mobile-event') && data.testimonials) {
+    try {
+      const tList = JSON.parse(data.testimonials);
+      if (tList && tList.length) {
+        document.getElementById('tab-btn-testimonials').style.display = '';
+        const container = document.getElementById('p-testimonials-list');
+        container.innerHTML = tList.map(t => `
+          <div class="testimonial-item">
+            <div class="testimonial-blurb">${t.blurb || ''}</div>
+            <div class="testimonial-meta">
+              <span class="testimonial-name">${t.name || ''}</span>
+              ${t.date ? `<span class="testimonial-date">· ${t.date}</span>` : ''}
+            </div>
+          </div>`).join('');
+      }
+    } catch(e) {}
   }
 
   // ── VIDEO TAB ──────────────────────────────────────────

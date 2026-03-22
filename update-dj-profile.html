@@ -69,6 +69,14 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 .specialization-box .checkbox-label input[type="radio"] { width:15px; height:15px; }
 .specialization-box .checkbox-label input[type="checkbox"] { width:16px; height:16px; }
 .checkbox-grid { display:grid; grid-template-columns:1fr 1fr; gap:.35rem; margin-top:.4rem; }
+.testimonial-card { background:var(--deep); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem; position:relative; }
+.testimonial-card .remove-btn { position:absolute; top:.6rem; right:.75rem; background:none; border:none; color:var(--muted); cursor:pointer; font-size:.85rem; transition:color .2s; }
+.testimonial-card .remove-btn:hover { color:var(--error); }
+.testimonial-card label { display:block; font-size:.75rem; color:var(--muted); margin-bottom:.35rem; margin-top:.75rem; }
+.testimonial-card label:first-of-type { margin-top:0; }
+.testimonial-card input, .testimonial-card textarea { width:100%; background:var(--card); border:1px solid var(--border); border-radius:6px; padding:.6rem .8rem; color:var(--white); font-size:.85rem; font-family:'DM Sans',sans-serif; }
+.testimonial-card input:focus, .testimonial-card textarea:focus { outline:none; border-color:var(--neon); }
+.testimonial-card textarea { resize:vertical; min-height:80px; line-height:1.5; }
 .checkbox-grid .checkbox-label { padding:.35rem .6rem; font-size:.8rem; background:transparent; border:1px solid rgba(30,30,48,0.5); margin:0; }
 .checkbox-grid .checkbox-label:hover { border-color:var(--neon); }
 .checkbox-grid .checkbox-label input[type="checkbox"] { width:15px; height:15px; }
@@ -332,6 +340,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <button type="button" class="profile-tab" onclick="switchProfileTab('mixes', this)">Mixes</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('photos', this)">Photos</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('video', this)">Video</button>
+        <button type="button" class="profile-tab" id="tab-btn-testimonials" onclick="switchProfileTab('testimonials', this)" style="display:none;">Testimonials</button>
       </div>
 
       <div class="tab-pane active" id="tab-general">
@@ -741,6 +750,12 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
       </div>
       </div>
 
+      <div class="tab-pane" id="tab-testimonials">
+        <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.06em;margin-bottom:1.5rem;">Add up to 5 client testimonials to your profile.</p>
+        <div id="testimonials-list"></div>
+        <button type="button" class="btn" id="add-testimonial-btn" onclick="addTestimonialField()" style="margin-bottom:1.5rem;">+ Add Testimonial</button>
+      </div>
+
       <button type="submit" class="btn" id="save-btn">Save Changes</button>
     </form>
   </div>
@@ -1043,6 +1058,48 @@ function lookupZip(zip) {
 }
 
 // ── PROFILE TAB SWITCHER ─────────────────────────────────
+// ── TESTIMONIALS ──────────────────────────────────────────
+let testimonialCount = 0;
+function addTestimonialField(data = {}) {
+  const list = document.getElementById('testimonials-list');
+  const current = list.querySelectorAll('.testimonial-card').length;
+  if (current >= 5) {
+    document.getElementById('add-testimonial-btn').style.display = 'none';
+    return;
+  }
+  const id = 'tc-' + (++testimonialCount);
+  const card = document.createElement('div');
+  card.className = 'testimonial-card';
+  card.id = id;
+  card.innerHTML = `
+    <button type="button" class="remove-btn" onclick="removeTestimonial('${id}')">✕</button>
+    <label>Client Name</label>
+    <input type="text" class="t-name" placeholder="Jane Smith" value="${data.name||''}">
+    <label>Date of Event</label>
+    <input type="text" class="t-date" placeholder="e.g. June 2024" value="${data.date||''}">
+    <label>Testimonial</label>
+    <textarea class="t-blurb" placeholder="Write what the client said...">${data.blurb||''}</textarea>`;
+  list.appendChild(card);
+  const count = list.querySelectorAll('.testimonial-card').length;
+  document.getElementById('add-testimonial-btn').style.display = count >= 5 ? 'none' : '';
+  formDirty = true;
+}
+function removeTestimonial(id) {
+  document.getElementById(id).remove();
+  document.getElementById('add-testimonial-btn').style.display = '';
+  formDirty = true;
+}
+function collectTestimonials() {
+  const cards = document.querySelectorAll('.testimonial-card');
+  if (!cards.length) return null;
+  const list = Array.from(cards).map(c => ({
+    name: c.querySelector('.t-name').value.trim(),
+    date: c.querySelector('.t-date').value.trim(),
+    blurb: c.querySelector('.t-blurb').value.trim()
+  })).filter(t => t.name || t.blurb);
+  return list.length ? JSON.stringify(list) : null;
+}
+
 function switchProfileTab(name, btn) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.profile-tab').forEach(b => b.classList.remove('active'));
@@ -1294,6 +1351,18 @@ clubGenres.forEach(cb => {
     document.getElementById('video_url_1').value = data.video_url_1 || '';
     document.getElementById('video_url_2').value = data.video_url_2 || '';
     document.getElementById('video_url_3').value = data.video_url_3 || '';
+
+    // Load testimonials + show tab for mobile DJs
+    const isMobile = (data.type || '').includes('mobile-event');
+    if (isMobile) {
+      document.getElementById('tab-btn-testimonials').style.display = '';
+      if (data.testimonials) {
+        try {
+          const tList = JSON.parse(data.testimonials);
+          tList.forEach(t => addTestimonialField(t));
+        } catch(e) {}
+      }
+    }
     
     // Load types (single select — use first type only)
     if (data.type) {
@@ -1408,6 +1477,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
       video_url_1: document.getElementById('video_url_1').value,
       video_url_2: document.getElementById('video_url_2').value,
       video_url_3: document.getElementById('video_url_3').value,
+      testimonials: collectTestimonials(),
     };
     
     const password = document.getElementById('password').value;
