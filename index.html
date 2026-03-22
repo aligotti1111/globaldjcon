@@ -291,11 +291,12 @@
     .admin-row { flex-wrap:wrap; }
     .ar-city,.ar-contact { display:none; }
     /* List view on mobile */
-    .dj-list-row { grid-template-columns: 30px 1fr auto; gap:.5rem; padding:.6rem .75rem; }
+    .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto; gap:.5rem; padding:.6rem .75rem; }
     .dll-avatar { width:30px; height:30px; font-size:.8rem; }
-    .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.9rem; }
-    .dll-location { display:block; font-size:.62rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .dll-type { font-size:.5rem; padding:.18rem .4rem; }
+    .dll-name-wrap { min-width:0; }
+    .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
+    .dll-location { display:block; font-size:.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dll-type { font-size:.5rem; padding:.18rem .4rem; align-self:center; }
     .dll-contact-btn { display:none !important; }
   }
   /* ── VIEW TOGGLE ── */
