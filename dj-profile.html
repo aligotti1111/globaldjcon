@@ -169,8 +169,9 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 
 @media(max-width:900px) {
   .hero,.body { padding-left:1.5rem; padding-right:1.5rem; }
-  .hero { flex-direction:column; gap:1.2rem; }
-  .hero-name { font-size:2.5rem; }
+  .hero { flex-direction:row; align-items:flex-start; gap:1.2rem; }
+  .hero-avatar { width:90px; height:90px; font-size:2rem; flex-shrink:0; }
+  .hero-name { font-size:1.8rem; }
 }
 
 /* Signup gate modal */
