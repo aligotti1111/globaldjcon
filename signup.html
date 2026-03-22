@@ -489,7 +489,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
       </div>
       <div class="form-group">
         <label>Venue Name</label>
-        <input type="text" id="venue-name" placeholder="The Grand Ballroom">
+        <input type="text" id="venue-name" placeholder="The Grand Ballroom" autocomplete="off" oninput="onVenueNameInput(this.value)">
+        <div class="url-preview" id="venue-url-preview">
+          <span class="label">Your URL:</span>
+          <span class="url" id="venue-preview-url"></span>
+          <span class="url-status" id="venue-url-status"></span>
+        </div>
       </div>
       <div class="form-group">
         <label>Email Address</label>
@@ -671,6 +676,34 @@ document.getElementById('name').addEventListener('input', function() {
 });
 
 
+
+// ── VENUE URL PREVIEW ────────────────────────────────────
+let venueSlugCheckTimeout = null;
+let venueSlugAvailableSignup = false;
+function onVenueNameInput(val) {
+  const slug = makeSlug(val);
+  const preview = document.getElementById('venue-url-preview');
+  const previewUrl = document.getElementById('venue-preview-url');
+  const statusEl = document.getElementById('venue-url-status');
+  if (!slug) { preview.classList.remove('visible'); return; }
+  preview.classList.add('visible');
+  previewUrl.textContent = BASE_URL + slug;
+  previewUrl.className = 'url';
+  statusEl.textContent = 'Checking...';
+  statusEl.className = 'url-status checking';
+  venueSlugAvailableSignup = false;
+  clearTimeout(venueSlugCheckTimeout);
+  venueSlugCheckTimeout = setTimeout(async () => {
+    const { data } = await db.from('users').select('id').eq('slug', slug).limit(1);
+    if (data && data.length > 0) {
+      previewUrl.className = 'url taken'; statusEl.textContent = 'Taken';
+      statusEl.className = 'url-status taken'; venueSlugAvailableSignup = false;
+    } else {
+      previewUrl.className = 'url available'; statusEl.textContent = 'Available ✓';
+      statusEl.className = 'url-status available'; venueSlugAvailableSignup = true;
+    }
+  }, 500);
+}
 
 // ── ZIP LOOKUP (SIGNUP) ──────────────────────────────────
 let signupZipTimeout = null;
