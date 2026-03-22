@@ -829,10 +829,18 @@ document.getElementById('form-venue').addEventListener('submit', async function(
   }
   try {
     await checkEmailTaken(email.toLowerCase());
+    // Generate unique slug from venue name
+    let baseSlug = venueName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || 'venue-' + Date.now();
+    let venueSlug = baseSlug; let slugSuffix = 2;
+    while (true) {
+      const { data: ex } = await db.from('users').select('id').eq('slug', venueSlug).limit(1);
+      if (!ex || ex.length === 0) break;
+      venueSlug = baseSlug + '-' + slugSuffix++;
+    }
     const { error } = await db.from('users').insert([{
       name: venueName, email: email.toLowerCase(), password,
       country, zip, confirmed: true, role: 'venue',
-      venue_name: venueName
+      venue_name: venueName, slug: venueSlug
     }]);
     if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
     const { data: newVenue } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();

@@ -439,6 +439,13 @@ const GENRE_LABELS = {
   const slug = params.get('dj') || window.location.pathname.replace(/^\/+|\/+$/g, '') || null;
   if (!slug || slug === 'dj-profile.html') { showError(); return; }
 
+  // Check if slug belongs to a venue — if so redirect to venue profile
+  const { data: venueCheck } = await db.from('users').select('id,role').eq('slug', slug).eq('role', 'venue').limit(1);
+  if (venueCheck && venueCheck[0]) {
+    window.location.replace('/venue-profile.html?v=' + slug);
+    return;
+  }
+
 
 
   // Try slug first, fall back to id for old links

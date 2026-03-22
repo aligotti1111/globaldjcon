@@ -52,6 +52,9 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
 .alert-error { background:rgba(255,95,95,.08); border-color:rgba(255,95,95,.3); color:var(--error); }
 
 .hint { font-size:.75rem; color:var(--muted); margin-top:.3rem; }
+.addr-suggestions { position:absolute; top:0; left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:6px; z-index:50; overflow:hidden; }
+.addr-suggestion { padding:.65rem 1rem; font-size:.85rem; cursor:pointer; color:var(--white); transition:background .15s; }
+.addr-suggestion:hover { background:var(--neon-dim); color:var(--neon); }
 </style>
 </head>
 <body>
@@ -73,6 +76,58 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
   </div>
 
   <div id="alert-global"></div>
+
+  <!-- Venue-only sections (shown via JS) -->
+  <div class="settings-card" id="venue-name-card" style="display:none;">
+    <h2>Venue Name</h2>
+    <div id="alert-venue-name"></div>
+    <div class="form-group">
+      <label>Venue Name</label>
+      <input type="text" id="setting-venue-name" placeholder="The Grand Ballroom">
+    </div>
+    <button class="save-btn" id="save-venue-name-btn" onclick="saveVenueName()">Save Venue Name</button>
+  </div>
+
+  <div class="settings-card" id="venue-slug-card" style="display:none;">
+    <h2>Profile URL</h2>
+    <div id="alert-venue-slug"></div>
+    <div class="form-group">
+      <label>Your Venue URL</label>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted);white-space:nowrap;">globaldjconnect.com/</span>
+        <input type="text" id="setting-venue-slug" placeholder="the-grand-ballroom" style="flex:1;" oninput="checkVenueSlug(this.value)">
+      </div>
+      <div id="venue-slug-status" class="hint" style="margin-top:.4rem;"></div>
+      <div class="slug-alternatives" id="venue-slug-alternatives" style="display:none;margin-top:.75rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;color:var(--error);margin-bottom:.5rem;text-transform:uppercase;">That URL is taken — try one of these:</div>
+        <div id="venue-slug-options" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+      </div>
+    </div>
+    <button class="save-btn" id="save-venue-slug-btn" onclick="saveVenueSlug()">Save Profile URL</button>
+  </div>
+
+  <div class="settings-card" id="venue-address-card" style="display:none;">
+    <h2>Venue Address</h2>
+    <div id="alert-venue-address"></div>
+    <div class="form-group">
+      <label>Street Address</label>
+      <input type="text" id="setting-address" placeholder="123 Main St" oninput="debounceAddressLookup()">
+      <div id="address-suggestions" style="position:relative;"></div>
+    </div>
+    <div class="form-group">
+      <label>City</label>
+      <input type="text" id="setting-city" placeholder="New York">
+    </div>
+    <div class="form-group">
+      <label>State / Province</label>
+      <input type="text" id="setting-state" placeholder="NY">
+    </div>
+    <div class="form-group">
+      <label>Zip / Postal Code</label>
+      <input type="text" id="setting-zip" placeholder="10001">
+    </div>
+    <button class="save-btn" id="save-venue-address-btn" onclick="saveVenueAddress()">Save Address</button>
+  </div>
 
   <div class="settings-card">
     <h2>Profile Information</h2>
@@ -160,6 +215,25 @@ document.getElementById('setting-country').value = currentUser.country || '';
 document.getElementById('account-subtitle').textContent = 
   `${currentUser.role === 'host' ? 'Party Host' : currentUser.role === 'venue' ? 'Venue' : 'DJ'} Account`;
 
+// Venue-specific sections
+if (currentUser.role === 'venue') {
+  document.getElementById('venue-name-card').style.display = '';
+  document.getElementById('venue-slug-card').style.display = '';
+  document.getElementById('venue-address-card').style.display = '';
+  // Load venue data from DB
+  (async () => {
+    const { data } = await db.from('users').select('venue_name,slug,address,city,state,zip').eq('id', currentUser.id).single();
+    if (data) {
+      document.getElementById('setting-venue-name').value = data.venue_name || '';
+      document.getElementById('setting-venue-slug').value = data.slug || '';
+      document.getElementById('setting-address').value = data.address || '';
+      document.getElementById('setting-city').value = data.city || '';
+      document.getElementById('setting-state').value = data.state || '';
+      document.getElementById('setting-zip').value = data.zip || '';
+    }
+  })();
+}
+
 function showAlert(elId, type, msg) {
   const el = document.getElementById(elId);
   el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
@@ -238,6 +312,131 @@ async function savePassword() {
   } finally {
     btn.disabled = false; btn.textContent = 'Update Password';
   }
+}
+
+// ── VENUE NAME ────────────────────────────────────────────
+async function saveVenueName() {
+  const btn = document.getElementById('save-venue-name-btn');
+  const venueName = document.getElementById('setting-venue-name').value.trim();
+  if (!venueName) { showAlert('alert-venue-name', 'error', 'Please enter a venue name.'); return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const { error } = await db.from('users').update({ venue_name: venueName, name: venueName }).eq('id', currentUser.id);
+    if (error) throw error;
+    updateStoredUser({ venue_name: venueName, name: venueName });
+    showAlert('alert-venue-name', 'success', '✓ Venue name updated.');
+  } catch(e) { showAlert('alert-venue-name', 'error', e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save Venue Name'; }
+}
+
+// ── VENUE SLUG ─────────────────────────────────────────────
+let venueSlugTimeout = null;
+let venueSlugAvailable = false;
+function makeVenueSlug(str) {
+  return (str||'').toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+}
+async function checkVenueSlug(val) {
+  const slug = makeVenueSlug(val);
+  const statusEl = document.getElementById('venue-slug-status');
+  const altWrap = document.getElementById('venue-slug-alternatives');
+  clearTimeout(venueSlugTimeout);
+  if (!slug) { statusEl.textContent = ''; altWrap.style.display = 'none'; return; }
+  statusEl.textContent = 'Checking...'; statusEl.style.color = 'var(--muted)';
+  venueSlugTimeout = setTimeout(async () => {
+    const { data } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+    if (data && data.length > 0) {
+      venueSlugAvailable = false;
+      statusEl.textContent = '✗ That URL is taken.'; statusEl.style.color = 'var(--error)';
+      // Generate alternatives
+      const opts = [slug + '-venue', slug + '-' + new Date().getFullYear(), slug + '-events', slug + '-official'];
+      const optEls = await Promise.all(opts.map(async o => {
+        const { data: ex } = await db.from('users').select('id').eq('slug', o).limit(1);
+        const taken = ex && ex.length > 0;
+        return `<button type="button" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:.3rem .65rem;border-radius:4px;border:1px solid ${taken?'var(--border)':'var(--neon)'};color:${taken?'var(--muted)':'var(--neon)'};background:transparent;cursor:${taken?'not-allowed':'pointer'};${taken?'text-decoration:line-through;opacity:.4;':''}" ${taken?'disabled':''} onclick="selectVenueSlug('${o}')">${o}</button>`;
+      }));
+      document.getElementById('venue-slug-options').innerHTML = optEls.join('');
+      altWrap.style.display = 'block';
+    } else {
+      venueSlugAvailable = true;
+      statusEl.textContent = '✓ Available!'; statusEl.style.color = 'var(--success)';
+      altWrap.style.display = 'none';
+      document.getElementById('setting-venue-slug').value = slug;
+    }
+  }, 500);
+}
+function selectVenueSlug(slug) {
+  document.getElementById('setting-venue-slug').value = slug;
+  document.getElementById('venue-slug-alternatives').style.display = 'none';
+  document.getElementById('venue-slug-status').textContent = '✓ Available!';
+  document.getElementById('venue-slug-status').style.color = 'var(--success)';
+  venueSlugAvailable = true;
+}
+async function saveVenueSlug() {
+  const btn = document.getElementById('save-venue-slug-btn');
+  const slug = makeVenueSlug(document.getElementById('setting-venue-slug').value);
+  if (!slug) { showAlert('alert-venue-slug', 'error', 'Please enter a URL.'); return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const { data: ex } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+    if (ex && ex.length > 0) throw new Error('That URL is already taken.');
+    const { error } = await db.from('users').update({ slug }).eq('id', currentUser.id);
+    if (error) throw error;
+    updateStoredUser({ slug });
+    showAlert('alert-venue-slug', 'success', '✓ Profile URL updated.');
+  } catch(e) { showAlert('alert-venue-slug', 'error', e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save Profile URL'; }
+}
+
+// ── VENUE ADDRESS ──────────────────────────────────────────
+const COUNTRY_CODES_ADDR = {'United States':'us','United Kingdom':'gb','Canada':'ca','Australia':'au','Germany':'de','France':'fr','Netherlands':'nl','Spain':'es','Italy':'it','Brazil':'br','Mexico':'mx','Japan':'jp','South Africa':'za','New Zealand':'nz','Ireland':'ie','Sweden':'se','Norway':'no','Denmark':'dk','Belgium':'be','Switzerland':'ch','Portugal':'pt'};
+let addrTimeout = null;
+function debounceAddressLookup() {
+  clearTimeout(addrTimeout);
+  addrTimeout = setTimeout(lookupAddress, 600);
+}
+async function lookupAddress() {
+  const query = document.getElementById('setting-address').value.trim();
+  const suggestEl = document.getElementById('address-suggestions');
+  if (query.length < 5) { suggestEl.innerHTML = ''; return; }
+  const cc = COUNTRY_CODES_ADDR[currentUser.country] || '';
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}${cc?'&countrycodes='+cc:''}&format=json&limit=5&addressdetails=1`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data || !data.length) { suggestEl.innerHTML = ''; return; }
+    suggestEl.innerHTML = `<div class="addr-suggestions">${data.map(r => {
+      const addr = r.address;
+      const city = addr.suburb || addr.city || addr.town || addr.village || '';
+      const state = addr.state || '';
+      const zip = addr.postcode || '';
+      const display = r.display_name;
+      return `<div class="addr-suggestion" onclick="selectAddress('${(addr.house_number?addr.house_number+' ':'')+(addr.road||'')}','${city}','${state}','${zip}','${display.replace(/'/g,"\\'")}')">
+        ${display.length > 60 ? display.substring(0,60)+'…' : display}
+      </div>`;
+    }).join('')}</div>`;
+  } catch(e) { suggestEl.innerHTML = ''; }
+}
+function selectAddress(street, city, state, zip, display) {
+  document.getElementById('setting-address').value = street || display.split(',')[0];
+  document.getElementById('setting-city').value = city;
+  document.getElementById('setting-state').value = state;
+  document.getElementById('setting-zip').value = zip;
+  document.getElementById('address-suggestions').innerHTML = '';
+}
+async function saveVenueAddress() {
+  const btn = document.getElementById('save-venue-address-btn');
+  const address = document.getElementById('setting-address').value.trim();
+  const city = document.getElementById('setting-city').value.trim();
+  const state = document.getElementById('setting-state').value.trim();
+  const zip = document.getElementById('setting-zip').value.trim();
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const { error } = await db.from('users').update({ address, city, state, zip }).eq('id', currentUser.id);
+    if (error) throw error;
+    updateStoredUser({ address, city, state, zip });
+    showAlert('alert-venue-address', 'success', '✓ Address updated.');
+  } catch(e) { showAlert('alert-venue-address', 'error', e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save Address'; }
 }
 
 function navLogout() {
