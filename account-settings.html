@@ -90,6 +90,11 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
     </div>
 
     <div class="form-group">
+      <label>Venue Page Owner</label>
+      <input type="text" id="setting-name" placeholder="Your full name">
+    </div>
+
+    <div class="form-group">
       <label>Profile URL</label>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted);white-space:nowrap;">globaldjconnect.com/</span>
@@ -120,6 +125,34 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
     <div class="form-group">
       <label>Zip / Postal Code</label>
       <input type="text" id="setting-zip" placeholder="10001">
+    </div>
+    <div class="form-group" id="venue-country-group">
+      <label>Country</label>
+      <select id="setting-country-venue">
+        <option value="">Select country...</option>
+        <option value="United States">United States</option>
+        <option value="United Kingdom">United Kingdom</option>
+        <option value="Canada">Canada</option>
+        <option value="Australia">Australia</option>
+        <option value="Germany">Germany</option>
+        <option value="France">France</option>
+        <option value="Netherlands">Netherlands</option>
+        <option value="Spain">Spain</option>
+        <option value="Italy">Italy</option>
+        <option value="Brazil">Brazil</option>
+        <option value="Mexico">Mexico</option>
+        <option value="Japan">Japan</option>
+        <option value="South Africa">South Africa</option>
+        <option value="New Zealand">New Zealand</option>
+        <option value="Ireland">Ireland</option>
+        <option value="Sweden">Sweden</option>
+        <option value="Norway">Norway</option>
+        <option value="Denmark">Denmark</option>
+        <option value="Belgium">Belgium</option>
+        <option value="Switzerland">Switzerland</option>
+        <option value="Portugal">Portugal</option>
+        <option value="Other">Other</option>
+      </select>
     </div>
 
     <button class="save-btn" id="save-venue-name-btn" onclick="saveVenueAll()">Save Venue Profile</button>
@@ -214,16 +247,23 @@ document.getElementById('account-subtitle').textContent =
 // Venue-specific sections
 if (currentUser.role === 'venue') {
   document.getElementById('venue-name-card').style.display = '';
+  // Hide generic profile card for venues — name/country are in venue card
+  document.querySelector('.settings-card:not([id])') && (() => {
+    const cards = document.querySelectorAll('.settings-card');
+    cards.forEach(c => { if (c.querySelector('#setting-name') && !c.id) c.style.display = 'none'; });
+  })();
   // Load venue data from DB
   (async () => {
-    const { data } = await db.from('users').select('venue_name,slug,address,city,state,zip').eq('id', currentUser.id).single();
+    const { data } = await db.from('users').select('venue_name,slug,address,city,state,zip,country,name').eq('id', currentUser.id).single();
     if (data) {
       document.getElementById('setting-venue-name').value = data.venue_name || '';
+      document.getElementById('setting-name').value = data.name || '';
       document.getElementById('setting-venue-slug').value = data.slug || '';
       document.getElementById('setting-address').value = data.address || '';
       document.getElementById('setting-city').value = data.city || '';
       document.getElementById('setting-state').value = data.state || '';
       document.getElementById('setting-zip').value = data.zip || '';
+      document.getElementById('setting-country-venue').value = data.country || '';
     }
   })();
 }
@@ -326,9 +366,11 @@ async function saveVenueAll() {
       const { data: ex } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
       if (ex && ex.length > 0) throw new Error('That profile URL is already taken.');
     }
-    const { error } = await db.from('users').update({ venue_name: venueName, name: venueName, slug, address, city, state, zip }).eq('id', currentUser.id);
+    const ownerName = document.getElementById('setting-name').value.trim();
+    const country = document.getElementById('setting-country-venue').value;
+    const { error } = await db.from('users').update({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country }).eq('id', currentUser.id);
     if (error) throw error;
-    updateStoredUser({ venue_name: venueName, name: venueName, slug, address, city, state, zip });
+    updateStoredUser({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
     showAlert('alert-venue-name', 'success', '✓ Venue profile saved.');
   } catch(e) { showAlert('alert-venue-name', 'error', e.message); }
   finally { btn.disabled = false; btn.textContent = 'Save Venue Profile'; }
