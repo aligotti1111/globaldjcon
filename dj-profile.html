@@ -750,24 +750,88 @@ const GENRE_LABELS = {
       if (!data[s.key]) {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'position:relative;display:inline-flex;';
-        wrapper.innerHTML = `
-          <button type="button" title="Add ${s.label}" class="action-btn-placeholder" style="border-color:${s.color};">+</button>
-          <div class="inline-edit-popover" id="popover-${s.key}">
-            <input type="text" id="input-${s.key}" placeholder="${s.label} URL or handle">
-            <div class="inline-edit-popover-row">
-              <button class="inline-save-btn">Save</button>
-              <button class="inline-cancel-btn">✕</button>
-            </div>
-          </div>`;
-        // Wire up events after DOM insertion
-        const plusBtn = wrapper.querySelector('.action-btn-placeholder');
-        const saveBtn = wrapper.querySelector('.inline-save-btn');
-        const cancelBtn = wrapper.querySelector('.inline-cancel-btn');
-        const inputEl = wrapper.querySelector('input');
-        plusBtn.addEventListener('click', (e) => { e.stopPropagation(); openInlineEdit(plusBtn, s.key, s.label); });
-        saveBtn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); saveInlineSocial(s.key); });
-        cancelBtn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); closeInlineEdit(s.key); });
-        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') saveInlineSocial(s.key); });
+
+        const plusBtn = document.createElement('button');
+        plusBtn.type = 'button';
+        plusBtn.title = 'Add ' + s.label;
+        plusBtn.className = 'action-btn-placeholder';
+        plusBtn.style.borderColor = s.color;
+        plusBtn.textContent = '+';
+
+        const popover = document.createElement('div');
+        popover.className = 'inline-edit-popover';
+
+        const inputEl = document.createElement('input');
+        inputEl.type = 'text';
+        inputEl.placeholder = s.label + ' URL or handle';
+
+        const row = document.createElement('div');
+        row.className = 'inline-edit-popover-row';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'inline-save-btn';
+        saveBtn.textContent = 'Save';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'inline-cancel-btn';
+        cancelBtn.textContent = '✕';
+
+        row.appendChild(saveBtn);
+        row.appendChild(cancelBtn);
+        popover.appendChild(inputEl);
+        popover.appendChild(row);
+        wrapper.appendChild(plusBtn);
+        wrapper.appendChild(popover);
+
+        // Capture the key value
+        const fieldKey = s.key;
+        const fieldLabel = s.label;
+
+        plusBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          // Toggle popover
+          const isOpen = popover.classList.contains('open');
+          document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
+          if (!isOpen) {
+            popover.classList.add('open');
+            inputEl.focus();
+          }
+        });
+
+        saveBtn.addEventListener('mousedown', async function(e) {
+          e.preventDefault();
+          const val = inputEl.value.trim();
+          if (!val) return;
+          const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+          if (!cu) return;
+          saveBtn.textContent = '...';
+          saveBtn.disabled = true;
+          const upd = {};
+          upd[fieldKey] = val;
+          const { error } = await db.from('users').update(upd).eq('id', cu.id);
+          if (error) {
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+            alert('Error: ' + error.message);
+            return;
+          }
+          const updated = Object.assign({}, cu);
+          updated[fieldKey] = val;
+          if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
+          if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
+          window.location.reload();
+        });
+
+        cancelBtn.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          popover.classList.remove('open');
+        });
+
+        inputEl.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') saveBtn.dispatchEvent(new MouseEvent('mousedown'));
+          if (e.key === 'Escape') popover.classList.remove('open');
+        });
+
         missingLinks.push(wrapper);
       }
     });
@@ -780,58 +844,10 @@ const GENRE_LABELS = {
   }
 })();
 
-// ── INLINE SOCIAL EDIT ────────────────────────────────────
-function openInlineEdit(btn, key, label) {
-  // Close any open popovers first
+// Close popovers on outside click
+document.addEventListener('click', function() {
   document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
-  const popover = document.getElementById('popover-' + key);
-  if (popover) {
-    popover.classList.add('open');
-    setTimeout(() => {
-      const inputEl = document.getElementById('input-' + key);
-      if (inputEl) inputEl.focus();
-    }, 50);
-    // Close on outside click — use capture to avoid same-click close
-    const handler = (e) => {
-      if (!popover.contains(e.target) && e.target !== btn) {
-        popover.classList.remove('open');
-        document.removeEventListener('click', handler);
-      }
-    };
-    // Delay adding listener so the triggering click doesn't immediately close it
-    setTimeout(() => document.addEventListener('click', handler), 100);
-  }
-}
-function closeInlineEdit(key) {
-  const popover = document.getElementById('popover-' + key);
-  if (popover) popover.classList.remove('open');
-}
-async function saveInlineSocial(key) {
-  const input = document.getElementById('input-' + key);
-  if (!input) { alert('No input found for ' + key); return; }
-  const val = input.value.trim();
-  if (!val) return;
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  if (!currentUser) { alert('Not logged in'); return; }
-  const popover = document.getElementById('popover-' + key);
-  const btn = popover ? popover.querySelector('.inline-save-btn') : null;
-  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-  const update = {};
-  update[key] = val;
-  const { error } = await db.from('users').update(update).eq('id', currentUser.id);
-  if (error) {
-    if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
-    alert('DB error: ' + error.message);
-    return;
-  }
-  // Also update session storage so reload picks up new value
-  const updated = { ...currentUser };
-  updated[key] = val;
-  if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
-  if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
-  closeInlineEdit(key);
-  window.location.reload();
-}
+});
 
 // ── INLINE AVATAR UPLOAD ──────────────────────────────────
 async function uploadInlineAvatar(input) {
