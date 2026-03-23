@@ -759,56 +759,39 @@ const GENRE_LABELS = {
         plusBtn.textContent = '+';
 
         const fieldKey = s.key;
-
-        const form = document.createElement('form');
-        form.className = 'inline-edit-popover';
-        form.innerHTML = `
-          <input type="text" placeholder="${s.label} URL or handle">
-          <div class="inline-edit-popover-row">
-            <button type="submit" class="inline-save-btn">Save</button>
-            <button type="button" class="inline-cancel-btn">✕</button>
-          </div>`;
-
-        wrapper.appendChild(plusBtn);
-        wrapper.appendChild(form);
-
-        const inputEl = form.querySelector('input');
-        const cancelBtn = form.querySelector('.inline-cancel-btn');
-
-        plusBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          const isOpen = form.classList.contains('open');
-          document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
-          if (!isOpen) { form.classList.add('open'); inputEl.focus(); }
-        });
-
-        form.addEventListener('click', function(e) { e.stopPropagation(); });
-
-        form.addEventListener('submit', async function(e) {
-          e.preventDefault();
-          const val = inputEl.value.trim();
+        // Give each save function a unique name on window
+        const fnName = 'saveInline_' + fieldKey;
+        window[fnName] = async function() {
+          const input = document.getElementById('social-input-' + fieldKey);
+          const val = input ? input.value.trim() : '';
           if (!val) return;
           const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-          if (!cu) { alert('Not logged in'); return; }
-          const submitBtn = form.querySelector('.inline-save-btn');
-          submitBtn.textContent = '...'; submitBtn.disabled = true;
+          if (!cu) return;
           const upd = {}; upd[fieldKey] = val;
           const { error } = await db.from('users').update(upd).eq('id', cu.id);
-          if (error) { submitBtn.textContent = 'Save'; submitBtn.disabled = false; alert(error.message); return; }
+          if (error) { alert(error.message); return; }
           const updated = Object.assign({}, cu); updated[fieldKey] = val;
           if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
           if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
           window.location.reload();
-        });
+        };
 
-        form.querySelector('.inline-save-btn').addEventListener('click', function(e) {
-          e.preventDefault();
-          form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
-        });
+        const popover = document.createElement('div');
+        popover.className = 'inline-edit-popover';
+        popover.innerHTML = `<input type="text" id="social-input-${s.key}" placeholder="${s.label} URL or handle">
+          <div class="inline-edit-popover-row">
+            <button type="button" class="inline-save-btn" onclick="${fnName}()">Save</button>
+            <button type="button" class="inline-cancel-btn" onclick="this.closest('.inline-edit-popover').classList.remove('open')">✕</button>
+          </div>`;
 
-        cancelBtn.addEventListener('click', function(e) {
+        wrapper.appendChild(plusBtn);
+        wrapper.appendChild(popover);
+
+        plusBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          form.classList.remove('open');
+          const isOpen = popover.classList.contains('open');
+          document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
+          if (!isOpen) { popover.classList.add('open'); popover.querySelector('input').focus(); }
         });
 
         missingLinks.push(wrapper);
