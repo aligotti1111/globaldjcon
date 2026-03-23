@@ -841,12 +841,7 @@ const GENRE_LABELS = {
   }
 })();
 
-// Close popovers on outside click
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.inline-edit-popover') && !e.target.closest('.action-btn-placeholder')) {
-    document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
-  }
-});
+
 
 // ── INLINE AVATAR UPLOAD ──────────────────────────────────
 async function uploadInlineAvatar(input) {
