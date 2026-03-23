@@ -810,6 +810,7 @@ function closeInlineEdit(key) {
 }
 async function saveInlineSocial(key) {
   const input = document.getElementById('input-' + key);
+  if (!input) { alert('No input found for ' + key); return; }
   const val = input.value.trim();
   if (!val) return;
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
@@ -817,21 +818,21 @@ async function saveInlineSocial(key) {
   const popover = document.getElementById('popover-' + key);
   const btn = popover ? popover.querySelector('.inline-save-btn') : null;
   if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-  try {
-    const update = {};
-    update[key] = val;
-    const { data: userData } = await db.from('users').select('id').eq('email', currentUser.email).single();
-    const userId = userData ? userData.id : currentUser.id;
-    alert('Saving ' + key + '=' + val + ' for userId=' + userId + ' (type:' + typeof userId + ')');
-    const { data: result, error } = await db.from('users').update(update).eq('id', userId).select();
-    alert('Result: ' + JSON.stringify(result) + ' Error: ' + JSON.stringify(error));
-    if (error) throw error;
-    closeInlineEdit(key);
-    window.location.reload();
-  } catch(e) {
+  const update = {};
+  update[key] = val;
+  const { error } = await db.from('users').update(update).eq('id', currentUser.id);
+  if (error) {
     if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
-    alert('Error: ' + e.message);
+    alert('DB error: ' + error.message);
+    return;
   }
+  // Also update session storage so reload picks up new value
+  const updated = { ...currentUser };
+  updated[key] = val;
+  if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
+  if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
+  closeInlineEdit(key);
+  window.location.reload();
 }
 
 // ── INLINE AVATAR UPLOAD ──────────────────────────────────
