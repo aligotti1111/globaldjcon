@@ -694,8 +694,6 @@ const GENRE_LABELS = {
   // Show Message Me for everyone except own profile
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isOwnProfile = currentUser && currentUser.id === data.id;
-  if (isOwnProfile) console.log('OWN PROFILE - currentUser.id:', currentUser.id, 'data.id:', data.id);
-  else if (currentUser) console.log('NOT OWN - currentUser.id:', currentUser.id, 'data.id:', data.id);
   if (!isOwnProfile) {
     document.getElementById('contact-me-btn').style.display = 'inline-flex';
   } else {
@@ -800,13 +798,16 @@ const GENRE_LABELS = {
           }
         });
 
+        // Store latest value on every input change
+        let pendingVal = '';
+        inputEl.addEventListener('input', function() { pendingVal = inputEl.value.trim(); });
+
         saveBtn.addEventListener('mousedown', async function(e) {
           e.preventDefault();
-          const val = inputEl.value.trim();
+          const val = pendingVal || inputEl.value.trim();
           if (!val) return;
           const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
           if (!cu) return;
-          console.log('SAVE - cu.id:', cu.id, 'fieldKey:', fieldKey, 'val:', val);
           saveBtn.textContent = '...';
           saveBtn.disabled = true;
           const upd = {};
