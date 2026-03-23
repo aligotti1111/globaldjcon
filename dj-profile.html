@@ -789,22 +789,15 @@ const GENRE_LABELS = {
 
         plusBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          // Toggle popover
           const isOpen = popover.classList.contains('open');
           document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
-          if (!isOpen) {
-            popover.classList.add('open');
-            inputEl.focus();
-          }
+          if (!isOpen) { popover.classList.add('open'); inputEl.focus(); }
         });
 
-        // Store latest value on every input change
-        let pendingVal = '';
-        inputEl.addEventListener('input', function() { pendingVal = inputEl.value.trim(); });
+        popover.addEventListener('click', function(e) { e.stopPropagation(); });
 
-        saveBtn.addEventListener('mousedown', async function(e) {
-          e.preventDefault();
-          const val = pendingVal || inputEl.value.trim();
+        saveBtn.addEventListener('click', async function() {
+          const val = inputEl.value.trim();
           if (!val) return;
           const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
           if (!cu) return;
@@ -826,13 +819,13 @@ const GENRE_LABELS = {
           window.location.reload();
         });
 
-        cancelBtn.addEventListener('mousedown', function(e) {
-          e.preventDefault();
+        cancelBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
           popover.classList.remove('open');
         });
 
         inputEl.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') saveBtn.dispatchEvent(new MouseEvent('mousedown'));
+          if (e.key === 'Enter') saveBtn.click();
           if (e.key === 'Escape') popover.classList.remove('open');
         });
 
@@ -849,8 +842,10 @@ const GENRE_LABELS = {
 })();
 
 // Close popovers on outside click
-document.addEventListener('click', function() {
-  document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.inline-edit-popover') && !e.target.closest('.action-btn-placeholder')) {
+    document.querySelectorAll('.inline-edit-popover.open').forEach(p => p.classList.remove('open'));
+  }
 });
 
 // ── INLINE AVATAR UPLOAD ──────────────────────────────────
