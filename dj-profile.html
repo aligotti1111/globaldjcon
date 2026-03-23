@@ -764,12 +764,10 @@ const GENRE_LABELS = {
         const saveBtn = wrapper.querySelector('.inline-save-btn');
         const cancelBtn = wrapper.querySelector('.inline-cancel-btn');
         const inputEl = wrapper.querySelector('input');
-        wrapper.addEventListener('click', (e) => e.stopPropagation());
         plusBtn.addEventListener('click', (e) => { e.stopPropagation(); openInlineEdit(plusBtn, s.key, s.label); });
-        saveBtn.addEventListener('click', (e) => { e.stopPropagation(); saveInlineSocial(s.key); });
-        cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); closeInlineEdit(s.key); });
-        inputEl.addEventListener('click', (e) => e.stopPropagation());
-        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopPropagation(); saveInlineSocial(s.key); } });
+        saveBtn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); saveInlineSocial(s.key); });
+        cancelBtn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); closeInlineEdit(s.key); });
+        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') saveInlineSocial(s.key); });
         missingLinks.push(wrapper);
       }
     });
