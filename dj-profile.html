@@ -66,7 +66,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .status-box p { color:var(--muted); font-size:.9rem; }
 
 /* HERO */
-.hero { position:relative; z-index:2; padding:3rem 4rem 2rem; display:flex; align-items:flex-start; gap:2.5rem; border-bottom:1px solid var(--border); }
+.hero { position:relative; z-index:50; padding:3rem 4rem 2rem; display:flex; align-items:flex-start; gap:2.5rem; border-bottom:1px solid var(--border); }
 .hero-avatar { width:180px; height:180px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:3.8rem; letter-spacing:.04em; flex-shrink:0; border:2px solid; overflow:hidden; position:relative; }
 .hero-avatar.mobile { background:var(--neon-dim); color:var(--neon); border-color:rgba(0,245,196,.3); }
 .hero-avatar.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(255,45,120,.3); }
@@ -272,7 +272,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .action-btn-placeholder:hover { border-color:var(--neon); color:var(--neon); }
 .action-btn-placeholder[title]:hover::after { content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.9); color:var(--white); font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; padding:.3rem .6rem; border-radius:4px; pointer-events:none; z-index:10; }
 /* Inline edit popover */
-.inline-edit-popover { position:absolute; top:calc(100% + 8px); left:0; background:var(--card); border:1px solid var(--neon); border-radius:8px; padding:.75rem; z-index:200; min-width:240px; box-shadow:0 8px 24px rgba(0,0,0,.5); display:none; }
+.inline-edit-popover { position:absolute; top:calc(100% + 8px); left:0; background:var(--card); border:1px solid var(--neon); border-radius:8px; padding:.75rem; z-index:2000; min-width:240px; box-shadow:0 8px 24px rgba(0,0,0,.5); display:none; }
 .inline-edit-popover.open { display:block; }
 .inline-edit-popover input { width:100%; background:var(--deep); border:1px solid var(--border); border-radius:5px; padding:.5rem .75rem; color:var(--white); font-family:'DM Sans',sans-serif; font-size:.85rem; outline:none; margin-bottom:.5rem; }
 .inline-edit-popover input:focus { border-color:var(--neon); }
