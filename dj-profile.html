@@ -261,10 +261,10 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 }
 
 /* Own profile empty tab CTA */
-.tab-add-cta { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 2rem; gap:.75rem; cursor:pointer; text-decoration:none; transition:all .2s; grid-column:1/-1; width:100%; }
+.tab-add-cta { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 2rem; gap:.75rem; grid-column:1/-1; width:100%; }
 .tab-add-cta:hover .tab-add-circle { border-color:var(--neon); color:var(--neon); }
 .tab-add-cta:hover .tab-add-label { color:var(--white); }
-.tab-add-circle { width:56px; height:56px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:1.6rem; transition:all .2s; }
+.tab-add-circle { width:56px; height:56px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:1.6rem; transition:all .2s; cursor:pointer; text-decoration:none; }
 .tab-add-label { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); transition:color .2s; }
 
 /* Social placeholder + button */
@@ -729,10 +729,10 @@ const GENRE_LABELS = {
     Object.entries(tabCTAs).forEach(([id, cfg]) => {
       if (cfg.check) {
         document.getElementById(id).innerHTML = `
-          <a href="${editUrl}#${cfg.tab}" class="tab-add-cta">
-            <div class="tab-add-circle">+</div>
+          <div class="tab-add-cta">
+            <a href="${editUrl}#${cfg.tab}" class="tab-add-circle">+</a>
             <span class="tab-add-label">${cfg.label}</span>
-          </a>`;
+          </div>`;
       }
     });
 
