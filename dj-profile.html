@@ -649,21 +649,21 @@ const GENRE_LABELS = {
     }
   }
   if (data.website) {
-    const wurl = data.website.startsWith('http') ? data.website : 'https://' + data.website;
+    const wurl = data.website.startsWith('http') ? data.website : 'https://' + data.website.replace('@','');
     socialLinks.push(`<a href="${wurl}" target="_blank" class="action-btn btn-website" title="Website">${webSVG}</a>`);
   }
   if (data.soundcloud) {
-    const scurl = data.soundcloud.startsWith('http') ? data.soundcloud : 'https://' + data.soundcloud;
+    const scurl = data.soundcloud.startsWith('http') ? data.soundcloud : 'https://soundcloud.com/' + data.soundcloud.replace('@','');
     socialLinks.push(`<a href="${scurl}" target="_blank" class="action-btn btn-soundcloud" title="SoundCloud">${scSVG}</a>`);
   }
   if (data.instagram) socialLinks.push(`<a href="https://instagram.com/${data.instagram.replace('@','')}" target="_blank" class="action-btn btn-instagram" title="Instagram">${igSVG}</a>`);
   if (data.tiktok) socialLinks.push(`<a href="https://tiktok.com/@${data.tiktok.replace('@','')}" target="_blank" class="action-btn btn-tiktok" title="TikTok">${ttSVG}</a>`);
   if (data.facebook) {
-    const fburl = data.facebook.startsWith('http') ? data.facebook : 'https://' + data.facebook;
+    const fburl = data.facebook.startsWith('http') ? data.facebook : 'https://facebook.com/' + data.facebook.replace('@','');
     socialLinks.push(`<a href="${fburl}" target="_blank" class="action-btn btn-facebook" title="Facebook">${fbSVG}</a>`);
   }
   if (data.twitch) {
-    const twurl = data.twitch.startsWith('http') ? data.twitch : 'https://' + data.twitch;
+    const twurl = data.twitch.startsWith('http') ? data.twitch : 'https://twitch.tv/' + data.twitch.replace('@','');
     socialLinks.push(`<a href="${twurl}" target="_blank" class="action-btn btn-twitch" title="Twitch" style="background:rgba(145,70,255,.12);border-color:rgba(145,70,255,.4);color:#9146ff;">${twSVG}</a>`);
   }
   if (data.rate) socialLinks.push(`<span class="action-btn" style="background:rgba(255,179,71,.1);border-color:rgba(255,179,71,.3);color:var(--amber);cursor:default;">💰 ${data.rate}</span>`);
