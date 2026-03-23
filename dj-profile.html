@@ -796,28 +796,8 @@ const GENRE_LABELS = {
 
         popover.addEventListener('click', function(e) { e.stopPropagation(); });
 
-        saveBtn.addEventListener('click', async function() {
-          const val = inputEl.value.trim();
-          if (!val) return;
-          const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-          if (!cu) return;
-          saveBtn.textContent = '...';
-          saveBtn.disabled = true;
-          const upd = {};
-          upd[fieldKey] = val;
-          const { error } = await db.from('users').update(upd).eq('id', cu.id);
-          if (error) {
-            saveBtn.textContent = 'Save';
-            saveBtn.disabled = false;
-            alert('Error: ' + error.message);
-            return;
-          }
-          const updated = Object.assign({}, cu);
-          updated[fieldKey] = val;
-          if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
-          if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
-          window.location.reload();
-        });
+        saveBtn.setAttribute('data-key', fieldKey);
+        saveBtn.onclick = function() { doInlineSave(this); };
 
         cancelBtn.addEventListener('click', function(e) {
           e.stopPropagation();
@@ -1118,6 +1098,24 @@ async function loadInboxBadge() {
     }
   }
 })();
+
+async function doInlineSave(btn) {
+  const key = btn.getAttribute('data-key');
+  const popover = btn.closest('.inline-edit-popover');
+  const input = popover.querySelector('input');
+  const val = input.value.trim();
+  if (!val) return;
+  const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (!cu) { alert('Not logged in'); return; }
+  btn.textContent = '...'; btn.disabled = true;
+  const upd = {}; upd[key] = val;
+  const { error } = await db.from('users').update(upd).eq('id', cu.id);
+  if (error) { btn.textContent = 'Save'; btn.disabled = false; alert(error.message); return; }
+  const updated = Object.assign({}, cu); updated[key] = val;
+  if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
+  if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
+  window.location.reload();
+}
 
 function navLogout() {
   localStorage.removeItem('currentUser');
