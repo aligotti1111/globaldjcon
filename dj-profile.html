@@ -371,12 +371,18 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 
     <!-- Tab Nav -->
     <nav class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab('about',this)">About</button>
+      <button class="tab-btn" id="tab-btn-booking" onclick="switchTab('booking',this)" style="display:none;">Availability</button>
+      <button class="tab-btn active" id="tab-btn-about" onclick="switchTab('about',this)">About</button>
       <button class="tab-btn" id="tab-btn-mixes" onclick="switchTab('mixes',this)">Mixes</button>
       <button class="tab-btn" id="tab-btn-images" onclick="switchTab('images',this)">Photos</button>
       <button class="tab-btn" id="tab-btn-video" onclick="switchTab('video',this)">Video</button>
       <button class="tab-btn" id="tab-btn-testimonials" onclick="switchTab('testimonials',this)" style="display:none;">Testimonials</button>
     </nav>
+
+    <!-- Booking/Availability Tab -->
+    <div class="tab-pane" id="tab-booking">
+      <div id="p-booking-calendar"></div>
+    </div>
 
     <!-- About Tab -->
     <div class="tab-pane active" id="tab-about">
@@ -705,9 +711,30 @@ const GENRE_LABELS = {
       try {
         const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
         if (bs.booking_enabled) {
+          // Show Availability as first tab
+          const bookingTabBtn = document.getElementById('tab-btn-booking');
+          bookingTabBtn.style.display = '';
+          // Make it active, deactivate About
+          document.getElementById('tab-btn-about').classList.remove('active');
+          document.getElementById('tab-about').classList.remove('active');
+          bookingTabBtn.classList.add('active');
+          document.getElementById('tab-booking').classList.add('active');
+          // Render public calendar
+          renderPublicCalendar(bs.booking_days || {});
+          // Book Now button — gate non-logged-in users
           const bookBtn = document.getElementById('book-now-btn');
-          bookBtn.href = '/book.html?dj=' + effectiveSlug;
           bookBtn.style.display = 'inline-flex';
+          bookBtn.removeAttribute('href');
+          bookBtn.style.cursor = 'pointer';
+          bookBtn.onclick = function(e) {
+            e.preventDefault();
+            const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+            if (!cu) {
+              showBookingGate();
+            } else {
+              window.location.href = '/book.html?dj=' + effectiveSlug;
+            }
+          };
         }
       } catch(e) {}
     }
@@ -872,6 +899,86 @@ async function uploadInlineAvatar(input) {
     avatarEl.style.opacity = '1';
     alert('Upload failed: ' + e.message);
   }
+}
+
+// ── PUBLIC BOOKING CALENDAR ───────────────────────────────
+const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
+
+function renderPublicCalendar(bookingDays) {
+  const container = document.getElementById('p-booking-calendar');
+  if (!container) return;
+  container.innerHTML = '';
+  const today = new Date();
+  const startMonth = today.getMonth();
+  const startYear = today.getFullYear();
+
+  for (let offset = 0; offset < 3; offset++) {
+    let y = startYear, m = startMonth + offset;
+    while (m > 11) { m -= 12; y++; }
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1.25rem;';
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin-bottom:.75rem;text-align:center;';
+    hdr.textContent = PUB_CAL_MONTHS[m] + ' ' + y;
+    wrap.appendChild(hdr);
+
+    const lblRow = document.createElement('div');
+    lblRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;';
+    PUB_DAY_LABELS.forEach(l => {
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
+      lbl.textContent = l;
+      lblRow.appendChild(lbl);
+    });
+    wrap.appendChild(lblRow);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:4px;';
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayData = bookingDays[key] || {};
+      const isPast = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isBooked = dayData.booked;
+
+      const cell = document.createElement('div');
+      cell.style.cssText = `border-radius:6px;padding:6px 2px 4px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.35)' : isPast ? 'rgba(255,255,255,.05)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'transparent' : 'rgba(0,245,196,.04)'};`;
+      cell.innerHTML = `
+        <div style="font-size:.78rem;font-weight:500;color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : 'var(--white)'};">${d}</div>
+        <div style="font-size:.48rem;font-family:'Space Mono',monospace;letter-spacing:.04em;color:${isBooked ? '#ff5f5f' : isPast ? 'var(--muted)' : 'var(--neon)'};">${isPast ? '' : isBooked ? 'BOOKED' : 'OPEN'}</div>`;
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
+    container.appendChild(wrap);
+  }
+}
+
+// ── BOOKING GATE MODAL ────────────────────────────────────
+function showBookingGate() {
+  const existing = document.getElementById('booking-gate-modal');
+  if (existing) { existing.style.display = 'flex'; return; }
+  const modal = document.createElement('div');
+  modal.id = 'booking-gate-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;width:100%;max-width:360px;text-align:center;">
+      <button onclick="document.getElementById('booking-gate-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;background:linear-gradient(135deg,var(--white),var(--neon));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.5rem;">Book This DJ</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:1.5rem;">Sign in or create a free account to request a booking.</p>
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        <a href="/login.html" style="display:block;padding:.8rem;background:var(--neon);border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;">Sign In</a>
+        <a href="/signup.html" style="display:block;padding:.8rem;background:transparent;border:1px solid var(--neon);border-radius:6px;color:var(--neon);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;">Create Account</a>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 }
 
 function copyShareUrl() {
