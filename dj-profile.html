@@ -904,61 +904,104 @@ async function uploadInlineAvatar(input) {
 // ── PUBLIC BOOKING CALENDAR ───────────────────────────────
 const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
+let pubCalYear, pubCalMonth, pubCalBookingDays = {};
 
 function renderPublicCalendar(bookingDays) {
+  pubCalBookingDays = bookingDays || {};
+  const today = new Date();
+  pubCalMonth = today.getMonth();
+  pubCalYear = today.getFullYear();
+
   const container = document.getElementById('p-booking-calendar');
   if (!container) return;
-  container.innerHTML = '';
-  const today = new Date();
-  const startMonth = today.getMonth();
-  const startYear = today.getFullYear();
 
-  for (let offset = 0; offset < 3; offset++) {
-    let y = startYear, m = startMonth + offset;
+  // Build dropdown options — current month through 12 months ahead
+  let dropdownOptions = '';
+  for (let i = 0; i < 13; i++) {
+    let m = today.getMonth() + i, y = today.getFullYear();
     while (m > 11) { m -= 12; y++; }
-
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1.25rem;';
-
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin-bottom:.75rem;text-align:center;';
-    hdr.textContent = PUB_CAL_MONTHS[m] + ' ' + y;
-    wrap.appendChild(hdr);
-
-    const lblRow = document.createElement('div');
-    lblRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;';
-    PUB_DAY_LABELS.forEach(l => {
-      const lbl = document.createElement('div');
-      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
-      lbl.textContent = l;
-      lblRow.appendChild(lbl);
-    });
-    wrap.appendChild(lblRow);
-
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:4px;';
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dayData = bookingDays[key] || {};
-      const isPast = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const isBooked = dayData.booked;
-
-      const cell = document.createElement('div');
-      cell.style.cssText = `border-radius:6px;padding:6px 2px 4px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.35)' : isPast ? 'rgba(255,255,255,.05)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'transparent' : 'rgba(0,245,196,.04)'};`;
-      cell.innerHTML = `
-        <div style="font-size:.78rem;font-weight:500;color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : 'var(--white)'};">${d}</div>
-        <div style="font-size:.48rem;font-family:'Space Mono',monospace;letter-spacing:.04em;color:${isBooked ? '#ff5f5f' : isPast ? 'var(--muted)' : 'var(--neon)'};">${isPast ? '' : isBooked ? 'BOOKED' : 'OPEN'}</div>`;
-      grid.appendChild(cell);
-    }
-    wrap.appendChild(grid);
-    container.appendChild(wrap);
+    const val = `${y}-${m}`;
+    dropdownOptions += `<option value="${val}">${PUB_CAL_MONTHS[m]} ${y}</option>`;
   }
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
+      <button type="button" id="pub-cal-prev" onclick="pubCalNav(-1)"
+        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
+        onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
+      <select id="pub-cal-select" onchange="pubCalJump(this.value)"
+        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;outline:none;">
+        ${dropdownOptions}
+      </select>
+      <button type="button" id="pub-cal-next" onclick="pubCalNav(1)"
+        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
+        onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+    </div>
+    <div id="pub-cal-grid-wrap"></div>
+    <div style="display:flex;gap:1rem;margin-top:.75rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+    </div>`;
+
+  drawPubCalMonth();
 }
+
+function drawPubCalMonth() {
+  const wrap = document.getElementById('pub-cal-grid-wrap');
+  if (!wrap) return;
+  const today = new Date();
+  const y = pubCalYear, m = pubCalMonth;
+
+  // Update dropdown selection
+  const sel = document.getElementById('pub-cal-select');
+  if (sel) sel.value = `${y}-${m}`;
+
+  // Day labels
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">`;
+  PUB_DAY_LABELS.forEach(l => {
+    html += `<div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.3rem 0;">${l}</div>`;
+  });
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayData = pubCalBookingDays[key] || {};
+    const isPast = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isBooked = dayData.booked;
+    const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+
+    html += `<div style="border-radius:6px;padding:8px 2px 5px;text-align:center;
+      border:1px solid ${isToday ? 'var(--neon)' : isBooked ? 'rgba(255,95,95,.35)' : isPast ? 'rgba(255,255,255,.05)' : 'rgba(0,245,196,.2)'};
+      background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'transparent' : isToday ? 'rgba(0,245,196,.08)' : 'rgba(0,245,196,.03)'};
+      box-shadow:${isToday ? '0 0 0 1px rgba(0,245,196,.3)' : 'none'};">
+      <div style="font-size:.82rem;font-weight:${isToday ? '700' : '400'};color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : isToday ? 'var(--neon)' : 'var(--white)'};">${d}</div>
+      <div style="font-size:.48rem;font-family:'Space Mono',monospace;letter-spacing:.03em;margin-top:1px;color:${isBooked ? '#ff5f5f' : isPast ? 'transparent' : 'var(--neon)'};">${isPast ? '·' : isBooked ? 'BOOKED' : 'OPEN'}</div>
+    </div>`;
+  }
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function pubCalNav(dir) {
+  pubCalMonth += dir;
+  if (pubCalMonth > 11) { pubCalMonth = 0; pubCalYear++; }
+  if (pubCalMonth < 0) { pubCalMonth = 11; pubCalYear--; }
+  drawPubCalMonth();
+}
+
+function pubCalJump(val) {
+  const [y, m] = val.split('-').map(Number);
+  pubCalYear = y; pubCalMonth = m;
+  drawPubCalMonth();
+}
+
 
 // ── BOOKING GATE MODAL ────────────────────────────────────
 function showBookingGate() {
