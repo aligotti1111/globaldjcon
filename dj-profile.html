@@ -701,6 +701,22 @@ const GENRE_LABELS = {
   contactDjSlug = effectiveSlug;
   document.getElementById('contact-to-name').textContent = 'To: ' + (data.name || 'DJ');
 
+  // Show booking calendar for everyone if booking is enabled
+  if (data.booking_settings) {
+    try {
+      const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
+      if (bs.booking_enabled) {
+        const bookingTabBtn = document.getElementById('tab-btn-booking');
+        bookingTabBtn.style.display = '';
+        document.getElementById('tab-btn-about').classList.remove('active');
+        document.getElementById('tab-about').classList.remove('active');
+        bookingTabBtn.classList.add('active');
+        document.getElementById('tab-booking').classList.add('active');
+        renderPublicCalendar(bs.booking_days || {});
+      }
+    } catch(e) { console.error('Booking settings error:', e); }
+  }
+
   // Show Message Me for everyone except own profile
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isOwnProfile = currentUser && currentUser.id === data.id;
@@ -711,17 +727,6 @@ const GENRE_LABELS = {
       try {
         const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
         if (bs.booking_enabled) {
-          // Show Availability as first tab
-          const bookingTabBtn = document.getElementById('tab-btn-booking');
-          bookingTabBtn.style.display = '';
-          // Make it active, deactivate About
-          document.getElementById('tab-btn-about').classList.remove('active');
-          document.getElementById('tab-about').classList.remove('active');
-          bookingTabBtn.classList.add('active');
-          document.getElementById('tab-booking').classList.add('active');
-          // Render public calendar
-          renderPublicCalendar(bs.booking_days || {});
-          // Book Now button — gate non-logged-in users
           const bookBtn = document.getElementById('book-now-btn');
           bookBtn.style.display = 'inline-flex';
           bookBtn.removeAttribute('href');
@@ -729,11 +734,7 @@ const GENRE_LABELS = {
           bookBtn.onclick = function(e) {
             e.preventDefault();
             const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-            if (!cu) {
-              showBookingGate();
-            } else {
-              window.location.href = '/book.html?dj=' + effectiveSlug;
-            }
+            if (!cu) { showBookingGate(); } else { window.location.href = '/book.html?dj=' + effectiveSlug; }
           };
         }
       } catch(e) {}
@@ -954,21 +955,38 @@ function drawPubCalMonth() {
   const today = new Date();
   const y = pubCalYear, m = pubCalMonth;
 
-  // Update dropdown selection
   const sel = document.getElementById('pub-cal-select');
   if (sel) sel.value = `${y}-${m}`;
 
-  // Day labels
-  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">`;
-  PUB_DAY_LABELS.forEach(l => {
-    html += `<div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.3rem 0;">${l}</div>`;
-  });
-  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
-
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
-  for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;">`;
+
+  // Day name headers
+  dayNames.forEach((name, i) => {
+    html += `<div style="
+      background:rgba(255,255,255,.04);
+      border-right:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      ${i===0?'border-radius:8px 0 0 0;':''}
+      ${i===6?'border-radius:0 8px 0 0;':''}
+      padding:.6rem 0;
+      text-align:center;
+      font-family:'Space Mono',monospace;
+      font-size:.58rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);">${name}</div>`;
+  });
+
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;">`;
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:64px;background:rgba(255,255,255,.01);"></div>`;
+  }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -976,18 +994,55 @@ function drawPubCalMonth() {
     const isPast = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const isBooked = dayData.booked;
     const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+    const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
+    const isLastCol = (firstDay + d - 1) % 7 === 6;
 
-    html += `<div style="border-radius:6px;padding:8px 2px 5px;text-align:center;
-      border:1px solid ${isToday ? 'var(--neon)' : isBooked ? 'rgba(255,95,95,.35)' : isPast ? 'rgba(255,255,255,.05)' : 'rgba(0,245,196,.2)'};
-      background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'transparent' : isToday ? 'rgba(0,245,196,.08)' : 'rgba(0,245,196,.03)'};
-      box-shadow:${isToday ? '0 0 0 1px rgba(0,245,196,.3)' : 'none'};">
-      <div style="font-size:.82rem;font-weight:${isToday ? '700' : '400'};color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : isToday ? 'var(--neon)' : 'var(--white)'};">${d}</div>
-      <div style="font-size:.48rem;font-family:'Space Mono',monospace;letter-spacing:.03em;margin-top:1px;color:${isBooked ? '#ff5f5f' : isPast ? 'transparent' : 'var(--neon)'};">${isPast ? '·' : isBooked ? 'BOOKED' : 'OPEN'}</div>
+    let bg = 'transparent';
+    if (isBooked) bg = 'rgba(255,95,95,.06)';
+    else if (isToday) bg = 'rgba(0,245,196,.07)';
+
+    let numColor = 'var(--white)';
+    if (isPast) numColor = 'var(--muted)';
+    else if (isBooked) numColor = '#ff5f5f';
+    else if (isToday) numColor = 'var(--neon)';
+
+    let badge = '';
+    if (!isPast) {
+      if (isBooked) {
+        badge = `<div style="margin-top:4px;display:inline-block;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>`;
+      } else {
+        badge = `<div style="margin-top:4px;display:inline-block;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);">Open</div>`;
+      }
+    }
+
+    html += `<div style="
+      border-right:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      ${isLastRow && !isLastCol ? 'border-bottom:none;' : ''}
+      min-height:64px;
+      padding:.5rem .4rem .4rem;
+      background:${bg};
+      ${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : ''}
+      text-align:left;
+      vertical-align:top;">
+      <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
+      ${badge}
     </div>`;
   }
+
+  // Fill remaining cells in last row
+  const totalCells = firstDay + daysInMonth;
+  const remainder = totalCells % 7;
+  if (remainder !== 0) {
+    for (let i = remainder; i < 7; i++) {
+      html += `<div style="border-right:1px solid var(--border);min-height:64px;background:rgba(255,255,255,.01);"></div>`;
+    }
+  }
+
   html += `</div>`;
   wrap.innerHTML = html;
 }
+
 
 function pubCalNav(dir) {
   pubCalMonth += dir;
