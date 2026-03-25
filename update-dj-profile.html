@@ -1719,7 +1719,7 @@ function renderCal() {
 
   for (let offset = 0; offset < 3; offset++) {
     let y = calYear, m = calMonth + offset;
-    if (m > 11) { m -= 12; y++; }
+    while (m > 11) { m -= 12; y++; }
 
     const monthWrap = document.createElement('div');
     monthWrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem;';
@@ -1734,10 +1734,10 @@ function renderCal() {
     const labelRow = document.createElement('div');
     labelRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px;';
     DAY_LABELS.forEach(l => {
-      const d = document.createElement('div');
-      d.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
-      d.textContent = l;
-      labelRow.appendChild(d);
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
+      lbl.textContent = l;
+      labelRow.appendChild(lbl);
     });
     monthWrap.appendChild(labelRow);
 
@@ -1757,10 +1757,16 @@ function renderCal() {
       const isBooked = dayData.booked;
 
       const cell = document.createElement('div');
-      cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.4)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'rgba(255,255,255,.02)' : 'rgba(0,245,196,.04)'};`;
+      cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.4)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'rgba(255,255,255,.02)' : 'rgba(0,245,196,.04)'};min-height:38px;`;
+
       cell.innerHTML = `<div style="font-size:.7rem;color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : 'var(--white)'};">${d}</div>
         <div style="font-size:.45rem;font-family:'Space Mono',monospace;color:${isBooked ? '#ff5f5f' : 'var(--neon)'};">${isBooked ? 'BOOK' : 'AVAIL'}</div>
-        ${!isPast ? `<button type="button" onclick="openDayEditor('${key}')" style="position:absolute;top:0;right:0;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:1px;line-height:1;" title="Edit">✏️</button>` : ''}`;
+        ${!isPast ? `
+          <button type="button" onclick="quickMarkBooked('${key}')" title="Mark unavailable"
+            style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isBooked ? 'rgba(255,95,95,.5)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">✕</button>
+          <button type="button" onclick="openDayEditor('${key}')" title="Edit day"
+            style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
+        ` : ''}`;
       grid.appendChild(cell);
     }
     monthWrap.appendChild(grid);
@@ -1768,14 +1774,24 @@ function renderCal() {
   }
 }
 
+function quickMarkBooked(key) {
+  if (bookingDays[key] && bookingDays[key].booked) {
+    // Toggle off — mark available again
+    delete bookingDays[key];
+  } else {
+    bookingDays[key] = { booked: true };
+  }
+  renderCal();
+}
+
 function calPrev() {
   calMonth -= 3;
-  if (calMonth < 0) { calMonth += 12; calYear--; }
+  while (calMonth < 0) { calMonth += 12; calYear--; }
   renderCal();
 }
 function calNext() {
   calMonth += 3;
-  if (calMonth > 11) { calMonth -= 12; calYear++; }
+  while (calMonth > 11) { calMonth -= 12; calYear++; }
   renderCal();
 }
 
