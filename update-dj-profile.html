@@ -341,6 +341,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <button type="button" class="profile-tab" onclick="switchProfileTab('photos', this)">Photos</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('video', this)">Video</button>
         <button type="button" class="profile-tab" id="tab-btn-testimonials" onclick="switchProfileTab('testimonials', this)" style="display:none;">Testimonials</button>
+        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this)" style="display:none;">Booking</button>
       </div>
 
       <div class="tab-pane active" id="tab-general">
@@ -756,7 +757,121 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <button type="button" class="btn" id="add-testimonial-btn" onclick="addTestimonialField()" style="margin-bottom:1.5rem;">+ Add Testimonial</button>
       </div>
 
-      <button type="submit" class="btn" id="save-btn">Save Changes</button>
+      <div class="tab-pane" id="tab-booking">
+        <div style="margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.25rem;">Enable Booking</div>
+              <div style="font-size:.8rem;color:var(--muted);">Allow guests and venues to request bookings directly from your profile.</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+              <input type="checkbox" id="booking-enabled" style="opacity:0;width:0;height:0;" onchange="toggleBookingSetup()">
+              <span id="booking-toggle-track" style="position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:24px;transition:.3s;"></span>
+              <span id="booking-toggle-thumb" style="position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.3s;"></span>
+            </label>
+          </div>
+        </div>
+
+        <div id="booking-setup" style="display:none;">
+          <!-- Equipment Section -->
+          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+            <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Equipment</div>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Select what equipment you can provide. These apply to all bookings by default.</p>
+
+            <div style="margin-bottom:.75rem;">
+              <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="equip-full" name="equipment" value="full" onchange="updateRateFields()" style="margin-top:3px;accent-color:var(--neon);">
+                <div>
+                  <div style="font-size:.88rem;color:var(--white);">I can provide Sound System and decks/controller</div>
+                  <input type="text" id="equip-full-detail" placeholder="List your system (e.g. QSC K12.2, Pioneer CDJ-3000)" style="display:none;margin-top:.4rem;width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;">
+                </div>
+              </label>
+            </div>
+
+            <div style="margin-bottom:.75rem;">
+              <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="equip-decks" name="equipment" value="decks" onchange="updateRateFields()" style="margin-top:3px;accent-color:var(--neon);">
+                <div>
+                  <div style="font-size:.88rem;color:var(--white);">I can provide only decks/controller</div>
+                  <input type="text" id="equip-decks-detail" placeholder="List your decks/controller (e.g. Pioneer DDJ-1000)" style="display:none;margin-top:.4rem;width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;">
+                </div>
+              </label>
+            </div>
+
+            <div>
+              <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="equip-none" name="equipment" value="none" onchange="updateRateFields()" style="accent-color:var(--neon);">
+                <div style="font-size:.88rem;color:var(--white);">I require all equipment to be provided by venue</div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Rate Section -->
+          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+            <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Rates</div>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Set your rates based on your equipment selections above.</p>
+
+            <div id="rate-no-equip" style="display:none;margin-bottom:.75rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate (No Equipment Provided)</label>
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
+
+            <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
+
+            <div id="rate-with-decks" style="display:none;margin-bottom:.75rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Decks/Controller Only</label>
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
+
+            <div style="margin-top:.75rem;">
+              <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="allow-offers" style="accent-color:var(--neon);">
+                <div style="font-size:.85rem;color:var(--white);">Allow guests to make an offer <span style="color:var(--muted);font-size:.78rem;">(overrides rates above)</span></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Calendar Section -->
+          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+            <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Availability Calendar</div>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Click the pencil icon on any day to mark it booked or add event details.</p>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+              <button type="button" onclick="calPrev()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">‹</button>
+              <div id="cal-month-label" style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);"></div>
+              <button type="button" onclick="calNext()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">›</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">S</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">M</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">T</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">W</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">T</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">F</div>
+              <div style="text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);padding:.25rem 0;">S</div>
+            </div>
+            <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+          </div>
+
+          <button type="button" class="btn" id="save-booking-btn" onclick="saveBookingSettings()" style="width:100%;background:var(--neon);color:var(--black);border-color:var(--neon);font-weight:700;">Save Booking Settings</button>
+          <div id="booking-alert" style="margin-top:.75rem;"></div>
+        </div>
+      </div>
+
+            <button type="submit" class="btn" id="save-btn">Save Changes</button>
     </form>
   </div>
 </div>
@@ -1549,6 +1664,294 @@ window.addEventListener('beforeunload', function(e) {
     return e.returnValue;
   }
 });
+
+// ── BOOKING FEATURE (CLUB/BAR DJ) ─────────────────────────
+
+// Show booking tab for club DJs
+function checkShowBookingTab() {
+  const isClub = document.getElementById('club-checkbox').checked;
+  document.getElementById('tab-btn-booking').style.display = isClub ? '' : 'none';
+}
+document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
+
+// Toggle booking setup visibility
+function toggleBookingSetup() {
+  const enabled = document.getElementById('booking-enabled').checked;
+  const track = document.getElementById('booking-toggle-track');
+  const thumb = document.getElementById('booking-toggle-thumb');
+  document.getElementById('booking-setup').style.display = enabled ? 'block' : 'none';
+  track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
+  thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
+  thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+}
+
+// Show/hide equipment detail inputs and update rate fields
+function updateRateFields() {
+  const full = document.getElementById('equip-full').checked;
+  const decks = document.getElementById('equip-decks').checked;
+  const none = document.getElementById('equip-none').checked;
+
+  document.getElementById('equip-full-detail').style.display = full ? 'block' : 'none';
+  document.getElementById('equip-decks-detail').style.display = decks ? 'block' : 'none';
+
+  // Rate fields logic per spec
+  document.getElementById('rate-no-equip').style.display = (full || decks || none) ? 'block' : 'none';
+  document.getElementById('rate-with-system').style.display = full ? 'block' : 'none';
+  document.getElementById('rate-with-decks').style.display = (full || decks) ? 'block' : 'none';
+}
+
+// ── CALENDAR ──────────────────────────────────────────────
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+// bookingDays: { 'YYYY-MM-DD': { booked: bool, eventName, location, startTime, endTime, rate, rateType, minHours } }
+let bookingDays = {};
+
+function calKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function renderCal() {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent = months[calMonth] + ' ' + calYear;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+
+  // Empty cells
+  for (let i = 0; i < firstDay; i++) {
+    grid.appendChild(Object.assign(document.createElement('div'), {}));
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = calKey(calYear, calMonth, d);
+    const dayData = bookingDays[key] || {};
+    const isPast = new Date(calYear, calMonth, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isBooked = dayData.booked;
+
+    const cell = document.createElement('div');
+    cell.style.cssText = `position:relative;border-radius:6px;padding:4px 2px 4px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.4)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isPast ? 'rgba(255,255,255,.02)' : 'rgba(0,245,196,.05)'};`;
+
+    cell.innerHTML = `<div style="font-size:.72rem;color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : 'var(--white)'};">${d}</div>
+      <div style="font-size:.5rem;font-family:'Space Mono',monospace;color:${isBooked ? '#ff5f5f' : 'var(--neon)'};">${isBooked ? 'BOOKED' : 'AVAIL'}</div>
+      ${!isPast ? `<button type="button" onclick="openDayEditor('${key}')" style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.65rem;padding:0;line-height:1;" title="Edit day">✏️</button>` : ''}`;
+    grid.appendChild(cell);
+  }
+}
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCal();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCal();
+}
+
+// ── DAY EDITOR MODAL ──────────────────────────────────────
+function openDayEditor(key) {
+  const d = bookingDays[key] || {};
+  const existing = document.getElementById('day-editor-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'day-editor-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);">${key}</div>
+        <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+          <input type="checkbox" id="day-booked" ${d.booked ? 'checked' : ''} style="accent-color:var(--error);" onchange="toggleDayBooked()">
+          <span style="font-size:.88rem;color:var(--white);">Mark as Booked / Unavailable</span>
+        </label>
+      </div>
+
+      <div id="day-booked-fields" style="display:${d.booked ? 'block' : 'none'};">
+        <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Event Details (Optional)</div>
+          <div style="margin-bottom:.6rem;">
+            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Event Name</label>
+            <input type="text" id="day-event-name" value="${d.eventName||''}" placeholder="e.g. Saturday Night Live" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+          </div>
+          <div style="margin-bottom:.6rem;">
+            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Location</label>
+            <div style="display:flex;gap:.5rem;">
+              <input type="text" id="day-location" value="${d.location !== 'Private' ? (d.location||'') : ''}" placeholder="Venue or address" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
+              <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;white-space:nowrap;font-size:.78rem;color:var(--muted);">
+                <input type="checkbox" id="day-private" ${d.location==='Private'?'checked':''} style="accent-color:var(--neon);" onchange="document.getElementById('day-location').disabled=this.checked;"> Private
+              </label>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+            <div>
+              <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Start Time</label>
+              <input type="time" id="day-start" value="${d.startTime||''}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            </div>
+            <div>
+              <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">End Time <span style="color:var(--muted);font-size:.65rem;">(optional)</span></label>
+              <input type="time" id="day-end" value="${d.endTime||''}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="day-avail-fields" style="display:${d.booked ? 'none' : 'block'};">
+        <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Custom Rate for This Day (Optional)</div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
+            <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
+            <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+          </div>
+          <div id="day-flat-fields" style="display:${(!d.rateType||d.rateType==='flat')?'block':'none'};">
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+              <span style="color:var(--muted);">$</span>
+              <input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="Rate" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            </div>
+            <textarea id="day-stipulation" placeholder="Add any stipulations or notes (optional)" rows="2" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;resize:vertical;">${d.stipulation||''}</textarea>
+          </div>
+          <div id="day-hourly-fields" style="display:${d.rateType==='hourly'?'block':'none'};">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+              <div>
+                <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Hourly Rate ($)</label>
+                <input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+              <div>
+                <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Min Hours</label>
+                <input type="number" id="day-min-hours" value="${d.minHours||''}" placeholder="e.g. 2" min="1" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;">
+        <button type="button" onclick="saveDayEditor('${key}')" style="flex:1;padding:.75rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Day</button>
+        <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="padding:.75rem 1rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function toggleDayBooked() {
+  const booked = document.getElementById('day-booked').checked;
+  document.getElementById('day-booked-fields').style.display = booked ? 'block' : 'none';
+  document.getElementById('day-avail-fields').style.display = booked ? 'none' : 'block';
+}
+
+function setDayRateType(type) {
+  document.getElementById('day-flat-fields').style.display = type === 'flat' ? 'block' : 'none';
+  document.getElementById('day-hourly-fields').style.display = type === 'hourly' ? 'block' : 'none';
+  document.getElementById('rate-type-flat').style.background = type === 'flat' ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('rate-type-flat').style.color = type === 'flat' ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('rate-type-flat').style.borderColor = type === 'flat' ? 'var(--neon)' : 'var(--border)';
+  document.getElementById('rate-type-hourly').style.background = type === 'hourly' ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('rate-type-hourly').style.color = type === 'hourly' ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('rate-type-hourly').style.borderColor = type === 'hourly' ? 'var(--neon)' : 'var(--border)';
+}
+
+function saveDayEditor(key) {
+  const booked = document.getElementById('day-booked').checked;
+  if (booked) {
+    const isPrivate = document.getElementById('day-private').checked;
+    bookingDays[key] = {
+      booked: true,
+      eventName: document.getElementById('day-event-name').value.trim(),
+      location: isPrivate ? 'Private' : document.getElementById('day-location').value.trim(),
+      startTime: document.getElementById('day-start').value,
+      endTime: document.getElementById('day-end').value,
+    };
+  } else {
+    const flatRate = document.getElementById('day-flat-rate').value;
+    const hourlyRate = document.getElementById('day-hourly-rate').value;
+    const minHours = document.getElementById('day-min-hours').value;
+    const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
+    const hasCustom = flatRate || hourlyRate;
+    if (hasCustom) {
+      bookingDays[key] = {
+        booked: false,
+        rateType,
+        rate: flatRate || null,
+        stipulation: document.getElementById('day-stipulation').value.trim(),
+        hourlyRate: hourlyRate || null,
+        minHours: minHours || null,
+      };
+    } else {
+      delete bookingDays[key]; // back to default available
+    }
+  }
+  document.getElementById('day-editor-modal').remove();
+  renderCal();
+}
+
+// ── SAVE BOOKING SETTINGS ─────────────────────────────────
+async function saveBookingSettings() {
+  const btn = document.getElementById('save-booking-btn');
+  const alertEl = document.getElementById('booking-alert');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const settings = {
+      booking_enabled: document.getElementById('booking-enabled').checked,
+      equip_full: document.getElementById('equip-full').checked,
+      equip_full_detail: document.getElementById('equip-full-detail').value.trim(),
+      equip_decks: document.getElementById('equip-decks').checked,
+      equip_decks_detail: document.getElementById('equip-decks-detail').value.trim(),
+      equip_none: document.getElementById('equip-none').checked,
+      rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
+      rate_with_system: document.getElementById('rate-with-system-val').value || null,
+      rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
+      allow_offers: document.getElementById('allow-offers').checked,
+      booking_days: bookingDays,
+    };
+    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(settings) }).eq('id', currentUser.id);
+    if (error) throw error;
+    alertEl.innerHTML = '<div class="alert alert-success">✓ Booking settings saved.</div>';
+    setTimeout(() => { alertEl.innerHTML = ''; }, 3000);
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+  btn.disabled = false; btn.textContent = 'Save Booking Settings';
+}
+
+// ── LOAD BOOKING SETTINGS ─────────────────────────────────
+async function loadBookingSettings() {
+  const { data } = await db.from('users').select('booking_settings,type').eq('id', currentUser.id).single();
+  if (!data) return;
+  // Show booking tab if club DJ
+  if ((data.type||'').includes('club')) {
+    document.getElementById('tab-btn-booking').style.display = '';
+  }
+  if (!data.booking_settings) return;
+  try {
+    const s = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
+    if (s.booking_enabled) {
+      document.getElementById('booking-enabled').checked = true;
+      toggleBookingSetup();
+    }
+    if (s.equip_full) { document.getElementById('equip-full').checked = true; document.getElementById('equip-full-detail').style.display = 'block'; }
+    if (s.equip_full_detail) document.getElementById('equip-full-detail').value = s.equip_full_detail;
+    if (s.equip_decks) { document.getElementById('equip-decks').checked = true; document.getElementById('equip-decks-detail').style.display = 'block'; }
+    if (s.equip_decks_detail) document.getElementById('equip-decks-detail').value = s.equip_decks_detail;
+    if (s.equip_none) document.getElementById('equip-none').checked = true;
+    if (s.rate_no_equip) document.getElementById('rate-no-equip-val').value = s.rate_no_equip;
+    if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
+    if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
+    if (s.allow_offers) document.getElementById('allow-offers').checked = true;
+    if (s.booking_days) bookingDays = s.booking_days;
+    updateRateFields();
+    renderCal();
+  } catch(e) { console.error('Error loading booking settings:', e); }
+}
+loadBookingSettings();
+
+
 
 </script>
 </body>

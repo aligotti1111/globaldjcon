@@ -807,18 +807,27 @@ function listRowHTML(dj) {
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isClaimed = dj.password && dj.password.length > 0;
 
+  // Check if booking is enabled for this DJ
+  let bookingEnabled = false;
+  try {
+    if (dj.booking_settings) {
+      const bs = typeof dj.booking_settings === 'string' ? JSON.parse(dj.booking_settings) : dj.booking_settings;
+      bookingEnabled = !!(bs && bs.booking_enabled);
+    }
+  } catch(e) {}
+
+  const bookBtn = bookingEnabled
+    ? `<button class="dll-contact-btn" onclick="event.stopPropagation();${!currentUser ? 'showSignupPrompt()' : `window.location.href='/book.html?dj=${slug}'`}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:none;background:var(--neon);color:var(--black);font-weight:700;cursor:pointer;white-space:nowrap;">Book</button>`
+    : '';
+
   let contactBtn;
   if (!currentUser) {
-    // Not logged in — show Contact DJ, clicking prompts signup
     contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();showSignupPrompt()" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else if (isClaimed) {
-    // Logged in + claimed profile — go to DJ profile to send message
     contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else if (dj.email) {
-    // Logged in + unclaimed + has email — open mailto
     contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.open('mailto:${dj.email}','_blank')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   } else {
-    // Logged in + unclaimed + no email — go to profile page
     contactBtn = `<button class="dll-contact-btn" onclick="event.stopPropagation();window.location.href=djProfileURL('${slug}')" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:1px solid var(--neon);color:var(--neon);background:transparent;cursor:pointer;white-space:nowrap;">Contact</button>`;
   }
 
@@ -830,7 +839,7 @@ function listRowHTML(dj) {
       <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
     </div>
     <span class="dll-type ${typeClass}">${typeLabel}</span>
-    ${contactBtn}
+    <div style="display:flex;gap:.3rem;align-items:center;">${bookBtn}${contactBtn}</div>
   </div>`;
 }
 

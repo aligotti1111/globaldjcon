@@ -356,6 +356,10 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
         <button onclick="openContactModal()" id="contact-me-btn" class="action-btn primary" style="display:none;" title="Message Me">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         </button>
+        <a id="book-now-btn" href="#" class="action-btn" style="display:none;background:var(--neon);border-color:var(--neon);color:var(--black);font-weight:700;" title="Book Now">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Book Now
+        </a>
         <button onclick="copyShareUrl()" id="copy-btn" class="action-btn ghost" title="Copy Link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="18" height="18" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
@@ -696,6 +700,17 @@ const GENRE_LABELS = {
   const isOwnProfile = currentUser && currentUser.id === data.id;
   if (!isOwnProfile) {
     document.getElementById('contact-me-btn').style.display = 'inline-flex';
+    // Show Book Now if DJ has booking enabled
+    if (data.booking_settings) {
+      try {
+        const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
+        if (bs.booking_enabled) {
+          const bookBtn = document.getElementById('book-now-btn');
+          bookBtn.href = '/book.html?dj=' + effectiveSlug;
+          bookBtn.style.display = 'inline-flex';
+        }
+      } catch(e) {}
+    }
   } else {
     // On own profile — hide View My Profile (already here), hide Edit Profile (redundant)
     const viewBtn = document.getElementById('nav-view-profile');
