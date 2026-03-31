@@ -2052,6 +2052,7 @@ async function savePartialBooking(btn, alertId, fields) {
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
     if (error) throw error;
     if (alertEl) { alertEl.style.color = 'var(--success)'; alertEl.textContent = '✓ Saved'; setTimeout(() => alertEl.textContent = '', 2500); }
+    formDirty = false;
   } catch(e) {
     if (alertEl) { alertEl.style.color = 'var(--error)'; alertEl.textContent = '✗ ' + e.message; }
   }
