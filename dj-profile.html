@@ -1086,14 +1086,14 @@ function drawPubCalMonth() {
       border-right:1px solid var(--border);
       border-bottom:1px solid var(--border);
       ${isLastRow && !isLastCol ? 'border-bottom:none;' : ''}
-      min-height:70px;
+      height:70px;
       padding:.35rem .15rem .25rem;
       background:${bg};
       ${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : isUnavail ? 'box-shadow:inset 0 2px 0 var(--muted);' : ''}
-      display:flex;flex-direction:column;align-items:center;
-      overflow:hidden;">
-      <div style="font-size:clamp(.75rem,1.6vw,1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:3px;">${d}</div>
-      ${badge}
+      display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+      overflow:hidden;box-sizing:border-box;">
+      <div style="font-size:clamp(.75rem,1.6vw,1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
+      <div style="display:flex;align-items:center;justify-content:center;width:100%;">${badge}</div>
     </div>`;
   }
 
