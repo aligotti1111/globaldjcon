@@ -1258,7 +1258,7 @@ function drawOwnerCalMonth() {
       <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
       ${badge}
       ${!isPast?`
-        <button type="button" onclick="ownerQuickMark('${key}')" title="${isUnavail?'Mark available':'Mark unavailable'}" style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail?'var(--muted)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;transition:color .15s;" onmouseover="this.style.color='#ff5f5f'" onmouseout="this.style.color='${isUnavail?'var(--muted)':'rgba(255,255,255,.2)'}'">✕</button>
+        ${!isBooked ? `<button type="button" onclick="ownerQuickMark('${key}')" title="${isUnavail?'Mark available':'Mark unavailable'}" style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;transition:color .15s;" onmouseover="this.style.color='${isUnavail?'var(--white)':'#ff5f5f'}'" onmouseout="this.style.color='${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'}'}">${isUnavail?'✓':'✕'}</button>` : ''}
         <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:.65rem;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✏️</button>
       `:''}
     </div>`;
@@ -1292,6 +1292,7 @@ function ownerCalJumpSplit() {
 }
 
 function ownerQuickMark(key) {
+  if (ownerBookingDays[key] && ownerBookingDays[key].booked) return;
   if (ownerBookingDays[key] && ownerBookingDays[key].unavailable) {
     delete ownerBookingDays[key];
   } else {
@@ -1436,6 +1437,8 @@ function ownerSaveDayEditor(key) {
     const hourlyRate = document.getElementById('day-hourly-rate').value;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
     if (flatRate || hourlyRate) {
+      // Specific rate always overrides global allow_offers
+      if (ownerGlobalAllowOffers) offersOverride = false;
       ownerBookingDays[key] = { booked: false, rateType, rate: flatRate||null, stipulation: document.getElementById('day-stipulation').value.trim(), hourlyRate: hourlyRate||null, minHours: document.getElementById('day-min-hours').value||null, allow_offers_override: offersOverride };
     } else if (offersOverride !== undefined) {
       ownerBookingDays[key] = { allow_offers_override: offersOverride };

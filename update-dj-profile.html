@@ -1789,8 +1789,8 @@ function renderCal() {
       cell.innerHTML = `<div style="font-size:.7rem;color:${isPast ? 'var(--muted)' : isBooked ? '#ff5f5f' : isUnavail ? 'var(--muted)' : 'var(--white)'};">${d}</div>
         <div style="font-size:.45rem;font-family:'Space Mono',monospace;color:${isBooked ? '#ff5f5f' : isUnavail ? 'var(--muted)' : 'var(--neon)'};">${isBooked ? 'BOOK' : isUnavail ? 'N/A' : 'AVAIL'}</div>
         ${!isPast ? `
-          <button type="button" onclick="quickMarkBooked('${key}')" title="Mark unavailable"
-            style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail ? 'rgba(107,107,136,.6)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">✕</button>
+          ${!isBooked ? `<button type="button" onclick="quickMarkBooked('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
+            style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
           <button type="button" onclick="openDayEditor('${key}')" title="Edit day"
             style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
         ` : ''}`;
@@ -1802,6 +1802,7 @@ function renderCal() {
 }
 
 function quickMarkBooked(key) {
+  if (bookingDays[key] && bookingDays[key].booked) return;
   if (bookingDays[key] && bookingDays[key].unavailable) {
     delete bookingDays[key];
   } else {
@@ -2029,6 +2030,8 @@ function saveDayEditor(key) {
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
     const hasCustom = flatRate || hourlyRate;
     if (hasCustom) {
+      // A specific rate always overrides global allow_offers — stamp false if global is on
+      if (globalOn) offersOverride = false;
       bookingDays[key] = {
         booked: false,
         rateType,
