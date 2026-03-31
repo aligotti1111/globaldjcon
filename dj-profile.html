@@ -1106,7 +1106,7 @@ function drawPubCalMonth() {
         <div style="font-size:.95rem;font-weight:600;color:var(--white);margin-bottom:.4rem;line-height:1.2;">${dayData.eventName}</div>
         ${timeStr ? `<div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeStr}</div>` : ''}
         ${dayData.location ? `<div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;display:flex;align-items:center;gap:.3rem;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${dayData.location}</div>` : ''}
-        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:3px 8px;background:rgba(0,245,196,.06);" onmouseover="this.style.background='rgba(0,245,196,.12)'" onmouseout="this.style.background='rgba(0,245,196,.06)'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Get Tickets</a>` : ''}
+        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:3px 8px;background:rgba(0,245,196,.06);" onmouseover="this.style.background='rgba(0,245,196,.12)'" onmouseout="this.style.background='rgba(0,245,196,.06)'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${dayData.ticketLabel || 'Get Tickets'}</a>` : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -1340,7 +1340,9 @@ function ownerOpenDayEditor(key) {
           </div>
           <div style="margin-top:.6rem;">
             <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Ticket Link <span style="font-size:.65rem;">(optional)</span></label>
-            <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;margin-bottom:.4rem;">
+            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Button Label <span style="font-size:.65rem;">(optional)</span></label>
+            <input type="text" id="day-ticket-label" value="${d.ticketLabel||''}" placeholder="e.g. More Info" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
           </div>
         </div>
       </div>
@@ -1424,6 +1426,7 @@ function ownerSaveDayEditor(key) {
       startTime: document.getElementById('day-start').value,
       endTime: document.getElementById('day-end').value,
       ticketUrl: document.getElementById('day-ticket-url').value.trim() || null,
+      ticketLabel: document.getElementById('day-ticket-label').value.trim() || null,
     };
   } else {
     const offerCheckbox = document.getElementById('day-allow-offers');

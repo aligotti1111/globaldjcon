@@ -1891,7 +1891,9 @@ function openDayEditor(key) {
           </div>
           <div style="margin-top:.6rem;">
             <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Ticket Link <span style="font-size:.65rem;">(optional)</span></label>
-            <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;margin-bottom:.4rem;">
+            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Button Label <span style="font-size:.65rem;">(optional)</span></label>
+            <input type="text" id="day-ticket-label" value="${d.ticketLabel||''}" placeholder="e.g. More Info" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
           </div>
         </div>
       </div>
@@ -2008,6 +2010,7 @@ function saveDayEditor(key) {
       startTime: document.getElementById('day-start').value,
       endTime: document.getElementById('day-end').value,
       ticketUrl: document.getElementById('day-ticket-url').value.trim() || null,
+      ticketLabel: document.getElementById('day-ticket-label').value.trim() || null,
     };
   } else {
     // available
