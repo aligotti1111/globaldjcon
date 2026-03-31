@@ -1518,17 +1518,17 @@ document.getElementById('profile-form').addEventListener('submit', async functio
   e.preventDefault();
   
   const btn = document.getElementById('save-btn');
-  const alert = document.getElementById('alert');
+  const alertBox = document.getElementById('alert');
   
   btn.disabled = true;
   btn.textContent = 'Saving...';
-  alert.innerHTML = '';
+  alertBox.innerHTML = '';
   
   const typeCheckboxes = document.querySelectorAll('input[name="type"]:checked');
   const types = Array.from(typeCheckboxes).map(cb => cb.value);
   
   if (types.length === 0) {
-    alert.innerHTML = '<div class="alert alert-error">Please select at least one DJ type</div>';
+    alertBox.innerHTML = '<div class="alert alert-error">Please select at least one DJ type</div>';
     btn.disabled = false;
     btn.textContent = 'Save Changes';
     return;
@@ -1539,7 +1539,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     const rawSlug = document.getElementById('slug-input').value.trim();
     const finalSlug = makeSlug(rawSlug) || originalSlug;
     if (rawSlug && !slugAvailable && finalSlug !== originalSlug) {
-      alert.innerHTML = '<div class="alert alert-error">That URL is taken or invalid. Please choose an available URL.</div>';
+      alertBox.innerHTML = '<div class="alert alert-error">That URL is taken or invalid. Please choose an available URL.</div>';
       btn.disabled = false; btn.textContent = 'Save Changes'; return;
     }
 
@@ -1595,14 +1595,14 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     const { error } = await db.from('users').update(updateData).eq('id', currentUser.id);
     if (error) throw error;
     
-    alert.innerHTML = '<div class="alert alert-success">Profile updated successfully!</div>';
+    alertBox.innerHTML = '<div class="alert alert-success">Profile updated successfully!</div>';
     formDirty = false;
     formSaved = true;
     if (finalSlug) originalSlug = finalSlug;
-    setTimeout(() => alert.innerHTML = '', 3000);
+    setTimeout(() => alertBox.innerHTML = '', 3000);
     
   } catch (error) {
-    alert.innerHTML = '<div class="alert alert-error">Error: ' + error.message + '</div>';
+    alertBox.innerHTML = '<div class="alert alert-error">Error: ' + error.message + '</div>';
   }
   
   btn.disabled = false;
