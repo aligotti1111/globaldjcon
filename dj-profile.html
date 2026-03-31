@@ -1053,12 +1053,7 @@ function drawPubCalMonth() {
           ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'`
           : `showBookingGate()`;
         badge = `<div style="margin-top:2px;">
-          <button type="button" onclick="${bookAction}"
-            style="display:block;width:100%;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.03em;padding:3px 4px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.25);cursor:pointer;text-align:center;transition:all .2s;"
-            onmouseover="this.style.background='rgba(0,245,196,.2)'"
-            onmouseout="this.style.background='rgba(0,245,196,.1)'">
-            Book Now
-          </button>
+          <div style="display:inline-block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;white-space:nowrap;" onclick="${bookAction}">Book Now</div>
         </div>`;
       }
     }
