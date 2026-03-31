@@ -1005,7 +1005,7 @@ function drawPubCalMonth() {
 
   // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
-    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:80px;background:rgba(255,255,255,.01);"></div>`;
+    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1039,21 +1039,21 @@ function drawPubCalMonth() {
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
         badge = `<div style="margin-top:2px;min-width:0;">
           <div style="display:flex;align-items:center;gap:3px;">
-            <div style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;white-space:nowrap;">Booked</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;white-space:nowrap;">Booked</div>
             ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" title="Get Tickets" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
           </div>
-          ${eventName ? `<div style="font-size:.58rem;color:var(--white);margin-top:2px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="${eventName}">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:.44rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}</div>` : ''}
+          ${eventName ? `<div style="font-size:.72rem;color:var(--white);margin-top:3px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="${eventName}">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="margin-top:2px;display:inline-block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">Unavailable</div>`;
+        badge = `<div style="margin-top:2px;display:inline-block;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);white-space:nowrap;">Unavailable</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
           ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'`
           : `showBookingGate()`;
         badge = `<div style="margin-top:2px;">
-          <div style="display:inline-block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;white-space:nowrap;" onclick="${bookAction}">Book Now</div>
+          <div style="display:inline-block;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;white-space:nowrap;" onclick="${bookAction}">Book Now</div>
         </div>`;
       }
     }
@@ -1067,14 +1067,14 @@ function drawPubCalMonth() {
       border-right:1px solid var(--border);
       border-bottom:1px solid var(--border);
       ${isLastRow && !isLastCol ? 'border-bottom:none;' : ''}
-      min-height:80px;
+      min-height:90px;
       padding:.4rem .35rem .35rem;
       background:${bg};
       ${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : isUnavail ? 'box-shadow:inset 0 2px 0 var(--muted);' : ''}
       text-align:left;
       vertical-align:top;
       overflow:hidden;">
-      <div style="font-size:.88rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:3px;">${d}</div>
+      <div style="font-size:1.1rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:4px;">${d}</div>
       ${badge}
     </div>`;
   }
@@ -1084,7 +1084,7 @@ function drawPubCalMonth() {
   const remainder = totalCells % 7;
   if (remainder !== 0) {
     for (let i = remainder; i < 7; i++) {
-      html += `<div style="border-right:1px solid var(--border);min-height:80px;background:rgba(255,255,255,.01);"></div>`;
+      html += `<div style="border-right:1px solid var(--border);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
     }
   }
 
