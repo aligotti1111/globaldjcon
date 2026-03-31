@@ -705,7 +705,9 @@ const GENRE_LABELS = {
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isOwnProfile = currentUser && currentUser.id === data.id;
 
-  if (data.booking_settings) {
+  const isClubDJ = (data.type || '').toLowerCase().includes('club');
+
+  if (isClubDJ && data.booking_settings) {
     try {
       const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
       if (bs.booking_enabled) {

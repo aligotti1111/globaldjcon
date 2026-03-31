@@ -1678,7 +1678,7 @@ window.addEventListener('beforeunload', function(e) {
 function checkShowBookingTab() {
   const isClub = document.getElementById('club-checkbox').checked;
   const isMobile = document.getElementById('mobile-checkbox').checked;
-  document.getElementById('tab-btn-booking').style.display = (isClub || isMobile) ? '' : 'none';
+  document.getElementById('tab-btn-booking').style.display = isClub ? '' : 'none';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
   toggleBookingSetup();
   updateRateFields(null);
@@ -1686,7 +1686,6 @@ function checkShowBookingTab() {
   setTimeout(toggleAllowOffers, 50);
 }
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
-document.getElementById('mobile-checkbox').addEventListener('change', checkShowBookingTab);
 
 // Toggle booking setup visibility
 function toggleBookingSetup() {
@@ -2151,8 +2150,8 @@ async function saveBookingSettings() {
 async function loadBookingSettings() {
   const { data } = await db.from('users').select('booking_settings,type').eq('id', currentUser.id).single();
   if (!data) return;
-  // Show booking tab for any DJ type
-  if ((data.type||'').includes('club') || (data.type||'').includes('mobile-event')) {
+  // Show booking tab for Club/Bar DJs only
+  if ((data.type||'').includes('club')) {
     document.getElementById('tab-btn-booking').style.display = '';
   }
   // Show equipment/rate section only for club DJs

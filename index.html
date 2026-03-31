@@ -807,10 +807,11 @@ function listRowHTML(dj) {
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isClaimed = dj.password && dj.password.length > 0;
 
-  // Check if booking is enabled for this DJ
+  // Check if booking is enabled for this DJ (Club/Bar DJs only)
   let bookingEnabled = false;
   try {
-    if (dj.booking_settings) {
+    const isClub = (dj.type || '').toLowerCase().includes('club');
+    if (isClub && dj.booking_settings) {
       const bs = typeof dj.booking_settings === 'string' ? JSON.parse(dj.booking_settings) : dj.booking_settings;
       bookingEnabled = !!(bs && bs.booking_enabled);
     }
