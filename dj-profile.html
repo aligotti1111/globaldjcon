@@ -702,6 +702,9 @@ const GENRE_LABELS = {
   document.getElementById('contact-to-name').textContent = 'To: ' + (data.name || 'DJ');
 
   // Show booking calendar for everyone if booking is enabled
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  const isOwnProfile = currentUser && currentUser.id === data.id;
+
   if (data.booking_settings) {
     try {
       const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
@@ -712,14 +715,12 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, currentUser && currentUser.id === data.id);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
 
   // Show Message Me for everyone except own profile
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  const isOwnProfile = currentUser && currentUser.id === data.id;
   if (!isOwnProfile) {
     document.getElementById('contact-me-btn').style.display = 'inline-flex';
     // Show Book Now if DJ has booking enabled
