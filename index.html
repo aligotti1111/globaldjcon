@@ -457,6 +457,7 @@ async function loadDJs(){
     .select('*')
     .eq('role', 'dj')
     .eq('confirmed', true)
+    .neq('profile_private', true)
     .order('name');
   
   if (error) {

@@ -651,6 +651,17 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <input type="text" id="mix_url_3" placeholder="SoundCloud or Mixcloud URL">
       </div>
 
+      <!-- PROFILE VISIBILITY -->
+      <div style="margin-top:2rem;background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;">Profile Visibility</div>
+        <label style="display:flex;align-items:flex-start;gap:.75rem;cursor:pointer;">
+          <input type="checkbox" id="profile-private" style="accent-color:var(--neon);margin-top:2px;flex-shrink:0;">
+          <div>
+            <div style="font-size:.88rem;color:var(--white);font-weight:500;margin-bottom:.25rem;">Make my profile private</div>
+            <div style="font-size:.78rem;color:var(--muted);line-height:1.5;">Your profile will not appear in search results or anywhere on the site. Only people you share your direct link with can view it: <span id="private-profile-url" style="color:var(--neon);"></span></div>
+          </div>
+        </label>
+      </div>
 
       </div>
 
@@ -1405,7 +1416,10 @@ clubGenres.forEach(cb => {
     if (data.slug) {
       const vpBtn = document.getElementById('upd-view-profile-btn');
       if (vpBtn) { vpBtn.href = '/' + data.slug; vpBtn.style.display = 'inline-flex'; }
+      const urlHint = document.getElementById('private-profile-url');
+      if (urlHint) urlHint.textContent = window.location.origin + '/' + data.slug;
     }
+    if (data.profile_private) document.getElementById('profile-private').checked = true;
     // Set avatar initials fallback (only if no photo loaded yet)
     if (data.name) {
       const initials = data.name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0,2);
@@ -1600,6 +1614,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
       video_url_2: document.getElementById('video_url_2').value,
       video_url_3: document.getElementById('video_url_3').value,
       testimonials: collectTestimonials(),
+      profile_private: document.getElementById('profile-private').checked,
     };
     
     const password = document.getElementById('password').value;

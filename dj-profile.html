@@ -701,9 +701,21 @@ const GENRE_LABELS = {
   contactDjSlug = effectiveSlug;
   document.getElementById('contact-to-name').textContent = 'To: ' + (data.name || 'DJ');
 
-  // Show booking calendar for everyone if booking is enabled
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
   const isOwnProfile = currentUser && currentUser.id === data.id;
+
+  // Block private profiles from non-owners
+  if (data.profile_private && !isOwnProfile) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('profile-content').style.display = 'none';
+    const block = document.createElement('div');
+    block.style.cssText = 'text-align:center;padding:5rem 2rem;';
+    block.innerHTML = `<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;">Private Profile</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--white);margin-bottom:.75rem;">This profile is private</div>
+      <div style="font-size:.9rem;color:var(--muted);">This DJ has chosen to keep their profile private. You need a direct link from them to view it.</div>`;
+    document.querySelector('.container') ? document.querySelector('.container').appendChild(block) : document.body.appendChild(block);
+    return;
+  }
 
   const isClubDJ = (data.type || '').toLowerCase().includes('club');
 
