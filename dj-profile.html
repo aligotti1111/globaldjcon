@@ -922,13 +922,15 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
   const container = document.getElementById('p-booking-calendar');
   if (!container) return;
 
-  // Build dropdown options — current month through 12 months ahead
-  let dropdownOptions = '';
-  for (let i = 0; i < 13; i++) {
-    let m = today.getMonth() + i, y = today.getFullYear();
-    while (m > 11) { m -= 12; y++; }
-    const val = `${y}-${m}`;
-    dropdownOptions += `<option value="${val}">${PUB_CAL_MONTHS[m]} ${y}</option>`;
+  // Build month and year dropdowns
+  let monthOpts = '', yearOpts = '';
+  const monthNames = PUB_CAL_MONTHS;
+  monthNames.forEach((name, i) => {
+    monthOpts += `<option value="${i}">${name}</option>`;
+  });
+  const curY = today.getFullYear();
+  for (let y = curY; y <= curY + 3; y++) {
+    yearOpts += `<option value="${y}">${y}</option>`;
   }
 
   container.innerHTML = `
@@ -937,9 +939,13 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
-      <select id="pub-cal-select" onchange="pubCalJump(this.value)"
-        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;outline:none;">
-        ${dropdownOptions}
+      <select id="pub-cal-month-select" onchange="pubCalJumpSplit()"
+        style="flex:2;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.04em;cursor:pointer;outline:none;">
+        ${monthOpts}
+      </select>
+      <select id="pub-cal-year-select" onchange="pubCalJumpSplit()"
+        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
+        ${yearOpts}
       </select>
       <button type="button" id="pub-cal-next" onclick="pubCalNav(1)"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
@@ -962,8 +968,10 @@ function drawPubCalMonth() {
   const today = new Date();
   const y = pubCalYear, m = pubCalMonth;
 
-  const sel = document.getElementById('pub-cal-select');
-  if (sel) sel.value = `${y}-${m}`;
+  const mSel = document.getElementById('pub-cal-month-select');
+  const ySel = document.getElementById('pub-cal-year-select');
+  if (mSel) mSel.value = m;
+  if (ySel) ySel.value = y;
 
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const firstDay = new Date(y, m, 1).getDay();
@@ -1079,6 +1087,13 @@ function pubCalNav(dir) {
 function pubCalJump(val) {
   const [y, m] = val.split('-').map(Number);
   pubCalYear = y; pubCalMonth = m;
+  drawPubCalMonth();
+}
+
+function pubCalJumpSplit() {
+  const m = parseInt(document.getElementById('pub-cal-month-select').value);
+  const y = parseInt(document.getElementById('pub-cal-year-select').value);
+  pubCalMonth = m; pubCalYear = y;
   drawPubCalMonth();
 }
 
