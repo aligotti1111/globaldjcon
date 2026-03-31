@@ -1873,7 +1873,7 @@ function openDayEditor(key) {
           <div style="margin-bottom:.6rem;">
             <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Venue Address</label>
             <div style="display:flex;gap:.5rem;">
-              <input type="text" id="day-location" oninput="dayLocAutocomplete(this)" autocomplete="off" value="${d.location !== 'Private' ? (d.location||'') : ''}" placeholder="Start typing address..." autocomplete="off" oninput="dayLocAutocomplete(this)" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
+              <input type="text" id="day-location" value="${d.location !== 'Private' ? (d.location||'') : ''}" placeholder="Start typing address..." autocomplete="off" oninput="dayLocAutocomplete(this)" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
               <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;white-space:nowrap;font-size:.78rem;color:var(--muted);">
                 <input type="checkbox" id="day-private" ${d.location==='Private'?'checked':''} style="accent-color:var(--neon);" onchange="document.getElementById('day-location').disabled=this.checked;"> Private
               </label>
@@ -1892,8 +1892,6 @@ function openDayEditor(key) {
           <div style="margin-top:.6rem;">
             <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Event Info / Ticket URL <span style="font-size:.65rem;">(optional)</span></label>
             <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;margin-bottom:.4rem;">
-            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Name the URL <span style="font-size:.65rem;">(optional)</span></label>
-            <input type="text" id="day-ticket-label" value="${d.ticketLabel||''}" placeholder="e.g. More Info, Buy Tickets" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
           </div>
         </div>
       </div>
@@ -1974,38 +1972,6 @@ function toggleAllowOffers() {
   });
 }
 
-let dayLocTimer = null;
-function dayLocAutocomplete(input) {
-  const q = input.value.trim();
-  const existing = document.getElementById('day-loc-suggestions');
-  if (existing) existing.remove();
-  clearTimeout(dayLocTimer);
-  if (q.length < 3) return;
-  dayLocTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`);
-      const results = await res.json();
-      const existing2 = document.getElementById('day-loc-suggestions');
-      if (existing2) existing2.remove();
-      if (!results.length) return;
-      const list = document.createElement('div');
-      list.id = 'day-loc-suggestions';
-      list.style.cssText = 'position:absolute;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:6px;width:100%;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);';
-      results.forEach(r => {
-        const item = document.createElement('div');
-        item.style.cssText = 'padding:.5rem .75rem;font-size:.82rem;color:var(--white);cursor:pointer;border-bottom:1px solid var(--border);';
-        item.textContent = r.display_name;
-        item.onmouseover = () => item.style.background = 'rgba(255,255,255,.06)';
-        item.onmouseout = () => item.style.background = '';
-        item.onclick = () => { input.value = r.display_name; list.remove(); };
-        list.appendChild(item);
-      });
-      input.parentElement.style.position = 'relative';
-      input.parentElement.appendChild(list);
-    } catch(e) {}
-  }, 350);
-}
-
 function toggleDayOffers() {
   const checked = document.getElementById('day-allow-offers').checked;
   const rateFields = document.getElementById('day-rate-fields');
@@ -2042,7 +2008,6 @@ function saveDayEditor(key) {
       startTime: document.getElementById('day-start').value,
       endTime: document.getElementById('day-end').value,
       ticketUrl: document.getElementById('day-ticket-url').value.trim() || null,
-      ticketLabel: document.getElementById('day-ticket-label').value.trim() || null,
     };
   } else {
     // available

@@ -1106,7 +1106,7 @@ function drawPubCalMonth() {
         <div style="font-size:.95rem;font-weight:600;color:var(--white);margin-bottom:.4rem;line-height:1.2;">${dayData.eventName}</div>
         ${timeStr ? `<div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeStr}</div>` : ''}
         ${dayData.location ? `<div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;display:flex;align-items:center;gap:.3rem;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${dayData.location}</div>` : ''}
-        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:3px 8px;background:rgba(0,245,196,.06);" onmouseover="this.style.background='rgba(0,245,196,.12)'" onmouseout="this.style.background='rgba(0,245,196,.06)'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${dayData.ticketLabel || 'Get Tickets'}</a>` : ''}
+        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:3px 8px;background:rgba(0,245,196,.06);" onmouseover="this.style.background='rgba(0,245,196,.12)'" onmouseout="this.style.background='rgba(0,245,196,.06)'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${dayData.ticketLabel || 'More Info'}</a>` : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -1331,7 +1331,7 @@ function ownerOpenDayEditor(key) {
             <input type="text" id="day-event-name" value="${d.eventName||''}" placeholder="e.g. Saturday Night Live" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
           <div style="margin-bottom:.6rem;"><label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Venue Address</label>
             <div style="display:flex;gap:.5rem;">
-              <input type="text" id="day-location" oninput="dayLocAutocomplete(this)" autocomplete="off" value="${d.location!=='Private'?(d.location||''):''}" placeholder="Start typing address..." autocomplete="off" oninput="dayLocAutocomplete(this)" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
+              <input type="text" id="day-location" value="${d.location!=='Private'?(d.location||''):''}" placeholder="Start typing address..." autocomplete="off" oninput="dayLocAutocomplete(this)" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
               <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;white-space:nowrap;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="day-private" ${d.location==='Private'?'checked':''} style="accent-color:var(--neon);" onchange="document.getElementById('day-location').disabled=this.checked;"> Private</label>
             </div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
@@ -1341,8 +1341,6 @@ function ownerOpenDayEditor(key) {
           <div style="margin-top:.6rem;">
             <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Event Info / Ticket URL <span style="font-size:.65rem;">(optional)</span></label>
             <input type="text" id="day-ticket-url" value="${d.ticketUrl||''}" placeholder="https://tickets.com/event" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;margin-bottom:.4rem;">
-            <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Name the URL <span style="font-size:.65rem;">(optional)</span></label>
-            <input type="text" id="day-ticket-label" value="${d.ticketLabel||''}" placeholder="e.g. More Info, Buy Tickets" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
           </div>
         </div>
       </div>
@@ -1390,38 +1388,6 @@ function ownerOpenDayEditor(key) {
   document.body.appendChild(modal);
 }
 
-let dayLocTimer = null;
-function dayLocAutocomplete(input) {
-  const q = input.value.trim();
-  const existing = document.getElementById('day-loc-suggestions');
-  if (existing) existing.remove();
-  clearTimeout(dayLocTimer);
-  if (q.length < 3) return;
-  dayLocTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`);
-      const results = await res.json();
-      const existing2 = document.getElementById('day-loc-suggestions');
-      if (existing2) existing2.remove();
-      if (!results.length) return;
-      const list = document.createElement('div');
-      list.id = 'day-loc-suggestions';
-      list.style.cssText = 'position:absolute;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:6px;width:100%;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);';
-      results.forEach(r => {
-        const item = document.createElement('div');
-        item.style.cssText = 'padding:.5rem .75rem;font-size:.82rem;color:var(--white);cursor:pointer;border-bottom:1px solid var(--border);';
-        item.textContent = r.display_name;
-        item.onmouseover = () => item.style.background = 'rgba(255,255,255,.06)';
-        item.onmouseout = () => item.style.background = '';
-        item.onclick = () => { input.value = r.display_name; list.remove(); };
-        list.appendChild(item);
-      });
-      input.parentElement.style.position = 'relative';
-      input.parentElement.appendChild(list);
-    } catch(e) {}
-  }, 350);
-}
-
 function ownerToggleDayOffers() {
   const checked = document.getElementById('day-allow-offers').checked;
   const rateFields = document.getElementById('day-rate-fields');
@@ -1458,7 +1424,6 @@ function ownerSaveDayEditor(key) {
       startTime: document.getElementById('day-start').value,
       endTime: document.getElementById('day-end').value,
       ticketUrl: document.getElementById('day-ticket-url').value.trim() || null,
-      ticketLabel: document.getElementById('day-ticket-label').value.trim() || null,
     };
   } else {
     const offerCheckbox = document.getElementById('day-allow-offers');
