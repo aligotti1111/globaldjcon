@@ -1037,16 +1037,16 @@ function drawPubCalMonth() {
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
         const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `<div style="margin-top:3px;">
-          <div style="display:flex;align-items:center;gap:4px;">
-            <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.03em;padding:2px 5px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;display:inline-block;">Booked</div>
-            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" title="Get Tickets" style="display:inline-flex;align-items:center;color:var(--neon);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
+        badge = `<div style="margin-top:2px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:3px;">
+            <div style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;white-space:nowrap;">Booked</div>
+            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" title="Get Tickets" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
           </div>
-          ${eventName ? `<div style="font-size:.62rem;color:var(--white);margin-top:2px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:1px;">${timeStr}</div>` : ''}
+          ${eventName ? `<div style="font-size:.58rem;color:var(--white);margin-top:2px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="${eventName}">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:.44rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="margin-top:4px;display:inline-block;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.04em;padding:2px 6px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
+        badge = `<div style="margin-top:2px;display:block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Unavailable</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
@@ -1251,7 +1251,7 @@ function drawOwnerCalMonth() {
     let badge = '';
     if (!isPast) {
       if (isBooked) badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>`;
-      else if (isUnavail) badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavail</div>`;
+      else if (isUnavail) badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
       else badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);">Open</div>`;
     }
 
