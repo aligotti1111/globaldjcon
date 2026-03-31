@@ -806,6 +806,10 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
                 <div style="font-size:.88rem;color:var(--white);">I require all equipment to be provided by venue</div>
               </label>
             </div>
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
+              <button type="button" onclick="saveEquipmentSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Equipment</button>
+              <span id="equip-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
+            </div>
           </div>
 
           <!-- Rate Section -->
@@ -845,6 +849,10 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
             </div>
           </div>
 
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
+              <button type="button" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
+              <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
+            </div>
           </div><!-- end club-booking-section -->
 
           <!-- Calendar Section -->
@@ -1925,12 +1933,24 @@ function openDayEditor(key) {
 
 function toggleAllowOffers() {
   const enabled = document.getElementById('allow-offers').checked;
+  // General rate field on profile tab
   const rateInput = document.getElementById('rate');
-  rateInput.disabled = enabled;
-  rateInput.style.opacity = enabled ? '.4' : '1';
-  rateInput.style.cursor = enabled ? 'not-allowed' : '';
-  if (enabled) rateInput.title = 'Disabled — guests will make offers instead';
-  else rateInput.title = '';
+  if (rateInput) {
+    rateInput.disabled = enabled;
+    rateInput.style.opacity = enabled ? '.4' : '1';
+    rateInput.style.cursor = enabled ? 'not-allowed' : '';
+    rateInput.title = enabled ? 'Disabled — guests will make offers instead' : '';
+  }
+  // Booking rate fields
+  ['rate-no-equip-val','rate-with-system-val','rate-with-decks-val'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.disabled = enabled;
+      el.style.opacity = enabled ? '.4' : '1';
+      el.style.cursor = enabled ? 'not-allowed' : '';
+      el.title = enabled ? 'Disabled — guests will make offers instead' : '';
+    }
+  });
 }
 
 function toggleDayOffers() {
@@ -2000,6 +2020,42 @@ function saveDayEditor(key) {
   }
   document.getElementById('day-editor-modal').remove();
   renderCal();
+}
+
+async function saveEquipmentSection(btn) {
+  await savePartialBooking(btn, 'equip-save-alert', {
+    equip_full: document.getElementById('equip-full').checked,
+    equip_full_detail: document.getElementById('equip-full-detail').value.trim(),
+    equip_decks: document.getElementById('equip-decks').checked,
+    equip_decks_detail: document.getElementById('equip-decks-detail').value.trim(),
+    equip_none: document.getElementById('equip-none').checked,
+  });
+}
+
+async function saveRateSection(btn) {
+  await savePartialBooking(btn, 'rate-save-alert', {
+    rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
+    rate_with_system: document.getElementById('rate-with-system-val').value || null,
+    rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
+    allow_offers: document.getElementById('allow-offers').checked,
+  });
+}
+
+async function savePartialBooking(btn, alertId, fields) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const alertEl = document.getElementById(alertId);
+  try {
+    const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+    const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+    Object.assign(bs, fields);
+    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    if (error) throw error;
+    if (alertEl) { alertEl.style.color = 'var(--success)'; alertEl.textContent = '✓ Saved'; setTimeout(() => alertEl.textContent = '', 2500); }
+  } catch(e) {
+    if (alertEl) { alertEl.style.color = 'var(--error)'; alertEl.textContent = '✗ ' + e.message; }
+  }
+  btn.disabled = false; btn.textContent = orig;
 }
 
 // ── SAVE BOOKING SETTINGS ─────────────────────────────────
