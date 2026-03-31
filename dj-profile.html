@@ -1051,21 +1051,21 @@ function drawPubCalMonth() {
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
         badge = `<div style="margin-top:2px;min-width:0;">
           <div style="display:flex;align-items:center;justify-content:center;gap:3px;">
-            <div style="font-family:'Space Mono',monospace;font-size:clamp(.5rem,1.2vw,.6rem);letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>
             ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" title="Get Tickets" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
           </div>
           ${eventName ? `<div style="font-size:clamp(.5rem,1.1vw,.72rem);color:var(--white);margin-top:2px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;" title="${eventName}">${eventName}</div>` : ''}
           ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.42rem,.9vw,.58rem);color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="font-family:'Space Mono',monospace;font-size:clamp(.5rem,1.2vw,.6rem);letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);">Unavail</div>`;
+        badge = `<div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);">Unavail</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
           ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'`
           : `showBookingGate()`;
         badge = `<div style="text-align:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:clamp(.5rem,1.2vw,.6rem);letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;" onclick="${bookAction}">Book Now</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:-0.02em;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;" onclick="${bookAction}">Book Now</div>
         </div>`;
       }
     }
@@ -1086,7 +1086,7 @@ function drawPubCalMonth() {
       text-align:center;
       vertical-align:top;
       overflow:hidden;">
-      <div style="font-size:clamp(.8rem,1.8vw,1.1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:4px;">${d}</div>
+      <div style="font-size:.85rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:4px;">${d}</div>
       ${badge}
     </div>`;
   }
