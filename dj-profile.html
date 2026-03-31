@@ -1344,9 +1344,12 @@ async function autoSaveOwnerCalendar() {
     bs.booking_days = ownerBookingDays;
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', cu.id);
     if (error) throw error;
-    if (alertEl) { alertEl.innerHTML = '<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--success);">✓ Saved</span>'; setTimeout(()=>{ if(alertEl) alertEl.innerHTML=''; },2000); }
+    if (alertEl) {
+      alertEl.innerHTML = '<span style="font-size:.6rem;color:var(--success);">✓ Saved</span>';
+      setTimeout(function(){ if(alertEl) alertEl.innerHTML=''; }, 2000);
+    }
   } catch(e) {
-    if (alertEl) alertEl.innerHTML = `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--error);">✗ ${e.message}</span>`;
+    if (alertEl) alertEl.innerHTML = '<span style="font-size:.6rem;color:var(--error);">✗ ' + e.message + '</span>';
   }
 }
 
