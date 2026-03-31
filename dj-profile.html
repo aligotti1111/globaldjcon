@@ -176,9 +176,17 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
   .body { padding-left:.75rem; padding-right:.75rem; }
   #p-booking-calendar { overflow-x:hidden; }
   #p-booking-calendar .cal-badge { font-size:.42rem !important; padding:1px 2px !important; letter-spacing:-.02em !important; }
+  .cal-full { display:inline; }
+  .cal-short { display:none; }
+}
+@media(max-width:700px) {
+  .cal-full { display:none; }
+  .cal-short { display:inline; }
 }
 
 /* EVENT TAGS */
+.cal-full { display:inline; }
+.cal-short { display:none; }
 .tag-list { display:flex; flex-wrap:wrap; gap:.5rem; }
 .tag { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; padding:.3rem .75rem; border:1px solid var(--border); border-radius:100px; color:var(--muted); background:var(--deep); }
 .tag.neon { border-color:rgba(0,245,196,.25); color:var(--neon); background:var(--neon-dim); }
@@ -1061,7 +1069,7 @@ function drawPubCalMonth() {
           ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.42rem,.9vw,.58rem);color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);" class="cal-badge">Unavailable</div>`;
+        badge = `<div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);" class="cal-badge"><span class="cal-full">Unavailable</span><span class="cal-short">Unavail</span></div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
