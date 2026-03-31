@@ -847,18 +847,18 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
                 <div style="font-size:.85rem;color:var(--white);">Allow guests to make an offer <span style="color:var(--muted);font-size:.78rem;">(overrides rates above)</span></div>
               </label>
             </div>
-          </div>
-
             <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
               <button type="button" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
               <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
             </div>
+          </div>
+
           </div><!-- end club-booking-section -->
 
           <!-- Calendar Section -->
           <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
             <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Availability Calendar</div>
-            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Click the pencil icon on any day to mark it booked or add event details.</p>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Click the pencil icon on any day to mark it booked or add event details. <span style="color:var(--neon);">Changes auto-save.</span></p>
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
               <button type="button" onclick="calPrev()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">‹ Prev</button>
@@ -868,7 +868,6 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
             <div id="cal-months-container" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
           </div>
 
-          <button type="button" class="btn" id="save-booking-btn" onclick="saveBookingSettings()" style="width:100%;background:var(--neon);color:var(--black);border-color:var(--neon);font-weight:700;">Save Booking Settings</button>
           <div id="booking-alert" style="margin-top:.75rem;"></div>
         </div>
       </div>
@@ -1803,6 +1802,7 @@ function quickMarkBooked(key) {
     bookingDays[key] = { unavailable: true };
   }
   renderCal();
+  autoSaveCalendar();
 }
 
 function calPrev() {
@@ -2020,6 +2020,21 @@ function saveDayEditor(key) {
   }
   document.getElementById('day-editor-modal').remove();
   renderCal();
+  autoSaveCalendar();
+}
+
+async function autoSaveCalendar() {
+  const alertEl = document.getElementById('booking-alert');
+  try {
+    const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+    const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+    bs.booking_days = bookingDays;
+    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    if (error) throw error;
+    if (alertEl) { alertEl.innerHTML = '<span style="font-size:.6rem;color:var(--success);">✓ Calendar saved</span>'; setTimeout(() => alertEl.innerHTML = '', 2000); }
+  } catch(e) {
+    if (alertEl) alertEl.innerHTML = '<span style="font-size:.6rem;color:var(--error);">✗ ' + e.message + '</span>';
+  }
 }
 
 async function saveEquipmentSection(btn) {
