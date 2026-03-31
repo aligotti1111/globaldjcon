@@ -715,7 +715,7 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
@@ -908,11 +908,11 @@ const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July'
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
 let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '';
 
-function renderPublicCalendar(bookingDays, djSlug, isOwner) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
   if (isOwner) {
-    renderOwnerCalendar(bookingDays);
+    renderOwnerCalendar(bookingDays, globalAllowOffers);
     return;
   }
   const today = new Date();
@@ -1085,12 +1085,14 @@ function pubCalJump(val) {
 
 // ── OWNER EDIT CALENDAR ───────────────────────────────────
 let ownerBookingDays = {};
+let ownerGlobalAllowOffers = false;
 let ownerCalYear = new Date().getFullYear();
 let ownerCalMonth = new Date().getMonth();
 const OWNER_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function renderOwnerCalendar(bookingDays) {
+function renderOwnerCalendar(bookingDays, globalAllowOffers) {
   ownerBookingDays = bookingDays || {};
+  ownerGlobalAllowOffers = !!globalAllowOffers;
   ownerCalYear = new Date().getFullYear();
   ownerCalMonth = new Date().getMonth();
   const container = document.getElementById('p-booking-calendar');
@@ -1231,15 +1233,21 @@ function ownerOpenDayEditor(key) {
   const d = ownerBookingDays[key] || {};
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
+
+  const [y, m, day] = key.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, day);
+  const formattedDate = dateObj.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
   const modal = document.createElement('div');
   modal.id = 'day-editor-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-        <div style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);">${key}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
+      <div style="margin-bottom:1.25rem;"></div>
       <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="available" ${!d.booked&&!d.unavailable?'checked':''} style="accent-color:var(--neon);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--white);">Available</span></label>
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="unavailable" ${d.unavailable?'checked':''} style="accent-color:var(--muted);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--muted);">Unavailable</span></label>
@@ -1263,7 +1271,23 @@ function ownerOpenDayEditor(key) {
       </div>
       <div id="day-avail-fields" style="display:${(!d.booked&&!d.unavailable)?'block':'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Custom Rate for This Day (Optional)</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
+          <div style="margin-bottom:.75rem;">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+              <input type="checkbox" id="day-allow-offers"
+                ${ownerGlobalAllowOffers ? (d.allow_offers_override===false ? '' : 'checked') : (d.allow_offers_override===true ? 'checked' : '')}
+                style="accent-color:var(--neon);" onchange="ownerToggleDayOffers()">
+              <div>
+                <div style="font-size:.85rem;color:var(--white);">Allow guest to make an offer for this day</div>
+                <div style="font-size:.72rem;color:var(--muted);">${ownerGlobalAllowOffers ? 'Global setting — uncheck to set a specific rate instead' : 'Enable offer requests for this specific day'}</div>
+              </div>
+            </label>
+          </div>
+          <div id="day-rate-fields" style="display:${
+            ownerGlobalAllowOffers
+              ? (d.allow_offers_override===false ? 'block' : 'none')
+              : (d.allow_offers_override===true ? 'none' : 'block')
+          };">
           <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
             <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
             <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
@@ -1278,6 +1302,7 @@ function ownerOpenDayEditor(key) {
               <div><label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Min Hours</label><input type="number" id="day-min-hours" value="${d.minHours||''}" placeholder="e.g. 2" min="1" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
             </div>
           </div>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:.5rem;">
@@ -1286,6 +1311,12 @@ function ownerOpenDayEditor(key) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+}
+
+function ownerToggleDayOffers() {
+  const checked = document.getElementById('day-allow-offers').checked;
+  const rateFields = document.getElementById('day-rate-fields');
+  if (rateFields) rateFields.style.display = checked ? 'none' : 'block';
 }
 
 function ownerToggleDayStatus() {
@@ -1319,11 +1350,18 @@ function ownerSaveDayEditor(key) {
       endTime: document.getElementById('day-end').value,
     };
   } else {
+    const offerCheckbox = document.getElementById('day-allow-offers');
+    const dayOffersChecked = offerCheckbox ? offerCheckbox.checked : null;
+    let offersOverride = undefined;
+    if (ownerGlobalAllowOffers && dayOffersChecked === false) offersOverride = false;
+    if (!ownerGlobalAllowOffers && dayOffersChecked === true) offersOverride = true;
     const flatRate = document.getElementById('day-flat-rate').value;
     const hourlyRate = document.getElementById('day-hourly-rate').value;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
     if (flatRate || hourlyRate) {
-      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate||null, stipulation: document.getElementById('day-stipulation').value.trim(), hourlyRate: hourlyRate||null, minHours: document.getElementById('day-min-hours').value||null };
+      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate||null, stipulation: document.getElementById('day-stipulation').value.trim(), hourlyRate: hourlyRate||null, minHours: document.getElementById('day-min-hours').value||null, allow_offers_override: offersOverride };
+    } else if (offersOverride !== undefined) {
+      ownerBookingDays[key] = { allow_offers_override: offersOverride };
     } else {
       delete ownerBookingDays[key];
     }

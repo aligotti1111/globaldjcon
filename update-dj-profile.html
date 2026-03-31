@@ -1823,15 +1823,30 @@ function openDayEditor(key) {
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
 
+  // Format key as "Monday, October 1, 2026"
+  const [y, m, day] = key.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, day);
+  const formattedDate = dateObj.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  // Get default equipment
+  const equipFull = document.getElementById('equip-full').checked;
+  const equipDecks = document.getElementById('equip-decks').checked;
+  const equipNone = document.getElementById('equip-none').checked;
+  let equipLabel = '';
+  if (equipFull) equipLabel = 'Sound System &amp; Decks/Controller';
+  else if (equipDecks) equipLabel = 'Decks/Controller Only';
+  else if (equipNone) equipLabel = 'Venue Provides All Equipment';
+
   const modal = document.createElement('div');
   modal.id = 'day-editor-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-        <div style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);">${key}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
+      ${equipLabel ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.05em;color:var(--muted);margin-bottom:1.25rem;">Default equipment: ${equipLabel}</div>` : '<div style="margin-bottom:1.25rem;"></div>'}
 
       <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
