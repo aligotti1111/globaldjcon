@@ -341,7 +341,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <button type="button" class="profile-tab" onclick="switchProfileTab('photos', this)">Photos</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('video', this)">Video</button>
         <button type="button" class="profile-tab" id="tab-btn-testimonials" onclick="switchProfileTab('testimonials', this)" style="display:none;">Testimonials</button>
-        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this); checkShowBookingTab();" style="display:none;">Booking</button>
+        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this); checkShowBookingTab(); renderCal();" style="display:none;">Booking</button>
       </div>
 
       <div class="tab-pane active" id="tab-general">
@@ -1697,6 +1697,7 @@ function toggleBookingSetup() {
   track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+  if (enabled) renderCal();
 }
 
 // Equipment checkboxes are mutually exclusive — one at a time
