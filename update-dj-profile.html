@@ -341,7 +341,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <button type="button" class="profile-tab" onclick="switchProfileTab('photos', this)">Photos</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('video', this)">Video</button>
         <button type="button" class="profile-tab" id="tab-btn-testimonials" onclick="switchProfileTab('testimonials', this)" style="display:none;">Testimonials</button>
-        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this)" style="display:none;">Booking</button>
+        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this); checkShowBookingTab();" style="display:none;">Booking</button>
       </div>
 
       <div class="tab-pane active" id="tab-general">
@@ -1667,6 +1667,10 @@ function checkShowBookingTab() {
   const isMobile = document.getElementById('mobile-checkbox').checked;
   document.getElementById('tab-btn-booking').style.display = (isClub || isMobile) ? '' : 'none';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
+  // Re-apply booking setup visibility in case tab was just opened
+  toggleBookingSetup();
+  updateRateFields(null);
+  toggleAllowOffers();
 }
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
 document.getElementById('mobile-checkbox').addEventListener('change', checkShowBookingTab);
@@ -1684,10 +1688,12 @@ function toggleBookingSetup() {
 
 // Equipment checkboxes are mutually exclusive — one at a time
 function updateRateFields(selected) {
-  // Uncheck all others
-  ['equip-full','equip-decks','equip-none'].forEach(id => {
-    if (id !== selected) document.getElementById(id).checked = false;
-  });
+  // Only uncheck others if a specific selection was made
+  if (selected) {
+    ['equip-full','equip-decks','equip-none'].forEach(id => {
+      if (id !== selected) document.getElementById(id).checked = false;
+    });
+  }
 
   const full  = document.getElementById('equip-full').checked;
   const decks = document.getElementById('equip-decks').checked;
