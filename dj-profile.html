@@ -1008,7 +1008,8 @@ function drawPubCalMonth() {
     let bg = 'transparent';
     if (isBooked) bg = 'rgba(255,95,95,.06)';
     else if (isUnavail) bg = 'rgba(107,107,136,.06)';
-    else if (isToday) bg = 'rgba(0,245,196,.07)';
+    else if (isToday) bg = 'rgba(0,245,196,.1)';
+    else if (!isPast) bg = 'rgba(0,245,196,.04)';
 
     let numColor = 'var(--white)';
     if (isPast) numColor = 'var(--muted)';
@@ -1119,15 +1120,12 @@ function renderOwnerCalendar(bookingDays) {
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
     </div>
     <div id="owner-cal-grid-wrap"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-top:.75rem;">
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-      </div>
-      <button type="button" onclick="ownerSaveCalendar(this)" style="padding:.45rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Calendar</button>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
     </div>
-    <div id="owner-cal-alert" style="margin-top:.5rem;"></div>`;
+    <div id="owner-cal-alert" style="margin-top:.4rem;"></div>`;
   drawOwnerCalMonth();
 }
 
@@ -1165,7 +1163,8 @@ function drawOwnerCalMonth() {
     let bg = 'transparent';
     if (isBooked) bg = 'rgba(255,95,95,.06)';
     else if (isUnavail) bg = 'rgba(107,107,136,.06)';
-    else if (isToday) bg = 'rgba(0,245,196,.07)';
+    else if (isToday) bg = 'rgba(0,245,196,.1)';
+    else if (!isPast) bg = 'rgba(0,245,196,.04)';
 
     let numColor = 'var(--white)';
     if (isPast) numColor = 'var(--muted)';
@@ -1225,6 +1224,7 @@ function ownerQuickMark(key) {
     ownerBookingDays[key] = { unavailable: true };
   }
   drawOwnerCalMonth();
+  autoSaveOwnerCalendar();
 }
 
 function ownerOpenDayEditor(key) {
@@ -1330,6 +1330,24 @@ function ownerSaveDayEditor(key) {
   }
   document.getElementById('day-editor-modal').remove();
   drawOwnerCalMonth();
+  autoSaveOwnerCalendar();
+}
+
+async function autoSaveOwnerCalendar() {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (!cu) return;
+  const alertEl = document.getElementById('owner-cal-alert');
+  try {
+    const { data: current, error: fetchErr } = await db.from('users').select('booking_settings').eq('id', cu.id).single();
+    if (fetchErr) throw fetchErr;
+    const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+    bs.booking_days = ownerBookingDays;
+    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', cu.id);
+    if (error) throw error;
+    if (alertEl) { alertEl.innerHTML = '<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--success);">✓ Saved</span>'; setTimeout(()=>{ if(alertEl) alertEl.innerHTML=''; },2000); }
+  } catch(e) {
+    if (alertEl) alertEl.innerHTML = `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--error);">✗ ${e.message}</span>`;
+  }
 }
 
 async function ownerSaveCalendar(btn) {
