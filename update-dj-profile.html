@@ -2017,10 +2017,13 @@ async function saveBookingSettings() {
     };
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(settings) }).eq('id', currentUser.id);
     if (error) throw error;
-    alertEl.innerHTML = '<div class="alert alert-success">✓ Booking settings saved.</div>';
-    setTimeout(() => { alertEl.innerHTML = ''; }, 3000);
+    // Verify it saved by re-reading
+    const { data: check } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+    if (!check || !check.booking_settings) throw new Error('Save appeared to succeed but data not found. Ensure booking_settings column exists in Supabase: ALTER TABLE users ADD COLUMN IF NOT EXISTS booking_settings text;');
+    if (alertEl) { alertEl.innerHTML = '<div class="alert alert-success">✓ Booking settings saved.</div>'; setTimeout(() => { alertEl.innerHTML = ''; }, 3000); }
   } catch(e) {
-    alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    if (alertEl) alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+    else alert('Booking save error: ' + e.message);
   }
   btn.disabled = false; btn.textContent = 'Save Booking Settings';
 }
