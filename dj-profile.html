@@ -1224,7 +1224,7 @@ function ownerQuickMark(key) {
   } else {
     ownerBookingDays[key] = { unavailable: true };
   }
-  drawOwnerCalMonths();
+  drawOwnerCalMonth();
 }
 
 function ownerOpenDayEditor(key) {
@@ -1329,23 +1329,27 @@ function ownerSaveDayEditor(key) {
     }
   }
   document.getElementById('day-editor-modal').remove();
-  drawOwnerCalMonths();
+  drawOwnerCalMonth();
 }
 
 async function ownerSaveCalendar(btn) {
   const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  if (!cu) return;
+  if (!cu) { alert('Not logged in'); return; }
   const orig = btn.textContent;
   btn.textContent = 'Saving...'; btn.disabled = true;
   try {
-    const { data: current } = await db.from('users').select('booking_settings').eq('id', cu.id).single();
+    const { data: current, error: fetchErr } = await db.from('users').select('booking_settings').eq('id', cu.id).single();
+    if (fetchErr) throw fetchErr;
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     bs.booking_days = ownerBookingDays;
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', cu.id);
     if (error) throw error;
     const alertEl = document.getElementById('owner-cal-alert');
     if (alertEl) { alertEl.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--success);padding:.4rem 0;">✓ Calendar saved.</div>'; setTimeout(()=>alertEl.innerHTML='',3000); }
-  } catch(e) { alert('Error saving: ' + e.message); }
+  } catch(e) {
+    const alertEl = document.getElementById('owner-cal-alert');
+    if (alertEl) alertEl.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--error);padding:.4rem 0;">✗ ${e.message}</div>`;
+  }
   btn.textContent = orig; btn.disabled = false;
 }
 
