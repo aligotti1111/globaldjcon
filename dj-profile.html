@@ -1046,7 +1046,7 @@ function drawPubCalMonth() {
           ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:.44rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="margin-top:2px;display:block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Unavailable</div>`;
+        badge = `<div style="margin-top:2px;display:inline-block;font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.02em;padding:1px 4px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">Unavailable</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
