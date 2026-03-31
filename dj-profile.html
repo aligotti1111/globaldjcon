@@ -173,6 +173,9 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
   .tabs-nav { overflow-x:auto; }
   .info-grid { grid-template-columns:1fr; }
   .image-grid { grid-template-columns:repeat(2,1fr); }
+  .body { padding-left:.75rem; padding-right:.75rem; }
+  #p-booking-calendar { overflow-x:hidden; }
+  #p-booking-calendar .cal-badge { font-size:.42rem !important; padding:1px 2px !important; letter-spacing:-.02em !important; }
 }
 
 /* EVENT TAGS */
@@ -994,7 +997,7 @@ function drawPubCalMonth() {
     const monthEvents = [];
 
   let html = `<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">${PUB_CAL_MONTHS[m]} ${y}</div>`;
-  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;">`;
+  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;width:100%;box-sizing:border-box;">`;
 
   // Day name headers
   dayNames.forEach((name, i) => {
@@ -1013,7 +1016,7 @@ function drawPubCalMonth() {
       color:var(--muted);">${name}</div>`;
   });
 
-  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;">`;
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;width:100%;box-sizing:border-box;">`;
 
   // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
@@ -1051,21 +1054,21 @@ function drawPubCalMonth() {
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
         badge = `<div style="margin-top:2px;min-width:0;">
           <div style="display:flex;align-items:center;justify-content:center;gap:3px;">
-            <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;" class="cal-badge">Booked</div>
             ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" title="Get Tickets" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
           </div>
           ${eventName ? `<div style="font-size:clamp(.5rem,1.1vw,.72rem);color:var(--white);margin-top:2px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;" title="${eventName}">${eventName}</div>` : ''}
           ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.42rem,.9vw,.58rem);color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
         </div>`;
       } else if (isUnavail) {
-        badge = `<div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);">Unavail</div>`;
+        badge = `<div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:0;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);" class="cal-badge">Unavailable</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
           ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'`
           : `showBookingGate()`;
         badge = `<div style="text-align:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:-0.02em;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;" onclick="${bookAction}">Book Now</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:-0.02em;padding:2px 4px;border-radius:3px;display:inline-block;white-space:nowrap;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;" class="cal-badge" onclick="${bookAction}">Book Now</div>
         </div>`;
       }
     }
@@ -1225,11 +1228,11 @@ function drawOwnerCalMonth() {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   let html = `<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">${OWNER_CAL_MONTHS[m]} ${y}</div>`;
-  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;">`;
+  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;width:100%;box-sizing:border-box;">`;
   dayNames.forEach((name, i) => {
     html += `<div style="background:rgba(255,255,255,.04);border-right:1px solid var(--border);border-bottom:1px solid var(--border);${i===0?'border-radius:8px 0 0 0;':''}${i===6?'border-radius:0 8px 0 0;':''}padding:.6rem 0;text-align:center;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">${name}</div>`;
   });
-  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;">`;
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;width:100%;box-sizing:border-box;">`;
 
   for (let i = 0; i < firstDay; i++) {
     html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:72px;background:rgba(255,255,255,.01);"></div>`;
