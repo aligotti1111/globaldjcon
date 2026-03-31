@@ -1097,7 +1097,7 @@ function drawPubCalMonth() {
   if (monthEvents.length) {
     html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
-      <div style="display:flex;flex-direction:column;gap:.5rem;">`;
+      <div style="display:flex;flex-direction:column;gap:.5rem;max-width:600px;">`;
     monthEvents.forEach(({ key, d, dayData }) => {
       const dateLabel = new Date(pubCalYear, pubCalMonth, d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
       const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? ' – ' + formatTime12(dayData.endTime) : '') : '';
