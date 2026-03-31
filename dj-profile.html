@@ -712,7 +712,7 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, currentUser && currentUser.id === data.id);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
@@ -907,9 +907,13 @@ const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July'
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
 let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '';
 
-function renderPublicCalendar(bookingDays, djSlug) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
+  if (isOwner) {
+    renderOwnerCalendar(bookingDays);
+    return;
+  }
   const today = new Date();
   pubCalMonth = today.getMonth();
   pubCalYear = today.getFullYear();
@@ -1028,7 +1032,7 @@ function drawPubCalMonth() {
             onmouseover="this.style.background='rgba(0,245,196,.2)'"
             onmouseout="this.style.background='rgba(0,245,196,.1)'">
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Book
+            Book Now
           </button>
         </div>`;
       }
@@ -1076,6 +1080,220 @@ function pubCalJump(val) {
   drawPubCalMonth();
 }
 
+
+// ── OWNER EDIT CALENDAR ───────────────────────────────────
+let ownerBookingDays = {};
+let ownerCalYear = new Date().getFullYear();
+let ownerCalMonth = new Date().getMonth();
+const OWNER_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function renderOwnerCalendar(bookingDays) {
+  ownerBookingDays = bookingDays || {};
+  ownerCalYear = new Date().getFullYear();
+  ownerCalMonth = new Date().getMonth();
+  const container = document.getElementById('p-booking-calendar');
+  if (!container) return;
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <button type="button" onclick="ownerCalPrev()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;">‹ Prev</button>
+      <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Editing Availability</div>
+      <button type="button" onclick="ownerCalNext()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;">Next ›</button>
+    </div>
+    <div id="owner-cal-months-container"></div>
+    <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <div style="display:flex;gap:.75rem;flex:1;">
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Available</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+      </div>
+      <button type="button" onclick="ownerSaveCalendar(this)" style="padding:.5rem 1.25rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Calendar</button>
+    </div>
+    <div id="owner-cal-alert" style="margin-top:.5rem;"></div>`;
+  drawOwnerCalMonths();
+}
+
+function drawOwnerCalMonths() {
+  const container = document.getElementById('owner-cal-months-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const today = new Date();
+  for (let offset = 0; offset < 3; offset++) {
+    let y = ownerCalYear, m = ownerCalMonth + offset;
+    while (m > 11) { m -= 12; y++; }
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:1rem;';
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin-bottom:.6rem;text-align:center;';
+    hdr.textContent = OWNER_CAL_MONTHS[m] + ' ' + y;
+    wrap.appendChild(hdr);
+    const lblRow = document.createElement('div');
+    lblRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px;';
+    ['S','M','T','W','T','F','S'].forEach(l => {
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
+      lbl.textContent = l;
+      lblRow.appendChild(lbl);
+    });
+    wrap.appendChild(lblRow);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:3px;';
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayData = ownerBookingDays[key] || {};
+      const isPast = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isBooked = dayData.booked;
+      const isUnavail = dayData.unavailable;
+      const cell = document.createElement('div');
+      cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${isBooked?'rgba(255,95,95,.4)':isUnavail?'rgba(107,107,136,.4)':'rgba(0,245,196,.2)'};background:${isBooked?'rgba(255,95,95,.08)':isUnavail?'rgba(107,107,136,.08)':isPast?'rgba(255,255,255,.02)':'rgba(0,245,196,.04)'};min-height:38px;`;
+      cell.innerHTML = `<div style="font-size:.7rem;color:${isPast?'var(--muted)':isBooked?'#ff5f5f':isUnavail?'var(--muted)':'var(--white)'};">${d}</div>
+        <div style="font-size:.45rem;font-family:'Space Mono',monospace;color:${isBooked?'#ff5f5f':isUnavail?'var(--muted)':'var(--neon)'};">${isBooked?'BOOK':isUnavail?'N/A':'AVAIL'}</div>
+        ${!isPast?`
+          <button type="button" onclick="ownerQuickMark('${key}')" title="Mark unavailable" style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail?'rgba(107,107,136,.6)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">✕</button>
+          <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
+        `:''}`;
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
+    container.appendChild(wrap);
+  }
+}
+
+function ownerCalPrev() { ownerCalMonth -= 3; while(ownerCalMonth<0){ownerCalMonth+=12;ownerCalYear--;} drawOwnerCalMonths(); }
+function ownerCalNext() { ownerCalMonth += 3; while(ownerCalMonth>11){ownerCalMonth-=12;ownerCalYear++;} drawOwnerCalMonths(); }
+
+function ownerQuickMark(key) {
+  if (ownerBookingDays[key] && ownerBookingDays[key].unavailable) {
+    delete ownerBookingDays[key];
+  } else {
+    ownerBookingDays[key] = { unavailable: true };
+  }
+  drawOwnerCalMonths();
+}
+
+function ownerOpenDayEditor(key) {
+  const d = ownerBookingDays[key] || {};
+  const existing = document.getElementById('day-editor-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'day-editor-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);">${key}</div>
+        <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+      <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="available" ${!d.booked&&!d.unavailable?'checked':''} style="accent-color:var(--neon);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--white);">Available</span></label>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="unavailable" ${d.unavailable?'checked':''} style="accent-color:var(--muted);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--muted);">Unavailable</span></label>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="booked" ${d.booked?'checked':''} style="accent-color:var(--error);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:#ff5f5f;">Booked (has event)</span></label>
+      </div>
+      <div id="day-booked-fields" style="display:${d.booked?'block':'none'};">
+        <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Event Details (Optional)</div>
+          <div style="margin-bottom:.6rem;"><label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Event Name</label>
+            <input type="text" id="day-event-name" value="${d.eventName||''}" placeholder="e.g. Saturday Night Live" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+          <div style="margin-bottom:.6rem;"><label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Location</label>
+            <div style="display:flex;gap:.5rem;">
+              <input type="text" id="day-location" value="${d.location!=='Private'?(d.location||''):''}" placeholder="Venue or address" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;" ${d.location==='Private'?'disabled':''}>
+              <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;white-space:nowrap;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="day-private" ${d.location==='Private'?'checked':''} style="accent-color:var(--neon);" onchange="document.getElementById('day-location').disabled=this.checked;"> Private</label>
+            </div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+            <div><label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">Start Time</label><input type="time" id="day-start" value="${d.startTime||''}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+            <div><label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.25rem;">End Time <span style="font-size:.65rem;">(optional)</span></label><input type="time" id="day-end" value="${d.endTime||''}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+          </div>
+        </div>
+      </div>
+      <div id="day-avail-fields" style="display:${(!d.booked&&!d.unavailable)?'block':'none'};">
+        <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Custom Rate for This Day (Optional)</div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
+            <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
+            <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+          </div>
+          <div id="day-flat-fields" style="display:${(!d.rateType||d.rateType==='flat')?'block':'none'};">
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;"><span style="color:var(--muted);">$</span><input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="Rate" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+            <textarea id="day-stipulation" placeholder="Stipulations or notes (optional)" rows="2" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;resize:vertical;">${d.stipulation||''}</textarea>
+          </div>
+          <div id="day-hourly-fields" style="display:${d.rateType==='hourly'?'block':'none'};">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+              <div><label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Hourly Rate ($)</label><input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+              <div><label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Min Hours</label><input type="number" id="day-min-hours" value="${d.minHours||''}" placeholder="e.g. 2" min="1" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button type="button" onclick="ownerSaveDayEditor('${key}')" style="flex:1;padding:.75rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Day</button>
+        <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="padding:.75rem 1rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function ownerToggleDayStatus() {
+  const val = document.querySelector('input[name="day-status"]:checked').value;
+  document.getElementById('day-booked-fields').style.display = val === 'booked' ? 'block' : 'none';
+  document.getElementById('day-avail-fields').style.display = val === 'available' ? 'block' : 'none';
+}
+
+function ownerSetRateType(type) {
+  document.getElementById('day-flat-fields').style.display = type === 'flat' ? 'block' : 'none';
+  document.getElementById('day-hourly-fields').style.display = type === 'hourly' ? 'block' : 'none';
+  document.getElementById('rate-type-flat').style.background = type === 'flat' ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('rate-type-flat').style.color = type === 'flat' ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('rate-type-flat').style.borderColor = type === 'flat' ? 'var(--neon)' : 'var(--border)';
+  document.getElementById('rate-type-hourly').style.background = type === 'hourly' ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('rate-type-hourly').style.color = type === 'hourly' ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('rate-type-hourly').style.borderColor = type === 'hourly' ? 'var(--neon)' : 'var(--border)';
+}
+
+function ownerSaveDayEditor(key) {
+  const statusVal = document.querySelector('input[name="day-status"]:checked').value;
+  if (statusVal === 'unavailable') {
+    ownerBookingDays[key] = { unavailable: true };
+  } else if (statusVal === 'booked') {
+    const isPrivate = document.getElementById('day-private').checked;
+    ownerBookingDays[key] = {
+      booked: true,
+      eventName: document.getElementById('day-event-name').value.trim(),
+      location: isPrivate ? 'Private' : document.getElementById('day-location').value.trim(),
+      startTime: document.getElementById('day-start').value,
+      endTime: document.getElementById('day-end').value,
+    };
+  } else {
+    const flatRate = document.getElementById('day-flat-rate').value;
+    const hourlyRate = document.getElementById('day-hourly-rate').value;
+    const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
+    if (flatRate || hourlyRate) {
+      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate||null, stipulation: document.getElementById('day-stipulation').value.trim(), hourlyRate: hourlyRate||null, minHours: document.getElementById('day-min-hours').value||null };
+    } else {
+      delete ownerBookingDays[key];
+    }
+  }
+  document.getElementById('day-editor-modal').remove();
+  drawOwnerCalMonths();
+}
+
+async function ownerSaveCalendar(btn) {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  if (!cu) return;
+  const orig = btn.textContent;
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  try {
+    const { data: current } = await db.from('users').select('booking_settings').eq('id', cu.id).single();
+    const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+    bs.booking_days = ownerBookingDays;
+    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', cu.id);
+    if (error) throw error;
+    const alertEl = document.getElementById('owner-cal-alert');
+    if (alertEl) { alertEl.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--success);padding:.4rem 0;">✓ Calendar saved.</div>'; setTimeout(()=>alertEl.innerHTML='',3000); }
+  } catch(e) { alert('Error saving: ' + e.message); }
+  btn.textContent = orig; btn.disabled = false;
+}
 
 // ── BOOKING GATE MODAL ────────────────────────────────────
 function showBookingGate() {
