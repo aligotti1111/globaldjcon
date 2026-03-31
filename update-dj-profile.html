@@ -839,7 +839,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 
             <div style="margin-top:.75rem;">
               <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                <input type="checkbox" id="allow-offers" style="accent-color:var(--neon);">
+                <input type="checkbox" id="allow-offers" style="accent-color:var(--neon);" onchange="toggleAllowOffers()">
                 <div style="font-size:.85rem;color:var(--white);">Allow guests to make an offer <span style="color:var(--muted);font-size:.78rem;">(overrides rates above)</span></div>
               </label>
             </div>
@@ -1805,6 +1805,7 @@ function calNext() {
 // ── DAY EDITOR MODAL ──────────────────────────────────────
 function openDayEditor(key) {
   const d = bookingDays[key] || {};
+  const globalAllowOffers = document.getElementById('allow-offers').checked;
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
 
@@ -1864,7 +1865,23 @@ function openDayEditor(key) {
 
       <div id="day-avail-fields" style="display:${(!d.booked && !d.unavailable) ? 'block' : 'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Custom Rate for This Day (Optional)</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
+          <div style="margin-bottom:.75rem;">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+              <input type="checkbox" id="day-allow-offers"
+                ${globalAllowOffers ? (d.allow_offers_override===false ? '' : 'checked') : (d.allow_offers_override===true ? 'checked' : '')}
+                style="accent-color:var(--neon);" onchange="toggleDayOffers()">
+              <div>
+                <div style="font-size:.85rem;color:var(--white);">Allow guest to make an offer for this day</div>
+                <div style="font-size:.72rem;color:var(--muted);">${globalAllowOffers ? 'Global setting — uncheck to set a specific rate instead' : 'Enable offer requests for this specific day'}</div>
+              </div>
+            </label>
+          </div>
+          <div id="day-rate-fields" style="display:${
+            globalAllowOffers
+              ? (d.allow_offers_override===false ? 'block' : 'none')
+              : (d.allow_offers_override===true ? 'none' : 'block')
+          };">
           <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
             <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
             <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
@@ -1888,6 +1905,7 @@ function openDayEditor(key) {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
@@ -1897,6 +1915,22 @@ function openDayEditor(key) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+}
+
+function toggleAllowOffers() {
+  const enabled = document.getElementById('allow-offers').checked;
+  const rateInput = document.getElementById('rate');
+  rateInput.disabled = enabled;
+  rateInput.style.opacity = enabled ? '.4' : '1';
+  rateInput.style.cursor = enabled ? 'not-allowed' : '';
+  if (enabled) rateInput.title = 'Disabled — guests will make offers instead';
+  else rateInput.title = '';
+}
+
+function toggleDayOffers() {
+  const checked = document.getElementById('day-allow-offers').checked;
+  const rateFields = document.getElementById('day-rate-fields');
+  if (rateFields) rateFields.style.display = checked ? 'none' : 'block';
 }
 
 function toggleDayBooked() {
@@ -1931,6 +1965,12 @@ function saveDayEditor(key) {
     };
   } else {
     // available
+    const offerCheckbox = document.getElementById('day-allow-offers');
+    const dayOffersChecked = offerCheckbox ? offerCheckbox.checked : null;
+    const globalOn = document.getElementById('allow-offers').checked;
+    let offersOverride = undefined;
+    if (globalOn && dayOffersChecked === false) offersOverride = false;  // global on, day opts out
+    if (!globalOn && dayOffersChecked === true) offersOverride = true;   // global off, day opts in
     const flatRate = document.getElementById('day-flat-rate').value;
     const hourlyRate = document.getElementById('day-hourly-rate').value;
     const minHours = document.getElementById('day-min-hours').value;
@@ -1944,9 +1984,12 @@ function saveDayEditor(key) {
         stipulation: document.getElementById('day-stipulation').value.trim(),
         hourlyRate: hourlyRate || null,
         minHours: minHours || null,
+        allow_offers_override: offersOverride,
       };
+    } else if (offersOverride !== undefined) {
+      bookingDays[key] = { allow_offers_override: offersOverride };
     } else {
-      delete bookingDays[key]; // back to default available
+      delete bookingDays[key];
     }
   }
   document.getElementById('day-editor-modal').remove();
@@ -2009,7 +2052,7 @@ async function loadBookingSettings() {
     if (s.rate_no_equip) document.getElementById('rate-no-equip-val').value = s.rate_no_equip;
     if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
-    if (s.allow_offers) document.getElementById('allow-offers').checked = true;
+    if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();
     renderCal();
