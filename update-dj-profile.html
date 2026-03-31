@@ -1667,10 +1667,10 @@ function checkShowBookingTab() {
   const isMobile = document.getElementById('mobile-checkbox').checked;
   document.getElementById('tab-btn-booking').style.display = (isClub || isMobile) ? '' : 'none';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
-  // Re-apply booking setup visibility in case tab was just opened
   toggleBookingSetup();
   updateRateFields(null);
-  toggleAllowOffers();
+  // Re-apply allow offers state after a short delay to ensure settings are loaded
+  setTimeout(toggleAllowOffers, 50);
 }
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
 document.getElementById('mobile-checkbox').addEventListener('change', checkShowBookingTab);
