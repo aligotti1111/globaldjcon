@@ -597,7 +597,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 
       <!-- RATE -->
       <div class="form-group">
-        <label>Rate</label>
+        <label>Rate <span id="rate-currency-hint" style="font-size:.75rem;color:var(--muted);font-weight:400;"></span></label>
         <input type="text" id="rate" placeholder="e.g. Starting at $500, $150/hr">
       </div>
 
@@ -816,11 +816,17 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
           <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
             <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Rates</div>
             <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Set your rates based on your equipment selections above.</p>
+            <div style="margin-bottom:1rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Currency</label>
+              <select id="rate-currency" onchange="updateCurrencySymbols()" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .75rem;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.85rem;cursor:pointer;outline:none;">
+                <option value="USD" data-symbol="$">USD ($)</option><option value="EUR" data-symbol="€">EUR (€)</option><option value="GBP" data-symbol="£">GBP (£)</option><option value="CAD" data-symbol="CA$">CAD (CA$)</option><option value="AUD" data-symbol="A$">AUD (A$)</option><option value="JPY" data-symbol="¥">JPY (¥)</option><option value="MXN" data-symbol="MX$">MXN (MX$)</option><option value="BRL" data-symbol="R$">BRL (R$)</option><option value="CHF" data-symbol="Fr">CHF (Fr)</option><option value="SEK" data-symbol="kr">SEK (kr)</option><option value="NOK" data-symbol="kr">NOK (kr)</option><option value="DKK" data-symbol="kr">DKK (kr)</option><option value="NZD" data-symbol="NZ$">NZD (NZ$)</option><option value="SGD" data-symbol="S$">SGD (S$)</option><option value="ZAR" data-symbol="R">ZAR (R)</option><option value="AED" data-symbol="د.إ">AED (د.إ)</option><option value="INR" data-symbol="₹">INR (₹)</option>
+              </select>
+            </div>
 
             <div id="rate-no-equip" style="display:none;margin-bottom:.75rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate (No Equipment Provided)</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
-                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
               </div>
             </div>
@@ -828,7 +834,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
             <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
-                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
               </div>
             </div>
@@ -836,7 +842,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
             <div id="rate-with-decks" style="display:none;margin-bottom:.75rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Decks/Controller Only</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
-                <span style="color:var(--muted);font-size:.9rem;">$</span>
+                <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
               </div>
             </div>
@@ -2057,6 +2063,16 @@ async function autoSaveCalendar() {
   }
 }
 
+function updateCurrencySymbols() {
+  const sel = document.getElementById('rate-currency');
+  const opt = sel.options[sel.selectedIndex];
+  const symbol = opt ? opt.getAttribute('data-symbol') : '$';
+  const code = sel.value;
+  document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = symbol);
+  const hint = document.getElementById('rate-currency-hint');
+  if (hint) hint.textContent = `(${code})`;
+}
+
 async function saveEquipmentSection(btn) {
   await savePartialBooking(btn, 'equip-save-alert', {
     equip_full: document.getElementById('equip-full').checked,
@@ -2102,6 +2118,7 @@ async function saveBookingSettings() {
   try {
     const settings = {
       booking_enabled: document.getElementById('booking-enabled').checked,
+      currency: document.getElementById('rate-currency').value,
       equip_full: document.getElementById('equip-full').checked,
       equip_full_detail: document.getElementById('equip-full-detail').value.trim(),
       equip_decks: document.getElementById('equip-decks').checked,
@@ -2154,6 +2171,7 @@ async function loadBookingSettings() {
     if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
     if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
+    if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();
     renderCal();
