@@ -367,7 +367,7 @@ async function sendMsg() {
   const alertEl = document.getElementById('msg-alert');
   if (!body) { alertEl.innerHTML = '<div class="alert alert-error">Enter a message.</div>'; return; }
   try {
-    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, subject: 'Re: Your Booking Request', message: body, read: false });
+    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, from_name: currentUser.name, subject: 'Re: Your Booking Request', message: body, read: false });
     if (error) throw error;
     alertEl.innerHTML = '<div class="alert alert-success">✓ Message sent!</div>';
     setTimeout(() => closeMsg(), 1500);
