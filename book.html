@@ -616,30 +616,40 @@ async function submitBooking() {
     });
     if (error) throw error;
 
-    // Send email to DJ
-    if (djData.email) {
-      await fetch('/.netlify/functions/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'booking_request',
-          djName: djData.name,
-          djEmail: djData.email,
-          requesterName: currentUser.name,
-          eventDate: d.event_date,
-          venueName: d.venue_name,
-          venueAddress: d.venue_address,
-          venueType: d.venue_type,
-          setType: d.set_type,
-          startTime: d.start_time,
-          endTime: d.end_time,
-          equipment: d.equipment,
-          notes: d.notes,
-          offerAmount: d.offer_amount,
-          quotedRate: displayRate,
-          currency,
-        })
-      });
+    // Send email to DJ — fetch fresh email in case it wasn't in initial load
+    try {
+      const { data: freshDj } = await db.from('users').select('email,name').eq('id', djData.id).single();
+      const djEmail = freshDj?.email || djData.email;
+      if (djEmail) {
+        const emailRes = await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_request',
+            djName: djData.name,
+            djEmail,
+            requesterName: currentUser.name,
+            eventDate: d.event_date,
+            venueName: d.venue_name,
+            venueAddress: d.venue_address,
+            venueType: d.venue_type,
+            setType: d.set_type,
+            startTime: d.start_time,
+            endTime: d.end_time,
+            equipment: d.equipment,
+            notes: d.notes,
+            offerAmount: d.offer_amount,
+            quotedRate: displayRate,
+            currency,
+          })
+        });
+        const emailResult = await emailRes.json();
+        if (!emailRes.ok) console.warn('Email send failed:', emailResult);
+      } else {
+        console.warn('DJ has no email on file — booking request email not sent');
+      }
+    } catch(emailErr) {
+      console.warn('Email send error (non-blocking):', emailErr);
     }
 
     // Delete draft if existed
@@ -647,6 +657,20 @@ async function submitBooking() {
 
     alertEl.innerHTML = '<div class="alert alert-success">✓ Booking request sent! The DJ will be in touch.</div>';
     btn.textContent = 'Request Sent';
+
+    // Hide form, show centered success
+    document.getElementById('page-content').style.display = 'none';
+    const success = document.createElement('div');
+    success.style.cssText = 'text-align:center;padding:5rem 2rem;';
+    success.innerHTML = `
+      <div style="font-size:3rem;margin-bottom:1rem;">🎧</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">Request Sent!</div>
+      <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${djData.name}</strong>. They will be in touch shortly.</div>
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary">Back to Directory</a>
+        <a href="/inbox.html" class="btn btn-outline">Go to Inbox</a>
+      </div>`;
+    document.querySelector('.page').appendChild(success);
 
   } catch(e) {
     alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
