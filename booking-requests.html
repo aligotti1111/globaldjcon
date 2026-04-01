@@ -269,6 +269,24 @@ async function updateStatus(bookingId, status) {
     const b = allBookings.find(x => x.id === bookingId);
     if (b) b.status = status;
 
+    // If approved, mark the date as booked on the DJ's calendar
+    if (status === 'approved' && b && b.event_date) {
+      try {
+        const { data: djRow } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+        const bs = djRow && djRow.booking_settings ? (typeof djRow.booking_settings === 'string' ? JSON.parse(djRow.booking_settings) : djRow.booking_settings) : {};
+        if (!bs.booking_days) bs.booking_days = {};
+        bs.booking_days[b.event_date] = {
+          booked: true,
+          eventName: b.venue_name || '',
+          location: b.venue_address || '',
+          startTime: b.start_time || '',
+          endTime: b.end_time || '',
+          bookingId: b.id,
+        };
+        await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+      } catch(calErr) { console.error('Calendar update failed:', calErr); }
+    }
+
     // Send email notification
     if (b) {
       const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
