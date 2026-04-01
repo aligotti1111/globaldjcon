@@ -1708,6 +1708,15 @@ function toggleBookingSetup() {
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
   if (enabled) renderCal();
+  // Auto-save the enabled state immediately
+  (async () => {
+    try {
+      const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+      const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+      bs.booking_enabled = enabled;
+      await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    } catch(e) { console.error('Failed to save booking enabled state:', e); }
+  })();
 }
 
 // Equipment checkboxes are mutually exclusive — one at a time
