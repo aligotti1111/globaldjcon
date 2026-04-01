@@ -668,7 +668,7 @@ async function sendMsg(btn) {
   if (!subject || !body) { alertEl.innerHTML = '<div class="alert alert-error">Please fill in subject and message.</div>'; return; }
   const orig = btn.textContent; btn.textContent = 'Sending...'; btn.disabled = true;
   try {
-    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: djData.id, subject, body, read: false });
+    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: djData.id, subject, message: body, read: false });
     if (error) throw error;
     alertEl.innerHTML = '<div class="alert alert-success">✓ Message sent!</div>';
     setTimeout(() => { closeMsgModal(); alertEl.innerHTML = ''; document.getElementById('msg-subject').value = ''; document.getElementById('msg-body').value = ''; }, 1500);
