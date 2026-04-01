@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book a DJ - Global DJ Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --black:#050507; --deep:#0a0a10; --card:#13131e; --border:#1e1e30;
+  --neon:#00f5c4; --neon-dim:rgba(0,245,196,0.12); --pink:#ff2d78;
+  --white:#f0f0f8; --muted:#6b6b88; --success:#3ddc84; --error:#ff5f5f; --amber:#ffb347;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");}
+header{position:relative;z-index:10;border-bottom:1px solid var(--border);background:rgba(5,5,7,.85);backdrop-filter:blur(12px);}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:1rem 4rem;}
+.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.1em;background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;}
+.nav-btns{display:flex;gap:.6rem;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:.45rem;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:.6rem 1rem;border-radius:6px;border:1px solid;cursor:pointer;text-decoration:none;transition:all .2s;white-space:nowrap;}
+.btn svg{width:14px;height:14px;flex-shrink:0;}
+.btn-outline{background:transparent;border-color:var(--border);color:var(--white);}
+.btn-outline:hover{border-color:var(--neon);color:var(--neon);}
+.btn-primary{background:var(--neon);border-color:var(--neon);color:var(--black);font-weight:700;}
+.btn-primary:hover{opacity:.85;}
+.inbox-nav-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);color:var(--muted);cursor:pointer;background:transparent;transition:all .2s;text-decoration:none;}
+.inbox-nav-btn:hover{border-color:var(--neon);color:var(--neon);}
+.inbox-badge{position:absolute;top:-6px;right:-6px;background:var(--neon);color:var(--black);font-family:'Space Mono',monospace;font-size:.55rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+.page{position:relative;z-index:2;max-width:640px;margin:0 auto;padding:2.5rem 1.5rem 5rem;}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.25rem;}
+.page-sub{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2rem;}
+.section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;}
+.section-label{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;}
+.form-row{margin-bottom:1rem;}
+.form-row label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;}
+.form-row input,.form-row select,.form-row textarea{width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--neon);}
+.form-row textarea{resize:vertical;min-height:90px;}
+.form-row select{cursor:pointer;}
+.form-row-half{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.radio-group{display:flex;flex-direction:column;gap:.5rem;}
+.radio-opt{display:flex;align-items:center;gap:.65rem;cursor:pointer;padding:.5rem .75rem;border-radius:6px;border:1px solid var(--border);transition:all .2s;}
+.radio-opt:hover{border-color:var(--muted);}
+.radio-opt.selected{border-color:var(--neon);background:var(--neon-dim);}
+.radio-opt input{accent-color:var(--neon);flex-shrink:0;}
+.radio-opt span{font-size:.85rem;color:var(--white);}
+.warn-box{background:rgba(255,95,95,.08);border:1px solid rgba(255,95,95,.3);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.82rem;color:#ff5f5f;line-height:1.5;}
+.rate-display{background:var(--deep);border:1px solid rgba(0,245,196,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;text-align:center;}
+.rate-display .rate-label{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;}
+.rate-display .rate-value{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--neon);}
+.offer-row{display:flex;align-items:center;gap:.5rem;}
+.offer-row span{color:var(--muted);font-size:1rem;}
+.draft-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:.6rem 1.1rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.draft-btn:hover{border-color:var(--neon);color:var(--neon);}
+.submit-btn{background:var(--neon);border:none;color:var(--black);padding:.8rem 2rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:opacity .2s;width:100%;}
+.submit-btn:hover{opacity:.85;}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed;}
+.alert{padding:.65rem 1rem;border-radius:6px;font-size:.82rem;margin-bottom:1rem;}
+.alert-success{background:rgba(61,220,132,.1);border:1px solid rgba(61,220,132,.3);color:var(--success);}
+.alert-error{background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);color:#ff5f5f;}
+.dj-card{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+.dj-avatar{width:52px;height:52px;border-radius:50%;background:var(--card);border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--neon);overflow:hidden;}
+.dj-avatar img{width:100%;height:100%;object-fit:cover;}
+.dj-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;}
+.dj-type{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+.autocomplete-list{position:absolute;z-index:999;background:var(--card);border:1px solid var(--border);border-radius:6px;width:100%;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);}
+.autocomplete-item{padding:.5rem .85rem;font-size:.82rem;color:var(--white);cursor:pointer;border-bottom:1px solid var(--border);}
+.autocomplete-item:hover{background:rgba(255,255,255,.05);}
+.autocomplete-item:last-child{border-bottom:none;}
+.msg-modal-backdrop{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+.msg-modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:480px;}
+.msg-modal h3{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;}
+@media(max-width:600px){.header-inner{padding:1rem 1.2rem;}.page{padding:1.5rem 1rem 4rem;}.form-row-half{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="/" class="nav-logo">Global DJ <span style="color:var(--neon)">Connect</span></a>
+    <div class="nav-btns">
+      <a href="/inbox.html" class="inbox-nav-btn" id="nav-inbox-btn" style="display:none;" title="Inbox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span class="inbox-badge" id="nav-unread-count" style="display:none;"></span>
+      </a>
+      <a href="/booking-requests.html" class="inbox-nav-btn" id="nav-booking-requests-btn" style="display:none;" title="Booking Requests">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="inbox-badge" id="nav-booking-count" style="display:none;"></span>
+      </a>
+      <a href="/account-settings.html" class="inbox-nav-btn" id="nav-settings-btn" style="display:none;" title="Account Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </a>
+      <button id="nav-logout" class="btn btn-outline" style="display:none;" onclick="navLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Log Out
+      </button>
+      <a href="/login.html" class="btn btn-outline" id="nav-signin" style="display:none;">Sign In</a>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+  <div id="page-loading" style="text-align:center;padding:4rem 0;">
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--muted);">Loading...</div>
+  </div>
+  <div id="page-content" style="display:none;">
+    <!-- DJ card -->
+    <div class="dj-card">
+      <div class="dj-avatar" id="dj-avatar-el"></div>
+      <div>
+        <div class="dj-name" id="dj-name-el">—</div>
+        <div class="dj-type" id="dj-type-el">Club / Bar DJ</div>
+      </div>
+    </div>
+
+    <div class="page-title">Book This DJ</div>
+    <div class="page-sub" id="booking-date-sub">Select a date to get started</div>
+
+    <div id="alert-area"></div>
+    <div id="warnings-area"></div>
+
+    <!-- EVENT TYPE -->
+    <div class="section">
+      <div class="section-label">Event Type</div>
+      <div class="radio-group" id="venue-type-group">
+        <label class="radio-opt" onclick="selectRadio(this,'venue-type','bar')">
+          <input type="radio" name="venue-type" value="bar"> <span>Bar</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'venue-type','club')">
+          <input type="radio" name="venue-type" value="club"> <span>Club</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- CLUB SET TYPE (only shown for club) -->
+    <div class="section" id="set-type-section" style="display:none;">
+      <div class="section-label">Set Type</div>
+      <div class="radio-group" id="set-type-group">
+        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening')">
+          <input type="radio" name="set-type" value="opening"> <span>Opening Set</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'set-type','headliner')">
+          <input type="radio" name="set-type" value="headliner"> <span>Headliner</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'set-type','closing')">
+          <input type="radio" name="set-type" value="closing"> <span>Closing Set</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening_close')">
+          <input type="radio" name="set-type" value="opening_close"> <span>Opening – Close</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening_and_closing')">
+          <input type="radio" name="set-type" value="opening_and_closing"> <span>Opening Set &amp; Closing Set</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- VENUE & DATE -->
+    <div class="section">
+      <div class="section-label">Venue Details</div>
+      <div class="form-row">
+        <label>Venue Name</label>
+        <input type="text" id="venue-name" placeholder="e.g. Club XO">
+      </div>
+      <div class="form-row" style="position:relative;">
+        <label>Venue Address</label>
+        <input type="text" id="venue-address" placeholder="Start typing address..." autocomplete="off" oninput="addressAutocomplete(this)">
+        <div id="address-suggestions" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;"></div>
+      </div>
+      <div class="form-row-half">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Date</label>
+          <input type="date" id="event-date">
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Country</label>
+          <select id="event-country">
+            <option value="US">United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="CA">Canada</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="ES">Spain</option>
+            <option value="IT">Italy</option>
+            <option value="NL">Netherlands</option>
+            <option value="SE">Sweden</option>
+            <option value="NO">Norway</option>
+            <option value="DK">Denmark</option>
+            <option value="NZ">New Zealand</option>
+            <option value="SG">Singapore</option>
+            <option value="ZA">South Africa</option>
+            <option value="AE">UAE</option>
+            <option value="IN">India</option>
+            <option value="JP">Japan</option>
+            <option value="MX">Mexico</option>
+            <option value="BR">Brazil</option>
+            <option value="CH">Switzerland</option>
+            <option value="IE">Ireland</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-half" style="margin-top:.75rem;">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Start Time</label>
+          <select id="start-time"></select>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>End Time</label>
+          <select id="end-time"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- EQUIPMENT -->
+    <div class="section">
+      <div class="section-label">Equipment</div>
+      <div class="radio-group" id="equipment-group">
+        <label class="radio-opt" onclick="selectRadio(this,'equipment','sound_system');checkEquipment();">
+          <input type="radio" name="equipment" value="sound_system"> <span>DJ must provide full sound system &amp; decks</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'equipment','decks_only');checkEquipment();">
+          <input type="radio" name="equipment" value="decks_only"> <span>DJ must bring decks/controller only</span>
+        </label>
+        <label class="radio-opt" onclick="selectRadio(this,'equipment','venue_provides');checkEquipment();">
+          <input type="radio" name="equipment" value="venue_provides"> <span>Venue provides all equipment</span>
+        </label>
+      </div>
+      <div id="venue-equip-detail" style="display:none;margin-top:.75rem;">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Describe Provided Equipment</label>
+          <input type="text" id="venue-equip-text" placeholder="e.g. Pioneer CDJ-3000, DJM-900NXS2">
+        </div>
+      </div>
+    </div>
+
+    <!-- RATE / OFFER -->
+    <div class="section" id="rate-section" style="display:none;">
+      <div class="section-label">Rate</div>
+      <div id="rate-display-area"></div>
+    </div>
+
+    <!-- MESSAGE BEFORE BOOKING -->
+    <div class="section">
+      <div class="section-label">Additional Notes <span style="color:var(--muted);font-size:.55rem;">(optional)</span></div>
+      <div class="form-row" style="margin-bottom:0;">
+        <textarea id="booking-notes" placeholder="Any special requirements, questions, or details for the DJ..."></textarea>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+      <button class="btn btn-outline" onclick="openMsgModal()" style="flex:1;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Message DJ First
+      </button>
+      <button class="draft-btn" onclick="saveDraft(this)" style="flex:1;">Save as Draft</button>
+    </div>
+    <div id="submit-alert" style="margin-bottom:.75rem;"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitBooking()">Request Booking</button>
+  </div>
+
+  <!-- Not logged in -->
+  <div id="page-login" style="display:none;text-align:center;padding:4rem 1rem;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:.5rem;">Sign In Required</div>
+    <div style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;">You need an account to book a DJ.</div>
+    <a href="/login.html" class="btn btn-primary" style="margin-right:.5rem;">Sign In</a>
+    <a href="/signup.html" class="btn btn-outline">Create Account</a>
+  </div>
+</div>
+
+<!-- Message Modal -->
+<div id="msg-modal" style="display:none;" class="msg-modal-backdrop" onclick="if(event.target===this)closeMsgModal()">
+  <div class="msg-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h3 id="msg-modal-title">Message DJ</h3>
+      <button onclick="closeMsgModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+    </div>
+    <div class="form-row">
+      <label>Subject</label>
+      <input type="text" id="msg-subject" placeholder="Question about your booking...">
+    </div>
+    <div class="form-row" style="margin-bottom:1rem;">
+      <label>Message</label>
+      <textarea id="msg-body" rows="4" placeholder="Hi, I had a question before booking..."></textarea>
+    </div>
+    <div id="msg-alert" style="margin-bottom:.75rem;"></div>
+    <button class="submit-btn" onclick="sendMsg(this)">Send Message</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+let djData = null;
+let bookingSettings = null;
+let draftId = null;
+
+// Time options
+function buildTimeOptions(sel) {
+  sel.innerHTML = '<option value="">--</option>';
+  for (let h = 0; h < 24; h++) {
+    for (let m of [0, 30]) {
+      const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      const p = h < 12 ? 'AM' : 'PM';
+      const h12 = h % 12 || 12;
+      const label = h12 + ':' + String(m).padStart(2,'0') + ' ' + p;
+      sel.innerHTML += `<option value="${val}">${label}</option>`;
+    }
+  }
+}
+buildTimeOptions(document.getElementById('start-time'));
+buildTimeOptions(document.getElementById('end-time'));
+
+// Nav
+(function() {
+  const signinBtn = document.getElementById('nav-signin');
+  if (!currentUser) { if (signinBtn) signinBtn.style.display = 'inline-flex'; return; }
+  signinBtn && (signinBtn.style.display = 'none');
+  document.getElementById('nav-logout').style.display = 'inline-flex';
+  document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
+  if (currentUser.role === 'dj') {
+    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
+  }
+  document.getElementById('nav-settings-btn').style.display = 'inline-flex';
+  loadInboxBadge();
+  loadBookingRequestsBadge();
+})();
+
+function navLogout() {
+  sessionStorage.removeItem('currentUser'); localStorage.removeItem('currentUser');
+  window.location.href = '/login.html';
+}
+
+async function loadInboxBadge() {
+  try {
+    const { data: t } = await db.from('messages').select('id').eq('to_user_id', currentUser.id).eq('read', false).is('parent_id', null);
+    const { data: r } = await db.from('messages').select('id').eq('to_user_id', currentUser.id).eq('read', false).not('parent_id', 'is', null);
+    const count = ((t||[]).length) + ((r||[]).length);
+    const badge = document.getElementById('nav-unread-count');
+    if (badge && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+  } catch(e) {}
+}
+
+async function loadBookingRequestsBadge() {
+  if (!currentUser || currentUser.role !== 'dj') return;
+  try {
+    const { data } = await db.from('bookings').select('id').eq('dj_id', currentUser.id).eq('status', 'pending');
+    const count = (data||[]).length;
+    const badge = document.getElementById('nav-booking-count');
+    if (badge && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+  } catch(e) {}
+}
+
+// Init
+async function init() {
+  if (!currentUser) {
+    document.getElementById('page-loading').style.display = 'none';
+    document.getElementById('page-login').style.display = 'block';
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const djSlug = params.get('dj');
+  const dateParam = params.get('date');
+  draftId = params.get('draft');
+
+  if (!djSlug) { window.location.href = '/'; return; }
+
+  // Load DJ
+  const { data, error } = await db.from('users').select('*').eq('slug', djSlug).single();
+  if (error || !data) { window.location.href = '/'; return; }
+  djData = data;
+  bookingSettings = data.booking_settings ? (typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings) : {};
+
+  // Render DJ card
+  const avatarEl = document.getElementById('dj-avatar-el');
+  if (data.avatar_url) {
+    avatarEl.innerHTML = `<img src="${data.avatar_url}" alt="">`;
+  } else {
+    const initials = (data.name||'DJ').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    avatarEl.textContent = initials;
+  }
+  document.getElementById('dj-name-el').textContent = data.name || 'DJ';
+  document.getElementById('dj-type-el').textContent = data.type || 'Club / Bar DJ';
+
+  // Set date
+  if (dateParam) {
+    document.getElementById('event-date').value = dateParam;
+    document.getElementById('booking-date-sub').textContent = 'Booking for ' + new Date(dateParam + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  }
+
+  // Set host country from currentUser
+  if (currentUser.country) {
+    const countryMap = {'United States':'US','United Kingdom':'GB','Canada':'CA','Australia':'AU','Germany':'DE','France':'FR','Spain':'ES','Italy':'IT','Netherlands':'NL','Sweden':'SE','Norway':'NO','Denmark':'DK','New Zealand':'NZ','Singapore':'SG','South Africa':'ZA','UAE':'AE','India':'IN','Japan':'JP','Mexico':'MX','Brazil':'BR','Switzerland':'CH','Ireland':'IE'};
+    const code = countryMap[currentUser.country] || 'US';
+    document.getElementById('event-country').value = code;
+  }
+
+  // Load draft if any
+  if (draftId) await loadDraft(draftId);
+
+  // Venue type change
+  document.querySelectorAll('input[name="venue-type"]').forEach(r => {
+    r.addEventListener('change', () => {
+      document.getElementById('set-type-section').style.display = r.value === 'club' ? 'block' : 'none';
+      updateRateDisplay();
+    });
+  });
+
+  document.getElementById('page-loading').style.display = 'none';
+  document.getElementById('page-content').style.display = 'block';
+}
+
+// Radio selection helper
+function selectRadio(label, name, value) {
+  document.querySelectorAll(`label.radio-opt input[name="${name}"]`).forEach(r => {
+    r.closest('label').classList.remove('selected');
+  });
+  label.classList.add('selected');
+}
+
+// Address autocomplete
+let addrTimer = null;
+function addressAutocomplete(input) {
+  const q = input.value.trim();
+  const list = document.getElementById('address-suggestions');
+  clearTimeout(addrTimer);
+  if (q.length < 3) { list.style.display = 'none'; return; }
+  const country = document.getElementById('event-country').value;
+  addrTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=${country.toLowerCase()}`);
+      const results = await res.json();
+      list.innerHTML = '';
+      if (!results.length) { list.style.display = 'none'; return; }
+      results.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = r.display_name;
+        item.onclick = () => { input.value = r.display_name; list.style.display = 'none'; };
+        list.appendChild(item);
+      });
+      list.style.display = 'block';
+    } catch(e) { list.style.display = 'none'; }
+  }, 350);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#venue-address')) document.getElementById('address-suggestions').style.display = 'none';
+});
+
+// Equipment check
+function checkEquipment() {
+  const val = document.querySelector('input[name="equipment"]:checked')?.value;
+  document.getElementById('venue-equip-detail').style.display = val === 'venue_provides' ? 'block' : 'none';
+
+  const warnArea = document.getElementById('warnings-area');
+  warnArea.innerHTML = '';
+
+  if (!djData || !bookingSettings) return;
+
+  const djName = djData.name || 'This DJ';
+  let warn = '';
+  if (val === 'sound_system' && !bookingSettings.equip_full) {
+    warn = `<div class="warn-box">⚠️ <strong>${djName}</strong> is not willing to provide a full sound system for events.</div>`;
+  } else if (val === 'decks_only' && !bookingSettings.equip_decks) {
+    warn = `<div class="warn-box">⚠️ <strong>${djName}</strong> is not willing to provide decks/controller for events.</div>`;
+  }
+  warnArea.innerHTML = warn;
+  updateRateDisplay();
+}
+
+// Rate display
+function updateRateDisplay() {
+  const section = document.getElementById('rate-section');
+  const area = document.getElementById('rate-display-area');
+  if (!bookingSettings) return;
+
+  const equip = document.querySelector('input[name="equipment"]:checked')?.value;
+  const allowOffers = bookingSettings.allow_offers;
+
+  let rate = null;
+  let rateLabel = '';
+
+  if (equip === 'sound_system' && bookingSettings.rate_with_system) {
+    rate = bookingSettings.rate_with_system;
+    rateLabel = 'Rate (Sound System & Decks Provided)';
+  } else if (equip === 'decks_only' && bookingSettings.rate_with_decks) {
+    rate = bookingSettings.rate_with_decks;
+    rateLabel = 'Rate (Decks/Controller Provided)';
+  } else if (equip === 'venue_provides' && bookingSettings.rate_no_equip) {
+    rate = bookingSettings.rate_no_equip;
+    rateLabel = 'Rate (Venue Provides Equipment)';
+  }
+
+  const currency = bookingSettings.currency || 'USD';
+  const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',MXN:'MX$',BRL:'R$',CHF:'Fr',SEK:'kr',NOK:'kr',DKK:'kr',NZD:'NZ$',SGD:'S$',ZAR:'R',AED:'د.إ',INR:'₹'};
+  const sym = currencySymbols[currency] || '$';
+
+  let html = '';
+  if (rate) {
+    html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(rate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}</span></div></div>`;
+  }
+
+  if (allowOffers) {
+    html += `<div style="margin-bottom:.75rem;font-size:.82rem;color:var(--muted);">This DJ accepts offers. Enter your offer below:</div>
+    <div class="form-row offer-row"><span>${sym}</span><input type="number" id="offer-amount" placeholder="Your offer" min="0" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;flex:1;outline:none;"></div>`;
+  }
+
+  if (html) { area.innerHTML = html; section.style.display = 'block'; }
+  else section.style.display = 'none';
+}
+
+// Save draft
+async function saveDraft(btn) {
+  const orig = btn.textContent;
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  const payload = collectFormData();
+  try {
+    if (draftId) {
+      await db.from('booking_drafts').update({ data: payload, updated_at: new Date().toISOString() }).eq('id', draftId).eq('requester_id', currentUser.id);
+    } else {
+      const { data } = await db.from('booking_drafts').insert({ requester_id: currentUser.id, dj_id: djData.id, dj_slug: djData.slug, data: payload }).select('id').single();
+      if (data) draftId = data.id;
+    }
+    const a = document.getElementById('submit-alert');
+    a.innerHTML = '<div class="alert alert-success">✓ Draft saved. Find it in your account settings under Drafts.</div>';
+    setTimeout(() => a.innerHTML = '', 3000);
+  } catch(e) {
+    const a = document.getElementById('submit-alert');
+    a.innerHTML = `<div class="alert alert-error">Error saving draft: ${e.message}</div>`;
+  }
+  btn.textContent = orig; btn.disabled = false;
+}
+
+async function loadDraft(id) {
+  try {
+    const { data } = await db.from('booking_drafts').select('*').eq('id', id).eq('requester_id', currentUser.id).single();
+    if (!data) return;
+    const d = data.data;
+    if (d.venue_type) { const r = document.querySelector(`input[name="venue-type"][value="${d.venue_type}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); document.getElementById('set-type-section').style.display = d.venue_type === 'club' ? 'block' : 'none'; } }
+    if (d.set_type) { const r = document.querySelector(`input[name="set-type"][value="${d.set_type}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); } }
+    if (d.venue_name) document.getElementById('venue-name').value = d.venue_name;
+    if (d.venue_address) document.getElementById('venue-address').value = d.venue_address;
+    if (d.event_date) document.getElementById('event-date').value = d.event_date;
+    if (d.country) document.getElementById('event-country').value = d.country;
+    if (d.start_time) document.getElementById('start-time').value = d.start_time;
+    if (d.end_time) document.getElementById('end-time').value = d.end_time;
+    if (d.equipment) { const r = document.querySelector(`input[name="equipment"][value="${d.equipment}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); checkEquipment(); } }
+    if (d.venue_equip_text) document.getElementById('venue-equip-text').value = d.venue_equip_text;
+    if (d.notes) document.getElementById('booking-notes').value = d.notes;
+  } catch(e) {}
+}
+
+function collectFormData() {
+  return {
+    venue_type: document.querySelector('input[name="venue-type"]:checked')?.value || null,
+    set_type: document.querySelector('input[name="set-type"]:checked')?.value || null,
+    venue_name: document.getElementById('venue-name').value.trim(),
+    venue_address: document.getElementById('venue-address').value.trim(),
+    event_date: document.getElementById('event-date').value,
+    country: document.getElementById('event-country').value,
+    start_time: document.getElementById('start-time').value,
+    end_time: document.getElementById('end-time').value,
+    equipment: document.querySelector('input[name="equipment"]:checked')?.value || null,
+    venue_equip_text: document.getElementById('venue-equip-text').value.trim(),
+    offer_amount: document.getElementById('offer-amount')?.value || null,
+    notes: document.getElementById('booking-notes').value.trim(),
+  };
+}
+
+// Submit booking
+async function submitBooking() {
+  const btn = document.getElementById('submit-btn');
+  const alertEl = document.getElementById('submit-alert');
+  const d = collectFormData();
+
+  if (!d.venue_type) { alertEl.innerHTML = '<div class="alert alert-error">Please select Bar or Club.</div>'; return; }
+  if (!d.venue_name) { alertEl.innerHTML = '<div class="alert alert-error">Please enter a venue name.</div>'; return; }
+  if (!d.event_date) { alertEl.innerHTML = '<div class="alert alert-error">Please select a date.</div>'; return; }
+  if (!d.start_time) { alertEl.innerHTML = '<div class="alert alert-error">Please select a start time.</div>'; return; }
+  if (!d.equipment) { alertEl.innerHTML = '<div class="alert alert-error">Please select equipment requirements.</div>'; return; }
+
+  btn.disabled = true; btn.textContent = 'Submitting...';
+
+  try {
+    const currency = bookingSettings.currency || 'USD';
+    let displayRate = null;
+    if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
+    else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
+    else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
+
+    const { error } = await db.from('bookings').insert({
+      dj_id: djData.id,
+      requester_id: currentUser.id,
+      dj_slug: djData.slug,
+      venue_type: d.venue_type,
+      set_type: d.set_type,
+      venue_name: d.venue_name,
+      venue_address: d.venue_address,
+      event_date: d.event_date,
+      country: d.country,
+      start_time: d.start_time,
+      end_time: d.end_time,
+      equipment: d.equipment,
+      venue_equip_detail: d.venue_equip_text,
+      offer_amount: d.offer_amount || null,
+      quoted_rate: displayRate || null,
+      currency,
+      notes: d.notes,
+      status: 'pending',
+    });
+    if (error) throw error;
+
+    // Send email to DJ
+    if (djData.email) {
+      await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_request',
+          djName: djData.name,
+          djEmail: djData.email,
+          requesterName: currentUser.name,
+          eventDate: d.event_date,
+          venueName: d.venue_name,
+          venueAddress: d.venue_address,
+          venueType: d.venue_type,
+          setType: d.set_type,
+          startTime: d.start_time,
+          endTime: d.end_time,
+          equipment: d.equipment,
+          notes: d.notes,
+          offerAmount: d.offer_amount,
+          quotedRate: displayRate,
+          currency,
+        })
+      });
+    }
+
+    // Delete draft if existed
+    if (draftId) await db.from('booking_drafts').delete().eq('id', draftId);
+
+    alertEl.innerHTML = '<div class="alert alert-success">✓ Booking request sent! The DJ will be in touch.</div>';
+    btn.textContent = 'Request Sent';
+
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
+    btn.disabled = false; btn.textContent = 'Request Booking';
+  }
+}
+
+// Message modal
+function openMsgModal() {
+  document.getElementById('msg-modal-title').textContent = 'Message ' + (djData?.name || 'DJ');
+  document.getElementById('msg-modal').style.display = 'flex';
+}
+function closeMsgModal() { document.getElementById('msg-modal').style.display = 'none'; }
+
+async function sendMsg(btn) {
+  const subject = document.getElementById('msg-subject').value.trim();
+  const body = document.getElementById('msg-body').value.trim();
+  const alertEl = document.getElementById('msg-alert');
+  if (!subject || !body) { alertEl.innerHTML = '<div class="alert alert-error">Please fill in subject and message.</div>'; return; }
+  const orig = btn.textContent; btn.textContent = 'Sending...'; btn.disabled = true;
+  try {
+    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: djData.id, subject, body, read: false });
+    if (error) throw error;
+    alertEl.innerHTML = '<div class="alert alert-success">✓ Message sent!</div>';
+    setTimeout(() => { closeMsgModal(); alertEl.innerHTML = ''; document.getElementById('msg-subject').value = ''; document.getElementById('msg-body').value = ''; }, 1500);
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
+  }
+  btn.textContent = orig; btn.disabled = false;
+}
+
+init();
+</script>
+</body>
+</html>
