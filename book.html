@@ -116,12 +116,16 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
   <div id="page-content" style="display:none;">
 
     <!-- DJ + date header — compact -->
-    <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1rem;">
       <div class="dj-avatar" id="dj-avatar-el"></div>
       <div style="flex:1;min-width:0;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--white);line-height:1;" id="dj-name-el">—</div>
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;" id="booking-date-sub"></div>
       </div>
+      <button class="btn btn-outline" onclick="openMsgModal()" style="flex-shrink:0;font-size:.6rem;padding:.45rem .8rem;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Message with Questions
+      </button>
     </div>
 
     <div id="alert-area"></div>
@@ -216,13 +220,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 
     <!-- Actions -->
     <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
-      <button class="btn btn-outline" onclick="openMsgModal()" style="padding:.55rem .9rem;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Message
-      </button>
-      <button class="draft-btn" onclick="saveDraft(this)">Draft</button>
-      <div style="flex:1;"></div>
-      <button class="submit-btn" id="submit-btn" onclick="submitBooking()" style="width:auto;padding:.65rem 1.5rem;flex-shrink:0;">Request Booking</button>
+      <button class="draft-btn" onclick="saveDraft(this)">Save Draft</button>
+      <button class="submit-btn" id="submit-btn" onclick="submitBooking()" style="flex:1;">Request Booking</button>
     </div>
     <div id="submit-alert" style="margin-top:.6rem;"></div>
 
@@ -386,7 +385,9 @@ async function init() {
 
 // Radio selection helper
 function selectRadio(label, name, value) {
-  document.querySelectorAll(`label[onclick*="'${name}'"]`).forEach(l => l.classList.remove('selected'));
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+    r.closest('label').classList.remove('selected');
+  });
   label.classList.add('selected');
   const r = label.querySelector('input[type="radio"]');
   if (r) r.checked = true;
