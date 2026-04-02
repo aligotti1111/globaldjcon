@@ -353,7 +353,8 @@ async function init() {
     avatarEl.textContent = initials;
   }
   document.getElementById('dj-name-el').textContent = data.name || 'DJ';
-  document.getElementById('dj-type-el').textContent = data.type || 'Club / Bar DJ';
+  const typeEl = document.getElementById('dj-type-el');
+  if (typeEl) typeEl.textContent = data.type || 'Club / Bar DJ';
 
   // Set date
   if (dateParam) {
