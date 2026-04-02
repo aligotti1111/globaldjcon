@@ -121,7 +121,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
   </div>
 
   <!-- Outgoing (all roles) -->
-  <div id="outgoing-section">
+  <div id="outgoing-section" style="display:none;">
     <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Outgoing Booking Requests</div>
     <div class="tabs" style="margin-bottom:1rem;">
       <button class="tab-btn active" id="out-tab-pending" onclick="switchTab('out','pending',this)">Pending</button>
@@ -253,9 +253,8 @@ async function loadAllBookings() {
   // Outgoing: requests this user made (as requester)
   const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
   outgoingBookings = outData || [];
-  if (currentUser.role === 'dj' && outgoingBookings.length === 0) {
-    document.getElementById('outgoing-section').style.display = 'none';
-  } else {
+  if (currentUser.role !== 'dj' || outgoingBookings.length > 0) {
+    document.getElementById('outgoing-section').style.display = 'block';
     renderList('out', 'pending');
   }
 
