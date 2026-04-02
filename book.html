@@ -287,6 +287,8 @@ buildTimeOptions(document.getElementById('end-time'));
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
   if (currentUser.role === 'dj') {
     document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
+    document.getElementById('nav-settings-btn').href = '/update-dj-profile.html';
+    document.getElementById('nav-settings-btn').title = 'Edit My Profile';
   }
   document.getElementById('nav-settings-btn').style.display = 'inline-flex';
   loadInboxBadge();

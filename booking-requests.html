@@ -296,15 +296,62 @@ async function updateStatus(bookingId, status) {
       } catch(calErr) { console.error('Calendar update failed:', calErr); }
     }
 
-    // Send email notification
+    // Send email notifications
     if (b) {
       const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
+
+      // Email requester (approved or denied)
       if (requester?.email) {
-        await fetch('/.netlify/functions/send-email', {
+        fetch('/.netlify/functions/send-email', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ type: 'booking_status', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, status, eventDate: b.event_date, venueName: b.venue_name })
-        });
+          body: JSON.stringify({
+            type: 'booking_status',
+            requesterName: requester.name,
+            requesterEmail: requester.email,
+            djName: currentUser.name,
+            status,
+            eventDate: b.event_date,
+            venueName: b.venue_name,
+            venueAddress: b.venue_address,
+            venueType: b.venue_type,
+            setType: b.set_type,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            equipment: b.equipment,
+            notes: b.notes,
+            quotedRate: b.quoted_rate,
+            offerAmount: b.offer_amount,
+            currency: b.currency,
+          })
+        }).catch(e => console.warn('Requester status email failed:', e));
+      }
+
+      // Email DJ confirming their own action
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_dj_confirm',
+            djName: currentUser.name,
+            djEmail: currentUser.email,
+            requesterName: requester?.name || 'The requester',
+            status,
+            eventDate: b.event_date,
+            venueName: b.venue_name,
+            venueAddress: b.venue_address,
+            venueType: b.venue_type,
+            setType: b.set_type,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            equipment: b.equipment,
+            notes: b.notes,
+            quotedRate: b.quoted_rate,
+            offerAmount: b.offer_amount,
+            currency: b.currency,
+          })
+        }).catch(e => console.warn('DJ confirm email failed:', e));
       }
     }
 
