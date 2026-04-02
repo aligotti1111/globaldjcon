@@ -253,7 +253,11 @@ async function loadAllBookings() {
   // Outgoing: requests this user made (as requester)
   const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
   outgoingBookings = outData || [];
-  renderList('out', 'pending');
+  if (currentUser.role === 'dj' && outgoingBookings.length === 0) {
+    document.getElementById('outgoing-section').style.display = 'none';
+  } else {
+    renderList('out', 'pending');
+  }
 
   // Incoming: requests made to this DJ (club/bar DJs only)
   if (isClubBarDJ) {
