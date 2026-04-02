@@ -137,8 +137,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Event Type</div>
         <div style="display:flex;gap:.5rem;">
-          <div onclick="selectPill(this,'venue-type','bar')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-bar" data-radio-name="venue-type" data-radio-value="bar">Bar</div>
-          <div onclick="selectPill(this,'venue-type','club')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-club" data-radio-name="venue-type" data-radio-value="club">Club</div>
+          <div onclick="selectPill(this,'venue-type','bar')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-bar" data-radio-name="venue-type" data-radio-value="bar">Bar</div>
+          <div onclick="selectPill(this,'venue-type','club')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-club" data-radio-name="venue-type" data-radio-value="club">Club</div>
         </div>
       </div>
 
@@ -146,11 +146,11 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div id="set-type-section" style="display:none;padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Set Type</div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-          <div onclick="selectPill(this,'set-type','opening')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening" style="display:none;">Opening Set</div>
-          <div onclick="selectPill(this,'set-type','headliner')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="headliner" style="display:none;">Headliner</div>
-          <div onclick="selectPill(this,'set-type','closing')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="closing" style="display:none;">Closing Set</div>
-          <div onclick="selectPill(this,'set-type','opening_close')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening_close" style="display:none;">Opening – Close</div>
-          <div onclick="selectPill(this,'set-type','opening_and_closing')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening_and_closing" style="display:none;">Opening &amp; Closing</div>
+          <div onclick="selectPill(this,'set-type','opening')" class="pill-opt pill-wide" data-radio-name="set-type" data-radio-value="opening">Opening Set</div>
+          <div onclick="selectPill(this,'set-type','headliner')" class="pill-opt pill-wide" data-radio-name="set-type" data-radio-value="headliner">Headliner</div>
+          <div onclick="selectPill(this,'set-type','closing')" class="pill-opt pill-wide" data-radio-name="set-type" data-radio-value="closing">Closing Set</div>
+          <div onclick="selectPill(this,'set-type','opening_close')" class="pill-opt pill-wide" data-radio-name="set-type" data-radio-value="opening_close">Opening – Close</div>
+          <div onclick="selectPill(this,'set-type','opening_and_closing')" class="pill-opt pill-wide" data-radio-name="set-type" data-radio-value="opening_and_closing">Opening &amp; Closing</div>
         </div>
       </div>
 
@@ -192,9 +192,9 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Equipment</div>
         <div style="display:flex;flex-direction:column;gap:.4rem;" id="equipment-group">
-          <label onclick="selectRadio(this,'equipment','sound_system');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="sound_system" style="display:none;">Full sound system &amp; decks</label>
-          <label onclick="selectRadio(this,'equipment','decks_only');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="decks_only" style="display:none;">Decks/controller only</label>
-          <label onclick="selectRadio(this,'equipment','venue_provides');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="venue_provides" style="display:none;">Venue provides all equipment</label>
+          <div onclick="selectPill(this,'equipment','sound_system');checkEquipment();" class="pill-opt pill-wide" data-radio-name="equipment" data-radio-value="sound_system">Full sound system &amp; decks</div>
+          <div onclick="selectPill(this,'equipment','decks_only');checkEquipment();" class="pill-opt pill-wide" data-radio-name="equipment" data-radio-value="decks_only">Decks/controller only</div>
+          <div onclick="selectPill(this,'equipment','venue_provides');checkEquipment();" class="pill-opt pill-wide" data-radio-name="equipment" data-radio-value="venue_provides">Venue provides all equipment</div>
         </div>
         <div id="warnings-area" style="margin-top:.6rem;"></div>
         <div id="venue-equip-detail" style="display:none;margin-top:.6rem;">
@@ -379,18 +379,22 @@ async function init() {
   document.getElementById('page-content').style.display = 'block';
 }
 
-// Radio/pill selection
 function selectPill(el, name, value) {
-  document.querySelectorAll(`[data-radio-name="${name}"]`).forEach(d => d.classList.remove('selected'));
+  document.querySelectorAll(`[data-radio-name="${name}"]`).forEach(d => {
+    d.classList.remove('selected');
+    d.style.borderColor = '';
+    d.style.color = '';
+    d.style.background = '';
+  });
   el.classList.add('selected');
-  // Store value on element for collection
+  el.style.borderColor = 'var(--neon)';
+  el.style.color = 'var(--neon)';
+  el.style.background = 'rgba(0,245,196,0.1)';
   el.dataset.radioValue = value;
-  // Trigger change logic
   if (name === 'venue-type') {
     document.getElementById('set-type-section').style.display = value === 'club' ? 'block' : 'none';
     updateRateDisplay();
   }
-  if (name === 'equipment') checkEquipment();
 }
 function selectRadio(label, name, value) { selectPill(label, name, value); }
 function getRadioValue(name) {
@@ -535,15 +539,15 @@ async function loadDraft(id) {
     const { data } = await db.from('booking_drafts').select('*').eq('id', id).eq('requester_id', currentUser.id).single();
     if (!data) return;
     const d = data.data;
-    if (d.venue_type) { const r = document.querySelector(`input[name="venue-type"][value="${d.venue_type}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); document.getElementById('set-type-section').style.display = d.venue_type === 'club' ? 'block' : 'none'; } }
-    if (d.set_type) { const r = document.querySelector(`input[name="set-type"][value="${d.set_type}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); } }
+    if (d.venue_type) { const el = document.querySelector(`[data-radio-name="venue-type"][data-radio-value="${d.venue_type}"]`); if (el) { el.classList.add('selected'); document.getElementById('set-type-section').style.display = d.venue_type === 'club' ? 'block' : 'none'; } }
+    if (d.set_type) { const el = document.querySelector(`[data-radio-name="set-type"][data-radio-value="${d.set_type}"]`); if (el) el.classList.add('selected'); }
     if (d.venue_name) document.getElementById('venue-name').value = d.venue_name;
     if (d.venue_address) document.getElementById('venue-address').value = d.venue_address;
     if (d.event_date) document.getElementById('event-date').value = d.event_date;
     if (d.country) document.getElementById('event-country').value = d.country;
     if (d.start_time) document.getElementById('start-time').value = d.start_time;
     if (d.end_time) document.getElementById('end-time').value = d.end_time;
-    if (d.equipment) { const r = document.querySelector(`input[name="equipment"][value="${d.equipment}"]`); if (r) { r.checked = true; r.closest('label').classList.add('selected'); checkEquipment(); } }
+    if (d.equipment) { const el = document.querySelector(`[data-radio-name="equipment"][data-radio-value="${d.equipment}"]`); if (el) { el.classList.add('selected'); checkEquipment(); } }
     if (d.venue_equip_text) document.getElementById('venue-equip-text').value = d.venue_equip_text;
     if (d.notes) document.getElementById('booking-notes').value = d.notes;
   } catch(e) {}
