@@ -288,7 +288,7 @@ function renderList(group, filter) {
         <div>
           <div class="req-name"><span style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-right:.5rem;">Venue</span>${b.venue_name || 'Unnamed Venue'}</div>
           ${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.75rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;line-height:1.4;display:block;margin-top:2px;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}
-          <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:4px;">${b.venue_type === 'club' ? 'Club' : 'Bar'}${b.set_type ? ' &nbsp;·&nbsp; Set: ' + (setTypeLabels[b.set_type] || b.set_type) : ''}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:4px;">Venue is: ${b.venue_type === 'club' ? 'Club' : 'Bar'}${b.set_type ? ' &nbsp;·&nbsp; Set: ' + (setTypeLabels[b.set_type] || b.set_type) : ''}</div>
         </div>
         <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
       </div>
