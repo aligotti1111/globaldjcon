@@ -295,7 +295,7 @@ function renderList(group, filter) {
         <div>
           <div class="req-detail-item"><span class="lbl">Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
         </div>
-        ${b.venue_address ? `<div style="grid-column:1/-1;"><div class="req-detail-item"><span class="lbl">Location</span><span class="val">${b.venue_address}</span></div></div>` : ''}
+        ${b.venue_address ? `<div style="grid-column:1/-1;"><div class="req-detail-item"><span class="lbl">Location</span><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="color:var(--white);text-decoration:underline;text-underline-offset:3px;font-size:.8rem;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a></div></div>` : ''}
       </div>
       <div class="req-details" style="margin-bottom:.6rem;">
         <div class="req-detail-item"><span class="lbl">Type</span><span class="val">${b.venue_type === 'club' ? 'Club' : 'Bar'}${b.set_type ? ' · ' + (setTypeLabels[b.set_type] || b.set_type) : ''}</span></div>
