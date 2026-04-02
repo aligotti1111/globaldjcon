@@ -645,6 +645,36 @@ async function submitBooking() {
       } else {
         console.warn('DJ has no email on file — booking request email not sent');
       }
+
+      // Send confirmation email to requester
+      if (currentUser.email) {
+        try {
+          await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'booking_confirmation',
+              requesterName: currentUser.name,
+              requesterEmail: currentUser.email,
+              djName: djData.name,
+              eventDate: d.event_date,
+              venueName: d.venue_name,
+              venueAddress: d.venue_address,
+              venueType: d.venue_type,
+              setType: d.set_type,
+              startTime: d.start_time,
+              endTime: d.end_time,
+              equipment: d.equipment,
+              notes: d.notes,
+              offerAmount: d.offer_amount,
+              quotedRate: displayRate,
+              currency,
+            })
+          });
+        } catch(confirmErr) {
+          console.warn('Confirmation email error (non-blocking):', confirmErr);
+        }
+      }
     } catch(emailErr) {
       console.warn('Email send error (non-blocking):', emailErr);
     }
