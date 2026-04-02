@@ -28,7 +28,11 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .inbox-nav-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);color:var(--muted);cursor:pointer;background:transparent;transition:all .2s;text-decoration:none;}
 .inbox-nav-btn:hover{border-color:var(--neon);color:var(--neon);}
 .inbox-badge{position:absolute;top:-6px;right:-6px;background:var(--neon);color:var(--black);font-family:'Space Mono',monospace;font-size:.55rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
-.page{position:relative;z-index:2;max-width:640px;margin:0 auto;padding:2.5rem 1.5rem 5rem;}
+.page{position:relative;z-index:2;max-width:520px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.pill-opt{display:inline-flex;align-items:center;padding:.4rem .85rem;border-radius:100px;border:1px solid var(--border);cursor:pointer;font-size:.8rem;color:var(--muted);transition:all .2s;user-select:none;}
+.pill-opt:hover{border-color:var(--white);color:var(--white);}
+.pill-opt.selected{border-color:var(--neon);color:var(--neon);background:var(--neon-dim);}
+.pill-wide{border-radius:6px;width:100%;justify-content:flex-start;}
 .page-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.25rem;}
 .page-sub{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2rem;}
 .section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;}
@@ -110,159 +114,118 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
     <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--muted);">Loading...</div>
   </div>
   <div id="page-content" style="display:none;">
-    <!-- DJ card -->
-    <div class="dj-card">
+
+    <!-- DJ + date header — compact -->
+    <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.5rem;">
       <div class="dj-avatar" id="dj-avatar-el"></div>
-      <div>
-        <div class="dj-name" id="dj-name-el">—</div>
-        <div class="dj-type" id="dj-type-el">Club / Bar DJ</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--white);line-height:1;" id="dj-name-el">—</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;" id="booking-date-sub"></div>
       </div>
     </div>
-
-    <div class="page-title">Book This DJ</div>
-    <div class="page-sub" id="booking-date-sub">Select a date to get started</div>
 
     <div id="alert-area"></div>
 
-    <!-- EVENT TYPE -->
-    <div class="section">
-      <div class="section-label">Event Type</div>
-      <div class="radio-group" id="venue-type-group">
-        <label class="radio-opt" onclick="selectRadio(this,'venue-type','bar')">
-          <input type="radio" name="venue-type" value="bar"> <span>Bar</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'venue-type','club')">
-          <input type="radio" name="venue-type" value="club"> <span>Club</span>
-        </label>
-      </div>
-    </div>
+    <!-- Single compact card -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
 
-    <!-- CLUB SET TYPE (only shown for club) -->
-    <div class="section" id="set-type-section" style="display:none;">
-      <div class="section-label">Set Type</div>
-      <div class="radio-group" id="set-type-group">
-        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening')">
-          <input type="radio" name="set-type" value="opening"> <span>Opening Set</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'set-type','headliner')">
-          <input type="radio" name="set-type" value="headliner"> <span>Headliner</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'set-type','closing')">
-          <input type="radio" name="set-type" value="closing"> <span>Closing Set</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening_close')">
-          <input type="radio" name="set-type" value="opening_close"> <span>Opening – Close</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'set-type','opening_and_closing')">
-          <input type="radio" name="set-type" value="opening_and_closing"> <span>Opening Set &amp; Closing Set</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- VENUE & DATE -->
-    <div class="section">
-      <div class="section-label">Venue Details</div>
-      <div class="form-row">
-        <label>Venue Name</label>
-        <input type="text" id="venue-name" placeholder="e.g. Club XO">
-      </div>
-      <div class="form-row" style="position:relative;">
-        <label>Venue Address</label>
-        <input type="text" id="venue-address" placeholder="Start typing address..." autocomplete="off" oninput="addressAutocomplete(this)">
-        <div id="address-suggestions" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;"></div>
-      </div>
-      <div class="form-row-half">
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Date</label>
-          <input type="date" id="event-date">
+      <!-- Event Type -->
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Event Type</div>
+        <div style="display:flex;gap:.5rem;">
+          <label onclick="selectRadio(this,'venue-type','bar')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-bar">
+            <input type="radio" name="venue-type" value="bar" style="display:none;"> Bar
+          </label>
+          <label onclick="selectRadio(this,'venue-type','club')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-club">
+            <input type="radio" name="venue-type" value="club" style="display:none;"> Club
+          </label>
         </div>
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Country</label>
-          <select id="event-country">
-            <option value="US">United States</option>
-            <option value="GB">United Kingdom</option>
-            <option value="CA">Canada</option>
-            <option value="AU">Australia</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-            <option value="ES">Spain</option>
-            <option value="IT">Italy</option>
-            <option value="NL">Netherlands</option>
-            <option value="SE">Sweden</option>
-            <option value="NO">Norway</option>
-            <option value="DK">Denmark</option>
-            <option value="NZ">New Zealand</option>
-            <option value="SG">Singapore</option>
-            <option value="ZA">South Africa</option>
-            <option value="AE">UAE</option>
-            <option value="IN">India</option>
-            <option value="JP">Japan</option>
-            <option value="MX">Mexico</option>
-            <option value="BR">Brazil</option>
-            <option value="CH">Switzerland</option>
-            <option value="IE">Ireland</option>
+      </div>
+
+      <!-- Set Type (club only) -->
+      <div id="set-type-section" style="display:none;padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Set Type</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+          <label onclick="selectRadio(this,'set-type','opening')" class="pill-opt"><input type="radio" name="set-type" value="opening" style="display:none;">Opening Set</label>
+          <label onclick="selectRadio(this,'set-type','headliner')" class="pill-opt"><input type="radio" name="set-type" value="headliner" style="display:none;">Headliner</label>
+          <label onclick="selectRadio(this,'set-type','closing')" class="pill-opt"><input type="radio" name="set-type" value="closing" style="display:none;">Closing Set</label>
+          <label onclick="selectRadio(this,'set-type','opening_close')" class="pill-opt"><input type="radio" name="set-type" value="opening_close" style="display:none;">Opening – Close</label>
+          <label onclick="selectRadio(this,'set-type','opening_and_closing')" class="pill-opt"><input type="radio" name="set-type" value="opening_and_closing" style="display:none;">Opening &amp; Closing</label>
+        </div>
+      </div>
+
+      <!-- Venue -->
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Venue</div>
+        <input type="text" id="venue-name" placeholder="Venue name" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:.5rem;">
+        <div style="position:relative;">
+          <input type="text" id="venue-address" placeholder="Address" autocomplete="off" oninput="addressAutocomplete(this)" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+          <div id="address-suggestions" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;"></div>
+        </div>
+      </div>
+
+      <!-- Date / Time / Country -->
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Date</div>
+            <input type="date" id="event-date" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .6rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Start</div>
+            <select id="start-time" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+          </div>
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">End</div>
+            <select id="end-time" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+          </div>
+        </div>
+        <div style="margin-top:.5rem;">
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Country</div>
+          <select id="event-country" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;">
+            <option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option><option value="DE">Germany</option><option value="FR">France</option><option value="ES">Spain</option><option value="IT">Italy</option><option value="NL">Netherlands</option><option value="SE">Sweden</option><option value="NO">Norway</option><option value="DK">Denmark</option><option value="NZ">New Zealand</option><option value="SG">Singapore</option><option value="ZA">South Africa</option><option value="AE">UAE</option><option value="IN">India</option><option value="JP">Japan</option><option value="MX">Mexico</option><option value="BR">Brazil</option><option value="CH">Switzerland</option><option value="IE">Ireland</option>
           </select>
         </div>
       </div>
-      <div class="form-row-half" style="margin-top:.75rem;">
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Start Time</label>
-          <select id="start-time"></select>
-        </div>
-        <div class="form-row" style="margin-bottom:0;">
-          <label>End Time</label>
-          <select id="end-time"></select>
-        </div>
-      </div>
-    </div>
 
-    <!-- EQUIPMENT -->
-    <div class="section">
-      <div class="section-label">Equipment</div>
-      <div class="radio-group" id="equipment-group">
-        <label class="radio-opt" onclick="selectRadio(this,'equipment','sound_system');checkEquipment();">
-          <input type="radio" name="equipment" value="sound_system"> <span>DJ must provide full sound system &amp; decks</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'equipment','decks_only');checkEquipment();">
-          <input type="radio" name="equipment" value="decks_only"> <span>DJ must bring decks/controller only</span>
-        </label>
-        <label class="radio-opt" onclick="selectRadio(this,'equipment','venue_provides');checkEquipment();">
-          <input type="radio" name="equipment" value="venue_provides"> <span>Venue provides all equipment</span>
-        </label>
-      </div>
-      <div id="warnings-area" style="margin-top:.75rem;"></div>
-      <div id="venue-equip-detail" style="display:none;margin-top:.75rem;">
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Describe Provided Equipment</label>
-          <input type="text" id="venue-equip-text" placeholder="e.g. Pioneer CDJ-3000, DJM-900NXS2">
+      <!-- Equipment -->
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Equipment</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;" id="equipment-group">
+          <label onclick="selectRadio(this,'equipment','sound_system');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="sound_system" style="display:none;">Full sound system &amp; decks</label>
+          <label onclick="selectRadio(this,'equipment','decks_only');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="decks_only" style="display:none;">Decks/controller only</label>
+          <label onclick="selectRadio(this,'equipment','venue_provides');checkEquipment();" class="pill-opt pill-wide"><input type="radio" name="equipment" value="venue_provides" style="display:none;">Venue provides all equipment</label>
+        </div>
+        <div id="warnings-area" style="margin-top:.6rem;"></div>
+        <div id="venue-equip-detail" style="display:none;margin-top:.6rem;">
+          <input type="text" id="venue-equip-text" placeholder="Describe provided equipment" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;">
         </div>
       </div>
-    </div>
 
-    <!-- RATE / OFFER -->
-    <div class="section" id="rate-section" style="display:none;">
-      <div class="section-label">Rate</div>
-      <div id="rate-display-area"></div>
-    </div>
-
-    <!-- MESSAGE BEFORE BOOKING -->
-    <div class="section">
-      <div class="section-label">Additional Notes <span style="color:var(--muted);font-size:.55rem;">(optional)</span></div>
-      <div class="form-row" style="margin-bottom:0;">
-        <textarea id="booking-notes" placeholder="Any special requirements, questions, or details for the DJ..."></textarea>
+      <!-- Rate -->
+      <div id="rate-section" style="display:none;padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+        <div id="rate-display-area"></div>
       </div>
-    </div>
 
-    <!-- ACTIONS -->
-    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
-      <button class="btn btn-outline" onclick="openMsgModal()" style="flex:1;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Message DJ First
+      <!-- Notes -->
+      <div style="padding:1rem 1.25rem;">
+        <textarea id="booking-notes" placeholder="Notes for the DJ (optional)" rows="2" style="width:100%;background:transparent;border:none;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;resize:none;color:var(--white);"></textarea>
+      </div>
+
+    </div><!-- end card -->
+
+    <!-- Actions -->
+    <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
+      <button class="btn btn-outline" onclick="openMsgModal()" style="padding:.55rem .9rem;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Message
       </button>
-      <button class="draft-btn" onclick="saveDraft(this)" style="flex:1;">Save as Draft</button>
+      <button class="draft-btn" onclick="saveDraft(this)">Draft</button>
+      <div style="flex:1;"></div>
+      <button class="submit-btn" id="submit-btn" onclick="submitBooking()" style="width:auto;padding:.65rem 1.5rem;flex-shrink:0;">Request Booking</button>
     </div>
-    <div id="submit-alert" style="margin-bottom:.75rem;"></div>
-    <button class="submit-btn" id="submit-btn" onclick="submitBooking()">Request Booking</button>
+    <div id="submit-alert" style="margin-top:.6rem;"></div>
+
   </div>
 
   <!-- Not logged in -->
@@ -422,10 +385,10 @@ async function init() {
 
 // Radio selection helper
 function selectRadio(label, name, value) {
-  document.querySelectorAll(`label.radio-opt input[name="${name}"]`).forEach(r => {
-    r.closest('label').classList.remove('selected');
-  });
+  document.querySelectorAll(`label[onclick*="'${name}'"]`).forEach(l => l.classList.remove('selected'));
   label.classList.add('selected');
+  const r = label.querySelector('input[type="radio"]');
+  if (r) r.checked = true;
 }
 
 // Address autocomplete
@@ -445,8 +408,18 @@ function addressAutocomplete(input) {
       results.forEach(r => {
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
-        item.textContent = r.display_name;
-        item.onclick = () => { input.value = r.display_name; list.style.display = 'none'; };
+        // Clean address - remove county/administrative divisions
+        const cleanAddr = (addr) => {
+          const parts = addr.split(', ');
+          return parts.filter((p, i) => {
+            // Remove parts that look like county/admin (contain "County" or are redundant middle admin)
+            if (p.includes(' County') || p.includes(' Parish') || p.includes(' Borough')) return false;
+            return true;
+          }).join(', ');
+        };
+        const displayAddr = cleanAddr(r.display_name);
+        item.textContent = displayAddr;
+        item.onclick = () => { input.value = displayAddr; list.style.display = 'none'; };
         list.appendChild(item);
       });
       list.style.display = 'block';
