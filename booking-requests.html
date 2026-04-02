@@ -293,8 +293,8 @@ function renderList(group, filter) {
         <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;">
-        <div><span class="lbl">Date</span><span class="val" style="font-weight:600;">${formatDate(b.event_date)}</span></div>
-        <div><span class="lbl">Set Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
+        <div><span class="lbl">Date</span><span class="val" style="font-weight:600;display:block;">${formatDate(b.event_date)}</span></div>
+        <div><span class="lbl">Set Time</span><span class="val" style="display:block;">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
       </div>
       <div class="req-details" style="margin-bottom:.6rem;">
         <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
