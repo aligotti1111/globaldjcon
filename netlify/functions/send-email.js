@@ -214,6 +214,40 @@ exports.handler = async (event) => {
       `)
     };
 
+  } else if (type === 'booking_confirmation') {
+    const { requesterName, requesterEmail, djName, eventDate, venueName, venueAddress, venueType, setType, startTime, endTime, equipment, notes, offerAmount, quotedRate, currency } = body;
+    const sym = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',MXN:'MX$',BRL:'R$',CHF:'Fr',SEK:'kr',NOK:'kr',DKK:'kr',NZD:'NZ$',SGD:'S$',ZAR:'R',AED:'د.إ',INR:'₹'}[currency||'USD'] || '$';
+    const equipLabels = {sound_system:'Full Sound System & Decks',decks_only:'Decks/Controller Only',venue_provides:'Venue Provides All Equipment'};
+    const setLabels = {opening:'Opening Set',headliner:'Headliner',closing:'Closing Set',opening_close:'Opening – Close',opening_and_closing:'Opening & Closing Set'};
+    const formatT = t => { if(!t) return ''; const [h,m]=t.split(':').map(Number); const p=h<12?'AM':'PM'; return (h%12||12)+':'+String(m).padStart(2,'0')+' '+p; };
+    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
+    emailPayload = {
+      from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
+      subject: `Booking Request Sent – ${escHtml(djName)}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
+        <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(requesterName)}, your booking request has been sent to <strong style="color:#1a1a2e;">${escHtml(djName)}</strong>. They'll be in touch soon.</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">DJ</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;font-weight:600;">${escHtml(djName)}</td></tr>
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Date</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;font-weight:600;">${dateStr}</td></tr>
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Venue</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${escHtml(venueName)}${venueAddress ? '<br><span style="color:#888;font-size:12px;">'+escHtml(venueAddress)+'</span>' : ''}</td></tr>
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Event Type</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${venueType==='club'?'Club':'Bar'}${setType?' · '+(setLabels[setType]||setType):''}</td></tr>
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Time</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${formatT(startTime)}${endTime?' – '+formatT(endTime):''}</td></tr>
+          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Equipment</td></tr>
+          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${equipLabels[equipment]||equipment||'—'}</td></tr>
+          ${quotedRate ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Quoted Rate</td></tr><tr><td style="color:#00b89a;font-weight:700;font-size:1.1em;padding-bottom:12px;">${sym}${Number(quotedRate).toLocaleString()} ${currency||'USD'}</td></tr>` : ''}
+          ${offerAmount ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Your Offer</td></tr><tr><td style="color:#00b89a;font-weight:700;font-size:1.1em;padding-bottom:12px;">${sym}${Number(offerAmount).toLocaleString()} ${currency||'USD'}</td></tr>` : ''}
+          ${notes ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Notes</td></tr><tr><td style="color:#333333;line-height:1.6;padding-bottom:12px;">${escHtml(notes)}</td></tr>` : ''}
+        </table>
+        <a href="${SITE_URL}/inbox.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Go to Inbox</a>
+      `)
+    };
+
   } else if (type === 'booking_status') {
     const { requesterName, requesterEmail, djName, status, eventDate, venueName } = body;
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
