@@ -137,12 +137,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Event Type</div>
         <div style="display:flex;gap:.5rem;">
-          <label onclick="selectRadio(this,'venue-type','bar')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-bar">
-            <input type="radio" name="venue-type" value="bar" style="display:none;"> Bar
-          </label>
-          <label onclick="selectRadio(this,'venue-type','club')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-club">
-            <input type="radio" name="venue-type" value="club" style="display:none;"> Club
-          </label>
+          <div onclick="selectPill(this,'venue-type','bar')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-bar" data-radio-name="venue-type" data-radio-value="bar">Bar</div>
+          <div onclick="selectPill(this,'venue-type','club')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:.5rem;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:all .2s;" id="pill-club" data-radio-name="venue-type" data-radio-value="club">Club</div>
         </div>
       </div>
 
@@ -150,11 +146,11 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div id="set-type-section" style="display:none;padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
         <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Set Type</div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-          <label onclick="selectRadio(this,'set-type','opening')" class="pill-opt"><input type="radio" name="set-type" value="opening" style="display:none;">Opening Set</label>
-          <label onclick="selectRadio(this,'set-type','headliner')" class="pill-opt"><input type="radio" name="set-type" value="headliner" style="display:none;">Headliner</label>
-          <label onclick="selectRadio(this,'set-type','closing')" class="pill-opt"><input type="radio" name="set-type" value="closing" style="display:none;">Closing Set</label>
-          <label onclick="selectRadio(this,'set-type','opening_close')" class="pill-opt"><input type="radio" name="set-type" value="opening_close" style="display:none;">Opening – Close</label>
-          <label onclick="selectRadio(this,'set-type','opening_and_closing')" class="pill-opt"><input type="radio" name="set-type" value="opening_and_closing" style="display:none;">Opening &amp; Closing</label>
+          <div onclick="selectPill(this,'set-type','opening')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening" style="display:none;">Opening Set</div>
+          <div onclick="selectPill(this,'set-type','headliner')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="headliner" style="display:none;">Headliner</div>
+          <div onclick="selectPill(this,'set-type','closing')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="closing" style="display:none;">Closing Set</div>
+          <div onclick="selectPill(this,'set-type','opening_close')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening_close" style="display:none;">Opening – Close</div>
+          <div onclick="selectPill(this,'set-type','opening_and_closing')" class="pill-opt pill-wide"><input type="radio" name="set-type" value="opening_and_closing" style="display:none;">Opening &amp; Closing</div>
         </div>
       </div>
 
@@ -383,14 +379,23 @@ async function init() {
   document.getElementById('page-content').style.display = 'block';
 }
 
-// Radio selection helper
-function selectRadio(label, name, value) {
-  document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
-    r.closest('label').classList.remove('selected');
-  });
-  label.classList.add('selected');
-  const r = label.querySelector('input[type="radio"]');
-  if (r) r.checked = true;
+// Radio/pill selection
+function selectPill(el, name, value) {
+  document.querySelectorAll(`[data-radio-name="${name}"]`).forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  // Store value on element for collection
+  el.dataset.radioValue = value;
+  // Trigger change logic
+  if (name === 'venue-type') {
+    document.getElementById('set-type-section').style.display = value === 'club' ? 'block' : 'none';
+    updateRateDisplay();
+  }
+  if (name === 'equipment') checkEquipment();
+}
+function selectRadio(label, name, value) { selectPill(label, name, value); }
+function getRadioValue(name) {
+  const el = document.querySelector(`[data-radio-name="${name}"].selected`);
+  return el ? el.dataset.radioValue : null;
 }
 
 // Address autocomplete
@@ -434,7 +439,7 @@ document.addEventListener('click', e => {
 
 // Equipment check
 function checkEquipment() {
-  const val = document.querySelector('input[name="equipment"]:checked')?.value;
+  const val = getRadioValue('equipment');
   document.getElementById('venue-equip-detail').style.display = val === 'venue_provides' ? 'block' : 'none';
 
   const warnArea = document.getElementById('warnings-area');
@@ -506,14 +511,23 @@ async function saveDraft(btn) {
       const { data } = await db.from('booking_drafts').insert({ requester_id: currentUser.id, dj_id: djData.id, dj_slug: djData.slug, data: payload }).select('id').single();
       if (data) draftId = data.id;
     }
-    const a = document.getElementById('submit-alert');
-    a.innerHTML = '<div class="alert alert-success">✓ Draft saved. Find it in your account settings under Drafts.</div>';
-    setTimeout(() => a.innerHTML = '', 3000);
+    document.getElementById('page-content').style.display = 'none';
+    const success = document.createElement('div');
+    success.style.cssText = 'text-align:center;padding:4rem 2rem;';
+    success.innerHTML = `
+      <div style="font-size:2.5rem;margin-bottom:1rem;">📋</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.6rem;">Draft Saved</div>
+      <div style="font-size:.88rem;color:var(--muted);max-width:340px;margin:0 auto 1.5rem;line-height:1.6;">Your booking has been saved. Find it anytime by tapping the <strong style="color:var(--white);">Drafts</strong> icon in the toolbar.</div>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;">
+        <a href="/drafts.html" class="btn btn-primary">View Drafts</a>
+        <a href="/" class="btn btn-outline">Back to Directory</a>
+      </div>`;
+    document.querySelector('.page').appendChild(success);
   } catch(e) {
     const a = document.getElementById('submit-alert');
-    a.innerHTML = `<div class="alert alert-error">Error saving draft: ${e.message}</div>`;
+    if (a) a.innerHTML = `<div class="alert alert-error">Error saving draft: ${e.message}</div>`;
+    btn.textContent = orig; btn.disabled = false;
   }
-  btn.textContent = orig; btn.disabled = false;
 }
 
 async function loadDraft(id) {
@@ -537,15 +551,15 @@ async function loadDraft(id) {
 
 function collectFormData() {
   return {
-    venue_type: document.querySelector('input[name="venue-type"]:checked')?.value || null,
-    set_type: document.querySelector('input[name="set-type"]:checked')?.value || null,
+    venue_type: getRadioValue('venue-type'),
+    set_type: getRadioValue('set-type'),
     venue_name: document.getElementById('venue-name').value.trim(),
     venue_address: document.getElementById('venue-address').value.trim(),
     event_date: document.getElementById('event-date').value,
     country: document.getElementById('event-country').value,
     start_time: document.getElementById('start-time').value,
     end_time: document.getElementById('end-time').value,
-    equipment: document.querySelector('input[name="equipment"]:checked')?.value || null,
+    equipment: getRadioValue('equipment'),
     venue_equip_text: document.getElementById('venue-equip-text').value.trim(),
     offer_amount: document.getElementById('offer-amount')?.value || null,
     notes: document.getElementById('booking-notes').value.trim(),
