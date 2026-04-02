@@ -322,21 +322,24 @@ exports.handler = async (event) => {
     };
 
   } else if (type === 'booking_counter') {
-    const { requesterName, requesterEmail, djName, counterRate, counterMessage, eventDate, venueName, currency } = body;
-    const sym = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$'}[currency||'USD'] || '$';
+    const { recipientName, recipientEmail, senderName, fromRole, counterRate, counterMessage, eventDate, venueName, currency } = body;
+    const sym = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',MXN:'MX$',BRL:'R$',CHF:'Fr',SEK:'kr',NOK:'kr',DKK:'kr',NZD:'NZ$',SGD:'S$',ZAR:'R',AED:'د.إ',INR:'₹'}[currency||'USD'] || '$';
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
+    const fromLabel = fromRole === 'booker' ? 'Booker Counter Offer' : 'Counter Offer';
+    const ctaLink = fromRole === 'booker' ? `${SITE_URL}/booking-requests.html` : `${SITE_URL}/booking-requests.html`;
+    const ctaLabel = fromRole === 'booker' ? 'View Booking Requests' : 'View Booking Requests';
     emailPayload = {
-      from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: `Counter Offer from ${escHtml(djName)} · ${escHtml(venueName)} · ${dateStr}`,
+      from: FROM, reply_to: REPLY_TO, to: [recipientEmail],
+      subject: `Counter Offer from ${escHtml(senderName)} · ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Counter Offer</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent a counter offer for your booking at <strong>${escHtml(venueName)}</strong> on ${dateStr}.</p>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${fromLabel}</h2>
+        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(recipientName)}, <strong>${escHtml(senderName)}</strong> has sent a counter offer for the booking at <strong>${escHtml(venueName)}</strong> on ${dateStr}.</p>
         <div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Counter Rate</div>
           <div style="font-size:2em;font-weight:700;color:#00b89a;">${sym}${Number(counterRate).toLocaleString()} <span style="font-size:.6em;color:#888;">${currency||'USD'}</span></div>
           ${counterMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(counterMessage)}"</div>` : ''}
         </div>
-        <a href="${SITE_URL}/inbox.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to DJ</a>
+        <a href="${ctaLink}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">${ctaLabel}</a>
       `)
     };
 
