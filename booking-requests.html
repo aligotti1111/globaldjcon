@@ -125,11 +125,13 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
     <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Outgoing Booking Requests</div>
     <div class="tabs" style="margin-bottom:1rem;">
       <button class="tab-btn active" id="out-tab-pending" onclick="switchTab('out','pending',this)">Pending</button>
+      <button class="tab-btn" id="out-tab-counter" onclick="switchTab('out','counter',this)">Counter</button>
       <button class="tab-btn" id="out-tab-approved" onclick="switchTab('out','approved',this)">Approved</button>
       <button class="tab-btn" id="out-tab-denied" onclick="switchTab('out','denied',this)">Denied</button>
       <button class="tab-btn" id="out-tab-all" onclick="switchTab('out','all',this)">All</button>
     </div>
     <div id="out-tab-pane-pending" class="tab-pane active"><div id="out-list-pending"></div></div>
+    <div id="out-tab-pane-counter" class="tab-pane"><div id="out-list-counter"></div></div>
     <div id="out-tab-pane-approved" class="tab-pane"><div id="out-list-approved"></div></div>
     <div id="out-tab-pane-denied" class="tab-pane"><div id="out-list-denied"></div></div>
     <div id="out-tab-pane-all" class="tab-pane"><div id="out-list-all"></div></div>
@@ -298,7 +300,12 @@ function renderList(group, filter) {
         ${rateInfo ? `<div class="req-detail-item"><span class="lbl">Rate</span><span class="val" style="color:var(--neon);">${rateInfo}</span></div>` : ''}
       </div>
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-      ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : ''}
+      ${!isIncoming && b.status === 'counter' && b.counter_rate ? `
+        <div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);background:var(--neon-dim);">
+          <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-bottom:.35rem;">DJ Counter Offer</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--neon);margin-bottom:${b.counter_message ? '.4rem' : '0'};">${currencySymbols[b.currency||'USD']||'$'}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}</div>
+          ${b.counter_message ? `<div style="color:var(--white);font-size:.85rem;line-height:1.5;">"${b.counter_message}"</div>` : ''}
+        </div>` : (b.counter_message && isIncoming ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : '')}
       <div class="req-actions">
         ${isIncoming && b.status === 'pending' ? `
           <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
