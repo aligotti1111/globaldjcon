@@ -103,19 +103,38 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 
 <div class="page">
   <div class="page-title">Booking Requests</div>
-  <div class="page-sub">Manage incoming booking requests</div>
+  <div class="page-sub" id="page-sub">Manage your booking requests</div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('pending',this)">Pending</button>
-    <button class="tab-btn" onclick="switchTab('approved',this)">Approved</button>
-    <button class="tab-btn" onclick="switchTab('denied',this)">Denied</button>
-    <button class="tab-btn" onclick="switchTab('all',this)">All</button>
+  <!-- Incoming (DJ only) -->
+  <div id="incoming-section" style="display:none;margin-bottom:2rem;">
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Incoming Booking Requests</div>
+    <div class="tabs" style="margin-bottom:1rem;">
+      <button class="tab-btn active" id="in-tab-pending" onclick="switchTab('in','pending',this)">Pending</button>
+      <button class="tab-btn" id="in-tab-approved" onclick="switchTab('in','approved',this)">Approved</button>
+      <button class="tab-btn" id="in-tab-denied" onclick="switchTab('in','denied',this)">Denied</button>
+      <button class="tab-btn" id="in-tab-all" onclick="switchTab('in','all',this)">All</button>
+    </div>
+    <div id="in-tab-pane-pending" class="tab-pane active"><div id="in-list-pending"></div></div>
+    <div id="in-tab-pane-approved" class="tab-pane"><div id="in-list-approved"></div></div>
+    <div id="in-tab-pane-denied" class="tab-pane"><div id="in-list-denied"></div></div>
+    <div id="in-tab-pane-all" class="tab-pane"><div id="in-list-all"></div></div>
   </div>
 
-  <div id="tab-pending" class="tab-pane active"><div id="list-pending"></div></div>
-  <div id="tab-approved" class="tab-pane"><div id="list-approved"></div></div>
-  <div id="tab-denied" class="tab-pane"><div id="list-denied"></div></div>
-  <div id="tab-all" class="tab-pane"><div id="list-all"></div></div>
+  <!-- Outgoing (all roles) -->
+  <div id="outgoing-section">
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Outgoing Booking Requests</div>
+    <div class="tabs" style="margin-bottom:1rem;">
+      <button class="tab-btn active" id="out-tab-pending" onclick="switchTab('out','pending',this)">Pending</button>
+      <button class="tab-btn" id="out-tab-approved" onclick="switchTab('out','approved',this)">Approved</button>
+      <button class="tab-btn" id="out-tab-denied" onclick="switchTab('out','denied',this)">Denied</button>
+      <button class="tab-btn" id="out-tab-all" onclick="switchTab('out','all',this)">All</button>
+    </div>
+    <div id="out-tab-pane-pending" class="tab-pane active"><div id="out-list-pending"></div></div>
+    <div id="out-tab-pane-approved" class="tab-pane"><div id="out-list-approved"></div></div>
+    <div id="out-tab-pane-denied" class="tab-pane"><div id="out-list-denied"></div></div>
+    <div id="out-tab-pane-all" class="tab-pane"><div id="out-list-all"></div></div>
+  </div>
+
 </div>
 
 <!-- Counter Offer Modal -->
@@ -163,7 +182,11 @@ const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localSto
 let activeCounterBookingId = null;
 let activeMsgBookingId = null;
 let activeMsgUserId = null;
-let allBookings = [];
+let incomingBookings = [];
+let outgoingBookings = [];
+
+// Club/Bar DJ = has incoming booking feature; mobile DJs and all other roles = outgoing only
+const isClubBarDJ = currentUser && currentUser.role === 'dj' && currentUser.dj_type !== 'mobile';
 
 const equipLabels = {sound_system:'Full Sound System & Decks',decks_only:'Decks/Controller Only',venue_provides:'Venue Provides All Equipment'};
 const setTypeLabels = {opening:'Opening Set',headliner:'Headliner',closing:'Closing Set',opening_close:'Opening – Close',opening_and_closing:'Opening & Closing Set'};
@@ -171,16 +194,24 @@ const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',
 
 // Nav
 (function(){
-  if (!currentUser || currentUser.role !== 'dj') { window.location.href = '/login.html'; return; }
+  if (!currentUser) { window.location.href = '/login.html'; return; }
   document.getElementById('nav-logout').style.display = 'inline-flex';
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
-  document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
-  document.getElementById('nav-edit-profile').style.display = 'inline-flex';
-  if (currentUser.slug) {
-    const vp = document.getElementById('nav-view-profile');
-    vp.href = '/' + currentUser.slug;
-    vp.style.display = 'inline-flex';
+  if (currentUser.role === 'dj') {
+    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
+    document.getElementById('nav-edit-profile').style.display = 'inline-flex';
+    if (currentUser.slug) {
+      const vp = document.getElementById('nav-view-profile');
+      vp.href = '/' + currentUser.slug;
+      vp.style.display = 'inline-flex';
+    }
   }
+
+  // Show incoming section only for club/bar DJs
+  if (isClubBarDJ) {
+    document.getElementById('incoming-section').style.display = 'block';
+  }
+
   loadInboxBadge();
 })();
 
@@ -196,12 +227,15 @@ async function loadInboxBadge(){
   }catch(e){}
 }
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+// group: 'in' or 'out', filter: 'pending'|'approved'|'denied'|'all'
+function switchTab(group, filter, btn) {
+  const section = group === 'in' ? 'incoming' : 'outgoing';
+  // Deactivate tabs within this group only
+  document.querySelectorAll(`#${section}-section .tab-btn`).forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`#${section}-section .tab-pane`).forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-  renderList(name);
+  document.getElementById(`${group}-tab-pane-${filter}`).classList.add('active');
+  renderList(group, filter);
 }
 
 function formatDate(d) {
@@ -215,17 +249,28 @@ function formatTime(t) {
   return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + ' ' + p;
 }
 
-async function loadBookings() {
-  const { data, error } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
-  if (error) { console.error(error); return; }
-  allBookings = data || [];
-  renderList('pending');
+async function loadAllBookings() {
+  // Outgoing: requests this user made (as requester)
+  const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
+  outgoingBookings = outData || [];
+  renderList('out', 'pending');
+
+  // Incoming: requests made to this DJ (club/bar DJs only)
+  if (isClubBarDJ) {
+    const { data: inData } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
+    incomingBookings = inData || [];
+    renderList('in', 'pending');
+  }
 }
 
-function renderList(filter) {
-  const list = document.getElementById('list-' + filter);
-  const items = filter === 'all' ? allBookings : allBookings.filter(b => b.status === filter);
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No ' + filter + ' requests</div>'; return; }
+function renderList(group, filter) {
+  const bookings = group === 'in' ? incomingBookings : outgoingBookings;
+  const list = document.getElementById(`${group}-list-${filter}`);
+  if (!list) return;
+  const items = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
+  if (!items.length) { list.innerHTML = `<div class="empty-state">No ${filter} requests</div>`; return; }
+
+  const isIncoming = group === 'in';
 
   list.innerHTML = items.map(b => {
     const sym = currencySymbols[b.currency || 'USD'] || '$';
@@ -252,7 +297,7 @@ function renderList(filter) {
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
       ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : ''}
       <div class="req-actions">
-        ${b.status === 'pending' ? `
+        ${isIncoming && b.status === 'pending' ? `
           <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
           </button>
@@ -263,7 +308,7 @@ function renderList(filter) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
           </button>
         ` : ''}
-        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${b.requester_id}')">
+        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${isIncoming ? b.requester_id : b.dj_id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
         </button>
       </div>
@@ -275,7 +320,7 @@ async function updateStatus(bookingId, status) {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
-    const b = allBookings.find(x => x.id === bookingId);
+    const b = incomingBookings.find(x => x.id === bookingId);
     if (b) b.status = status;
 
     // If approved, mark the date as booked on the DJ's calendar
@@ -300,7 +345,6 @@ async function updateStatus(bookingId, status) {
     if (b) {
       const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
 
-      // Email requester (approved or denied)
       if (requester?.email) {
         fetch('/.netlify/functions/send-email', {
           method: 'POST',
@@ -327,7 +371,6 @@ async function updateStatus(bookingId, status) {
         }).catch(e => console.warn('Requester status email failed:', e));
       }
 
-      // Email DJ confirming their own action
       if (currentUser.email) {
         fetch('/.netlify/functions/send-email', {
           method: 'POST',
@@ -355,8 +398,12 @@ async function updateStatus(bookingId, status) {
       }
     }
 
-    const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/\'(\w+)\'/)[1];
-    renderList(activeTab);
+    // Re-render the active incoming tab
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) {
+      const activeFilter = activeInBtn.id.replace('in-tab-','');
+      renderList('in', activeFilter);
+    }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -379,24 +426,26 @@ async function submitCounter() {
   try {
     const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
-    const b = allBookings.find(x => x.id === activeCounterBookingId);
+    const b = incomingBookings.find(x => x.id === activeCounterBookingId);
     if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
 
-    // Email requester
     if (b) {
       const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
       if (requester?.email) {
         await fetch('/.netlify/functions/send-email', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ type: 'booking_counter', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name })
+          body: JSON.stringify({ type: 'booking_counter', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
         });
       }
     }
 
     closeCounter();
-    const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/\'(\w+)\'/)[1];
-    renderList(activeTab);
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) {
+      const activeFilter = activeInBtn.id.replace('in-tab-','');
+      renderList('in', activeFilter);
+    }
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
 
@@ -421,7 +470,7 @@ async function sendMsg() {
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
 
-if (currentUser && currentUser.role === 'dj') loadBookings();
+if (currentUser) loadAllBookings();
 </script>
 </body>
 </html>
