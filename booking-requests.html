@@ -305,7 +305,13 @@ function renderList(group, filter) {
           <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-bottom:.35rem;">DJ Counter Offer</div>
           <div style="font-size:1.1rem;font-weight:700;color:var(--neon);margin-bottom:${b.counter_message ? '.4rem' : '0'};">${currencySymbols[b.currency||'USD']||'$'}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}</div>
           ${b.counter_message ? `<div style="color:var(--white);font-size:.85rem;line-height:1.5;">"${b.counter_message}"</div>` : ''}
-        </div>` : (b.counter_message && isIncoming ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : '')}
+        </div>` : ''}
+      ${isIncoming && b.status === 'pending' && b.counter_rate ? `
+        <div class="req-notes" style="border-left:2px solid var(--amber);color:var(--white);background:rgba(255,179,71,.08);">
+          <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);margin-bottom:.35rem;">Booker Counter Offer</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--amber);margin-bottom:${b.counter_message ? '.4rem' : '0'};">${currencySymbols[b.currency||'USD']||'$'}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}</div>
+          ${b.counter_message ? `<div style="color:var(--white);font-size:.85rem;line-height:1.5;">"${b.counter_message}"</div>` : ''}
+        </div>` : ''}
       <div class="req-actions">
         ${isIncoming && b.status === 'pending' ? `
           <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
@@ -314,8 +320,19 @@ function renderList(group, filter) {
           <button class="btn btn-danger btn-sm" onclick="updateStatus('${b.id}','denied')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deny
           </button>
-          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}')">
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','in')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
+          </button>
+        ` : ''}
+        ${!isIncoming && b.status === 'counter' ? `
+          <button class="btn btn-primary btn-sm" onclick="requesterUpdateStatus('${b.id}','approved')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Accept
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="requesterUpdateStatus('${b.id}','denied')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline
+          </button>
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','out')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter Back
           </button>
         ` : ''}
         <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${isIncoming ? b.requester_id : b.dj_id}')">
@@ -417,8 +434,11 @@ async function updateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-function openCounter(bookingId, currency) {
+let activeCounterGroup = 'in';
+
+function openCounter(bookingId, currency, group) {
   activeCounterBookingId = bookingId;
+  activeCounterGroup = group;
   const sym = currencySymbols[currency] || '$';
   document.getElementById('counter-currency-sym').textContent = sym;
   document.getElementById('counter-amount').value = '';
@@ -434,29 +454,89 @@ async function submitCounter() {
   const alertEl = document.getElementById('counter-alert');
   if (!amount) { alertEl.innerHTML = '<div class="alert alert-error">Enter a counter amount.</div>'; return; }
   try {
-    const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
-    if (error) throw error;
-    const b = incomingBookings.find(x => x.id === activeCounterBookingId);
-    if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
-
-    if (b) {
-      const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
-      if (requester?.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ type: 'booking_counter', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
-        });
+    if (activeCounterGroup === 'in') {
+      // DJ countering → status = 'counter', locked until booker responds
+      const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
+      if (error) throw error;
+      const b = incomingBookings.find(x => x.id === activeCounterBookingId);
+      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
+      // Email booker
+      if (b) {
+        const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
+        if (requester?.email) {
+          fetch('/.netlify/functions/send-email', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type: 'booking_counter', recipientName: requester.name, recipientEmail: requester.email, senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+          }).catch(() => {});
+        }
       }
-    }
-
-    closeCounter();
-    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
-    if (activeInBtn) {
-      const activeFilter = activeInBtn.id.replace('in-tab-','');
-      renderList('in', activeFilter);
+      closeCounter();
+      const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+      if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    } else {
+      // Booker countering back → status = 'pending' so DJ sees it in their incoming pending tab
+      const { error } = await db.from('bookings').update({ status: 'pending', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('requester_id', currentUser.id);
+      if (error) throw error;
+      const b = outgoingBookings.find(x => x.id === activeCounterBookingId);
+      if (b) { b.status = 'pending'; b.counter_rate = amount; b.counter_message = message; }
+      // Email DJ
+      if (b) {
+        const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+        if (dj?.email) {
+          fetch('/.netlify/functions/send-email', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type: 'booking_counter', recipientName: dj.name, recipientEmail: dj.email, senderName: currentUser.name, fromRole: 'booker', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+          }).catch(() => {});
+        }
+      }
+      closeCounter();
+      const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+      if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
     }
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
+}
+
+// Booker accepting or declining a DJ's counter offer
+async function requesterUpdateStatus(bookingId, status) {
+  try {
+    const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
+    if (error) throw error;
+    const b = outgoingBookings.find(x => x.id === bookingId);
+    if (b) b.status = status;
+    // Email DJ
+    if (b) {
+      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      if (dj?.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_dj_confirm', djName: dj.name, djEmail: dj.email,
+            requesterName: currentUser.name, status,
+            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+            quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+          })
+        }).catch(() => {});
+      }
+      // Email booker confirmation
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_status', requesterName: currentUser.name, requesterEmail: currentUser.email,
+            djName: dj?.name || '', status,
+            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+            quotedRate: b.counter_rate || b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+          })
+        }).catch(() => {});
+      }
+    }
+    const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function openMsg(bookingId, userId) {
