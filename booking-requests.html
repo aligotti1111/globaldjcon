@@ -264,6 +264,16 @@ async function loadAllBookings() {
   // Outgoing: requests this user made (as requester)
   const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
   outgoingBookings = outData || [];
+  // Back-fill dj_name for older bookings that don't have it
+  const missingDjNames = outgoingBookings.filter(b => !b.dj_name && b.dj_id);
+  if (missingDjNames.length > 0) {
+    const djIds = [...new Set(missingDjNames.map(b => b.dj_id))];
+    const { data: djRows } = await db.from('users').select('id,name').in('id', djIds);
+    if (djRows) {
+      const djMap = Object.fromEntries(djRows.map(d => [d.id, d.name]));
+      outgoingBookings = outgoingBookings.map(b => b.dj_name ? b : {...b, dj_name: djMap[b.dj_id] || 'DJ'});
+    }
+  }
   if (currentUser.role !== 'dj' || outgoingBookings.length > 0) {
     document.getElementById('outgoing-section').style.display = 'block';
     renderList('out', 'pending');
@@ -274,6 +284,16 @@ async function loadAllBookings() {
     const { data: inData } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
     // Filter out bookings from blocked users
     incomingBookings = (inData || []).filter(b => !blockedUsers.includes(b.requester_id));
+    // Back-fill requester_name for older bookings
+    const missingNames = incomingBookings.filter(b => !b.requester_name && b.requester_id);
+    if (missingNames.length > 0) {
+      const rIds = [...new Set(missingNames.map(b => b.requester_id))];
+      const { data: rRows } = await db.from('users').select('id,name').in('id', rIds);
+      if (rRows) {
+        const rMap = Object.fromEntries(rRows.map(r => [r.id, r.name]));
+        incomingBookings = incomingBookings.map(b => b.requester_name ? b : {...b, requester_name: rMap[b.requester_id] || 'Unknown'});
+      }
+    }
     renderList('in', 'pending');
   }
 }
@@ -315,7 +335,7 @@ function renderList(group, filter) {
                 <span style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);">Offer Accepted</span>
               </div>
               <span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">${sym}${Number(agreedRate).toLocaleString()} <span style="font-size:.9rem;color:var(--muted);">${b.currency||'USD'}</span></span>
-            </div>` : agreedRate ? `<span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--amber);line-height:1.1;">${b.counter_rate ? 'Counter: ' : b.offer_amount ? 'Offer: ' : 'Quoted: '}${sym}${Number(agreedRate).toLocaleString()}</span>` : ''}
+            </div>` : agreedRate ? `<span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:${b.status==='denied'||b.status==='cancelled'?'var(--error)':'var(--amber)'};line-height:1.1;">${b.counter_rate ? 'Counter: ' : 'Offer: '}${sym}${Number(agreedRate).toLocaleString()}</span>` : ''}
         </div>
       </div>`;
 
@@ -328,7 +348,7 @@ function renderList(group, filter) {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
           <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
-          <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span></span>
           ${isIncoming ? `<button class="btn btn-danger btn-sm" style="font-size:.5rem;padding:.2rem .5rem;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block</button>` : ''}
         </div>
       </div>
