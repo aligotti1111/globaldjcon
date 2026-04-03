@@ -876,7 +876,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
     }]);
     if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
     const { data: newUser } = await db.from('users').select('*').eq('email', document.getElementById('dj-email').value.toLowerCase()).single();
-    if (newUser) sessionStorage.setItem('currentUser', JSON.stringify(newUser));
+    if (newUser) { sessionStorage.setItem('currentUser', JSON.stringify(newUser)); localStorage.setItem('currentUser', JSON.stringify(newUser)); }
     // Send welcome email
     await fetch('/.netlify/functions/send-email', {
       method: 'POST',
@@ -915,7 +915,7 @@ document.getElementById('form-host').addEventListener('submit', async function(e
     }]);
     if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
     const { data: newHost } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
-    if (newHost) sessionStorage.setItem('currentUser', JSON.stringify(newHost));
+    if (newHost) { sessionStorage.setItem('currentUser', JSON.stringify(newHost)); localStorage.setItem('currentUser', JSON.stringify(newHost)); }
     await fetch('/.netlify/functions/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -966,7 +966,7 @@ document.getElementById('form-venue').addEventListener('submit', async function(
     }]);
     if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
     const { data: newVenue } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
-    if (newVenue) sessionStorage.setItem('currentUser', JSON.stringify(newVenue));
+    if (newVenue) { sessionStorage.setItem('currentUser', JSON.stringify(newVenue)); localStorage.setItem('currentUser', JSON.stringify(newVenue)); }
     await fetch('/.netlify/functions/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

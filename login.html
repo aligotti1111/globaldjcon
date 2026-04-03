@@ -291,6 +291,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
     }
     
     sessionStorage.setItem('currentUser', JSON.stringify(data));
+    localStorage.setItem('currentUser', JSON.stringify(data));
     
     // Role-based redirect
     if (data.role === 'admin') {
