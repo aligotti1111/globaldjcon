@@ -392,6 +392,7 @@ async function init() {
 
   document.getElementById('page-loading').style.display = 'none';
   document.getElementById('page-content').style.display = 'block';
+  updateRateDisplay();
 }
 
 function selectPill(el, name, value) {
@@ -541,10 +542,14 @@ function updateRateDisplay() {
         <span style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;">${hrsLabel} hr${totalHrs !== 1 ? 's' : ''} × ${sym}${Number(hourlyRate).toLocaleString()}/${currency}</span>
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--neon);">${sym}${total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})} <span style="font-size:.85rem;color:var(--muted);">${currency}</span></span>
       </div>`;
+    } else {
+      totalHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;">Rate will show once start &amp; end times are entered</div>`;
     }
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}${totalHtml}</div>`;
   } else if (rate) {
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(rate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}</span></div></div>`;
+  } else if (bookingSettings.rate_with_system || bookingSettings.rate_with_decks || bookingSettings.rate_no_equip) {
+    html += `<div class="rate-display"><div class="rate-label">Rate</div><div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;margin-top:.35rem;">Rate will show once equipment selection is made</div></div>`;
   }
 
   if (allowOffers) {
