@@ -133,9 +133,9 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
     <!-- Single compact card -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
 
-      <!-- Event Type -->
+      <!-- Venue Type -->
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Event Type</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Venue Type</div>
         <div style="display:flex;gap:.5rem;">
           <div onclick="selectPill(this,'venue-type','bar')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-bar" data-radio-name="venue-type" data-radio-value="bar">Bar</div>
           <div onclick="selectPill(this,'venue-type','club')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-club" data-radio-name="venue-type" data-radio-value="club">Club</div>
@@ -689,19 +689,16 @@ async function submitBooking() {
     alertEl.innerHTML = '<div class="alert alert-success">✓ Booking request sent! The DJ will be in touch.</div>';
     btn.textContent = 'Request Sent';
 
-    // Hide form, show centered success
+    // Hide form, show centered success then redirect
     document.getElementById('page-content').style.display = 'none';
     const success = document.createElement('div');
     success.style.cssText = 'text-align:center;padding:5rem 2rem;';
     success.innerHTML = `
       <div style="font-size:3rem;margin-bottom:1rem;">🎧</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">Request Sent!</div>
-      <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${djData.name}</strong>. They will be in touch shortly.</div>
-      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
-        <a href="/" class="btn btn-primary">Back to Directory</a>
-        <a href="/inbox.html" class="btn btn-outline">Go to Inbox</a>
-      </div>`;
+      <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${djData.name}</strong>. Redirecting to your bookings...</div>`;
     document.querySelector('.page').appendChild(success);
+    setTimeout(() => { window.location.href = '/booking-requests.html'; }, 2000);
 
   } catch(e) {
     alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
