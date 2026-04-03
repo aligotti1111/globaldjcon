@@ -1216,13 +1216,9 @@ function drawRolling12Months() {
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
-    <button type="button" onclick="pubCalToggleView()"
-      style="background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;">← Month View</button>
-  </div>`;
-
+  let monthsHtml = '';
   for (let i = 0; i < 12; i++) {
     let mo = today.getMonth() + i;
     let yr = today.getFullYear() + Math.floor(mo / 12);
@@ -1230,15 +1226,8 @@ function drawRolling12Months() {
     const firstDay = new Date(yr, mo, 1).getDay();
     const daysInMonth = new Date(yr, mo + 1, 0).getDate();
 
-    html += `<div style="margin-bottom:2rem;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--white);letter-spacing:.06em;margin-bottom:.6rem;">${monthNames[mo]} <span style="color:var(--neon);">${yr}</span></div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;">
-        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.48rem;text-align:center;color:var(--muted);padding:.3rem 0;">${d}</div>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">`;
-
-    for (let b = 0; b < firstDay; b++) html += `<div></div>`;
-
+    let cellsHtml = '';
+    for (let b = 0; b < firstDay; b++) cellsHtml += `<div></div>`;
     for (let d = 1; d <= daysInMonth; d++) {
       const key = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const dayData = pubCalBookingDays[key] || {};
@@ -1246,33 +1235,36 @@ function drawRolling12Months() {
       const isBooked = dayData.booked;
       const isUnavail = dayData.unavailable;
       const isToday = key === todayKey;
-
-      let bg = 'rgba(255,255,255,.03)';
-      let numColor = isPast ? 'var(--muted)' : 'var(--white)';
-      let border = '1px solid transparent';
-      let cursor = 'default';
-      let onclick = '';
-
-      if (isBooked) { bg = 'rgba(255,95,95,.08)'; numColor = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
-      else if (isUnavail) { bg = 'rgba(107,107,136,.1)'; numColor = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
-      else if (!isPast) { bg = 'rgba(0,245,196,.05)'; border = '1px solid rgba(0,245,196,.1)'; cursor = 'pointer'; onclick = `onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
-      if (isToday) border = '1px solid var(--neon)';
-
-      html += `<div style="background:${bg};border:${border};border-radius:4px;padding:.35rem .2rem;text-align:center;cursor:${cursor};min-height:32px;" ${onclick}>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:${numColor};">${d}</div>
+      let bg = 'transparent', numColor = isPast ? 'rgba(255,255,255,.25)' : 'var(--white)', border = '1px solid transparent', cursor = 'default', onclick = '';
+      if (isBooked)       { bg='rgba(255,95,95,.1)';   numColor='#ff5f5f'; border='1px solid rgba(255,95,95,.25)'; }
+      else if (isUnavail) { bg='rgba(107,107,136,.12)'; numColor='var(--muted)'; border='1px solid rgba(107,107,136,.2)'; }
+      else if (!isPast)   { bg='rgba(0,245,196,.06)';  border='1px solid rgba(0,245,196,.12)'; cursor='pointer'; onclick=`onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
+      if (isToday)        { border='1px solid var(--neon)'; }
+      cellsHtml += `<div style="background:${bg};border:${border};border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:${cursor};min-width:0;" ${onclick}>
+        <span style="font-family:'Space Mono',monospace;font-size:.52rem;color:${numColor};line-height:1;">${d}</span>
       </div>`;
     }
 
-    html += `</div></div>`;
+    monthsHtml += `<div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:.75rem;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.05em;color:var(--white);margin-bottom:.5rem;">${monthNames[mo]} <span style="color:var(--neon);font-size:.95rem;">${yr}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;">
+        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.42rem;text-align:center;color:var(--muted);padding:.2rem 0;">${d}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${cellsHtml}</div>
+    </div>`;
   }
 
-  html += `<div style="display:flex;gap:1rem;margin-top:.5rem;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
-    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
-    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.12);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-  </div>`;
-
-  rolling.innerHTML = html;
+  rolling.innerHTML = `
+    <style>
+      #rolling-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
+      @media(max-width:600px){ #rolling-grid { grid-template-columns:repeat(2,1fr); } }
+    </style>
+    <div id="rolling-grid">${monthsHtml}</div>
+    <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:8px;height:8px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:8px;height:8px;border-radius:2px;background:rgba(107,107,136,.12);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+    </div>`;
 }
 
 
