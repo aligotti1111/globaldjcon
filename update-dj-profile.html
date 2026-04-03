@@ -1357,6 +1357,7 @@ document.getElementById('mobile-checkbox').addEventListener('change', function()
   if (this.checked) {
     document.getElementById('club-checkbox').checked = false;
     document.getElementById('club-spec').style.display = 'none';
+    document.querySelectorAll('input[name="club-genres"]').forEach(cb => cb.checked = false);
   }
 });
 
@@ -1366,6 +1367,7 @@ document.getElementById('club-checkbox').addEventListener('change', function() {
   if (this.checked) {
     document.getElementById('mobile-checkbox').checked = false;
     document.getElementById('mobile-spec').style.display = 'none';
+    document.querySelectorAll('input[name="mobile-events"]').forEach(cb => cb.checked = false);
   }
 });
 
