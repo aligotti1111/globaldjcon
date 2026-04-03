@@ -633,7 +633,7 @@ const GENRE_LABELS = {
   const heroTags = document.getElementById('p-hero-tags');
   let tagHtml = '';
 
-  if (data.event_types) {
+  if (data.event_types && data.type !== 'club') {
     const events = data.event_types.split(',').map(s => s.trim()).filter(Boolean);
     events.forEach(e => {
       tagHtml += `<span class="tag neon">${EVENT_TYPE_LABELS[e] || e}</span>`;
