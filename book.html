@@ -484,7 +484,7 @@ function updateRateDisplay() {
   const area = document.getElementById('rate-display-area');
   if (!bookingSettings) return;
 
-  const equip = document.querySelector('input[name="equipment"]:checked')?.value;
+  const equip = getRadioValue('equipment');
   const allowOffers = bookingSettings.allow_offers;
 
   const currency = bookingSettings.currency || 'USD';
