@@ -1457,7 +1457,7 @@ clubGenres.forEach(cb => {
     document.getElementById('travel_distance').value = data.travel_distance || '';
     document.getElementById('dj_start_year').value = data.dj_start_year || '';
     document.getElementById('bio').value = data.bio || '';
-    document.getElementById('rate').value = data.rate || '';
+    if (document.getElementById('rate')) document.getElementById('rate').value = data.rate || '';
     document.getElementById('phone').value = data.phone || '';
     document.getElementById('website').value = data.website || '';
     document.getElementById('soundcloud').value = data.soundcloud || '';
@@ -1582,7 +1582,6 @@ document.getElementById('profile-form').addEventListener('submit', async functio
       travel_distance: document.getElementById('travel_distance').value || null,
       dj_start_year: document.getElementById('dj_start_year').value || null,
       bio: document.getElementById('bio').value,
-      rate: document.getElementById('rate').value,
       phone: document.getElementById('phone').value,
       website: document.getElementById('website').value,
       soundcloud: document.getElementById('soundcloud').value,
