@@ -701,6 +701,7 @@ async function submitBooking() {
             notes: d.notes,
             offerAmount: d.offer_amount,
             quotedRate: displayRate,
+            totalHours: isHourlyBooking && d.start_time && d.end_time ? (() => { const [sh,sm]=d.start_time.split(':').map(Number); let [eh,em]=d.end_time.split(':').map(Number); let mins=(eh*60+em)-(sh*60+sm); if(mins<=0)mins+=1440; return parseFloat((mins/60).toFixed(2)); })() : null,
             currency,
           })
         });
