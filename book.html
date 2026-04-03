@@ -478,7 +478,7 @@ function updateRateDisplay() {
   // Check for day-specific rate first
   const params = new URLSearchParams(window.location.search);
   const dateParam = params.get('date');
-  const days = bookingSettings.days || {};
+  const days = bookingSettings.booking_days || {};
   const dayData = dateParam ? (days[dateParam] || {}) : {};
 
   let rate = null;
@@ -622,7 +622,7 @@ async function submitBooking() {
   // Hourly rate validation
   const params2 = new URLSearchParams(window.location.search);
   const dateParam2 = params2.get('date');
-  const days2 = bookingSettings.days || {};
+  const days2 = bookingSettings.booking_days || {};
   const dayData2 = dateParam2 ? (days2[dateParam2] || {}) : {};
   const isHourlyBooking = dayData2.rateType === 'hourly' && dayData2.hourlyRate;
 
