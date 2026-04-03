@@ -596,26 +596,39 @@ async function blockUser(userId, userName) {
 }
 
 async function cancelOffer(bookingId) {
-  if (!confirm('Cancel this booking offer? The DJ will be notified.')) return;
+  if (!confirm('Cancel this booking offer? Both you and the DJ will be notified.')) return;
   try {
     const { error } = await db.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
     const b = outgoingBookings.find(x => x.id === bookingId);
     if (b) b.status = 'cancelled';
-    // Notify DJ
     if (b) {
       const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      const emailPayload = {
+        type: 'booking_cancelled',
+        requesterName: currentUser.name,
+        djName: dj?.name || b.dj_name || 'DJ',
+        eventDate: b.event_date,
+        venueName: b.venue_name,
+        venueAddress: b.venue_address,
+        venueType: b.venue_type,
+        setType: b.set_type,
+        startTime: b.start_time,
+        endTime: b.end_time,
+        currency: b.currency,
+      };
+      // Email DJ
       if (dj?.email) {
         fetch('/.netlify/functions/send-email', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'booking_status', requesterName: currentUser.name, requesterEmail: dj.email,
-            djName: dj.name, status: 'cancelled',
-            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
-            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
-            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
-            quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
-          })
+          body: JSON.stringify({ ...emailPayload, recipientName: dj.name, recipientEmail: dj.email, recipientRole: 'dj' })
+        }).catch(() => {});
+      }
+      // Email requester (themselves — confirmation)
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ...emailPayload, recipientName: currentUser.name, recipientEmail: currentUser.email, recipientRole: 'requester' })
         }).catch(() => {});
       }
     }
