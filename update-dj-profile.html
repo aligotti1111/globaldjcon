@@ -603,12 +603,6 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <textarea id="bio" rows="5" placeholder="Tell people about yourself, your style, experience..." style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;resize:vertical;"></textarea>
       </div>
 
-      <!-- RATE -->
-      <div class="form-group">
-        <label>Rate <span id="rate-currency-hint" style="font-size:.75rem;color:var(--muted);font-weight:400;"></span></label>
-        <input type="text" id="rate" placeholder="e.g. Starting at $500, $150/hr">
-      </div>
-
       <div class="form-group">
         <label>Phone</label>
         <input type="text" id="phone" placeholder="e.g. +1 917-555-1234">
@@ -1870,10 +1864,7 @@ function openDayEditor(key) {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem;">
-        <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">Manually add booking / update availability for</div>
-          <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
-        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
       ${equipLabel ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.05em;color:var(--muted);margin-bottom:1.25rem;">Default equipment: ${equipLabel}</div>` : '<div style="margin-bottom:1.25rem;"></div>'}
@@ -1928,7 +1919,7 @@ function openDayEditor(key) {
 
       <div id="day-avail-fields" style="display:${(!d.booked && !d.unavailable) ? 'block' : 'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Customize Rate for This Day</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
           <div style="margin-bottom:.75rem;">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
               <input type="checkbox" id="day-allow-offers"
