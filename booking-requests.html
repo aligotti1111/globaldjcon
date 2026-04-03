@@ -297,7 +297,7 @@ function renderList(group, filter) {
         </div>
         <div>
           ${isApproved && agreedRate ? `
-            <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:1.5rem;background:rgba(0,245,196,.05);">
+            <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:1.5rem;background:rgba(0,245,196,.05);display:inline-block;">
               <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
                 <div style="width:16px;height:16px;border-radius:50%;background:var(--neon);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#050507" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -305,7 +305,7 @@ function renderList(group, filter) {
                 <span style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);">Offer Accepted</span>
               </div>
               <span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">${sym}${Number(agreedRate).toLocaleString()} <span style="font-size:.9rem;color:var(--muted);">${b.currency||'USD'}</span></span>
-            </div>` : agreedRate ? `<div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:.25rem;display:inline-block;"><span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--neon);line-height:1.1;">${b.counter_rate ? 'Counter: ' : b.offer_amount ? 'Offer: ' : 'Quoted: '}${sym}${Number(agreedRate).toLocaleString()}</span></div>` : ''}
+            </div>` : agreedRate ? `<span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--amber);line-height:1.1;">${b.counter_rate ? 'Counter: ' : b.offer_amount ? 'Offer: ' : 'Quoted: '}${sym}${Number(agreedRate).toLocaleString()}</span>` : ''}
         </div>
       </div>`;
 
