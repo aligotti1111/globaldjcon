@@ -51,6 +51,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .status-approved{background:rgba(61,220,132,.15);color:var(--success);}
 .status-denied{background:rgba(255,95,95,.15);color:var(--error);}
 .status-counter{background:var(--neon-dim);color:var(--neon);}
+.status-cancelled{background:rgba(107,107,136,.15);color:var(--muted);}
+.request-card.cancelled{border-left:3px solid var(--muted);}
 .req-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-bottom:.85rem;}
 .req-detail-item{font-size:.8rem;}
 .req-detail-item .lbl{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px;}
@@ -252,6 +254,13 @@ function formatTime(t) {
 }
 
 async function loadAllBookings() {
+  // Fetch fresh blocked_users list for current user
+  let blockedUsers = [];
+  try {
+    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+    blockedUsers = me?.blocked_users || [];
+  } catch(e) {}
+
   // Outgoing: requests this user made (as requester)
   const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
   outgoingBookings = outData || [];
@@ -263,7 +272,8 @@ async function loadAllBookings() {
   // Incoming: requests made to this DJ (club/bar DJs only)
   if (isClubBarDJ) {
     const { data: inData } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
-    incomingBookings = inData || [];
+    // Filter out bookings from blocked users
+    incomingBookings = (inData || []).filter(b => !blockedUsers.includes(b.requester_id));
     renderList('in', 'pending');
   }
 }
@@ -316,7 +326,11 @@ function renderList(group, filter) {
           ${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.78rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;line-height:1.4;display:block;margin-top:3px;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}
           ${b.set_type ? `<div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-top:6px;">Set: ${setTypeLabels[b.set_type] || b.set_type}</div>` : ''}
         </div>
-        <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
+          <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span>
+          ${isIncoming ? `<button class="btn btn-danger btn-sm" style="font-size:.5rem;padding:.2rem .5rem;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block</button>` : ''}
+        </div>
       </div>
       ${rateDisplay}
       <div class="req-details" style="margin-bottom:.6rem;">
@@ -338,6 +352,11 @@ function renderList(group, filter) {
           </button>
           <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','in')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
+          </button>
+        ` : ''}
+        ${!isIncoming && (b.status === 'pending' || b.status === 'counter') ? `
+          <button class="btn btn-danger btn-sm" onclick="cancelOffer('${b.id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancel Offer
           </button>
         ` : ''}
         ${!isIncoming && b.status === 'counter' ? `
@@ -547,6 +566,55 @@ async function requesterUpdateStatus(bookingId, status) {
             venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
             endTime: b.end_time, equipment: b.equipment, notes: b.notes,
             quotedRate: b.counter_rate || b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+          })
+        }).catch(() => {});
+      }
+    }
+    const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function blockUser(userId, userName) {
+  if (!confirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`)) return;
+  try {
+    // Get current blocked list
+    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+    const currentBlocked = me?.blocked_users || [];
+    const updatedBlocked = [...new Set([...currentBlocked, userId])];
+    const { error } = await db.from('users').update({ blocked_users: updatedBlocked }).eq('id', currentUser.id);
+    if (error) throw error;
+    // Also deny any pending bookings from this user
+    await db.from('bookings').update({ status: 'denied', updated_at: new Date().toISOString() })
+      .eq('requester_id', userId).eq('dj_id', currentUser.id).eq('status', 'pending');
+    // Update local data and re-render
+    incomingBookings = incomingBookings.map(b => b.requester_id === userId && b.status === 'pending' ? {...b, status: 'denied'} : b);
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    alert(`${userName} has been blocked.`);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function cancelOffer(bookingId) {
+  if (!confirm('Cancel this booking offer? The DJ will be notified.')) return;
+  try {
+    const { error } = await db.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
+    if (error) throw error;
+    const b = outgoingBookings.find(x => x.id === bookingId);
+    if (b) b.status = 'cancelled';
+    // Notify DJ
+    if (b) {
+      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      if (dj?.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_status', requesterName: currentUser.name, requesterEmail: dj.email,
+            djName: dj.name, status: 'cancelled',
+            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+            quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
           })
         }).catch(() => {});
       }

@@ -597,6 +597,8 @@ async function submitBooking() {
       dj_id: djData.id,
       requester_id: currentUser.id,
       dj_slug: djData.slug,
+      requester_name: currentUser.name,
+      dj_name: djData.name,
       venue_type: d.venue_type,
       set_type: d.set_type,
       venue_name: d.venue_name,
