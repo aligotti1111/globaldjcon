@@ -387,6 +387,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
     <!-- Tab Nav -->
     <nav class="tabs-nav">
       <button class="tab-btn" id="tab-btn-booking" onclick="switchTab('booking',this)" style="display:none;">Availability</button>
+      <button class="tab-btn" id="tab-btn-booking" onclick="switchTab('booking',this)" style="display:none;">Availability</button>
       <button class="tab-btn active" id="tab-btn-about" onclick="switchTab('about',this)">About</button>
       <button class="tab-btn" id="tab-btn-mixes" onclick="switchTab('mixes',this)">Mixes</button>
       <button class="tab-btn" id="tab-btn-images" onclick="switchTab('images',this)">Photos</button>
@@ -397,6 +398,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
     <!-- Booking/Availability Tab -->
     <div class="tab-pane" id="tab-booking">
       <div id="p-booking-calendar"></div>
+      <div id="p-booking-calendar-rolling" style="display:none;"></div>
     </div>
 
     <!-- About Tab -->
@@ -568,6 +570,7 @@ const GENRE_LABELS = {
   const infoGrid = document.getElementById('p-info-grid');
   let infoHtml = '';
 
+  if (data.rate) infoHtml += `<div class="info-item"><label>Rate</label><span>${data.rate}</span></div>`;
 
   if (infoHtml) infoGrid.innerHTML = infoHtml;
 
@@ -690,6 +693,8 @@ const GENRE_LABELS = {
     const twurl = data.twitch.startsWith('http') ? data.twitch : 'https://twitch.tv/' + data.twitch.replace('@','');
     socialLinks.push(`<a href="${twurl}" target="_blank" class="action-btn btn-twitch" title="Twitch" style="background:rgba(145,70,255,.12);border-color:rgba(145,70,255,.4);color:#9146ff;">${twSVG}</a>`);
   }
+  if (data.rate) socialLinks.push(`<span class="action-btn" style="background:rgba(255,179,71,.1);border-color:rgba(255,179,71,.3);color:var(--amber);cursor:default;">💰 ${data.rate}</span>`);
+
   // Insert social links before the copy button
   const copyBtn = actionsEl.querySelector('#copy-btn');
   socialLinks.forEach(html => {
@@ -761,7 +766,18 @@ const GENRE_LABELS = {
           bookBtn.onclick = function(e) {
             e.preventDefault();
             const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-            if (!cu) { showBookingGate(); } else { window.location.href = '/book.html?dj=' + effectiveSlug; }
+            if (!cu) { showBookingGate(); } else {
+              const bookingTabBtn = document.getElementById('tab-btn-booking');
+              if (bookingTabBtn && bookingTabBtn.style.display !== 'none') {
+                if (!document.getElementById('tab-booking').classList.contains('active')) {
+                  switchTab('booking', bookingTabBtn);
+                }
+                pubCalShowRolling();
+                document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
+              } else {
+                window.location.href = '/book.html?dj=' + effectiveSlug;
+              }
+            }
           };
         }
       } catch(e) {}
@@ -977,6 +993,10 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+      <button type="button" id="pub-cal-view-toggle" onclick="pubCalToggleView()"
+        style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;transition:all .2s;white-space:nowrap;"
+        onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
+        onmouseout="if(!this.dataset.active){this.style.borderColor='var(--border)';this.style.color='var(--muted)'}">12 Months</button>
     </div>
     <div id="pub-cal-grid-wrap"></div>
     <div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;">
@@ -1161,6 +1181,100 @@ function pubCalJumpSplit() {
   drawPubCalMonth();
 }
 
+let pubCalRollingActive = false;
+
+function pubCalToggleView() {
+  pubCalRollingActive = !pubCalRollingActive;
+  const toggle = document.getElementById('pub-cal-view-toggle');
+  const single = document.getElementById('p-booking-calendar');
+  const rolling = document.getElementById('p-booking-calendar-rolling');
+  if (pubCalRollingActive) {
+    single.style.display = 'none';
+    rolling.style.display = 'block';
+    toggle.textContent = '← Month View';
+    toggle.style.borderColor = 'var(--neon)';
+    toggle.style.color = 'var(--neon)';
+    toggle.dataset.active = '1';
+    drawRolling12Months();
+  } else {
+    single.style.display = 'block';
+    rolling.style.display = 'none';
+    toggle.textContent = '12 Months';
+    toggle.style.borderColor = 'var(--border)';
+    toggle.style.color = 'var(--muted)';
+    delete toggle.dataset.active;
+  }
+}
+
+function pubCalShowRolling() {
+  if (!pubCalRollingActive) pubCalToggleView();
+}
+
+function drawRolling12Months() {
+  const rolling = document.getElementById('p-booking-calendar-rolling');
+  if (!rolling) return;
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+    <button type="button" onclick="pubCalToggleView()"
+      style="background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;">← Month View</button>
+  </div>`;
+
+  for (let i = 0; i < 12; i++) {
+    let mo = today.getMonth() + i;
+    let yr = today.getFullYear() + Math.floor(mo / 12);
+    mo = mo % 12;
+    const firstDay = new Date(yr, mo, 1).getDay();
+    const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+
+    html += `<div style="margin-bottom:2rem;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--white);letter-spacing:.06em;margin-bottom:.6rem;">${monthNames[mo]} <span style="color:var(--neon);">${yr}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;">
+        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.48rem;text-align:center;color:var(--muted);padding:.3rem 0;">${d}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">`;
+
+    for (let b = 0; b < firstDay; b++) html += `<div></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayData = pubCalBookingDays[key] || {};
+      const isPast = key < todayKey;
+      const isBooked = dayData.booked;
+      const isUnavail = dayData.unavailable;
+      const isToday = key === todayKey;
+
+      let bg = 'rgba(255,255,255,.03)';
+      let numColor = isPast ? 'var(--muted)' : 'var(--white)';
+      let border = '1px solid transparent';
+      let cursor = 'default';
+      let onclick = '';
+
+      if (isBooked) { bg = 'rgba(255,95,95,.08)'; numColor = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
+      else if (isUnavail) { bg = 'rgba(107,107,136,.1)'; numColor = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      else if (!isPast) { bg = 'rgba(0,245,196,.05)'; border = '1px solid rgba(0,245,196,.1)'; cursor = 'pointer'; onclick = `onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
+      if (isToday) border = '1px solid var(--neon)';
+
+      html += `<div style="background:${bg};border:${border};border-radius:4px;padding:.35rem .2rem;text-align:center;cursor:${cursor};min-height:32px;" ${onclick}>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:${numColor};">${d}</div>
+      </div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  html += `<div style="display:flex;gap:1rem;margin-top:.5rem;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.12);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+  </div>`;
+
+  rolling.innerHTML = html;
+}
+
 
 // ── OWNER EDIT CALENDAR ───────────────────────────────────
 let ownerBookingDays = {};
@@ -1332,11 +1446,11 @@ function ownerOpenDayEditor(key) {
   modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.1rem;">
-        <div style="font-size:.72rem;color:var(--muted);">Manually add booking / update availability</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
-      <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);margin-bottom:1.25rem;">${formattedDate}</div>
+      <div style="margin-bottom:1.25rem;"></div>
       <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="available" ${!d.booked&&!d.unavailable?'checked':''} style="accent-color:var(--neon);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--white);">Available</span></label>
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="unavailable" ${d.unavailable?'checked':''} style="accent-color:var(--muted);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--muted);">Unavailable</span></label>
@@ -1364,7 +1478,7 @@ function ownerOpenDayEditor(key) {
       </div>
       <div id="day-avail-fields" style="display:${(!d.booked&&!d.unavailable)?'block':'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem;">Customize Rate for This Day</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
           <div style="margin-bottom:.75rem;">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
               <input type="checkbox" id="day-allow-offers"
