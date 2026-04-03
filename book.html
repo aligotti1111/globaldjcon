@@ -100,11 +100,6 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <a href="/account-settings.html" class="inbox-nav-btn" id="nav-settings-btn" style="display:none;" title="Account Settings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </a>
-      <a href="/update-dj-profile.html" class="btn btn-primary" id="nav-edit-profile" style="display:none;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg>
-        Edit Profile
-      </a>
-      <a href="#" class="btn btn-outline" id="nav-view-profile" style="display:none;">View My Profile</a>
       <button id="nav-logout" class="btn btn-outline" style="display:none;" onclick="navLogout()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         Log Out
@@ -138,9 +133,9 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
     <!-- Single compact card -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
 
-      <!-- Venue Type -->
+      <!-- Event Type -->
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Venue Type</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Event Type</div>
         <div style="display:flex;gap:.5rem;">
           <div onclick="selectPill(this,'venue-type','bar')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-bar" data-radio-name="venue-type" data-radio-value="bar">Bar</div>
           <div onclick="selectPill(this,'venue-type','club')" class="pill-opt" style="flex:1;justify-content:center;border-radius:6px;" id="pill-club" data-radio-name="venue-type" data-radio-value="club">Club</div>
@@ -178,11 +173,11 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
           </div>
           <div>
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Start</div>
-            <select id="start-time" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+            <select id="start-time" onchange="updateRateDisplay()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
           </div>
           <div>
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">End</div>
-            <select id="end-time" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+            <select id="end-time" onchange="updateRateDisplay()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .4rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
           </div>
         </div>
         <div style="margin-top:.5rem;">
@@ -292,16 +287,8 @@ buildTimeOptions(document.getElementById('end-time'));
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
   if (currentUser.role === 'dj') {
     document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
-    document.getElementById('nav-settings-btn').style.display = 'none';
-    document.getElementById('nav-edit-profile').style.display = 'inline-flex';
-    if (currentUser.slug) {
-      const vp = document.getElementById('nav-view-profile');
-      vp.href = '/' + currentUser.slug;
-      vp.style.display = 'inline-flex';
-    }
-  } else {
-    document.getElementById('nav-settings-btn').style.display = 'inline-flex';
   }
+  document.getElementById('nav-settings-btn').style.display = 'inline-flex';
   loadInboxBadge();
   loadBookingRequestsBadge();
 })();
@@ -484,26 +471,64 @@ function updateRateDisplay() {
   const equip = document.querySelector('input[name="equipment"]:checked')?.value;
   const allowOffers = bookingSettings.allow_offers;
 
-  let rate = null;
-  let rateLabel = '';
-
-  if (equip === 'sound_system' && bookingSettings.rate_with_system) {
-    rate = bookingSettings.rate_with_system;
-    rateLabel = 'Rate (Sound System & Decks Provided)';
-  } else if (equip === 'decks_only' && bookingSettings.rate_with_decks) {
-    rate = bookingSettings.rate_with_decks;
-    rateLabel = 'Rate (Decks/Controller Provided)';
-  } else if (equip === 'venue_provides' && bookingSettings.rate_no_equip) {
-    rate = bookingSettings.rate_no_equip;
-    rateLabel = 'Rate (Venue Provides Equipment)';
-  }
-
   const currency = bookingSettings.currency || 'USD';
   const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',MXN:'MX$',BRL:'R$',CHF:'Fr',SEK:'kr',NOK:'kr',DKK:'kr',NZD:'NZ$',SGD:'S$',ZAR:'R',AED:'د.إ',INR:'₹'};
   const sym = currencySymbols[currency] || '$';
 
+  // Check for day-specific rate first
+  const params = new URLSearchParams(window.location.search);
+  const dateParam = params.get('date');
+  const days = bookingSettings.days || {};
+  const dayData = dateParam ? (days[dateParam] || {}) : {};
+
+  let rate = null;
+  let rateLabel = '';
+  let isHourly = false;
+  let hourlyRate = null;
+  let minHours = null;
+
+  if (dayData.rateType === 'hourly' && dayData.hourlyRate) {
+    isHourly = true;
+    hourlyRate = dayData.hourlyRate;
+    minHours = dayData.minHours;
+    rateLabel = 'Hourly Rate';
+  } else if (dayData.rate) {
+    rate = dayData.rate;
+    rateLabel = 'Rate for This Date';
+  } else {
+    if (equip === 'sound_system' && bookingSettings.rate_with_system) {
+      rate = bookingSettings.rate_with_system;
+      rateLabel = 'Rate (Sound System & Decks Provided)';
+    } else if (equip === 'decks_only' && bookingSettings.rate_with_decks) {
+      rate = bookingSettings.rate_with_decks;
+      rateLabel = 'Rate (Decks/Controller Provided)';
+    } else if (equip === 'venue_provides' && bookingSettings.rate_no_equip) {
+      rate = bookingSettings.rate_no_equip;
+      rateLabel = 'Rate (Venue Provides Equipment)';
+    }
+  }
+
   let html = '';
-  if (rate) {
+  if (isHourly) {
+    const startVal = document.getElementById('start-time')?.value;
+    const endVal = document.getElementById('end-time')?.value;
+    let totalHtml = '';
+    if (startVal && endVal) {
+      const [sh, sm] = startVal.split(':').map(Number);
+      let [eh, em] = endVal.split(':').map(Number);
+      // handle overnight
+      let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+      if (totalMins <= 0) totalMins += 24 * 60;
+      const totalHrs = totalMins / 60;
+      const total = totalHrs * Number(hourlyRate);
+      const hrsLabel = totalHrs % 1 === 0 ? totalHrs : totalHrs.toFixed(1);
+      totalHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;">${hrsLabel} hr${totalHrs !== 1 ? 's' : ''} × ${sym}${Number(hourlyRate).toLocaleString()}/${currency}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--neon);">${sym}${total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})} <span style="font-size:.85rem;color:var(--muted);">${currency}</span></span>
+      </div>`;
+    }
+    html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}${totalHtml}</div>`;
+  } else if (rate) {
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(rate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}</span></div></div>`;
   }
 
@@ -593,6 +618,26 @@ async function submitBooking() {
   if (!d.venue_name) { alertEl.innerHTML = '<div class="alert alert-error">Please enter a venue name.</div>'; return; }
   if (!d.event_date) { alertEl.innerHTML = '<div class="alert alert-error">Please select a date.</div>'; return; }
   if (!d.start_time) { alertEl.innerHTML = '<div class="alert alert-error">Please select a start time.</div>'; return; }
+
+  // Hourly rate validation
+  const params2 = new URLSearchParams(window.location.search);
+  const dateParam2 = params2.get('date');
+  const days2 = bookingSettings.days || {};
+  const dayData2 = dateParam2 ? (days2[dateParam2] || {}) : {};
+  const isHourlyBooking = dayData2.rateType === 'hourly' && dayData2.hourlyRate;
+
+  if (isHourlyBooking) {
+    if (!d.end_time) { alertEl.innerHTML = '<div class="alert alert-error">Please select an end time — required for hourly rate calculation.</div>'; return; }
+    const [sh, sm] = d.start_time.split(':').map(Number);
+    let [eh, em] = d.end_time.split(':').map(Number);
+    let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+    if (totalMins <= 0) totalMins += 24 * 60;
+    const totalHrs = totalMins / 60;
+    if (dayData2.minHours && totalHrs < Number(dayData2.minHours)) {
+      alertEl.innerHTML = `<div class="alert alert-error">Minimum booking is ${dayData2.minHours} hour${dayData2.minHours>1?'s':''}. Your selected times are ${totalHrs.toFixed(1)} hour${totalHrs!==1?'s':''}.</div>`;
+      return;
+    }
+  }
   if (!d.equipment) { alertEl.innerHTML = '<div class="alert alert-error">Please select equipment requirements.</div>'; return; }
 
   btn.disabled = true; btn.textContent = 'Submitting...';
@@ -600,7 +645,13 @@ async function submitBooking() {
   try {
     const currency = bookingSettings.currency || 'USD';
     let displayRate = null;
-    if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
+    if (isHourlyBooking && d.start_time && d.end_time) {
+      const [sh, sm] = d.start_time.split(':').map(Number);
+      let [eh, em] = d.end_time.split(':').map(Number);
+      let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+      if (totalMins <= 0) totalMins += 24 * 60;
+      displayRate = ((totalMins / 60) * Number(dayData2.hourlyRate)).toFixed(2);
+    } else if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
     else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
     else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
 
@@ -608,8 +659,6 @@ async function submitBooking() {
       dj_id: djData.id,
       requester_id: currentUser.id,
       dj_slug: djData.slug,
-      requester_name: currentUser.name,
-      dj_name: djData.name,
       venue_type: d.venue_type,
       set_type: d.set_type,
       venue_name: d.venue_name,
@@ -660,36 +709,6 @@ async function submitBooking() {
       } else {
         console.warn('DJ has no email on file — booking request email not sent');
       }
-
-      // Send confirmation email to requester
-      if (currentUser.email) {
-        try {
-          await fetch('/.netlify/functions/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'booking_confirmation',
-              requesterName: currentUser.name,
-              requesterEmail: currentUser.email,
-              djName: djData.name,
-              eventDate: d.event_date,
-              venueName: d.venue_name,
-              venueAddress: d.venue_address,
-              venueType: d.venue_type,
-              setType: d.set_type,
-              startTime: d.start_time,
-              endTime: d.end_time,
-              equipment: d.equipment,
-              notes: d.notes,
-              offerAmount: d.offer_amount,
-              quotedRate: displayRate,
-              currency,
-            })
-          });
-        } catch(confirmErr) {
-          console.warn('Confirmation email error (non-blocking):', confirmErr);
-        }
-      }
     } catch(emailErr) {
       console.warn('Email send error (non-blocking):', emailErr);
     }
@@ -700,16 +719,19 @@ async function submitBooking() {
     alertEl.innerHTML = '<div class="alert alert-success">✓ Booking request sent! The DJ will be in touch.</div>';
     btn.textContent = 'Request Sent';
 
-    // Hide form, show centered success then redirect
+    // Hide form, show centered success
     document.getElementById('page-content').style.display = 'none';
     const success = document.createElement('div');
     success.style.cssText = 'text-align:center;padding:5rem 2rem;';
     success.innerHTML = `
       <div style="font-size:3rem;margin-bottom:1rem;">🎧</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">Request Sent!</div>
-      <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${djData.name}</strong>. Redirecting to your bookings...</div>`;
+      <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${djData.name}</strong>. They will be in touch shortly.</div>
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary">Back to Directory</a>
+        <a href="/inbox.html" class="btn btn-outline">Go to Inbox</a>
+      </div>`;
     document.querySelector('.page').appendChild(success);
-    setTimeout(() => { window.location.href = '/booking-requests.html'; }, 2000);
 
   } catch(e) {
     alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
