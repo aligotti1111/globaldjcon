@@ -1339,7 +1339,7 @@ function ownerOpenDayEditor(key) {
         <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
-      <div style="margin-bottom:1.25rem;"></div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:1.25rem;">Manually add booking / update availability for this date</div>
       <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="available" ${!d.booked&&!d.unavailable?'checked':''} style="accent-color:var(--neon);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--white);">Available</span></label>
         <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;"><input type="radio" name="day-status" value="unavailable" ${d.unavailable?'checked':''} style="accent-color:var(--muted);" onchange="ownerToggleDayStatus()"><span style="font-size:.85rem;color:var(--muted);">Unavailable</span></label>
@@ -1368,6 +1368,7 @@ function ownerOpenDayEditor(key) {
       <div id="day-avail-fields" style="display:${(!d.booked&&!d.unavailable)?'block':'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
           <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem;">Customize Rate for This Day</div>
           <div style="margin-bottom:.75rem;">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
               <input type="checkbox" id="day-allow-offers"
