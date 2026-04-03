@@ -223,7 +223,7 @@ exports.handler = async (event) => {
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: `Booking Request Sent – ${escHtml(djName)} · ${escHtml(venueName)} · ${dateStr}`,
+      subject: `Booking Request Sent – ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
         <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(requesterName)}, your booking request has been sent to <strong style="color:#1a1a2e;">${escHtml(djName)}</strong>. They'll be in touch soon.</p>
@@ -259,7 +259,7 @@ exports.handler = async (event) => {
     const statusLabel = status === 'approved' ? 'Approved' : 'Denied';
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: `Booking ${statusLabel} – ${escHtml(djName)} · ${escHtml(venueName)} · ${dateStr}`,
+      subject: `Booking ${statusLabel} – ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel}</h2>
         <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(requesterName)}, your booking request to <strong style="color:#1a1a2e;">${escHtml(djName)}</strong> has been <span style="color:${statusColor};font-weight:700;">${statusLabel.toLowerCase()}</span>.</p>
@@ -295,7 +295,7 @@ exports.handler = async (event) => {
     const statusColor = status === 'approved' ? '#3ddc84' : '#ff5f5f';
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [djEmail],
-      subject: `You ${statusLabel} a Booking – ${escHtml(venueName || requesterName)} · ${dateStr}`,
+      subject: `You ${statusLabel} a Booking – ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel}</h2>
         <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(djName)}, you have <span style="color:${statusColor};font-weight:700;">${statusLabel.toLowerCase()}</span> the booking request from <strong style="color:#1a1a2e;">${escHtml(requesterName)}</strong>. ${status === 'approved' ? 'The requester has been notified — expect to hear from them soon.' : 'The requester has been notified.'}</p>
@@ -331,7 +331,7 @@ exports.handler = async (event) => {
       : `You have cancelled your booking request to <strong>${escHtml(djName)}</strong>.`;
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [recipientEmail],
-      subject: `Booking Cancelled – ${escHtml(isDJ ? requesterName : djName)} · ${escHtml(venueName)} · ${dateStr}`,
+      subject: `Booking Offer Cancelled – ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Cancelled</h2>
         <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(recipientName)}, ${bodyText}</p>
@@ -360,7 +360,7 @@ exports.handler = async (event) => {
     const ctaLabel = fromRole === 'booker' ? 'View Booking Requests' : 'View Booking Requests';
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [recipientEmail],
-      subject: `Counter Offer from ${escHtml(senderName)} · ${escHtml(venueName)} · ${dateStr}`,
+      subject: `Counter Offer – ${escHtml(venueName)} · ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${fromLabel}</h2>
         <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(recipientName)}, <strong>${escHtml(senderName)}</strong> has sent a counter offer for the booking at <strong>${escHtml(venueName)}</strong> on ${dateStr}.</p>
