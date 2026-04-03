@@ -633,7 +633,7 @@ const GENRE_LABELS = {
   const heroTags = document.getElementById('p-hero-tags');
   let tagHtml = '';
 
-  if (data.event_types && data.type !== 'club') {
+  if (data.event_types) {
     const events = data.event_types.split(',').map(s => s.trim()).filter(Boolean);
     events.forEach(e => {
       tagHtml += `<span class="tag neon">${EVENT_TYPE_LABELS[e] || e}</span>`;
@@ -752,8 +752,8 @@ const GENRE_LABELS = {
   // Show Message Me for everyone except own profile
   if (!isOwnProfile) {
     document.getElementById('contact-me-btn').style.display = 'inline-flex';
-    // Show Book Now only for Club/Bar DJs with booking enabled
-    if (isClubDJ && data.booking_settings) {
+    // Show Book Now if DJ has booking enabled
+    if (data.booking_settings) {
       try {
         const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
         if (bs.booking_enabled) {
@@ -951,6 +951,7 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
   const container = document.getElementById('p-booking-calendar');
   if (!container) return;
 
+  // Build month and year dropdowns
   let monthOpts = '', yearOpts = '';
   const monthNames = PUB_CAL_MONTHS;
   monthNames.forEach((name, i) => {
@@ -966,7 +967,7 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
       <button type="button" id="pub-cal-prev" onclick="pubCalNav(-1)"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">&#8249;</button>
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
       <select id="pub-cal-month-select" onchange="pubCalJumpSplit()"
         style="flex:2;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.04em;cursor:pointer;outline:none;">
         ${monthOpts}
@@ -978,7 +979,7 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
       <button type="button" id="pub-cal-next" onclick="pubCalNav(1)"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">&#8250;</button>
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
     </div>
     <div id="pub-cal-grid-wrap"></div>
     <div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;">
@@ -1004,17 +1005,36 @@ function drawPubCalMonth() {
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const monthEvents = [];
+
+    const monthEvents = [];
 
   let html = `<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">${PUB_CAL_MONTHS[m]} ${y}</div>`;
   html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;width:100%;box-sizing:border-box;">`;
+
+  // Day name headers
   dayNames.forEach((name, i) => {
-    html += `<div style="background:rgba(255,255,255,.04);border-right:1px solid var(--border);border-bottom:1px solid var(--border);${i===0?'border-radius:8px 0 0 0;':''}${i===6?'border-radius:0 8px 0 0;':''}padding:.6rem 0;text-align:center;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">${name}</div>`;
+    html += `<div style="
+      background:rgba(255,255,255,.04);
+      border-right:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      ${i===0?'border-radius:8px 0 0 0;':''}
+      ${i===6?'border-radius:0 8px 0 0;':''}
+      padding:.6rem 0;
+      text-align:center;
+      font-family:'Space Mono',monospace;
+      font-size:.58rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);">${name}</div>`;
   });
+
   html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;width:100%;box-sizing:border-box;">`;
+
+  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
     html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
   }
+
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayData = pubCalBookingDays[key] || {};
@@ -1024,37 +1044,64 @@ function drawPubCalMonth() {
     const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
     const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
     const isLastCol = (firstDay + d - 1) % 7 === 6;
+
     let bg = 'transparent';
     if (isBooked) bg = 'rgba(255,95,95,.06)';
     else if (isUnavail) bg = 'rgba(107,107,136,.06)';
     else if (isToday) bg = 'rgba(0,245,196,.1)';
     else if (!isPast) bg = 'rgba(0,245,196,.04)';
+
     let numColor = 'var(--white)';
     if (isPast) numColor = 'var(--muted)';
     else if (isBooked) numColor = '#ff5f5f';
     else if (isUnavail) numColor = 'var(--muted)';
     else if (isToday) numColor = 'var(--neon)';
+
     let badge = '';
     if (!isPast) {
       if (isBooked) {
         const isPrivate = dayData.location === 'Private';
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
-        const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '-' + formatTime12(dayData.endTime) : '') : '';
+        const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:2px;"><div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;" class="cal-badge">Booked</div>${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}</div>${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}`;
+        badge = `<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:2px;">
+            <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;" class="cal-badge">Booked</div>
+            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
+          </div>
+          ${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}`;
       } else if (isUnavail) {
         badge = `<div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);" class="cal-badge"><span class="cal-full">Unavailable</span><span class="cal-short">Unavail</span></div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-        const bookAction = cu ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'` : `showBookingGate()`;
+        const bookAction = cu
+          ? `window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'`
+          : `showBookingGate()`;
         badge = `<div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;" class="cal-badge" onclick="${bookAction}">Book Now</div>`;
       }
     }
+
+    // Collect public booked events for list below
     if (isBooked && dayData.eventName && dayData.location !== 'Private') {
       monthEvents.push({ key, d, dayData });
     }
-    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow && !isLastCol ? 'border-bottom:none;' : ''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : isUnavail ? 'box-shadow:inset 0 2px 0 var(--muted);' : ''}display:flex;flex-direction:column;align-items:center;overflow:hidden;box-sizing:border-box;"><div style="font-size:clamp(.75rem,1.6vw,1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:3px;">${d}</div>${badge}</div>`;
+
+    html += `<div style="
+      border-right:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      ${isLastRow && !isLastCol ? 'border-bottom:none;' : ''}
+      min-height:70px;
+      padding:.35rem .15rem .25rem;
+      background:${bg};
+      ${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : isUnavail ? 'box-shadow:inset 0 2px 0 var(--muted);' : ''}
+      display:flex;flex-direction:column;align-items:center;
+      overflow:hidden;box-sizing:border-box;">
+      <div style="font-size:clamp(.75rem,1.6vw,1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:3px;">${d}</div>
+      ${badge}
+    </div>`;
   }
+
+  // Fill remaining cells in last row
   const totalCells = firstDay + daysInMonth;
   const remainder = totalCells % 7;
   if (remainder !== 0) {
@@ -1062,17 +1109,39 @@ function drawPubCalMonth() {
       html += `<div style="border-right:1px solid var(--border);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
     }
   }
+
   html += `</div>`;
+
+  // Events list below calendar
   if (monthEvents.length) {
-    html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;"><div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div><div style="display:flex;flex-direction:column;gap:.5rem;max-width:600px;">`;
+    html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;max-width:600px;">`;
     monthEvents.forEach(({ key, d, dayData }) => {
       const dateLabel = new Date(pubCalYear, pubCalMonth, d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
-      const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? ' - ' + formatTime12(dayData.endTime) : '') : '';
-      html += `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;"><div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">${dateLabel}</div><div style="flex:1;min-width:0;"><div style="font-size:.88rem;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dayData.eventName}</div>${timeStr || dayData.location ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${timeStr}${timeStr && dayData.location ? ' - ' : ''}${dayData.location || ''}</div>` : ''}</div>${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="flex-shrink:0;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:4px 10px;background:rgba(0,245,196,.06);white-space:nowrap;" onmouseover="this.style.background='rgba(0,245,196,.14)'" onmouseout="this.style.background='rgba(0,245,196,.06)'">${dayData.ticketLabel || 'More Info'}</a>` : ''}</div>`;
+      const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? ' – ' + formatTime12(dayData.endTime) : '') : '';
+      html += `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">${dateLabel}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.88rem;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dayData.eventName}</div>
+          ${timeStr || dayData.location ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${timeStr}${timeStr && dayData.location ? ' · ' : ''}${dayData.location || ''}</div>` : ''}
+        </div>
+        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="flex-shrink:0;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:4px 10px;background:rgba(0,245,196,.06);white-space:nowrap;" onmouseover="this.style.background='rgba(0,245,196,.14)'" onmouseout="this.style.background='rgba(0,245,196,.06)'">${dayData.ticketLabel || 'More Info'}</a>` : ''}
+      </div>`;
     });
     html += `</div></div>`;
   }
+
   wrap.innerHTML = html;
+}
+
+
+function formatTime12(t) {
+  if (!t) return '';
+  const [h, mi] = t.split(':').map(Number);
+  const p = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return h12 + ':' + String(mi).padStart(2,'0') + ' ' + p;
 }
 
 function pubCalNav(dir) {
@@ -1095,45 +1164,8 @@ function pubCalJumpSplit() {
   drawPubCalMonth();
 }
 
-</script>
 
-<!-- Signup Gate Modal -->
-<div class="gate-modal" id="gate-modal" onclick="closeGateModal(event)">
-  <div class="gate-inner">
-    <button class="gate-close" onclick="document.getElementById('gate-modal').classList.remove('active')">✕</button>
-    <div class="gate-lock">🔒</div>
-    <h2>Free Account Required</h2>
-    <p>Create a <strong>free account</strong> to view contact info and connect with DJs directly.</p>
-    <div class="gate-btns">
-      <a href="/signup.html" class="gate-btn-primary">Create Free Account</a>
-      <a href="/login.html" class="gate-btn-secondary">Already have an account? Log In</a>
-    </div>
-  </div>
-</div>
-
-
-<!-- Contact Modal -->
-<div class="contact-modal" id="contact-modal" onclick="closeContactModal(event)">
-  <div class="contact-inner">
-    <button class="contact-close" onclick="document.getElementById('contact-modal').classList.remove('active')">✕</button>
-    <h3>Send Message</h3>
-    <div class="contact-to" id="contact-to-name"></div>
-    <div id="contact-alert"></div>
-    <div id="contact-form-wrap">
-      <div class="contact-form-group">
-        <label>Subject</label>
-        <input type="text" id="contact-subject" placeholder="e.g. Booking inquiry for July 4th">
-      </div>
-      <div class="contact-form-group">
-        <label>Message</label>
-        <textarea id="contact-message" placeholder="Tell them about your event, date, location, and what you're looking for..."></textarea>
-      </div>
-      <button class="contact-send-btn" id="contact-send-btn" onclick="sendMessage()">Send Message</button>
-    </div>
-  </div>
-</div>
-
-<script>
+// ── OWNER EDIT CALENDAR ───────────────────────────────────
 let ownerBookingDays = {};
 let ownerGlobalAllowOffers = false;
 let ownerCalYear = new Date().getFullYear();
@@ -1304,10 +1336,7 @@ function ownerOpenDayEditor(key) {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem;">
-        <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">Manually add booking / update availability for</div>
-          <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
-        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${formattedDate}</div>
         <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
       <div style="margin-bottom:1.25rem;"></div>
@@ -1338,7 +1367,7 @@ function ownerOpenDayEditor(key) {
       </div>
       <div id="day-avail-fields" style="display:${(!d.booked&&!d.unavailable)?'block':'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Customize Rate for This Day</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
           <div style="margin-bottom:.75rem;">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
               <input type="checkbox" id="day-allow-offers"
@@ -1780,8 +1809,44 @@ function navLogout() {
   sessionStorage.removeItem('currentUser');
   window.location.reload();
 }
-
-
 </script>
+
+
+<!-- Signup Gate Modal -->
+<div class="gate-modal" id="gate-modal" onclick="closeGateModal(event)">
+  <div class="gate-inner">
+    <button class="gate-close" onclick="document.getElementById('gate-modal').classList.remove('active')">✕</button>
+    <div class="gate-lock">🔒</div>
+    <h2>Free Account Required</h2>
+    <p>Create a <strong>free account</strong> to view contact info and connect with DJs directly.</p>
+    <div class="gate-btns">
+      <a href="/signup.html" class="gate-btn-primary">Create Free Account</a>
+      <a href="/login.html" class="gate-btn-secondary">Already have an account? Log In</a>
+    </div>
+  </div>
+</div>
+
+
+<!-- Contact Modal -->
+<div class="contact-modal" id="contact-modal" onclick="closeContactModal(event)">
+  <div class="contact-inner">
+    <button class="contact-close" onclick="document.getElementById('contact-modal').classList.remove('active')">✕</button>
+    <h3>Send Message</h3>
+    <div class="contact-to" id="contact-to-name"></div>
+    <div id="contact-alert"></div>
+    <div id="contact-form-wrap">
+      <div class="contact-form-group">
+        <label>Subject</label>
+        <input type="text" id="contact-subject" placeholder="e.g. Booking inquiry for July 4th">
+      </div>
+      <div class="contact-form-group">
+        <label>Message</label>
+        <textarea id="contact-message" placeholder="Tell them about your event, date, location, and what you're looking for..."></textarea>
+      </div>
+      <button class="contact-send-btn" id="contact-send-btn" onclick="sendMessage()">Send Message</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
