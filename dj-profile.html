@@ -1134,6 +1134,12 @@ function pubCalJumpSplit() {
 </div>
 
 <script>
+let ownerBookingDays = {};
+let ownerGlobalAllowOffers = false;
+let ownerCalYear = new Date().getFullYear();
+let ownerCalMonth = new Date().getMonth();
+const OWNER_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 function renderOwnerCalendar(bookingDays, globalAllowOffers) {
   ownerBookingDays = bookingDays || {};
   ownerGlobalAllowOffers = !!globalAllowOffers;
