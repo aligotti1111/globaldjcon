@@ -1182,6 +1182,7 @@ function pubCalJumpSplit() {
 }
 
 let pubCalRollingActive = false;
+let pubCalRollingStartYear = new Date().getFullYear();
 
 function pubCalToggleView() {
   pubCalRollingActive = !pubCalRollingActive;
@@ -1195,6 +1196,7 @@ function pubCalToggleView() {
     toggle.style.borderColor = 'var(--neon)';
     toggle.style.color = 'var(--neon)';
     toggle.dataset.active = '1';
+    pubCalRollingStartYear = new Date().getFullYear();
     drawRolling12Months();
   } else {
     single.style.display = 'block';
@@ -1218,10 +1220,20 @@ function drawRolling12Months() {
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayLabels = ['S','M','T','W','T','F','S'];
 
+  // Build year options — current year + next 2
+  const curY = today.getFullYear();
+  let yearOpts = '';
+  for (let y = curY; y <= curY + 2; y++) {
+    yearOpts += `<option value="${y}" ${y === pubCalRollingStartYear ? 'selected' : ''}>${y}</option>`;
+  }
+
+  // Start from Jan of selected year, unless it's current year (start from today's month)
+  const startMo = pubCalRollingStartYear === curY ? today.getMonth() : 0;
+
   let monthsHtml = '';
   for (let i = 0; i < 12; i++) {
-    let mo = today.getMonth() + i;
-    let yr = today.getFullYear() + Math.floor(mo / 12);
+    let mo = startMo + i;
+    let yr = pubCalRollingStartYear + Math.floor(mo / 12);
     mo = mo % 12;
     const firstDay = new Date(yr, mo, 1).getDay();
     const daysInMonth = new Date(yr, mo + 1, 0).getDate();
@@ -1236,12 +1248,12 @@ function drawRolling12Months() {
       const isUnavail = dayData.unavailable;
       const isToday = key === todayKey;
       let bg = 'transparent', numColor = isPast ? 'rgba(255,255,255,.25)' : 'var(--white)', border = '1px solid transparent', cursor = 'default', onclick = '';
-      if (isBooked)       { bg='rgba(255,95,95,.1)';   numColor='#ff5f5f'; border='1px solid rgba(255,95,95,.25)'; }
+      if (isBooked)       { bg='rgba(255,95,95,.1)';    numColor='#ff5f5f';      border='1px solid rgba(255,95,95,.25)'; }
       else if (isUnavail) { bg='rgba(107,107,136,.12)'; numColor='var(--muted)'; border='1px solid rgba(107,107,136,.2)'; }
-      else if (!isPast)   { bg='rgba(0,245,196,.06)';  border='1px solid rgba(0,245,196,.12)'; cursor='pointer'; onclick=`onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
+      else if (!isPast)   { bg='rgba(0,245,196,.06)';   border='1px solid rgba(0,245,196,.12)'; cursor='pointer'; onclick=`onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
       if (isToday)        { border='1px solid var(--neon)'; }
       cellsHtml += `<div style="background:${bg};border:${border};border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:${cursor};min-width:0;" ${onclick}>
-        <span style="font-family:'Space Mono',monospace;font-size:.52rem;color:${numColor};line-height:1;">${d}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${numColor};line-height:1;">${d}</span>
       </div>`;
     }
 
@@ -1259,6 +1271,14 @@ function drawRolling12Months() {
       #rolling-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
       @media(max-width:600px){ #rolling-grid { grid-template-columns:repeat(2,1fr); } }
     </style>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
+      <select onchange="pubCalRollingStartYear=parseInt(this.value);drawRolling12Months()"
+        style="background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
+        ${yearOpts}
+      </select>
+      <button type="button" onclick="pubCalToggleView()"
+        style="margin-left:auto;background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;">← Month View</button>
+    </div>
     <div id="rolling-grid">${monthsHtml}</div>
     <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:8px;height:8px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
