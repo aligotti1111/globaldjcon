@@ -752,8 +752,8 @@ const GENRE_LABELS = {
   // Show Message Me for everyone except own profile
   if (!isOwnProfile) {
     document.getElementById('contact-me-btn').style.display = 'inline-flex';
-    // Show Book Now if DJ has booking enabled
-    if (data.booking_settings) {
+    // Show Book Now only for Club/Bar DJs with booking enabled
+    if (isClubDJ && data.booking_settings) {
       try {
         const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
         if (bs.booking_enabled) {
