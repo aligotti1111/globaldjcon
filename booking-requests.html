@@ -367,10 +367,13 @@ function renderList(group, filter) {
       let logisticsHtml = '';
       if (hasMultiple && group.length === 2) {
         const [a, b] = group;
-        // Time gap: end of first to start of second
-        if (a.end_time && b.start_time) {
-          const aEndMins = timeToMins(a.end_time);
+        // Time gap: end of first booking to start of second
+        if (a.start_time && a.end_time && b.start_time) {
+          const aStartMins = timeToMins(a.start_time);
+          let aEndMins = timeToMins(a.end_time);
           const bStartMins = timeToMins(b.start_time);
+          // If end < start, booking 1 runs overnight — add 24h to end
+          if (aEndMins < aStartMins) aEndMins += 1440;
           const gapMins = bStartMins - aEndMins;
           const absGap = Math.abs(gapMins);
           const gapHrs = Math.floor(absGap / 60);
@@ -381,12 +384,10 @@ function renderList(group, filter) {
           const gapText = isOverlap ? `SETS OVERLAP BY ${gapLabel}` : `${gapLabel} GAP BETWEEN SETS`;
           logisticsHtml += `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:${gapColor};"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${gapText}</span>`;
         }
-        // Distance between venues
+        // Distance — link to Google Maps directions between the two venues
         if (a.venue_address && b.venue_address) {
-          const groupId = `logistics-${a.id}-${b.id}`;
-          logisticsHtml += `<span id="${groupId}" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Calculating distance...</span>`;
-          // Async distance lookup after render
-          setTimeout(() => fetchVenueDistance(a.venue_address, b.venue_address, groupId), 50);
+          const mapsUrl = `https://www.google.com/maps/dir/${encodeURIComponent(a.venue_address)}/${encodeURIComponent(b.venue_address)}`;
+          logisticsHtml += `<a href="${mapsUrl}" target="_blank" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);text-decoration:none;display:inline-flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Get directions between venues</a>`;
         }
       }
 
