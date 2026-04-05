@@ -433,11 +433,24 @@ function renderCard(b, isIncoming, orderNum) {
     const isApproved = b.status === 'approved';
     const orderBadge = orderNum ? `<span style="font-family:'Space Mono',monospace;font-size:.48rem;background:rgba(255,179,71,.15);color:var(--amber);border:1px solid rgba(255,179,71,.3);border-radius:3px;padding:1px 5px;margin-right:.4rem;">#${orderNum}</span>` : '';
 
-    // Negotiation log entries
+    // Negotiation log entries — use negotiation_log array if available, fall back to legacy fields
     const logEntries = [];
-    if (b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Initial Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.offer_amount).toLocaleString()} ${b.currency||'USD'}</span></div>`);
-    if (b.quoted_rate && !b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Quoted Rate <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.quoted_rate).toLocaleString()} ${b.currency||'USD'}</span></div>`);
-    if (b.counter_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;"><span style="color:var(--neon);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'DJ'})</span></span><span style="color:var(--neon);font-weight:600;">${sym}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}${b.counter_message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+b.counter_message+'"</span>' : ''}</span></div>`);
+    if (b.negotiation_log && b.negotiation_log.length > 0) {
+      b.negotiation_log.forEach((entry, i) => {
+        const isLast = i === b.negotiation_log.length - 1;
+        const fromLabel = entry.from === 'dj' ? 'DJ' : 'Booker';
+        const color = entry.from === 'dj' ? 'var(--neon)' : 'var(--amber)';
+        logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isLast && isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;">
+          <span style="color:${color};font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(${fromLabel})</span></span>
+          <span style="color:${color};font-weight:600;">${sym}${Number(entry.amount).toLocaleString()} ${b.currency||'USD'}${entry.message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+entry.message+'"</span>' : ''}</span>
+        </div>`);
+      });
+    } else {
+      // Legacy: single counter_rate field
+      if (b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Initial Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.offer_amount).toLocaleString()} ${b.currency||'USD'}</span></div>`);
+      if (b.quoted_rate && !b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Quoted Rate <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.quoted_rate).toLocaleString()} ${b.currency||'USD'}</span></div>`);
+      if (b.counter_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;"><span style="color:var(--neon);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(DJ)</span></span><span style="color:var(--neon);font-weight:600;">${sym}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}${b.counter_message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+b.counter_message+'"</span>' : ''}</span></div>`);
+    }
 
     const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;align-items:center;">
         <div>
@@ -474,7 +487,7 @@ function renderCard(b, isIncoming, orderNum) {
       </div>
       ${rateDisplay}
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-      ${b.counter_rate && logEntries.length > 0 ? `
+      ${(b.negotiation_log?.length > 0 || b.counter_rate) && logEntries.length > 0 ? `
         <div style="margin-top:.75rem;padding:.75rem;background:var(--deep);border-radius:8px;border:1px solid var(--border);">
           <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;">Negotiation Log</div>
           ${logEntries.join('')}
@@ -645,12 +658,14 @@ async function submitCounter() {
   if (!amount) { alertEl.innerHTML = '<div class="alert alert-error">Enter a counter amount.</div>'; return; }
   try {
     if (activeCounterGroup === 'in') {
-      // DJ countering → status = 'counter', locked until booker responds
-      const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
+      // DJ countering — fetch current log, append entry
+      const { data: current } = await db.from('bookings').select('negotiation_log').eq('id', activeCounterBookingId).single();
+      const log = current?.negotiation_log || [];
+      log.push({ from: 'dj', amount: Number(amount), message, created_at: new Date().toISOString() });
+      const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, negotiation_log: log, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
       if (error) throw error;
       const b = incomingBookings.find(x => x.id === activeCounterBookingId);
-      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
-      // Email booker
+      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; }
       if (b) {
         const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
         if (requester?.email) {
@@ -664,12 +679,14 @@ async function submitCounter() {
       const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
       if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
     } else {
-      // Booker countering back → status = 'pending' so DJ sees it in their incoming pending tab
-      const { error } = await db.from('bookings').update({ status: 'pending', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('requester_id', currentUser.id);
+      // Booker countering back — fetch current log, append entry
+      const { data: current } = await db.from('bookings').select('negotiation_log').eq('id', activeCounterBookingId).single();
+      const log = current?.negotiation_log || [];
+      log.push({ from: 'booker', amount: Number(amount), message, created_at: new Date().toISOString() });
+      const { error } = await db.from('bookings').update({ status: 'pending', counter_rate: amount, counter_message: message, negotiation_log: log, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('requester_id', currentUser.id);
       if (error) throw error;
       const b = outgoingBookings.find(x => x.id === activeCounterBookingId);
-      if (b) { b.status = 'pending'; b.counter_rate = amount; b.counter_message = message; }
-      // Email DJ
+      if (b) { b.status = 'pending'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; }
       if (b) {
         const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
         if (dj?.email) {
