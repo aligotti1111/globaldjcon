@@ -229,6 +229,12 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
   </div>
 </div>
 
+<!-- Blocked Users -->
+<div id="blocked-users-section" style="display:none;max-width:520px;margin:2rem auto 0;padding:0 1rem 4rem;">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--error);margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:1px solid rgba(255,95,95,.2);">Blocked Users</div>
+  <div id="blocked-users-list"></div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
@@ -506,6 +512,33 @@ function navLogout() {
   sessionStorage.removeItem('currentUser');
   window.location.href = '/';
 }
+
+async function loadBlockedUsers() {
+  const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+  const blockedIds = data?.blocked_users || [];
+  if (!blockedIds.length) return;
+  const { data: users } = await db.from('users').select('id,name').in('id', blockedIds);
+  if (!users || !users.length) return;
+  const section = document.getElementById('blocked-users-section');
+  const list = document.getElementById('blocked-users-list');
+  section.style.display = 'block';
+  list.innerHTML = users.map(u => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .85rem;background:var(--deep);border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;">
+      <span style="font-size:.88rem;color:var(--white);">${u.name || 'Unknown User'}</span>
+      <button onclick="unblockUser('${u.id}')" style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--muted);padding:.3rem .65rem;border-radius:5px;cursor:pointer;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Unblock</button>
+    </div>`).join('');
+}
+
+async function unblockUser(userId) {
+  const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+  const updated = (data?.blocked_users || []).filter(id => id !== userId);
+  await db.from('users').update({ blocked_users: updated }).eq('id', currentUser.id);
+  loadBlockedUsers();
+  const section = document.getElementById('blocked-users-section');
+  if (updated.length === 0) section.style.display = 'none';
+}
+
+loadBlockedUsers();
 </script>
 </body>
 </html>
