@@ -440,10 +440,7 @@ function renderCard(b, isIncoming, orderNum) {
     if (b.counter_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;"><span style="color:var(--neon);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'DJ'})</span></span><span style="color:var(--neon);font-weight:600;">${sym}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}${b.counter_message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+b.counter_message+'"</span>' : ''}</span></div>`);
 
     const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;">
-        <div>
-          <span class="lbl">Date</span><span class="val" style="font-weight:600;display:block;">${formatDate(b.event_date)}</span>
-          <span class="lbl" style="margin-top:.5rem;display:block;">Set Time</span><span class="val" style="display:block;">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span>
-        </div>
+        <div></div>
         <div>
           ${isApproved && agreedRate ? `
             <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:1.5rem;background:rgba(0,245,196,.05);display:inline-block;">
@@ -461,6 +458,7 @@ function renderCard(b, isIncoming, orderNum) {
     return `<div class="${cardClass}" id="card-${b.id}">
       <div class="req-header">
         <div>
+          <div style="font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;color:var(--neon);margin-bottom:.35rem;">${formatDate(b.event_date)}${b.start_time ? ' · ' + formatTime(b.start_time) + (b.end_time ? ' – ' + formatTime(b.end_time) : '') : ''}</div>
           <div class="req-name">${orderBadge}<span style="font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-right:.5rem;">Venue:</span>${b.venue_name || 'Unnamed Venue'} <span style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-left:.5rem;">Venue is: <span style="color:var(--white);">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></span></div>
           ${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.78rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;line-height:1.4;display:block;margin-top:3px;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}
           ${b.set_type ? `<div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-top:6px;">Set: ${setTypeLabels[b.set_type] || b.set_type}</div>` : ''}
@@ -468,7 +466,7 @@ function renderCard(b, isIncoming, orderNum) {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
           <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
           <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span></span>
-          ${isIncoming ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);font-weight:700;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block User</button>` : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--border);color:var(--muted);" onmouseover="this.style.borderColor='var(--error)';this.style.color='var(--error)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'" onclick="blockUser('${b.dj_id}','${b.dj_name||'this DJ'}')">Block User</button>`}
+          <button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);font-weight:700;" onclick="blockUser('${isIncoming ? b.requester_id : b.dj_id}','${isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ')}')">Block User</button>
         </div>
       </div>
       ${rateDisplay}
