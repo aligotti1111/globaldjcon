@@ -317,25 +317,31 @@ function bookingsOverlap(a, b) {
 async function fetchVenueDistance(addr1, addr2, elementId) {
   try {
     const geo = async (addr) => {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`, { headers: { 'Accept-Language': 'en' } });
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&addressdetails=0`, {
+        headers: { 'Accept-Language': 'en', 'User-Agent': 'GlobalDJConnect/1.0' }
+      });
+      if (!r.ok) return null;
       const d = await r.json();
       return d[0] ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
     };
     const [p1, p2] = await Promise.all([geo(addr1), geo(addr2)]);
     const el = document.getElementById(elementId);
     if (!el) return;
-    if (!p1 || !p2) { el.textContent = ''; return; }
-    // Haversine distance
+    if (!p1 || !p2) {
+      el.style.display = 'none';
+      return;
+    }
     const R = 3958.8;
     const dLat = (p2.lat - p1.lat) * Math.PI / 180;
     const dLon = (p2.lon - p1.lon) * Math.PI / 180;
     const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180) * Math.cos(p2.lat*Math.PI/180) * Math.sin(dLon/2)**2;
     const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distColor = miles < 5 ? 'var(--neon)' : miles < 15 ? 'var(--amber)' : 'var(--error)';
-    el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};font-family:'Space Mono',monospace;font-size:.65rem;">${miles.toFixed(1)} mi between venues</span>`;
+    el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};">${miles.toFixed(1)} mi between venues</span>`;
+    el.style.color = distColor;
   } catch(e) {
     const el = document.getElementById(elementId);
-    if (el) el.textContent = '';
+    if (el) el.style.display = 'none';
   }
 }
 
@@ -372,22 +378,22 @@ function renderList(group, filter) {
           const aStartMins = timeToMins(a.start_time);
           let aEndMins = timeToMins(a.end_time);
           const bStartMins = timeToMins(b.start_time);
-          // If end < start, booking 1 runs overnight — add 24h to end
           if (aEndMins < aStartMins) aEndMins += 1440;
           const gapMins = bStartMins - aEndMins;
-          const absGap = Math.abs(gapMins);
-          const gapHrs = Math.floor(absGap / 60);
-          const gapRemMins = absGap % 60;
-          const gapLabel = gapHrs > 0 ? `${gapHrs}h${gapRemMins > 0 ? ' ' + gapRemMins + 'm' : ''}` : `${gapRemMins}m`;
-          const isOverlap = gapMins < 0;
-          const gapColor = isOverlap ? 'var(--error)' : gapMins < 60 ? 'var(--amber)' : 'var(--neon)';
-          const gapText = isOverlap ? `SETS OVERLAP BY ${gapLabel}` : `${gapLabel} GAP BETWEEN SETS`;
-          logisticsHtml += `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:${gapColor};"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${gapText}</span>`;
+          if (gapMins < 0) {
+            logisticsHtml += `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--error);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>SETS OVERLAP</span>`;
+          } else {
+            const gapHrs = Math.floor(gapMins / 60);
+            const gapRemMins = gapMins % 60;
+            const gapLabel = gapHrs > 0 ? `${gapHrs}h${gapRemMins > 0 ? ' ' + gapRemMins + 'm' : ''}` : `${gapRemMins}m`;
+            const gapColor = gapMins < 60 ? 'var(--amber)' : 'var(--neon)';
+            logisticsHtml += `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:${gapColor};"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${gapLabel} GAP BETWEEN SETS</span>`;
+          }
         }
-        // Distance — link to Google Maps directions between the two venues
         if (a.venue_address && b.venue_address) {
-          const mapsUrl = `https://www.google.com/maps/dir/${encodeURIComponent(a.venue_address)}/${encodeURIComponent(b.venue_address)}`;
-          logisticsHtml += `<a href="${mapsUrl}" target="_blank" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);text-decoration:none;display:inline-flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Get directions between venues</a>`;
+          const groupId = `logistics-${a.id}-${b.id}`;
+          logisticsHtml += `<span id="${groupId}" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Calculating distance...</span>`;
+          setTimeout(() => fetchVenueDistance(a.venue_address, b.venue_address, groupId), 100);
         }
       }
 
