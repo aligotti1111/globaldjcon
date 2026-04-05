@@ -307,6 +307,7 @@ async function loadAllBookings() {
     }
     renderList('in', 'pending');
   }
+  updateTabCounts();
 }
 
 function timeToMins(t) {
@@ -348,6 +349,28 @@ async function fetchVenueDistance(addr1, addr2, elementId) {
     const el = document.getElementById(elementId);
     if (el) el.style.display = 'none';
   }
+}
+
+function updateTabCounts() {
+  const inCounts = { pending: 0, approved: 0, denied: 0, all: 0 };
+  incomingBookings.forEach(b => {
+    inCounts.all++;
+    if (inCounts[b.status] !== undefined) inCounts[b.status]++;
+  });
+  ['pending','approved','denied','all'].forEach(f => {
+    const btn = document.getElementById(`in-tab-${f}`);
+    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + (inCounts[f] > 0 ? ` (${inCounts[f]})` : '');
+  });
+
+  const outCounts = { pending: 0, counter: 0, approved: 0, denied: 0, all: 0 };
+  outgoingBookings.forEach(b => {
+    outCounts.all++;
+    if (outCounts[b.status] !== undefined) outCounts[b.status]++;
+  });
+  ['pending','counter','approved','denied','all'].forEach(f => {
+    const btn = document.getElementById(`out-tab-${f}`);
+    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + (outCounts[f] > 0 ? ` (${outCounts[f]})` : '');
+  });
 }
 
 function renderList(group, filter) {
@@ -454,7 +477,7 @@ function renderCard(b, isIncoming, orderNum) {
 
     const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;align-items:center;">
         <div>
-          <span class="lbl">Equipment</span><span class="val" style="display:block;">${equipLabels[b.equipment] || b.equipment || '—'}</span>
+          <span class="lbl">Equipment:</span><span class="val" style="display:block;font-size:.78rem;">${equipLabels[b.equipment] || b.equipment || '—'}</span>
         </div>
         <div style="text-align:right;">
           ${isApproved && agreedRate ? `
@@ -634,7 +657,7 @@ async function _doUpdateStatus(bookingId, status) {
     const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
     if (activeInBtn) {
       const activeFilter = activeInBtn.id.replace('in-tab-','');
-      renderList('in', activeFilter);
+      renderList('in', activeFilter); updateTabCounts();
     }
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -677,7 +700,7 @@ async function submitCounter() {
       }
       closeCounter();
       const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
-      if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+      if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-','')); updateTabCounts();
     } else {
       // Booker countering back — fetch current log, append entry
       const { data: current } = await db.from('bookings').select('negotiation_log').eq('id', activeCounterBookingId).single();
@@ -698,7 +721,7 @@ async function submitCounter() {
       }
       closeCounter();
       const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
-      if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+      if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();
     }
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
@@ -748,7 +771,7 @@ async function _doRequesterUpdateStatus(bookingId, status) {
       }
     }
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
-    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -768,9 +791,9 @@ async function _doBlockUser(userId, userName) {
       .eq('requester_id', userId).eq('dj_id', currentUser.id).eq('status', 'pending');
     incomingBookings = incomingBookings.map(b => b.requester_id === userId && b.status === 'pending' ? {...b, status: 'denied'} : b);
     const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
-    if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-','')); updateTabCounts();
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
-    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -813,7 +836,7 @@ async function _doCancelOffer(bookingId) {
       }
     }
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
-    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
