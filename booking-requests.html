@@ -439,10 +439,13 @@ function renderCard(b, isIncoming, orderNum) {
     if (b.quoted_rate && !b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Quoted Rate <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.quoted_rate).toLocaleString()} ${b.currency||'USD'}</span></div>`);
     if (b.counter_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;"><span style="color:var(--neon);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'DJ'})</span></span><span style="color:var(--neon);font-weight:600;">${sym}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}${b.counter_message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+b.counter_message+'"</span>' : ''}</span></div>`);
 
-    const rateDisplay = `<div style="display:flex;justify-content:flex-end;margin-bottom:.85rem;">
+    const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;align-items:center;">
         <div>
+          <span class="lbl">Equipment</span><span class="val" style="display:block;">${equipLabels[b.equipment] || b.equipment || '—'}</span>
+        </div>
+        <div style="text-align:right;">
           ${isApproved && agreedRate ? `
-            <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:1.5rem;background:rgba(0,245,196,.05);display:inline-block;">
+            <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;background:rgba(0,245,196,.05);display:inline-block;">
               <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
                 <div style="width:16px;height:16px;border-radius:50%;background:var(--neon);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#050507" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -470,9 +473,6 @@ function renderCard(b, isIncoming, orderNum) {
         </div>
       </div>
       ${rateDisplay}
-      <div class="req-details" style="margin-bottom:.6rem;">
-        <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
-      </div>
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
       ${b.counter_rate && logEntries.length > 0 ? `
         <div style="margin-top:.75rem;padding:.75rem;background:var(--deep);border-radius:8px;border:1px solid var(--border);">
