@@ -142,7 +142,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 </div>
 
 <!-- Confirm Modal -->
-<div id="confirm-modal" style="display:none;" class="modal-backdrop">
+<div id="confirm-modal" style="display:none;" class="modal-backdrop" onclick="if(event.target===this)closeConfirm()">
   <div class="modal-box" style="max-width:360px;">
     <div id="confirm-message" style="font-size:.95rem;color:var(--white);margin-bottom:1.5rem;line-height:1.5;"></div>
     <div style="display:flex;gap:.75rem;">
@@ -523,7 +523,7 @@ function showConfirm(message, okLabel, okStyle, callback) {
   const okBtn = document.getElementById('confirm-ok-btn');
   okBtn.textContent = okLabel || 'Confirm';
   okBtn.className = 'btn ' + (okStyle || 'btn-primary');
-  okBtn.style.flex = '1';
+  okBtn.setAttribute('style', 'flex:1;');
   _confirmCallback = callback;
   document.getElementById('confirm-modal').style.display = 'flex';
 }
