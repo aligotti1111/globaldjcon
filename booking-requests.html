@@ -102,6 +102,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 </header>
 
 <div class="page">
+<div id="incoming-section">
   <div class="page-title">Booking Requests</div>
   <div class="page-sub">Manage incoming booking requests</div>
 
@@ -116,6 +117,27 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
   <div id="tab-approved" class="tab-pane"><div id="list-approved"></div></div>
   <div id="tab-denied" class="tab-pane"><div id="list-denied"></div></div>
   <div id="tab-all" class="tab-pane"><div id="list-all"></div></div>
+</div>
+</div>
+
+<!-- Outgoing Section -->
+<div class="page" id="outgoing-section" style="margin-top:2rem;display:none;">
+  <div class="page-title" style="font-size:1.3rem;">Outgoing Booking Requests</div>
+  <div class="page-sub">Requests you've sent to DJs</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchOutgoingTab('out-pending',this)">Pending</button>
+    <button class="tab-btn" onclick="switchOutgoingTab('out-counter',this)">Counter</button>
+    <button class="tab-btn" onclick="switchOutgoingTab('out-approved',this)">Approved</button>
+    <button class="tab-btn" onclick="switchOutgoingTab('out-denied',this)">Denied</button>
+    <button class="tab-btn" onclick="switchOutgoingTab('out-all',this)">All</button>
+  </div>
+
+  <div id="tab-out-pending" class="tab-pane active"><div id="list-out-pending"></div></div>
+  <div id="tab-out-counter" class="tab-pane"><div id="list-out-counter"></div></div>
+  <div id="tab-out-approved" class="tab-pane"><div id="list-out-approved"></div></div>
+  <div id="tab-out-denied" class="tab-pane"><div id="list-out-denied"></div></div>
+  <div id="tab-out-all" class="tab-pane"><div id="list-out-all"></div></div>
 </div>
 
 <!-- Counter Offer Modal -->
@@ -171,7 +193,7 @@ const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',
 
 // Nav
 (function(){
-  if (!currentUser || currentUser.role !== 'dj') { window.location.href = '/login.html'; return; }
+  if (!currentUser) { window.location.href = '/login.html'; return; }
   document.getElementById('nav-logout').style.display = 'inline-flex';
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
   document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
@@ -222,35 +244,59 @@ async function loadBookings() {
   renderList('pending');
 }
 
-function timeToMins(t) {
-  if (!t) return null;
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
+let allOutgoing = [];
 
-function bookingsOverlap(a, b) {
-  // If either booking has no start time we can't tell — treat as potential conflict
-  if (!a.start_time || !b.start_time) return true;
-  const aStart = timeToMins(a.start_time);
-  const aEnd   = a.end_time ? timeToMins(a.end_time) : null;
-  const bStart = timeToMins(b.start_time);
-  const bEnd   = b.end_time ? timeToMins(b.end_time) : null;
-
-  // Handle overnight: if end < start, add 24h to end
-  const aEndAdj = aEnd !== null ? (aEnd <= aStart ? aEnd + 1440 : aEnd) : aStart + 1440;
-  const bEndAdj = bEnd !== null ? (bEnd <= bStart ? bEnd + 1440 : bEnd) : bStart + 1440;
-
-  // Overlap if one starts before the other ends
-  return aStart < bEndAdj && bStart < aEndAdj;
-}
-
-function groupHasOverlap(group) {
-  for (let i = 0; i < group.length; i++) {
-    for (let j = i + 1; j < group.length; j++) {
-      if (bookingsOverlap(group[i], group[j])) return true;
-    }
+async function loadOutgoing() {
+  const { data, error } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  allOutgoing = data || [];
+  if (allOutgoing.length > 0) {
+    document.getElementById('outgoing-section').style.display = 'block';
+    renderOutgoingList('out-pending');
   }
-  return false;
+}
+
+function switchOutgoingTab(name, btn) {
+  document.querySelectorAll('#outgoing-section .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#outgoing-section .tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  renderOutgoingList(name);
+}
+
+function renderOutgoingList(filter) {
+  const list = document.getElementById('list-' + filter);
+  const statusKey = filter.replace('out-', '');
+  const items = statusKey === 'all' ? allOutgoing : allOutgoing.filter(b => {
+    if (statusKey === 'counter') return b.status === 'counter';
+    return b.status === statusKey;
+  });
+  if (!items.length) { list.innerHTML = '<div class="empty-state">No ' + statusKey + ' requests</div>'; return; }
+
+  list.innerHTML = items.map(b => {
+    const sym = currencySymbols[b.currency || 'USD'] || '$';
+    const statusClass = 'status-' + (b.status || 'pending');
+    const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Rate: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Your offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
+
+    return `<div class="request-card ${b.status || 'pending'}" id="out-card-${b.id}">
+      <div class="req-header">
+        <div>
+          <div class="req-name">${b.venue_name || 'Unnamed Venue'}</div>
+          <div class="req-date">${formatDate(b.event_date)} · Sent ${new Date(b.created_at).toLocaleDateString()}</div>
+        </div>
+        <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+      </div>
+      <div class="req-details">
+        <div class="req-detail-item"><span class="lbl">DJ</span><span class="val">${b.dj_slug || '—'}</span></div>
+        <div class="req-detail-item"><span class="lbl">Venue Type</span><span class="val">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></div>
+        <div class="req-detail-item"><span class="lbl">Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
+        <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
+        ${rateInfo ? `<div class="req-detail-item"><span class="lbl">Rate</span><span class="val" style="color:var(--neon);">${rateInfo}</span></div>` : ''}
+      </div>
+      ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
+      ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">DJ counter note: "${b.counter_message}"</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function renderList(filter) {
@@ -258,89 +304,11 @@ function renderList(filter) {
   const items = filter === 'all' ? allBookings : allBookings.filter(b => b.status === filter);
   if (!items.length) { list.innerHTML = '<div class="empty-state">No ' + filter + ' requests</div>'; return; }
 
-  // For pending tab: group by event_date, sort each group oldest-first
-  if (filter === 'pending') {
-    const groups = {};
-    items.forEach(b => {
-      const key = b.event_date || 'no-date';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(b);
-    });
-    // Sort each group oldest first
-    Object.values(groups).forEach(g => g.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-    // Sort groups by earliest request in each group
-    const sortedGroups = Object.values(groups).sort((a, b) => new Date(a[0].created_at) - new Date(b[0].created_at));
-
-    list.innerHTML = sortedGroups.map(group => {
-      const hasMultiple = group.length > 1;
-      const isConflict = hasMultiple && groupHasOverlap(group);
-      const isNonOverlap = hasMultiple && !isConflict;
-
-      const conflictHeader = hasMultiple ? `
-        <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:${isConflict ? 'rgba(255,179,71,.08)' : 'rgba(0,245,196,.06)'};border:1px solid ${isConflict ? 'rgba(255,179,71,.25)' : 'rgba(0,245,196,.2)'};border-radius:6px;margin-bottom:.5rem;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${isConflict ? 'var(--amber)' : 'var(--neon)'}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:${isConflict ? 'var(--amber)' : 'var(--neon)'};letter-spacing:.06em;">
-            ${isConflict
-              ? `${group.length} OVERLAPPING REQUESTS FOR ${formatDate(group[0].event_date).toUpperCase()} — SHOWN IN ORDER RECEIVED`
-              : `${group.length} REQUESTS FOR ${formatDate(group[0].event_date).toUpperCase()} — TIMES DO NOT OVERLAP, CAN ACCEPT BOTH`}
-          </span>
-        </div>` : '';
-
-      const cards = group.map((b, idx) => {
-        const sym = currencySymbols[b.currency || 'USD'] || '$';
-        const statusClass = 'status-' + (b.status || 'pending');
-        const cardClass = 'request-card ' + (b.status || 'pending');
-        const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Rate: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
-        const orderBadge = isConflict ? `<span style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.06em;background:rgba(255,179,71,.15);color:var(--amber);border:1px solid rgba(255,179,71,.3);border-radius:3px;padding:2px 6px;margin-right:.4rem;">#${idx + 1}</span>` : '';
-
-        return `<div class="${cardClass}" id="card-${b.id}" ${isConflict && idx < group.length - 1 ? 'style="margin-bottom:.4rem;"' : ''}>
-          <div class="req-header">
-            <div>
-              <div class="req-name">${orderBadge}${b.venue_name || 'Unnamed Venue'}</div>
-              <div class="req-date">${formatDate(b.event_date)} · Requested ${new Date(b.created_at).toLocaleDateString()}</div>
-            </div>
-            <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
-          </div>
-          <div class="req-details">
-            <div class="req-detail-item"><span class="lbl">Venue Type</span><span class="val">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></div>
-            ${b.set_type ? `<div class="req-detail-item"><span class="lbl">Set Type</span><span class="val">${setTypeLabels[b.set_type] || b.set_type}</span></div>` : ''}
-            <div class="req-detail-item"><span class="lbl">Address</span><span class="val">${b.venue_address || '—'}</span></div>
-            <div class="req-detail-item"><span class="lbl">Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
-            <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
-            ${rateInfo ? `<div class="req-detail-item"><span class="lbl">Rate</span><span class="val" style="color:var(--neon);">${rateInfo}</span></div>` : ''}
-          </div>
-          ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-          ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : ''}
-          <div class="req-actions">
-            <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="updateStatus('${b.id}','denied')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deny
-            </button>
-            <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${b.requester_id}')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
-            </button>
-          </div>
-        </div>`;
-      }).join('');
-
-      return hasMultiple
-        ? `<div style="border:1px solid ${isConflict ? 'rgba(255,179,71,.2)' : 'rgba(0,245,196,.15)'};border-radius:8px;padding:.75rem;margin-bottom:1rem;background:${isConflict ? 'rgba(255,179,71,.03)' : 'rgba(0,245,196,.02)'};">${conflictHeader}${cards}</div>`
-        : cards;
-    }).join('');
-    return;
-  }
-
-  // Non-pending tabs — render as before
   list.innerHTML = items.map(b => {
     const sym = currencySymbols[b.currency || 'USD'] || '$';
     const statusClass = 'status-' + (b.status || 'pending');
     const cardClass = 'request-card ' + (b.status || 'pending');
-    const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Rate: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
+    const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Quoted: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
 
     return `<div class="${cardClass}" id="card-${b.id}">
       <div class="req-header">
@@ -361,6 +329,17 @@ function renderList(filter) {
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
       ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : ''}
       <div class="req-actions">
+        ${b.status === 'pending' ? `
+          <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="updateStatus('${b.id}','denied')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deny
+          </button>
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
+          </button>
+        ` : ''}
         <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${b.requester_id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
         </button>
@@ -472,7 +451,17 @@ async function sendMsg() {
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
 
-if (currentUser && currentUser.role === 'dj') loadBookings();
+if (currentUser) {
+  if (currentUser.role === 'dj') {
+    loadBookings();
+    loadOutgoing();
+  } else {
+    // Host/venue — show outgoing immediately, incoming never applies
+    document.getElementById('incoming-section').style.display = 'none';
+    document.getElementById('outgoing-section').style.display = 'block';
+    loadOutgoing();
+  }
+}
 </script>
 </body>
 </html>
