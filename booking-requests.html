@@ -298,6 +298,22 @@ async function loadAllBookings() {
   }
 }
 
+function timeToMins(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+function bookingsOverlap(a, b) {
+  if (!a.start_time || !b.start_time) return true;
+  const aStart = timeToMins(a.start_time);
+  const aEnd = a.end_time ? timeToMins(a.end_time) : null;
+  const bStart = timeToMins(b.start_time);
+  const bEnd = b.end_time ? timeToMins(b.end_time) : null;
+  const aEndAdj = aEnd !== null ? (aEnd <= aStart ? aEnd + 1440 : aEnd) : aStart + 1440;
+  const bEndAdj = bEnd !== null ? (bEnd <= bStart ? bEnd + 1440 : bEnd) : bStart + 1440;
+  return aStart < bEndAdj && bStart < aEndAdj;
+}
+
 function renderList(group, filter) {
   const bookings = group === 'in' ? incomingBookings : outgoingBookings;
   const list = document.getElementById(`${group}-list-${filter}`);
@@ -307,12 +323,49 @@ function renderList(group, filter) {
 
   const isIncoming = group === 'in';
 
-  list.innerHTML = items.map(b => {
+  // Same-day grouping for incoming pending only
+  if (isIncoming && filter === 'pending') {
+    const groups = {};
+    items.forEach(b => {
+      const key = b.event_date || 'no-date';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(b);
+    });
+    Object.values(groups).forEach(g => g.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+    const sortedGroups = Object.values(groups).sort((a, b) => new Date(a[0].created_at) - new Date(b[0].created_at));
+
+    list.innerHTML = sortedGroups.map(group => {
+      const hasMultiple = group.length > 1;
+      const hasOverlap = hasMultiple && group.some((a, i) => group.slice(i+1).some(b => bookingsOverlap(a, b)));
+
+      const groupHeader = hasMultiple ? `
+        <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:${hasOverlap ? 'rgba(255,179,71,.08)' : 'rgba(0,245,196,.06)'};border:1px solid ${hasOverlap ? 'rgba(255,179,71,.25)' : 'rgba(0,245,196,.2)'};border-radius:6px;margin-bottom:.5rem;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${hasOverlap ? 'var(--amber)' : 'var(--neon)'}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style="font-family:'Space Mono',monospace;font-size:.56rem;color:${hasOverlap ? 'var(--amber)' : 'var(--neon)'};letter-spacing:.06em;">
+            ${hasOverlap
+              ? `${group.length} OVERLAPPING REQUESTS FOR ${formatDate(group[0].event_date).toUpperCase()} — ORDER RECEIVED`
+              : `${group.length} REQUESTS FOR ${formatDate(group[0].event_date).toUpperCase()} — TIMES DON'T OVERLAP, CAN ACCEPT BOTH`}
+          </span>
+        </div>` : '';
+
+      const cards = group.map((b, idx) => renderCard(b, true, hasMultiple ? idx + 1 : null)).join('');
+
+      return hasMultiple
+        ? `<div style="border:1px solid ${hasOverlap ? 'rgba(255,179,71,.2)' : 'rgba(0,245,196,.15)'};border-radius:8px;padding:.75rem;margin-bottom:1rem;background:${hasOverlap ? 'rgba(255,179,71,.02)' : 'rgba(0,245,196,.02)'};">${groupHeader}${cards}</div>`
+        : cards;
+    }).join('');
+    return;
+  }
+  list.innerHTML = items.map(b => renderCard(b, isIncoming, null)).join('');
+}
+
+function renderCard(b, isIncoming, orderNum) {
     const sym = currencySymbols[b.currency || 'USD'] || '$';
     const statusClass = 'status-' + (b.status || 'pending');
     const cardClass = 'request-card ' + (b.status || 'pending');
     const agreedRate = b.counter_rate || b.quoted_rate || b.offer_amount;
     const isApproved = b.status === 'approved';
+    const orderBadge = orderNum ? `<span style="font-family:'Space Mono',monospace;font-size:.48rem;background:rgba(255,179,71,.15);color:var(--amber);border:1px solid rgba(255,179,71,.3);border-radius:3px;padding:1px 5px;margin-right:.4rem;">#${orderNum}</span>` : '';
 
     // Negotiation log entries
     const logEntries = [];
@@ -342,7 +395,7 @@ function renderList(group, filter) {
     return `<div class="${cardClass}" id="card-${b.id}">
       <div class="req-header">
         <div>
-          <div class="req-name"><span style="font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-right:.5rem;">Venue:</span>${b.venue_name || 'Unnamed Venue'} <span style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-left:.5rem;">Venue is: <span style="color:var(--white);">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></span></div>
+          <div class="req-name">${orderBadge}<span style="font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-right:.5rem;">Venue:</span>${b.venue_name || 'Unnamed Venue'} <span style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-left:.5rem;">Venue is: <span style="color:var(--white);">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></span></div>
           ${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.78rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;line-height:1.4;display:block;margin-top:3px;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}
           ${b.set_type ? `<div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-top:6px;">Set: ${setTypeLabels[b.set_type] || b.set_type}</div>` : ''}
         </div>
@@ -396,7 +449,6 @@ function renderList(group, filter) {
       </div>
       <div style="text-align:right;font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.6rem;letter-spacing:.04em;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
     </div>`;
-  }).join('');
 }
 
 async function updateStatus(bookingId, status) {
