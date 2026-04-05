@@ -141,6 +141,17 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 
 </div>
 
+<!-- Confirm Modal -->
+<div id="confirm-modal" style="display:none;" class="modal-backdrop">
+  <div class="modal-box" style="max-width:360px;">
+    <div id="confirm-message" style="font-size:.95rem;color:var(--white);margin-bottom:1.5rem;line-height:1.5;"></div>
+    <div style="display:flex;gap:.75rem;">
+      <button id="confirm-cancel-btn" class="btn btn-outline" style="flex:1;" onclick="closeConfirm()">Cancel</button>
+      <button id="confirm-ok-btn" class="btn btn-primary" style="flex:1;" onclick="confirmOk()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- Counter Offer Modal -->
 <div id="counter-modal" style="display:none;" class="modal-backdrop" onclick="if(event.target===this)closeCounter()">
   <div class="modal-box">
@@ -506,9 +517,24 @@ function renderCard(b, isIncoming, orderNum) {
     </div>`;
 }
 
+let _confirmCallback = null;
+function showConfirm(message, okLabel, okStyle, callback) {
+  document.getElementById('confirm-message').textContent = message;
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.textContent = okLabel || 'Confirm';
+  okBtn.className = 'btn ' + (okStyle || 'btn-primary');
+  okBtn.style.flex = '1';
+  _confirmCallback = callback;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+function closeConfirm() { document.getElementById('confirm-modal').style.display = 'none'; _confirmCallback = null; }
+function confirmOk() { closeConfirm(); if (_confirmCallback) _confirmCallback(); }
+
 async function updateStatus(bookingId, status) {
-  const confirmMsg = status === 'approved' ? 'Approve this booking request?' : 'Deny this booking request?';
-  if (!confirm(confirmMsg)) return;
+  const label = status === 'approved' ? 'Approve' : 'Deny';
+  const style = status === 'approved' ? 'btn-primary' : 'btn-danger';
+  const msg = status === 'approved' ? 'Approve this booking request?' : 'Deny this booking request?';
+  showConfirm(msg, label, style, async () => {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
@@ -597,9 +623,8 @@ async function updateStatus(bookingId, status) {
       renderList('in', activeFilter);
     }
   } catch(e) { alert('Error: ' + e.message); }
+  }); // end showConfirm callback
 }
-
-let activeCounterGroup = 'in';
 
 function openCounter(bookingId, currency, group) {
   activeCounterBookingId = bookingId;
@@ -661,10 +686,11 @@ async function submitCounter() {
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
 
-// Booker accepting or declining a DJ's counter offer
 async function requesterUpdateStatus(bookingId, status) {
-  const confirmMsg = status === 'approved' ? 'Accept this counter offer?' : 'Decline this counter offer?';
-  if (!confirm(confirmMsg)) return;
+  const label = status === 'approved' ? 'Accept' : 'Decline';
+  const style = status === 'approved' ? 'btn-primary' : 'btn-danger';
+  const msg = status === 'approved' ? 'Accept this counter offer?' : 'Decline this counter offer?';
+  showConfirm(msg, label, style, async () => {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
@@ -704,30 +730,28 @@ async function requesterUpdateStatus(bookingId, status) {
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
   } catch(e) { alert('Error: ' + e.message); }
+  }); // end showConfirm callback
 }
 
 async function blockUser(userId, userName) {
-  if (!confirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`)) return;
+  showConfirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`, 'Block User', 'btn-danger', async () => {
   try {
-    // Get current blocked list
     const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
     const currentBlocked = me?.blocked_users || [];
     const updatedBlocked = [...new Set([...currentBlocked, userId])];
     const { error } = await db.from('users').update({ blocked_users: updatedBlocked }).eq('id', currentUser.id);
     if (error) throw error;
-    // Also deny any pending bookings from this user
     await db.from('bookings').update({ status: 'denied', updated_at: new Date().toISOString() })
       .eq('requester_id', userId).eq('dj_id', currentUser.id).eq('status', 'pending');
-    // Update local data and re-render
     incomingBookings = incomingBookings.map(b => b.requester_id === userId && b.status === 'pending' ? {...b, status: 'denied'} : b);
     const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
     if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
-    alert(`${userName} has been blocked.`);
   } catch(e) { alert('Error: ' + e.message); }
+  });
 }
 
 async function cancelOffer(bookingId) {
-  if (!confirm('Cancel this booking offer? Both you and the DJ will be notified.')) return;
+  showConfirm('Cancel this booking request? The DJ will be notified.', 'Cancel Request', 'btn-danger', async () => {
   try {
     const { error } = await db.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
@@ -766,6 +790,7 @@ async function cancelOffer(bookingId) {
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
   } catch(e) { alert('Error: ' + e.message); }
+  }); // end showConfirm callback
 }
 
 function openMsg(bookingId, userId) {
