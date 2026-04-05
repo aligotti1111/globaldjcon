@@ -528,13 +528,16 @@ function showConfirm(message, okLabel, okStyle, callback) {
   document.getElementById('confirm-modal').style.display = 'flex';
 }
 function closeConfirm() { document.getElementById('confirm-modal').style.display = 'none'; _confirmCallback = null; }
-function confirmOk() { closeConfirm(); if (_confirmCallback) _confirmCallback(); }
+function confirmOk() { const cb = _confirmCallback; closeConfirm(); if (cb) cb(); }
 
 async function updateStatus(bookingId, status) {
   const label = status === 'approved' ? 'Approve' : 'Deny';
   const style = status === 'approved' ? 'btn-primary' : 'btn-danger';
   const msg = status === 'approved' ? 'Approve this booking request?' : 'Deny this booking request?';
-  showConfirm(msg, label, style, async () => {
+  showConfirm(msg, label, style, () => _doUpdateStatus(bookingId, status));
+}
+
+async function _doUpdateStatus(bookingId, status) {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
@@ -623,7 +626,6 @@ async function updateStatus(bookingId, status) {
       renderList('in', activeFilter);
     }
   } catch(e) { alert('Error: ' + e.message); }
-  }); // end showConfirm callback
 }
 
 function openCounter(bookingId, currency, group) {
@@ -690,7 +692,10 @@ async function requesterUpdateStatus(bookingId, status) {
   const label = status === 'approved' ? 'Accept' : 'Decline';
   const style = status === 'approved' ? 'btn-primary' : 'btn-danger';
   const msg = status === 'approved' ? 'Accept this counter offer?' : 'Decline this counter offer?';
-  showConfirm(msg, label, style, async () => {
+  showConfirm(msg, label, style, () => _doRequesterUpdateStatus(bookingId, status));
+}
+
+async function _doRequesterUpdateStatus(bookingId, status) {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
@@ -730,11 +735,13 @@ async function requesterUpdateStatus(bookingId, status) {
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
   } catch(e) { alert('Error: ' + e.message); }
-  }); // end showConfirm callback
 }
 
 async function blockUser(userId, userName) {
-  showConfirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`, 'Block User', 'btn-danger', async () => {
+  showConfirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`, 'Block User', 'btn-danger', () => _doBlockUser(userId, userName));
+}
+
+async function _doBlockUser(userId, userName) {
   try {
     const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
     const currentBlocked = me?.blocked_users || [];
@@ -747,11 +754,13 @@ async function blockUser(userId, userName) {
     const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
     if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
   } catch(e) { alert('Error: ' + e.message); }
-  });
 }
 
 async function cancelOffer(bookingId) {
-  showConfirm('Cancel this booking request? The DJ will be notified.', 'Cancel Request', 'btn-danger', async () => {
+  showConfirm('Cancel this booking request? The DJ will be notified.', 'Cancel Request', 'btn-danger', () => _doCancelOffer(bookingId));
+}
+
+async function _doCancelOffer(bookingId) {
   try {
     const { error } = await db.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
@@ -772,14 +781,12 @@ async function cancelOffer(bookingId) {
         endTime: b.end_time,
         currency: b.currency,
       };
-      // Email DJ
       if (dj?.email) {
         fetch('/.netlify/functions/send-email', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ ...emailPayload, recipientName: dj.name, recipientEmail: dj.email, recipientRole: 'dj' })
         }).catch(() => {});
       }
-      // Email requester (themselves — confirmation)
       if (currentUser.email) {
         fetch('/.netlify/functions/send-email', {
           method: 'POST', headers: {'Content-Type':'application/json'},
@@ -790,7 +797,6 @@ async function cancelOffer(bookingId) {
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
   } catch(e) { alert('Error: ' + e.message); }
-  }); // end showConfirm callback
 }
 
 function openMsg(bookingId, userId) {
