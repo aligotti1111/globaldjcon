@@ -457,7 +457,7 @@ function renderCard(b, isIncoming, orderNum) {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
           <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
           <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span></span>
-          ${isIncoming ? `<button class="btn btn-danger btn-sm" style="font-size:.5rem;padding:.2rem .5rem;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block</button>` : ''}
+          ${isIncoming ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);font-weight:700;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block User</button>` : ''}
         </div>
       </div>
       ${rateDisplay}
@@ -507,6 +507,8 @@ function renderCard(b, isIncoming, orderNum) {
 }
 
 async function updateStatus(bookingId, status) {
+  const confirmMsg = status === 'approved' ? 'Approve this booking request?' : 'Deny this booking request?';
+  if (!confirm(confirmMsg)) return;
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
@@ -661,6 +663,8 @@ async function submitCounter() {
 
 // Booker accepting or declining a DJ's counter offer
 async function requesterUpdateStatus(bookingId, status) {
+  const confirmMsg = status === 'approved' ? 'Accept this counter offer?' : 'Decline this counter offer?';
+  if (!confirm(confirmMsg)) return;
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
     if (error) throw error;
