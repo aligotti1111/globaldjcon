@@ -373,7 +373,7 @@ function renderList(group, filter) {
   const bookings = group === 'in' ? incomingBookings : outgoingBookings;
   const list = document.getElementById(`${group}-list-${filter}`);
   if (!list) return;
-  const items = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
+  const items = filter === 'all' ? bookings.filter(b => b.status !== 'cancelled') : bookings.filter(b => b.status === filter);
   if (!items.length) { list.innerHTML = `<div class="empty-state">No ${filter} requests</div>`; return; }
 
   const isIncoming = group === 'in';
