@@ -264,9 +264,9 @@ function formatTime(t) {
   return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + ' ' + p;
 }
 
+let blockedUsers = [];
 async function loadAllBookings() {
   // Fetch fresh blocked_users list for current user
-  let blockedUsers = [];
   try {
     const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
     blockedUsers = me?.blocked_users || [];
@@ -359,7 +359,7 @@ function updateTabCounts() {
   });
   ['pending','approved','denied','all'].forEach(f => {
     const btn = document.getElementById(`in-tab-${f}`);
-    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + (inCounts[f] > 0 ? ` (${inCounts[f]})` : '');
+    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + ` (${inCounts[f]})`;
   });
 
   const outCounts = { pending: 0, counter: 0, approved: 0, denied: 0, all: 0 };
@@ -369,7 +369,7 @@ function updateTabCounts() {
   });
   ['pending','counter','approved','denied','all'].forEach(f => {
     const btn = document.getElementById(`out-tab-${f}`);
-    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + (outCounts[f] > 0 ? ` (${outCounts[f]})` : '');
+    if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + ` (${outCounts[f]})`;
   });
 }
 
@@ -505,7 +505,14 @@ function renderCard(b, isIncoming, orderNum) {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
           <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
           <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span></span>
-          <button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);font-weight:700;" onclick="blockUser('${isIncoming ? b.requester_id : b.dj_id}','${isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ')}')">Block User</button>
+          ${(() => {
+            const targetId = isIncoming ? b.requester_id : b.dj_id;
+            const targetName = isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ');
+            const isBlocked = blockedUsers.includes(targetId);
+            return isBlocked
+              ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--muted);color:var(--muted);font-weight:700;" onclick="unblockUserInline('${targetId}')">Unblock</button>`
+              : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);font-weight:700;" onclick="blockUser('${targetId}','${targetName}')">Block User</button>`;
+          })()}
         </div>
       </div>
       ${rateDisplay}
@@ -775,17 +782,28 @@ async function _doRequesterUpdateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+async function unblockUserInline(userId) {
+  try {
+    const updated = blockedUsers.filter(id => id !== userId);
+    await db.from('users').update({ blocked_users: updated }).eq('id', currentUser.id);
+    blockedUsers = updated;
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 async function blockUser(userId, userName) {
   showConfirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`, 'Block User', 'btn-danger', () => _doBlockUser(userId, userName));
 }
 
 async function _doBlockUser(userId, userName) {
   try {
-    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
-    const currentBlocked = me?.blocked_users || [];
-    const updatedBlocked = [...new Set([...currentBlocked, userId])];
+    const updatedBlocked = [...new Set([...blockedUsers, userId])];
     const { error } = await db.from('users').update({ blocked_users: updatedBlocked }).eq('id', currentUser.id);
     if (error) throw error;
+    blockedUsers = updatedBlocked;
     // Deny any pending incoming bookings from this user
     await db.from('bookings').update({ status: 'denied', updated_at: new Date().toISOString() })
       .eq('requester_id', userId).eq('dj_id', currentUser.id).eq('status', 'pending');
