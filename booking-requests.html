@@ -51,6 +51,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .status-approved{background:rgba(61,220,132,.15);color:var(--success);}
 .status-denied{background:rgba(255,95,95,.15);color:var(--error);}
 .status-counter{background:var(--neon-dim);color:var(--neon);}
+.status-cancelled{background:rgba(107,107,136,.15);color:var(--muted);}
+.request-card.cancelled{border-left:3px solid var(--muted);}
 .req-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-bottom:.85rem;}
 .req-detail-item{font-size:.8rem;}
 .req-detail-item .lbl{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px;}
@@ -102,42 +104,41 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 </header>
 
 <div class="page">
-<div id="incoming-section">
   <div class="page-title">Booking Requests</div>
-  <div class="page-sub">Manage incoming booking requests</div>
+  <div class="page-sub" id="page-sub">Manage your booking requests</div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('pending',this)">Pending</button>
-    <button class="tab-btn" onclick="switchTab('approved',this)">Approved</button>
-    <button class="tab-btn" onclick="switchTab('denied',this)">Denied</button>
-    <button class="tab-btn" onclick="switchTab('all',this)">All</button>
+  <!-- Incoming (DJ only) -->
+  <div id="incoming-section" style="display:none;margin-bottom:2rem;">
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Incoming Booking Requests</div>
+    <div class="tabs" style="margin-bottom:1rem;">
+      <button class="tab-btn active" id="in-tab-pending" onclick="switchTab('in','pending',this)">Pending</button>
+      <button class="tab-btn" id="in-tab-approved" onclick="switchTab('in','approved',this)">Approved</button>
+      <button class="tab-btn" id="in-tab-denied" onclick="switchTab('in','denied',this)">Denied</button>
+      <button class="tab-btn" id="in-tab-all" onclick="switchTab('in','all',this)">All</button>
+    </div>
+    <div id="in-tab-pane-pending" class="tab-pane active"><div id="in-list-pending"></div></div>
+    <div id="in-tab-pane-approved" class="tab-pane"><div id="in-list-approved"></div></div>
+    <div id="in-tab-pane-denied" class="tab-pane"><div id="in-list-denied"></div></div>
+    <div id="in-tab-pane-all" class="tab-pane"><div id="in-list-all"></div></div>
   </div>
 
-  <div id="tab-pending" class="tab-pane active"><div id="list-pending"></div></div>
-  <div id="tab-approved" class="tab-pane"><div id="list-approved"></div></div>
-  <div id="tab-denied" class="tab-pane"><div id="list-denied"></div></div>
-  <div id="tab-all" class="tab-pane"><div id="list-all"></div></div>
-</div>
-</div>
-
-<!-- Outgoing Section -->
-<div class="page" id="outgoing-section" style="margin-top:2rem;display:none;">
-  <div class="page-title" style="font-size:1.3rem;">Outgoing Booking Requests</div>
-  <div class="page-sub">Requests you've sent to DJs</div>
-
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchOutgoingTab('out-pending',this)">Pending</button>
-    <button class="tab-btn" onclick="switchOutgoingTab('out-counter',this)">Counter</button>
-    <button class="tab-btn" onclick="switchOutgoingTab('out-approved',this)">Approved</button>
-    <button class="tab-btn" onclick="switchOutgoingTab('out-denied',this)">Denied</button>
-    <button class="tab-btn" onclick="switchOutgoingTab('out-all',this)">All</button>
+  <!-- Outgoing (all roles) -->
+  <div id="outgoing-section" style="display:none;">
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Outgoing Booking Requests</div>
+    <div class="tabs" style="margin-bottom:1rem;">
+      <button class="tab-btn active" id="out-tab-pending" onclick="switchTab('out','pending',this)">Pending</button>
+      <button class="tab-btn" id="out-tab-counter" onclick="switchTab('out','counter',this)">Counter</button>
+      <button class="tab-btn" id="out-tab-approved" onclick="switchTab('out','approved',this)">Approved</button>
+      <button class="tab-btn" id="out-tab-denied" onclick="switchTab('out','denied',this)">Denied</button>
+      <button class="tab-btn" id="out-tab-all" onclick="switchTab('out','all',this)">All</button>
+    </div>
+    <div id="out-tab-pane-pending" class="tab-pane active"><div id="out-list-pending"></div></div>
+    <div id="out-tab-pane-counter" class="tab-pane"><div id="out-list-counter"></div></div>
+    <div id="out-tab-pane-approved" class="tab-pane"><div id="out-list-approved"></div></div>
+    <div id="out-tab-pane-denied" class="tab-pane"><div id="out-list-denied"></div></div>
+    <div id="out-tab-pane-all" class="tab-pane"><div id="out-list-all"></div></div>
   </div>
 
-  <div id="tab-out-pending" class="tab-pane active"><div id="list-out-pending"></div></div>
-  <div id="tab-out-counter" class="tab-pane"><div id="list-out-counter"></div></div>
-  <div id="tab-out-approved" class="tab-pane"><div id="list-out-approved"></div></div>
-  <div id="tab-out-denied" class="tab-pane"><div id="list-out-denied"></div></div>
-  <div id="tab-out-all" class="tab-pane"><div id="list-out-all"></div></div>
 </div>
 
 <!-- Counter Offer Modal -->
@@ -185,7 +186,11 @@ const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localSto
 let activeCounterBookingId = null;
 let activeMsgBookingId = null;
 let activeMsgUserId = null;
-let allBookings = [];
+let incomingBookings = [];
+let outgoingBookings = [];
+
+// Club/Bar DJ = has incoming booking feature; mobile DJs and all other roles = outgoing only
+const isClubBarDJ = currentUser && currentUser.role === 'dj' && currentUser.dj_type !== 'mobile';
 
 const equipLabels = {sound_system:'Full Sound System & Decks',decks_only:'Decks/Controller Only',venue_provides:'Venue Provides All Equipment'};
 const setTypeLabels = {opening:'Opening Set',headliner:'Headliner',closing:'Closing Set',opening_close:'Opening – Close',opening_and_closing:'Opening & Closing Set'};
@@ -196,13 +201,21 @@ const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',
   if (!currentUser) { window.location.href = '/login.html'; return; }
   document.getElementById('nav-logout').style.display = 'inline-flex';
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
-  document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
-  document.getElementById('nav-edit-profile').style.display = 'inline-flex';
-  if (currentUser.slug) {
-    const vp = document.getElementById('nav-view-profile');
-    vp.href = '/' + currentUser.slug;
-    vp.style.display = 'inline-flex';
+  if (currentUser.role === 'dj') {
+    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
+    document.getElementById('nav-edit-profile').style.display = 'inline-flex';
+    if (currentUser.slug) {
+      const vp = document.getElementById('nav-view-profile');
+      vp.href = '/' + currentUser.slug;
+      vp.style.display = 'inline-flex';
+    }
   }
+
+  // Show incoming section only for club/bar DJs
+  if (isClubBarDJ) {
+    document.getElementById('incoming-section').style.display = 'block';
+  }
+
   loadInboxBadge();
 })();
 
@@ -218,12 +231,15 @@ async function loadInboxBadge(){
   }catch(e){}
 }
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+// group: 'in' or 'out', filter: 'pending'|'approved'|'denied'|'all'
+function switchTab(group, filter, btn) {
+  const section = group === 'in' ? 'incoming' : 'outgoing';
+  // Deactivate tabs within this group only
+  document.querySelectorAll(`#${section}-section .tab-btn`).forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`#${section}-section .tab-pane`).forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-  renderList(name);
+  document.getElementById(`${group}-tab-pane-${filter}`).classList.add('active');
+  renderList(group, filter);
 }
 
 function formatDate(d) {
@@ -237,113 +253,148 @@ function formatTime(t) {
   return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + ' ' + p;
 }
 
-async function loadBookings() {
-  const { data, error } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
-  if (error) { console.error(error); return; }
-  allBookings = data || [];
-  renderList('pending');
-}
+async function loadAllBookings() {
+  // Fetch fresh blocked_users list for current user
+  let blockedUsers = [];
+  try {
+    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+    blockedUsers = me?.blocked_users || [];
+  } catch(e) {}
 
-let allOutgoing = [];
-
-async function loadOutgoing() {
-  const { data, error } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
-  if (error) { console.error(error); return; }
-  allOutgoing = data || [];
-  if (allOutgoing.length > 0) {
+  // Outgoing: requests this user made (as requester)
+  const { data: outData } = await db.from('bookings').select('*').eq('requester_id', currentUser.id).order('created_at', { ascending: false });
+  outgoingBookings = outData || [];
+  // Back-fill dj_name for older bookings that don't have it
+  const missingDjNames = outgoingBookings.filter(b => !b.dj_name && b.dj_id);
+  if (missingDjNames.length > 0) {
+    const djIds = [...new Set(missingDjNames.map(b => b.dj_id))];
+    const { data: djRows } = await db.from('users').select('id,name').in('id', djIds);
+    if (djRows) {
+      const djMap = Object.fromEntries(djRows.map(d => [d.id, d.name]));
+      outgoingBookings = outgoingBookings.map(b => b.dj_name ? b : {...b, dj_name: djMap[b.dj_id] || 'DJ'});
+    }
+  }
+  if (currentUser.role !== 'dj' || outgoingBookings.length > 0) {
     document.getElementById('outgoing-section').style.display = 'block';
-    renderOutgoingList('out-pending');
+    renderList('out', 'pending');
+  }
+
+  // Incoming: requests made to this DJ (club/bar DJs only)
+  if (isClubBarDJ) {
+    const { data: inData } = await db.from('bookings').select('*').eq('dj_id', currentUser.id).order('created_at', { ascending: false });
+    // Filter out bookings from blocked users
+    incomingBookings = (inData || []).filter(b => !blockedUsers.includes(b.requester_id));
+    // Back-fill requester_name for older bookings
+    const missingNames = incomingBookings.filter(b => !b.requester_name && b.requester_id);
+    if (missingNames.length > 0) {
+      const rIds = [...new Set(missingNames.map(b => b.requester_id))];
+      const { data: rRows } = await db.from('users').select('id,name').in('id', rIds);
+      if (rRows) {
+        const rMap = Object.fromEntries(rRows.map(r => [r.id, r.name]));
+        incomingBookings = incomingBookings.map(b => b.requester_name ? b : {...b, requester_name: rMap[b.requester_id] || 'Unknown'});
+      }
+    }
+    renderList('in', 'pending');
   }
 }
 
-function switchOutgoingTab(name, btn) {
-  document.querySelectorAll('#outgoing-section .tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#outgoing-section .tab-pane').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-  renderOutgoingList(name);
-}
+function renderList(group, filter) {
+  const bookings = group === 'in' ? incomingBookings : outgoingBookings;
+  const list = document.getElementById(`${group}-list-${filter}`);
+  if (!list) return;
+  const items = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
+  if (!items.length) { list.innerHTML = `<div class="empty-state">No ${filter} requests</div>`; return; }
 
-function renderOutgoingList(filter) {
-  const list = document.getElementById('list-' + filter);
-  const statusKey = filter.replace('out-', '');
-  const items = statusKey === 'all' ? allOutgoing : allOutgoing.filter(b => {
-    if (statusKey === 'counter') return b.status === 'counter';
-    return b.status === statusKey;
-  });
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No ' + statusKey + ' requests</div>'; return; }
-
-  list.innerHTML = items.map(b => {
-    const sym = currencySymbols[b.currency || 'USD'] || '$';
-    const statusClass = 'status-' + (b.status || 'pending');
-    const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Rate: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Your offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
-
-    return `<div class="request-card ${b.status || 'pending'}" id="out-card-${b.id}">
-      <div class="req-header">
-        <div>
-          <div class="req-name">${b.venue_name || 'Unnamed Venue'}</div>
-          <div class="req-date">${formatDate(b.event_date)} · Sent ${new Date(b.created_at).toLocaleDateString()}</div>
-        </div>
-        <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
-      </div>
-      <div class="req-details">
-        <div class="req-detail-item"><span class="lbl">DJ</span><span class="val">${b.dj_slug || '—'}</span></div>
-        <div class="req-detail-item"><span class="lbl">Venue Type</span><span class="val">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></div>
-        <div class="req-detail-item"><span class="lbl">Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
-        <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
-        ${rateInfo ? `<div class="req-detail-item"><span class="lbl">Rate</span><span class="val" style="color:var(--neon);">${rateInfo}</span></div>` : ''}
-      </div>
-      ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-      ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">DJ counter note: "${b.counter_message}"</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function renderList(filter) {
-  const list = document.getElementById('list-' + filter);
-  const items = filter === 'all' ? allBookings : allBookings.filter(b => b.status === filter);
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No ' + filter + ' requests</div>'; return; }
+  const isIncoming = group === 'in';
 
   list.innerHTML = items.map(b => {
     const sym = currencySymbols[b.currency || 'USD'] || '$';
     const statusClass = 'status-' + (b.status || 'pending');
     const cardClass = 'request-card ' + (b.status || 'pending');
-    const rateInfo = b.counter_rate ? `Counter offer: ${sym}${Number(b.counter_rate).toLocaleString()}` : b.quoted_rate ? `Quoted: ${sym}${Number(b.quoted_rate).toLocaleString()}` : b.offer_amount ? `Offer: ${sym}${Number(b.offer_amount).toLocaleString()}` : '';
+    const agreedRate = b.counter_rate || b.quoted_rate || b.offer_amount;
+    const isApproved = b.status === 'approved';
+
+    // Negotiation log entries
+    const logEntries = [];
+    if (b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Initial Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.offer_amount).toLocaleString()} ${b.currency||'USD'}</span></div>`);
+    if (b.quoted_rate && !b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Quoted Rate <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.quoted_rate).toLocaleString()} ${b.currency||'USD'}</span></div>`);
+    if (b.counter_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;${isApproved ? '' : 'border-bottom:1px solid var(--border);'}font-size:.75rem;"><span style="color:var(--neon);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Counter Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'DJ'})</span></span><span style="color:var(--neon);font-weight:600;">${sym}${Number(b.counter_rate).toLocaleString()} ${b.currency||'USD'}${b.counter_message ? ' <span style="color:var(--muted);font-size:.7rem;font-style:italic;">"'+b.counter_message+'"</span>' : ''}</span></div>`);
+
+    const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;">
+        <div>
+          <span class="lbl">Date</span><span class="val" style="font-weight:600;display:block;">${formatDate(b.event_date)}</span>
+          <span class="lbl" style="margin-top:.5rem;display:block;">Set Time</span><span class="val" style="display:block;">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span>
+        </div>
+        <div>
+          ${isApproved && agreedRate ? `
+            <div style="border:1px solid var(--neon);border-radius:8px;padding:.5rem .75rem;margin-top:1.5rem;background:rgba(0,245,196,.05);display:inline-block;">
+              <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
+                <div style="width:16px;height:16px;border-radius:50%;background:var(--neon);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#050507" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);">Offer Accepted</span>
+              </div>
+              <span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">${sym}${Number(agreedRate).toLocaleString()} <span style="font-size:.9rem;color:var(--muted);">${b.currency||'USD'}</span></span>
+            </div>` : agreedRate ? `<span style="display:block;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:${b.status==='denied'||b.status==='cancelled'?'var(--error)':'var(--amber)'};line-height:1.1;">${b.counter_rate ? 'Counter: ' : 'Offer: '}${sym}${Number(agreedRate).toLocaleString()}</span>` : ''}
+        </div>
+      </div>`;
 
     return `<div class="${cardClass}" id="card-${b.id}">
       <div class="req-header">
         <div>
-          <div class="req-name">${b.venue_name || 'Unnamed Venue'}</div>
-          <div class="req-date">${formatDate(b.event_date)} · Requested ${new Date(b.created_at).toLocaleDateString()}</div>
+          <div class="req-name"><span style="font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-right:.5rem;">Venue:</span>${b.venue_name || 'Unnamed Venue'} <span style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-left:.5rem;">Venue is: <span style="color:var(--white);">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></span></div>
+          ${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.78rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;line-height:1.4;display:block;margin-top:3px;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}
+          ${b.set_type ? `<div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-top:6px;">Set: ${setTypeLabels[b.set_type] || b.set_type}</div>` : ''}
         </div>
-        <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
+          <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name || 'Unknown') : (b.dj_name || 'DJ')}</span></span>
+          ${isIncoming ? `<button class="btn btn-danger btn-sm" style="font-size:.5rem;padding:.2rem .5rem;" onclick="blockUser('${b.requester_id}','${b.requester_name||'this user'}')">Block</button>` : ''}
+        </div>
       </div>
-      <div class="req-details">
-        <div class="req-detail-item"><span class="lbl">Venue Type</span><span class="val">${b.venue_type === 'club' ? 'Club' : 'Bar'}</span></div>
-        ${b.set_type ? `<div class="req-detail-item"><span class="lbl">Set Type</span><span class="val">${setTypeLabels[b.set_type] || b.set_type}</span></div>` : ''}
-        <div class="req-detail-item"><span class="lbl">Address</span><span class="val">${b.venue_address || '—'}</span></div>
-        <div class="req-detail-item"><span class="lbl">Time</span><span class="val">${formatTime(b.start_time)}${b.end_time ? ' – ' + formatTime(b.end_time) : ''}</span></div>
+      ${rateDisplay}
+      <div class="req-details" style="margin-bottom:.6rem;">
         <div class="req-detail-item"><span class="lbl">Equipment</span><span class="val">${equipLabels[b.equipment] || b.equipment || '—'}</span></div>
-        ${rateInfo ? `<div class="req-detail-item"><span class="lbl">Rate</span><span class="val" style="color:var(--neon);">${rateInfo}</span></div>` : ''}
       </div>
       ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-      ${b.counter_message ? `<div class="req-notes" style="border-left:2px solid var(--neon);color:var(--white);">Counter offer note: "${b.counter_message}"</div>` : ''}
+      ${b.counter_rate && logEntries.length > 0 ? `
+        <div style="margin-top:.75rem;padding:.75rem;background:var(--deep);border-radius:8px;border:1px solid var(--border);">
+          <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;">Negotiation Log</div>
+          ${logEntries.join('')}
+        </div>` : ''}
       <div class="req-actions">
-        ${b.status === 'pending' ? `
+        ${isIncoming && b.status === 'pending' ? `
           <button class="btn btn-primary btn-sm" onclick="updateStatus('${b.id}','approved')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
           </button>
           <button class="btn btn-danger btn-sm" onclick="updateStatus('${b.id}','denied')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deny
           </button>
-          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}')">
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','in')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
           </button>
         ` : ''}
-        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${b.requester_id}')">
+        ${!isIncoming && (b.status === 'pending' || b.status === 'counter') ? `
+          <button class="btn btn-danger btn-sm" onclick="cancelOffer('${b.id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancel Offer
+          </button>
+        ` : ''}
+        ${!isIncoming && b.status === 'counter' ? `
+          <button class="btn btn-primary btn-sm" onclick="requesterUpdateStatus('${b.id}','approved')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Accept
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="requesterUpdateStatus('${b.id}','denied')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline
+          </button>
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','out')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter Back
+          </button>
+        ` : ''}
+        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${isIncoming ? b.requester_id : b.dj_id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
         </button>
       </div>
+      <div style="text-align:right;font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.6rem;letter-spacing:.04em;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
     </div>`;
   }).join('');
 }
@@ -352,7 +403,7 @@ async function updateStatus(bookingId, status) {
   try {
     const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('dj_id', currentUser.id);
     if (error) throw error;
-    const b = allBookings.find(x => x.id === bookingId);
+    const b = incomingBookings.find(x => x.id === bookingId);
     if (b) b.status = status;
 
     // If approved, mark the date as booked on the DJ's calendar
@@ -373,25 +424,77 @@ async function updateStatus(bookingId, status) {
       } catch(calErr) { console.error('Calendar update failed:', calErr); }
     }
 
-    // Send email notification
+    // Send email notifications
     if (b) {
       const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
+
       if (requester?.email) {
-        await fetch('/.netlify/functions/send-email', {
+        fetch('/.netlify/functions/send-email', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ type: 'booking_status', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, status, eventDate: b.event_date, venueName: b.venue_name })
-        });
+          body: JSON.stringify({
+            type: 'booking_status',
+            requesterName: requester.name,
+            requesterEmail: requester.email,
+            djName: currentUser.name,
+            status,
+            eventDate: b.event_date,
+            venueName: b.venue_name,
+            venueAddress: b.venue_address,
+            venueType: b.venue_type,
+            setType: b.set_type,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            equipment: b.equipment,
+            notes: b.notes,
+            quotedRate: b.quoted_rate,
+            offerAmount: b.offer_amount,
+            currency: b.currency,
+          })
+        }).catch(e => console.warn('Requester status email failed:', e));
+      }
+
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_dj_confirm',
+            djName: currentUser.name,
+            djEmail: currentUser.email,
+            requesterName: requester?.name || 'The requester',
+            status,
+            eventDate: b.event_date,
+            venueName: b.venue_name,
+            venueAddress: b.venue_address,
+            venueType: b.venue_type,
+            setType: b.set_type,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            equipment: b.equipment,
+            notes: b.notes,
+            quotedRate: b.quoted_rate,
+            offerAmount: b.offer_amount,
+            currency: b.currency,
+          })
+        }).catch(e => console.warn('DJ confirm email failed:', e));
       }
     }
 
-    const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/\'(\w+)\'/)[1];
-    renderList(activeTab);
+    // Re-render the active incoming tab
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) {
+      const activeFilter = activeInBtn.id.replace('in-tab-','');
+      renderList('in', activeFilter);
+    }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-function openCounter(bookingId, currency) {
+let activeCounterGroup = 'in';
+
+function openCounter(bookingId, currency, group) {
   activeCounterBookingId = bookingId;
+  activeCounterGroup = group;
   const sym = currencySymbols[currency] || '$';
   document.getElementById('counter-currency-sym').textContent = sym;
   document.getElementById('counter-amount').value = '';
@@ -407,27 +510,151 @@ async function submitCounter() {
   const alertEl = document.getElementById('counter-alert');
   if (!amount) { alertEl.innerHTML = '<div class="alert alert-error">Enter a counter amount.</div>'; return; }
   try {
-    const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
-    if (error) throw error;
-    const b = allBookings.find(x => x.id === activeCounterBookingId);
-    if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
+    if (activeCounterGroup === 'in') {
+      // DJ countering → status = 'counter', locked until booker responds
+      const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
+      if (error) throw error;
+      const b = incomingBookings.find(x => x.id === activeCounterBookingId);
+      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; }
+      // Email booker
+      if (b) {
+        const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
+        if (requester?.email) {
+          fetch('/.netlify/functions/send-email', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type: 'booking_counter', recipientName: requester.name, recipientEmail: requester.email, senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+          }).catch(() => {});
+        }
+      }
+      closeCounter();
+      const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+      if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    } else {
+      // Booker countering back → status = 'pending' so DJ sees it in their incoming pending tab
+      const { error } = await db.from('bookings').update({ status: 'pending', counter_rate: amount, counter_message: message, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('requester_id', currentUser.id);
+      if (error) throw error;
+      const b = outgoingBookings.find(x => x.id === activeCounterBookingId);
+      if (b) { b.status = 'pending'; b.counter_rate = amount; b.counter_message = message; }
+      // Email DJ
+      if (b) {
+        const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+        if (dj?.email) {
+          fetch('/.netlify/functions/send-email', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type: 'booking_counter', recipientName: dj.name, recipientEmail: dj.email, senderName: currentUser.name, fromRole: 'booker', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+          }).catch(() => {});
+        }
+      }
+      closeCounter();
+      const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+      if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+    }
+  } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
+}
 
-    // Email requester
+// Booker accepting or declining a DJ's counter offer
+async function requesterUpdateStatus(bookingId, status) {
+  try {
+    const { error } = await db.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
+    if (error) throw error;
+    const b = outgoingBookings.find(x => x.id === bookingId);
+    if (b) b.status = status;
+    // Email DJ
     if (b) {
-      const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
-      if (requester?.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ type: 'booking_counter', requesterName: requester.name, requesterEmail: requester.email, djName: currentUser.name, counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name })
-        });
+      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      if (dj?.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_dj_confirm', djName: dj.name, djEmail: dj.email,
+            requesterName: currentUser.name, status,
+            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+            quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+          })
+        }).catch(() => {});
+      }
+      // Email booker confirmation
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'booking_status', requesterName: currentUser.name, requesterEmail: currentUser.email,
+            djName: dj?.name || '', status,
+            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+            quotedRate: b.counter_rate || b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+          })
+        }).catch(() => {});
       }
     }
+    const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+  } catch(e) { alert('Error: ' + e.message); }
+}
 
-    closeCounter();
-    const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/\'(\w+)\'/)[1];
-    renderList(activeTab);
-  } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
+async function blockUser(userId, userName) {
+  if (!confirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`)) return;
+  try {
+    // Get current blocked list
+    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+    const currentBlocked = me?.blocked_users || [];
+    const updatedBlocked = [...new Set([...currentBlocked, userId])];
+    const { error } = await db.from('users').update({ blocked_users: updatedBlocked }).eq('id', currentUser.id);
+    if (error) throw error;
+    // Also deny any pending bookings from this user
+    await db.from('bookings').update({ status: 'denied', updated_at: new Date().toISOString() })
+      .eq('requester_id', userId).eq('dj_id', currentUser.id).eq('status', 'pending');
+    // Update local data and re-render
+    incomingBookings = incomingBookings.map(b => b.requester_id === userId && b.status === 'pending' ? {...b, status: 'denied'} : b);
+    const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
+    if (activeInBtn) renderList('in', activeInBtn.id.replace('in-tab-',''));
+    alert(`${userName} has been blocked.`);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function cancelOffer(bookingId) {
+  if (!confirm('Cancel this booking offer? Both you and the DJ will be notified.')) return;
+  try {
+    const { error } = await db.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', bookingId).eq('requester_id', currentUser.id);
+    if (error) throw error;
+    const b = outgoingBookings.find(x => x.id === bookingId);
+    if (b) b.status = 'cancelled';
+    if (b) {
+      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      const emailPayload = {
+        type: 'booking_cancelled',
+        requesterName: currentUser.name,
+        djName: dj?.name || b.dj_name || 'DJ',
+        eventDate: b.event_date,
+        venueName: b.venue_name,
+        venueAddress: b.venue_address,
+        venueType: b.venue_type,
+        setType: b.set_type,
+        startTime: b.start_time,
+        endTime: b.end_time,
+        currency: b.currency,
+      };
+      // Email DJ
+      if (dj?.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ...emailPayload, recipientName: dj.name, recipientEmail: dj.email, recipientRole: 'dj' })
+        }).catch(() => {});
+      }
+      // Email requester (themselves — confirmation)
+      if (currentUser.email) {
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ...emailPayload, recipientName: currentUser.name, recipientEmail: currentUser.email, recipientRole: 'requester' })
+        }).catch(() => {});
+      }
+    }
+    const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
+    if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-',''));
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function openMsg(bookingId, userId) {
@@ -451,17 +678,7 @@ async function sendMsg() {
   } catch(e) { alertEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
 }
 
-if (currentUser) {
-  if (currentUser.role === 'dj') {
-    loadBookings();
-    loadOutgoing();
-  } else {
-    // Host/venue — show outgoing immediately, incoming never applies
-    document.getElementById('incoming-section').style.display = 'none';
-    document.getElementById('outgoing-section').style.display = 'block';
-    loadOutgoing();
-  }
-}
+if (currentUser) loadAllBookings();
 </script>
 </body>
 </html>
