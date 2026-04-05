@@ -369,14 +369,13 @@ function renderList(group, filter) {
         const [a, b] = group;
         // Time gap: end of first to start of second
         if (a.end_time && b.start_time) {
-          const endMins = timeToMins(a.end_time);
-          const startMins = timeToMins(b.start_time);
-          let gapMins = startMins - endMins;
-          if (gapMins < -720) gapMins += 1440; // handle overnight
+          const aEndMins = timeToMins(a.end_time);
+          const bStartMins = timeToMins(b.start_time);
+          const gapMins = bStartMins - aEndMins;
           const absGap = Math.abs(gapMins);
           const gapHrs = Math.floor(absGap / 60);
           const gapRemMins = absGap % 60;
-          const gapLabel = gapHrs > 0 ? `${gapHrs}h ${gapRemMins}m` : `${gapRemMins}m`;
+          const gapLabel = gapHrs > 0 ? `${gapHrs}h${gapRemMins > 0 ? ' ' + gapRemMins + 'm' : ''}` : `${gapRemMins}m`;
           const isOverlap = gapMins < 0;
           const gapColor = isOverlap ? 'var(--error)' : gapMins < 60 ? 'var(--amber)' : 'var(--neon)';
           const gapText = isOverlap ? `SETS OVERLAP BY ${gapLabel}` : `${gapLabel} GAP BETWEEN SETS`;
