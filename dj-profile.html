@@ -1538,6 +1538,8 @@ function drawOwnerRolling12Months() {
 
   rolling.innerHTML = html;
 }
+
+function ownerQuickMark(key) {
   if (ownerBookingDays[key] && ownerBookingDays[key].booked) return;
   if (ownerBookingDays[key] && ownerBookingDays[key].unavailable) {
     delete ownerBookingDays[key];
