@@ -2305,10 +2305,8 @@ async function loadBookingSettings() {
   if (!data.booking_settings) return;
   try {
     const s = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
-    if (s.booking_enabled) {
-      document.getElementById('booking-enabled').checked = true;
-      toggleBookingSetup();
-    }
+    document.getElementById('booking-enabled').checked = !!s.booking_enabled;
+    _doToggleBooking(!!s.booking_enabled);
     if (s.equip_full) { document.getElementById('equip-full').checked = true; updateRateFields('equip-full'); }
     if (s.equip_full_detail) document.getElementById('equip-full-detail').value = s.equip_full_detail;
     if (s.equip_decks) { document.getElementById('equip-decks').checked = true; updateRateFields('equip-decks'); }
