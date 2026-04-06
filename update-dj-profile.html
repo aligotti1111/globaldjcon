@@ -780,9 +780,11 @@ input[type=number] { -moz-appearance:textfield; }
           <!-- Equipment + Rate Sections (Club/Bar DJs only) -->
           <div id="club-booking-section" style="display:none;">
           <!-- Equipment Section -->
-          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;margin-bottom:.25rem;">Equipment</div>
-            <div style="width:40px;height:2px;background:var(--neon);margin-bottom:1rem;"></div>
+          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
+            <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:1rem 1.25rem;text-align:center;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Equipment</div>
+            </div>
+            <div style="padding:1.25rem;">
             <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Select what equipment you can provide. These apply to all bookings by default.</p>
 
             <div style="margin-bottom:.75rem;">
@@ -817,16 +819,20 @@ input[type=number] { -moz-appearance:textfield; }
             </div>
             <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5;">Equipment selections apply universally to all days available for booking.</div>
             </div>
+            </div>
           </div>
 
           <!-- Rate Section -->
-          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
+            <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:center;position:relative;">
               <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Rates</div>
-              <select id="rate-currency" onchange="updateCurrencySymbols()" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .6rem;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;outline:none;">
-                <option value="USD" data-symbol="$">USD ($)</option><option value="EUR" data-symbol="€">EUR (€)</option><option value="GBP" data-symbol="£">GBP (£)</option><option value="CAD" data-symbol="CA$">CAD (CA$)</option><option value="AUD" data-symbol="A$">AUD (A$)</option><option value="JPY" data-symbol="¥">JPY (¥)</option><option value="MXN" data-symbol="MX$">MXN (MX$)</option><option value="BRL" data-symbol="R$">BRL (R$)</option><option value="CHF" data-symbol="Fr">CHF (Fr)</option><option value="SEK" data-symbol="kr">SEK (kr)</option><option value="NOK" data-symbol="kr">NOK (kr)</option><option value="DKK" data-symbol="kr">DKK (kr)</option><option value="NZD" data-symbol="NZ$">NZD (NZ$)</option><option value="SGD" data-symbol="S$">SGD (S$)</option><option value="ZAR" data-symbol="R">ZAR (R)</option><option value="AED" data-symbol="د.إ">AED (د.إ)</option><option value="INR" data-symbol="₹">INR (₹)</option>
-              </select>
+              <div style="position:absolute;right:1.25rem;">
+                <select id="rate-currency" onchange="updateCurrencySymbols()" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .6rem;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;outline:none;">
+                  <option value="USD" data-symbol="$">USD ($)</option><option value="EUR" data-symbol="€">EUR (€)</option><option value="GBP" data-symbol="£">GBP (£)</option><option value="CAD" data-symbol="CA$">CAD (CA$)</option><option value="AUD" data-symbol="A$">AUD (A$)</option><option value="JPY" data-symbol="¥">JPY (¥)</option><option value="MXN" data-symbol="MX$">MXN (MX$)</option><option value="BRL" data-symbol="R$">BRL (R$)</option><option value="CHF" data-symbol="Fr">CHF (Fr)</option><option value="SEK" data-symbol="kr">SEK (kr)</option><option value="NOK" data-symbol="kr">NOK (kr)</option><option value="DKK" data-symbol="kr">DKK (kr)</option><option value="NZD" data-symbol="NZ$">NZD (NZ$)</option><option value="SGD" data-symbol="S$">SGD (S$)</option><option value="ZAR" data-symbol="R">ZAR (R)</option><option value="AED" data-symbol="د.إ">AED (د.إ)</option><option value="INR" data-symbol="₹">INR (₹)</option>
+                </select>
+              </div>
             </div>
+            <div style="padding:1.25rem;">
             <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Set your rates based on your equipment selections above.</p>
 
             <div style="margin-bottom:1.25rem;text-align:center;">
@@ -875,14 +881,17 @@ input[type=number] { -moz-appearance:textfield; }
               <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
             </div>
             <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5;">Rates listed apply to all dates available for booking. The rate for each day can be customized by clicking the pencil icon on each day.</div>
+            </div>
           </div>
 
           </div><!-- end club-booking-section -->
 
           <!-- Calendar Section -->
-          <div id="cal-section" style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;margin-bottom:.25rem;">Availability Calendar</div>
-            <div style="width:40px;height:2px;background:var(--neon);margin-bottom:1rem;"></div>
+          <div id="cal-section" style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
+            <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:1rem 1.25rem;text-align:center;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Availability Calendar</div>
+            </div>
+            <div style="padding:1.25rem;">
             <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Click the pencil icon on any day to mark it booked or add event details. <span style="color:var(--neon);">Changes auto-save.</span></p>
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
@@ -901,6 +910,8 @@ input[type=number] { -moz-appearance:textfield; }
               <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);">
                 <span style="font-size:.65rem;">✏️</span> Edit day / set rate
               </div>
+            </div>
+          </div>
             </div>
           </div>
 
