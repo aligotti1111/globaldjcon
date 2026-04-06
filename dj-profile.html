@@ -1081,14 +1081,11 @@ function drawPubCalMonth() {
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
         const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:2px;">
-            <div class="cal-badge-text" style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>
-            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
-          </div>
-          ${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}`;
+        badge = `${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
+          ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}`;
       } else if (isUnavail) {
-        badge = `<div class="cal-badge-text" style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
+        badge = '';
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
