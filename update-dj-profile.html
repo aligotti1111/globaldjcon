@@ -1735,7 +1735,7 @@ function toggleBookingSetup(userInitiated) {
   _doToggleBooking(enabled);
 }
 
-function _doToggleBooking(enabled) {
+function _doToggleBooking(enabled, skipSave) {
   const checkbox = document.getElementById('booking-enabled');
   checkbox.checked = enabled;
   const track = document.getElementById('booking-toggle-track');
@@ -1747,14 +1747,22 @@ function _doToggleBooking(enabled) {
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
   if (enabled) renderCal();
+  if (skipSave) return;
   // Save only booking_enabled — all other settings untouched
   (async () => {
     try {
       const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
       const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
       bs.booking_enabled = enabled;
-      await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
-    } catch(e) { console.error('Failed to save booking enabled state:', e); }
+      const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+      if (error) throw error;
+      const alertEl = document.getElementById('booking-alert');
+      if (alertEl) { alertEl.innerHTML = `<div class="alert alert-success">✓ Booking ${enabled ? 'activated' : 'deactivated'}.</div>`; setTimeout(() => alertEl.innerHTML = '', 3000); }
+    } catch(e) {
+      console.error('Failed to save booking enabled state:', e);
+      const alertEl = document.getElementById('booking-alert');
+      if (alertEl) alertEl.innerHTML = `<div class="alert alert-error">✗ ${e.message}</div>`;
+    }
   })();
 }
 
@@ -2305,7 +2313,7 @@ async function loadBookingSettings() {
     document.getElementById('club-booking-section').style.display = 'block';
   }
   if (!data.booking_settings) {
-    _doToggleBooking(false);
+    _doToggleBooking(false, true);
     return;
   }
   try {
@@ -2323,7 +2331,7 @@ async function loadBookingSettings() {
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();
-    _doToggleBooking(!!s.booking_enabled);
+    _doToggleBooking(!!s.booking_enabled, true);
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
 loadBookingSettings().then(() => { formDirty = false; });
