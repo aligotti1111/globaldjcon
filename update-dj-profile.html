@@ -1682,8 +1682,8 @@ let formDirty = false;
 let formSaved = false;
 
 // Mark form dirty on any input change
-document.getElementById('profile-form').addEventListener('change', () => { formDirty = true; });
-document.getElementById('profile-form').addEventListener('input', () => { formDirty = true; });
+document.getElementById('profile-form').addEventListener('change', (e) => { if (!e.target.closest('#club-booking-section')) formDirty = true; });
+document.getElementById('profile-form').addEventListener('input', (e) => { if (!e.target.closest('#club-booking-section')) formDirty = true; });
 
 // Mark saved on successful submit
 const originalSubmit = document.getElementById('profile-form').onsubmit;
@@ -2228,10 +2228,8 @@ function setGlobalRateType(type) {
 
 async function saveRateSection(btn) {
   const rateType = document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat';
-  const rateHours = rateType === 'flat' ? (document.getElementById('global-rate-hours').value || null) : null;
   await savePartialBooking(btn, 'rate-save-alert', {
     global_rate_type: rateType,
-    global_rate_hours: rateHours,
     rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
     rate_with_system: document.getElementById('rate-with-system-val').value || null,
     rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
@@ -2275,7 +2273,7 @@ async function saveBookingSettings() {
       rate_with_system: document.getElementById('rate-with-system-val').value || null,
       rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
       global_rate_type: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat',
-      global_rate_hours: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? null : (document.getElementById('global-rate-hours').value || null),
+      global_rate_hours: null,
       allow_offers: document.getElementById('allow-offers').checked,
       booking_days: bookingDays,
     };
@@ -2320,7 +2318,6 @@ async function loadBookingSettings() {
     if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
     if (s.global_rate_type) setGlobalRateType(s.global_rate_type);
-    if (s.global_rate_hours) document.getElementById('global-rate-hours').value = s.global_rate_hours;
     if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
@@ -2328,7 +2325,7 @@ async function loadBookingSettings() {
     renderCal();
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
-loadBookingSettings();
+loadBookingSettings().then(() => { formDirty = false; });
 
 async function loadBlockedUsers() {
   const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
