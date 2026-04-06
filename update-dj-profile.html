@@ -769,7 +769,7 @@ input[type=number] { -moz-appearance:textfield; }
               <div style="font-size:.8rem;color:var(--muted);">Allow guests and venues to request bookings directly from your profile.</div>
             </div>
             <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
-              <input type="checkbox" id="booking-enabled" style="opacity:0;width:0;height:0;" onchange="toggleBookingSetup()">
+              <input type="checkbox" id="booking-enabled" style="opacity:0;width:0;height:0;" onchange="toggleBookingSetup(true)">
               <span id="booking-toggle-track" style="position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:24px;transition:.3s;"></span>
               <span id="booking-toggle-thumb" style="position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.3s;"></span>
             </label>
@@ -1716,12 +1716,12 @@ function checkShowBookingTab() {
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
 
 // Toggle booking setup visibility
-function toggleBookingSetup() {
+function toggleBookingSetup(userInitiated) {
   const checkbox = document.getElementById('booking-enabled');
   const enabled = checkbox.checked;
 
-  // If turning OFF, confirm first
-  if (!enabled) {
+  // Only confirm when user actively clicks to turn OFF
+  if (!enabled && userInitiated) {
     showConfirm(
       'Are you sure you want to deactivate the booking feature? Your settings will be saved and can be reactivated at any time.',
       'Deactivate',
@@ -1732,7 +1732,7 @@ function toggleBookingSetup() {
     checkbox.checked = true;
     return;
   }
-  _doToggleBooking(true);
+  _doToggleBooking(enabled);
 }
 
 function _doToggleBooking(enabled) {
