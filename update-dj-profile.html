@@ -303,6 +303,9 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 }
 .avatar-delete-btn:hover { background: rgba(255,95,95,.3); }
 #avatar-circle.has-photo .avatar-delete-btn { display: flex; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+input[type=number] { -moz-appearance:textfield; }
 </style>
 </head>
 <body>
@@ -811,18 +814,19 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
               <button type="button" onclick="saveEquipmentSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Equipment</button>
               <span id="equip-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
             </div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5;">Equipment selections apply universally to all days available for booking.</div>
+            </div>
           </div>
 
           <!-- Rate Section -->
           <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
-            <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Rates</div>
-            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Set your rates based on your equipment selections above.</p>
-            <div style="margin-bottom:1rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Currency</label>
-              <select id="rate-currency" onchange="updateCurrencySymbols()" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .75rem;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.85rem;cursor:pointer;outline:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+              <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);">Rates</div>
+              <select id="rate-currency" onchange="updateCurrencySymbols()" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .6rem;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;outline:none;">
                 <option value="USD" data-symbol="$">USD ($)</option><option value="EUR" data-symbol="€">EUR (€)</option><option value="GBP" data-symbol="£">GBP (£)</option><option value="CAD" data-symbol="CA$">CAD (CA$)</option><option value="AUD" data-symbol="A$">AUD (A$)</option><option value="JPY" data-symbol="¥">JPY (¥)</option><option value="MXN" data-symbol="MX$">MXN (MX$)</option><option value="BRL" data-symbol="R$">BRL (R$)</option><option value="CHF" data-symbol="Fr">CHF (Fr)</option><option value="SEK" data-symbol="kr">SEK (kr)</option><option value="NOK" data-symbol="kr">NOK (kr)</option><option value="DKK" data-symbol="kr">DKK (kr)</option><option value="NZD" data-symbol="NZ$">NZD (NZ$)</option><option value="SGD" data-symbol="S$">SGD (S$)</option><option value="ZAR" data-symbol="R">ZAR (R)</option><option value="AED" data-symbol="د.إ">AED (د.إ)</option><option value="INR" data-symbol="₹">INR (₹)</option>
               </select>
             </div>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Set your rates based on your equipment selections above.</p>
 
             <div style="margin-bottom:1.25rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
@@ -870,6 +874,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
               <button type="button" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
               <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
             </div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5;">Rates listed apply to all dates available for booking. The rate for each day can be customized by clicking the pencil icon on each day.</div>
           </div>
 
           </div><!-- end club-booking-section -->
@@ -2121,6 +2126,11 @@ async function saveEquipmentSection(btn) {
 
 function setGlobalRateType(type) {
   const isFlat = type === 'flat';
+  // Clear rate values when switching type
+  ['rate-with-system-val','rate-with-decks-val','rate-no-equip-val'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   document.getElementById('global-rate-type-flat').style.background = isFlat ? 'var(--neon-dim)' : 'transparent';
   document.getElementById('global-rate-type-flat').style.color = isFlat ? 'var(--neon)' : 'var(--muted)';
   document.getElementById('global-rate-type-flat').style.borderColor = isFlat ? 'var(--neon)' : 'var(--border)';
