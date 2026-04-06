@@ -2302,11 +2302,12 @@ async function loadBookingSettings() {
   if ((data.type||'').includes('club')) {
     document.getElementById('club-booking-section').style.display = 'block';
   }
-  if (!data.booking_settings) return;
+  if (!data.booking_settings) {
+    _doToggleBooking(false);
+    return;
+  }
   try {
     const s = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
-    document.getElementById('booking-enabled').checked = !!s.booking_enabled;
-    _doToggleBooking(!!s.booking_enabled);
     if (s.equip_full) { document.getElementById('equip-full').checked = true; updateRateFields('equip-full'); }
     if (s.equip_full_detail) document.getElementById('equip-full-detail').value = s.equip_full_detail;
     if (s.equip_decks) { document.getElementById('equip-decks').checked = true; updateRateFields('equip-decks'); }
@@ -2320,7 +2321,7 @@ async function loadBookingSettings() {
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();
-    renderCal();
+    _doToggleBooking(!!s.booking_enabled);
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
 loadBookingSettings().then(() => { formDirty = false; });
