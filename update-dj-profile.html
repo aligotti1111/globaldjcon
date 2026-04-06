@@ -1877,7 +1877,7 @@ function renderCal() {
           ${!isBooked ? `<button type="button" onclick="quickMarkBooked('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
             style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
           <button type="button" onclick="openDayEditor('${key}')" title="Edit day"
-            style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg></button>
+            style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
         ` : ''}`;
       grid.appendChild(cell);
     }

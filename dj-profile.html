@@ -1351,7 +1351,7 @@ function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDec
       <div style="display:flex;flex-direction:column;gap:.35rem;margin-top:.4rem;">
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg> Edit day / set rate</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="font-size:.65rem;">✏️</span> Edit day / set rate</div>
       </div>
     </div>
     <div id="owner-cal-rolling-wrap" style="display:none;"></div>
@@ -1418,7 +1418,7 @@ function drawOwnerCalMonth() {
       ${badge}
       ${!isPast?`
         ${!isBooked ? `<button type="button" onclick="ownerQuickMark('${key}')" title="${isUnavail?'Mark available':'Mark unavailable'}" style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;transition:color .15s;" onmouseover="this.style.color='${isUnavail?'var(--white)':'#ff5f5f'}'" onmouseout="this.style.color='${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'}'}">${isUnavail?'✓':'✕'}</button>` : ''}
-        <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg></button>
+        <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
       `:''}
     </div>`;
   }
