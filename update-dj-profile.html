@@ -1755,7 +1755,7 @@ function updateRateFields(selected) {
   // Checkbox 3 (none)        → 1 rate:  no-equip only
   document.getElementById('rate-with-system').style.display = full ? 'block' : 'none';
   document.getElementById('rate-with-decks').style.display  = decks ? 'block' : 'none';
-  document.getElementById('rate-no-equip').style.display    = none ? 'block' : 'none';
+  document.getElementById('rate-no-equip').style.display    = (full || decks || none) ? 'block' : 'none';
 }
 
 // ── CALENDAR ──────────────────────────────────────────────
