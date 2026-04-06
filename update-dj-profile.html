@@ -889,6 +889,17 @@ input[type=number] { -moz-appearance:textfield; }
               <button type="button" onclick="calNext()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">Next ›</button>
             </div>
             <div id="cal-months-container" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);">
+              <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);">
+                <span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable
+              </div>
+              <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);">
+                <span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available
+              </div>
+              <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);">
+                <span style="font-size:.65rem;">✏️</span> Edit day / set rate
+              </div>
+            </div>
           </div>
 
           <div id="booking-alert" style="margin-top:.75rem;"></div>
