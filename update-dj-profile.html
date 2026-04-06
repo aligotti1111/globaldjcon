@@ -2313,7 +2313,9 @@ async function loadBookingSettings() {
     document.getElementById('club-booking-section').style.display = 'block';
   }
   if (!data.booking_settings) {
-    _doToggleBooking(false, true);
+    document.getElementById('booking-setup').style.display = 'none';
+    const cs = document.getElementById('cal-section');
+    if (cs) cs.style.display = 'none';
     return;
   }
   try {
@@ -2331,7 +2333,18 @@ async function loadBookingSettings() {
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();
-    _doToggleBooking(!!s.booking_enabled, true);
+    // Set UI state directly — no save triggered
+    const enabled = !!s.booking_enabled;
+    document.getElementById('booking-enabled').checked = enabled;
+    const track = document.getElementById('booking-toggle-track');
+    const thumb = document.getElementById('booking-toggle-thumb');
+    track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
+    thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
+    thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+    document.getElementById('booking-setup').style.display = enabled ? 'block' : 'none';
+    const cs = document.getElementById('cal-section');
+    if (cs) cs.style.display = enabled ? '' : 'none';
+    if (enabled) renderCal();
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
 loadBookingSettings().then(() => { formDirty = false; });
