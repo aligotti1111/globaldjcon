@@ -824,7 +824,20 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
               </select>
             </div>
 
-            <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
+            <div style="margin-bottom:1.25rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
+              <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
+                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="flex:1;padding:.45rem;border-radius:5px;border:1px solid var(--neon);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
+                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="flex:1;padding:.45rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+              </div>
+              <div id="global-flat-hours-field" style="display:flex;align-items:center;gap:.5rem;">
+                <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;">Hours covered:</label>
+                <input type="number" id="global-rate-hours" placeholder="e.g. 4" min="1" style="width:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+              <div id="global-hourly-label" style="display:none;font-size:.78rem;color:var(--muted);">Prices below will be charged per hour.</div>
+            </div>
+
+
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
@@ -2107,8 +2120,33 @@ async function saveEquipmentSection(btn) {
   });
 }
 
+function setGlobalRateType(type) {
+  const isFlat = type === 'flat';
+  document.getElementById('global-rate-type-flat').style.background = isFlat ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('global-rate-type-flat').style.color = isFlat ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('global-rate-type-flat').style.borderColor = isFlat ? 'var(--neon)' : 'var(--border)';
+  document.getElementById('global-rate-type-hourly').style.background = !isFlat ? 'var(--neon-dim)' : 'transparent';
+  document.getElementById('global-rate-type-hourly').style.color = !isFlat ? 'var(--neon)' : 'var(--muted)';
+  document.getElementById('global-rate-type-hourly').style.borderColor = !isFlat ? 'var(--neon)' : 'var(--border)';
+  document.getElementById('global-flat-hours-field').style.display = isFlat ? 'flex' : 'none';
+  document.getElementById('global-hourly-label').style.display = !isFlat ? 'block' : 'none';
+  // Update rate field labels
+  const suffix = isFlat ? '' : '/hr';
+  ['rate-with-system','rate-with-decks','rate-no-equip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      const label = el.querySelector('label');
+      if (label) label.dataset.suffix = suffix;
+    }
+  });
+}
+
 async function saveRateSection(btn) {
+  const rateType = document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat';
+  const rateHours = rateType === 'flat' ? (document.getElementById('global-rate-hours').value || null) : null;
   await savePartialBooking(btn, 'rate-save-alert', {
+    global_rate_type: rateType,
+    global_rate_hours: rateHours,
     rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
     rate_with_system: document.getElementById('rate-with-system-val').value || null,
     rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
@@ -2151,6 +2189,8 @@ async function saveBookingSettings() {
       rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
       rate_with_system: document.getElementById('rate-with-system-val').value || null,
       rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
+      global_rate_type: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat',
+      global_rate_hours: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? null : (document.getElementById('global-rate-hours').value || null),
       allow_offers: document.getElementById('allow-offers').checked,
       booking_days: bookingDays,
     };
@@ -2194,6 +2234,8 @@ async function loadBookingSettings() {
     if (s.rate_no_equip) document.getElementById('rate-no-equip-val').value = s.rate_no_equip;
     if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
+    if (s.global_rate_type) setGlobalRateType(s.global_rate_type);
+    if (s.global_rate_hours) document.getElementById('global-rate-hours').value = s.global_rate_hours;
     if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
