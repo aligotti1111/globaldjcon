@@ -292,6 +292,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .avatar-edit-overlay { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; cursor:pointer; z-index:2; }
 .hero-avatar:hover .avatar-edit-overlay { opacity:1; }
 .avatar-edit-overlay svg { color:#fff; }
+@media (max-width: 600px) { .cal-badge-text { display: none !important; } }
 </style>
 </head>
 <body>
@@ -1080,11 +1081,14 @@ function drawPubCalMonth() {
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
         const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
-          ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}`;
+        badge = `<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:2px;">
+            <div class="cal-badge-text" style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;" class="cal-badge">Booked</div>
+            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
+          </div>
+          ${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}`;
       } else if (isUnavail) {
-        badge = '';
+        badge = `<div class="cal-badge-text" style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
@@ -1346,6 +1350,8 @@ function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDec
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.35rem;margin-top:.4rem;">
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg> Edit day / set rate</div>
@@ -1403,10 +1409,14 @@ function drawOwnerCalMonth() {
     else if (isToday) numColor = 'var(--neon)';
 
     let badge = '';
-
-    const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
+    if (!isPast) {
+      if (isBooked) badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>`;
+      else if (isUnavail) badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
+      else badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);">Open</div>`;
+    } = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
     html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:72px;padding:.5rem .4rem .4rem;background:${bg};${isToday?'box-shadow:inset 0 2px 0 var(--neon);':isUnavail?'box-shadow:inset 0 2px 0 var(--muted);':''}text-align:left;vertical-align:top;">
       <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
+      ${badge}
       ${!isPast?`
         ${!isBooked ? `<button type="button" onclick="ownerQuickMark('${key}')" title="${isUnavail?'Mark available':'Mark unavailable'}" style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;transition:color .15s;" onmouseover="this.style.color='${isUnavail?'var(--white)':'#ff5f5f'}'" onmouseout="this.style.color='${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'}'}">${isUnavail?'✓':'✕'}</button>` : ''}
         <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg></button>
