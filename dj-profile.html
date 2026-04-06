@@ -387,7 +387,6 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
     <!-- Tab Nav -->
     <nav class="tabs-nav">
       <button class="tab-btn" id="tab-btn-booking" onclick="switchTab('booking',this)" style="display:none;">Availability</button>
-      <button class="tab-btn" id="tab-btn-booking" onclick="switchTab('booking',this)" style="display:none;">Availability</button>
       <button class="tab-btn active" id="tab-btn-about" onclick="switchTab('about',this)">About</button>
       <button class="tab-btn" id="tab-btn-mixes" onclick="switchTab('mixes',this)">Mixes</button>
       <button class="tab-btn" id="tab-btn-images" onclick="switchTab('images',this)">Photos</button>
@@ -398,7 +397,6 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
     <!-- Booking/Availability Tab -->
     <div class="tab-pane" id="tab-booking">
       <div id="p-booking-calendar"></div>
-      <div id="p-booking-calendar-rolling" style="display:none;"></div>
     </div>
 
     <!-- About Tab -->
@@ -746,7 +744,7 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
@@ -766,18 +764,7 @@ const GENRE_LABELS = {
           bookBtn.onclick = function(e) {
             e.preventDefault();
             const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-            if (!cu) { showBookingGate(); } else {
-              const bookingTabBtn = document.getElementById('tab-btn-booking');
-              if (bookingTabBtn && bookingTabBtn.style.display !== 'none') {
-                if (!document.getElementById('tab-booking').classList.contains('active')) {
-                  switchTab('booking', bookingTabBtn);
-                }
-                pubCalShowRolling();
-                document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
-              } else {
-                window.location.href = '/book.html?dj=' + effectiveSlug;
-              }
-            }
+            if (!cu) { showBookingGate(); } else { window.location.href = '/book.html?dj=' + effectiveSlug; }
           };
         }
       } catch(e) {}
@@ -950,11 +937,11 @@ const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July'
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
 let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '';
 
-function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
   if (isOwner) {
-    renderOwnerCalendar(bookingDays, globalAllowOffers);
+    renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone);
     return;
   }
   const today = new Date();
@@ -993,10 +980,6 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers) {
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
-      <button type="button" id="pub-cal-view-toggle" onclick="pubCalToggleView()"
-        style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;transition:all .2s;white-space:nowrap;"
-        onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="if(!this.dataset.active){this.style.borderColor='var(--border)';this.style.color='var(--muted)'}">12 Months</button>
     </div>
     <div id="pub-cal-grid-wrap"></div>
     <div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;">
@@ -1181,123 +1164,23 @@ function pubCalJumpSplit() {
   drawPubCalMonth();
 }
 
-let pubCalRollingActive = false;
-let pubCalRollingStartYear = new Date().getFullYear();
-
-function pubCalToggleView() {
-  pubCalRollingActive = !pubCalRollingActive;
-  const toggle = document.getElementById('pub-cal-view-toggle');
-  const single = document.getElementById('p-booking-calendar');
-  const rolling = document.getElementById('p-booking-calendar-rolling');
-  if (pubCalRollingActive) {
-    single.style.display = 'none';
-    rolling.style.display = 'block';
-    toggle.textContent = '← Month View';
-    toggle.style.borderColor = 'var(--neon)';
-    toggle.style.color = 'var(--neon)';
-    toggle.dataset.active = '1';
-    pubCalRollingStartYear = new Date().getFullYear();
-    drawRolling12Months();
-  } else {
-    single.style.display = 'block';
-    rolling.style.display = 'none';
-    toggle.textContent = '12 Months';
-    toggle.style.borderColor = 'var(--border)';
-    toggle.style.color = 'var(--muted)';
-    delete toggle.dataset.active;
-  }
-}
-
-function pubCalShowRolling() {
-  if (!pubCalRollingActive) pubCalToggleView();
-}
-
-function drawRolling12Months() {
-  const rolling = document.getElementById('p-booking-calendar-rolling');
-  if (!rolling) return;
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const dayLabels = ['S','M','T','W','T','F','S'];
-
-  // Build year options — current year + next 2
-  const curY = today.getFullYear();
-  let yearOpts = '';
-  for (let y = curY; y <= curY + 2; y++) {
-    yearOpts += `<option value="${y}" ${y === pubCalRollingStartYear ? 'selected' : ''}>${y}</option>`;
-  }
-
-  // Start from Jan of selected year, unless it's current year (start from today's month)
-  const startMo = pubCalRollingStartYear === curY ? today.getMonth() : 0;
-
-  let monthsHtml = '';
-  for (let i = 0; i < 12; i++) {
-    let mo = startMo + i;
-    let yr = pubCalRollingStartYear + Math.floor(mo / 12);
-    mo = mo % 12;
-    const firstDay = new Date(yr, mo, 1).getDay();
-    const daysInMonth = new Date(yr, mo + 1, 0).getDate();
-
-    let cellsHtml = '';
-    for (let b = 0; b < firstDay; b++) cellsHtml += `<div></div>`;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const key = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dayData = pubCalBookingDays[key] || {};
-      const isPast = key < todayKey;
-      const isBooked = dayData.booked;
-      const isUnavail = dayData.unavailable;
-      const isToday = key === todayKey;
-      let bg = 'transparent', numColor = isPast ? 'rgba(255,255,255,.25)' : 'var(--white)', border = '1px solid transparent', cursor = 'default', onclick = '';
-      if (isBooked)       { bg='rgba(255,95,95,.1)';    numColor='#ff5f5f';      border='1px solid rgba(255,95,95,.25)'; }
-      else if (isUnavail) { bg='rgba(107,107,136,.12)'; numColor='var(--muted)'; border='1px solid rgba(107,107,136,.2)'; }
-      else if (!isPast)   { bg='rgba(0,245,196,.06)';   border='1px solid rgba(0,245,196,.12)'; cursor='pointer'; onclick=`onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
-      if (isToday)        { border='1px solid var(--neon)'; }
-      cellsHtml += `<div style="background:${bg};border:${border};border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:${cursor};min-width:0;" ${onclick}>
-        <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${numColor};line-height:1;">${d}</span>
-      </div>`;
-    }
-
-    monthsHtml += `<div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:.75rem;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.05em;color:var(--white);margin-bottom:.5rem;">${monthNames[mo]} <span style="color:var(--neon);font-size:.95rem;">${yr}</span></div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;">
-        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.42rem;text-align:center;color:var(--muted);padding:.2rem 0;">${d}</div>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${cellsHtml}</div>
-    </div>`;
-  }
-
-  rolling.innerHTML = `
-    <style>
-      #rolling-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
-      @media(max-width:600px){ #rolling-grid { grid-template-columns:repeat(2,1fr); } }
-    </style>
-    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
-      <select onchange="pubCalRollingStartYear=parseInt(this.value);drawRolling12Months()"
-        style="background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
-        ${yearOpts}
-      </select>
-      <button type="button" onclick="pubCalToggleView()"
-        style="margin-left:auto;background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;">← Month View</button>
-    </div>
-    <div id="rolling-grid">${monthsHtml}</div>
-    <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:8px;height:8px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:8px;height:8px;border-radius:2px;background:rgba(107,107,136,.12);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-    </div>`;
-}
-
 
 // ── OWNER EDIT CALENDAR ───────────────────────────────────
 let ownerBookingDays = {};
 let ownerGlobalAllowOffers = false;
+let ownerEquipFull = false;
+let ownerEquipDecks = false;
+let ownerEquipNone = false;
 let ownerCalYear = new Date().getFullYear();
 let ownerCalMonth = new Date().getMonth();
 const OWNER_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function renderOwnerCalendar(bookingDays, globalAllowOffers) {
+function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone) {
   ownerBookingDays = bookingDays || {};
   ownerGlobalAllowOffers = !!globalAllowOffers;
+  ownerEquipFull = !!equipFull;
+  ownerEquipDecks = !!equipDecks;
+  ownerEquipNone = !!equipNone;
   ownerCalYear = new Date().getFullYear();
   ownerCalMonth = new Date().getMonth();
   const container = document.getElementById('p-booking-calendar');
@@ -1507,18 +1390,67 @@ function ownerOpenDayEditor(key) {
               ? (d.allow_offers_override===false ? 'block' : 'none')
               : (d.allow_offers_override===true ? 'none' : 'block')
           };">
-          <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
-            <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
-            <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+          <div style="text-align:center;margin-bottom:.6rem;">
+            <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+              <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
+              <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="padding:.6rem 2.5rem;border:none;background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+            </div>
           </div>
           <div id="day-flat-fields" style="display:${(!d.rateType||d.rateType==='flat')?'block':'none'};">
-            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;"><span style="color:var(--muted);">$</span><input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="Rate" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
-            <textarea id="day-stipulation" placeholder="Stipulations or notes (optional)" rows="2" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;resize:vertical;">${d.stipulation||''}</textarea>
+            ${ownerEquipFull ? `
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-rate-system" value="${d.rateSystem||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>` : ''}
+            ${(ownerEquipDecks || ownerEquipFull) ? `
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-rate-decks" value="${d.rateDecks||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>` : ''}
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;">
+              <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">Max hours for flat rate:</span>
+              <input type="number" id="day-flat-hours" value="${d.flatHours||''}" placeholder="4" min="1" style="width:48px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .5rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;text-align:center;">
+            </div>
           </div>
           <div id="day-hourly-fields" style="display:${d.rateType==='hourly'?'block':'none'};">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
-              <div><label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Hourly Rate ($)</label><input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
-              <div><label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Min Hours</label><input type="number" id="day-min-hours" value="${d.minHours||''}" placeholder="e.g. 2" min="1" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;"></div>
+            ${ownerEquipFull ? `
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-hourly-system" value="${d.hourlyRateSystem||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+              </div>
+            </div>` : ''}
+            ${(ownerEquipDecks || ownerEquipFull) ? `
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-hourly-decks" value="${d.hourlyRateDecks||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+              </div>
+            </div>` : ''}
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+              </div>
             </div>
           </div>
           </div>
@@ -1549,10 +1481,8 @@ function ownerSetRateType(type) {
   document.getElementById('day-hourly-fields').style.display = type === 'hourly' ? 'block' : 'none';
   document.getElementById('rate-type-flat').style.background = type === 'flat' ? 'var(--neon-dim)' : 'transparent';
   document.getElementById('rate-type-flat').style.color = type === 'flat' ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('rate-type-flat').style.borderColor = type === 'flat' ? 'var(--neon)' : 'var(--border)';
   document.getElementById('rate-type-hourly').style.background = type === 'hourly' ? 'var(--neon-dim)' : 'transparent';
   document.getElementById('rate-type-hourly').style.color = type === 'hourly' ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('rate-type-hourly').style.borderColor = type === 'hourly' ? 'var(--neon)' : 'var(--border)';
 }
 
 function ownerSaveDayEditor(key) {
@@ -1575,13 +1505,18 @@ function ownerSaveDayEditor(key) {
     let offersOverride = undefined;
     if (ownerGlobalAllowOffers && dayOffersChecked === false) offersOverride = false;
     if (!ownerGlobalAllowOffers && dayOffersChecked === true) offersOverride = true;
-    const flatRate = document.getElementById('day-flat-rate').value;
-    const hourlyRate = document.getElementById('day-hourly-rate').value;
+    const flatRate = document.getElementById('day-flat-rate')?.value || null;
+    const rateSystem = document.getElementById('day-rate-system')?.value || null;
+    const rateDecks = document.getElementById('day-rate-decks')?.value || null;
+    const hourlyRate = document.getElementById('day-hourly-rate')?.value || null;
+    const hourlyRateSystem = document.getElementById('day-hourly-system')?.value || null;
+    const hourlyRateDecks = document.getElementById('day-hourly-decks')?.value || null;
+    const flatHours = document.getElementById('day-flat-hours')?.value || null;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
-    if (flatRate || hourlyRate) {
+    if (flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks) {
       // Specific rate always overrides global allow_offers
       if (ownerGlobalAllowOffers) offersOverride = false;
-      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate||null, stipulation: document.getElementById('day-stipulation').value.trim(), hourlyRate: hourlyRate||null, minHours: document.getElementById('day-min-hours').value||null, allow_offers_override: offersOverride };
+      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate, rateSystem, rateDecks, flatHours, hourlyRate, hourlyRateSystem, hourlyRateDecks, allow_offers_override: offersOverride };
     } else if (offersOverride !== undefined) {
       ownerBookingDays[key] = { allow_offers_override: offersOverride };
     } else {
