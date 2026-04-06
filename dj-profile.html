@@ -1413,7 +1413,9 @@ function drawOwnerCalMonth() {
       if (isBooked) badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>`;
       else if (isUnavail) badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
       else badge = `<div class="cal-badge-text" style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);">Open</div>`;
-    } = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
+    }
+
+    const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
     html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:72px;padding:.5rem .4rem .4rem;background:${bg};${isToday?'box-shadow:inset 0 2px 0 var(--neon);':isUnavail?'box-shadow:inset 0 2px 0 var(--muted);':''}text-align:left;vertical-align:top;">
       <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
       ${badge}
