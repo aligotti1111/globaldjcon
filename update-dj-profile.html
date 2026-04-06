@@ -2222,7 +2222,8 @@ function setGlobalRateType(type) {
   document.getElementById('global-rate-type-hourly').style.background = !isFlat ? 'var(--neon-dim)' : 'transparent';
   document.getElementById('global-rate-type-hourly').style.color = !isFlat ? 'var(--neon)' : 'var(--muted)';
   document.getElementById('global-rate-type-hourly').style.borderColor = !isFlat ? 'var(--neon)' : 'var(--border)';
-  document.getElementById('global-flat-hours-field').style.display = isFlat ? 'flex' : 'none';
+  const flatHoursField = document.getElementById('global-flat-hours-field');
+  if (flatHoursField) flatHoursField.style.display = isFlat ? 'flex' : 'none';
   document.getElementById('global-hourly-label').style.display = !isFlat ? 'block' : 'none';
   document.querySelectorAll('.per-hour-label').forEach(el => el.style.display = !isFlat ? 'inline' : 'none');
   // Update rate field labels
