@@ -1420,10 +1420,6 @@ function ownerOpenDayEditor(key) {
                 <input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;">
-              <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">Max hours for flat rate:</span>
-              <input type="number" id="day-flat-hours" value="${d.flatHours||''}" placeholder="4" min="1" style="width:48px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .5rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;text-align:center;">
-            </div>
           </div>
           <div id="day-hourly-fields" style="display:${d.rateType==='hourly'?'block':'none'};">
             ${ownerEquipFull ? `
