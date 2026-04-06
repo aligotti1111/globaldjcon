@@ -967,7 +967,7 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, e
     monthOpts += `<option value="${i}">${name}</option>`;
   });
   const curY = today.getFullYear();
-  for (let y = curY; y <= curY + 3; y++) {
+  for (let y = curY; y <= curY + 5; y++) {
     yearOpts += `<option value="${y}">${y}</option>`;
   }
 
@@ -1080,14 +1080,11 @@ function drawPubCalMonth() {
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
         const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:2px;">
-            <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(255,95,95,.15);color:#ff5f5f;" class="cal-badge">Booked</div>
-            ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}
-          </div>
-          ${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}`;
+        badge = `${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
+          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
+          ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}`;
       } else if (isUnavail) {
-        badge = `<div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;padding:3px 7px;border-radius:4px;display:inline-block;white-space:nowrap;background:rgba(107,107,136,.12);color:var(--muted);" class="cal-badge"><span class="cal-full">Unavailable</span><span class="cal-short">Unavail</span></div>`;
+        badge = '';
       } else {
         const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
         const bookAction = cu
@@ -1316,13 +1313,13 @@ function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDec
     monthOpts += `<option value="${i}">${name}</option>`;
   });
   const todayY = new Date().getFullYear();
-  for (let y = todayY; y <= todayY + 3; y++) {
+  for (let y = todayY; y <= todayY + 5; y++) {
     yearOpts += `<option value="${y}">${y}</option>`;
   }
 
   container.innerHTML = `
     <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
-      <button type="button" onclick="ownerCalPrev()"
+      <button type="button" id="owner-cal-prev-btn" onclick="ownerCalPrev()"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
@@ -1334,20 +1331,27 @@ function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDec
         style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
         ${yearOpts}
       </select>
-      <button type="button" onclick="ownerCalNext()"
+      <button type="button" id="owner-cal-next-btn" onclick="ownerCalNext()"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+      <button type="button" id="owner-cal-view-toggle" onclick="ownerCalToggleView()"
+        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;transition:all .2s;"
+        onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
+        onmouseout="if(!this.dataset.active){this.style.borderColor='var(--border)';this.style.color='var(--muted)'}">12 Months</button>
     </div>
-    <div id="owner-cal-grid-wrap"></div>
-    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;">
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
-      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="font-size:.65rem;">✏️</span> Edit day / set rate</div>
+    <div id="owner-cal-single-wrap">
+      <div id="owner-cal-grid-wrap"></div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;">
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg> Edit day / set rate</div>
+      </div>
     </div>
+    <div id="owner-cal-rolling-wrap" style="display:none;"></div>
     <div id="owner-cal-alert" style="margin-top:.4rem;"></div>`;
   drawOwnerCalMonth();
 }
@@ -1399,19 +1403,13 @@ function drawOwnerCalMonth() {
     else if (isToday) numColor = 'var(--neon)';
 
     let badge = '';
-    if (!isPast) {
-      if (isBooked) badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(255,95,95,.15);color:#ff5f5f;">Booked</div>`;
-      else if (isUnavail) badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(107,107,136,.12);color:var(--muted);">Unavailable</div>`;
-      else badge = `<div style="margin-top:3px;display:inline-block;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.04em;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.1);color:var(--neon);">Open</div>`;
-    }
 
     const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
     html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:72px;padding:.5rem .4rem .4rem;background:${bg};${isToday?'box-shadow:inset 0 2px 0 var(--neon);':isUnavail?'box-shadow:inset 0 2px 0 var(--muted);':''}text-align:left;vertical-align:top;">
       <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
-      ${badge}
       ${!isPast?`
         ${!isBooked ? `<button type="button" onclick="ownerQuickMark('${key}')" title="${isUnavail?'Mark available':'Mark unavailable'}" style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;transition:color .15s;" onmouseover="this.style.color='${isUnavail?'var(--white)':'#ff5f5f'}'" onmouseout="this.style.color='${isUnavail?'var(--neon)':'rgba(255,255,255,.2)'}'}">${isUnavail?'✓':'✕'}</button>` : ''}
-        <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:.65rem;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✏️</button>
+        <button type="button" onclick="ownerOpenDayEditor('${key}')" title="Edit day" style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:rgba(255,255,255,.25);cursor:pointer;padding:0;line-height:1;transition:color .15s;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='rgba(255,255,255,.25)'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z"/></svg></button>
       `:''}
     </div>`;
   }
@@ -1443,7 +1441,103 @@ function ownerCalJumpSplit() {
   drawOwnerCalMonth();
 }
 
-function ownerQuickMark(key) {
+let ownerCalRollingActive = false;
+
+function ownerCalToggleView() {
+  ownerCalRollingActive = !ownerCalRollingActive;
+  const toggle = document.getElementById('owner-cal-view-toggle');
+  const single = document.getElementById('owner-cal-single-wrap');
+  const rolling = document.getElementById('owner-cal-rolling-wrap');
+  const prev = document.getElementById('owner-cal-prev-btn');
+  const next = document.getElementById('owner-cal-next-btn');
+  const mSel = document.getElementById('owner-cal-month-select');
+  const ySel = document.getElementById('owner-cal-year-select');
+  if (ownerCalRollingActive) {
+    single.style.display = 'none';
+    rolling.style.display = 'block';
+    if (prev) prev.style.display = 'none';
+    if (next) next.style.display = 'none';
+    if (mSel) mSel.style.display = 'none';
+    if (ySel) ySel.style.display = 'none';
+    toggle.textContent = '← Month View';
+    toggle.style.borderColor = 'var(--neon)';
+    toggle.style.color = 'var(--neon)';
+    toggle.dataset.active = '1';
+    drawOwnerRolling12Months();
+  } else {
+    single.style.display = 'block';
+    rolling.style.display = 'none';
+    if (prev) prev.style.display = '';
+    if (next) next.style.display = '';
+    if (mSel) mSel.style.display = '';
+    if (ySel) ySel.style.display = '';
+    toggle.textContent = '12 Months';
+    toggle.style.borderColor = 'var(--border)';
+    toggle.style.color = 'var(--muted)';
+    delete toggle.dataset.active;
+  }
+}
+
+function drawOwnerRolling12Months() {
+  const rolling = document.getElementById('owner-cal-rolling-wrap');
+  if (!rolling) return;
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const monthNames = OWNER_CAL_MONTHS;
+  const dayLabels = ['S','M','T','W','T','F','S'];
+
+  let html = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem;">`;
+
+  for (let i = 0; i < 12; i++) {
+    let mo = today.getMonth() + i;
+    let yr = today.getFullYear() + Math.floor(mo / 12);
+    mo = mo % 12;
+    const firstDay = new Date(yr, mo, 1).getDay();
+    const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+
+    html += `<div style="background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.6rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;color:var(--white);margin-bottom:.4rem;">${monthNames[mo]} <span style="color:var(--neon);">${yr}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px;">
+        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.42rem;text-align:center;color:var(--muted);">${d}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;">`;
+
+    for (let b = 0; b < firstDay; b++) html += `<div></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayData = ownerBookingDays[key] || {};
+      const isPast = key < todayKey;
+      const isBooked = dayData.booked;
+      const isUnavail = dayData.unavailable;
+      const isToday = key === todayKey;
+
+      let bg = isPast ? 'transparent' : 'rgba(0,245,196,.05)';
+      let color = isPast ? 'rgba(255,255,255,.2)' : 'var(--white)';
+      let border = isToday ? '1px solid var(--neon)' : '1px solid transparent';
+      let click = '';
+
+      if (isBooked) { bg = 'rgba(255,95,95,.1)'; color = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
+      else if (isUnavail) { bg = 'rgba(107,107,136,.1)'; color = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      else if (!isPast) { click = `onclick="ownerCalToggleView();ownerCalMonth=${mo};ownerCalYear=${yr};drawOwnerCalMonth();document.querySelectorAll('#owner-cal-month-select').forEach(s=>s.value=${mo});document.querySelectorAll('#owner-cal-year-select').forEach(s=>s.value=${yr});"` }
+
+      html += `<div style="background:${bg};border:${border};border-radius:3px;padding:.25rem .1rem;text-align:center;cursor:${isPast||isBooked||isUnavail?'default':'pointer'};aspect-ratio:1;" ${click}>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:${color};">${d}</div>
+      </div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  html += `</div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+  </div>`;
+
+  rolling.innerHTML = html;
+}
   if (ownerBookingDays[key] && ownerBookingDays[key].booked) return;
   if (ownerBookingDays[key] && ownerBookingDays[key].unavailable) {
     delete ownerBookingDays[key];
