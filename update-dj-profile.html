@@ -1983,27 +1983,28 @@ function openDayEditor(key) {
               ? (d.allow_offers_override===false ? 'block' : 'none')
               : (d.allow_offers_override===true ? 'none' : 'block')
           };">
-          <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
-            <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--neon);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
-            <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border);background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+          <div style="text-align:center;margin-bottom:.6rem;">
+            <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+              <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:${(!d.rateType||d.rateType==='flat')?'var(--neon-dim)':'transparent'};color:${(!d.rateType||d.rateType==='flat')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
+              <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.6rem 2.5rem;border:none;background:${d.rateType==='hourly'?'var(--neon-dim)':'transparent'};color:${d.rateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+            </div>
           </div>
           <div id="day-flat-fields" style="display:${(!d.rateType||d.rateType==='flat')?'block':'none'};">
-            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;">
               <span style="color:var(--muted);">$</span>
-              <input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="Rate" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              <input type="number" id="day-flat-rate" value="${d.rate||''}" placeholder="Rate" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+              <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">Max hours for flat rate:</span>
+              <input type="number" id="day-flat-hours" value="${d.flatHours||''}" placeholder="4" min="1" style="width:48px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.3rem .5rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;text-align:center;">
             </div>
             <textarea id="day-stipulation" placeholder="Add any stipulations or notes (optional)" rows="2" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;resize:vertical;">${d.stipulation||''}</textarea>
           </div>
           <div id="day-hourly-fields" style="display:${d.rateType==='hourly'?'block':'none'};">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
-              <div>
-                <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Hourly Rate ($)</label>
-                <input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-              </div>
-              <div>
-                <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:.25rem;">Min Hours</label>
-                <input type="number" id="day-min-hours" value="${d.minHours||''}" placeholder="e.g. 2" min="1" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-              </div>
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+              <span style="color:var(--muted);">$</span>
+              <input type="number" id="day-hourly-rate" value="${d.hourlyRate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
             </div>
           </div>
           </div>
@@ -2087,19 +2088,18 @@ function saveDayEditor(key) {
     if (!globalOn && dayOffersChecked === true) offersOverride = true;   // global off, day opts in
     const flatRate = document.getElementById('day-flat-rate').value;
     const hourlyRate = document.getElementById('day-hourly-rate').value;
-    const minHours = document.getElementById('day-min-hours').value;
+    const flatHours = document.getElementById('day-flat-hours')?.value || null;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
     const hasCustom = flatRate || hourlyRate;
     if (hasCustom) {
-      // A specific rate always overrides global allow_offers — stamp false if global is on
       if (globalOn) offersOverride = false;
       bookingDays[key] = {
         booked: false,
         rateType,
         rate: flatRate || null,
+        flatHours: flatHours || null,
         stipulation: document.getElementById('day-stipulation').value.trim(),
         hourlyRate: hourlyRate || null,
-        minHours: minHours || null,
         allow_offers_override: offersOverride,
       };
     } else if (offersOverride !== undefined) {
