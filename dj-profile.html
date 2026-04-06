@@ -1227,7 +1227,7 @@ function drawRolling12Months() {
   const monthNames = PUB_CAL_MONTHS;
   const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem;">`;
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;">`;
 
   for (let i = 0; i < 12; i++) {
     let mo = today.getMonth() + i;
@@ -1495,7 +1495,7 @@ function drawOwnerRolling12Months() {
   const monthNames = OWNER_CAL_MONTHS;
   const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem;">`;
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;">`;
 
   for (let i = 0; i < 12; i++) {
     let mo = today.getMonth() + i;
