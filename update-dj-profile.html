@@ -1682,8 +1682,8 @@ let formDirty = false;
 let formSaved = false;
 
 // Mark form dirty on any input change
-document.getElementById('profile-form').addEventListener('change', (e) => { if (!e.target.closest('#club-booking-section')) formDirty = true; });
-document.getElementById('profile-form').addEventListener('input', (e) => { if (!e.target.closest('#club-booking-section')) formDirty = true; });
+document.getElementById('profile-form').addEventListener('change', (e) => { if (!e.target.closest('#club-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
+document.getElementById('profile-form').addEventListener('input', (e) => { if (!e.target.closest('#club-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
 
 // Mark saved on successful submit
 const originalSubmit = document.getElementById('profile-form').onsubmit;
