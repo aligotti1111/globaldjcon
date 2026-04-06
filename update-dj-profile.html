@@ -879,7 +879,7 @@ input[type=number] { -moz-appearance:textfield; }
           </div><!-- end club-booking-section -->
 
           <!-- Calendar Section -->
-          <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+          <div id="cal-section" style="background:var(--deep);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
             <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;">Availability Calendar</div>
             <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Click the pencil icon on any day to mark it booked or add event details. <span style="color:var(--neon);">Changes auto-save.</span></p>
 
@@ -1741,6 +1741,8 @@ function _doToggleBooking(enabled) {
   const track = document.getElementById('booking-toggle-track');
   const thumb = document.getElementById('booking-toggle-thumb');
   document.getElementById('booking-setup').style.display = enabled ? 'block' : 'none';
+  const calSection = document.getElementById('cal-section');
+  if (calSection) calSection.style.display = enabled ? '' : 'none';
   track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
