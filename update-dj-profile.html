@@ -831,8 +831,8 @@ input[type=number] { -moz-appearance:textfield; }
             <div style="margin-bottom:1.25rem;text-align:center;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
-                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.45rem 1rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
-                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.45rem 1rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
+                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 1.5rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Flat Rate</button>
+                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 1.5rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.6rem;cursor:pointer;">Hourly</button>
               </div>
               <div id="global-flat-hours-field" style="display:flex;align-items:center;justify-content:center;gap:.5rem;">
                 <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">Max hours for flat rate:</span>
@@ -844,7 +844,7 @@ input[type=number] { -moz-appearance:textfield; }
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
-                <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+                <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
                 <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
               </div>
             </div>
@@ -853,7 +853,7 @@ input[type=number] { -moz-appearance:textfield; }
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Decks/Controller Only</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
-                <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+                <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
                 <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
               </div>
             </div>
@@ -862,7 +862,7 @@ input[type=number] { -moz-appearance:textfield; }
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate (No Equipment Provided)</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
-                <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+                <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
                 <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
               </div>
             </div>
