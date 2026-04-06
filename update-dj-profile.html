@@ -344,7 +344,7 @@ input[type=number] { -moz-appearance:textfield; }
         <button type="button" class="profile-tab" onclick="switchProfileTab('photos', this)">Photos</button>
         <button type="button" class="profile-tab" onclick="switchProfileTab('video', this)">Video</button>
         <button type="button" class="profile-tab" id="tab-btn-testimonials" onclick="switchProfileTab('testimonials', this)" style="display:none;">Testimonials</button>
-        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this); checkShowBookingTab(); renderCal();" style="display:none;">Booking</button>
+        <button type="button" class="profile-tab" id="tab-btn-booking" onclick="switchProfileTab('booking', this); checkShowBookingTab();" style="display:none;">Booking</button>
       </div>
 
       <div class="tab-pane active" id="tab-general">
@@ -1705,12 +1705,9 @@ window.addEventListener('beforeunload', function(e) {
 // Show booking tab for all DJs
 function checkShowBookingTab() {
   const isClub = document.getElementById('club-checkbox').checked;
-  const isMobile = document.getElementById('mobile-checkbox').checked;
   document.getElementById('tab-btn-booking').style.display = isClub ? '' : 'none';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
-  toggleBookingSetup();
   updateRateFields(null);
-  // Re-apply allow offers state after a short delay to ensure settings are loaded
   setTimeout(toggleAllowOffers, 50);
 }
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
