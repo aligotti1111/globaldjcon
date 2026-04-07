@@ -5,26 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Book a DJ - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-function openMobileMenu(){{document.getElementById('mobile-menu').classList.add('open');}}
-function closeMobileMenu(){{document.getElementById('mobile-menu').classList.remove('open');}}
-function gdcSetupMobileMenu(){{
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
+function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
+function gdcSetupMobileMenu(){
   var cu=null;
-  try{{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}}catch(e){{}}
-  if(!cu){{
+  try{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}catch(e){}
+  if(!cu){
     var lo=document.getElementById('mobile-menu-loggedout');if(lo)lo.style.display='block';
     return;
-  }}
+  }
   var li=document.getElementById('mobile-menu-loggedin');if(li)li.style.display='block';
-  if(cu.role==='dj'){{
+  if(cu.role==='dj'){
     var d=document.getElementById('mobile-menu-dj');if(d)d.style.display='block';
     var mv=document.getElementById('mob-view-profile');if(mv&&cu.slug)mv.href='/'+cu.slug;
-  }}else{{
+  }else{
     var v=document.getElementById('mobile-menu-venue');if(v)v.style.display='block';
-  }}
-}}
+  }
+}
 document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
-
 </script>
 <style>
 :root {
