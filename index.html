@@ -354,7 +354,6 @@
   .logo{text-align:center !important;font-size:1.2rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .header-inner>div:last-child{display:flex !important;gap:.35rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;}
   .header-inner>div:last-child .btn{display:none !important;}
-  #signin-btn{display:inline-flex !important;font-size:.58rem;padding:.45rem .7rem;}
 }
 </style>
 </head>
@@ -1092,8 +1091,8 @@ window.addEventListener('openAdmin', () => {
     refreshDraftsBadge();
     setInterval(refreshDraftsBadge, 60000);
   } else {
-    // Logged out — show mobile signup btn
-    var ms = document.getElementById('signup-btn-mobile'); if (ms) ms.style.display = 'inline-flex';
+    // Logged out — show sign in btn + mobile menu
+    var si = document.getElementById('signin-btn'); if (si) { si.style.display = 'inline-flex'; si.style.fontSize = '.58rem'; si.style.padding = '.45rem .7rem'; }
     var lo = document.getElementById('mobile-menu-loggedout'); if (lo) lo.style.display = 'block';
   }
 })();
