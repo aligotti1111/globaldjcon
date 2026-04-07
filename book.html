@@ -80,6 +80,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
   .header-inner{padding:.75rem 1rem;}
   .page{padding:1.5rem 1rem 4rem;}
   .form-row-half{grid-template-columns:1fr;}
+  .date-time-grid{grid-template-columns:1fr 1fr !important;}
   .nav-logo{font-size:1.1rem;}
   .nav-btns{gap:.35rem;}
   .btn{font-size:.55rem;padding:.45rem .65rem;}
@@ -118,7 +119,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       </a>
       <button id="nav-logout" class="btn btn-outline" style="display:none;" onclick="navLogout()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        Log Out
+        <span class="hide-mobile">Log Out</span>
       </button>
       <a href="/login.html" class="btn btn-outline" id="nav-signin" style="display:none;">Sign In</a>
     </div>
@@ -182,7 +183,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 
       <!-- Date / Time / Country -->
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;">
+        <div class="date-time-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;">
           <div>
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Date</div>
             <input type="date" id="event-date" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .6rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;">
