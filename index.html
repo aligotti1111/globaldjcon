@@ -351,7 +351,7 @@
   .header-inner{display:grid !important;grid-template-columns:44px 1fr auto !important;align-items:center !important;padding:.75rem 1rem !important;gap:0 !important;flex-direction:unset !important;}
   .eyebrow{display:none !important;}
   .header-inner>div:first-child{display:flex;justify-content:flex-start;}
-  .logo{text-align:center !important;font-size:1.2rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .logo{text-align:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .header-inner>div:last-child{display:flex !important;gap:.35rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;}
   .header-inner>div:last-child .btn{display:none !important;}
 }
@@ -1092,7 +1092,7 @@ window.addEventListener('openAdmin', () => {
     setInterval(refreshDraftsBadge, 60000);
   } else {
     // Logged out — show sign in btn + mobile menu
-    var si = document.getElementById('signin-btn'); if (si) { si.style.display = 'inline-flex'; si.style.fontSize = '.58rem'; si.style.padding = '.45rem .7rem'; }
+    var si = document.getElementById('signin-btn'); if (si) { si.style.setProperty('display','inline-flex','important'); si.style.fontSize = '.58rem'; si.style.padding = '.45rem .7rem'; }
     var lo = document.getElementById('mobile-menu-loggedout'); if (lo) lo.style.display = 'block';
   }
 })();
