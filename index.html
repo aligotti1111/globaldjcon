@@ -347,11 +347,11 @@
 .mobile-menu-item.danger{color:#ff5f5f;}
 .mobile-menu-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0;}
 @media(max-width:600px){
-  .hamburger-btn{display:flex !important;align-items:center;justify-content:center;}
-  .header-inner{flex-direction:row !important;align-items:center !important;justify-content:space-between !important;position:relative !important;padding:.75rem 1rem !important;gap:0 !important;}
+  .hamburger-btn{display:flex !important;align-items:center;justify-content:center;position:static !important;transform:none !important;}
+  .header-inner{display:grid !important;grid-template-columns:auto 1fr auto;align-items:center !important;padding:.75rem 1rem !important;gap:.5rem !important;flex-direction:unset !important;}
   .eyebrow{display:none !important;}
-  .header-inner>div:first-child{flex:1;display:flex;justify-content:center;}
-  .header-inner>div:last-child{display:flex !important;gap:.35rem;align-items:center;width:auto !important;flex-wrap:nowrap;position:static !important;}
+  .header-inner>div:first-child{display:flex;justify-content:center;align-items:center;}
+  .header-inner>div:last-child{display:flex !important;gap:.35rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;width:auto !important;}
   .header-inner>div:last-child .btn{display:none !important;}
   #signup-btn-mobile{display:none;}
 }
