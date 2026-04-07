@@ -997,11 +997,6 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, e
     </div>
     <div id="pub-cal-single-wrap">
       <div id="pub-cal-grid-wrap"></div>
-      <div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
-        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-      </div>
     </div>
     <div id="pub-cal-rolling-wrap" style="display:none;"></div>`;
 
@@ -1126,8 +1121,22 @@ function drawPubCalMonth() {
   html += `</div>`;
 
   if (monthEvents.length) {
-    html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
-      <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
+    html += `<div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;margin-bottom:.75rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+    </div>
+    <div style="margin-top:.5rem;border-top:1px solid var(--border);padding-top:1rem;">`;
+  } else {
+    html += `<div style="display:flex;gap:1rem;margin-top:.75rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+    </div>`;
+  }
+
+  if (monthEvents.length) {
+    html += `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
       <div style="display:flex;flex-direction:column;gap:.5rem;max-width:600px;">`;
     monthEvents.forEach(({ key, d, dayData }) => {
       const dateLabel = new Date(pubCalYear, pubCalMonth, d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
@@ -1143,13 +1152,13 @@ function drawPubCalMonth() {
           locationStr = parts.join(', ');
         }
       }
-      html += `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;">
+      html += `<div onclick="showPubDayDetail('${key}')" style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;cursor:pointer;" onmouseover="this.style.background='rgba(255,95,95,.1)'" onmouseout="this.style.background='rgba(255,95,95,.05)'">
         <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">${dateLabel}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:.88rem;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dayData.eventName}</div>
           ${timeStr || locationStr ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}${timeStr && locationStr ? ' · ' : ''}${locationStr}</div>` : ''}
         </div>
-        ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="flex-shrink:0;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:4px 10px;background:rgba(0,245,196,.06);white-space:nowrap;" onmouseover="this.style.background='rgba(0,245,196,.14)'" onmouseout="this.style.background='rgba(0,245,196,.06)'">${dayData.ticketLabel || 'More Info'}</a>` : ''}
+        <div style="color:var(--muted);font-size:.7rem;flex-shrink:0;">›</div>
       </div>`;
     });
     html += `</div></div>`;
@@ -1157,7 +1166,6 @@ function drawPubCalMonth() {
 
   wrap.innerHTML = html;
 }
-
 
 function formatTime12(t) {
   if (!t) return '';
@@ -1190,7 +1198,7 @@ function showPubDayDetail(key) {
     <div style="font-size:1.1rem;font-weight:600;color:var(--white);margin-bottom:.25rem;">${dayData.eventName || 'Private Event'}</div>
     <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:1rem;">${dateLabel}</div>
     ${timeStr ? `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Time</span><span style="font-size:.85rem;color:var(--white);">${timeStr}</span></div>` : ''}
-    ${locationStr ? `<div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;">Venue</span><span style="font-size:.85rem;color:var(--white);">${locationStr}</span></div>` : ''}
+    ${locationStr ? `<div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;">Venue</span><a href="https://maps.google.com/?q=${encodeURIComponent(dayData.location)}" target="_blank" style="font-size:.85rem;color:var(--neon);text-decoration:none;border-bottom:1px solid rgba(0,245,196,.3);">${locationStr}</a></div>` : ''}
     ${dayData.ticketUrl && !isPrivate ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-block;margin-top:.75rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:5px;padding:6px 14px;background:rgba(0,245,196,.06);">${dayData.ticketLabel || 'More Info'}</a>` : ''}
   </div>`;
   document.body.appendChild(modal);
