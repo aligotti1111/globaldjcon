@@ -447,16 +447,12 @@
       </button>
     </div>
     <div style="width:100%; height:1px; background:var(--border); margin:.5rem 0;"></div>
-    <div class="filter-pills">
-      <button class="pill active" data-filter="mobile-event">Mobile DJ</button>
-      <button class="pill pink active" data-filter="club">Club/Bar DJs</button>
-    </div>
-    <div class="controls-right">
-      <select class="sort-select" id="sort-select" onchange="sortMode=this.value;renderPublic()">
-        <option value="name">Sort: Name A–Z</option>
-        <option value="location">Sort: Location A–Z</option>
-      </select>
-      <div class="view-toggle">
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;width:100%;">
+      <div class="filter-pills">
+        <button class="pill active" data-filter="mobile-event">Mobile DJ</button>
+        <button class="pill pink active" data-filter="club">Club/Bar DJs</button>
+      </div>
+      <div class="view-toggle" style="margin-left:auto;">
         <button class="view-toggle-btn active" id="btn-grid" onclick="setViewMode('grid')" title="Grid view">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         </button>
@@ -464,7 +460,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
       </div>
-      <span class="count-badge">Showing <span id="showing-count">0</span></span>
+      <span class="count-badge hide-mobile">Showing <span id="showing-count">0</span></span>
     </div>
   </div>
   <div class="main"><div class="grid" id="dj-grid"></div></div>
@@ -960,7 +956,7 @@ document.getElementById('search').addEventListener('input', e => {
         if (coords) {
           userLocation = coords;
           sortMode = 'nearest';
-          document.getElementById('sort-select').value = 'nearest';
+          const ss = document.getElementById('sort-select'); if (ss) ss.value = 'nearest';
         }
       } else {
         // Name search — clear location so distance doesn't filter results
