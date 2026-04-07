@@ -76,7 +76,15 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .msg-modal-backdrop{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;}
 .msg-modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:480px;}
 .msg-modal h3{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:1rem;}
-@media(max-width:600px){.header-inner{padding:1rem 1.2rem;}.page{padding:1.5rem 1rem 4rem;}.form-row-half{grid-template-columns:1fr;}}
+@media(max-width:600px){
+  .header-inner{padding:.75rem 1rem;}
+  .page{padding:1.5rem 1rem 4rem;}
+  .form-row-half{grid-template-columns:1fr;}
+  .nav-logo{font-size:1.1rem;}
+  .nav-btns{gap:.35rem;}
+  .btn{font-size:.55rem;padding:.45rem .65rem;}
+  .hide-mobile{display:none;}
+}
 </style>
 </head>
 <body>
@@ -87,7 +95,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
     <div class="nav-btns">
       <a href="#" id="nav-view-profile" class="btn btn-outline" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span class="nav-btn-text">View My Profile</span>
+        <span class="nav-btn-text"><span class="hide-mobile">View </span>Profile</span>
       </a>
       <a href="/update-dj-profile.html" id="nav-profile" class="btn btn-primary" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z" stroke-linejoin="round" stroke-linecap="round"/></svg>
