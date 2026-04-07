@@ -110,7 +110,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .mobile-menu-divider{border:none;border-top:1px solid var(--border,#1e1e30);margin:.25rem 0;}
 @media(max-width:600px){
   .hamburger-btn{display:flex !important;align-items:center;justify-content:center;position:static !important;transform:none !important;}
-  .header-inner{display:grid !important;grid-template-columns:44px 1fr auto !important;align-items:center !important;padding:.75rem 1rem !important;flex-wrap:nowrap !important;justify-content:unset !important;}
+  .header-inner{display:grid !important;grid-template-columns:44px 1fr 44px !important;align-items:center !important;padding:.75rem 1rem !important;flex-wrap:nowrap !important;justify-content:unset !important;}
   .nav-logo{text-align:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .nav-btns{position:static !important;display:flex !important;gap:.3rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;}
   .nav-btns .btn,.nav-btns .btn-outline,.nav-btns .btn-primary{display:none !important;}
@@ -448,7 +448,7 @@ async function init() {
   // Venue type change
   document.querySelectorAll('input[name="venue-type"]').forEach(r => {
     r.addEventListener('change', () => {
-      document.getElementById('set-type-section').style.display = r.value === 'club' ? 'block' : 'none';
+      document.getElementById('set-type-section').style.display = (r.value === 'club' || r.value === 'bar') ? 'block' : 'none';
       updateRateDisplay();
     });
   });
@@ -471,7 +471,7 @@ function selectPill(el, name, value) {
   el.style.background = 'rgba(0,245,196,0.1)';
   el.dataset.radioValue = value;
   if (name === 'venue-type') {
-    document.getElementById('set-type-section').style.display = value === 'club' ? 'block' : 'none';
+    document.getElementById('set-type-section').style.display = (value === 'club' || value === 'bar') ? 'block' : 'none';
     updateRateDisplay();
   }
 }
@@ -660,7 +660,7 @@ async function loadDraft(id) {
     const { data } = await db.from('booking_drafts').select('*').eq('id', id).eq('requester_id', currentUser.id).single();
     if (!data) return;
     const d = data.data;
-    if (d.venue_type) { const el = document.querySelector(`[data-radio-name="venue-type"][data-radio-value="${d.venue_type}"]`); if (el) { el.classList.add('selected'); document.getElementById('set-type-section').style.display = d.venue_type === 'club' ? 'block' : 'none'; } }
+    if (d.venue_type) { const el = document.querySelector(`[data-radio-name="venue-type"][data-radio-value="${d.venue_type}"]`); if (el) { el.classList.add('selected'); document.getElementById('set-type-section').style.display = (d.venue_type === 'club' || d.venue_type === 'bar') ? 'block' : 'none'; } }
     if (d.set_type) { const el = document.querySelector(`[data-radio-name="set-type"][data-radio-value="${d.set_type}"]`); if (el) el.classList.add('selected'); }
     if (d.venue_name) document.getElementById('venue-name').value = d.venue_name;
     if (d.venue_address) document.getElementById('venue-address').value = d.venue_address;
