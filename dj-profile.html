@@ -1079,11 +1079,9 @@ function drawPubCalMonth() {
       if (isBooked) {
         const isPrivate = dayData.location === 'Private';
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
-        const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
-        const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
-        badge = `${eventName ? `<div style="font-size:clamp(.48rem,1vw,.62rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
-          ${timeStr ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.38rem,.8vw,.5rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${timeStr}</div>` : ''}
-          ${ticketUrl ? `<a href="${ticketUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;color:var(--neon);flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></a>` : ''}`;
+        const startTime = dayData.startTime ? formatTime12(dayData.startTime) : '';
+        badge = `${eventName ? `<div style="font-size:clamp(.42rem,1vw,.58rem);color:var(--white);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center;">${eventName}</div>` : ''}
+          ${startTime ? `<div style="font-family:'Space Mono',monospace;font-size:clamp(.36rem,.8vw,.48rem);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${startTime}</div>` : ''}`;
       } else if (isUnavail) {
         badge = '';
       } else {
@@ -1100,6 +1098,7 @@ function drawPubCalMonth() {
       monthEvents.push({ key, d, dayData });
     }
 
+    const cellClick = isBooked && !dayData.location !== 'Private' ? `onclick="showPubDayDetail('${key}')"` : '';
     html += `<div style="
       border-right:1px solid var(--border);
       border-bottom:1px solid var(--border);
@@ -1109,7 +1108,7 @@ function drawPubCalMonth() {
       background:${bg};
       ${isToday ? 'box-shadow:inset 0 2px 0 var(--neon);' : isUnavail ? 'box-shadow:inset 0 2px 0 var(--muted);' : ''}
       display:flex;flex-direction:column;align-items:center;
-      overflow:hidden;box-sizing:border-box;">
+      overflow:hidden;box-sizing:border-box;${isBooked ? 'cursor:pointer;' : ''}" ${cellClick}>
       <div style="font-size:clamp(.75rem,1.6vw,1rem);font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;margin-bottom:3px;">${d}</div>
       ${badge}
     </div>`;
@@ -1126,7 +1125,6 @@ function drawPubCalMonth() {
 
   html += `</div>`;
 
-  // Events list below calendar
   if (monthEvents.length) {
     html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
@@ -1134,11 +1132,22 @@ function drawPubCalMonth() {
     monthEvents.forEach(({ key, d, dayData }) => {
       const dateLabel = new Date(pubCalYear, pubCalMonth, d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
       const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? ' – ' + formatTime12(dayData.endTime) : '') : '';
+      // Strip county: split by comma, keep only venue, city, state (skip county which is typically index 2 of 4)
+      let locationStr = '';
+      if (dayData.location && dayData.location !== 'Private') {
+        const parts = dayData.location.split(',').map(p => p.trim());
+        if (parts.length >= 4) {
+          // Format: venue, city, county, state — skip county
+          locationStr = [parts[0], parts[1], parts[parts.length - 1]].filter(Boolean).join(', ');
+        } else {
+          locationStr = parts.join(', ');
+        }
+      }
       html += `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;">
         <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">${dateLabel}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:.88rem;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dayData.eventName}</div>
-          ${timeStr || dayData.location ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${timeStr}${timeStr && dayData.location ? ' · ' : ''}${dayData.location || ''}</div>` : ''}
+          ${timeStr || locationStr ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${timeStr}${timeStr && locationStr ? ' · ' : ''}${locationStr}</div>` : ''}
         </div>
         ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="flex-shrink:0;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:4px 10px;background:rgba(0,245,196,.06);white-space:nowrap;" onmouseover="this.style.background='rgba(0,245,196,.14)'" onmouseout="this.style.background='rgba(0,245,196,.06)'">${dayData.ticketLabel || 'More Info'}</a>` : ''}
       </div>`;
@@ -1156,6 +1165,35 @@ function formatTime12(t) {
   const p = h < 12 ? 'AM' : 'PM';
   const h12 = h % 12 || 12;
   return h12 + ':' + String(mi).padStart(2,'0') + ' ' + p;
+}
+
+function showPubDayDetail(key) {
+  const dayData = pubCalBookingDays[key] || {};
+  const [y, m, d] = key.split('-').map(Number);
+  const dateLabel = new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? ' – ' + formatTime12(dayData.endTime) : '') : '';
+  const isPrivate = dayData.location === 'Private';
+  let locationStr = '';
+  if (dayData.location && !isPrivate) {
+    const parts = dayData.location.split(',').map(p => p.trim());
+    locationStr = parts.length >= 4 ? [parts[0], parts[1], parts[parts.length-1]].join(', ') : parts.join(', ');
+  }
+  const existing = document.getElementById('pub-day-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pub-day-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;max-width:420px;width:100%;position:relative;">
+    <button onclick="document.getElementById('pub-day-modal').remove()" style="position:absolute;top:.75rem;right:.75rem;background:transparent;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:#ff5f5f;margin-bottom:.4rem;">Booked</div>
+    <div style="font-size:1.1rem;font-weight:600;color:var(--white);margin-bottom:.25rem;">${dayData.eventName || 'Private Event'}</div>
+    <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:1rem;">${dateLabel}</div>
+    ${timeStr ? `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Time</span><span style="font-size:.85rem;color:var(--white);">${timeStr}</span></div>` : ''}
+    ${locationStr ? `<div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;">Venue</span><span style="font-size:.85rem;color:var(--white);">${locationStr}</span></div>` : ''}
+    ${dayData.ticketUrl && !isPrivate ? `<a href="${dayData.ticketUrl}" target="_blank" style="display:inline-block;margin-top:.75rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:5px;padding:6px 14px;background:rgba(0,245,196,.06);">${dayData.ticketLabel || 'More Info'}</a>` : ''}
+  </div>`;
+  document.body.appendChild(modal);
 }
 
 function pubCalNav(dir) {
