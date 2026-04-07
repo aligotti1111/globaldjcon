@@ -5,32 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DJ Profile - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-function openMobileMenu() { document.getElementById('mobile-menu').classList.add('open'); }
-function closeMobileMenu() { document.getElementById('mobile-menu').classList.remove('open'); }
-function setupMobileMenu() {
-  var cu = null;
-  try { cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null'); } catch(e){}
-  if (!cu) {
-    var el = document.getElementById('mobile-menu-loggedout');
-    if (el) el.style.display = 'block';
-    return;
-  }
-  var li = document.getElementById('mobile-menu-loggedin');
-  if (li) li.style.display = 'block';
-  if (cu.role === 'dj') {
-    var djEl = document.getElementById('mobile-menu-dj');
-    if (djEl) djEl.style.display = 'block';
-    var mv = document.getElementById('mob-view-profile');
-    if (mv) mv.href = '/' + (cu.slug || '');
-  } else {
-    var vEl = document.getElementById('mobile-menu-venue');
-    if (vEl) vEl.style.display = 'block';
-  }
-}
-document.addEventListener('DOMContentLoaded', setupMobileMenu);
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --black: #050507;
@@ -76,13 +51,28 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .btn-primary { background:var(--neon); border-color:var(--neon); color:var(--black); font-weight:700; }
 .btn-primary:hover { opacity:.85; }
 @media(max-width:900px) {
-  .header-inner { padding:1rem 1.2rem; flex-wrap:wrap; gap:.6rem; }
+  .header-inner { padding:1rem 1.2rem; }
   .nav-logo { font-size:1.2rem; }
-  .nav-btns { display:flex; flex-wrap:wrap; gap:.4rem; width:100%; }
-  .nav-btn-text { display:inline; }
   .btn { font-size:.55rem; padding:.45rem .6rem; }
   .hide-mobile { display:none; }
 }
+@media(max-width:600px) {
+  .header-inner { padding:.75rem 1rem; justify-content:center !important; position:relative !important; }
+  .nav-btns { display:flex !important; gap:.3rem; align-items:center; position:absolute; right:1rem; }
+  .nav-btns .btn, .nav-btns .btn-outline, .nav-btns .btn-primary { display:none !important; }
+  #nav-inbox-btn, #nav-booking-requests-btn { display:inline-flex !important; }
+}
+.hamburger-btn{display:none;position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--white);cursor:pointer;padding:.4rem .5rem;z-index:20;line-height:1;}
+@media(max-width:600px){.hamburger-btn{display:flex;align-items:center;justify-content:center;}}
+.mobile-menu{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);}
+.mobile-menu.open{display:flex;flex-direction:column;}
+.mobile-menu-panel{background:var(--card);border-right:1px solid var(--border);width:75%;max-width:280px;height:100%;padding:1.5rem 1.25rem;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;}
+.mobile-menu-close{align-self:flex-end;background:transparent;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;margin-bottom:1rem;}
+.mobile-menu-item{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:8px;font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);text-decoration:none;border:none;background:transparent;cursor:pointer;transition:background .2s;width:100%;text-align:left;}
+.mobile-menu-item:hover{background:rgba(255,255,255,.06);}
+.mobile-menu-item.primary{color:var(--neon);}
+.mobile-menu-item.danger{color:#ff5f5f;}
+.mobile-menu-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0;}
 
 /* LOADING / ERROR */
 .status-wrap { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; min-height:60vh; }
@@ -318,26 +308,6 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .hero-avatar:hover .avatar-edit-overlay { opacity:1; }
 .avatar-edit-overlay svg { color:#fff; }
 @media (max-width: 600px) { .cal-badge-text { display: none !important; } }
-
-.hamburger-btn{display:none;position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--white);cursor:pointer;padding:.4rem .5rem;z-index:20;line-height:1;}
-.mobile-menu{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);}
-.mobile-menu.open{display:flex;flex-direction:column;}
-.mobile-menu-panel{background:var(--card,#13131e);border-right:1px solid var(--border,#1e1e30);width:75%;max-width:280px;height:100%;padding:1.5rem 1.25rem;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;}
-.mobile-menu-close{align-self:flex-end;background:transparent;border:none;color:var(--muted,#6b6b88);font-size:1.2rem;cursor:pointer;margin-bottom:1rem;}
-.mobile-menu-item{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:8px;font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white,#f0f0f8);text-decoration:none;border:none;background:transparent;cursor:pointer;transition:background .2s;width:100%;text-align:left;}
-.mobile-menu-item:hover{background:rgba(255,255,255,.06);}
-.mobile-menu-item.primary{color:var(--neon,#00f5c4);}
-.mobile-menu-item.danger{color:#ff5f5f;}
-.mobile-menu-divider{border:none;border-top:1px solid var(--border,#1e1e30);margin:.25rem 0;}
-@media(max-width:600px){.hamburger-btn{display:flex;align-items:center;justify-content:center;}}
-
-@media(max-width:600px){
-  .header-inner{justify-content:center !important;position:relative !important;}
-  .nav-btns{display:flex !important;gap:.3rem;align-items:center;}
-  .btn, .btn-outline, .btn-primary{display:none !important;}
-  #nav-inbox-btn, #nav-booking-requests-btn{display:inline-flex !important;}
-  .nav-right, .header-btns{display:none !important;}
-}
 </style>
 </head>
 <body>
@@ -2187,6 +2157,21 @@ function navLogout() {
   sessionStorage.removeItem('currentUser');
   window.location.reload();
 }
+function openMobileMenu() { document.getElementById('mobile-menu').classList.add('open'); }
+function closeMobileMenu() { document.getElementById('mobile-menu').classList.remove('open'); }
+function setupMobileMenu() {
+  var cu = null;
+  try { cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null'); } catch(e){}
+  if (!cu) { var el = document.getElementById('mobile-menu-loggedout'); if (el) el.style.display = 'block'; return; }
+  var li = document.getElementById('mobile-menu-loggedin'); if (li) li.style.display = 'block';
+  if (cu.role === 'dj') {
+    var djEl = document.getElementById('mobile-menu-dj'); if (djEl) djEl.style.display = 'block';
+    var mv = document.getElementById('mob-view-profile'); if (mv) mv.href = '/' + (cu.slug || '');
+  } else {
+    var vEl = document.getElementById('mobile-menu-venue'); if (vEl) vEl.style.display = 'block';
+  }
+}
+document.addEventListener('DOMContentLoaded', setupMobileMenu);
 </script>
 
 

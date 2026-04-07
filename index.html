@@ -374,11 +374,13 @@ document.addEventListener('DOMContentLoaded', setupMobileMenu);
 @media(max-width:600px){.hamburger-btn{display:flex;align-items:center;justify-content:center;}}
 
 @media(max-width:600px){
-  .header-inner{justify-content:center !important;position:relative !important;}
-  .nav-btns{display:flex !important;gap:.3rem;align-items:center;}
+  .header-inner{justify-content:center !important;position:relative !important;flex-direction:row !important;align-items:center !important;gap:0 !important;}
+  .eyebrow{display:none !important;}
   .btn, .btn-outline, .btn-primary{display:none !important;}
-  #nav-inbox-btn, #nav-booking-requests-btn{display:inline-flex !important;}
+  #nav-inbox-btn, #nav-booking-requests-btn, #inbox-btn, #booking-requests-btn{display:inline-flex !important;}
   .nav-right, .header-btns{display:none !important;}
+  .header-inner > div:last-child{display:flex !important;gap:.3rem;align-items:center;position:absolute;right:1rem;}
+  .header-inner > div:last-child .btn{display:none !important;}
 }
 </style>
 </head>
