@@ -80,7 +80,9 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
   .header-inner{padding:.75rem 1rem;justify-content:center;position:relative;}
   .page{padding:1.5rem 1rem 4rem;}
   .form-row-half{grid-template-columns:1fr;}
-  .nav-btns{display:none;}
+  .nav-btns{display:flex !important;gap:.3rem;align-items:center;}
+  .btn, .btn-outline, .btn-primary{display:none !important;}
+  #nav-inbox-btn, #nav-booking-requests-btn{display:inline-flex !important;}
   .nav-logo{font-size:1.3rem;}
   .date-time-grid{grid-template-columns:1.5fr 1fr 1fr !important;gap:.25rem !important;}
   .date-time-grid input,.date-time-grid select{font-size:.65rem !important;padding:.4rem .15rem !important;}
