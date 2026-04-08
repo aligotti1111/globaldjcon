@@ -875,6 +875,13 @@ input[type=number] { -moz-appearance:textfield; }
                 <div style="font-size:.85rem;color:var(--white);">Allow guests to make an offer <span style="color:var(--muted);font-size:.78rem;">(overrides rates above)</span></div>
               </label>
             </div>
+            <div id="global-base-rate-wrap" style="display:none;margin-top:.75rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
+                <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
             <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
               <button type="button" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
               <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
@@ -1809,6 +1816,13 @@ function updateRateFields(selected) {
   document.getElementById('rate-with-system').style.display = full ? 'block' : 'none';
   document.getElementById('rate-with-decks').style.display  = decks ? 'block' : 'none';
   document.getElementById('rate-no-equip').style.display    = (full || decks || none) ? 'block' : 'none';
+
+  // If allow-offers is on, hide all rate boxes
+  if (document.getElementById('allow-offers').checked) {
+    document.getElementById('rate-with-system').style.display = 'none';
+    document.getElementById('rate-with-decks').style.display  = 'none';
+    document.getElementById('rate-no-equip').style.display    = 'none';
+  }
 }
 
 // ── CALENDAR ──────────────────────────────────────────────
@@ -2094,54 +2108,14 @@ function openDayEditor(key) {
 
 function toggleAllowOffers() {
   const enabled = document.getElementById('allow-offers').checked;
-  // General rate field on profile tab
-  const rateInput = document.getElementById('rate');
-  if (rateInput) {
-    rateInput.disabled = enabled;
-    rateInput.style.opacity = enabled ? '.4' : '1';
-    rateInput.style.cursor = enabled ? 'not-allowed' : '';
-    rateInput.title = enabled ? 'Disabled — guests will make offers instead' : '';
-  }
-  // Hide/show rate boxes - save state before hiding
-  ['rate-with-system','rate-with-decks','rate-no-equip'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (enabled) {
-      el.dataset.prevDisplay = el.style.display;
-      el.style.display = 'none';
-    } else {
-      el.style.display = el.dataset.prevDisplay || 'none';
-    }
-  });
-  // Booking rate fields disable
-  ['rate-no-equip-val','rate-with-system-val','rate-with-decks-val'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.disabled = enabled;
-      el.style.opacity = enabled ? '.4' : '1';
-      el.style.cursor = enabled ? 'not-allowed' : '';
-      el.title = enabled ? 'Disabled — guests will make offers instead' : '';
-    }
-  });
-  // Show/hide base rate input
-  let br = document.getElementById('global-base-rate-wrap');
   if (enabled) {
-    if (!br) {
-      br = document.createElement('div');
-      br.id = 'global-base-rate-wrap';
-      br.style.cssText = 'margin-top:.75rem;';
-      br.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
-        <div style="display:flex;align-items:center;gap:.5rem;">
-          <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
-          <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
-        </div>`;
-      const checkboxContainer = document.getElementById('allow-offers').closest('div');
-      checkboxContainer.parentElement.appendChild(br);
-    }
-    br.style.display = 'block';
-  } else if (br) {
-    br.style.display = 'none';
+    document.getElementById('rate-with-system').style.display = 'none';
+    document.getElementById('rate-with-decks').style.display  = 'none';
+    document.getElementById('rate-no-equip').style.display    = 'none';
+  } else {
+    checkEquipment();
   }
+  document.getElementById('global-base-rate-wrap').style.display = enabled ? 'block' : 'none';
 }
 
 function toggleDayOffers() {
