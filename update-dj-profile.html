@@ -838,11 +838,10 @@ input[type=number] { -moz-appearance:textfield; }
             <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
-                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
+                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
                 <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
                 <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
               </div>
-              <div id="global-hourly-label" style="display:none;font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
               <div id="global-offers-label" style="display:none;font-size:.75rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
             </div>
             <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
@@ -2369,7 +2368,6 @@ function setGlobalRateType(type) {
   }
 
   // Labels
-  document.getElementById('global-hourly-label').style.display = isHourly ? 'block' : 'none';
   document.getElementById('global-offers-label').style.display = isOffers ? 'block' : 'none';
 
   // Base rate wrap
@@ -2384,7 +2382,16 @@ function setGlobalRateType(type) {
 
 async function saveRateSection(btn) {
   const isOffers = document.getElementById('allow-offers').value === 'true';
+  const isHourly = document.getElementById('global-rate-type-hourly').style.background.includes('neon');
+  const isFlat = document.getElementById('global-rate-type-flat').style.background.includes('neon');
   const alertEl = document.getElementById('rate-save-alert');
+
+  if (!isOffers && !isHourly && !isFlat) {
+    alertEl.style.color = 'var(--error)';
+    alertEl.textContent = '✗ Please select a rate type first.';
+    setTimeout(() => alertEl.textContent = '', 3000);
+    return;
+  }
 
   // Validate: any visible rate field must have a value entered
   if (!isOffers) {
@@ -2421,7 +2428,7 @@ async function saveRateSection(btn) {
     }
   }
 
-  const rateType = isOffers ? 'offers' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat');
+  const rateType = isOffers ? 'offers' : (isHourly ? 'hourly' : 'flat');
   await savePartialBooking(btn, 'rate-save-alert', {
     global_rate_type: rateType,
     rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
