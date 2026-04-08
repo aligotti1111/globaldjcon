@@ -837,10 +837,12 @@ input[type=number] { -moz-appearance:textfield; }
             <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
-                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
-                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2.5rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+                <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
+                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
+                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
               </div>
               <div id="global-hourly-label" style="display:none;font-size:.75rem;color:var(--muted);">Prices below will be charged per hour.</div>
+              <div id="global-offers-label" style="display:none;font-size:.75rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
             </div>
             <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
@@ -869,12 +871,7 @@ input[type=number] { -moz-appearance:textfield; }
               </div>
             </div>
 
-            <div style="margin-top:.75rem;">
-              <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-                <input type="checkbox" id="allow-offers" style="accent-color:var(--neon);" onchange="toggleAllowOffers()">
-                <div style="font-size:.85rem;color:var(--white);">Accept offers only <span style="color:var(--muted);font-size:.78rem;">(Overrides rates)</span></div>
-              </label>
-            </div>
+            <input type="hidden" id="allow-offers" value="false">
             <div id="global-base-rate-wrap" style="display:none;margin-top:.75rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
@@ -2106,20 +2103,6 @@ function openDayEditor(key) {
   document.body.appendChild(modal);
 }
 
-function toggleAllowOffers() {
-  const enabled = document.getElementById('allow-offers').checked;
-  if (enabled) {
-    document.getElementById('rate-with-system').style.display = 'none';
-    document.getElementById('rate-with-decks').style.display  = 'none';
-    document.getElementById('rate-no-equip').style.display    = 'none';
-  } else {
-    updateRateFields();
-  }
-  document.getElementById('global-base-rate-wrap').style.display = enabled ? 'block' : 'none';
-  const rateTypeWrap = document.getElementById('global-rate-type-wrap');
-  if (rateTypeWrap) rateTypeWrap.style.display = enabled ? 'none' : 'block';
-}
-
 function toggleDayOffers() {
   const checked = document.getElementById('day-allow-offers').checked;
   const rateFields = document.getElementById('day-rate-fields');
@@ -2254,40 +2237,52 @@ async function saveEquipmentSection(btn) {
 
 function setGlobalRateType(type) {
   const isFlat = type === 'flat';
-  // Clear rate values when switching type
-  ['rate-with-system-val','rate-with-decks-val','rate-no-equip-val'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+  const isHourly = type === 'hourly';
+  const isOffers = type === 'offers';
+
+  // Update hidden allow-offers value
+  document.getElementById('allow-offers').value = isOffers ? 'true' : 'false';
+
+  // Style all 3 buttons
+  ['offers','flat','hourly'].forEach(t => {
+    const btn = document.getElementById('global-rate-type-' + t);
+    const active = type === t;
+    btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
+    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
   });
-  document.getElementById('global-rate-type-flat').style.background = isFlat ? 'var(--neon-dim)' : 'transparent';
-  document.getElementById('global-rate-type-flat').style.color = isFlat ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('global-rate-type-flat').style.borderColor = isFlat ? 'var(--neon)' : 'var(--border)';
-  document.getElementById('global-rate-type-hourly').style.background = !isFlat ? 'var(--neon-dim)' : 'transparent';
-  document.getElementById('global-rate-type-hourly').style.color = !isFlat ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('global-rate-type-hourly').style.borderColor = !isFlat ? 'var(--neon)' : 'var(--border)';
+
+  // Show/hide rate fields
+  if (isOffers) {
+    document.getElementById('rate-with-system').style.display = 'none';
+    document.getElementById('rate-with-decks').style.display  = 'none';
+    document.getElementById('rate-no-equip').style.display    = 'none';
+  } else {
+    updateRateFields();
+  }
+
+  // Labels
+  document.getElementById('global-hourly-label').style.display = isHourly ? 'block' : 'none';
+  document.getElementById('global-offers-label').style.display = isOffers ? 'block' : 'none';
+
+  // Base rate wrap
+  document.getElementById('global-base-rate-wrap').style.display = isOffers ? 'block' : 'none';
+
+  // Per-hour labels
+  document.querySelectorAll('.per-hour-label').forEach(el => el.style.display = isHourly ? 'inline' : 'none');
+
   const flatHoursField = document.getElementById('global-flat-hours-field');
   if (flatHoursField) flatHoursField.style.display = isFlat ? 'flex' : 'none';
-  document.getElementById('global-hourly-label').style.display = !isFlat ? 'block' : 'none';
-  document.querySelectorAll('.per-hour-label').forEach(el => el.style.display = !isFlat ? 'inline' : 'none');
-  // Update rate field labels
-  const suffix = isFlat ? '' : '/hr';
-  ['rate-with-system','rate-with-decks','rate-no-equip'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      const label = el.querySelector('label');
-      if (label) label.dataset.suffix = suffix;
-    }
-  });
 }
 
 async function saveRateSection(btn) {
-  const rateType = document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat';
+  const isOffers = document.getElementById('allow-offers').value === 'true';
+  const rateType = isOffers ? 'offers' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat');
   await savePartialBooking(btn, 'rate-save-alert', {
     global_rate_type: rateType,
     rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
     rate_with_system: document.getElementById('rate-with-system-val').value || null,
     rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
-    allow_offers: document.getElementById('allow-offers').checked,
+    allow_offers: isOffers,
     base_rate: document.getElementById('base-rate-val')?.value || null,
   });
 }
@@ -2327,9 +2322,9 @@ async function saveBookingSettings() {
       rate_no_equip: document.getElementById('rate-no-equip-val').value || null,
       rate_with_system: document.getElementById('rate-with-system-val').value || null,
       rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
-      global_rate_type: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat',
+      global_rate_type: document.getElementById('allow-offers').value === 'true' ? 'offers' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat'),
       global_rate_hours: null,
-      allow_offers: document.getElementById('allow-offers').checked,
+      allow_offers: document.getElementById('allow-offers').value === 'true',
       base_rate: document.getElementById('base-rate-val')?.value || null,
       booking_days: bookingDays,
     };
@@ -2375,7 +2370,7 @@ async function loadBookingSettings() {
     if (s.rate_with_system) document.getElementById('rate-with-system-val').value = s.rate_with_system;
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
     if (s.global_rate_type) setGlobalRateType(s.global_rate_type);
-    if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
+    else if (s.allow_offers) setGlobalRateType('offers');
     if (s.base_rate && document.getElementById('base-rate-val')) document.getElementById('base-rate-val').value = s.base_rate;
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
