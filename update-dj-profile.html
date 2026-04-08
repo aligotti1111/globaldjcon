@@ -2135,8 +2135,8 @@ function toggleAllowOffers() {
           <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
           <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
         </div>`;
-      const checkboxLabel = document.getElementById('allow-offers').closest('label');
-      checkboxLabel.parentElement.insertAdjacentElement('afterend', br);
+      const checkboxContainer = document.getElementById('allow-offers').closest('div');
+      checkboxContainer.parentElement.appendChild(br);
     }
     br.style.display = 'block';
   } else if (br) {
