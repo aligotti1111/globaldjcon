@@ -1927,16 +1927,15 @@ function openDayEditor(key) {
   const globalAllowOffers = document.getElementById('allow-offers').value === 'true';
 
   // Guard: equipment must be selected first
-  const equipFull = document.getElementById('equip-full').checked;
-  const equipDecks = document.getElementById('equip-decks').checked;
-  const equipNone = document.getElementById('equip-none').checked;
-  if (!equipFull && !equipDecks && !equipNone) {
+  const guardEquipFull = document.getElementById('equip-full').checked;
+  const guardEquipDecks = document.getElementById('equip-decks').checked;
+  const guardEquipNone = document.getElementById('equip-none').checked;
+  if (!guardEquipFull && !guardEquipDecks && !guardEquipNone) {
     const alertEl = document.getElementById('booking-alert');
     if (alertEl) {
       alertEl.innerHTML = '<div class="alert alert-error" style="font-size:.8rem;">Please select your equipment options and save them before setting day rates.</div>';
       setTimeout(() => alertEl.innerHTML = '', 4000);
     }
-    document.getElementById('equip-full').closest('.card, div[style]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
   const existing = document.getElementById('day-editor-modal');
