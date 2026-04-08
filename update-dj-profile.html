@@ -2102,7 +2102,12 @@ function toggleAllowOffers() {
     rateInput.style.cursor = enabled ? 'not-allowed' : '';
     rateInput.title = enabled ? 'Disabled — guests will make offers instead' : '';
   }
-  // Booking rate fields
+  // Hide/show rate boxes
+  ['rate-with-system','rate-with-decks','rate-no-equip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = enabled ? 'none' : (document.getElementById(id.replace('-','_')+'_visible') ? 'block' : el.dataset.wasVisible === 'true' ? 'block' : 'none');
+  });
+  // Booking rate fields disable
   ['rate-no-equip-val','rate-with-system-val','rate-with-decks-val'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -2112,12 +2117,48 @@ function toggleAllowOffers() {
       el.title = enabled ? 'Disabled — guests will make offers instead' : '';
     }
   });
+  // Show/hide base rate input
+  let br = document.getElementById('global-base-rate-wrap');
+  if (enabled) {
+    if (!br) {
+      br = document.createElement('div');
+      br.id = 'global-base-rate-wrap';
+      br.style.cssText = 'margin-top:.75rem;';
+      br.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
+          <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
+        </div>`;
+      const checkbox = document.getElementById('allow-offers').closest('div').parentElement;
+      checkbox.parentElement.insertBefore(br, checkbox.nextSibling);
+    }
+    br.style.display = 'block';
+  } else if (br) {
+    br.style.display = 'none';
+  }
 }
 
 function toggleDayOffers() {
   const checked = document.getElementById('day-allow-offers').checked;
   const rateFields = document.getElementById('day-rate-fields');
   if (rateFields) rateFields.style.display = checked ? 'none' : 'block';
+  let br = document.getElementById('day-base-rate-wrap');
+  if (checked) {
+    if (!br) {
+      br = document.createElement('div');
+      br.id = 'day-base-rate-wrap';
+      br.style.cssText = 'margin-top:.75rem;';
+      br.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="color:var(--muted);font-size:.9rem;">$</span>
+          <input type="number" id="day-base-rate" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+        </div>`;
+      rateFields.parentElement.insertBefore(br, rateFields.nextSibling);
+    }
+    br.style.display = 'block';
+  } else if (br) {
+    br.style.display = 'none';
+  }
 }
 
 function toggleDayBooked() {
@@ -2166,9 +2207,10 @@ function saveDayEditor(key) {
     const hourlyRateSystem = document.getElementById('day-hourly-system')?.value || null;
     const hourlyRateDecks = document.getElementById('day-hourly-decks')?.value || null;
     const flatHours = document.getElementById('day-flat-hours')?.value || null;
+    const dayBaseRate = document.getElementById('day-base-rate')?.value || null;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
     const hasCustom = flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks;
-    if (hasCustom) {
+    if (hasCustom || dayBaseRate) {
       if (globalOn) offersOverride = false;
       bookingDays[key] = {
         booked: false,
@@ -2180,6 +2222,7 @@ function saveDayEditor(key) {
         hourlyRate,
         hourlyRateSystem,
         hourlyRateDecks,
+        base_rate: dayBaseRate,
         allow_offers_override: offersOverride,
       };
     } else if (offersOverride !== undefined) {
@@ -2263,6 +2306,7 @@ async function saveRateSection(btn) {
     rate_with_system: document.getElementById('rate-with-system-val').value || null,
     rate_with_decks: document.getElementById('rate-with-decks-val').value || null,
     allow_offers: document.getElementById('allow-offers').checked,
+    base_rate: document.getElementById('base-rate-val')?.value || null,
   });
 }
 
@@ -2304,6 +2348,7 @@ async function saveBookingSettings() {
       global_rate_type: document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat',
       global_rate_hours: null,
       allow_offers: document.getElementById('allow-offers').checked,
+      base_rate: document.getElementById('base-rate-val')?.value || null,
       booking_days: bookingDays,
     };
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(settings) }).eq('id', currentUser.id);
@@ -2349,6 +2394,7 @@ async function loadBookingSettings() {
     if (s.rate_with_decks) document.getElementById('rate-with-decks-val').value = s.rate_with_decks;
     if (s.global_rate_type) setGlobalRateType(s.global_rate_type);
     if (s.allow_offers) { document.getElementById('allow-offers').checked = true; toggleAllowOffers(); }
+    if (s.base_rate && document.getElementById('base-rate-val')) document.getElementById('base-rate-val').value = s.base_rate;
     if (s.currency) { document.getElementById('rate-currency').value = s.currency; updateCurrencySymbols(); }
     if (s.booking_days) bookingDays = s.booking_days;
     updateRateFields();

@@ -805,7 +805,7 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none, bs.global_rate_type, bs.rate_with_system, bs.rate_with_decks, bs.rate_no_equip);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none, bs.global_rate_type, bs.rate_with_system, bs.rate_with_decks, bs.rate_no_equip, bs.base_rate);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
@@ -1007,7 +1007,7 @@ const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July'
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
 let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '';
 
-function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
   if (isOwner) {

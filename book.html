@@ -615,8 +615,8 @@ function updateRateDisplay() {
   }
 
   if (allowOffers) {
-    const baseRate = isHourly ? hourlyRate : rate;
-    const baseRateStr = baseRate ? `${sym}${Number(baseRate).toLocaleString()} ${currency}${isHourly ? '/hr' : ''}` : null;
+    const baseRate = dayData.base_rate || bookingSettings.base_rate || (isHourly ? hourlyRate : rate);
+    const baseRateStr = baseRate ? `${sym}${Number(baseRate).toLocaleString()} ${currency}${isHourly && !dayData.base_rate && !bookingSettings.base_rate ? '/hr' : ''}` : null;
     html += `<div style="margin-bottom:.75rem;">
       ${baseRateStr ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem;">Base Rate</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--neon);margin-bottom:.75rem;">${baseRateStr}</div>` : ''}
