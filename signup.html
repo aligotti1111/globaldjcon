@@ -852,7 +852,18 @@ function lookupSignupZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.city_district || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null) || addr.town || addr.city || addr.municipality || addr.village || addr.hamlet || '';
+        const displayName = data[0].display_name || '';
+        const nycBoroughs = ['Staten Island','Brooklyn','Queens','The Bronx','Manhattan'];
+        const boroughMatch = nycBoroughs.find(b => displayName.includes(b));
+        const city = boroughMatch
+          || addr.city_district
+          || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null)
+          || addr.town
+          || addr.city
+          || addr.municipality
+          || addr.village
+          || addr.hamlet
+          || '';
         const state = addr.state || '';
         const country = countryName || addr.country || '';
         document.getElementById('dj-city').value = city;
