@@ -237,18 +237,18 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 
       <!-- Date / Time / Country -->
       <div style="padding:1rem .5rem;border-bottom:1px solid var(--border);">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem;">
-          <div>
+        <div style="display:flex;gap:.4rem;">
+          <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Date</div>
-            <input type="date" id="event-date" style="width:100%;max-width:100%;min-width:0;box-sizing:border-box;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .2rem;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <input type="date" id="event-date" style="width:100%;min-width:0;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;display:block;">
           </div>
-          <div>
+          <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Start</div>
-            <select id="start-time" onchange="updateRateDisplay()" style="width:100%;max-width:100%;min-width:0;box-sizing:border-box;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .2rem;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+            <select id="start-time" onchange="updateRateDisplay()" style="width:100%;min-width:0;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;display:block;"></select>
           </div>
-          <div>
+          <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">End</div>
-            <select id="end-time" onchange="updateRateDisplay()" style="width:100%;max-width:100%;min-width:0;box-sizing:border-box;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .2rem;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;"></select>
+            <select id="end-time" onchange="updateRateDisplay()" style="width:100%;min-width:0;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;display:block;"></select>
           </div>
         </div>
         <div style="margin-top:.5rem;">
