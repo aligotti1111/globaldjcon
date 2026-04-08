@@ -836,11 +836,11 @@ input[type=number] { -moz-appearance:textfield; }
             <p style="font-size:.8rem;color:var(--neon);margin-bottom:1rem;text-align:center;">Set your rates based on your equipment selections above.</p>
 
             <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);font-weight:700;display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
-                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
-                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
-                <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
+                <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
+                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+                <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
               </div>
               <div id="global-offers-label" style="display:none;font-size:.75rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
             </div>
@@ -873,7 +873,7 @@ input[type=number] { -moz-appearance:textfield; }
 
             <input type="hidden" id="allow-offers" value="false">
             <div id="global-base-rate-wrap" style="display:none;margin-top:.75rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
@@ -2241,14 +2241,14 @@ function openDayEditor(key) {
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
           <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
           <div style="text-align:center;margin-bottom:.75rem;">
-            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
+            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);font-weight:700;display:block;margin-bottom:.5rem;">Rate Type</label>
             <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.5rem;">
-              <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Flat Rate</button>
-              <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
-              <button type="button" id="rate-type-offers" onclick="setDayRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
+              <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Flat Rate</button>
+              <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
+              <button type="button" id="rate-type-offers" onclick="setDayRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
             </div>
             <div id="day-hourly-label" style="display:${defaultRateType==='hourly'?'block':'none'};font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
-            <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--muted);line-height:1.5;">Offers can be countered and negotiated through the platform.</div>
+            <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--white);line-height:1.5;">Offers can be countered and negotiated through the platform.</div>
           </div>
 
           <div id="day-flat-fields" style="display:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'block':'none'};">
@@ -2308,7 +2308,7 @@ function openDayEditor(key) {
 
           <div id="day-offers-fields" style="display:${defaultRateType==='offers'?'block':'none'};">
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Base Rate (minimum offer)</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Base Rate (minimum offer)</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-base-rate" value="${d.base_rate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2338,7 +2338,7 @@ function setDayRateType(type) {
     if (!btn) return;
     const active = type === t;
     btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
-    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
+    btn.style.color = active ? 'var(--neon)' : 'var(--white)';
   });
   document.getElementById('day-flat-fields').style.display    = type === 'flat'   ? 'block' : 'none';
   document.getElementById('day-hourly-fields').style.display  = type === 'hourly' ? 'block' : 'none';
@@ -2346,7 +2346,7 @@ function setDayRateType(type) {
   const hl = document.getElementById('day-hourly-label');
   if (hl) hl.style.display = type === 'hourly' ? 'block' : 'none';
   const ol = document.getElementById('day-offers-label');
-  if (ol) ol.style.display = type === 'offers' ? 'block' : 'none';
+  if (ol) { ol.style.display = type === 'offers' ? 'block' : 'none'; ol.style.color = 'var(--white)'; }
 }
 
 function saveDayEditor(key) {
@@ -2469,7 +2469,7 @@ function setGlobalRateType(type) {
     const btn = document.getElementById('global-rate-type-' + t);
     const active = type === t;
     btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
-    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
+    btn.style.color = active ? 'var(--neon)' : 'var(--white)';
   });
 
   // Show/hide rate fields
