@@ -832,6 +832,9 @@ input[type=number] { -moz-appearance:textfield; }
               </div>
             </div>
             <div style="padding:1.25rem;">
+            <div id="rates-equip-notice" style="display:none;text-align:center;padding:.75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;margin-bottom:1rem;">
+              <span style="font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Select an equipment option above to activate rate selections</span>
+            </div>
             <p style="font-size:.8rem;color:var(--neon);margin-bottom:1rem;text-align:center;">Set your rates based on your equipment selections above.</p>
 
             <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
@@ -1800,10 +1803,22 @@ function updateRateFields(selected) {
   const full  = document.getElementById('equip-full').checked;
   const decks = document.getElementById('equip-decks').checked;
   const none  = document.getElementById('equip-none').checked;
+  const hasEquip = full || decks || none;
 
   // Show/hide detail text inputs
   document.getElementById('equip-full-detail').style.display  = full  ? 'block' : 'none';
   document.getElementById('equip-decks-detail').style.display = decks ? 'block' : 'none';
+
+  // Lock/unlock rate section based on equipment selection
+  const notice = document.getElementById('rates-equip-notice');
+  if (notice) notice.style.display = hasEquip ? 'none' : 'block';
+  ['global-rate-type-flat','global-rate-type-hourly','global-rate-type-offers'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.style.pointerEvents = hasEquip ? '' : 'none';
+      btn.style.opacity = hasEquip ? '' : '0.35';
+    }
+  });
 
   // Rate fields per spec:
   // Checkbox 1 (full system) → 3 rates: no-equip, with-system, with-decks
@@ -1818,6 +1833,11 @@ function updateRateFields(selected) {
     document.getElementById('rate-with-system').style.display = 'none';
     document.getElementById('rate-with-decks').style.display  = 'none';
     document.getElementById('rate-no-equip').style.display    = 'none';
+  }
+
+  // Auto-save equipment if a selection was made
+  if (selected) {
+    saveEquipmentSection(document.querySelector('button[onclick="saveEquipmentSection(this)"]') || { disabled: false, textContent: '' });
   }
 }
 
