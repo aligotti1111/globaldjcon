@@ -2102,10 +2102,16 @@ function toggleAllowOffers() {
     rateInput.style.cursor = enabled ? 'not-allowed' : '';
     rateInput.title = enabled ? 'Disabled — guests will make offers instead' : '';
   }
-  // Hide/show rate boxes
+  // Hide/show rate boxes - save state before hiding
   ['rate-with-system','rate-with-decks','rate-no-equip'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = enabled ? 'none' : (document.getElementById(id.replace('-','_')+'_visible') ? 'block' : el.dataset.wasVisible === 'true' ? 'block' : 'none');
+    if (!el) return;
+    if (enabled) {
+      el.dataset.prevDisplay = el.style.display;
+      el.style.display = 'none';
+    } else {
+      el.style.display = el.dataset.prevDisplay || 'none';
+    }
   });
   // Booking rate fields disable
   ['rate-no-equip-val','rate-with-system-val','rate-with-decks-val'].forEach(id => {
@@ -2129,8 +2135,8 @@ function toggleAllowOffers() {
           <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
           <input type="number" id="base-rate-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
         </div>`;
-      const checkbox = document.getElementById('allow-offers').closest('div').parentElement;
-      checkbox.parentElement.insertBefore(br, checkbox.nextSibling);
+      const checkboxLabel = document.getElementById('allow-offers').closest('label');
+      checkboxLabel.parentElement.insertAdjacentElement('afterend', br);
     }
     br.style.display = 'block';
   } else if (br) {
