@@ -924,7 +924,8 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'welcome', name: name, email: document.getElementById('dj-email').value.toLowerCase(), role: 'dj', slug: finalSlug })
     }).catch(() => {});
-    window.location.href = '/' + finalSlug;
+    const returnUrl = new URLSearchParams(window.location.search).get('return');
+    window.location.href = returnUrl || ('/' + finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create DJ Account';
@@ -962,7 +963,8 @@ document.getElementById('form-host').addEventListener('submit', async function(e
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'welcome', name: name, email: email.toLowerCase(), role: 'host' })
     }).catch(() => {});
-    window.location.href = '/';
+    const returnUrl = new URLSearchParams(window.location.search).get('return');
+    window.location.href = returnUrl || '/';
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Host Account';
@@ -1013,7 +1015,8 @@ document.getElementById('form-venue').addEventListener('submit', async function(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'welcome', name: venueName, email: email.toLowerCase(), role: 'venue' })
     }).catch(() => {});
-    window.location.href = '/';
+    const returnUrl = new URLSearchParams(window.location.search).get('return');
+    window.location.href = returnUrl || '/';
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Venue Account';
