@@ -2276,6 +2276,35 @@ function setGlobalRateType(type) {
 
 async function saveRateSection(btn) {
   const isOffers = document.getElementById('allow-offers').value === 'true';
+  const alertEl = document.getElementById('rate-save-alert');
+
+  // Validate: any visible rate field must have a value entered
+  if (!isOffers) {
+    const checks = [
+      { id: 'rate-with-system', valId: 'rate-with-system-val' },
+      { id: 'rate-with-decks',  valId: 'rate-with-decks-val'  },
+      { id: 'rate-no-equip',    valId: 'rate-no-equip-val'    },
+    ];
+    for (const { id, valId } of checks) {
+      const wrap = document.getElementById(id);
+      const input = document.getElementById(valId);
+      if (wrap.style.display !== 'none' && input.value.trim() === '') {
+        alertEl.style.color = 'var(--error)';
+        alertEl.textContent = '✗ All visible rate fields must have a value.';
+        setTimeout(() => alertEl.textContent = '', 3000);
+        return;
+      }
+    }
+  } else {
+    const baseRate = document.getElementById('base-rate-val');
+    if (baseRate && baseRate.value.trim() === '') {
+      alertEl.style.color = 'var(--error)';
+      alertEl.textContent = '✗ Please enter a base rate.';
+      setTimeout(() => alertEl.textContent = '', 3000);
+      return;
+    }
+  }
+
   const rateType = isOffers ? 'offers' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat');
   await savePartialBooking(btn, 'rate-save-alert', {
     global_rate_type: rateType,
