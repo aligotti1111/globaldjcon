@@ -1671,6 +1671,16 @@ function ownerQuickMark(key) {
 
 function ownerOpenDayEditor(key) {
   const d = ownerBookingDays[key] || {};
+
+  // Guard: equipment must be selected first
+  if (!ownerEquipFull && !ownerEquipDecks && !ownerEquipNone) {
+    const alertEl = document.getElementById('owner-cal-alert');
+    if (alertEl) {
+      alertEl.innerHTML = '<span style="font-size:.75rem;color:var(--error);">Please select your equipment options in Edit Profile → Booking before setting day rates.</span>';
+      setTimeout(() => alertEl.innerHTML = '', 5000);
+    }
+    return;
+  }
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
 
