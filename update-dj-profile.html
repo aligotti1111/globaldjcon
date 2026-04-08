@@ -837,11 +837,11 @@ input[type=number] { -moz-appearance:textfield; }
             <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
-                <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
                 <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
-                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+                <button type="button" id="global-rate-type-hourly" onclick="setGlobalRateType('hourly')" style="padding:.6rem 2rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+                <button type="button" id="global-rate-type-offers" onclick="setGlobalRateType('offers')" style="padding:.6rem 2rem;border:none;background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Offers</button>
               </div>
-              <div id="global-hourly-label" style="display:none;font-size:.75rem;color:var(--muted);">Prices below will be charged per hour.</div>
+              <div id="global-hourly-label" style="display:none;font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
               <div id="global-offers-label" style="display:none;font-size:.75rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
             </div>
             <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
@@ -849,7 +849,7 @@ input[type=number] { -moz-appearance:textfield; }
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
-                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
+                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);white-space:nowrap;letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>
 
@@ -858,7 +858,7 @@ input[type=number] { -moz-appearance:textfield; }
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
-                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
+                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);white-space:nowrap;letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>
 
@@ -867,7 +867,7 @@ input[type=number] { -moz-appearance:textfield; }
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
-                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;">/ hr</span>
+                <span class="per-hour-label" style="display:none;font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);white-space:nowrap;letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>
 
@@ -1815,7 +1815,7 @@ function updateRateFields(selected) {
   document.getElementById('rate-no-equip').style.display    = (full || decks || none) ? 'block' : 'none';
 
   // If allow-offers is on, hide all rate boxes
-  if (document.getElementById('allow-offers').checked) {
+  if (document.getElementById('allow-offers').value === 'true') {
     document.getElementById('rate-with-system').style.display = 'none';
     document.getElementById('rate-with-decks').style.display  = 'none';
     document.getElementById('rate-no-equip').style.display    = 'none';
