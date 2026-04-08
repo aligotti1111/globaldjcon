@@ -852,7 +852,7 @@ function lookupSignupZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.suburb || addr.city || addr.town || addr.village || addr.county || '';
+        const city = addr.city || addr.town || addr.city_district || addr.municipality || addr.suburb || addr.village || addr.hamlet || '';
         const state = addr.state || '';
         const country = countryName || addr.country || '';
         document.getElementById('dj-city').value = city;
