@@ -1674,13 +1674,25 @@ function ownerOpenDayEditor(key) {
 
   // Guard: equipment must be selected first
   if (!ownerEquipFull && !ownerEquipDecks && !ownerEquipNone) {
-    const alertEl = document.getElementById('owner-cal-alert');
-    if (alertEl) {
-      alertEl.innerHTML = '<span style="font-size:.75rem;color:var(--error);">Please select your equipment options in Edit Profile → Booking before setting day rates.</span>';
-      setTimeout(() => alertEl.innerHTML = '', 5000);
-    }
+    const existing = document.getElementById('day-editor-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'day-editor-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:380px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:1rem;">🎛️</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.05em;color:var(--white);margin-bottom:.6rem;">Equipment Required</div>
+        <div style="font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:1.5rem;">Please update your equipment selection before updating rates.</div>
+        <div style="display:flex;gap:.75rem;">
+          <button type="button" onclick="document.getElementById('day-editor-modal').remove()" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;cursor:pointer;">Dismiss</button>
+          <a href="/update-dj-profile" style="flex:1;padding:.75rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;">Edit Profile</a>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
     return;
   }
+
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
 
