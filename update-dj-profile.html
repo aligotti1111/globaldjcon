@@ -382,7 +382,7 @@ input[type=number] { -moz-appearance:textfield; }
       </div>
 
       <div class="form-group">
-        <label>DJ / Company Name</label>
+        <label id="name-label">DJ / Company Name</label>
         <input type="text" id="name" placeholder="e.g. DJ Nova">
       </div>
 
@@ -405,7 +405,7 @@ input[type=number] { -moz-appearance:textfield; }
         <label>Type</label>
         <div class="checkbox-group">
           <label class="checkbox-label">
-            <input type="checkbox" name="type" value="mobile-event" id="mobile-checkbox">
+            <input type="checkbox" name="type" value="mobile-event" id="mobile-checkbox" onchange="updateNameLabel()">
             Mobile DJ
           </label>
           
@@ -430,7 +430,7 @@ input[type=number] { -moz-appearance:textfield; }
           </div>
           
           <label class="checkbox-label">
-            <input type="checkbox" name="type" value="club" id="club-checkbox">
+            <input type="checkbox" name="type" value="club" id="club-checkbox" onchange="updateNameLabel();">
             Club/Bar DJ
           </label>
           
@@ -1549,6 +1549,7 @@ clubGenres.forEach(cb => {
         if (type === 'mobile-event') document.getElementById('mobile-spec').style.display = 'block';
         if (type === 'club') document.getElementById('club-spec').style.display = 'block';
       }
+      updateNameLabel();
     }
     
     // Load mobile party types from event_types
@@ -1729,6 +1730,23 @@ window.addEventListener('beforeunload', function(e) {
 // ── BOOKING FEATURE (CLUB/BAR DJ) ─────────────────────────
 
 // Show booking tab for all DJs
+function updateNameLabel() {
+  const isMobile = document.getElementById('mobile-checkbox').checked;
+  const isClub = document.getElementById('club-checkbox').checked;
+  const label = document.getElementById('name-label');
+  const input = document.getElementById('name');
+  if (isMobile && !isClub) {
+    if (label) label.textContent = 'Company Name';
+    if (input) input.placeholder = 'Premier Events LLC';
+  } else if (isClub && !isMobile) {
+    if (label) label.textContent = 'DJ Name';
+    if (input) input.placeholder = 'DJ Nova';
+  } else {
+    if (label) label.textContent = 'DJ / Company Name';
+    if (input) input.placeholder = 'e.g. DJ Nova';
+  }
+}
+
 function checkShowBookingTab() {
   const isClub = document.getElementById('club-checkbox').checked;
   document.getElementById('tab-btn-booking').style.display = isClub ? '' : 'none';
