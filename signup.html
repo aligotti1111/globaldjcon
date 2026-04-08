@@ -834,6 +834,7 @@ function updateZipPlaceholder(country) {
 }
 
 // ── ZIP LOOKUP ──────────────────────────────────────────
+function lookupSignupZip(zip) {
   const resultEl = document.getElementById('signup-zip-result');
   clearTimeout(signupZipTimeout);
   if (!zip || zip.length < 4) { resultEl.textContent = ''; return; }
