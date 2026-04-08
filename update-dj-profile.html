@@ -1819,6 +1819,11 @@ function updateRateFields(selected) {
       btn.style.opacity = hasEquip ? '' : '0.35';
     }
   });
+  const saveRatesBtn = document.querySelector('button[onclick="saveRateSection(this)"]');
+  if (saveRatesBtn) {
+    saveRatesBtn.disabled = !hasEquip;
+    saveRatesBtn.style.opacity = hasEquip ? '' : '0.35';
+  }
 
   // Rate fields per spec:
   // Checkbox 1 (full system) → 3 rates: no-equip, with-system, with-decks
