@@ -233,29 +233,28 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
           <input type="text" id="venue-address" placeholder="Address" autocomplete="off" oninput="addressAutocomplete(this)" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
           <div id="address-suggestions" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;"></div>
         </div>
+        <div style="margin-top:.5rem;">
+          <select id="event-country" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;">
+            <option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option><option value="DE">Germany</option><option value="FR">France</option><option value="ES">Spain</option><option value="IT">Italy</option><option value="NL">Netherlands</option><option value="SE">Sweden</option><option value="NO">Norway</option><option value="DK">Denmark</option><option value="NZ">New Zealand</option><option value="SG">Singapore</option><option value="ZA">South Africa</option><option value="AE">UAE</option><option value="IN">India</option><option value="JP">Japan</option><option value="MX">Mexico</option><option value="BR">Brazil</option><option value="CH">Switzerland</option><option value="IE">Ireland</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Date / Time / Country -->
+      <!-- Date / Time -->
       <div style="padding:1rem .5rem;border-bottom:1px solid var(--border);">
         <div style="display:flex;gap:.4rem;">
           <div style="flex:1;width:0;min-width:0;overflow:hidden;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Date</div>
-            <input type="date" id="event-date" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;">
+            <input type="date" id="event-date" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;">
           </div>
           <div style="flex:1;width:0;min-width:0;overflow:hidden;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Start</div>
-            <select id="start-time" onchange="updateRateDisplay()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"></select>
+            <select id="start-time" onchange="updateRateDisplay()" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"></select>
           </div>
           <div style="flex:1;width:0;min-width:0;overflow:hidden;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">End</div>
-            <select id="end-time" onchange="updateRateDisplay()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"></select>
+            <select id="end-time" onchange="updateRateDisplay()" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem 0;color:var(--white);font-size:.6rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"></select>
           </div>
-        </div>
-        <div style="margin-top:.5rem;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Country</div>
-          <select id="event-country" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;">
-            <option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option><option value="DE">Germany</option><option value="FR">France</option><option value="ES">Spain</option><option value="IT">Italy</option><option value="NL">Netherlands</option><option value="SE">Sweden</option><option value="NO">Norway</option><option value="DK">Denmark</option><option value="NZ">New Zealand</option><option value="SG">Singapore</option><option value="ZA">South Africa</option><option value="AE">UAE</option><option value="IN">India</option><option value="JP">Japan</option><option value="MX">Mexico</option><option value="BR">Brazil</option><option value="CH">Switzerland</option><option value="IE">Ireland</option>
-          </select>
         </div>
       </div>
 
