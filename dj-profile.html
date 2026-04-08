@@ -1688,6 +1688,8 @@ async function ownerSaveEquipAndOpenDay(key) {
     bs.equip_full = full;
     bs.equip_decks = decks;
     bs.equip_none = none;
+    bs.equip_full_detail = document.getElementById('eq-full-detail')?.value.trim() || '';
+    bs.equip_decks_detail = document.getElementById('eq-decks-detail')?.value.trim() || '';
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', cu.id);
     if (error) throw error;
     // Update globals
@@ -1722,22 +1724,26 @@ function ownerOpenDayEditor(key) {
         <div style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.5;">Please update your equipment selection before updating rates.</div>
         <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem;">
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-full" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-decks').checked=false;document.getElementById('eq-none').checked=false;}">
-            <div>
+            <input type="checkbox" id="eq-full" style="margin-top:2px;accent-color:var(--neon);flex-shrink:0;" onchange="if(this.checked){document.getElementById('eq-decks').checked=false;document.getElementById('eq-none').checked=false;document.getElementById('eq-full-detail-wrap').style.display='block';document.getElementById('eq-decks-detail-wrap').style.display='none';}else{document.getElementById('eq-full-detail-wrap').style.display='none';}">
+            <div style="flex:1;">
               <div style="font-size:.88rem;color:var(--white);">I can provide Sound System &amp; Decks/Controller</div>
+              <div id="eq-full-detail-wrap" style="display:none;margin-top:.4rem;">
+                <input type="text" id="eq-full-detail" placeholder="List your system (e.g. QSC K12.2, Pioneer CDJ-3000)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .7rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;">
+              </div>
             </div>
           </label>
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-decks" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-none').checked=false;}">
-            <div>
+            <input type="checkbox" id="eq-decks" style="margin-top:2px;accent-color:var(--neon);flex-shrink:0;" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-none').checked=false;document.getElementById('eq-decks-detail-wrap').style.display='block';document.getElementById('eq-full-detail-wrap').style.display='none';}else{document.getElementById('eq-decks-detail-wrap').style.display='none';}">
+            <div style="flex:1;">
               <div style="font-size:.88rem;color:var(--white);">I can provide only Decks/Controller</div>
+              <div id="eq-decks-detail-wrap" style="display:none;margin-top:.4rem;">
+                <input type="text" id="eq-decks-detail" placeholder="List your decks/controller (e.g. Pioneer DDJ-1000)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .7rem;color:var(--white);font-size:.83rem;font-family:'DM Sans',sans-serif;">
+              </div>
             </div>
           </label>
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-none" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-decks').checked=false;}">
-            <div>
-              <div style="font-size:.88rem;color:var(--white);">I require all equipment provided by venue</div>
-            </div>
+            <input type="checkbox" id="eq-none" style="margin-top:2px;accent-color:var(--neon);flex-shrink:0;" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-decks').checked=false;document.getElementById('eq-full-detail-wrap').style.display='none';document.getElementById('eq-decks-detail-wrap').style.display='none';}">
+            <div style="font-size:.88rem;color:var(--white);">I require all equipment provided by venue</div>
           </label>
         </div>
         <div id="equip-modal-alert" style="font-family:'Space Mono',monospace;font-size:.62rem;min-height:1rem;margin-bottom:.75rem;"></div>
