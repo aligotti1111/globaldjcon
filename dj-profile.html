@@ -1135,9 +1135,9 @@ function drawPubCalMonth() {
     else if (isToday) numColor = 'var(--neon)';
 
     let badge = '';
+    const isPrivate = dayData.location === 'Private';
     if (!isPast) {
       if (isBooked) {
-        const isPrivate = dayData.location === 'Private';
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
         const timeStr = dayData.startTime ? formatTime12(dayData.startTime) + (dayData.endTime ? '–' + formatTime12(dayData.endTime) : '') : '';
         const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
