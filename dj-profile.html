@@ -1204,10 +1204,13 @@ function drawPubCalMonth() {
       const rawLoc = dayData.location || '';
       const cleanLoc = rawLoc.replace(/,\s*[^,]+ County/i,'').replace(/,\s*(United States|USA|UK|United Kingdom|Canada|Australia|Germany|France|Spain|Italy|Netherlands|Sweden|Norway|Denmark|New Zealand|Singapore|South Africa|UAE|India|Japan|Mexico|Brazil|Switzerland|Ireland)\s*$/i,'').trim();
       html += `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(255,95,95,.05);border:1px solid rgba(255,95,95,.15);border-left:3px solid rgba(255,95,95,.5);border-radius:6px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">${dateLabel}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;white-space:nowrap;min-width:60px;">
+          <div>${dateLabel}</div>
+          ${timeStr ? `<div style="margin-top:2px;color:var(--muted);">${timeStr}</div>` : ''}
+        </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:.88rem;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dayData.eventName}</div>
-          ${timeStr || cleanLoc ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${timeStr}${timeStr && cleanLoc ? ' · ' : ''}${cleanLoc}</div>` : ''}
+          ${cleanLoc ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${cleanLoc}</div>` : ''}
         </div>
         ${dayData.ticketUrl ? `<a href="${dayData.ticketUrl}" target="_blank" style="flex-shrink:0;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:none;border:1px solid rgba(0,245,196,.3);border-radius:4px;padding:4px 10px;background:rgba(0,245,196,.06);white-space:nowrap;" onmouseover="this.style.background='rgba(0,245,196,.14)'" onmouseout="this.style.background='rgba(0,245,196,.06)'">${dayData.ticketLabel || 'More Info'}</a>` : ''}
       </div>`;
