@@ -1811,7 +1811,7 @@ function updateRateFields(selected) {
   // Checkbox 2 (decks only)  → 2 rates: no-equip, with-decks
   // Checkbox 3 (none)        → 1 rate:  no-equip only
   document.getElementById('rate-with-system').style.display = full ? 'block' : 'none';
-  document.getElementById('rate-with-decks').style.display  = decks ? 'block' : 'none';
+  document.getElementById('rate-with-decks').style.display  = (full || decks) ? 'block' : 'none';
   document.getElementById('rate-no-equip').style.display    = (full || decks || none) ? 'block' : 'none';
 
   // If allow-offers is on, hide all rate boxes
