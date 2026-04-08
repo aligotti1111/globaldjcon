@@ -306,6 +306,9 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 input[type=number] { -moz-appearance:textfield; }
+/* Rate field styling */
+.currency-symbol { color:var(--neon) !important; }
+input[type=number] { color:var(--neon) !important; }
 </style>
 </head>
 <body>
@@ -845,7 +848,7 @@ input[type=number] { -moz-appearance:textfield; }
               <div id="global-offers-label" style="display:none;font-size:.75rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
             </div>
             <div id="rate-with-system" style="display:none;margin-bottom:.75rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-system-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
@@ -854,7 +857,7 @@ input[type=number] { -moz-appearance:textfield; }
             </div>
 
             <div id="rate-with-decks" style="display:none;margin-bottom:.75rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate with Decks/Controller Only</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Rate with Decks/Controller Only</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-with-decks-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
@@ -863,7 +866,7 @@ input[type=number] { -moz-appearance:textfield; }
             </div>
 
             <div id="rate-no-equip" style="display:none;margin-bottom:.75rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Rate (No Equipment Provided)</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Rate (No Equipment Provided)</label>
               <div style="display:flex;align-items:center;gap:.5rem;">
                 <span class="currency-symbol" style="color:var(--muted);font-size:.9rem;">$</span>
                 <input type="number" id="rate-no-equip-val" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;">
@@ -2247,14 +2250,13 @@ function openDayEditor(key) {
               <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
               <button type="button" id="rate-type-offers" onclick="setDayRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
             </div>
-            <div id="day-hourly-label" style="display:${defaultRateType==='hourly'?'block':'none'};font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
             <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--white);line-height:1.5;">Offers can be countered and negotiated through the platform.</div>
           </div>
 
           <div id="day-flat-fields" style="display:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'block':'none'};">
             ${equipFull ? `
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-rate-system" value="${defaultRateSystem}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2262,14 +2264,14 @@ function openDayEditor(key) {
             </div>` : ''}
             ${equipDecks || equipFull ? `
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-rate-decks" value="${defaultRateDecks}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
               </div>
             </div>` : ''}
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-flat-rate" value="${defaultRate}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2280,7 +2282,7 @@ function openDayEditor(key) {
           <div id="day-hourly-fields" style="display:${defaultRateType==='hourly'?'block':'none'};">
             ${equipFull ? `
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-system" value="${defaultHourlyRateSystem}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2289,7 +2291,7 @@ function openDayEditor(key) {
             </div>` : ''}
             ${equipDecks || equipFull ? `
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate with Decks/Controller Only</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-decks" value="${defaultHourlyRateDecks}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2297,7 +2299,7 @@ function openDayEditor(key) {
               </div>
             </div>` : ''}
             <div style="margin-bottom:.5rem;">
-              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Rate (No Equipment Provided)</label>
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-rate" value="${defaultHourlyRate}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
@@ -2343,8 +2345,6 @@ function setDayRateType(type) {
   document.getElementById('day-flat-fields').style.display    = type === 'flat'   ? 'block' : 'none';
   document.getElementById('day-hourly-fields').style.display  = type === 'hourly' ? 'block' : 'none';
   document.getElementById('day-offers-fields').style.display  = type === 'offers' ? 'block' : 'none';
-  const hl = document.getElementById('day-hourly-label');
-  if (hl) hl.style.display = type === 'hourly' ? 'block' : 'none';
   const ol = document.getElementById('day-offers-label');
   if (ol) { ol.style.display = type === 'offers' ? 'block' : 'none'; ol.style.color = 'var(--white)'; }
 }
