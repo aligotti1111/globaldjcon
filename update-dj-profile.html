@@ -1922,7 +1922,7 @@ function calNext() {
 // ── DAY EDITOR MODAL ──────────────────────────────────────
 function openDayEditor(key) {
   const d = bookingDays[key] || {};
-  const globalAllowOffers = document.getElementById('allow-offers').checked;
+  const globalAllowOffers = document.getElementById('allow-offers').value === 'true';
   const existing = document.getElementById('day-editor-modal');
   if (existing) existing.remove();
 
@@ -1942,7 +1942,7 @@ function openDayEditor(key) {
 
   // Read global rates — use as defaults if day has no custom rate
   const hasCustomRate = d.rate || d.rateSystem || d.rateDecks || d.hourlyRate || d.hourlyRateSystem || d.hourlyRateDecks;
-  const globalRateType = document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat';
+  const globalRateType = globalAllowOffers ? 'flat' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat');
   const defaultRateType = d.rateType || globalRateType;
   const globalSystem = document.getElementById('rate-with-system-val')?.value || '';
   const globalDecks = document.getElementById('rate-with-decks-val')?.value || '';
@@ -2161,7 +2161,7 @@ function saveDayEditor(key) {
     // available
     const offerCheckbox = document.getElementById('day-allow-offers');
     const dayOffersChecked = offerCheckbox ? offerCheckbox.checked : null;
-    const globalOn = document.getElementById('allow-offers').checked;
+    const globalOn = document.getElementById('allow-offers').value === 'true';
     let offersOverride = undefined;
     if (globalOn && dayOffersChecked === false) offersOverride = false;  // global on, day opts out
     if (!globalOn && dayOffersChecked === true) offersOverride = true;   // global off, day opts in
@@ -2285,19 +2285,27 @@ async function saveRateSection(btn) {
       { id: 'rate-with-decks',  valId: 'rate-with-decks-val'  },
       { id: 'rate-no-equip',    valId: 'rate-no-equip-val'    },
     ];
+    let hasEmpty = false;
     for (const { id, valId } of checks) {
       const wrap = document.getElementById(id);
       const input = document.getElementById(valId);
       if (wrap.style.display !== 'none' && input.value.trim() === '') {
-        alertEl.style.color = 'var(--error)';
-        alertEl.textContent = '✗ All visible rate fields must have a value.';
-        setTimeout(() => alertEl.textContent = '', 3000);
-        return;
+        input.style.borderColor = 'var(--error)';
+        input.addEventListener('input', () => input.style.borderColor = '', { once: true });
+        hasEmpty = true;
       }
+    }
+    if (hasEmpty) {
+      alertEl.style.color = 'var(--error)';
+      alertEl.textContent = '✗ All visible rate fields must have a value.';
+      setTimeout(() => alertEl.textContent = '', 3000);
+      return;
     }
   } else {
     const baseRate = document.getElementById('base-rate-val');
     if (baseRate && baseRate.value.trim() === '') {
+      baseRate.style.borderColor = 'var(--error)';
+      baseRate.addEventListener('input', () => baseRate.style.borderColor = '', { once: true });
       alertEl.style.color = 'var(--error)';
       alertEl.textContent = '✗ Please enter a base rate.';
       setTimeout(() => alertEl.textContent = '', 3000);
