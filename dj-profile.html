@@ -1737,7 +1737,17 @@ function ownerOpenDayEditor(key) {
               ? (d.allow_offers_override===false ? 'block' : 'none')
               : (d.allow_offers_override===true ? 'none' : 'block')
           };">
-          <div style="text-align:center;margin-bottom:.6rem;">
+          <div id="day-base-rate-wrap" style="display:${
+            ownerGlobalAllowOffers
+              ? (d.allow_offers_override===false ? 'none' : 'block')
+              : (d.allow_offers_override===true ? 'block' : 'none')
+          };margin-bottom:.75rem;">
+            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <span style="color:var(--muted);font-size:.9rem;">$</span>
+              <input type="number" id="day-base-rate" value="${d.base_rate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+            </div>
+          </div>
             <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
               <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
               <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="padding:.6rem 2.5rem;border:none;background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
@@ -1810,7 +1820,9 @@ function ownerOpenDayEditor(key) {
 function ownerToggleDayOffers() {
   const checked = document.getElementById('day-allow-offers').checked;
   const rateFields = document.getElementById('day-rate-fields');
+  const baseRateWrap = document.getElementById('day-base-rate-wrap');
   if (rateFields) rateFields.style.display = checked ? 'none' : 'block';
+  if (baseRateWrap) baseRateWrap.style.display = checked ? 'block' : 'none';
 }
 
 function ownerToggleDayStatus() {
@@ -1855,11 +1867,12 @@ function ownerSaveDayEditor(key) {
     const hourlyRateSystem = document.getElementById('day-hourly-system')?.value || null;
     const hourlyRateDecks = document.getElementById('day-hourly-decks')?.value || null;
     const flatHours = document.getElementById('day-flat-hours')?.value || null;
+    const dayBaseRate = document.getElementById('day-base-rate')?.value || null;
     const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
-    if (flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks) {
+    if (flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks || dayBaseRate) {
       // Specific rate always overrides global allow_offers
       if (ownerGlobalAllowOffers) offersOverride = false;
-      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate, rateSystem, rateDecks, flatHours, hourlyRate, hourlyRateSystem, hourlyRateDecks, allow_offers_override: offersOverride };
+      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate, rateSystem, rateDecks, flatHours, hourlyRate, hourlyRateSystem, hourlyRateDecks, base_rate: dayBaseRate, allow_offers_override: offersOverride };
     } else if (offersOverride !== undefined) {
       ownerBookingDays[key] = { allow_offers_override: offersOverride };
     } else {
