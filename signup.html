@@ -362,7 +362,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
       </div>
       <div class="form-group">
         <label>Country</label>
-        <select id="dj-country-select">
+        <select id="dj-country-select" onchange="updateZipPlaceholder(this.value)">
           <option value="" data-code="">Select country...</option>
           <option value="United States" data-code="us" selected>United States</option>
           <option value="United Kingdom" data-code="gb">United Kingdom</option>
@@ -602,10 +602,16 @@ function selectDjType(value) {
   const btn = document.querySelector(`.type-btn[data-value="${value}"]`);
   if (btn) btn.classList.add('selected');
   const label = document.getElementById('name-label');
-  if (label) {
-    if (value === 'mobile-event') label.textContent = 'Company Name';
-    else if (value === 'club') label.textContent = 'DJ Name';
-    else label.textContent = 'DJ / Company Name';
+  const input = document.getElementById('name');
+  if (value === 'mobile-event') {
+    if (label) label.textContent = 'Company Name';
+    if (input) input.placeholder = 'Premier Events LLC';
+  } else if (value === 'club') {
+    if (label) label.textContent = 'DJ Name';
+    if (input) input.placeholder = 'DJ Nova';
+  } else {
+    if (label) label.textContent = 'DJ / Company Name';
+    if (input) input.placeholder = 'DJ Nova or Premier Events LLC';
   }
 }
 
@@ -798,7 +804,36 @@ async function checkAndRenderVenueAlternatives(slug) {
 
 // ── ZIP LOOKUP (SIGNUP) ──────────────────────────────────
 let signupZipTimeout = null;
-function lookupSignupZip(zip) {
+// ── ZIP PLACEHOLDER BY COUNTRY ──────────────────────────
+function updateZipPlaceholder(country) {
+  const map = {
+    'United States': 'e.g. 10001',
+    'United Kingdom': 'e.g. SW1A 1AA',
+    'Canada': 'e.g. M5V 3A8',
+    'Australia': 'e.g. 2000',
+    'Germany': 'e.g. 10115',
+    'France': 'e.g. 75001',
+    'Netherlands': 'e.g. 1011 AB',
+    'Spain': 'e.g. 28001',
+    'Italy': 'e.g. 00100',
+    'Brazil': 'e.g. 01310-100',
+    'Mexico': 'e.g. 06600',
+    'Japan': 'e.g. 100-0001',
+    'South Africa': 'e.g. 8001',
+    'New Zealand': 'e.g. 1010',
+    'Ireland': 'e.g. D01 F5P2',
+    'Sweden': 'e.g. 111 21',
+    'Norway': 'e.g. 0150',
+    'Denmark': 'e.g. 1050',
+    'Belgium': 'e.g. 1000',
+    'Switzerland': 'e.g. 8001',
+    'Portugal': 'e.g. 1100-001',
+  };
+  const input = document.getElementById('dj-zip');
+  if (input) input.placeholder = map[country] || 'Zip / Postal Code';
+}
+
+// ── ZIP LOOKUP ──────────────────────────────────────────
   const resultEl = document.getElementById('signup-zip-result');
   clearTimeout(signupZipTimeout);
   if (!zip || zip.length < 4) { resultEl.textContent = ''; return; }
