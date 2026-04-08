@@ -2024,7 +2024,7 @@ function openDayEditor(key) {
               <button type="button" id="rate-type-offers" onclick="setDayRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
             </div>
             <div id="day-hourly-label" style="display:${defaultRateType==='hourly'?'block':'none'};font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
-            <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
+            <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--muted);line-height:1.5;">Offers can be countered and negotiated through the platform.</div>
           </div>
 
           <div id="day-flat-fields" style="display:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'block':'none'};">
@@ -2151,6 +2151,30 @@ function saveDayEditor(key) {
     const dayBaseRate = document.getElementById('day-base-rate')?.value || null;
     const offersActive = document.getElementById('rate-type-offers')?.style.background.includes('neon');
     const rateType = offersActive ? 'offers' : (document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat');
+
+    // Validate: visible rate fields must have a value
+    if (offersActive) {
+      const br = document.getElementById('day-base-rate');
+      if (br && br.value.trim() === '') {
+        br.style.borderColor = 'rgba(255,95,95,.8)';
+        br.addEventListener('input', () => br.style.borderColor = '', { once: true });
+        return;
+      }
+    } else {
+      const rateInputs = rateType === 'hourly'
+        ? ['day-hourly-system','day-hourly-decks','day-hourly-rate']
+        : ['day-rate-system','day-rate-decks','day-flat-rate'];
+      let hasEmpty = false;
+      for (const id of rateInputs) {
+        const el = document.getElementById(id);
+        if (el && el.value.trim() === '') {
+          el.style.borderColor = 'rgba(255,95,95,.8)';
+          el.addEventListener('input', () => el.style.borderColor = '', { once: true });
+          hasEmpty = true;
+        }
+      }
+      if (hasEmpty) return;
+    }
     const hasCustom = flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks;
     if (hasCustom || dayBaseRate || offersActive) {
       bookingDays[key] = {
