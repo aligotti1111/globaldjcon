@@ -813,10 +813,8 @@ input[type=number] { -moz-appearance:textfield; }
                 <div style="font-size:.88rem;color:var(--white);">I require all equipment to be provided by venue</div>
               </label>
             </div>
-            <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
-              <button type="button" onclick="saveEquipmentSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Equipment</button>
+            <div style="margin-top:.75rem;min-height:1rem;">
               <span id="equip-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
-            </div>
             </div>
             </div>
           </div>
@@ -883,7 +881,7 @@ input[type=number] { -moz-appearance:textfield; }
               </div>
             </div>
             <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;">
-              <button type="button" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
+              <button type="button" id="save-rates-btn" onclick="saveRateSection(this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Rates</button>
               <span id="rate-save-alert" style="font-family:'Space Mono',monospace;font-size:.6rem;"></span>
             </div>
             <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5;">Rates listed apply to all dates available for booking. The rate for each day can be customized by clicking the pencil icon on each day.</div>
@@ -1819,10 +1817,12 @@ function updateRateFields(selected) {
       btn.style.opacity = hasEquip ? '' : '0.35';
     }
   });
-  const saveRatesBtn = document.querySelector('button[onclick="saveRateSection(this)"]');
+  const saveRatesBtn = document.getElementById('save-rates-btn');
   if (saveRatesBtn) {
     saveRatesBtn.disabled = !hasEquip;
     saveRatesBtn.style.opacity = hasEquip ? '' : '0.35';
+    saveRatesBtn.style.cursor = hasEquip ? 'pointer' : 'not-allowed';
+    saveRatesBtn.style.pointerEvents = hasEquip ? '' : 'none';
   }
 
   // Rate fields per spec:
@@ -1842,7 +1842,7 @@ function updateRateFields(selected) {
 
   // Auto-save equipment if a selection was made
   if (selected) {
-    saveEquipmentSection(document.querySelector('button[onclick="saveEquipmentSection(this)"]') || { disabled: false, textContent: '' });
+    saveEquipmentSection({ disabled: false, textContent: '' });
   }
 }
 
