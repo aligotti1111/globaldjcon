@@ -1943,7 +1943,7 @@ function openDayEditor(key) {
   // Read global rates — use as defaults if day has no custom rate
   const hasCustomRate = d.rate || d.rateSystem || d.rateDecks || d.hourlyRate || d.hourlyRateSystem || d.hourlyRateDecks;
   const globalRateType = globalAllowOffers ? 'flat' : (document.getElementById('global-rate-type-hourly').style.background.includes('neon') ? 'hourly' : 'flat');
-  const defaultRateType = d.rateType || globalRateType;
+  const defaultRateType = d.rateType || (globalAllowOffers ? 'offers' : globalRateType);
   const globalSystem = document.getElementById('rate-with-system-val')?.value || '';
   const globalDecks = document.getElementById('rate-with-decks-val')?.value || '';
   const globalNoEquip = document.getElementById('rate-no-equip-val')?.value || '';
@@ -2016,29 +2016,18 @@ function openDayEditor(key) {
       <div id="day-avail-fields" style="display:${(!d.booked && !d.unavailable) ? 'block' : 'none'};">
         <div style="background:var(--deep);border-radius:8px;padding:1rem;margin-bottom:1rem;">
           <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Rate for This Day</div>
-          <div style="margin-bottom:.75rem;">
-            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-              <input type="checkbox" id="day-allow-offers"
-                ${globalAllowOffers ? (d.allow_offers_override===false ? '' : 'checked') : (d.allow_offers_override===true ? 'checked' : '')}
-                style="accent-color:var(--neon);" onchange="toggleDayOffers()">
-              <div>
-                <div style="font-size:.85rem;color:var(--white);">Allow guest to make an offer for this day</div>
-                <div style="font-size:.72rem;color:var(--muted);">${globalAllowOffers ? 'Global setting — uncheck to set a specific rate instead' : 'Enable offer requests for this specific day'}</div>
-              </div>
-            </label>
-          </div>
-          <div id="day-rate-fields" style="display:${
-            globalAllowOffers
-              ? (d.allow_offers_override===false ? 'block' : 'none')
-              : (d.allow_offers_override===true ? 'none' : 'block')
-          };">
-          <div style="text-align:center;margin-bottom:.6rem;">
-            <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
-              <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:${(defaultRateType!=='hourly')?'var(--neon-dim)':'transparent'};color:${(defaultRateType!=='hourly')?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
-              <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.6rem 2.5rem;border:none;background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Hourly</button>
+          <div style="text-align:center;margin-bottom:.75rem;">
+            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
+            <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.5rem;">
+              <button type="button" id="rate-type-flat" onclick="setDayRateType('flat')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Flat Rate</button>
+              <button type="button" id="rate-type-hourly" onclick="setDayRateType('hourly')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
+              <button type="button" id="rate-type-offers" onclick="setDayRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--muted)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
             </div>
+            <div id="day-hourly-label" style="display:${defaultRateType==='hourly'?'block':'none'};font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</div>
+            <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--muted);line-height:1.5;">Set base rate below. Offers can be countered and negotiated through the platform.</div>
           </div>
-          <div id="day-flat-fields" style="display:${defaultRateType!=='hourly'?'block':'none'};">
+
+          <div id="day-flat-fields" style="display:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'block':'none'};">
             ${equipFull ? `
             <div style="margin-bottom:.5rem;">
               <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Rate with Sound System &amp; Decks/Controller</label>
@@ -2063,6 +2052,7 @@ function openDayEditor(key) {
               </div>
             </div>
           </div>
+
           <div id="day-hourly-fields" style="display:${defaultRateType==='hourly'?'block':'none'};">
             ${equipFull ? `
             <div style="margin-bottom:.5rem;">
@@ -2070,7 +2060,7 @@ function openDayEditor(key) {
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-system" value="${defaultHourlyRateSystem}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>` : ''}
             ${equipDecks || equipFull ? `
@@ -2079,7 +2069,7 @@ function openDayEditor(key) {
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-decks" value="${defaultHourlyRateDecks}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>` : ''}
             <div style="margin-bottom:.5rem;">
@@ -2087,10 +2077,19 @@ function openDayEditor(key) {
               <div style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:var(--muted);">$</span>
                 <input type="number" id="day-hourly-rate" value="${defaultHourlyRate}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-                <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">/ hr</span>
+                <span style="font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;">PER HOUR</span>
               </div>
             </div>
           </div>
+
+          <div id="day-offers-fields" style="display:${defaultRateType==='offers'?'block':'none'};">
+            <div style="margin-bottom:.5rem;">
+              <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.3rem;">Base Rate (minimum offer)</label>
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:var(--muted);">$</span>
+                <input type="number" id="day-base-rate" value="${d.base_rate||''}" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2103,29 +2102,6 @@ function openDayEditor(key) {
   document.body.appendChild(modal);
 }
 
-function toggleDayOffers() {
-  const checked = document.getElementById('day-allow-offers').checked;
-  const rateFields = document.getElementById('day-rate-fields');
-  if (rateFields) rateFields.style.display = checked ? 'none' : 'block';
-  let br = document.getElementById('day-base-rate-wrap');
-  if (checked) {
-    if (!br) {
-      br = document.createElement('div');
-      br.id = 'day-base-rate-wrap';
-      br.style.cssText = 'margin-top:.75rem;';
-      br.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem;">Base Rate (minimum offer)</label>
-        <div style="display:flex;align-items:center;gap:.5rem;">
-          <span style="color:var(--muted);font-size:.9rem;">$</span>
-          <input type="number" id="day-base-rate" placeholder="0" min="0" style="max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.45rem .65rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-        </div>`;
-      rateFields.parentElement.insertBefore(br, rateFields.nextSibling);
-    }
-    br.style.display = 'block';
-  } else if (br) {
-    br.style.display = 'none';
-  }
-}
-
 function toggleDayBooked() {
   const val = document.querySelector('input[name="day-status"]:checked').value;
   document.getElementById('day-booked-fields').style.display = val === 'booked' ? 'block' : 'none';
@@ -2133,14 +2109,20 @@ function toggleDayBooked() {
 }
 
 function setDayRateType(type) {
-  document.getElementById('day-flat-fields').style.display = type === 'flat' ? 'block' : 'none';
-  document.getElementById('day-hourly-fields').style.display = type === 'hourly' ? 'block' : 'none';
-  document.getElementById('rate-type-flat').style.background = type === 'flat' ? 'var(--neon-dim)' : 'transparent';
-  document.getElementById('rate-type-flat').style.color = type === 'flat' ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('rate-type-flat').style.borderColor = type === 'flat' ? 'var(--neon)' : 'var(--border)';
-  document.getElementById('rate-type-hourly').style.background = type === 'hourly' ? 'var(--neon-dim)' : 'transparent';
-  document.getElementById('rate-type-hourly').style.color = type === 'hourly' ? 'var(--neon)' : 'var(--muted)';
-  document.getElementById('rate-type-hourly').style.borderColor = type === 'hourly' ? 'var(--neon)' : 'var(--border)';
+  ['flat','hourly','offers'].forEach(t => {
+    const btn = document.getElementById('rate-type-' + t);
+    if (!btn) return;
+    const active = type === t;
+    btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
+    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
+  });
+  document.getElementById('day-flat-fields').style.display    = type === 'flat'   ? 'block' : 'none';
+  document.getElementById('day-hourly-fields').style.display  = type === 'hourly' ? 'block' : 'none';
+  document.getElementById('day-offers-fields').style.display  = type === 'offers' ? 'block' : 'none';
+  const hl = document.getElementById('day-hourly-label');
+  if (hl) hl.style.display = type === 'hourly' ? 'block' : 'none';
+  const ol = document.getElementById('day-offers-label');
+  if (ol) ol.style.display = type === 'offers' ? 'block' : 'none';
 }
 
 function saveDayEditor(key) {
@@ -2159,12 +2141,6 @@ function saveDayEditor(key) {
     };
   } else {
     // available
-    const offerCheckbox = document.getElementById('day-allow-offers');
-    const dayOffersChecked = offerCheckbox ? offerCheckbox.checked : null;
-    const globalOn = document.getElementById('allow-offers').value === 'true';
-    let offersOverride = undefined;
-    if (globalOn && dayOffersChecked === false) offersOverride = false;  // global on, day opts out
-    if (!globalOn && dayOffersChecked === true) offersOverride = true;   // global off, day opts in
     const flatRate = document.getElementById('day-flat-rate')?.value || null;
     const rateSystem = document.getElementById('day-rate-system')?.value || null;
     const rateDecks = document.getElementById('day-rate-decks')?.value || null;
@@ -2173,10 +2149,10 @@ function saveDayEditor(key) {
     const hourlyRateDecks = document.getElementById('day-hourly-decks')?.value || null;
     const flatHours = document.getElementById('day-flat-hours')?.value || null;
     const dayBaseRate = document.getElementById('day-base-rate')?.value || null;
-    const rateType = document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat';
+    const offersActive = document.getElementById('rate-type-offers')?.style.background.includes('neon');
+    const rateType = offersActive ? 'offers' : (document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat');
     const hasCustom = flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks;
-    if (hasCustom || dayBaseRate) {
-      if (globalOn) offersOverride = false;
+    if (hasCustom || dayBaseRate || offersActive) {
       bookingDays[key] = {
         booked: false,
         rateType,
@@ -2188,10 +2164,7 @@ function saveDayEditor(key) {
         hourlyRateSystem,
         hourlyRateDecks,
         base_rate: dayBaseRate,
-        allow_offers_override: offersOverride,
       };
-    } else if (offersOverride !== undefined) {
-      bookingDays[key] = { allow_offers_override: offersOverride };
     } else {
       delete bookingDays[key];
     }
