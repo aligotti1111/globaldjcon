@@ -2113,7 +2113,7 @@ function toggleAllowOffers() {
     document.getElementById('rate-with-decks').style.display  = 'none';
     document.getElementById('rate-no-equip').style.display    = 'none';
   } else {
-    checkEquipment();
+    updateRateFields();
   }
   document.getElementById('global-base-rate-wrap').style.display = enabled ? 'block' : 'none';
   const rateTypeWrap = document.getElementById('global-rate-type-wrap');
