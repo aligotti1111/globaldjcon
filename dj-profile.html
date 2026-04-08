@@ -31,8 +31,8 @@ document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
   --border: #1e1e30;
   --neon: #00f5c4;
   --neon-dim: rgba(0,245,196,0.12);
-  --pink: #ff2d78;
-  --pink-dim: rgba(255,45,120,0.12);
+  --pink: #f5e642;
+  --pink-dim: rgba(245,230,66,0.12);
   --white: #f0f0f8;
   --muted: #6b6b88;
   --success: #3ddc84;
@@ -86,7 +86,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .hero { position:relative; z-index:50; padding:3rem 4rem 2rem; display:flex; align-items:flex-start; gap:2.5rem; border-bottom:1px solid var(--border); }
 .hero-avatar { width:180px; height:180px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:3.8rem; letter-spacing:.04em; flex-shrink:0; border:2px solid; overflow:hidden; position:relative; }
 .hero-avatar.mobile { background:var(--neon-dim); color:var(--neon); border-color:rgba(0,245,196,.3); }
-.hero-avatar.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(255,45,120,.3); }
+.hero-avatar.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(245,230,66,.3); }
 .hero-avatar.none { background:rgba(255,255,255,.05); color:var(--white); border-color:var(--border); }
 .hero-avatar img { width:100%; height:100%; object-fit:cover; object-position:50% 50%; position:absolute; inset:0; }
 .hero-info { flex:1; min-width:0; }
@@ -94,7 +94,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .hero-badges { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; }
 .type-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .7rem; border-radius:100px; border:1px solid; }
 .type-badge.mobile-event { background:var(--neon-dim); color:var(--neon); border-color:rgba(0,245,196,.3); }
-.type-badge.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(255,45,120,.3); }
+.type-badge.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(245,230,66,.3); }
 .avail-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .7rem; border-radius:100px; border:1px solid; }
 .avail-badge.available { background:rgba(61,220,132,.1); color:var(--success); border-color:rgba(61,220,132,.3); }
 .avail-badge.busy { background:rgba(255,179,71,.1); color:var(--amber); border-color:rgba(255,179,71,.3); }
@@ -113,7 +113,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 @media(max-width:900px) { .claim-bar { padding:.65rem 1.5rem; } }
 .tag { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.06em; text-transform:uppercase; padding:.2rem .6rem; border:1px solid; border-radius:100px; }
 .tag.neon { border-color:rgba(0,245,196,.2); color:rgba(0,245,196,.7); background:rgba(0,245,196,.06); }
-.tag.pink { border-color:rgba(255,45,120,.2); color:rgba(255,45,120,.7); background:rgba(255,45,120,.06); }
+.tag.pink { border-color:rgba(245,230,66,.2); color:rgba(245,230,66,.7); background:rgba(245,230,66,.06); }
 
 /* HERO ACTION BUTTONS */
 .hero-actions { display:flex; align-items:center; gap:.75rem; margin-top:1.2rem; flex-wrap:wrap; }
@@ -203,7 +203,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .tag-list { display:flex; flex-wrap:wrap; gap:.5rem; }
 .tag { font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; padding:.3rem .75rem; border:1px solid var(--border); border-radius:100px; color:var(--muted); background:var(--deep); }
 .tag.neon { border-color:rgba(0,245,196,.25); color:var(--neon); background:var(--neon-dim); }
-.tag.pink { border-color:rgba(255,45,120,.25); color:var(--pink); background:var(--pink-dim); }
+.tag.pink { border-color:rgba(245,230,66,.25); color:var(--pink); background:var(--pink-dim); }
 
 /* Desktop layout */
 .hero-top-row { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }

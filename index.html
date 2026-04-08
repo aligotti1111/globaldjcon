@@ -14,8 +14,8 @@
     --border: #1e1e30;
     --neon: #00f5c4;
     --neon-dim: rgba(0,245,196,0.12);
-    --pink: #ff2d78;
-    --pink-dim: rgba(255,45,120,0.12);
+    --pink: #f5e642;
+    --pink-dim: rgba(245,230,66,0.12);
     --amber: #ffb830;
     --white: #f0f0f8;
     --muted: #6b6b88;
@@ -51,7 +51,7 @@
   #view-public header { position:relative; padding:3rem 4rem 2.5rem; border-bottom:1px solid var(--border); overflow:hidden; }
   #view-public header::after { content:''; position:absolute; bottom:-2px; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon),var(--pink),transparent); animation:scanline 4s ease-in-out infinite; }
   @keyframes scanline { 0%,100%{opacity:.4;transform:scaleX(.3)} 50%{opacity:1;transform:scaleX(1)} }
-  .header-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 20% 50%,rgba(0,245,196,.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(255,45,120,.05) 0%,transparent 50%); }
+  .header-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 20% 50%,rgba(0,245,196,.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(245,230,66,.05) 0%,transparent 50%); }
   .header-inner { position:relative; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1.5rem; }
   .eyebrow { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.25em; color:var(--neon); text-transform:uppercase; margin-bottom:.4rem; opacity:.8; }
   .logo { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,4vw,3.2rem); line-height:.85; background:linear-gradient(135deg,var(--white) 30%,var(--neon) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
@@ -79,7 +79,7 @@
   .pill:hover { border-color:var(--neon); color:var(--neon); }
   .pill.active { background:var(--neon); border-color:var(--neon); color:var(--black); font-weight:700; box-shadow:0 0 12px rgba(0,245,196,.3); }
   .pill.pink:hover { border-color:var(--pink); color:var(--pink); }
-  .pill.pink.active { background:var(--pink); border-color:var(--pink); color:#fff; font-weight:700; box-shadow:0 0 12px rgba(255,45,120,.3); }
+  .pill.pink.active { background:var(--pink); border-color:var(--pink); color:#050507; font-weight:700; box-shadow:0 0 12px rgba(245,230,66,.3); }
   .controls-right { margin-left:auto; display:flex; align-items:center; gap:.75rem; }
   .count-badge { font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.1em; color:var(--muted); }
   .count-badge span { color:var(--neon); font-size:.8rem; }
@@ -104,9 +104,9 @@
   .dj-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem; position:relative; overflow:hidden; transition:transform .25s,border-color .25s,box-shadow .25s; animation:fadeUp .35s ease both; }
   .no-animate .dj-card, .no-animate .dj-list-row { animation:none !important; }
   .dj-card:hover { transform:translateY(-3px); border-color:var(--neon); box-shadow:0 8px 32px rgba(0,245,196,.07),0 0 0 1px rgba(0,245,196,.1); }
-  .dj-card.club:hover { border-color:var(--pink); box-shadow:0 8px 32px rgba(255,45,120,.07),0 0 0 1px rgba(255,45,120,.1); }
+  .dj-card.club:hover { border-color:var(--pink); box-shadow:0 8px 32px rgba(245,230,66,.07),0 0 0 1px rgba(245,230,66,.1); }
   .card-glow { position:absolute; top:0; right:0; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(0,245,196,.06) 0%,transparent 70%); pointer-events:none; }
-  .dj-card.club .card-glow { background:radial-gradient(circle,rgba(255,45,120,.07) 0%,transparent 70%); }
+  .dj-card.club .card-glow { background:radial-gradient(circle,rgba(245,230,66,.07) 0%,transparent 70%); }
   .card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; }
   .avatar { width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.3rem; flex-shrink:0; position:relative; overflow:hidden; }
   .avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; position:absolute; inset:0; z-index:1; }
@@ -116,7 +116,7 @@
   .dj-card.club .avatar::after { background:conic-gradient(var(--pink),transparent 60%,var(--pink)); }
   @keyframes spin { to{transform:rotate(360deg)} }
   .type-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; padding:.28rem .65rem; border-radius:100px; background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
-  .dj-card.club .type-badge { background:var(--pink-dim); color:var(--pink); border-color:rgba(255,45,120,.2); }
+  .dj-card.club .type-badge { background:var(--pink-dim); color:var(--pink); border-color:rgba(245,230,66,.2); }
   .dj-name { font-family:'Bebas Neue',sans-serif; font-size:1.55rem; letter-spacing:.04em; line-height:1; margin-bottom:.22rem; }
   .dj-real { font-size:.78rem; color:var(--muted); font-style:italic; margin-bottom:.18rem; }
   .dj-city { font-size:.76rem; color:var(--muted); margin-bottom:.8rem; }
@@ -265,7 +265,7 @@
   .admin-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem; transition:border-color .2s; }
   .ar-type { font-family:'Space Mono',monospace; font-size:.57rem; letter-spacing:.1em; text-transform:uppercase; padding:.22rem .6rem; border-radius:100px; flex-shrink:0; }
   .ar-type.mobile { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
-  .ar-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
+  .ar-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(245,230,66,.2); }
   .ar-name { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.04em; flex:1.2; }
   .ar-city { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); flex:1; letter-spacing:.04em; }
   .ar-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); flex:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -313,7 +313,7 @@
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
   .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
-  .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(255,45,120,.2); }
+  .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(245,230,66,.2); }
   .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
   @media(max-width:900px) {
     /* List view on mobile */
@@ -590,7 +590,7 @@ function djProfileURL(slug) {
   return isLocal ? 'dj-profile.html?dj='+slug : '/'+slug;
 }
 function initials(n){ return (n||'?').replace(/^DJ\s+/i,'').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'DJ'; }
-function avatarStyle(t){ return t==='club'?'background:linear-gradient(135deg,#1a0813,#2d0d2a);color:var(--pink);':'background:linear-gradient(135deg,#071a14,#0d2a1e);color:var(--neon);'; }
+function avatarStyle(t){ return t==='club'?'background:linear-gradient(135deg,#1a1a07,#2d2d0d);color:var(--pink);':'background:linear-gradient(135deg,#071a14,#0d2a1e);color:var(--neon);'; }
 function starsHTML(r){ let h='<div class="rating-stars">'; for(let i=1;i<=5;i++) h+=`<svg class="star${i>r?' empty':''}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`; return h+'</div>'; }
 function availHTML(a){ return a==='available'?'<span class="dot"></span> Available':a==='busy'?'<span class="dot busy"></span> Booked':'<span class="dot offline"></span> Offline'; }
 const IC={
