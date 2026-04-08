@@ -1116,7 +1116,7 @@ function drawPubCalMonth() {
 
   // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
-    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
+    html += `<div style="border-right:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);min-height:90px;background:rgba(255,255,255,.01);"></div>`;
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1494,7 +1494,7 @@ function drawOwnerCalMonth() {
   html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;width:100%;box-sizing:border-box;">`;
 
   for (let i = 0; i < firstDay; i++) {
-    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:72px;background:rgba(255,255,255,.01);"></div>`;
+    html += `<div style="border-right:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);min-height:72px;background:rgba(255,255,255,.01);"></div>`;
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1527,7 +1527,7 @@ function drawOwnerCalMonth() {
     const isEdited = !isBooked && !isUnavail && ownerBookingDays[key] && Object.keys(ownerBookingDays[key]).length > 0;
 
     const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
-    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:72px;padding:.5rem .4rem .4rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}text-align:left;vertical-align:top;">
+    html += `<div style="position:relative;border-right:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);${isLastRow?'border-bottom:none;':''}min-height:72px;padding:.5rem .4rem .4rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}text-align:left;vertical-align:top;">
       <div style="font-size:.95rem;font-weight:${isToday?'700':'400'};color:${numColor};line-height:1;">${d}</div>
       ${badge}
       ${!isPast?`
