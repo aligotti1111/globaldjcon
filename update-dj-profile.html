@@ -59,7 +59,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 .tab-save { margin-top:1.5rem; }
-.specialization-box { margin-top:.5rem; margin-left:1.5rem; padding:.8rem 1rem; padding-left:1.2rem; background:rgba(10,10,16,0.6); border-left:2px solid var(--neon); border-radius:4px; }
+.specialization-box { margin-top:.5rem; margin-left:1.5rem; padding:.8rem 1rem; padding-left:1.2rem; background:rgba(10,10,16,0.6); border-left:2px solid var(--border); border-radius:4px; }
 .specialization-title { font-size:.7rem; font-weight:600; margin-bottom:.6rem; color:var(--neon); text-transform:uppercase; letter-spacing:.08em; }
 .genre-title { font-size:.7rem; font-weight:600; margin-bottom:.6rem; color:#f5e642; text-transform:uppercase; letter-spacing:.08em; }
 .sub-options { margin-top:.5rem; padding-top:.5rem; padding-left:.6rem; border-top:1px solid rgba(30,30,48,0.5); }
@@ -457,7 +457,7 @@ input[type=number] { -moz-appearance:textfield; }
 
       <div class="form-group">
         <label>Country</label>
-        <select id="country-select" class="form-group" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;color:var(--white);font-size:.9rem;" onchange="document.getElementById('country').value=this.value">
+        <select id="country-select" class="form-group" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;color:var(--white);font-size:.9rem;" onchange="document.getElementById('country').value=this.value; updateZipPlaceholder(this.value);">
           <option value="" data-code="">Select country...</option>
           <option value="United States" data-code="us">United States</option>
           <option value="United Kingdom" data-code="gb">United Kingdom</option>
@@ -1192,6 +1192,34 @@ if (!currentUser) {
 
 // ── ZIP LOOKUP ───────────────────────────────────────────
 let zipTimeout = null;
+function updateZipPlaceholder(country) {
+  const map = {
+    'United States': 'e.g. 10001',
+    'United Kingdom': 'e.g. SW1A 1AA',
+    'Canada': 'e.g. M5V 3A8',
+    'Australia': 'e.g. 2000',
+    'Germany': 'e.g. 10115',
+    'France': 'e.g. 75001',
+    'Netherlands': 'e.g. 1011 AB',
+    'Spain': 'e.g. 28001',
+    'Italy': 'e.g. 00100',
+    'Brazil': 'e.g. 01310-100',
+    'Mexico': 'e.g. 06600',
+    'Japan': 'e.g. 100-0001',
+    'South Africa': 'e.g. 8001',
+    'New Zealand': 'e.g. 1010',
+    'Ireland': 'e.g. D01 F5P2',
+    'Sweden': 'e.g. 111 21',
+    'Norway': 'e.g. 0150',
+    'Denmark': 'e.g. 1050',
+    'Belgium': 'e.g. 1000',
+    'Switzerland': 'e.g. 8001',
+    'Portugal': 'e.g. 1100-001',
+  };
+  const input = document.getElementById('zip');
+  if (input) input.placeholder = map[country] || 'Zip / Postal Code';
+}
+
 function lookupZip(zip) {
   const resultEl = document.getElementById('zip-lookup-result');
   clearTimeout(zipTimeout);
@@ -1494,6 +1522,7 @@ clubGenres.forEach(cb => {
           break;
         }
       }
+      updateZipPlaceholder(data.country);
     }
     // Populate hidden city/state/country from DB, show as lookup result
     document.getElementById('city').value = data.city || '';
