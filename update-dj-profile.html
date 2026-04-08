@@ -834,7 +834,7 @@ input[type=number] { -moz-appearance:textfield; }
             <div style="padding:1.25rem;">
             <p style="font-size:.8rem;color:var(--neon);margin-bottom:1rem;text-align:center;">Set your rates based on your equipment selections above.</p>
 
-            <div style="margin-bottom:1.25rem;text-align:center;">
+            <div id="global-rate-type-wrap" style="margin-bottom:1.25rem;text-align:center;">
               <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;">Rate Type</label>
               <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.6rem;">
                 <button type="button" id="global-rate-type-flat" onclick="setGlobalRateType('flat')" style="padding:.6rem 2.5rem;border:none;border-right:1px solid var(--border);background:var(--neon-dim);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;">Flat Rate</button>
@@ -2116,6 +2116,8 @@ function toggleAllowOffers() {
     checkEquipment();
   }
   document.getElementById('global-base-rate-wrap').style.display = enabled ? 'block' : 'none';
+  const rateTypeWrap = document.getElementById('global-rate-type-wrap');
+  if (rateTypeWrap) rateTypeWrap.style.display = enabled ? 'none' : 'block';
 }
 
 function toggleDayOffers() {
