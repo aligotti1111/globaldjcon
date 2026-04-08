@@ -1880,6 +1880,8 @@ function renderCal() {
       const isBooked = dayData.booked;
       const isUnavail = dayData.unavailable;
 
+      const isEdited = !isBooked && !isUnavail && bookingDays[key] && Object.keys(bookingDays[key]).length > 0;
+
       const cell = document.createElement('div');
       cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${isBooked ? 'rgba(255,95,95,.4)' : isUnavail ? 'rgba(107,107,136,.4)' : 'rgba(0,245,196,.2)'};background:${isBooked ? 'rgba(255,95,95,.08)' : isUnavail ? 'rgba(107,107,136,.08)' : isPast ? 'rgba(255,255,255,.02)' : 'rgba(0,245,196,.04)'};min-height:38px;`;
 
@@ -1887,8 +1889,11 @@ function renderCal() {
         ${!isPast ? `
           ${!isBooked ? `<button type="button" onclick="quickMarkBooked('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
             style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
-          <button type="button" onclick="openDayEditor('${key}')" title="Edit day"
-            style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
+          <div style="position:absolute;top:1px;right:1px;display:flex;align-items:center;gap:2px;">
+            ${isEdited ? `<span style="font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);opacity:.8;">edited</span>` : ''}
+            <button type="button" onclick="openDayEditor('${key}')" title="Edit day"
+              style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
+          </div>
         ` : ''}`;
       grid.appendChild(cell);
     }
