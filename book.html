@@ -615,8 +615,14 @@ function updateRateDisplay() {
   }
 
   if (allowOffers) {
-    html += `<div style="margin-bottom:.75rem;font-size:.82rem;color:var(--muted);">This DJ accepts offers. Enter your offer below:</div>
-    <div class="form-row offer-row"><span>${sym}</span><input type="number" id="offer-amount" placeholder="Your offer" min="0" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;flex:1;outline:none;"></div>`;
+    const baseRate = isHourly ? hourlyRate : rate;
+    const baseRateStr = baseRate ? `${sym}${Number(baseRate).toLocaleString()} ${currency}${isHourly ? '/hr' : ''}` : null;
+    html += `<div style="margin-bottom:.75rem;">
+      ${baseRateStr ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem;">Base Rate</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--neon);margin-bottom:.75rem;">${baseRateStr}</div>` : ''}
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:.5rem;">This DJ accepts offers${baseRateStr ? ' — enter an amount at or above the base rate' : ''}:</div>
+    </div>
+    <div class="form-row offer-row"><span>${sym}</span><input type="number" id="offer-amount" placeholder="Your offer" min="${baseRate || 0}" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;flex:1;outline:none;"></div>`;
   }
 
   if (html) { area.innerHTML = html; section.style.display = 'block'; }
