@@ -1722,19 +1722,19 @@ function ownerOpenDayEditor(key) {
         <div style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.5;">Please update your equipment selection before updating rates.</div>
         <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem;">
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-full" style="margin-top:2px;accent-color:var(--neon);">
+            <input type="checkbox" id="eq-full" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-decks').checked=false;document.getElementById('eq-none').checked=false;}">
             <div>
               <div style="font-size:.88rem;color:var(--white);">I can provide Sound System &amp; Decks/Controller</div>
             </div>
           </label>
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-decks" style="margin-top:2px;accent-color:var(--neon);">
+            <input type="checkbox" id="eq-decks" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-none').checked=false;}">
             <div>
               <div style="font-size:.88rem;color:var(--white);">I can provide only Decks/Controller</div>
             </div>
           </label>
           <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;">
-            <input type="checkbox" id="eq-none" style="margin-top:2px;accent-color:var(--neon);">
+            <input type="checkbox" id="eq-none" style="margin-top:2px;accent-color:var(--neon);" onchange="if(this.checked){document.getElementById('eq-full').checked=false;document.getElementById('eq-decks').checked=false;}">
             <div>
               <div style="font-size:.88rem;color:var(--white);">I require all equipment provided by venue</div>
             </div>
