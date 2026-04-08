@@ -1238,7 +1238,7 @@ function lookupZip(zip) {
       const data = await res.json();
       if (data && data[0]) {
         const addr = data[0].address;
-        const city = addr.city || addr.town || addr.city_district || addr.municipality || addr.suburb || addr.village || addr.hamlet || '';
+        const city = addr.city_district || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null) || addr.town || addr.city || addr.municipality || addr.village || addr.hamlet || '';
         const state = addr.state || '';
         const country = countryName || addr.country || '';
         document.getElementById('city').value = city;
