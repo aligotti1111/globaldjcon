@@ -1734,7 +1734,6 @@ function checkShowBookingTab() {
   document.getElementById('tab-btn-booking').style.display = isClub ? '' : 'none';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
   updateRateFields(null);
-  setTimeout(toggleAllowOffers, 50);
 }
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
 
