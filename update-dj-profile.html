@@ -2347,6 +2347,15 @@ function setDayRateType(type) {
   document.getElementById('day-offers-fields').style.display  = type === 'offers' ? 'block' : 'none';
   const ol = document.getElementById('day-offers-label');
   if (ol) { ol.style.display = type === 'offers' ? 'block' : 'none'; ol.style.color = 'var(--white)'; }
+  if (type !== 'flat') {
+    ['day-flat-rate','day-rate-system','day-rate-decks'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+  if (type !== 'hourly') {
+    ['day-hourly-rate','day-hourly-system','day-hourly-decks'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+  if (type !== 'offers') {
+    const br = document.getElementById('day-base-rate'); if (br) br.value = '';
+  }
 }
 
 function saveDayEditor(key) {
