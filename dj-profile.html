@@ -1395,12 +1395,12 @@ function drawRolling12Months() {
   }
 
   html += `</div>
-  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+  ${(()=>{ const m=pubCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="text-align:center;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.04em;color:#ffb347;margin-bottom:.65rem;">📅 This DJ is accepting bookings up to <strong>${label}</strong> in advance. Message them for dates beyond this.</div>`; })()}
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-  </div>
-  ${(()=>{ const m=pubCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="margin-top:.85rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:.75rem 1rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;color:#ffb347;line-height:1.6;">📅 This DJ is currently accepting bookings up to <strong>${label}</strong> in advance. For dates beyond this window, message the DJ directly.</div>`; })()}`;
+  </div>`;
 
   rolling.innerHTML = html;
 }
@@ -1676,12 +1676,12 @@ function drawOwnerRolling12Months() {
   }
 
   html += `</div>
-  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+  ${(()=>{ const m=ownerCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="text-align:center;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.04em;color:#ffb347;margin-bottom:.65rem;">📅 Booking window: <strong>${label}</strong> in advance — visitors are directed to message you for dates beyond this.</div>`; })()}
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-  </div>
-  ${(()=>{ const m=ownerCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="margin-top:.85rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:.75rem 1rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;color:#ffb347;line-height:1.6;">📅 Your booking window is set to <strong>${label}</strong> in advance. Visitors will see this range and be directed to message you for dates beyond it.</div>`; })()}`;
+  </div>`;
 
   rolling.innerHTML = html;
 }
