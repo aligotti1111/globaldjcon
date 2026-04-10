@@ -1862,9 +1862,9 @@ function ownerOpenDayEditor(key) {
           <div style="text-align:center;margin-bottom:.75rem;">
             <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);font-weight:700;display:block;margin-bottom:.5rem;">Rate Type</label>
             <div style="display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:.5rem;">
-              <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Flat Rate</button>
-              <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
-              <button type="button" id="rate-type-offers" onclick="ownerSetRateType('offers')" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
+              <button type="button" id="rate-type-flat" onclick="ownerSetRateType('flat')" data-active="${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'true':'false'}" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType!=='hourly'&&defaultRateType!=='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Flat Rate</button>
+              <button type="button" id="rate-type-hourly" onclick="ownerSetRateType('hourly')" data-active="${defaultRateType==='hourly'?'true':'false'}" style="padding:.55rem 1.5rem;border:none;border-right:1px solid var(--border);background:${defaultRateType==='hourly'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='hourly'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Hourly</button>
+              <button type="button" id="rate-type-offers" onclick="ownerSetRateType('offers')" data-active="${defaultRateType==='offers'?'true':'false'}" style="padding:.55rem 1.5rem;border:none;background:${defaultRateType==='offers'?'var(--neon-dim)':'transparent'};color:${defaultRateType==='offers'?'var(--neon)':'var(--white)'};font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">Offers</button>
             </div>
             <div id="day-offers-label" style="display:${defaultRateType==='offers'?'block':'none'};font-size:.72rem;color:var(--white);line-height:1.5;">Offers can be countered and negotiated through the platform.</div>
           </div>
@@ -1952,12 +1952,22 @@ function ownerSetRateType(type) {
     if (!btn) return;
     btn.style.background = type === t ? 'var(--neon-dim)' : 'transparent';
     btn.style.color = type === t ? 'var(--neon)' : 'var(--white)';
+    btn.dataset.active = type === t ? 'true' : 'false';
   });
   document.getElementById('day-flat-fields').style.display   = type === 'flat'   ? 'block' : 'none';
   document.getElementById('day-hourly-fields').style.display = type === 'hourly' ? 'block' : 'none';
   document.getElementById('day-offers-fields').style.display = type === 'offers' ? 'block' : 'none';
   const ol = document.getElementById('day-offers-label');
   if (ol) { ol.style.display = type === 'offers' ? 'block' : 'none'; ol.style.color = 'var(--white)'; }
+  if (type !== 'flat') {
+    ['day-flat-rate','day-rate-system','day-rate-decks'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+  if (type !== 'hourly') {
+    ['day-hourly-rate','day-hourly-system','day-hourly-decks'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+  if (type !== 'offers') {
+    const br = document.getElementById('day-base-rate'); if (br) br.value = '';
+  }
 }
 
 function ownerSaveDayEditor(key) {
@@ -1975,7 +1985,7 @@ function ownerSaveDayEditor(key) {
       ticketUrl: document.getElementById('day-ticket-url').value.trim() || null,
     };
   } else {
-    const offersActive = document.getElementById('rate-type-offers')?.style.background.includes('neon');
+    const offersActive = document.getElementById('rate-type-offers')?.dataset.active === 'true';
     const rateType = offersActive ? 'offers' : (document.getElementById('day-hourly-fields').style.display === 'block' ? 'hourly' : 'flat');
 
     // Validate: visible rate fields must have a value
@@ -2012,7 +2022,7 @@ function ownerSaveDayEditor(key) {
     const dayBaseRate = document.getElementById('day-base-rate')?.value || null;
     const hasCustom = flatRate || rateSystem || rateDecks || hourlyRate || hourlyRateSystem || hourlyRateDecks;
     if (hasCustom || dayBaseRate || offersActive) {
-      ownerBookingDays[key] = { booked: false, rateType, rate: flatRate, rateSystem, rateDecks, flatHours, hourlyRate, hourlyRateSystem, hourlyRateDecks, base_rate: dayBaseRate };
+      ownerBookingDays[key] = { booked: false, rateType, rate: offersActive ? null : flatRate, rateSystem: offersActive ? null : rateSystem, rateDecks: offersActive ? null : rateDecks, flatHours: offersActive ? null : flatHours, hourlyRate: offersActive ? null : hourlyRate, hourlyRateSystem: offersActive ? null : hourlyRateSystem, hourlyRateDecks: offersActive ? null : hourlyRateDecks, base_rate: dayBaseRate };
     } else {
       delete ownerBookingDays[key];
     }
