@@ -555,11 +555,10 @@ if (currentUser) {
       if (brBtn) brBtn.style.display = 'inline-flex';
       if (currentUser.role === 'dj') {
         const { data } = await db.from('bookings').select('id').eq('dj_id', currentUser.id).eq('status', 'pending');
-        count = (data||[]).length;
-      } else {
-        const { data } = await db.from('bookings').select('id').eq('requester_id', currentUser.id).eq('status', 'counter');
-        count = (data||[]).length;
+        count += (data||[]).length;
       }
+      const { data: countered } = await db.from('bookings').select('id').eq('requester_id', currentUser.id).eq('status', 'counter');
+      count += (countered||[]).length;
       const badge = document.getElementById('nav-booking-count');
       if (badge && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
     } catch(e) {}

@@ -284,8 +284,8 @@ const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',
   if (!currentUser) { window.location.href = '/login.html'; return; }
   document.getElementById('nav-logout').style.display = 'inline-flex';
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
+  document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
   if (currentUser.role === 'dj') {
-    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
     document.getElementById('nav-edit-profile').style.display = 'inline-flex';
     if (currentUser.slug) {
       const vp = document.getElementById('nav-view-profile');
@@ -300,7 +300,24 @@ const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',
   }
 
   loadInboxBadge();
+  loadBookingBadge();
 })();
+
+async function loadBookingBadge() {
+  try {
+    // Incoming pending (DJ receiving requests)
+    let incoming = 0;
+    if (currentUser.role === 'dj') {
+      const { data } = await db.from('bookings').select('id').eq('dj_id', currentUser.id).eq('status', 'pending');
+      incoming = (data||[]).length;
+    }
+    // Outgoing countered (anyone who made a booking and got a counter back)
+    const { data: countered } = await db.from('bookings').select('id').eq('requester_id', currentUser.id).eq('status', 'counter');
+    const count = incoming + (countered||[]).length;
+    const badge = document.getElementById('nav-booking-count');
+    if (badge && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+  } catch(e) {}
+}
 
 function navLogout(){ sessionStorage.removeItem('currentUser'); localStorage.removeItem('currentUser'); window.location.href = '/login.html'; }
 
