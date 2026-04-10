@@ -318,6 +318,10 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .avatar-edit-overlay svg { color:#fff; }
 @media (max-width: 600px) { .cal-badge-text { display: none !important; } }
 
+/* Calendar 12-month grid */
+.cal-months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1rem; }
+@media(max-width:900px) { .cal-months-grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } }
+
 .hamburger-btn{display:none;position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--border,#1e1e30);border-radius:6px;color:var(--white,#f0f0f8);cursor:pointer;padding:.4rem .5rem;z-index:20;line-height:1;}
 .mobile-menu{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);}
 .mobile-menu.open{display:flex;flex-direction:column;}
@@ -1339,7 +1343,7 @@ function drawRolling12Months() {
   const monthNames = PUB_CAL_MONTHS;
   const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;">`;
+  let html = `<div class="cal-months-grid">`;
 
   for (let i = 0; i < 12; i++) {
     let mo = today.getMonth() + i;
@@ -1612,7 +1616,7 @@ function drawOwnerRolling12Months() {
   const monthNames = OWNER_CAL_MONTHS;
   const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1rem;">`;
+  let html = `<div class="cal-months-grid">`;
 
   for (let i = 0; i < 12; i++) {
     let mo = today.getMonth() + i;
