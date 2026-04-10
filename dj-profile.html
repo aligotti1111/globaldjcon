@@ -1376,14 +1376,15 @@ function drawRolling12Months() {
       const isUnavail = dayData.unavailable;
       const isToday = key === todayKey;
 
-      let bg = isPast ? 'transparent' : 'rgba(0,245,196,.05)';
-      let color = isPast ? 'rgba(255,255,255,.2)' : 'var(--white)';
+      let bg = isPast ? 'transparent' : 'rgba(0,245,196,.1)';
+      let color = isPast ? 'var(--muted)' : 'var(--white)';
       let border = isToday ? '1px solid var(--neon)' : '1px solid transparent';
       let cursor = 'default';
       let click = '';
 
-      if (isBooked) { bg = 'rgba(255,95,95,.1)'; color = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
-      else if (isUnavail) { bg = 'rgba(107,107,136,.1)'; color = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      if (isBooked) { bg = 'rgba(255,60,60,.28)'; color = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
+      else if (isUnavail) { bg = 'rgba(90,90,120,.22)'; color = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      else if (isToday) { bg = 'rgba(0,245,196,.18)'; color = 'var(--neon)'; }
       else if (!isPast) { cursor = 'pointer'; click = `onclick="window.location.href='/book.html?dj=${pubCalDjSlug}&date=${key}'"` }
 
       html += `<div style="background:${bg};border:${border};border-radius:3px;padding:.25rem .1rem;text-align:center;cursor:${cursor};aspect-ratio:1;" ${click}>
@@ -1658,13 +1659,14 @@ function drawOwnerRolling12Months() {
       const isUnavail = dayData.unavailable;
       const isToday = key === todayKey;
 
-      let bg = isPast ? 'transparent' : 'rgba(0,245,196,.05)';
-      let color = isPast ? 'rgba(255,255,255,.2)' : 'var(--white)';
+      let bg = isPast ? 'transparent' : 'rgba(0,245,196,.1)';
+      let color = isPast ? 'var(--muted)' : 'var(--white)';
       let border = isToday ? '1px solid var(--neon)' : '1px solid transparent';
       let click = '';
 
-      if (isBooked) { bg = 'rgba(255,95,95,.1)'; color = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
-      else if (isUnavail) { bg = 'rgba(107,107,136,.1)'; color = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      if (isBooked) { bg = 'rgba(255,60,60,.28)'; color = '#ff5f5f'; border = '1px solid rgba(255,95,95,.2)'; }
+      else if (isUnavail) { bg = 'rgba(90,90,120,.22)'; color = 'var(--muted)'; border = '1px solid rgba(107,107,136,.2)'; }
+      else if (isToday) { bg = 'rgba(0,245,196,.18)'; color = 'var(--neon)'; }
       else if (!isPast) { click = `onclick="ownerCalToggleView();ownerCalMonth=${mo};ownerCalYear=${yr};drawOwnerCalMonth();document.querySelectorAll('#owner-cal-month-select').forEach(s=>s.value=${mo});document.querySelectorAll('#owner-cal-year-select').forEach(s=>s.value=${yr});"` }
 
       html += `<div style="background:${bg};border:${border};border-radius:3px;padding:.25rem .1rem;text-align:center;cursor:${isPast||isBooked||isUnavail?'default':'pointer'};aspect-ratio:1;" ${click}>
@@ -1676,7 +1678,6 @@ function drawOwnerRolling12Months() {
   }
 
   html += `</div>
-  ${(()=>{ const m=ownerCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="text-align:center;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.04em;color:#ffb347;margin-bottom:.65rem;">📅 Booking window: <strong>${label}</strong> in advance — visitors are directed to message you for dates beyond this.</div>`; })()}
   <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
