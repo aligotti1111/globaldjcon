@@ -598,8 +598,8 @@ function updateRateDisplay() {
   }
 
   let html = '';
-  if (!equip) {
-    // Nothing selected yet — hide the section entirely
+  if (!equip && !allowOffers) {
+    // Nothing selected yet and no offers — hide the section entirely
     area.innerHTML = '';
     section.style.display = 'none';
     return;
@@ -743,6 +743,9 @@ async function submitBooking() {
     }
   }
   if (!d.equipment) { alertEl.innerHTML = '<div class="alert alert-error">Please select equipment requirements.</div>'; return; }
+
+  const isOffersBooking = dayData2.rateType === 'offers' || bookingSettings.allow_offers;
+  if (isOffersBooking && !d.offer_amount) { alertEl.innerHTML = '<div class="alert alert-error">Please enter your offer amount.</div>'; return; }
 
   btn.disabled = true; btn.textContent = 'Submitting...';
 
