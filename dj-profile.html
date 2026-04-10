@@ -816,7 +816,7 @@ const GENRE_LABELS = {
         document.getElementById('tab-about').classList.remove('active');
         bookingTabBtn.classList.add('active');
         document.getElementById('tab-booking').classList.add('active');
-        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none, bs.global_rate_type, bs.rate_with_system, bs.rate_with_decks, bs.rate_no_equip, bs.base_rate);
+        renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none, bs.global_rate_type, bs.rate_with_system, bs.rate_with_decks, bs.rate_no_equip, bs.base_rate, bs.booking_window_months || 12);
       }
     } catch(e) { console.error('Booking settings error:', e); }
   }
@@ -1016,13 +1016,14 @@ async function uploadInlineAvatar(input) {
 // ── PUBLIC BOOKING CALENDAR ───────────────────────────────
 const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
-let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '';
+let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '', pubCalWindowMonths = 12;
 
-function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate, bookingWindowMonths) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
+  pubCalWindowMonths = bookingWindowMonths || 12;
   if (isOwner) {
-    renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip);
+    renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, bookingWindowMonths || 12);
     return;
   }
   const today = new Date();
@@ -1345,7 +1346,7 @@ function drawRolling12Months() {
 
   let html = `<div class="cal-months-grid">`;
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < pubCalWindowMonths; i++) {
     let mo = today.getMonth() + i;
     let yr = today.getFullYear() + Math.floor(mo / 12);
     mo = mo % 12;
@@ -1397,6 +1398,7 @@ function drawRolling12Months() {
   rolling.innerHTML = html;
 }
 let ownerBookingDays = {};
+let ownerCalWindowMonths = 12;
 let ownerGlobalAllowOffers = false;
 let ownerEquipFull = false;
 let ownerEquipDecks = false;
@@ -1409,8 +1411,9 @@ let ownerCalYear = new Date().getFullYear();
 let ownerCalMonth = new Date().getMonth();
 const OWNER_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip) {
+function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, bookingWindowMonths) {
   ownerBookingDays = bookingDays || {};
+  ownerCalWindowMonths = bookingWindowMonths || 12;
   ownerGlobalAllowOffers = !!globalAllowOffers;
   ownerEquipFull = !!equipFull;
   ownerEquipDecks = !!equipDecks;
@@ -1618,7 +1621,7 @@ function drawOwnerRolling12Months() {
 
   let html = `<div class="cal-months-grid">`;
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < ownerCalWindowMonths; i++) {
     let mo = today.getMonth() + i;
     let yr = today.getFullYear() + Math.floor(mo / 12);
     mo = mo % 12;
