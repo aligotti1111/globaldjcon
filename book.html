@@ -547,17 +547,12 @@ function updateRateDisplay() {
   if (!bookingSettings) return;
 
   const equip = getRadioValue('equipment');
-  const allowOffers = bookingSettings.allow_offers;
+  const dayData = (() => { const params = new URLSearchParams(window.location.search); const dateParam = params.get('date'); const days = bookingSettings.booking_days || {}; return dateParam ? (days[dateParam] || {}) : {}; })();
+  const allowOffers = bookingSettings.allow_offers || dayData.rateType === 'offers';
 
   const currency = bookingSettings.currency || 'USD';
   const currencySymbols = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$',JPY:'¥',MXN:'MX$',BRL:'R$',CHF:'Fr',SEK:'kr',NOK:'kr',DKK:'kr',NZD:'NZ$',SGD:'S$',ZAR:'R',AED:'د.إ',INR:'₹'};
   const sym = currencySymbols[currency] || '$';
-
-  // Check for day-specific rate first
-  const params = new URLSearchParams(window.location.search);
-  const dateParam = params.get('date');
-  const days = bookingSettings.booking_days || {};
-  const dayData = dateParam ? (days[dateParam] || {}) : {};
 
   let rate = null;
   let rateLabel = '';
@@ -589,7 +584,7 @@ function updateRateDisplay() {
       rate = dayData.rate;
       rateLabel = 'Rate (Venue Provides Equipment)';
     }
-  } else {
+  } else if (dayData.rateType !== 'offers') {
     if (equip === 'sound_system' && bookingSettings.rate_with_system) {
       rate = bookingSettings.rate_with_system;
       rateLabel = 'Rate (Sound System & Decks Provided)';
@@ -764,13 +759,15 @@ async function submitBooking() {
       if (d.equipment === 'sound_system' && dayData2.hourlyRateSystem) applicableRate = dayData2.hourlyRateSystem;
       else if (d.equipment === 'decks_only' && dayData2.hourlyRateDecks) applicableRate = dayData2.hourlyRateDecks;
       displayRate = (hrs * Number(applicableRate)).toFixed(2);
-    } else if (dayData2.rate || dayData2.rateSystem || dayData2.rateDecks) {
+    } else if ((dayData2.rate || dayData2.rateSystem || dayData2.rateDecks) && dayData2.rateType !== 'offers') {
       if (d.equipment === 'sound_system' && dayData2.rateSystem) displayRate = dayData2.rateSystem;
       else if (d.equipment === 'decks_only' && dayData2.rateDecks) displayRate = dayData2.rateDecks;
       else displayRate = dayData2.rate;
-    } else if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
-    else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
-    else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
+    } else if (dayData2.rateType !== 'offers') {
+      if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
+      else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
+      else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
+    }
 
     const { error } = await db.from('bookings').insert({
       dj_id: djData.id,
