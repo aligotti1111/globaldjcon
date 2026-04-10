@@ -578,9 +578,17 @@ function updateRateDisplay() {
       rateLabel = 'Hourly Rate (Venue Provides Equipment)';
     }
     minHours = dayData.minHours;
-  } else if (dayData.rate) {
-    rate = dayData.rate;
-    rateLabel = 'Rate for This Date';
+  } else if (dayData.rate || dayData.rateSystem || dayData.rateDecks) {
+    if (equip === 'sound_system' && dayData.rateSystem) {
+      rate = dayData.rateSystem;
+      rateLabel = 'Rate (Sound System & Decks Provided)';
+    } else if (equip === 'decks_only' && dayData.rateDecks) {
+      rate = dayData.rateDecks;
+      rateLabel = 'Rate (Decks/Controller Provided)';
+    } else if (dayData.rate) {
+      rate = dayData.rate;
+      rateLabel = 'Rate (Venue Provides Equipment)';
+    }
   } else {
     if (equip === 'sound_system' && bookingSettings.rate_with_system) {
       rate = bookingSettings.rate_with_system;
@@ -618,7 +626,7 @@ function updateRateDisplay() {
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}${totalHtml}</div>`;
   } else if (rate) {
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(rate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}</span></div></div>`;
-  } else if (bookingSettings.rate_with_system || bookingSettings.rate_with_decks || bookingSettings.rate_no_equip) {
+  } else if (bookingSettings.rate_with_system || bookingSettings.rate_with_decks || bookingSettings.rate_no_equip || dayData.rateSystem || dayData.rateDecks || dayData.rate) {
     html += `<div class="rate-display"><div class="rate-label">Rate</div><div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;margin-top:.35rem;">Rate will show once equipment selection is made</div></div>`;
   }
 
@@ -751,8 +759,10 @@ async function submitBooking() {
       if (d.equipment === 'sound_system' && dayData2.hourlyRateSystem) applicableRate = dayData2.hourlyRateSystem;
       else if (d.equipment === 'decks_only' && dayData2.hourlyRateDecks) applicableRate = dayData2.hourlyRateDecks;
       displayRate = (hrs * Number(applicableRate)).toFixed(2);
-    } else if (dayData2.rate) {
-      displayRate = dayData2.rate;
+    } else if (dayData2.rate || dayData2.rateSystem || dayData2.rateDecks) {
+      if (d.equipment === 'sound_system' && dayData2.rateSystem) displayRate = dayData2.rateSystem;
+      else if (d.equipment === 'decks_only' && dayData2.rateDecks) displayRate = dayData2.rateDecks;
+      else displayRate = dayData2.rate;
     } else if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
     else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
     else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
