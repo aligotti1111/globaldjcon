@@ -2404,13 +2404,13 @@ function saveDayEditor(key) {
       bookingDays[key] = {
         booked: false,
         rateType,
-        rate: flatRate,
-        rateSystem,
-        rateDecks,
-        flatHours,
-        hourlyRate,
-        hourlyRateSystem,
-        hourlyRateDecks,
+        rate: offersActive ? null : flatRate,
+        rateSystem: offersActive ? null : rateSystem,
+        rateDecks: offersActive ? null : rateDecks,
+        flatHours: offersActive ? null : flatHours,
+        hourlyRate: offersActive ? null : hourlyRate,
+        hourlyRateSystem: offersActive ? null : hourlyRateSystem,
+        hourlyRateDecks: offersActive ? null : hourlyRateDecks,
         base_rate: dayBaseRate,
       };
     } else {

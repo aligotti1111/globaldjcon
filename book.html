@@ -578,7 +578,7 @@ function updateRateDisplay() {
       rateLabel = 'Hourly Rate (Venue Provides Equipment)';
     }
     minHours = dayData.minHours;
-  } else if (dayData.rate || dayData.rateSystem || dayData.rateDecks) {
+  } else if ((dayData.rate || dayData.rateSystem || dayData.rateDecks) && dayData.rateType !== 'offers') {
     if (equip === 'sound_system' && dayData.rateSystem) {
       rate = dayData.rateSystem;
       rateLabel = 'Rate (Sound System & Decks Provided)';
@@ -603,31 +603,36 @@ function updateRateDisplay() {
   }
 
   let html = '';
+  if (!equip) {
+    // Nothing selected yet — hide the section entirely
+    area.innerHTML = '';
+    section.style.display = 'none';
+    return;
+  }
+
   if (isHourly) {
     const startVal = document.getElementById('start-time')?.value;
     const endVal = document.getElementById('end-time')?.value;
-    let totalHtml = '';
-    if (startVal && endVal) {
+    if (!hourlyRate) {
+      // Equipment selected but no rate configured for that option
+    } else if (!startVal || !endVal) {
+      html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;">Total will show once start &amp; end times are entered</div></div>`;
+    } else {
       const [sh, sm] = startVal.split(':').map(Number);
       let [eh, em] = endVal.split(':').map(Number);
-      // handle overnight
       let totalMins = (eh * 60 + em) - (sh * 60 + sm);
       if (totalMins <= 0) totalMins += 24 * 60;
       const totalHrs = totalMins / 60;
       const total = totalHrs * Number(hourlyRate);
       const hrsLabel = totalHrs % 1 === 0 ? totalHrs : totalHrs.toFixed(1);
-      totalHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;">
+      const totalHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;">${hrsLabel} hr${totalHrs !== 1 ? 's' : ''} × ${sym}${Number(hourlyRate).toLocaleString()}/${currency}</span>
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--neon);">${sym}${total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})} <span style="font-size:.85rem;color:var(--muted);">${currency}</span></span>
       </div>`;
-    } else {
-      totalHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08);font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;">Rate will show once start &amp; end times are entered</div>`;
+      html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}${totalHtml}</div>`;
     }
-    html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(hourlyRate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}/hr</span></div>${minHours ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;">Minimum ${minHours} hour${minHours>1?'s':''}</div>` : ''}${totalHtml}</div>`;
   } else if (rate) {
     html += `<div class="rate-display"><div class="rate-label">${rateLabel}</div><div class="rate-value">${sym}${Number(rate).toLocaleString()} <span style="font-size:1rem;color:var(--muted);">${currency}</span></div></div>`;
-  } else if (bookingSettings.rate_with_system || bookingSettings.rate_with_decks || bookingSettings.rate_no_equip || dayData.rateSystem || dayData.rateDecks || dayData.rate) {
-    html += `<div class="rate-display"><div class="rate-label">Rate</div><div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.04em;margin-top:.35rem;">Rate will show once equipment selection is made</div></div>`;
   }
 
   if (allowOffers) {
