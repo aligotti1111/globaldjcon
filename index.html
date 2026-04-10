@@ -1071,13 +1071,20 @@ window.addEventListener('openAdmin', () => {
     setInterval(refreshInboxBadge, 30000);
 
     async function refreshBookingBadge() {
-      if (currentUser.role !== 'dj') return;
       try {
-        const { data } = await db.from('bookings').select('id').eq('dj_id', currentUser.id).eq('status', 'pending');
-        const count = (data||[]).length;
+        let count = 0;
+        if (currentUser.role === 'dj') {
+          const { data } = await db.from('bookings').select('id').eq('dj_id', currentUser.id).eq('status', 'pending');
+          count = (data||[]).length;
+        } else {
+          const { data } = await db.from('bookings').select('id').eq('requester_id', currentUser.id).eq('status', 'counter');
+          count = (data||[]).length;
+        }
         const badge = document.getElementById('booking-requests-badge');
         if (badge && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
         else if (badge) badge.style.display = 'none';
+        const btn = document.getElementById('booking-requests-btn');
+        if (btn && count > 0) btn.style.display = 'inline-flex';
       } catch(e) {}
     }
     refreshBookingBadge();

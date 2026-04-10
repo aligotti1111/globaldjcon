@@ -434,7 +434,10 @@ function updateTabCounts() {
 
   const outCounts = { pending: 0, counter: 0, approved: 0, denied: 0, cancelled: 0 };
   outgoingBookings.forEach(b => { if (outCounts[b.status] !== undefined) outCounts[b.status]++; });
-  outCounts.all = outCounts.pending + outCounts.counter + outCounts.approved + outCounts.denied;
+  // Show counter bookings under pending for the requester (awaiting their response)
+  outCounts.pending += outCounts.counter;
+  outCounts.counter = 0;
+  outCounts.all = outCounts.pending + outCounts.approved + outCounts.denied;
   ['pending','counter','approved','denied','all'].forEach(f => {
     const btn = document.getElementById(`out-tab-${f}`);
     if (btn) btn.textContent = f.charAt(0).toUpperCase() + f.slice(1) + ` (${outCounts[f]})`;
@@ -445,10 +448,10 @@ function renderList(group, filter) {
   const bookings = group === 'in' ? incomingBookings : outgoingBookings;
   const list = document.getElementById(`${group}-list-${filter}`);
   if (!list) return;
-  const items = filter === 'all' ? bookings.filter(b => b.status !== 'cancelled') : bookings.filter(b => b.status === filter);
-  if (!items.length) { list.innerHTML = `<div class="empty-state">No ${filter} requests</div>`; return; }
-
   const isIncoming = group === 'in';
+  const items = filter === 'all' ? bookings.filter(b => b.status !== 'cancelled') :
+    (!isIncoming && filter === 'pending') ? bookings.filter(b => b.status === 'pending' || b.status === 'counter') :
+    bookings.filter(b => b.status === filter);
 
   // Same-day grouping for incoming pending only
   if (isIncoming && filter === 'pending') {
@@ -518,8 +521,10 @@ function renderList(group, filter) {
 
 function renderCard(b, isIncoming, orderNum) {
     const sym = currencySymbols[b.currency || 'USD'] || '$';
-    const statusClass = 'status-' + (b.status || 'pending');
-    const cardClass = 'request-card ' + (b.status || 'pending');
+    const isCounterOutgoing = !isIncoming && b.status === 'counter';
+    const statusClass = isCounterOutgoing ? 'status-pending' : 'status-' + (b.status || 'pending');
+    const cardClass = 'request-card ' + (isCounterOutgoing ? 'pending' : (b.status || 'pending'));
+    const statusLabel = isCounterOutgoing ? 'Awaiting Response' : (b.status || 'pending');
     const agreedRate = b.counter_rate || b.quoted_rate || b.offer_amount;
     const isApproved = b.status === 'approved';
     const orderBadge = orderNum ? `<span style="font-family:'Space Mono',monospace;font-size:.48rem;background:rgba(255,179,71,.15);color:var(--amber);border:1px solid rgba(255,179,71,.3);border-radius:3px;padding:1px 5px;margin-right:.4rem;">#${orderNum}</span>` : '';
@@ -527,6 +532,9 @@ function renderCard(b, isIncoming, orderNum) {
     // Negotiation log entries — use negotiation_log array if available, fall back to legacy fields
     const logEntries = [];
     if (b.negotiation_log && b.negotiation_log.length > 0) {
+      // Always show the initial offer/quoted rate first
+      if (b.offer_amount) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Initial Offer <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.offer_amount).toLocaleString()} ${b.currency||'USD'}</span></div>`);
+      else if (b.quoted_rate) logEntries.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.75rem;"><span style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;">Quoted Rate <span style="color:var(--white);">(${isIncoming ? 'Booker' : 'You'})</span></span><span style="color:var(--white);font-weight:600;">${sym}${Number(b.quoted_rate).toLocaleString()} ${b.currency||'USD'}</span></div>`);
       b.negotiation_log.forEach((entry, i) => {
         const isLast = i === b.negotiation_log.length - 1;
         const fromLabel = entry.from === 'dj' ? 'DJ' : 'Booker';
@@ -582,7 +590,7 @@ function renderCard(b, isIncoming, orderNum) {
           ${b.set_type ? `<div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-top:6px;">Set: ${setTypeLabels[b.set_type] || b.set_type}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
-          <span class="${statusClass} status-badge">${b.status || 'pending'}</span>
+          <span class="${statusClass} status-badge">${statusLabel}</span>
           <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name && b.requester_name !== 'none' ? b.requester_name : 'Unknown') : (b.dj_name && b.dj_name !== 'none' ? b.dj_name : 'DJ')}</span></span>
           ${(() => {
             const targetId = isIncoming ? b.requester_id : b.dj_id;
