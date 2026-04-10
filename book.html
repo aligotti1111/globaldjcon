@@ -245,7 +245,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
         <div style="display:flex;gap:.6rem;justify-content:center;">
           <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;text-align:center;">Date</div>
-            <input type="date" id="event-date" style="width:100%;height:38px;line-height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:0 .5rem;color:var(--white);font-size:.7rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;appearance:none;-webkit-appearance:none;text-align:center;">
+            <input type="date" id="event-date" onchange="checkBookingWindow()" style="width:100%;height:38px;line-height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:0 .5rem;color:var(--white);font-size:.7rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;appearance:none;-webkit-appearance:none;text-align:center;">
           </div>
           <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;text-align:center;">Set Start Time</div>
@@ -257,6 +257,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
           </div>
         </div>
         <div id="set-duration" style="display:none;margin-top:.6rem;text-align:center;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;color:var(--neon);"></div>
+        <div id="booking-window-notice" style="display:none;margin-top:.75rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.3);border-radius:8px;padding:.85rem 1rem;font-size:.82rem;color:#ffb347;line-height:1.6;"></div>
       </div>
 
       <!-- Equipment -->
@@ -438,6 +439,7 @@ async function init() {
   if (dateParam) {
     document.getElementById('event-date').value = dateParam;
     document.getElementById('booking-date-sub').textContent = 'Booking for ' + new Date(dateParam + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    checkBookingWindow();
   }
 
   // Set host country from currentUser
@@ -541,6 +543,33 @@ function addressAutocomplete(input) {
 document.addEventListener('click', e => {
   if (!e.target.closest('#venue-address')) document.getElementById('address-suggestions').style.display = 'none';
 });
+
+// Booking window check
+function checkBookingWindow() {
+  const notice = document.getElementById('booking-window-notice');
+  if (!notice) return;
+  const dateVal = document.getElementById('event-date').value;
+  if (!dateVal || !bookingSettings) { notice.style.display = 'none'; return; }
+
+  const windowMonths = parseInt(bookingSettings.booking_window_months) || 12;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const cutoff = new Date(today);
+  cutoff.setMonth(cutoff.getMonth() + windowMonths);
+
+  const selected = new Date(dateVal + 'T00:00:00');
+  if (selected > cutoff) {
+    const djName = djData ? (djData.name || 'This DJ') : 'This DJ';
+    const label = windowMonths < 12
+      ? windowMonths + ' month' + (windowMonths > 1 ? 's' : '')
+      : (windowMonths / 12) + ' year' + (windowMonths / 12 > 1 ? 's' : '');
+    const djSlug = new URLSearchParams(window.location.search).get('dj') || '';
+    notice.innerHTML = `⚠️ <strong>${djName}</strong> is currently only accepting bookings within <strong>${label}</strong> in advance. Message the DJ directly to discuss availability for this date. <a href="/inbox.html?compose=${djSlug}" style="color:#ffb347;text-decoration:underline;font-weight:600;">Message ${djName} →</a>`;
+    notice.style.display = 'block';
+  } else {
+    notice.style.display = 'none';
+  }
+}
 
 // Equipment check
 function checkEquipment() {
@@ -744,6 +773,19 @@ async function submitBooking() {
   if (!d.venue_type) { alertEl.innerHTML = '<div class="alert alert-error">Please select Bar or Club.</div>'; return; }
   if (!d.venue_name) { alertEl.innerHTML = '<div class="alert alert-error">Please enter a venue name.</div>'; return; }
   if (!d.event_date) { alertEl.innerHTML = '<div class="alert alert-error">Please select a date.</div>'; return; }
+
+  // Block submission if date is outside booking window
+  if (bookingSettings && d.event_date) {
+    const windowMonths = parseInt(bookingSettings.booking_window_months) || 12;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const cutoff = new Date(today); cutoff.setMonth(cutoff.getMonth() + windowMonths);
+    const selected = new Date(d.event_date + 'T00:00:00');
+    if (selected > cutoff) {
+      const label = windowMonths < 12 ? windowMonths + ' month' + (windowMonths > 1 ? 's' : '') : (windowMonths / 12) + ' year' + (windowMonths / 12 > 1 ? 's' : '');
+      alertEl.innerHTML = `<div class="alert alert-error">This DJ only accepts bookings up to <strong>${label}</strong> in advance. Please message them to discuss this date.</div>`;
+      return;
+    }
+  }
   if (!d.start_time) { alertEl.innerHTML = '<div class="alert alert-error">Please select a start time.</div>'; return; }
 
   // Hourly rate validation

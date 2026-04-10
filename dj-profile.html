@@ -1325,11 +1325,17 @@ function pubCalToggleView() {
     if (next) next.style.display = '';
     if (mSel) mSel.style.display = '';
     if (ySel) ySel.style.display = '';
-    toggle.textContent = '12 Months';
+    toggle.textContent = pubCalWindowLabel();
     toggle.style.borderColor = 'var(--border)';
     toggle.style.color = 'var(--muted)';
     delete toggle.dataset.active;
   }
+}
+
+function pubCalWindowLabel() {
+  const m = pubCalWindowMonths || 12;
+  if (m < 12) return m + ' Month' + (m > 1 ? 's' : '');
+  const y = m / 12; return y + ' Year' + (y > 1 ? 's' : '');
 }
 
 function pubCalShowRolling() {
@@ -1393,7 +1399,8 @@ function drawRolling12Months() {
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-  </div>`;
+  </div>
+  ${(()=>{ const m=pubCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="margin-top:.85rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:.75rem 1rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;color:#ffb347;line-height:1.6;">📅 This DJ is currently accepting bookings up to <strong>${label}</strong> in advance. For dates beyond this window, message the DJ directly.</div>`; })()}`;
 
   rolling.innerHTML = html;
 }
@@ -1604,11 +1611,17 @@ function ownerCalToggleView() {
     if (next) next.style.display = '';
     if (mSel) mSel.style.display = '';
     if (ySel) ySel.style.display = '';
-    toggle.textContent = '12 Months';
+    toggle.textContent = ownerCalWindowLabel();
     toggle.style.borderColor = 'var(--border)';
     toggle.style.color = 'var(--muted)';
     delete toggle.dataset.active;
   }
+}
+
+function ownerCalWindowLabel() {
+  const m = ownerCalWindowMonths || 12;
+  if (m < 12) return m + ' Month' + (m > 1 ? 's' : '');
+  const y = m / 12; return y + ' Year' + (y > 1 ? 's' : '');
 }
 
 function drawOwnerRolling12Months() {
@@ -1667,7 +1680,8 @@ function drawOwnerRolling12Months() {
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Open</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
     <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
-  </div>`;
+  </div>
+  ${(()=>{ const m=ownerCalWindowMonths||12; const label=m<12?m+' month'+(m>1?'s':''):(m/12)+' year'+(m/12>1?'s':''); return `<div style="margin-top:.85rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:.75rem 1rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.04em;color:#ffb347;line-height:1.6;">📅 Your booking window is set to <strong>${label}</strong> in advance. Visitors will see this range and be directed to message you for dates beyond it.</div>`; })()}`;
 
   rolling.innerHTML = html;
 }
