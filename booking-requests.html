@@ -545,7 +545,7 @@ function renderCard(b, isIncoming, orderNum) {
 
     const rateDisplay = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .75rem;margin-bottom:.85rem;align-items:center;">
         <div>
-          <span class="lbl">Equipment:</span><span class="val" style="display:block;font-size:.78rem;">${equipLabels[b.equipment] || b.equipment || '—'}</span>
+          <span class="lbl">Equipment:</span><span class="val" style="display:block;font-size:.78rem;">${equipLabels[b.equipment] || b.equipment || '—'}</span>${b.venue_equip_detail ? `<span style="display:block;font-size:.72rem;color:var(--muted);margin-top:.2rem;font-style:italic;">${b.venue_equip_detail}</span>` : ''}
         </div>
         <div style="text-align:right;">
           ${isApproved && agreedRate ? `
