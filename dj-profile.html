@@ -1814,12 +1814,14 @@ function ownerOpenDayEditor(key) {
   // Compute defaults — use day-specific if set, else fall back to global rates
   const hasCustomRate = d.rate || d.rateSystem || d.rateDecks || d.hourlyRate || d.hourlyRateSystem || d.hourlyRateDecks;
   const defaultRateType = d.rateType || (ownerGlobalAllowOffers ? 'offers' : ownerGlobalRateType);
-  const defaultRateSystem = d.rateSystem ?? (hasCustomRate ? '' : ownerGlobalRateSystem);
-  const defaultRateDecks = d.rateDecks ?? (hasCustomRate ? '' : ownerGlobalRateDecks);
-  const defaultRate = d.rate ?? (hasCustomRate ? '' : ownerGlobalRateNoEquip);
-  const defaultHourlyRateSystem = d.hourlyRateSystem ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateSystem : ''));
-  const defaultHourlyRateDecks = d.hourlyRateDecks ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateDecks : ''));
-  const defaultHourlyRate = d.hourlyRate ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateNoEquip : ''));
+  const isOffersDay = defaultRateType === 'offers';
+  const isHourlyDay = defaultRateType === 'hourly';
+  const defaultRateSystem = (!isOffersDay && !isHourlyDay) ? (d.rateSystem ?? (hasCustomRate ? '' : ownerGlobalRateSystem)) : '';
+  const defaultRateDecks = (!isOffersDay && !isHourlyDay) ? (d.rateDecks ?? (hasCustomRate ? '' : ownerGlobalRateDecks)) : '';
+  const defaultRate = (!isOffersDay && !isHourlyDay) ? (d.rate ?? (hasCustomRate ? '' : ownerGlobalRateNoEquip)) : '';
+  const defaultHourlyRateSystem = (!isOffersDay && isHourlyDay) ? (d.hourlyRateSystem ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateSystem : ''))) : '';
+  const defaultHourlyRateDecks = (!isOffersDay && isHourlyDay) ? (d.hourlyRateDecks ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateDecks : ''))) : '';
+  const defaultHourlyRate = (!isOffersDay && isHourlyDay) ? (d.hourlyRate ?? (hasCustomRate ? '' : (ownerGlobalRateType === 'hourly' ? ownerGlobalRateNoEquip : ''))) : '';
 
   const modal = document.createElement('div');
   modal.id = 'day-editor-modal';
