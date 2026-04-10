@@ -565,11 +565,19 @@ function updateRateDisplay() {
   let hourlyRate = null;
   let minHours = null;
 
-  if (dayData.rateType === 'hourly' && dayData.hourlyRate) {
+  if (dayData.rateType === 'hourly' && (dayData.hourlyRate || dayData.hourlyRateSystem || dayData.hourlyRateDecks)) {
     isHourly = true;
-    hourlyRate = dayData.hourlyRate;
+    if (equip === 'sound_system' && dayData.hourlyRateSystem) {
+      hourlyRate = dayData.hourlyRateSystem;
+      rateLabel = 'Hourly Rate (Sound System & Decks Provided)';
+    } else if (equip === 'decks_only' && dayData.hourlyRateDecks) {
+      hourlyRate = dayData.hourlyRateDecks;
+      rateLabel = 'Hourly Rate (Decks/Controller Provided)';
+    } else {
+      hourlyRate = dayData.hourlyRate;
+      rateLabel = 'Hourly Rate (Venue Provides Equipment)';
+    }
     minHours = dayData.minHours;
-    rateLabel = 'Hourly Rate';
   } else if (dayData.rate) {
     rate = dayData.rate;
     rateLabel = 'Rate for This Date';
@@ -712,7 +720,7 @@ async function submitBooking() {
   const dateParam2 = params2.get('date');
   const days2 = bookingSettings.booking_days || {};
   const dayData2 = dateParam2 ? (days2[dateParam2] || {}) : {};
-  const isHourlyBooking = dayData2.rateType === 'hourly' && dayData2.hourlyRate;
+  const isHourlyBooking = dayData2.rateType === 'hourly' && (dayData2.hourlyRate || dayData2.hourlyRateSystem || dayData2.hourlyRateDecks);
 
   if (isHourlyBooking) {
     if (!d.end_time) { alertEl.innerHTML = '<div class="alert alert-error">Please select an end time — required for hourly rate calculation.</div>'; return; }
@@ -738,7 +746,13 @@ async function submitBooking() {
       let [eh, em] = d.end_time.split(':').map(Number);
       let totalMins = (eh * 60 + em) - (sh * 60 + sm);
       if (totalMins <= 0) totalMins += 24 * 60;
-      displayRate = ((totalMins / 60) * Number(dayData2.hourlyRate)).toFixed(2);
+      const hrs = totalMins / 60;
+      let applicableRate = dayData2.hourlyRate;
+      if (d.equipment === 'sound_system' && dayData2.hourlyRateSystem) applicableRate = dayData2.hourlyRateSystem;
+      else if (d.equipment === 'decks_only' && dayData2.hourlyRateDecks) applicableRate = dayData2.hourlyRateDecks;
+      displayRate = (hrs * Number(applicableRate)).toFixed(2);
+    } else if (dayData2.rate) {
+      displayRate = dayData2.rate;
     } else if (d.equipment === 'sound_system') displayRate = bookingSettings.rate_with_system;
     else if (d.equipment === 'decks_only') displayRate = bookingSettings.rate_with_decks;
     else if (d.equipment === 'venue_provides') displayRate = bookingSettings.rate_no_equip;
