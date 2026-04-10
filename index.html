@@ -1052,7 +1052,7 @@ window.addEventListener('openAdmin', () => {
     } else {
       // Venue/host: show booking icon only if they have responses
       var vEl = document.getElementById('mobile-menu-venue'); if (vEl) vEl.style.display = 'block';
-      db.from('bookings').select('id').eq('requester_id', currentUser.id).in('status', ['countered','approved'])
+      db.from('bookings').select('id').eq('requester_id', currentUser.id).in('status', ['counter','approved'])
         .then(({data}) => { if (data && data.length > 0) document.getElementById('booking-requests-btn').style.display = 'inline-flex'; })
         .catch(() => {});
     }

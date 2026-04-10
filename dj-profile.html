@@ -2345,6 +2345,7 @@ async function loadInboxBadge() {
     document.getElementById('nav-logout').style.display = 'inline-flex';
     loadInboxBadge();
 
+    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
     if (parsedUser.role === 'dj') {
       document.getElementById('nav-profile').style.display = 'inline-flex';
       if (parsedUser.slug) {

@@ -355,8 +355,8 @@ buildTimeOptions(document.getElementById('end-time'));
   signinBtn && (signinBtn.style.display = 'none');
   document.getElementById('nav-logout').style.display = 'inline-flex';
   document.getElementById('nav-inbox-btn').style.display = 'inline-flex';
+  document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
   if (currentUser.role === 'dj') {
-    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
     document.getElementById('nav-profile').style.display = 'inline-flex';
     const viewBtn = document.getElementById('nav-view-profile');
     if (viewBtn) {
