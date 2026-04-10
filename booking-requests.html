@@ -222,6 +222,12 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div class="modal-title">Send Counter Offer</div>
       <button onclick="closeCounter()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
     </div>
+    <div id="counter-current-rate" style="display:none;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.65rem .9rem;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Current Offer</span>
+        <span id="counter-current-rate-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--amber);"></span>
+      </div>
+    </div>
     <div class="form-row">
       <label>Your Counter Rate</label>
       <div style="display:flex;align-items:center;gap:.5rem;"><span id="counter-currency-sym" style="color:var(--muted);">$</span><input type="number" id="counter-amount" placeholder="Amount" min="0" style="flex:1;"></div>
@@ -589,7 +595,7 @@ function renderCard(b, isIncoming, orderNum) {
           <button class="btn btn-danger btn-sm" onclick="updateStatus('${b.id}','denied')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deny
           </button>
-          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','in')">
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','in',${b.counter_rate||b.offer_amount||b.quoted_rate||'null'})">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter
           </button>
         ` : ''}
@@ -605,7 +611,7 @@ function renderCard(b, isIncoming, orderNum) {
           <button class="btn btn-danger btn-sm" onclick="requesterUpdateStatus('${b.id}','denied')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline
           </button>
-          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','out')">
+          <button class="btn btn-amber btn-sm" onclick="openCounter('${b.id}','${b.currency||'USD'}','out',${b.counter_rate||b.offer_amount||b.quoted_rate||'null'})">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Counter Back
           </button>
         ` : ''}
@@ -728,7 +734,7 @@ async function _doUpdateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-function openCounter(bookingId, currency, group) {
+function openCounter(bookingId, currency, group, currentRate) {
   activeCounterBookingId = bookingId;
   activeCounterGroup = group;
   const sym = currencySymbols[currency] || '$';
@@ -736,6 +742,14 @@ function openCounter(bookingId, currency, group) {
   document.getElementById('counter-amount').value = '';
   document.getElementById('counter-message').value = '';
   document.getElementById('counter-alert').innerHTML = '';
+  const rateEl = document.getElementById('counter-current-rate');
+  const rateValEl = document.getElementById('counter-current-rate-val');
+  if (currentRate && rateEl && rateValEl) {
+    rateValEl.textContent = sym + Number(currentRate).toLocaleString() + ' ' + currency;
+    rateEl.style.display = 'block';
+  } else if (rateEl) {
+    rateEl.style.display = 'none';
+  }
   document.getElementById('counter-modal').style.display = 'flex';
 }
 function closeCounter() { document.getElementById('counter-modal').style.display = 'none'; }
