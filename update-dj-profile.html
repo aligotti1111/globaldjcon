@@ -2174,12 +2174,14 @@ function openDayEditor(key) {
   const globalSystem = document.getElementById('rate-with-system-val')?.value || '';
   const globalDecks = document.getElementById('rate-with-decks-val')?.value || '';
   const globalNoEquip = document.getElementById('rate-no-equip-val')?.value || '';
-  const defaultRateSystem = d.rateSystem ?? (hasCustomRate ? '' : globalSystem);
-  const defaultRateDecks = d.rateDecks ?? (hasCustomRate ? '' : globalDecks);
-  const defaultRate = d.rate ?? (hasCustomRate ? '' : globalNoEquip);
-  const defaultHourlyRateSystem = d.hourlyRateSystem ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalSystem : ''));
-  const defaultHourlyRateDecks = d.hourlyRateDecks ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalDecks : ''));
-  const defaultHourlyRate = d.hourlyRate ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalNoEquip : ''));
+  const isOffersDay = defaultRateType === 'offers';
+  const isHourlyDay = defaultRateType === 'hourly';
+  const defaultRateSystem = (!isOffersDay && !isHourlyDay) ? (d.rateSystem ?? (hasCustomRate ? '' : globalSystem)) : '';
+  const defaultRateDecks = (!isOffersDay && !isHourlyDay) ? (d.rateDecks ?? (hasCustomRate ? '' : globalDecks)) : '';
+  const defaultRate = (!isOffersDay && !isHourlyDay) ? (d.rate ?? (hasCustomRate ? '' : globalNoEquip)) : '';
+  const defaultHourlyRateSystem = (!isOffersDay && isHourlyDay) ? (d.hourlyRateSystem ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalSystem : ''))) : '';
+  const defaultHourlyRateDecks = (!isOffersDay && isHourlyDay) ? (d.hourlyRateDecks ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalDecks : ''))) : '';
+  const defaultHourlyRate = (!isOffersDay && isHourlyDay) ? (d.hourlyRate ?? (hasCustomRate ? '' : (globalRateType === 'hourly' ? globalNoEquip : ''))) : '';
 
   const modal = document.createElement('div');
   modal.id = 'day-editor-modal';
