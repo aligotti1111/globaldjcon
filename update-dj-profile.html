@@ -3186,7 +3186,7 @@ function buildPkgCard(cat, idx, pkg) {
   const setupWrap = document.createElement('div');
   setupWrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;';
   setupWrap.innerHTML = `
-    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);white-space:nowrap;">The number of hours required to set up equipment prior to event start time:</label>
+    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);white-space:nowrap;">The number of hours required to set up prior to event start time:</label>
     <select onchange="mobPkgChange('${cat}',${idx},'setupHours',this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">
       <option value="">—</option>
       ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${pkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
