@@ -3082,7 +3082,7 @@ function renderMobPackages(cat) {
 }
 
 function newMobPackage() {
-  return { title:'', details:'', price4:'', price5:'', price6:'', overtime:'', req4:false, req5:false, req6:false, setupHours:'', photo:'', cocktailIncluded:true, cocktailPrice:'' };
+  return { title:'', details:'', price4:'', price5:'', price6:'', overtime:'', reqAll:false, setupHours:'', photo:'', cocktailIncluded:true, cocktailPrice:'' };
 }
 
 function buildPkgCard(cat, idx, pkg) {
@@ -3131,21 +3131,25 @@ function buildPkgCard(cat, idx, pkg) {
   const priceWrap = document.createElement('div');
   priceWrap.style.marginBottom = '.75rem';
   const priceLabel = isWedding ? 'Reception' : '';
+  const reqAll = !!(pkg.reqAll);
   priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
 
+  // Single "require request" toggle
+  const reqToggleRow = document.createElement('div');
+  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-bottom:.85rem;padding:.6rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
+  reqToggleRow.innerHTML = `
+    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
+    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
+  priceWrap.appendChild(reqToggleRow);
+
   ['4','5','6'].forEach(hrs => {
-    const reqField = `req${hrs}`;
     const priceField = `price${hrs}`;
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
     row.innerHTML = `
       <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
-      <span style="color:var(--muted);font-size:.85rem;">$</span>
-      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${pkg[reqField] ? 'disabled' : ''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${pkg[reqField]?'opacity:.4;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">
-      <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;white-space:nowrap;margin-left:.25rem;">
-        <input type="checkbox" ${pkg[reqField]?'checked':''} onchange="mobPkgReqToggle('${cat}',${idx},'${hrs}',this.checked)" style="accent-color:var(--neon);">
-        <span style="font-size:.72rem;color:var(--muted);">Request Price</span>
-      </label>`;
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
     priceWrap.appendChild(row);
   });
 
@@ -3153,10 +3157,10 @@ function buildPkgCard(cat, idx, pkg) {
   const otRow = document.createElement('div');
   otRow.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-top:.25rem;';
   otRow.innerHTML = `
-    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">Hourly Overtime:</span>
-    <span style="color:var(--muted);font-size:.85rem;">$</span>
-    <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-    <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;">Per Hour</span>`;
+    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Hourly Overtime:</span>
+    <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+    <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
+    <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>`;
   priceWrap.appendChild(otRow);
   card.appendChild(priceWrap);
 
@@ -3284,10 +3288,15 @@ function mobPkgChange(cat, idx, field, val) {
   mobPackages[cat][idx][field] = val;
 }
 
-function mobPkgReqToggle(cat, idx, hrs, checked) {
-  mobPkgChange(cat, idx, `req${hrs}`, checked);
-  const priceInput = document.getElementById(`mob-pkg-price-${cat}-${idx}-${hrs}`);
-  if (priceInput) { priceInput.disabled = checked; priceInput.style.opacity = checked ? '.4' : ''; }
+function mobPkgReqAllToggle(cat, idx, checked) {
+  mobPkgChange(cat, idx, 'reqAll', checked);
+  // Disable/enable all price inputs and overtime
+  ['4','5','6'].forEach(hrs => {
+    const el = document.getElementById(`mob-pkg-price-${cat}-${idx}-${hrs}`);
+    if (el) { el.disabled = checked; el.style.opacity = checked ? '.35' : ''; }
+  });
+  const ot = document.getElementById(`mob-pkg-ot-${cat}-${idx}`);
+  if (ot) { ot.disabled = checked; ot.style.opacity = checked ? '.35' : ''; }
 }
 
 function removeMobPackage(cat, idx) {

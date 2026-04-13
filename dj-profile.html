@@ -2947,14 +2947,14 @@ function mobPubRenderPackages() {
     card.onclick = () => { mobPubSelectedPkg = idx; mobPubRenderPackages(); mobPubCalcPrice(); };
 
     let pricePreview = '';
-    const has4 = pkg.price4 && !pkg.req4;
-    const has5 = pkg.price5 && !pkg.req5;
-    const has6 = pkg.price6 && !pkg.req6;
-    if (has4||has5||has6) {
-      const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
-      pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);">from $${Number(price).toLocaleString()}</span>`;
-    } else if (pkg.req4||pkg.req5||pkg.req6) {
+    if (pkg.reqAll) {
       pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">Price on request</span>`;
+    } else {
+      const has4 = pkg.price4, has5 = pkg.price5, has6 = pkg.price6;
+      if (has4||has5||has6) {
+        const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
+        pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);">from $${Number(price).toLocaleString()}</span>`;
+      }
     }
 
     card.innerHTML = `
@@ -3007,39 +3007,30 @@ function mobPubCalcPrice() {
   let isQuote = false;
   let overtimeHours = 0;
 
-  if (totalHours > 0) {
+  // If package requires price request, always quote
+  if (pkg.reqAll) {
+    isQuote = true;
+  } else if (totalHours > 0) {
     const hrs = Math.ceil(totalHours);
-    // Match hours to package price
     if (hrs <= 4) {
-      if (pkg.req4) isQuote = true;
-      else if (pkg.price4) price = Number(pkg.price4);
-      else isQuote = true;
+      if (pkg.price4) price = Number(pkg.price4); else isQuote = true;
     } else if (hrs <= 5) {
-      if (pkg.req5) isQuote = true;
-      else if (pkg.price5) price = Number(pkg.price5);
+      if (pkg.price5) price = Number(pkg.price5);
       else if (pkg.price4 && pkg.overtime) { price = Number(pkg.price4) + (hrs-4)*Number(pkg.overtime); overtimeHours = hrs-4; }
       else isQuote = true;
     } else if (hrs <= 6) {
-      if (pkg.req6) isQuote = true;
-      else if (pkg.price6) price = Number(pkg.price6);
+      if (pkg.price6) price = Number(pkg.price6);
       else if (pkg.price5 && pkg.overtime) { price = Number(pkg.price5) + (hrs-5)*Number(pkg.overtime); overtimeHours = hrs-5; }
       else if (pkg.price4 && pkg.overtime) { price = Number(pkg.price4) + (hrs-4)*Number(pkg.overtime); overtimeHours = hrs-4; }
       else isQuote = true;
     } else {
-      // Beyond 6 hrs — use highest available price + overtime
       const basePrice = pkg.price6||pkg.price5||pkg.price4;
       const baseHrs = pkg.price6?6:pkg.price5?5:4;
-      if (basePrice && pkg.overtime) {
-        price = Number(basePrice) + (hrs-baseHrs)*Number(pkg.overtime);
-        overtimeHours = hrs-baseHrs;
-      } else isQuote = true;
+      if (basePrice && pkg.overtime) { price = Number(basePrice) + (hrs-baseHrs)*Number(pkg.overtime); overtimeHours = hrs-baseHrs; }
+      else isQuote = true;
     }
   } else {
-    // No times selected yet — show base price range
-    const firstPrice = pkg.price4||pkg.price5||pkg.price6;
-    const firstReq = pkg.req4||pkg.req5||pkg.req6;
-    if (firstReq) isQuote = true;
-    else if (firstPrice) price = Number(firstPrice);
+    if (pkg.price4||pkg.price5||pkg.price6) price = Number(pkg.price4||pkg.price5||pkg.price6);
     else isQuote = true;
   }
 
@@ -3148,15 +3139,18 @@ async function mobPubSubmit(dateKey) {
   // Determine price / quote
   let totalPrice = null, isQuote = false, depositAmount = null;
   const depositPct = bs.mob_deposit_pct || 0;
-  if (startTime && endTime) {
+
+  if (pkg.reqAll) {
+    isQuote = true;
+  } else if (startTime && endTime) {
     const [sh,sm] = startTime.split(':').map(Number);
     let [eh,em] = endTime.split(':').map(Number);
     let mins = (eh*60+em)-(sh*60+sm);
     if (mins<=0) mins+=1440;
     const hrs = Math.ceil(mins/60);
-    if (hrs<=4) { if(pkg.req4||!pkg.price4) isQuote=true; else totalPrice=Number(pkg.price4); }
-    else if (hrs<=5) { if(pkg.req5||!pkg.price5) { if(pkg.price4&&pkg.overtime&&!pkg.req4) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; } else totalPrice=Number(pkg.price5); }
-    else if (hrs<=6) { if(pkg.req6||!pkg.price6) { if(pkg.price5&&pkg.overtime&&!pkg.req5) totalPrice=Number(pkg.price5)+(hrs-5)*Number(pkg.overtime); else if(pkg.price4&&pkg.overtime&&!pkg.req4) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; } else totalPrice=Number(pkg.price6); }
+    if (hrs<=4) { if(!pkg.price4) isQuote=true; else totalPrice=Number(pkg.price4); }
+    else if (hrs<=5) { if(pkg.price5) totalPrice=Number(pkg.price5); else if(pkg.price4&&pkg.overtime) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; }
+    else if (hrs<=6) { if(pkg.price6) totalPrice=Number(pkg.price6); else if(pkg.price5&&pkg.overtime) totalPrice=Number(pkg.price5)+(hrs-5)*Number(pkg.overtime); else if(pkg.price4&&pkg.overtime) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; }
     else { const bp=pkg.price6||pkg.price5||pkg.price4; const bh=pkg.price6?6:pkg.price5?5:4; if(bp&&pkg.overtime) totalPrice=Number(bp)+(hrs-bh)*Number(pkg.overtime); else isQuote=true; }
   } else { isQuote=true; }
 
