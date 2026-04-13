@@ -922,8 +922,13 @@ input[type=number] { color:var(--neon) !important; }
                 <!-- Bookings per day -->
                 <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
                   <div style="flex:1;min-width:180px;">
-                    <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.3rem;">Default bookings available per day</div>
-                    <div style="font-size:.75rem;color:var(--muted);">Can be adjusted per day via the calendar.</div>
+                    <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.3rem;">
+                      Max number of bookings your company can accept per day
+                      <span style="position:relative;display:inline-flex;align-items:center;" onmouseenter="this.querySelector('.tip').style.display='block'" onmouseleave="this.querySelector('.tip').style.display='none'">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:.55rem;cursor:default;flex-shrink:0;">?</span>
+                        <span class="tip" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;font-size:.65rem;color:var(--white);white-space:nowrap;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.4);font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;">Once the number is reached, the day will be marked as booked.</span>
+                      </span>
+                    </div>
                   </div>
                   <input type="number" id="mob-bookings-per-day" min="1" max="99" value="1" onchange="mobAutoSave()" style="width:80px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.55rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.8rem;text-align:center;">
                 </div>
@@ -3099,13 +3104,27 @@ function buildPkgCard(cat, idx, pkg) {
   // Details (contenteditable rich text)
   const detailWrap = document.createElement('div');
   detailWrap.style.marginBottom = '.75rem';
+  const editorId = `pkg-editor-${cat}-${idx}`;
+  const btnStyle = `padding:.25rem .5rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.75rem;cursor:pointer;line-height:1;`;
   detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details</label>
-    <div style="display:flex;gap:.4rem;margin-bottom:.3rem;">
-      <button type="button" onclick="document.execCommand('bold')" style="padding:.25rem .5rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-weight:700;font-size:.75rem;cursor:pointer;">B</button>
-      <button type="button" onclick="document.execCommand('italic')" style="padding:.25rem .5rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-style:italic;font-size:.75rem;cursor:pointer;">I</button>
-      <button type="button" onclick="document.execCommand('underline')" style="padding:.25rem .5rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);text-decoration:underline;font-size:.75rem;cursor:pointer;">U</button>
+    <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.35rem;align-items:center;">
+      <button type="button" onclick="pkgCmd('bold','${editorId}')" style="${btnStyle}font-weight:700;">B</button>
+      <button type="button" onclick="pkgCmd('italic','${editorId}')" style="${btnStyle}font-style:italic;">I</button>
+      <button type="button" onclick="pkgCmd('underline','${editorId}')" style="${btnStyle}text-decoration:underline;">U</button>
+      <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
+      <button type="button" onclick="pkgCmd('insertUnorderedList','${editorId}')" title="Bullet list" style="${btnStyle}">• List</button>
+      <button type="button" onclick="pkgCmd('insertOrderedList','${editorId}')" title="Numbered list" style="${btnStyle}">1. List</button>
+      <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
+      <select onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;">
+        <option value="">Font</option>
+        <option value="DM Sans, sans-serif">DM Sans</option>
+        <option value="Georgia, serif">Georgia</option>
+        <option value="Space Mono, monospace">Mono</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="Times New Roman, serif">Times</option>
+      </select>
     </div>
-    <div contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:70px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.5;outline:none;">${pkg.details||''}</div>`;
+    <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.6rem .85rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
   card.appendChild(detailWrap);
 
   // Prices
@@ -3187,6 +3206,21 @@ function buildPkgCard(cat, idx, pkg) {
   card.appendChild(saveRow);
 
   return card;
+}
+
+function pkgCmd(cmd, editorId) {
+  const el = document.getElementById(editorId);
+  if (el) el.focus();
+  document.execCommand(cmd, false, null);
+}
+
+function pkgFont(select, editorId) {
+  const font = select.value;
+  if (!font) return;
+  const el = document.getElementById(editorId);
+  if (el) el.focus();
+  document.execCommand('fontName', false, font);
+  select.value = '';
 }
 
 function pkgField(labelText, inputHtml) {
