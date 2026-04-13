@@ -3091,7 +3091,7 @@ function buildPkgCard(cat, idx, pkg) {
   card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:.75rem;';
 
   const headerRow = document.createElement('div');
-  headerRow.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;';
+  headerRow.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;padding:.6rem 1rem;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.2);border-radius:7px;';
   headerRow.innerHTML = `
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.08em;color:var(--neon);text-align:center;">Package ${idx + 1}</div>
     ${idx > 0 ? `<button type="button" onclick="removeMobPackage('${cat}',${idx})" style="position:absolute;right:0;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" title="Remove package">✕</button>` : ''}
@@ -3139,7 +3139,7 @@ function buildPkgCard(cat, idx, pkg) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
     row.innerHTML = `
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:60px;">${hrs} Hours${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
       <span style="color:var(--muted);font-size:.85rem;">$</span>
       <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${pkg[reqField] ? 'disabled' : ''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${pkg[reqField]?'opacity:.4;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">
       <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;white-space:nowrap;margin-left:.25rem;">
@@ -3153,9 +3153,10 @@ function buildPkgCard(cat, idx, pkg) {
   const otRow = document.createElement('div');
   otRow.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-top:.25rem;';
   otRow.innerHTML = `
-    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:60px;">Hourly Overtime:</span>
+    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">Hourly Overtime:</span>
     <span style="color:var(--muted);font-size:.85rem;">$</span>
-    <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`;
+    <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+    <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.04em;">/ hr</span>`;
   priceWrap.appendChild(otRow);
   card.appendChild(priceWrap);
 
