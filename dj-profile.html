@@ -2537,9 +2537,9 @@ function drawMobPubCal() {
       // Owner sees ✕/✓ quick-mark and ✏️ edit controls at bottom of cell
       badge = `
         ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
-          style="position:absolute;bottom:2px;left:2px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.3)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
+          style="position:absolute;bottom:4px;left:4px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.3)'};cursor:pointer;font-size:.8rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
         <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
-          style="position:absolute;bottom:2px;right:2px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>`;
+          style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:0;line-height:1;">✏️</button>`;
     } else if (!mobPubIsOwner && isAvail) {
       const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
       const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
