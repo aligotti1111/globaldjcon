@@ -1835,7 +1835,14 @@ function toggleBookingSetup(userInitiated) {
   const checkbox = document.getElementById('booking-enabled');
   const enabled = checkbox.checked;
 
-  // Only confirm when user actively clicks to turn OFF
+  // Warn when user actively clicks to turn ON
+  if (enabled && userInitiated) {
+    checkbox.checked = false; // revert until confirmed
+    showBookingActivateModal();
+    return;
+  }
+
+  // Confirm when user actively clicks to turn OFF
   if (!enabled && userInitiated) {
     showConfirm(
       'Are you sure you want to deactivate the booking feature? Your settings will be saved and can be reactivated at any time.',
@@ -1843,11 +1850,35 @@ function toggleBookingSetup(userInitiated) {
       'btn-danger',
       () => _doToggleBooking(false)
     );
-    // Revert checkbox until confirmed
     checkbox.checked = true;
     return;
   }
   _doToggleBooking(enabled);
+}
+
+function showBookingActivateModal() {
+  const existing = document.getElementById('booking-activate-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'booking-activate-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.05em;color:var(--white);margin-bottom:.75rem;">Activate Booking?</div>
+      <p style="font-size:.85rem;color:var(--muted);line-height:1.7;margin-bottom:1rem;">Once you activate the booking feature, your account is locked as a <strong style="color:var(--white);">Club/Bar DJ</strong>. The Mobile DJ option will no longer be available while booking is active.</p>
+      <p style="font-size:.82rem;color:var(--neon);font-family:'Space Mono',monospace;letter-spacing:.04em;margin-bottom:1.5rem;">You can deactivate booking at any time to regain access to all account types.</p>
+      <div style="display:flex;gap:.75rem;">
+        <button type="button" onclick="document.getElementById('booking-activate-modal').remove()" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="confirmActivateBooking()" style="flex:1;padding:.75rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Continue</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function confirmActivateBooking() {
+  document.getElementById('booking-activate-modal').remove();
+  document.getElementById('booking-enabled').checked = true;
+  _doToggleBooking(true);
 }
 
 function _doToggleBooking(enabled, skipSave) {
