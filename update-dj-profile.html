@@ -3044,10 +3044,12 @@ function renderMobPackageTabs(fromCheckboxes) {
       const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
       btn.innerHTML = `<span>${catLabels[cat]}</span>
         <span style="position:relative;display:inline-flex;align-items:center;"
-          onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block'"
-          onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none'">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid currentColor;font-size:.5rem;cursor:default;opacity:.7;">ⓘ</span>
-          <span class="pkg-cat-tip" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;font-size:.62rem;color:var(--white);white-space:nowrap;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.5);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;min-width:180px;max-width:260px;white-space:normal;line-height:1.5;">${typeList}</span>
+          onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block';event.stopPropagation();"
+          onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none';"
+          onmousemove="var t=this.querySelector('.pkg-cat-tip');t.style.top=(event.clientY-t.offsetHeight-10)+'px';t.style.left=event.clientX+'px';"
+          onclick="event.stopPropagation();">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid currentColor;font-size:.6rem;cursor:default;opacity:.8;flex-shrink:0;">i</span>
+          <span class="pkg-cat-tip" style="display:none;position:fixed;background:var(--card);border:1px solid var(--neon);border-radius:8px;padding:.65rem .9rem;font-size:.75rem;color:var(--white);z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;max-width:240px;white-space:normal;line-height:1.6;">${typeList}</span>
         </span>`;
     } else {
       btn.textContent = catLabels[cat];
