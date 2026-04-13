@@ -2533,16 +2533,23 @@ function drawMobPubCal() {
     let numColor = isPast||isBeyond ? 'var(--muted)' : isBooked ? '#ff5f5f' : isUnavail||isFull ? 'var(--muted)' : isToday||isSelected ? 'var(--neon)' : 'var(--white)';
 
     let badge = '';
-    if (isAvail) {
+    if (mobPubIsOwner && !isPast) {
+      // Owner sees ✕/✓ quick-mark and ✏️ edit controls
+      badge = `
+        ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
+          style="position:absolute;top:2px;left:2px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.25)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
+        <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
+          style="position:absolute;top:2px;right:2px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>`;
+    } else if (!mobPubIsOwner && isAvail) {
       const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
       const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
       badge = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.18);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;margin-top:2px;" onclick="${action}">Book</div>`;
-    } else if (isBooked && dayData.eventName && dayData.location !== 'Private') {
+    } else if (!mobPubIsOwner && isBooked && dayData.eventName && dayData.location !== 'Private') {
       badge = `<div style="font-size:clamp(.42rem,.9vw,.55rem);color:#ff7070;line-height:1.2;text-align:center;margin-top:2px;">${dayData.eventName}</div>`;
     }
 
     const isLastRow = Math.floor((firstDay+d-1)/7) === Math.floor((firstDay+daysInMonth-1)/7);
-    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
+    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
       <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;margin-bottom:2px;">${d}</div>
       ${badge}
     </div>`;
@@ -2559,6 +2566,137 @@ function mobPubCalNav(dir) {
   if (mobPubCalMonth > 11) { mobPubCalMonth = 0; mobPubCalYear++; }
   if (mobPubCalMonth < 0) { mobPubCalMonth = 11; mobPubCalYear--; }
   drawMobPubCal();
+}
+
+async function mobPubQuickMark(key) {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
+  if (!cu) return;
+  const days = mobPubBs.mob_booking_days || {};
+  if (days[key] && days[key].booked) return;
+  if (days[key] && days[key].unavailable) delete days[key];
+  else days[key] = { unavailable: true };
+  mobPubBs.mob_booking_days = days;
+  drawMobPubCal();
+  await mobPubOwnerSaveDays(cu.id, days);
+}
+
+async function mobPubOwnerSaveDays(userId, days) {
+  try {
+    const { data: current } = await db.from('users').select('booking_settings').eq('id', userId).single();
+    const bs = current?.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+    bs.mob_booking_days = days;
+    await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', userId);
+  } catch(e) { console.error('mobPubOwnerSaveDays error:', e); }
+}
+
+function mobPubOwnerEdit(key) {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
+  if (!cu) return;
+  const days = mobPubBs.mob_booking_days || {};
+  const d = days[key] || {};
+  const defaultPerDay = mobPubBs.mob_bookings_per_day || 1;
+  const [y, m, day] = key.split('-').map(Number);
+  const dateLabel = new Date(y, m-1, day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const currentPerDay = d.bookings_available != null ? d.bookings_available : defaultPerDay;
+
+  const existing = document.getElementById('mob-pub-owner-day-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'mob-pub-owner-day-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;color:var(--neon);">${dateLabel}</div>
+        <button type="button" onclick="document.getElementById('mob-pub-owner-day-modal').remove()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+
+      <div style="margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem;">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+          <input type="radio" name="mob-pub-day-status" value="available" ${!d.booked && !d.unavailable ? 'checked' : ''} style="accent-color:var(--neon);" onchange="mobPubOwnerToggleStatus()">
+          <span style="font-size:.85rem;color:var(--white);">Available</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+          <input type="radio" name="mob-pub-day-status" value="unavailable" ${d.unavailable ? 'checked' : ''} style="accent-color:var(--muted);" onchange="mobPubOwnerToggleStatus()">
+          <span style="font-size:.85rem;color:var(--muted);">Unavailable</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+          <input type="radio" name="mob-pub-day-status" value="booked" ${d.booked ? 'checked' : ''} style="accent-color:#ff5f5f;" onchange="mobPubOwnerToggleStatus()">
+          <span style="font-size:.85rem;color:#ff5f5f;">Booked</span>
+        </label>
+      </div>
+
+      <div id="mob-pub-avail-fields" style="${!d.booked && !d.unavailable ? '' : 'display:none;'}margin-bottom:.75rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);display:block;margin-bottom:.35rem;">Bookings available this day</label>
+        <input type="number" id="mob-pub-day-bookings" min="0" max="99" value="${currentPerDay}" style="width:80px;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.8rem;text-align:center;">
+        <span style="font-size:.75rem;color:var(--muted);margin-left:.5rem;">Set to 0 to block day</span>
+      </div>
+
+      <div id="mob-pub-booked-fields" style="${d.booked ? '' : 'display:none;'}">
+        <div style="margin-bottom:.75rem;">
+          <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Event Name</label>
+          <input type="text" id="mob-pub-event-name" placeholder="Wedding Reception..." value="${d.eventName||''}" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+        </div>
+        <div style="margin-bottom:.75rem;">
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:.35rem;">
+            <input type="checkbox" id="mob-pub-private" ${d.location==='Private'?'checked':''} style="accent-color:var(--neon);">
+            <span style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);">Private Location</span>
+          </label>
+          <input type="text" id="mob-pub-location" placeholder="Location" value="${d.location!=='Private'?(d.location||''):''}" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+        </div>
+        <div style="display:flex;gap:.75rem;">
+          <div style="flex:1;">
+            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Start Time</label>
+            <input type="time" id="mob-pub-start" value="${d.startTime||''}" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">End Time</label>
+            <input type="time" id="mob-pub-end" value="${d.endTime||''}" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-top:1.25rem;">
+        <button type="button" onclick="document.getElementById('mob-pub-owner-day-modal').remove()" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="mobPubOwnerSaveDay('${key}','${cu.id}')" style="flex:1;padding:.75rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Day</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function mobPubOwnerToggleStatus() {
+  const val = document.querySelector('input[name="mob-pub-day-status"]:checked')?.value;
+  document.getElementById('mob-pub-avail-fields').style.display = val === 'available' ? '' : 'none';
+  document.getElementById('mob-pub-booked-fields').style.display = val === 'booked' ? '' : 'none';
+}
+
+async function mobPubOwnerSaveDay(key, userId) {
+  const statusVal = document.querySelector('input[name="mob-pub-day-status"]:checked')?.value;
+  const defaultPerDay = mobPubBs.mob_bookings_per_day || 1;
+  const days = mobPubBs.mob_booking_days || {};
+
+  if (statusVal === 'unavailable') {
+    days[key] = { unavailable: true };
+  } else if (statusVal === 'booked') {
+    const isPrivate = document.getElementById('mob-pub-private').checked;
+    days[key] = {
+      booked: true,
+      eventName: document.getElementById('mob-pub-event-name').value.trim(),
+      location: isPrivate ? 'Private' : document.getElementById('mob-pub-location').value.trim(),
+      startTime: document.getElementById('mob-pub-start').value,
+      endTime: document.getElementById('mob-pub-end').value,
+    };
+  } else {
+    const perDay = parseInt(document.getElementById('mob-pub-day-bookings')?.value || defaultPerDay);
+    if (perDay <= 0) days[key] = { unavailable: true };
+    else if (perDay !== defaultPerDay) days[key] = { bookings_available: perDay };
+    else delete days[key];
+  }
+
+  mobPubBs.mob_booking_days = days;
+  document.getElementById('mob-pub-owner-day-modal').remove();
+  drawMobPubCal();
+  await mobPubOwnerSaveDays(userId, days);
 }
 
 function mobPubSelectDate(key) {
