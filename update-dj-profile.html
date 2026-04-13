@@ -943,28 +943,6 @@ input[type=number] { color:var(--neon) !important; }
               </div>
             </div>
 
-            <!-- Mobile Calendar -->
-            <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
-              <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:.6rem 1.25rem;text-align:center;">
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Availability Calendar</div>
-              </div>
-              <div style="padding:1.25rem;">
-                <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Use <strong style="color:rgba(255,255,255,.4);">✕</strong> to mark unavailable, <strong style="color:var(--neon);">✓</strong> to restore, or <strong>✏️</strong> to customize a day. <span style="color:var(--neon);">Changes auto-save.</span></p>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-                  <button type="button" onclick="mobCalPrev()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">‹ Prev</button>
-                  <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Showing 3 months</div>
-                  <button type="button" onclick="mobCalNext()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">Next ›</button>
-                </div>
-                <div id="mob-cal-container" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
-                <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);">
-                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
-                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
-                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="font-size:.65rem;">✏️</span> Edit day</div>
-                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="background:rgba(255,95,95,.15);border:1px solid rgba(255,95,95,.3);border-radius:3px;padding:1px 4px;font-size:.55rem;color:#ff5f5f;">Booked</span> Booked</div>
-                </div>
-              </div>
-            </div>
-
             <!-- Packages Section -->
             <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
               <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:.6rem 1.25rem;text-align:center;">
@@ -987,6 +965,28 @@ input[type=number] { color:var(--neon) !important; }
                 <div id="pkg-pane-wedding" class="pkg-cat-pane" style="display:none;"></div>
                 <div id="pkg-pane-mitzvah" class="pkg-cat-pane" style="display:none;"></div>
 
+              </div>
+            </div>
+
+            <!-- Mobile Calendar -->
+            <div style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
+              <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:.6rem 1.25rem;text-align:center;">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Availability Calendar</div>
+              </div>
+              <div style="padding:1.25rem;">
+                <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">All days are available by default. Use <strong style="color:rgba(255,255,255,.4);">✕</strong> to mark unavailable, <strong style="color:var(--neon);">✓</strong> to restore, or <strong>✏️</strong> to customize a day. <span style="color:var(--neon);">Changes auto-save.</span></p>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                  <button type="button" onclick="mobCalPrev()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">‹ Prev</button>
+                  <div style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Showing 3 months</div>
+                  <button type="button" onclick="mobCalNext()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.35rem .7rem;cursor:pointer;font-size:.85rem;">Next ›</button>
+                </div>
+                <div id="mob-cal-container" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
+                <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);">
+                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:700;">✕</span> Mark unavailable</div>
+                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="color:var(--neon);font-size:.65rem;font-weight:700;">✓</span> Mark available</div>
+                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="font-size:.65rem;">✏️</span> Edit day</div>
+                  <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);"><span style="background:rgba(255,95,95,.15);border:1px solid rgba(255,95,95,.3);border-radius:3px;padding:1px 4px;font-size:.55rem;color:#ff5f5f;">Booked</span> Booked</div>
+                </div>
               </div>
             </div>
 
@@ -1932,7 +1932,7 @@ function checkShowBookingTab() {
 document.getElementById('club-checkbox').addEventListener('change', checkShowBookingTab);
 document.getElementById('mobile-checkbox').addEventListener('change', function() {
   checkShowBookingTab();
-  if (this.checked) renderMobPackageTabs();
+  if (this.checked) renderMobPackageTabs(true);
 });
 
 // Toggle booking setup visibility
@@ -2999,9 +2999,11 @@ async function mobAutoSave() {
 
 const PKG_SETUP_HOURS = ['1','2','3','4','5'];
 
-function renderMobPackageTabs() {
-  // Refresh types from checkboxes
-  mobSelectedTypes = getMobTypesFromProfile();
+function renderMobPackageTabs(fromCheckboxes) {
+  // Only refresh from checkboxes when explicitly triggered by user interaction
+  if (fromCheckboxes) mobSelectedTypes = getMobTypesFromProfile();
+  // If still empty (e.g. first load before DB data), try checkboxes as fallback
+  if (!mobSelectedTypes || mobSelectedTypes.length === 0) mobSelectedTypes = getMobTypesFromProfile();
   const cats = getMobActiveCategories();
   const tabsEl = document.getElementById('pkg-cat-tabs');
   const noTypesMsg = document.getElementById('pkg-no-types-msg');
