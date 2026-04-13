@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="apple-itunes-app" content="">
+<meta property="og:site_name" content="Global DJ Connect">
+<meta property="og:type" content="profile">
 <title>DJ Profile - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2779,13 +2783,13 @@ function renderMobPubForm(dateKey) {
       <!-- Venue -->
       <div style="margin-bottom:1rem;">
         <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Venue Name</label>
-        <input type="text" id="mpf-venue-name" placeholder="The Grand Ballroom" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <input type="text" id="mpf-venue-name" placeholder="The Grand Ballroom" oninput="mobPubRenderPackages()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
 
       <!-- Address -->
       <div style="margin-bottom:1rem;position:relative;">
         <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Venue Address</label>
-        <input type="text" id="mpf-venue-address" placeholder="123 Main St, City, State" autocomplete="off" oninput="mobPubAddressAuto(this)" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <input type="text" id="mpf-venue-address" placeholder="123 Main St, City, State" autocomplete="off" oninput="mobPubAddressAuto(this);mobPubRenderPackages();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
         <div id="mpf-addr-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;"></div>
       </div>
 
@@ -2826,20 +2830,24 @@ function renderMobPubForm(dateKey) {
       <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
           <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;" id="mpf-start-label">Event Start Time</label>
-          <select id="mpf-start-time" onchange="mobPubCalcPrice()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+          <select id="mpf-start-time" onchange="mobPubRenderPackages();mobPubCalcPrice();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
             <option value="">Select time...</option>${timeOpts}
           </select>
         </div>
         <div style="flex:1;min-width:140px;">
           <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;" id="mpf-end-label">Event End Time</label>
-          <select id="mpf-end-time" onchange="mobPubCalcPrice()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+          <select id="mpf-end-time" onchange="mobPubRenderPackages();mobPubCalcPrice();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
             <option value="">Select time...</option>${timeOpts}
           </select>
         </div>
       </div>
 
       <!-- Package selection -->
-      <div id="mpf-packages-wrap" style="margin-bottom:1rem;"></div>
+      <div id="mpf-packages-wrap" style="margin-bottom:1rem;">
+        <div id="mpf-packages-placeholder" style="padding:.85rem 1rem;background:rgba(107,107,136,.06);border:1px solid rgba(107,107,136,.2);border-radius:8px;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:1.6;">
+          Available packages will appear once we have all the information about your event.
+        </div>
+      </div>
 
       <!-- Price display -->
       <div id="mpf-price-display" style="display:none;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;">
@@ -2893,9 +2901,26 @@ function mobPubGetCategory(eventType) {
   return 'general';
 }
 
+function mobPubFormReady() {
+  const eventType = document.getElementById('mpf-event-type')?.value;
+  const venueName = document.getElementById('mpf-venue-name')?.value.trim();
+  const venueAddress = document.getElementById('mpf-venue-address')?.value.trim();
+  const startTime = document.getElementById('mpf-start-time')?.value;
+  const endTime = document.getElementById('mpf-end-time')?.value;
+  return !!(eventType && venueName && venueAddress && startTime && endTime);
+}
+
 function mobPubRenderPackages() {
   const wrap = document.getElementById('mpf-packages-wrap');
   if (!wrap) return;
+
+  // Gate: all required fields must be filled
+  if (!mobPubFormReady()) {
+    wrap.innerHTML = `<div id="mpf-packages-placeholder" style="padding:.85rem 1rem;background:rgba(107,107,136,.06);border:1px solid rgba(107,107,136,.2);border-radius:8px;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:1.6;">Available packages will appear once we have all the information about your event.</div>`;
+    document.getElementById('mpf-price-display').style.display = 'none';
+    return;
+  }
+
   const sel = document.getElementById('mpf-event-type');
   const eventType = sel ? sel.value : '';
   if (!eventType) { wrap.innerHTML = ''; return; }
@@ -2926,7 +2951,6 @@ function mobPubRenderPackages() {
     const has5 = pkg.price5 && !pkg.req5;
     const has6 = pkg.price6 && !pkg.req6;
     if (has4||has5||has6) {
-      const hrs = has4?'4':has5?'5':'6';
       const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
       pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);">from $${Number(price).toLocaleString()}</span>`;
     } else if (pkg.req4||pkg.req5||pkg.req6) {
@@ -2952,6 +2976,8 @@ function mobPubCalcPrice() {
   const overtimeNote = document.getElementById('mpf-overtime-note');
   const submitBtn = document.getElementById('mpf-submit-btn');
   if (!priceDisplay) return;
+
+  if (!mobPubFormReady()) { priceDisplay.style.display='none'; return; }
 
   const sel = document.getElementById('mpf-event-type');
   const eventType = sel ? sel.value : '';
