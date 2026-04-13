@@ -3024,14 +3024,35 @@ function renderMobPackageTabs(fromCheckboxes) {
   tabsEl.style.display = cats.length > 1 ? 'flex' : 'none';
   tabsEl.innerHTML = '';
 
+  const MOB_GENERAL_EVENT_NAMES = {
+    birthday:'Birthday Parties', graduation:'Graduations', holiday:'Holiday Parties',
+    community:'Community Events', corporate:'Corporate Events', anniversary:'Anniversaries',
+    sweet16:'Sweet 16 / Quinceañera', reunion:'Reunions', school:'School Events', other:'Other'
+  };
+
   const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
   cats.forEach((cat, idx) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = catLabels[cat];
     btn.dataset.cat = cat;
-    btn.style.cssText = 'flex:1;padding:.55rem .5rem;border:none;border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .15s;';
+    btn.style.cssText = 'flex:1;padding:.55rem .5rem;border:none;border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.35rem;';
     btn.onclick = () => switchPkgCat(cat);
+
+    if (cat === 'general') {
+      // Build list of general event types this DJ has selected
+      const generalTypes = mobSelectedTypes.filter(t => MOB_CAT_GENERAL_TYPES.includes(t));
+      const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
+      btn.innerHTML = `<span>${catLabels[cat]}</span>
+        <span style="position:relative;display:inline-flex;align-items:center;"
+          onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block'"
+          onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid currentColor;font-size:.5rem;cursor:default;opacity:.7;">ⓘ</span>
+          <span class="pkg-cat-tip" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;font-size:.62rem;color:var(--white);white-space:nowrap;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.5);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;min-width:180px;max-width:260px;white-space:normal;line-height:1.5;">${typeList}</span>
+        </span>`;
+    } else {
+      btn.textContent = catLabels[cat];
+    }
+
     tabsEl.appendChild(btn);
     ['general','wedding','mitzvah'].forEach(c => {
       const pane = document.getElementById('pkg-pane-' + c);
