@@ -428,6 +428,7 @@ input[type=number] { color:var(--neon) !important; }
                 <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="holiday"> Holiday Parties</label>
                 <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="school"> School Events</label>
                 <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="community"> Community Events</label>
+                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="other"> Other</label>
               </div>
             </div>
           </div>
@@ -1463,8 +1464,7 @@ document.getElementById('slug-input').addEventListener('input', function() {
 document.getElementById('mobile-checkbox').addEventListener('change', function() {
   const bookingActive = document.getElementById('booking-enabled').checked;
   if (bookingActive && this.checked) {
-    this.checked = false; // revert immediately
-    showBookingTypeLockModal();
+    this.checked = false; // silently block — cannot switch while booking is active
     return;
   }
   document.getElementById('mobile-spec').style.display = this.checked ? 'block' : 'none';
@@ -1817,49 +1817,9 @@ function updateNameLabel() {
 function setMobileCheckboxLocked(locked) {
   const cb = document.getElementById('mobile-checkbox');
   const label = cb.closest('.checkbox-label');
-  cb.style.pointerEvents = locked ? 'none' : '';
-  cb.style.opacity = locked ? '0.4' : '';
   if (label) {
-    label.style.opacity = locked ? '0.5' : '';
-    label.style.cursor = locked ? 'not-allowed' : '';
-    label.title = locked ? 'Disable booking to change DJ type' : '';
+    label.style.display = locked ? 'none' : '';
   }
-}
-
-function showBookingTypeLockModal() {
-  const existing = document.getElementById('type-lock-modal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'type-lock-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
-  modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:400px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.05em;color:var(--white);margin-bottom:.75rem;">Booking Is Active</div>
-      <p style="font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:1.25rem;">You currently have booking enabled as a Club/Bar DJ. Switching to Mobile DJ will disable your booking settings and calendar. You will need to reconfigure them after switching.</p>
-      <p style="font-size:.82rem;color:var(--error);margin-bottom:1.5rem;font-family:'Space Mono',monospace;letter-spacing:.04em;">This action cannot be undone without re-enabling booking.</p>
-      <div style="display:flex;gap:.75rem;">
-        <button type="button" onclick="document.getElementById('type-lock-modal').remove()" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;cursor:pointer;">Cancel</button>
-        <button type="button" onclick="confirmSwitchToMobile()" style="flex:1;padding:.75rem;background:var(--error);border:none;border-radius:6px;color:var(--white);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">I Understand, Switch</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function confirmSwitchToMobile() {
-  document.getElementById('type-lock-modal').remove();
-  // Disable booking
-  const bookingCb = document.getElementById('booking-enabled');
-  bookingCb.checked = false;
-  toggleBookingSetup(true);
-  // Switch to mobile
-  const mobileCb = document.getElementById('mobile-checkbox');
-  mobileCb.checked = true;
-  document.getElementById('club-checkbox').checked = false;
-  document.getElementById('club-spec').style.display = 'none';
-  document.getElementById('mobile-spec').style.display = 'block';
-  document.querySelectorAll('input[name="club-genres"]').forEach(cb => cb.checked = false);
-  setMobileCheckboxLocked(false);
-  updateNameLabel();
 }
 
 function checkShowBookingTab() {
