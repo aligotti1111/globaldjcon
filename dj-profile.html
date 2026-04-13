@@ -805,6 +805,7 @@ const GENRE_LABELS = {
   }
 
   const isClubDJ = (data.type || '').toLowerCase().includes('club');
+  const isMobileDJ = (data.type || '').toLowerCase().includes('mobile');
 
   if (isClubDJ && data.booking_settings) {
     try {
@@ -819,6 +820,22 @@ const GENRE_LABELS = {
         renderPublicCalendar(bs.booking_days || {}, effectiveSlug, isOwnProfile, bs.allow_offers, bs.equip_full, bs.equip_decks, bs.equip_none, bs.global_rate_type, bs.rate_with_system, bs.rate_with_decks, bs.rate_no_equip, bs.base_rate, bs.booking_window_months || 12);
       }
     } catch(e) { console.error('Booking settings error:', e); }
+  }
+
+  if (isMobileDJ && data.booking_settings) {
+    try {
+      const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
+      if (bs.booking_enabled) {
+        const bookingTabBtn = document.getElementById('tab-btn-booking');
+        bookingTabBtn.style.display = '';
+        bookingTabBtn.textContent = 'Booking';
+        document.getElementById('tab-btn-about').classList.remove('active');
+        document.getElementById('tab-about').classList.remove('active');
+        bookingTabBtn.classList.add('active');
+        document.getElementById('tab-booking').classList.add('active');
+        renderMobilePublicBooking(data, bs, isOwnProfile, effectiveSlug);
+      }
+    } catch(e) { console.error('Mobile booking settings error:', e); }
   }
 
   // Show Message Me for everyone except own profile
@@ -843,7 +860,7 @@ const GENRE_LABELS = {
               if (bookingTabBtn) {
                 switchTab('booking', bookingTabBtn);
                 document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                setTimeout(() => pubCalShowRolling(), 400);
+                if (!isMobileDJ) setTimeout(() => pubCalShowRolling(), 400);
               }
             }
           };
@@ -2399,6 +2416,637 @@ function navLogout() {
   localStorage.removeItem('currentUser');
   sessionStorage.removeItem('currentUser');
   window.location.reload();
+}
+
+// ── MOBILE DJ PUBLIC BOOKING ──────────────────────────────
+
+let mobPubDjData = null;
+let mobPubBs = null;
+let mobPubIsOwner = false;
+let mobPubCalYear = new Date().getFullYear();
+let mobPubCalMonth = new Date().getMonth();
+let mobPubSelectedDate = null;
+let mobPubSelectedPkg = null;
+
+const MOB_EVENT_TYPE_LABELS = {
+  weddings:'Wedding', birthday:'Birthday Party', corporate:'Corporate Event',
+  anniversary:'Anniversary', graduation:'Graduation', sweet16:'Sweet 16 / Quinceañera',
+  mitzvah:'Bar/Bat Mitzvah', reunion:'Reunion', holiday:'Holiday Party',
+  school:'School Event', community:'Community Event', other:'Other'
+};
+
+const MOB_TIME_OPTIONS = (() => {
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const hh = String(h).padStart(2,'0'), mm = String(m).padStart(2,'0');
+      const label = `${h===0?12:h>12?h-12:h}:${mm} ${h<12?'AM':'PM'}`;
+      opts.push({ val:`${hh}:${mm}`, label });
+    }
+  }
+  return opts;
+})();
+
+function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
+  mobPubDjData = djData;
+  mobPubBs = bs;
+  mobPubIsOwner = isOwner;
+  const container = document.getElementById('p-booking-calendar');
+  if (!container) return;
+
+  const windowMonths = bs.mob_booking_window || 24;
+  const defaultPerDay = bs.mob_bookings_per_day || 1;
+  const bookingDays = bs.mob_booking_days || {};
+  const packages = bs.mob_packages || {};
+  const today = new Date();
+  mobPubCalYear = today.getFullYear();
+  mobPubCalMonth = today.getMonth();
+
+  container.innerHTML = `
+    <div id="mob-pub-cal-wrap">
+      <div id="mob-pub-cal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
+        <div id="mob-pub-cal-label" style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);"></div>
+        <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+      </div>
+      <div id="mob-pub-cal-grid"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Available</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,107,136,.1);border:1px solid rgba(107,107,136,.3);display:inline-block;"></span>Unavailable</div>
+      </div>
+    </div>
+    <div id="mob-pub-booking-form" style="display:none;margin-top:1.5rem;"></div>`;
+
+  drawMobPubCal();
+}
+
+function drawMobPubCal() {
+  const y = mobPubCalYear, m = mobPubCalMonth;
+  const bs = mobPubBs;
+  const bookingDays = bs.mob_booking_days || {};
+  const windowMonths = bs.mob_booking_window || 24;
+  const defaultPerDay = bs.mob_bookings_per_day || 1;
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear(), today.getMonth() + windowMonths, today.getDate());
+  const label = document.getElementById('mob-pub-cal-label');
+  if (label) label.textContent = PUB_CAL_MONTHS[m] + ' ' + y;
+
+  const grid = document.getElementById('mob-pub-cal-grid');
+  if (!grid) return;
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;">`;
+  dayNames.forEach((name,i) => {
+    html += `<div style="background:rgba(255,255,255,.04);border-right:1px solid var(--border);border-bottom:1px solid var(--border);${i===0?'border-radius:8px 0 0 0;':''}${i===6?'border-radius:0 8px 0 0;':''}padding:.5rem 0;text-align:center;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">${name}</div>`;
+  });
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;">`;
+
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div style="border-right:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);min-height:70px;background:rgba(255,255,255,.01);"></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayData = bookingDays[key] || {};
+    const dateObj = new Date(y, m, d);
+    const isPast = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isBeyond = dateObj > maxDate;
+    const isBooked = dayData.booked;
+    const isUnavail = dayData.unavailable;
+    const isToday = y===today.getFullYear() && m===today.getMonth() && d===today.getDate();
+    const bookingsLeft = dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay;
+    const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
+    const isSelected = mobPubSelectedDate === key;
+    const isAvail = !isPast && !isBeyond && !isBooked && !isUnavail && !isFull;
+
+    let bg = 'transparent';
+    if (isSelected) bg = 'rgba(0,245,196,.25)';
+    else if (isBooked) bg = 'rgba(255,60,60,.2)';
+    else if (isUnavail || isFull) bg = 'rgba(90,90,120,.15)';
+    else if (isToday) bg = 'rgba(0,245,196,.15)';
+    else if (isAvail) bg = 'rgba(0,245,196,.08)';
+
+    let numColor = isPast||isBeyond ? 'var(--muted)' : isBooked ? '#ff5f5f' : isUnavail||isFull ? 'var(--muted)' : isToday||isSelected ? 'var(--neon)' : 'var(--white)';
+
+    let badge = '';
+    if (isAvail) {
+      const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
+      const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
+      badge = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.18);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;margin-top:2px;" onclick="${action}">Book</div>`;
+    } else if (isBooked && dayData.eventName && dayData.location !== 'Private') {
+      badge = `<div style="font-size:clamp(.42rem,.9vw,.55rem);color:#ff7070;line-height:1.2;text-align:center;margin-top:2px;">${dayData.eventName}</div>`;
+    }
+
+    const isLastRow = Math.floor((firstDay+d-1)/7) === Math.floor((firstDay+daysInMonth-1)/7);
+    html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
+      <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;margin-bottom:2px;">${d}</div>
+      ${badge}
+    </div>`;
+  }
+
+  const remainder = (firstDay + daysInMonth) % 7;
+  if (remainder !== 0) for (let i = remainder; i < 7; i++) html += `<div style="border-right:1px solid var(--border);min-height:70px;background:rgba(255,255,255,.01);"></div>`;
+  html += `</div>`;
+  grid.innerHTML = html;
+}
+
+function mobPubCalNav(dir) {
+  mobPubCalMonth += dir;
+  if (mobPubCalMonth > 11) { mobPubCalMonth = 0; mobPubCalYear++; }
+  if (mobPubCalMonth < 0) { mobPubCalMonth = 11; mobPubCalYear--; }
+  drawMobPubCal();
+}
+
+function mobPubSelectDate(key) {
+  mobPubSelectedDate = key;
+  mobPubSelectedPkg = null;
+  drawMobPubCal();
+  renderMobPubForm(key);
+  document.getElementById('mob-pub-booking-form').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function renderMobPubForm(dateKey) {
+  const formEl = document.getElementById('mob-pub-booking-form');
+  if (!formEl) return;
+  const bs = mobPubBs;
+  const djData = mobPubDjData;
+  const [y,m,d] = dateKey.split('-').map(Number);
+  const dateLabel = new Date(y, m-1, d).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const eventTypes = (djData.event_types||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const packages = bs.mob_packages || {};
+  const depositPct = bs.mob_deposit_pct || 0;
+  const timeOpts = MOB_TIME_OPTIONS.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
+  const cocktailTimeOpts = MOB_TIME_OPTIONS.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
+
+  const eventTypeOptions = Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) => {
+    if (val !== 'other' && !eventTypes.includes(val)) return '';
+    return `<option value="${val}">${lbl}</option>`;
+  }).filter(Boolean).join('');
+
+  formEl.style.display = 'block';
+  formEl.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.06em;color:var(--white);">Request Booking</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--neon);">${dateLabel}</div>
+      </div>
+      <div id="mob-pub-form-alert" style="margin-bottom:.75rem;"></div>
+
+      <!-- Phone -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Phone Number</label>
+        <input type="tel" id="mpf-phone" placeholder="(555) 555-5555" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+
+      <!-- Event Type -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Type of Event</label>
+        <select id="mpf-event-type" onchange="mobPubEventTypeChange()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+          <option value="">Select event type...</option>
+          ${eventTypeOptions}
+          <option value="other">Other</option>
+        </select>
+        <input type="text" id="mpf-event-type-other" placeholder="Describe your event..." style="display:none;margin-top:.4rem;width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+
+      <!-- Venue -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Venue Name</label>
+        <input type="text" id="mpf-venue-name" placeholder="The Grand Ballroom" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+
+      <!-- Address -->
+      <div style="margin-bottom:1rem;position:relative;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Venue Address</label>
+        <input type="text" id="mpf-venue-address" placeholder="123 Main St, City, State" autocomplete="off" oninput="mobPubAddressAuto(this)" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+        <div id="mpf-addr-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- Room Details -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Room Details <span style="color:var(--muted);font-size:.55rem;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input type="text" id="mpf-room" placeholder="e.g. Grand Ballroom, 3rd Floor Terrace" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+
+      <!-- Guest Count -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Number of Guests</label>
+        <input type="number" id="mpf-guests" min="1" placeholder="150" style="width:120px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+
+      <!-- Wedding cocktail section -->
+      <div id="mpf-wedding-fields" style="display:none;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:.75rem;">Cocktail Hour</div>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:.6rem;">
+          <input type="checkbox" id="mpf-cocktail-needed" onchange="mobPubCocktailChange()" style="accent-color:var(--neon);">
+          <span style="font-size:.88rem;color:var(--white);">Cocktail hour music needed</span>
+        </label>
+        <div id="mpf-cocktail-fields" style="display:none;">
+          <div style="margin-bottom:.6rem;">
+            <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Cocktail Start Time</label>
+            <select id="mpf-cocktail-start" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+              <option value="">Select time...</option>${cocktailTimeOpts}
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+            <input type="checkbox" id="mpf-cocktail-same-room" style="accent-color:var(--neon);">
+            <span style="font-size:.85rem;color:var(--white);">Cocktail hour in same room as reception</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Times -->
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;" id="mpf-start-label">Event Start Time</label>
+          <select id="mpf-start-time" onchange="mobPubCalcPrice()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">Select time...</option>${timeOpts}
+          </select>
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;" id="mpf-end-label">Event End Time</label>
+          <select id="mpf-end-time" onchange="mobPubCalcPrice()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">Select time...</option>${timeOpts}
+          </select>
+        </div>
+      </div>
+
+      <!-- Package selection -->
+      <div id="mpf-packages-wrap" style="margin-bottom:1rem;"></div>
+
+      <!-- Price display -->
+      <div id="mpf-price-display" style="display:none;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Estimated Price</div>
+        <div id="mpf-price-value" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--neon);letter-spacing:.04em;"></div>
+        <div id="mpf-deposit-display" style="font-size:.78rem;color:var(--muted);margin-top:.25rem;"></div>
+        <div id="mpf-overtime-note" style="display:none;font-size:.72rem;color:var(--amber);margin-top:.35rem;"></div>
+      </div>
+
+      <!-- Message -->
+      <div style="margin-bottom:1.25rem;">
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Message <span style="color:var(--muted);font-size:.55rem;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea id="mpf-message" placeholder="Tell the DJ about your event..." rows="3" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;"></textarea>
+      </div>
+
+      <button type="button" id="mpf-submit-btn" onclick="mobPubSubmit('${dateKey}')" style="width:100%;padding:.9rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Request Booking</button>
+    </div>`;
+
+  // Render packages for any already-selected event type (none yet)
+  mobPubRenderPackages();
+}
+
+function mobPubEventTypeChange() {
+  const sel = document.getElementById('mpf-event-type');
+  const val = sel ? sel.value : '';
+  const otherInput = document.getElementById('mpf-event-type-other');
+  if (otherInput) otherInput.style.display = val === 'other' ? '' : 'none';
+
+  // Toggle wedding fields
+  const weddingFields = document.getElementById('mpf-wedding-fields');
+  if (weddingFields) weddingFields.style.display = val === 'weddings' ? '' : 'none';
+  const startLabel = document.getElementById('mpf-start-label');
+  const endLabel = document.getElementById('mpf-end-label');
+  if (startLabel) startLabel.textContent = val === 'weddings' ? 'Reception Start Time' : 'Event Start Time';
+  if (endLabel) endLabel.textContent = val === 'weddings' ? 'Reception End Time' : 'Event End Time';
+
+  mobPubSelectedPkg = null;
+  mobPubRenderPackages();
+  mobPubCalcPrice();
+}
+
+function mobPubCocktailChange() {
+  const cb = document.getElementById('mpf-cocktail-needed');
+  const fields = document.getElementById('mpf-cocktail-fields');
+  if (fields) fields.style.display = cb && cb.checked ? '' : 'none';
+}
+
+function mobPubGetCategory(eventType) {
+  if (eventType === 'weddings') return 'wedding';
+  if (eventType === 'mitzvah') return 'mitzvah';
+  return 'general';
+}
+
+function mobPubRenderPackages() {
+  const wrap = document.getElementById('mpf-packages-wrap');
+  if (!wrap) return;
+  const sel = document.getElementById('mpf-event-type');
+  const eventType = sel ? sel.value : '';
+  if (!eventType) { wrap.innerHTML = ''; return; }
+
+  const cat = mobPubGetCategory(eventType);
+  const bs = mobPubBs;
+  const pkgs = (bs.mob_packages || {})[cat] || [];
+
+  if (pkgs.length === 0) {
+    wrap.innerHTML = `<div style="background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:8px;padding:1rem;font-size:.85rem;color:var(--muted);">No packages available for this event type. <a href="#" onclick="openContactModal();return false;" style="color:var(--neon);">Message the DJ</a> to discuss your event.</div>`;
+    mobPubSelectedPkg = null;
+    return;
+  }
+
+  wrap.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.6rem;">Select a Package</div>
+    <div id="mpf-pkg-list" style="display:flex;flex-direction:column;gap:.5rem;"></div>`;
+
+  const list = document.getElementById('mpf-pkg-list');
+  pkgs.forEach((pkg, idx) => {
+    if (!pkg || !pkg.title) return;
+    const card = document.createElement('div');
+    const isSelected = mobPubSelectedPkg === idx;
+    card.style.cssText = `padding:.85rem 1rem;background:${isSelected?'rgba(0,245,196,.08)':'var(--deep)'};border:1px solid ${isSelected?'var(--neon)':'var(--border)'};border-radius:8px;cursor:pointer;transition:all .15s;`;
+    card.onclick = () => { mobPubSelectedPkg = idx; mobPubRenderPackages(); mobPubCalcPrice(); };
+
+    let pricePreview = '';
+    const has4 = pkg.price4 && !pkg.req4;
+    const has5 = pkg.price5 && !pkg.req5;
+    const has6 = pkg.price6 && !pkg.req6;
+    if (has4||has5||has6) {
+      const hrs = has4?'4':has5?'5':'6';
+      const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
+      pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);">from $${Number(price).toLocaleString()}</span>`;
+    } else if (pkg.req4||pkg.req5||pkg.req6) {
+      pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">Price on request</span>`;
+    }
+
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${pkg.details?'.4rem':'0'};">
+        <div style="font-weight:600;font-size:.92rem;color:var(--white);">${pkg.title}</div>
+        ${pricePreview}
+      </div>
+      ${pkg.details ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.5;">${pkg.details}</div>` : ''}
+      ${pkg.photo ? `<img src="${pkg.photo}" style="margin-top:.6rem;width:100%;max-height:100px;object-fit:cover;border-radius:5px;border:1px solid var(--border);">` : ''}
+      ${isSelected ? `<div style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--neon);letter-spacing:.06em;">✓ SELECTED</div>` : ''}`;
+    list.appendChild(card);
+  });
+}
+
+function mobPubCalcPrice() {
+  const priceDisplay = document.getElementById('mpf-price-display');
+  const priceVal = document.getElementById('mpf-price-value');
+  const depositDisplay = document.getElementById('mpf-deposit-display');
+  const overtimeNote = document.getElementById('mpf-overtime-note');
+  const submitBtn = document.getElementById('mpf-submit-btn');
+  if (!priceDisplay) return;
+
+  const sel = document.getElementById('mpf-event-type');
+  const eventType = sel ? sel.value : '';
+  if (!eventType || mobPubSelectedPkg === null) { priceDisplay.style.display='none'; return; }
+
+  const cat = mobPubGetCategory(eventType);
+  const bs = mobPubBs;
+  const pkg = ((bs.mob_packages||{})[cat]||[])[mobPubSelectedPkg];
+  if (!pkg) { priceDisplay.style.display='none'; return; }
+
+  const startSel = document.getElementById('mpf-start-time');
+  const endSel = document.getElementById('mpf-end-time');
+  const startVal = startSel ? startSel.value : '';
+  const endVal = endSel ? endSel.value : '';
+
+  let totalHours = 0;
+  if (startVal && endVal) {
+    const [sh,sm] = startVal.split(':').map(Number);
+    let [eh,em] = endVal.split(':').map(Number);
+    let mins = (eh*60+em)-(sh*60+sm);
+    if (mins <= 0) mins += 1440;
+    totalHours = mins / 60;
+  }
+
+  const depositPct = bs.mob_deposit_pct || 0;
+  let price = null;
+  let isQuote = false;
+  let overtimeHours = 0;
+
+  if (totalHours > 0) {
+    const hrs = Math.ceil(totalHours);
+    // Match hours to package price
+    if (hrs <= 4) {
+      if (pkg.req4) isQuote = true;
+      else if (pkg.price4) price = Number(pkg.price4);
+      else isQuote = true;
+    } else if (hrs <= 5) {
+      if (pkg.req5) isQuote = true;
+      else if (pkg.price5) price = Number(pkg.price5);
+      else if (pkg.price4 && pkg.overtime) { price = Number(pkg.price4) + (hrs-4)*Number(pkg.overtime); overtimeHours = hrs-4; }
+      else isQuote = true;
+    } else if (hrs <= 6) {
+      if (pkg.req6) isQuote = true;
+      else if (pkg.price6) price = Number(pkg.price6);
+      else if (pkg.price5 && pkg.overtime) { price = Number(pkg.price5) + (hrs-5)*Number(pkg.overtime); overtimeHours = hrs-5; }
+      else if (pkg.price4 && pkg.overtime) { price = Number(pkg.price4) + (hrs-4)*Number(pkg.overtime); overtimeHours = hrs-4; }
+      else isQuote = true;
+    } else {
+      // Beyond 6 hrs — use highest available price + overtime
+      const basePrice = pkg.price6||pkg.price5||pkg.price4;
+      const baseHrs = pkg.price6?6:pkg.price5?5:4;
+      if (basePrice && pkg.overtime) {
+        price = Number(basePrice) + (hrs-baseHrs)*Number(pkg.overtime);
+        overtimeHours = hrs-baseHrs;
+      } else isQuote = true;
+    }
+  } else {
+    // No times selected yet — show base price range
+    const firstPrice = pkg.price4||pkg.price5||pkg.price6;
+    const firstReq = pkg.req4||pkg.req5||pkg.req6;
+    if (firstReq) isQuote = true;
+    else if (firstPrice) price = Number(firstPrice);
+    else isQuote = true;
+  }
+
+  priceDisplay.style.display = '';
+  if (isQuote || price === null) {
+    priceVal.textContent = 'Price on Request';
+    priceVal.style.color = 'var(--muted)';
+    priceVal.style.fontSize = '1.2rem';
+    if (depositDisplay) depositDisplay.textContent = '';
+    if (overtimeNote) overtimeNote.style.display = 'none';
+    if (submitBtn) { submitBtn.textContent = 'Request Quote'; submitBtn.style.background = 'var(--muted)'; }
+  } else {
+    priceVal.textContent = `$${price.toLocaleString()}`;
+    priceVal.style.color = 'var(--neon)';
+    priceVal.style.fontSize = '2rem';
+    if (depositPct > 0) {
+      const dep = (price * depositPct / 100).toFixed(2);
+      if (depositDisplay) depositDisplay.textContent = `Deposit required: $${Number(dep).toLocaleString()} (${depositPct}%)`;
+    } else {
+      if (depositDisplay) depositDisplay.textContent = 'No deposit required';
+    }
+    if (overtimeNote) {
+      if (overtimeHours > 0 && pkg.overtime) {
+        overtimeNote.style.display = '';
+        overtimeNote.textContent = `Includes ${overtimeHours}hr overtime at $${pkg.overtime}/hr`;
+      } else {
+        overtimeNote.style.display = 'none';
+      }
+    }
+    if (submitBtn) { submitBtn.textContent = 'Request Booking'; submitBtn.style.background = 'var(--neon)'; }
+  }
+}
+
+let mobPubAddrTimeout = null;
+function mobPubAddressAuto(input) {
+  clearTimeout(mobPubAddrTimeout);
+  const val = input.value.trim();
+  const suggestions = document.getElementById('mpf-addr-suggestions');
+  if (!suggestions) return;
+  if (val.length < 3) { suggestions.style.display='none'; return; }
+  mobPubAddrTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`);
+      const results = await res.json();
+      if (!results.length) { suggestions.style.display='none'; return; }
+      suggestions.style.display = '';
+      suggestions.innerHTML = results.map(r => {
+        const parts = r.display_name.split(',');
+        const clean = parts.filter(p => !/county/i.test(p)).join(',').trim();
+        return `<div style="padding:.6rem .85rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,245,196,.08)'" onmouseout="this.style.background=''" onclick="mobPubPickAddr('${clean.replace(/'/g,'\\\'')}')">${clean}</div>`;
+      }).join('');
+    } catch(e) { suggestions.style.display='none'; }
+  }, 350);
+}
+
+function mobPubPickAddr(addr) {
+  const input = document.getElementById('mpf-venue-address');
+  if (input) input.value = addr;
+  const suggestions = document.getElementById('mpf-addr-suggestions');
+  if (suggestions) suggestions.style.display = 'none';
+}
+
+async function mobPubSubmit(dateKey) {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
+  if (!cu) { showBookingGate(); return; }
+
+  const alertEl = document.getElementById('mob-pub-form-alert');
+  const submitBtn = document.getElementById('mpf-submit-btn');
+  const bs = mobPubBs;
+  const djData = mobPubDjData;
+
+  const phone = document.getElementById('mpf-phone')?.value.trim();
+  const eventType = document.getElementById('mpf-event-type')?.value;
+  const eventTypeOther = document.getElementById('mpf-event-type-other')?.value.trim();
+  const venueName = document.getElementById('mpf-venue-name')?.value.trim();
+  const venueAddress = document.getElementById('mpf-venue-address')?.value.trim();
+  const room = document.getElementById('mpf-room')?.value.trim();
+  const guests = document.getElementById('mpf-guests')?.value;
+  const startTime = document.getElementById('mpf-start-time')?.value;
+  const endTime = document.getElementById('mpf-end-time')?.value;
+  const message = document.getElementById('mpf-message')?.value.trim();
+  const cocktailNeeded = document.getElementById('mpf-cocktail-needed')?.checked || false;
+  const cocktailStart = document.getElementById('mpf-cocktail-start')?.value;
+  const cocktailSameRoom = document.getElementById('mpf-cocktail-same-room')?.checked || false;
+  const isWedding = eventType === 'weddings';
+
+  if (!phone) { alertEl.innerHTML='<div class="alert alert-error">Please enter your phone number.</div>'; return; }
+  if (!eventType) { alertEl.innerHTML='<div class="alert alert-error">Please select an event type.</div>'; return; }
+  if (!venueName) { alertEl.innerHTML='<div class="alert alert-error">Please enter the venue name.</div>'; return; }
+  if (!venueAddress) { alertEl.innerHTML='<div class="alert alert-error">Please enter the venue address.</div>'; return; }
+  if (!startTime) { alertEl.innerHTML='<div class="alert alert-error">Please select a start time.</div>'; return; }
+  if (mobPubSelectedPkg === null) { alertEl.innerHTML='<div class="alert alert-error">Please select a package.</div>'; return; }
+
+  const cat = mobPubGetCategory(eventType);
+  const pkg = ((bs.mob_packages||{})[cat]||[])[mobPubSelectedPkg];
+  if (!pkg) { alertEl.innerHTML='<div class="alert alert-error">Invalid package selected.</div>'; return; }
+
+  // Determine price / quote
+  let totalPrice = null, isQuote = false, depositAmount = null;
+  const depositPct = bs.mob_deposit_pct || 0;
+  if (startTime && endTime) {
+    const [sh,sm] = startTime.split(':').map(Number);
+    let [eh,em] = endTime.split(':').map(Number);
+    let mins = (eh*60+em)-(sh*60+sm);
+    if (mins<=0) mins+=1440;
+    const hrs = Math.ceil(mins/60);
+    if (hrs<=4) { if(pkg.req4||!pkg.price4) isQuote=true; else totalPrice=Number(pkg.price4); }
+    else if (hrs<=5) { if(pkg.req5||!pkg.price5) { if(pkg.price4&&pkg.overtime&&!pkg.req4) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; } else totalPrice=Number(pkg.price5); }
+    else if (hrs<=6) { if(pkg.req6||!pkg.price6) { if(pkg.price5&&pkg.overtime&&!pkg.req5) totalPrice=Number(pkg.price5)+(hrs-5)*Number(pkg.overtime); else if(pkg.price4&&pkg.overtime&&!pkg.req4) totalPrice=Number(pkg.price4)+(hrs-4)*Number(pkg.overtime); else isQuote=true; } else totalPrice=Number(pkg.price6); }
+    else { const bp=pkg.price6||pkg.price5||pkg.price4; const bh=pkg.price6?6:pkg.price5?5:4; if(bp&&pkg.overtime) totalPrice=Number(bp)+(hrs-bh)*Number(pkg.overtime); else isQuote=true; }
+  } else { isQuote=true; }
+
+  if (totalPrice && depositPct>0) depositAmount = (totalPrice*depositPct/100).toFixed(2);
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+
+  try {
+    const { error } = await db.from('bookings').insert({
+      dj_id: djData.id,
+      requester_id: cu.id,
+      dj_slug: djData.slug,
+      booking_type: 'mobile',
+      event_date: dateKey,
+      event_type: eventType === 'other' ? (eventTypeOther||'other') : eventType,
+      venue_name: venueName,
+      venue_address: venueAddress,
+      room_details: room||null,
+      guest_count: guests ? parseInt(guests) : null,
+      start_time: startTime,
+      end_time: endTime||null,
+      phone: phone,
+      cocktail_needed: isWedding ? cocktailNeeded : null,
+      cocktail_start_time: isWedding&&cocktailNeeded ? cocktailStart : null,
+      cocktail_same_room: isWedding&&cocktailNeeded ? cocktailSameRoom : null,
+      package_title: pkg.title,
+      package_category: cat,
+      package_index: mobPubSelectedPkg,
+      quoted_rate: totalPrice||null,
+      deposit_pct: depositPct||null,
+      deposit_amount: depositAmount||null,
+      is_quote: isQuote,
+      notes: message||null,
+      status: 'pending',
+    });
+    if (error) throw error;
+
+    // Email to DJ
+    try {
+      const { data: freshDj } = await db.from('users').select('email,name,zip').eq('id', djData.id).single();
+      if (freshDj?.email) {
+        await fetch('/.netlify/functions/send-email', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'mob_booking_request',
+            djName: djData.name, djEmail: freshDj.email,
+            requesterName: cu.name,
+            eventDate: dateKey, eventType: MOB_EVENT_TYPE_LABELS[eventType]||(eventTypeOther||eventType),
+            venueName, venueAddress, roomDetails:room,
+            guestCount: guests||null,
+            packageTitle: pkg.title, packageCategory: cat,
+            startTime, endTime,
+            cocktailNeeded: isWedding&&cocktailNeeded,
+            cocktailStartTime: cocktailStart,
+            cocktailSameRoom,
+            totalPrice, depositAmount, depositPct,
+            notes: message, isQuote,
+            djZip: freshDj.zip||null, venueZip: null,
+          })
+        });
+      }
+    } catch(e) { console.warn('DJ email failed:', e); }
+
+    // Confirmation email to booker
+    try {
+      if (cu.email) {
+        await fetch('/.netlify/functions/send-email', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type: 'mob_booking_confirm',
+            requesterName: cu.name, requesterEmail: cu.email,
+            djName: djData.name, eventDate: dateKey,
+            packageTitle: pkg.title, totalPrice, depositAmount, depositPct, isQuote,
+          })
+        });
+      }
+    } catch(e) { console.warn('Booker confirm email failed:', e); }
+
+    alertEl.innerHTML = `<div class="alert alert-success">✓ ${isQuote?'Quote request':'Booking request'} sent! The DJ will be in touch.</div>`;
+    submitBtn.textContent = isQuote?'Quote Sent':'Request Sent';
+    submitBtn.style.background = 'var(--muted)';
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
+    submitBtn.disabled = false;
+    submitBtn.textContent = isQuote ? 'Request Quote' : 'Request Booking';
+  }
 }
 </script>
 
