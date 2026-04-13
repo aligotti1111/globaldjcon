@@ -2536,12 +2536,10 @@ function drawMobPubCal() {
     if (mobPubIsOwner && !isPast) {
       // Owner sees ✕/✓ quick-mark and ✏️ edit controls at bottom of cell
       badge = `
-        <div style="display:flex;gap:4px;justify-content:center;align-items:center;width:100%;">
-          ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
-            style="background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.3)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
-          <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
-            style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
-        </div>`;
+        ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
+          style="position:absolute;bottom:2px;left:2px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.3)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
+        <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
+          style="position:absolute;bottom:2px;right:2px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>`;
     } else if (!mobPubIsOwner && isAvail) {
       const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
       const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
@@ -2551,7 +2549,7 @@ function drawMobPubCal() {
     }
 
     const isLastRow = Math.floor((firstDay+d-1)/7) === Math.floor((firstDay+daysInMonth-1)/7);
-    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;">
+    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
       <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;">${d}</div>
       ${badge}
     </div>`;
