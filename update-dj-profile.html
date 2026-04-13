@@ -3134,14 +3134,6 @@ function buildPkgCard(cat, idx, pkg) {
   const reqAll = !!(pkg.reqAll);
   priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
 
-  // Single "require request" toggle
-  const reqToggleRow = document.createElement('div');
-  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-bottom:.85rem;padding:.6rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
-  reqToggleRow.innerHTML = `
-    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
-    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
-  priceWrap.appendChild(reqToggleRow);
-
   ['4','5','6'].forEach(hrs => {
     const priceField = `price${hrs}`;
     const row = document.createElement('div');
@@ -3152,6 +3144,14 @@ function buildPkgCard(cat, idx, pkg) {
       <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
     priceWrap.appendChild(row);
   });
+
+  // Require request toggle — between 6hr and overtime
+  const reqToggleRow = document.createElement('div');
+  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-top:.6rem;margin-bottom:.6rem;padding:.55rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
+  reqToggleRow.innerHTML = `
+    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
+    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
+  priceWrap.appendChild(reqToggleRow);
 
   // Overtime
   const otRow = document.createElement('div');
@@ -3186,7 +3186,7 @@ function buildPkgCard(cat, idx, pkg) {
   const setupWrap = document.createElement('div');
   setupWrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;';
   setupWrap.innerHTML = `
-    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);white-space:nowrap;">Setup Hours Required:</label>
+    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);white-space:nowrap;">The number of hours required to set up equipment prior to event start time:</label>
     <select onchange="mobPkgChange('${cat}',${idx},'setupHours',this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">
       <option value="">—</option>
       ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${pkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
