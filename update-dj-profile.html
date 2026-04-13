@@ -3079,7 +3079,7 @@ function renderMobPackageTabs(fromCheckboxes) {
     const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
     const needsAttention = (cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0;
     const alertBadge = needsAttention
-      ? `<span title="No packages added yet" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#ff5f5f;color:#fff;font-size:.6rem;font-weight:700;flex-shrink:0;line-height:1;">!</span>`
+      ? `<span title="No packages added yet" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#ff5f5f;color:#fff;font-size:.7rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;">!</span>`
       : '';
 
     if (cat === 'general') {
@@ -3128,6 +3128,17 @@ function renderMobPackages(cat) {
   const pane = document.getElementById('pkg-pane-' + cat);
   if (!pane) return;
   pane.innerHTML = '';
+
+  // Red notice for wedding/mitzvah with no saved packages
+  const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
+  if ((cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0) {
+    const catName = cat === 'wedding' ? 'Wedding' : 'Bar/Bat Mitzvah';
+    const notice = document.createElement('div');
+    notice.style.cssText = 'display:flex;align-items:flex-start;gap:.6rem;padding:.75rem 1rem;background:rgba(255,95,95,.08);border:1px solid rgba(255,95,95,.3);border-radius:8px;margin-bottom:1rem;';
+    notice.innerHTML = `<span style="color:#ff5f5f;font-size:1rem;flex-shrink:0;line-height:1.4;">⚠</span><span style="font-size:.8rem;color:#ff5f5f;line-height:1.5;">Please add at least one package to begin accepting ${catName} bookings.</span>`;
+    pane.appendChild(notice);
+  }
+
   const pkgs = mobPackages[cat] || [];
   if (pkgs.length === 0) {
     mobPackages[cat] = [newMobPackage()];
