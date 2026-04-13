@@ -3115,13 +3115,13 @@ function buildPkgCard(cat, idx, pkg) {
       <button type="button" onclick="pkgCmd('insertUnorderedList','${editorId}')" title="Bullet list" style="${btnStyle}">• List</button>
       <button type="button" onclick="pkgCmd('insertOrderedList','${editorId}')" title="Numbered list" style="${btnStyle}">1. List</button>
       <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
-      <select onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;">
+      <select id="font-sel-${cat}-${idx}" onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;min-width:90px;">
         <option value="">Font</option>
-        <option value="DM Sans, sans-serif">DM Sans</option>
-        <option value="Georgia, serif">Georgia</option>
-        <option value="Space Mono, monospace">Mono</option>
-        <option value="Arial, sans-serif">Arial</option>
-        <option value="Times New Roman, serif">Times</option>
+        <option value="DM Sans, sans-serif" style="font-family:'DM Sans',sans-serif;">DM Sans</option>
+        <option value="Georgia, serif" style="font-family:Georgia,serif;">Georgia</option>
+        <option value="Space Mono, monospace" style="font-family:'Space Mono',monospace;">Mono</option>
+        <option value="Arial, sans-serif" style="font-family:Arial,sans-serif;">Arial</option>
+        <option value="Times New Roman, serif" style="font-family:'Times New Roman',serif;">Times</option>
       </select>
     </div>
     <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
@@ -3224,16 +3224,13 @@ function pkgFont(select, editorId) {
 
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-    // No selection — change font of whole editor
     el.style.fontFamily = font;
     el.dispatchEvent(new Event('input', { bubbles: true }));
     return;
   }
 
-  // Use execCommand with styleWithCSS for inline font changes
   document.execCommand('styleWithCSS', false, true);
   document.execCommand('fontName', false, font);
-  // execCommand fontName inserts <font face="..."> — convert to span with font-family
   el.querySelectorAll('font[face]').forEach(f => {
     const span = document.createElement('span');
     span.style.fontFamily = f.getAttribute('face');
@@ -3242,6 +3239,31 @@ function pkgFont(select, editorId) {
   });
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
+
+// Sync font dropdown to reflect active font at cursor
+const PKG_FONT_MAP = [
+  { key: 'DM Sans', val: 'DM Sans, sans-serif' },
+  { key: 'Georgia', val: 'Georgia, serif' },
+  { key: 'Space Mono', val: 'Space Mono, monospace' },
+  { key: 'Arial', val: 'Arial, sans-serif' },
+  { key: 'Times New Roman', val: 'Times New Roman, serif' },
+];
+document.addEventListener('selectionchange', function() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const node = sel.anchorNode;
+  if (!node) return;
+  const editor = node.nodeType === 3 ? node.parentElement?.closest('[contenteditable]') : node.closest?.('[contenteditable]');
+  if (!editor || !editor.id) return;
+  const parts = editor.id.split('-'); // pkg-editor-{cat}-{idx}
+  if (parts[0] !== 'pkg' || parts[1] !== 'editor') return;
+  const cat = parts[2], idx = parts[3];
+  const selEl = document.getElementById(`font-sel-${cat}-${idx}`);
+  if (!selEl) return;
+  const computedFont = window.getComputedStyle(node.nodeType === 3 ? node.parentElement : node).fontFamily;
+  const matched = PKG_FONT_MAP.find(f => computedFont.toLowerCase().includes(f.key.toLowerCase()));
+  selEl.value = matched ? matched.val : '';
+});
 
 function pkgField(labelText, inputHtml) {
   const wrap = document.createElement('div');
