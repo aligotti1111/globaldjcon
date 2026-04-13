@@ -3196,10 +3196,25 @@ function buildPkgCard(cat, idx, pkg) {
   // Package photo
   const photoWrap = document.createElement('div');
   photoWrap.style.marginBottom = '.5rem';
+  const photoBoxId = `pkg-photo-box-${cat}-${idx}`;
+  const photoPreviewId = `pkg-photo-preview-${cat}-${idx}`;
+  const photoStatusId = `pkg-photo-status-${cat}-${idx}`;
   photoWrap.innerHTML = `
-    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Setup Photo (URL)</label>
-    <input type="text" placeholder="https://..." value="${escHtml(pkg.photo||'')}" onchange="mobPkgChange('${cat}',${idx},'photo',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;">
-    ${pkg.photo ? `<img src="${escHtml(pkg.photo)}" style="margin-top:.5rem;width:100%;max-height:120px;object-fit:cover;border-radius:5px;border:1px solid var(--border);">` : ''}`;
+    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Setup Photo</label>
+    <div class="upload-box${pkg.photo?' has-image':''}" id="${photoBoxId}" style="position:relative;border:2px dashed var(--border);border-radius:6px;cursor:pointer;overflow:hidden;background:var(--deep);">
+      <input type="file" accept="image/*" onchange="handlePkgPhotoUpload(this,'${cat}',${idx},'${photoPreviewId}','${photoStatusId}','${photoBoxId}')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2;">
+      <div class="upload-placeholder" style="${pkg.photo?'display:none;':''}display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem .75rem;gap:.4rem;min-height:90px;pointer-events:none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted);opacity:.6;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span style="font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Click to upload photo</span>
+        <span style="font-size:.68rem;color:var(--muted);">JPG, PNG, WebP</span>
+      </div>
+      <div class="upload-preview" id="${photoPreviewId}" style="${pkg.photo?'':'display:none;'}position:relative;">
+        <img src="${escHtml(pkg.photo||'')}" alt="Package photo" style="width:100%;max-height:140px;object-fit:cover;display:block;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"><span style="color:var(--white);font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;pointer-events:none;">Change Photo</span></div>
+        <button type="button" onclick="removePkgPhoto(event,'${cat}',${idx},'${photoPreviewId}','${photoBoxId}')" style="position:absolute;top:6px;right:6px;background:rgba(5,5,7,.7);border:1px solid rgba(255,95,95,.4);border-radius:4px;color:#ff5f5f;cursor:pointer;font-size:.7rem;padding:2px 6px;z-index:3;" title="Remove photo">✕</button>
+      </div>
+    </div>
+    <div id="${photoStatusId}" class="upload-status"></div>`;
   card.appendChild(photoWrap);
 
   // Save button for this package
@@ -3211,6 +3226,53 @@ function buildPkgCard(cat, idx, pkg) {
   card.appendChild(saveRow);
 
   return card;
+}
+
+async function handlePkgPhotoUpload(input, cat, idx, previewId, statusId, boxId) {
+  const file = input.files[0];
+  if (!file || !currentUser) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = currentUser.id + '/packages/pkg_' + cat + '_' + idx + '_' + Date.now() + '.' + ext;
+  const pkgStorageUrl = SUPABASE_URL + '/storage/v1/object/avatars/';
+  const pkgPublicUrl  = SUPABASE_URL + '/storage/v1/object/public/avatars/';
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) { statusEl.textContent = 'Uploading...'; statusEl.className = 'upload-status uploading'; }
+  try {
+    const res = await fetch(pkgStorageUrl + path, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY, 'Content-Type': file.type, 'x-upsert': 'true' },
+      body: file
+    });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Upload failed'); }
+    const publicUrl = pkgPublicUrl + path + '?t=' + Date.now();
+    mobPkgChange(cat, idx, 'photo', publicUrl);
+    const previewEl = document.getElementById(previewId);
+    const box = document.getElementById(boxId);
+    if (previewEl) {
+      const img = previewEl.querySelector('img');
+      if (img) img.src = publicUrl;
+      previewEl.style.display = '';
+      const placeholder = box?.querySelector('.upload-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+    }
+    if (box) box.classList.add('has-image');
+    if (statusEl) { statusEl.textContent = '✓ Uploaded'; statusEl.className = 'upload-status done'; setTimeout(() => { statusEl.textContent = ''; }, 3000); }
+  } catch(err) {
+    if (statusEl) { statusEl.textContent = '✗ ' + err.message; statusEl.className = 'upload-status error'; }
+  }
+}
+
+function removePkgPhoto(e, cat, idx, previewId, boxId) {
+  e.stopPropagation();
+  mobPkgChange(cat, idx, 'photo', '');
+  const previewEl = document.getElementById(previewId);
+  const box = document.getElementById(boxId);
+  if (previewEl) { previewEl.style.display = 'none'; const img = previewEl.querySelector('img'); if (img) img.src = ''; }
+  if (box) {
+    box.classList.remove('has-image');
+    const placeholder = box.querySelector('.upload-placeholder');
+    if (placeholder) placeholder.style.display = '';
+  }
 }
 
 function pkgCmd(cmd, editorId) {
