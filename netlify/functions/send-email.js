@@ -321,22 +321,24 @@ exports.handler = async (event) => {
 
   // ── MOBILE QUOTE RESPONSE (DJ sends price back to booker) ──────────
   } else if (type === 'mob_quote_response') {
-    const { requesterName, requesterEmail, djName, eventDate, packageTitle, quotedPrice, depositAmount, depositPct, djMessage } = body;
+    const { requesterName, requesterEmail, djName, eventDate, packageTitle, quotedPrice, overtimeRate, eventHours, depositAmount, depositPct, djMessage } = body;
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
+    const hoursLabel = eventHours ? `${eventHours} Hour Event Price` : 'Event Price';
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: `Quote from ${escHtml(djName)} – ${dateStr}`,
+      subject: `Price from ${escHtml(djName)} – ${dateStr}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Your Quote is Ready</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent a quote for your event on <strong>${dateStr}</strong>.</p>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Your Price is Ready</h2>
+        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent pricing for your event on <strong>${dateStr}</strong>.</p>
         ${packageTitle ? `<p style="color:#666666;margin-bottom:12px;">Package: <strong>${escHtml(packageTitle)}</strong></p>` : ''}
         <div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Quoted Price</div>
-          <div style="font-size:2em;font-weight:700;color:#00b89a;">$${Number(quotedPrice).toLocaleString()}</div>
-          ${depositAmount ? `<div style="margin-top:8px;font-size:13px;color:#666;">Deposit required (${depositPct}%): <strong>$${Number(depositAmount).toLocaleString()}</strong></div>` : ''}
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">${escHtml(hoursLabel)}</div>
+          <div style="font-size:2em;font-weight:700;color:#00b89a;margin-bottom:12px;">$${Number(quotedPrice).toLocaleString()}</div>
+          ${overtimeRate ? `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Hourly Overtime Rate</div><div style="font-size:1.3em;font-weight:700;color:#1a1a2e;margin-bottom:12px;">$${Number(overtimeRate).toLocaleString()} / hr</div>` : ''}
+          ${depositAmount ? `<div style="font-size:13px;color:#666;">Deposit required (${depositPct}%): <strong>$${Number(depositAmount).toLocaleString()}</strong></div>` : ''}
           ${djMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(djMessage)}"</div>` : ''}
         </div>
-        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Accept or Decline Quote</a>
+        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Accept or Decline</a>
       `)
     };
 
