@@ -2583,7 +2583,7 @@ function renderMobPubForm(dateKey) {
   const cocktailTimeOpts = MOB_TIME_OPTIONS.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
 
   const eventTypeOptions = Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) => {
-    if (val !== 'other' && !eventTypes.includes(val)) return '';
+    if (!eventTypes.includes(val)) return '';
     return `<option value="${val}">${lbl}</option>`;
   }).filter(Boolean).join('');
 
@@ -2608,7 +2608,6 @@ function renderMobPubForm(dateKey) {
         <select id="mpf-event-type" onchange="mobPubEventTypeChange()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
           <option value="">Select event type...</option>
           ${eventTypeOptions}
-          <option value="other">Other</option>
         </select>
         <input type="text" id="mpf-event-type-other" placeholder="Describe your event..." style="display:none;margin-top:.4rem;width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
