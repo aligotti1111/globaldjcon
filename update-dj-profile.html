@@ -3075,11 +3075,18 @@ function renderMobPackageTabs(fromCheckboxes) {
     btn.style.cssText = 'flex:1;padding:.55rem .5rem;border:none;border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.35rem;';
     btn.onclick = () => switchPkgCat(cat);
 
+    // Check if this category has at least one package with a title
+    const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
+    const needsAttention = (cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0;
+    const alertBadge = needsAttention
+      ? `<span title="No packages added yet" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#ff5f5f;color:#fff;font-size:.6rem;font-weight:700;flex-shrink:0;line-height:1;">!</span>`
+      : '';
+
     if (cat === 'general') {
-      // Build list of general event types this DJ has selected
       const generalTypes = mobSelectedTypes.filter(t => MOB_CAT_GENERAL_TYPES.includes(t));
       const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
       btn.innerHTML = `<span>${catLabels[cat]}</span>
+        ${alertBadge}
         <span style="position:relative;display:inline-flex;align-items:center;"
           onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block';event.stopPropagation();"
           onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none';"
@@ -3089,7 +3096,7 @@ function renderMobPackageTabs(fromCheckboxes) {
           <span class="pkg-cat-tip" style="display:none;position:fixed;background:var(--card);border:1px solid var(--neon);border-radius:8px;padding:.65rem .9rem;font-size:.75rem;color:var(--white);z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;max-width:240px;white-space:normal;line-height:1.6;">${typeList}</span>
         </span>`;
     } else {
-      btn.textContent = catLabels[cat];
+      btn.innerHTML = `<span>${catLabels[cat]}</span>${alertBadge}`;
     }
 
     tabsEl.appendChild(btn);
@@ -3436,6 +3443,8 @@ async function mobSavePackages(cat, idx, btn) {
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
     if (error) throw error;
     if (alertEl) { alertEl.textContent = '✓ Saved'; alertEl.style.color = 'var(--neon)'; setTimeout(() => { alertEl.textContent = ''; }, 2500); }
+    // Refresh tab badges in case this was first package saved
+    renderMobPackageTabs();
   } catch(e) {
     if (alertEl) { alertEl.textContent = '✗ ' + e.message; alertEl.style.color = 'var(--error)'; }
   }
