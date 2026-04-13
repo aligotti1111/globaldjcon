@@ -705,7 +705,21 @@ const GENRE_LABELS = {
   const heroTags = document.getElementById('p-hero-tags');
   let tagHtml = '';
 
-  if (data.event_types) {
+  const isMobileDJProfile = (data.type || '').includes('mobile-event') || (data.type || '').includes('mobile');
+
+  if (data.event_types && isMobileDJProfile) {
+    // Mobile DJs: single clickable badge that reveals event types in a popup
+    const events = data.event_types.split(',').map(s => s.trim()).filter(Boolean);
+    if (events.length > 0) {
+      const eventListHtml = events.map(e => `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);padding:.2rem 0;">${EVENT_TYPE_LABELS[e] || e}</div>`).join('');
+      tagHtml += `<span class="tag neon" id="event-types-badge" onclick="toggleEventTypesPopup(event)" style="cursor:pointer;position:relative;">
+        Events Serviced ▾
+        <div id="event-types-popup" style="display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+          ${eventListHtml}
+        </div>
+      </span>`;
+    }
+  } else if (data.event_types) {
     const events = data.event_types.split(',').map(s => s.trim()).filter(Boolean);
     events.forEach(e => {
       tagHtml += `<span class="tag neon">${EVENT_TYPE_LABELS[e] || e}</span>`;
@@ -2417,6 +2431,18 @@ function navLogout() {
   sessionStorage.removeItem('currentUser');
   window.location.reload();
 }
+
+function toggleEventTypesPopup(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('event-types-popup');
+  if (!popup) return;
+  popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', function() {
+  const popup = document.getElementById('event-types-popup');
+  if (popup) popup.style.display = 'none';
+});
 
 // ── MOBILE DJ PUBLIC BOOKING ──────────────────────────────
 
