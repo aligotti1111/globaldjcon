@@ -3221,24 +3221,25 @@ function pkgFont(select, editorId) {
   const el = document.getElementById(editorId);
   if (!el) return;
   el.focus();
+
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-    // No selection — apply to entire editor
+    // No selection — change font of whole editor
     el.style.fontFamily = font;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
     return;
   }
-  const range = sel.getRangeAt(0);
-  const span = document.createElement('span');
-  span.style.fontFamily = font;
-  try {
-    range.surroundContents(span);
-  } catch(e) {
-    // surroundContents fails on partial selections across elements — extract and wrap
-    const fragment = range.extractContents();
-    span.appendChild(fragment);
-    range.insertNode(span);
-  }
-  // Trigger save
+
+  // Use execCommand with styleWithCSS for inline font changes
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('fontName', false, font);
+  // execCommand fontName inserts <font face="..."> — convert to span with font-family
+  el.querySelectorAll('font[face]').forEach(f => {
+    const span = document.createElement('span');
+    span.style.fontFamily = f.getAttribute('face');
+    while (f.firstChild) span.appendChild(f.firstChild);
+    f.parentNode.replaceChild(span, f);
+  });
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
