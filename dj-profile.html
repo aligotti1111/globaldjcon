@@ -2922,6 +2922,14 @@ async function mobPubSubmit(dateKey) {
   const bs = mobPubBs;
   const djData = mobPubDjData;
 
+  const showErr = (msg) => {
+    if (alertEl) alertEl.innerHTML = `<div style="padding:.75rem 1rem;background:rgba(255,95,95,.12);border:1px solid rgba(255,95,95,.35);border-radius:6px;color:#ff5f5f;font-size:.85rem;margin-bottom:.5rem;">${msg}</div>`;
+    else alert(msg);
+  };
+  const showOk = (msg) => {
+    if (alertEl) alertEl.innerHTML = `<div style="padding:.75rem 1rem;background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.35);border-radius:6px;color:#3ddc84;font-size:.85rem;margin-bottom:.5rem;">${msg}</div>`;
+  };
+
   const phone = document.getElementById('mpf-phone')?.value.trim();
   const eventType = document.getElementById('mpf-event-type')?.value;
   const eventTypeOther = document.getElementById('mpf-event-type-other')?.value.trim();
@@ -2937,16 +2945,16 @@ async function mobPubSubmit(dateKey) {
   const cocktailSameRoom = document.getElementById('mpf-cocktail-same-room')?.checked || false;
   const isWedding = eventType === 'weddings';
 
-  if (!phone) { alertEl.innerHTML='<div class="alert alert-error">Please enter your phone number.</div>'; return; }
-  if (!eventType) { alertEl.innerHTML='<div class="alert alert-error">Please select an event type.</div>'; return; }
-  if (!venueName) { alertEl.innerHTML='<div class="alert alert-error">Please enter the venue name.</div>'; return; }
-  if (!venueAddress) { alertEl.innerHTML='<div class="alert alert-error">Please enter the venue address.</div>'; return; }
-  if (!startTime) { alertEl.innerHTML='<div class="alert alert-error">Please select a start time.</div>'; return; }
-  if (mobPubSelectedPkg === null) { alertEl.innerHTML='<div class="alert alert-error">Please select a package.</div>'; return; }
+  if (!phone) { showErr('Please enter your phone number.'); return; }
+  if (!eventType) { showErr('Please select an event type.'); return; }
+  if (!venueName) { showErr('Please enter the venue name.'); return; }
+  if (!venueAddress) { showErr('Please enter the venue address.'); return; }
+  if (!startTime) { showErr('Please select a start time.'); return; }
+  if (mobPubSelectedPkg === null) { showErr('Please select a package.'); return; }
 
   const cat = mobPubGetCategory(eventType);
   const pkg = ((bs.mob_packages||{})[cat]||[])[mobPubSelectedPkg];
-  if (!pkg) { alertEl.innerHTML='<div class="alert alert-error">Invalid package selected.</div>'; return; }
+  if (!pkg) { showErr('Invalid package selected.'); return; }
 
   // Determine price / quote
   let totalPrice = null, isQuote = false, depositAmount = null;
@@ -2969,7 +2977,7 @@ async function mobPubSubmit(dateKey) {
   submitBtn.textContent = 'Submitting...';
 
   try {
-    const { error } = await db.from('bookings').insert({
+    const insertPayload = {
       dj_id: djData.id,
       requester_id: cu.id,
       dj_slug: djData.slug,
@@ -2995,7 +3003,8 @@ async function mobPubSubmit(dateKey) {
       is_quote: isQuote,
       notes: message||null,
       status: 'pending',
-    });
+    };
+    const { error } = await db.from('bookings').insert(insertPayload);
     if (error) throw error;
 
     // Email to DJ
@@ -3039,11 +3048,12 @@ async function mobPubSubmit(dateKey) {
       }
     } catch(e) { console.warn('Booker confirm email failed:', e); }
 
-    alertEl.innerHTML = `<div class="alert alert-success">✓ ${isQuote?'Quote request':'Booking request'} sent! The DJ will be in touch.</div>`;
+    showOk(`✓ ${isQuote?'Quote request':'Booking request'} sent! The DJ will be in touch.`);
     submitBtn.textContent = isQuote?'Quote Sent':'Request Sent';
     submitBtn.style.background = 'var(--muted)';
   } catch(e) {
-    alertEl.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`;
+    console.error('Mobile booking submit error:', e);
+    showErr(`Error: ${e.message}`);
     submitBtn.disabled = false;
     submitBtn.textContent = isQuote ? 'Request Quote' : 'Request Booking';
   }
