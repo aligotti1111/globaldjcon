@@ -2534,12 +2534,14 @@ function drawMobPubCal() {
 
     let badge = '';
     if (mobPubIsOwner && !isPast) {
-      // Owner sees ✕/✓ quick-mark and ✏️ edit controls
+      // Owner sees ✕/✓ quick-mark and ✏️ edit controls at bottom of cell
       badge = `
-        ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
-          style="position:absolute;top:2px;left:2px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.25)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
-        <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
-          style="position:absolute;top:2px;right:2px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>`;
+        <div style="display:flex;gap:3px;justify-content:center;margin-top:auto;padding-top:2px;">
+          ${!isBooked ? `<button type="button" onclick="mobPubQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
+            style="background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.25)'};cursor:pointer;font-size:.65rem;padding:1px 2px;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
+          <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
+            style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:1px 2px;line-height:1;">✏️</button>
+        </div>`;
     } else if (!mobPubIsOwner && isAvail) {
       const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
       const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
@@ -2549,8 +2551,8 @@ function drawMobPubCal() {
     }
 
     const isLastRow = Math.floor((firstDay+d-1)/7) === Math.floor((firstDay+daysInMonth-1)/7);
-    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
-      <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;margin-bottom:2px;">${d}</div>
+    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;">
+      <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;">${d}</div>
       ${badge}
     </div>`;
   }
@@ -3185,9 +3187,15 @@ async function mobPubSubmit(dateKey) {
       }
     } catch(e) { console.warn('Booker confirm email failed:', e); }
 
-    showOk(`✓ ${isQuote?'Quote request':'Booking request'} sent! The DJ will be in touch.`);
-    submitBtn.textContent = isQuote?'Quote Sent':'Request Sent';
-    submitBtn.style.background = 'var(--muted)';
+    const djName = mobPubDjData?.name || 'The DJ';
+    const formEl = document.getElementById('mob-pub-booking-form');
+    if (formEl) {
+      formEl.innerHTML = `<div style="background:var(--card);border:1px solid rgba(61,220,132,.3);border-radius:12px;padding:2rem 1.5rem;text-align:center;">
+        <div style="font-size:1.6rem;margin-bottom:.75rem;">✓</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;color:#3ddc84;margin-bottom:.5rem;">${isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}</div>
+        <div style="font-size:.88rem;color:var(--muted);line-height:1.6;">${djName} will be in touch shortly.</div>
+      </div>`;
+    }
   } catch(e) {
     console.error('Mobile booking submit error:', e);
     showErr(`Error: ${e.message}`);
