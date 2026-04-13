@@ -3124,7 +3124,7 @@ function buildPkgCard(cat, idx, pkg) {
         <option value="Times New Roman, serif">Times</option>
       </select>
     </div>
-    <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.6rem .85rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
+    <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
   card.appendChild(detailWrap);
 
   // Prices
@@ -3216,11 +3216,30 @@ function pkgCmd(cmd, editorId) {
 
 function pkgFont(select, editorId) {
   const font = select.value;
+  select.value = '';
   if (!font) return;
   const el = document.getElementById(editorId);
-  if (el) el.focus();
-  document.execCommand('fontName', false, font);
-  select.value = '';
+  if (!el) return;
+  el.focus();
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+    // No selection — apply to entire editor
+    el.style.fontFamily = font;
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  const span = document.createElement('span');
+  span.style.fontFamily = font;
+  try {
+    range.surroundContents(span);
+  } catch(e) {
+    // surroundContents fails on partial selections across elements — extract and wrap
+    const fragment = range.extractContents();
+    span.appendChild(fragment);
+    range.insertNode(span);
+  }
+  // Trigger save
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function pkgField(labelText, inputHtml) {
