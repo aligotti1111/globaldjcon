@@ -433,6 +433,7 @@ input[type=number] { color:var(--neon) !important; }
             </div>
           </div>
           
+          <div id="club-dj-option">
           <label class="checkbox-label">
             <input type="checkbox" name="type" value="club" id="club-checkbox" onchange="updateNameLabel();">
             Club/Bar DJ
@@ -456,6 +457,7 @@ input[type=number] { color:var(--neon) !important; }
               <label class="checkbox-label"><input type="checkbox" name="club-genres" value="afrobeats"> Afrobeats</label>
             </div>
           </div>
+          </div><!-- end club-dj-option -->
         </div>
       </div>
 
@@ -1944,6 +1946,11 @@ function updateNameLabel() {
   }
 }
 
+function setClubOptionVisible(visible) {
+  const el = document.getElementById('club-dj-option');
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
 function setMobileCheckboxLocked(locked) {
   const cb = document.getElementById('mobile-checkbox');
   const label = cb.closest('.checkbox-label');
@@ -2030,7 +2037,12 @@ function _doToggleBooking(enabled, skipSave) {
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
   if (enabled) renderCal();
-  if (enabled && document.getElementById('mobile-checkbox').checked) { renderMobCal(); renderMobPackageTabs(); }
+  if (enabled && document.getElementById('mobile-checkbox').checked) {
+    renderMobCal(); renderMobPackageTabs();
+    setClubOptionVisible(false);
+  } else if (!enabled && document.getElementById('mobile-checkbox').checked) {
+    setClubOptionVisible(true);
+  }
   if (skipSave) return;
   // Save only booking_enabled — all other settings untouched
   (async () => {
@@ -3497,7 +3509,7 @@ async function loadBookingSettings() {
     const cs = document.getElementById('cal-section');
     if (cs) cs.style.display = (enabled && isClub) ? '' : 'none';
     if (enabled && isClub) renderCal();
-    if (enabled && isMobile) { renderMobCal(); renderMobPackageTabs(); }
+    if (enabled && isMobile) { renderMobCal(); renderMobPackageTabs(); setClubOptionVisible(false); }
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
 loadBookingSettings().then(() => { formDirty = false; });
