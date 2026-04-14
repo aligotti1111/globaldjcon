@@ -2833,25 +2833,25 @@ function renderMobCal() {
     while (m > 11) { m -= 12; y++; }
 
     const monthWrap = document.createElement('div');
-    monthWrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem;';
+    monthWrap.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.5rem;';
 
     const header = document.createElement('div');
-    header.style.cssText = 'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin-bottom:.6rem;text-align:center;';
+    header.style.cssText = 'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin-bottom:.5rem;text-align:center;';
     header.textContent = CAL_MONTHS[m] + ' ' + y;
     monthWrap.appendChild(header);
 
     const labelRow = document.createElement('div');
-    labelRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px;';
+    labelRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;';
     DAY_LABELS.forEach(l => {
       const lbl = document.createElement('div');
-      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.2rem 0;';
+      lbl.style.cssText = 'text-align:center;font-family:"Space Mono",monospace;font-size:.5rem;color:var(--muted);padding:.15rem 0;';
       lbl.textContent = l;
       labelRow.appendChild(lbl);
     });
     monthWrap.appendChild(labelRow);
 
     const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:3px;';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;';
     const firstDay = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const defaultPerDay = parseInt(document.getElementById('mob-bookings-per-day')?.value || '1');
@@ -2868,6 +2868,7 @@ function renderMobCal() {
       const isUnavail = dayData.unavailable;
       const bookingsLeft = dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay;
       const isFullyBooked = !isBooked && !isUnavail && bookingsLeft <= 0;
+      const isEdited = !isBooked && !isUnavail && mobBookingDays[key] && Object.keys(mobBookingDays[key]).length > 0;
 
       const cell = document.createElement('div');
       let bg = 'rgba(0,245,196,.04)', border = 'rgba(0,245,196,.2)', numColor = 'var(--white)';
@@ -2875,16 +2876,20 @@ function renderMobCal() {
       if (isBooked) { bg = 'rgba(255,95,95,.08)'; border = 'rgba(255,95,95,.4)'; numColor = '#ff5f5f'; }
       if (isUnavail) { bg = 'rgba(107,107,136,.08)'; border = 'rgba(107,107,136,.4)'; numColor = 'var(--muted)'; }
       if (isFullyBooked) { bg = 'rgba(255,179,71,.06)'; border = 'rgba(255,179,71,.3)'; numColor = '#ffb347'; }
-      cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${border};background:${bg};min-height:42px;`;
+      cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${border};background:${bg};min-height:52px;`;
 
       const perDayLabel = dayData.bookings_available != null ? `<span style="display:block;font-family:'Space Mono',monospace;font-size:.38rem;color:${bookingsLeft > 0 ? 'var(--neon)' : '#ffb347'};margin-top:1px;">${bookingsLeft}/${dayData.bookings_available}</span>` : '';
 
-      cell.innerHTML = `<div style="font-size:.7rem;color:${numColor};">${d}</div>${perDayLabel}
+      // Edited label — owner only indicator
+      const editedDot = isEdited ? `<span style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:.38rem;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);opacity:.9;white-space:nowrap;">edited</span>` : '';
+
+      cell.innerHTML = `<div style="font-size:.72rem;color:${numColor};line-height:1.2;">${d}</div>${perDayLabel}
         ${!isPast && !isBeyondWindow ? `
           ${!isBooked ? `<button type="button" onclick="mobQuickMark('${key}')" title="${isUnavail ? 'Mark available' : 'Mark unavailable'}"
-            style="position:absolute;top:1px;left:1px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.6rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
+            style="position:absolute;bottom:3px;left:2px;background:transparent;border:none;color:${isUnavail ? 'var(--neon)' : 'rgba(255,255,255,.2)'};cursor:pointer;font-size:.65rem;padding:0;line-height:1;font-weight:700;">${isUnavail ? '✓' : '✕'}</button>` : ''}
           <button type="button" onclick="mobOpenDayEditor('${key}')" title="Edit day"
-            style="position:absolute;top:1px;right:1px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;padding:0;line-height:1;">✏️</button>
+            style="position:absolute;bottom:3px;right:2px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.65rem;padding:0;line-height:1;">✏️</button>
+          ${editedDot}
         ` : ''}`;
       grid.appendChild(cell);
     }
