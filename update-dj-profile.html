@@ -2878,7 +2878,7 @@ function renderMobCal() {
       if (isFullyBooked) { bg = 'rgba(255,179,71,.06)'; border = 'rgba(255,179,71,.3)'; numColor = '#ffb347'; }
       cell.style.cssText = `position:relative;border-radius:5px;padding:4px 2px 2px;text-align:center;border:1px solid ${border};background:${bg};min-height:52px;`;
 
-      const perDayLabel = (dayData.bookings_available != null && dayData.bookings_available !== defaultPerDay) ? `<span style="display:block;font-family:'Space Mono',monospace;font-size:.38rem;color:${bookingsLeft > 0 ? 'var(--neon)' : '#ffb347'};margin-top:1px;">${bookingsLeft}/${dayData.bookings_available}</span>` : '';
+      const perDayLabel = '';
 
       // Edited label — owner only indicator
       const editedDot = isEdited ? `<span style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:.38rem;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);opacity:.9;white-space:nowrap;">edited</span>` : '';
