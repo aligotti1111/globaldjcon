@@ -3183,9 +3183,9 @@ function buildPkgCard(cat, idx, pkg) {
   const detailWrap = document.createElement('div');
   detailWrap.style.marginBottom = '.75rem';
   const editorId = `pkg-editor-${cat}-${idx}`;
-  const btnStyle = `padding:.25rem .5rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.75rem;cursor:pointer;line-height:1;`;
+  const btnStyle = `padding:.2rem .45rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;line-height:1;`;
   detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details</label>
-    <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.35rem;align-items:center;">
+    <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;align-items:center;">
       <button type="button" onclick="pkgCmd('bold','${editorId}')" style="${btnStyle}font-weight:700;">B</button>
       <button type="button" onclick="pkgCmd('italic','${editorId}')" style="${btnStyle}font-style:italic;">I</button>
       <button type="button" onclick="pkgCmd('underline','${editorId}')" style="${btnStyle}text-decoration:underline;">U</button>
@@ -3233,12 +3233,14 @@ function buildPkgCard(cat, idx, pkg) {
 
   // Overtime
   const otRow = document.createElement('div');
-  otRow.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-top:.25rem;';
+  otRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.25rem;';
   otRow.innerHTML = `
     <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Hourly Overtime:</span>
-    <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
-    <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
-    <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>`;
+    <div style="display:flex;align-items:center;gap:.5rem;flex:1;">
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
+      <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>
+    </div>`;
   priceWrap.appendChild(otRow);
   card.appendChild(priceWrap);
 
@@ -3264,7 +3266,7 @@ function buildPkgCard(cat, idx, pkg) {
   const setupWrap = document.createElement('div');
   setupWrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;';
   setupWrap.innerHTML = `
-    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);white-space:nowrap;">The number of hours required to set up prior to event start time:</label>
+    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);">The number of hours required to set up prior to event start time:</label>
     <select onchange="mobPkgChange('${cat}',${idx},'setupHours',this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">
       <option value="">—</option>
       ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${pkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
