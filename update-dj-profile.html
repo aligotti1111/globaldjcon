@@ -21,15 +21,17 @@
 body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; padding:2rem; min-height:100vh; }
 .container { max-width:700px; margin:0 auto; }
 @media(max-width:600px) {
-  body { padding:1rem; }
+  body { padding:.5rem; }
   .header h1 { font-size:1.8rem; }
   .header p { font-size:.7rem; }
-  .card { padding:1.2rem; }
+  .card { padding:.75rem; }
   .profile-tabs { overflow-x:auto; flex-wrap:nowrap; gap:.25rem; }
   .profile-tab { flex:0 0 auto; font-size:.55rem; padding:.5rem .6rem; }
   .back-link { margin-bottom:1rem; font-size:.78rem; }
   .header { margin-bottom:1rem; }
   .checkbox-grid { grid-template-columns:1fr !important; }
+  #mobile-booking-section > div { border-radius:6px !important; }
+  #mobile-booking-section .pkg-cat-pane > div { padding:.85rem !important; }
 }
 .back-link { display:inline-flex; align-items:center; gap:.5rem; color:var(--neon); text-decoration:none; font-size:.85rem; margin-bottom:2rem; }
 .back-link:hover { opacity:.8; }
@@ -3166,7 +3168,7 @@ function newMobPackage() {
 function buildPkgCard(cat, idx, pkg) {
   const isWedding = cat === 'wedding';
   const card = document.createElement('div');
-  card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:.75rem;';
+  card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;';
 
   const headerRow = document.createElement('div');
   headerRow.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;padding-bottom:.3rem;border-bottom:1px solid rgba(0,245,196,.3);';
