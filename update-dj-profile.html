@@ -3255,6 +3255,7 @@ function buildPkgCard(cat, idx, pkg) {
   // Wedding-only cocktail option
   if (isWedding) {
     const cocktailWrap = document.createElement('div');
+    cocktailWrap.id = `mob-pkg-cocktail-wrap-${cat}-${idx}`;
     cocktailWrap.style.cssText = `margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll ? 'display:none;' : ''}`;
     const incl = pkg.cocktailIncluded !== false;
     cocktailWrap.innerHTML = `
@@ -3448,8 +3449,7 @@ function mobPkgReqAllToggle(cat, idx, checked) {
   const ot = document.getElementById(`mob-pkg-ot-${cat}-${idx}`);
   if (ot) { ot.disabled = checked; ot.style.opacity = checked ? '.35' : ''; }
   // Hide/show cocktail block entirely
-  const cp = document.getElementById(`mob-pkg-cocktail-price-${cat}-${idx}`);
-  const cocktailWrap = cp?.closest('div[style*="rgba(0,245,196"]');
+  const cocktailWrap = document.getElementById(`mob-pkg-cocktail-wrap-${cat}-${idx}`);
   if (cocktailWrap) cocktailWrap.style.display = checked ? 'none' : '';
 }
 
