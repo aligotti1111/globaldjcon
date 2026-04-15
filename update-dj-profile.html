@@ -3255,17 +3255,17 @@ function buildPkgCard(cat, idx, pkg) {
   // Wedding-only cocktail option
   if (isWedding) {
     const cocktailWrap = document.createElement('div');
-    cocktailWrap.style.cssText = 'margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;';
+    cocktailWrap.style.cssText = `margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll ? 'display:none;' : ''}`;
     const incl = pkg.cocktailIncluded !== false;
     cocktailWrap.innerHTML = `
       <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl ? '0' : '.6rem'};">
-        <input type="checkbox" ${incl ? 'checked' : ''} ${reqAll ? 'disabled' : ''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);${reqAll ? 'opacity:.35;' : ''}">
-        <span style="font-size:.82rem;color:var(--white);${reqAll ? 'opacity:.35;' : ''}">Cocktail hour music included in package</span>
+        <input type="checkbox" ${incl ? 'checked' : ''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
+        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in package</span>
       </label>
       <div class="cocktail-price-wrap" style="${incl ? 'display:none;' : ''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
-        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;${reqAll ? 'opacity:.35;' : ''}">Cocktail Hour Price:</span>
-        <span style="color:var(--muted);font-size:.85rem;${reqAll ? 'opacity:.35;' : ''}">$</span>
-        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" ${reqAll ? 'disabled' : ''} id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll ? 'opacity:.35;' : ''}">
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Cocktail Hour Price:</span>
+        <span style="color:var(--muted);font-size:.85rem;">$</span>
+        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
       </div>`;
     card.appendChild(cocktailWrap);
   }
@@ -3447,16 +3447,10 @@ function mobPkgReqAllToggle(cat, idx, checked) {
   });
   const ot = document.getElementById(`mob-pkg-ot-${cat}-${idx}`);
   if (ot) { ot.disabled = checked; ot.style.opacity = checked ? '.35' : ''; }
-  // Disable/enable cocktail price input and its label/checkbox
+  // Hide/show cocktail block entirely
   const cp = document.getElementById(`mob-pkg-cocktail-price-${cat}-${idx}`);
-  if (cp) { cp.disabled = checked; cp.style.opacity = checked ? '.35' : ''; }
-  const cocktailWrap = cp?.closest('[style]');
-  if (cocktailWrap) {
-    cocktailWrap.querySelectorAll('input[type="checkbox"], span').forEach(el => {
-      el.style.opacity = checked ? '.35' : '';
-      if (el.tagName === 'INPUT') el.disabled = checked;
-    });
-  }
+  const cocktailWrap = cp?.closest('div[style*="rgba(0,245,196"]');
+  if (cocktailWrap) cocktailWrap.style.display = checked ? 'none' : '';
 }
 
 function removeMobPackage(cat, idx) {
