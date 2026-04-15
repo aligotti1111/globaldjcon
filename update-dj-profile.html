@@ -3144,14 +3144,14 @@ function renderMobPackages(cat) {
     pane.appendChild(notice);
   }
 
-  if (!mobPackages[cat] || mobPackages[cat].length === 0) mobPackages[cat] = [newMobPackage()];
-  // Keep all active categories in sync
+  // Sync all active categories to the same package count first
   const activeCats = getMobActiveCategories();
-  const maxLen = Math.max(...activeCats.map(c => (mobPackages[c]||[]).length));
+  const maxLen = Math.max(...activeCats.map(c => (mobPackages[c]||[]).length), 1);
   activeCats.forEach(c => {
     if (!mobPackages[c]) mobPackages[c] = [];
     while (mobPackages[c].length < maxLen) mobPackages[c].push(newMobPackage());
   });
+  if (!mobPackages[cat] || mobPackages[cat].length === 0) mobPackages[cat] = [newMobPackage()];
   mobPackages[cat].forEach((pkg, idx) => pane.appendChild(buildPkgCard(cat, idx, pkg)));
 
   if (mobPackages[cat].length < 10) {
