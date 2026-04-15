@@ -3051,7 +3051,11 @@ const PKG_SETUP_HOURS = ['1','2','3','4','5'];
 
 function renderMobPackageTabs(fromCheckboxes) {
   if (fromCheckboxes) mobSelectedTypes = getMobTypesFromProfile();
-  if (!mobSelectedTypes || mobSelectedTypes.length === 0) mobSelectedTypes = getMobTypesFromProfile();
+  // Only fall back to checkboxes if mobSelectedTypes is truly empty AND checkboxes have values
+  if (!mobSelectedTypes || mobSelectedTypes.length === 0) {
+    const fromCbs = getMobTypesFromProfile();
+    if (fromCbs.length > 0) mobSelectedTypes = fromCbs;
+  }
   const cats = getMobActiveCategories();
   const tabsEl = document.getElementById('pkg-cat-tabs');
   const noTypesMsg = document.getElementById('pkg-no-types-msg');
@@ -3472,8 +3476,25 @@ async function mobSavePackages(cat, idx, btn) {
     const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
     if (error) throw error;
     if (alertEl) { alertEl.textContent = '✓ Saved'; alertEl.style.color = 'var(--neon)'; setTimeout(() => { alertEl.textContent = ''; }, 2500); }
-    // Refresh tab badges in case this was first package saved
-    renderMobPackageTabs();
+    // Refresh tab badges only — don't reset mobSelectedTypes
+    const tabsEl = document.getElementById('pkg-cat-tabs');
+    if (tabsEl) {
+      tabsEl.querySelectorAll('button[data-cat]').forEach(btn => {
+        const c = btn.dataset.cat;
+        const catPkgs = (mobPackages[c] || []).filter(p => p && p.title && p.title.trim());
+        const needsAttention = (c === 'wedding' || c === 'mitzvah') && catPkgs.length === 0;
+        const badge = btn.querySelector('span[style*="clip-path"]');
+        if (needsAttention && !badge) {
+          const b = document.createElement('span');
+          b.title = 'No packages added yet';
+          b.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#ff5f5f;color:#fff;font-size:.7rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;';
+          b.textContent = '!';
+          btn.appendChild(b);
+        } else if (!needsAttention && badge) {
+          badge.remove();
+        }
+      });
+    }
   } catch(e) {
     if (alertEl) { alertEl.textContent = '✗ ' + e.message; alertEl.style.color = 'var(--error)'; }
   }
