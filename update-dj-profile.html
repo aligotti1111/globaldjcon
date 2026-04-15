@@ -3182,6 +3182,7 @@ function newMobPackage() {
 function buildPkgCard(cat, idx, pkg) {
   const isWedding = cat === 'wedding';
   const activeCats = getMobActiveCategories();
+  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
   const card = document.createElement('div');
   card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;';
 
@@ -3193,9 +3194,23 @@ function buildPkgCard(cat, idx, pkg) {
   `;
   card.appendChild(headerRow);
 
-  // If multiple active categories and this is package 2+, show internal category tabs for pricing
-  const showInternalTabs = idx > 0 && activeCats.length > 1;
-  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
+  // Category tabs for pricing — show for all packages when multiple active categories
+  if (activeCats.length > 1) {
+    const tabBar = document.createElement('div');
+    tabBar.style.cssText = 'display:flex;gap:.35rem;margin-bottom:1rem;background:rgba(10,10,16,.6);padding:3px;border-radius:7px;border:1px solid var(--border);overflow-x:auto;';
+
+    activeCats.forEach((c, ci) => {
+      const tabBtn = document.createElement('button');
+      tabBtn.type = 'button';
+      tabBtn.dataset.internalCat = c;
+      tabBtn.textContent = catLabels[c];
+      const isFirst = ci === 0;
+      tabBtn.style.cssText = `flex:1;padding:.45rem .5rem;border:${isFirst?'1px solid var(--neon)':'1px solid transparent'};border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:${isFirst?'var(--neon-dim)':'transparent'};color:${isFirst?'var(--neon)':'var(--muted)'};transition:all .15s;`;
+      tabBtn.onclick = () => switchInternalPkgTab(cat, idx, c, tabBtn);
+      tabBar.appendChild(tabBtn);
+    });
+    card.appendChild(tabBar);
+  }
 
   card.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
 
@@ -3224,25 +3239,7 @@ function buildPkgCard(cat, idx, pkg) {
     <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
   card.appendChild(detailWrap);
 
-  if (showInternalTabs) {
-    // Build internal tab bar + panes for each active category
-    const tabBar = document.createElement('div');
-    tabBar.style.cssText = 'display:flex;gap:.35rem;margin-bottom:1rem;background:rgba(10,10,16,.6);padding:3px;border-radius:7px;border:1px solid var(--border);overflow-x:auto;';
-
-    activeCats.forEach((c, ci) => {
-      const tabBtn = document.createElement('button');
-      tabBtn.type = 'button';
-      tabBtn.dataset.internalCat = c;
-      tabBtn.dataset.pkgIdx = idx;
-      tabBtn.dataset.outerCat = cat;
-      tabBtn.textContent = catLabels[c];
-      const isFirst = ci === 0;
-      tabBtn.style.cssText = `flex:1;padding:.45rem .5rem;border:${isFirst?'1px solid var(--neon)':'1px solid transparent'};border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:${isFirst?'var(--neon-dim)':'transparent'};color:${isFirst?'var(--neon)':'var(--muted)'};transition:all .15s;`;
-      tabBtn.onclick = () => switchInternalPkgTab(cat, idx, c, tabBtn);
-      tabBar.appendChild(tabBtn);
-    });
-    card.appendChild(tabBar);
-
+  if (activeCats.length > 1) {
     // Build a pricing pane for each active category
     activeCats.forEach((c, ci) => {
       const paneDiv = document.createElement('div');
@@ -3251,9 +3248,8 @@ function buildPkgCard(cat, idx, pkg) {
       buildPricingSection(paneDiv, c, idx);
       card.appendChild(paneDiv);
     });
-
   } else {
-    // Single category — just show pricing directly (original behavior)
+    // Single category — just show pricing directly
     const pricePane = document.createElement('div');
     buildPricingSection(pricePane, cat, idx);
     card.appendChild(pricePane);
