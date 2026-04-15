@@ -3141,6 +3141,13 @@ function renderMobPackages(cat) {
   }
 
   if (!mobPackages[cat] || mobPackages[cat].length === 0) mobPackages[cat] = [newMobPackage()];
+  // Keep all active categories in sync
+  const activeCats = getMobActiveCategories();
+  const maxLen = Math.max(...activeCats.map(c => (mobPackages[c]||[]).length));
+  activeCats.forEach(c => {
+    if (!mobPackages[c]) mobPackages[c] = [];
+    while (mobPackages[c].length < maxLen) mobPackages[c].push(newMobPackage());
+  });
   mobPackages[cat].forEach((pkg, idx) => pane.appendChild(buildPkgCard(cat, idx, pkg)));
 
   if (mobPackages[cat].length < 10) {
@@ -3150,7 +3157,16 @@ function renderMobPackages(cat) {
     addBtn.textContent = '+ Add Another Package';
     addBtn.onmouseover = () => { addBtn.style.borderColor = 'var(--neon)'; addBtn.style.color = 'var(--neon)'; };
     addBtn.onmouseout = () => { addBtn.style.borderColor = 'var(--border)'; addBtn.style.color = 'var(--muted)'; };
-    addBtn.onclick = () => { mobPackages[cat].push(newMobPackage()); renderMobPackages(cat); };
+    addBtn.onclick = () => {
+      const activeCats = getMobActiveCategories();
+      activeCats.forEach(c => {
+        if (!mobPackages[c]) mobPackages[c] = [];
+        // Pad any shorter cats to match before adding
+        while (mobPackages[c].length < mobPackages[cat].length) mobPackages[c].push(newMobPackage());
+        mobPackages[c].push(newMobPackage());
+      });
+      renderMobPackages(cat);
+    };
     pane.appendChild(addBtn);
   }
 }
@@ -3297,7 +3313,9 @@ function buildPkgCard(cat, idx, pkg) {
 }
 
 function removeMobPackage(cat, idx) {
-  mobPackages[cat].splice(idx, 1);
+  getMobActiveCategories().forEach(c => {
+    if (mobPackages[c] && mobPackages[c].length > idx) mobPackages[c].splice(idx, 1);
+  });
   renderMobPackages(cat);
 }
 
