@@ -967,14 +967,13 @@ input[type=number] { color:var(--neon) !important; }
                   <button type="button" onclick="switchProfileTab('general',document.querySelector('.profile-tab'));document.getElementById('mobile-checkbox').checked=true;document.getElementById('mobile-spec').style.display='block';document.getElementById('mobile-parties').scrollIntoView({behavior:'smooth'});" style="padding:.5rem 1rem;background:var(--neon-dim);border:1px solid var(--neon);color:var(--neon);font-family:'Space Mono',monospace;font-size:.62rem;border-radius:6px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Go Select Party Types</button>
                 </div>
 
-                <!-- Category tabs (kept for badge rendering only, hidden) -->
-                <div id="pkg-cat-tabs" style="display:none;"></div>
+                <!-- Category tabs -->
+                <div id="pkg-cat-tabs" style="display:flex;gap:.35rem;margin-bottom:1.25rem;background:rgba(10,10,16,.6);padding:3px;border-radius:7px;border:1px solid var(--border);overflow-x:auto;"></div>
 
-                <!-- Single packages container -->
+                <!-- Category panes -->
                 <div id="pkg-pane-general" class="pkg-cat-pane"></div>
                 <div id="pkg-pane-wedding" class="pkg-cat-pane" style="display:none;"></div>
                 <div id="pkg-pane-mitzvah" class="pkg-cat-pane" style="display:none;"></div>
-                <div id="pkg-all-container"></div>
 
               </div>
             </div>
@@ -3054,96 +3053,130 @@ function renderMobPackageTabs(fromCheckboxes) {
   if (fromCheckboxes) mobSelectedTypes = getMobTypesFromProfile();
   if (!mobSelectedTypes || mobSelectedTypes.length === 0) mobSelectedTypes = getMobTypesFromProfile();
   const cats = getMobActiveCategories();
+  const tabsEl = document.getElementById('pkg-cat-tabs');
   const noTypesMsg = document.getElementById('pkg-no-types-msg');
+  if (!tabsEl) return;
+
   if (cats.length === 0) {
+    tabsEl.style.display = 'none';
+    ['general','wedding','mitzvah'].forEach(c => document.getElementById('pkg-pane-' + c).style.display = 'none');
     if (noTypesMsg) noTypesMsg.style.display = 'block';
-    const container = document.getElementById('pkg-all-container');
-    if (container) container.innerHTML = '';
     return;
   }
   if (noTypesMsg) noTypesMsg.style.display = 'none';
-  renderAllPackages();
+  tabsEl.style.display = cats.length > 1 ? 'flex' : 'none';
+  tabsEl.innerHTML = '';
+
+  const MOB_GENERAL_EVENT_NAMES = {
+    birthday:'Birthday Parties', graduation:'Graduations', holiday:'Holiday Parties',
+    community:'Community Events', corporate:'Corporate Events', anniversary:'Anniversaries',
+    sweet16:'Sweet 16 / Quinceañera', reunion:'Reunions', school:'School Events', other:'Other'
+  };
+  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
+  cats.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.cat = cat;
+    btn.style.cssText = 'flex:1;padding:.55rem .5rem;border:none;border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.35rem;';
+    btn.onclick = () => switchPkgCat(cat);
+
+    const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
+    const needsAttention = (cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0;
+    const alertBadge = needsAttention
+      ? `<span title="No packages added yet" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#ff5f5f;color:#fff;font-size:.7rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;">!</span>`
+      : '';
+
+    if (cat === 'general') {
+      const generalTypes = mobSelectedTypes.filter(t => MOB_CAT_GENERAL_TYPES.includes(t));
+      const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
+      btn.innerHTML = `<span>${catLabels[cat]}</span>
+        ${alertBadge}
+        <span style="position:relative;display:inline-flex;align-items:center;"
+          onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block';event.stopPropagation();"
+          onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none';"
+          onmousemove="var t=this.querySelector('.pkg-cat-tip');t.style.top=(event.clientY-t.offsetHeight-10)+'px';t.style.left=event.clientX+'px';"
+          onclick="event.stopPropagation();">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid currentColor;font-size:.6rem;cursor:default;opacity:.8;flex-shrink:0;">i</span>
+          <span class="pkg-cat-tip" style="display:none;position:fixed;background:var(--card);border:1px solid var(--neon);border-radius:8px;padding:.65rem .9rem;font-size:.75rem;color:var(--white);z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;max-width:240px;white-space:normal;line-height:1.6;">${typeList}</span>
+        </span>`;
+    } else {
+      btn.innerHTML = `<span>${catLabels[cat]}</span>${alertBadge}`;
+    }
+
+    tabsEl.appendChild(btn);
+    ['general','wedding','mitzvah'].forEach(c => {
+      document.getElementById('pkg-pane-' + c).style.display = 'none';
+    });
+  });
+
+  switchPkgCat(cats[0]);
 }
 
 function switchPkgCat(cat) {
-  // No-op — kept for any legacy calls; rendering is unified now
-  renderAllPackages();
+  const tabsEl = document.getElementById('pkg-cat-tabs');
+  tabsEl.querySelectorAll('button').forEach(btn => {
+    const active = btn.dataset.cat === cat;
+    btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
+    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
+    btn.style.border = active ? '1px solid var(--neon)' : '1px solid transparent';
+  });
+  ['general','wedding','mitzvah'].forEach(c => {
+    document.getElementById('pkg-pane-' + c).style.display = c === cat ? '' : 'none';
+  });
+  renderMobPackages(cat);
 }
 
-function renderAllPackages() {
-  const container = document.getElementById('pkg-all-container');
-  if (!container) return;
-  container.innerHTML = '';
+function renderMobPackages(cat) {
+  const pane = document.getElementById('pkg-pane-' + cat);
+  if (!pane) return;
+  pane.innerHTML = '';
 
-  const cats = getMobActiveCategories();
-  if (cats.length === 0) return;
-
-  // Sync all categories to same package count
-  const maxLen = Math.max(...['general','wedding','mitzvah'].map(c => (mobPackages[c]||[]).length), 1);
-  ['general','wedding','mitzvah'].forEach(c => {
-    if (!mobPackages[c]) mobPackages[c] = [];
-    while (mobPackages[c].length < maxLen) mobPackages[c].push(newMobPackage());
-  });
-
-  for (let idx = 0; idx < mobPackages[cats[0]].length; idx++) {
-    container.appendChild(buildUnifiedPkgCard(idx, cats));
+  const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
+  if ((cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0) {
+    const catName = cat === 'wedding' ? 'Wedding' : 'Bar/Bat Mitzvah';
+    const notice = document.createElement('div');
+    notice.style.cssText = 'display:flex;align-items:flex-start;gap:.6rem;padding:.75rem 1rem;background:rgba(255,95,95,.08);border:1px solid rgba(255,95,95,.3);border-radius:8px;margin-bottom:1rem;';
+    notice.innerHTML = `<span style="color:#ff5f5f;font-size:1rem;flex-shrink:0;line-height:1.4;">⚠</span><span style="font-size:.8rem;color:#ff5f5f;line-height:1.5;">Please add at least one package to begin accepting ${catName} bookings.</span>`;
+    pane.appendChild(notice);
   }
 
-  // Add another package button
-  if (mobPackages[cats[0]].length < 10) {
+  if (!mobPackages[cat] || mobPackages[cat].length === 0) mobPackages[cat] = [newMobPackage()];
+  mobPackages[cat].forEach((pkg, idx) => pane.appendChild(buildPkgCard(cat, idx, pkg)));
+
+  if (mobPackages[cat].length < 10) {
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.style.cssText = 'margin-top:.75rem;width:100%;padding:.65rem;background:transparent;border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;';
     addBtn.textContent = '+ Add Another Package';
     addBtn.onmouseover = () => { addBtn.style.borderColor = 'var(--neon)'; addBtn.style.color = 'var(--neon)'; };
     addBtn.onmouseout = () => { addBtn.style.borderColor = 'var(--border)'; addBtn.style.color = 'var(--muted)'; };
-    addBtn.onclick = () => {
-      ['general','wedding','mitzvah'].forEach(c => {
-        if (!mobPackages[c]) mobPackages[c] = [];
-        mobPackages[c].push(newMobPackage());
-      });
-      renderAllPackages();
-    };
-    container.appendChild(addBtn);
+    addBtn.onclick = () => { mobPackages[cat].push(newMobPackage()); renderMobPackages(cat); };
+    pane.appendChild(addBtn);
   }
 }
-
-// Legacy shim so any remaining calls to renderMobPackages(cat) still work
-function renderMobPackages(cat) { renderAllPackages(); }
 
 function newMobPackage() {
   return { title:'', details:'', price4:'', price5:'', price6:'', overtime:'', reqAll:false, setupHours:'', photo:'', cocktailIncluded:true, cocktailPrice:'' };
 }
 
-function buildUnifiedPkgCard(idx, cats) {
-  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
-  // Use first cat's package for shared fields (title, details, setup, photo)
-  const primaryCat = cats[0];
-  const primaryPkg = mobPackages[primaryCat][idx] || newMobPackage();
-
+function buildPkgCard(cat, idx, pkg) {
+  const isWedding = cat === 'wedding';
   const card = document.createElement('div');
   card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;';
 
-  // Header
   const headerRow = document.createElement('div');
   headerRow.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;padding-bottom:.3rem;border-bottom:1px solid rgba(0,245,196,.3);';
   headerRow.innerHTML = `
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.08em;color:var(--neon);text-align:center;">Package ${idx + 1}</div>
-    ${idx > 0 ? `<button type="button" onclick="removeUnifiedPackage(${idx})" style="position:absolute;right:0;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" title="Remove package">✕</button>` : ''}
+    ${idx > 0 ? `<button type="button" onclick="removeMobPackage('${cat}',${idx})" style="position:absolute;right:0;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" title="Remove package">✕</button>` : ''}
   `;
   card.appendChild(headerRow);
 
-  // Title (shared — synced across all cats)
-  const titleWrap = document.createElement('div');
-  titleWrap.style.marginBottom = '.75rem';
-  titleWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Title</label>
-    <input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(primaryPkg.title||'')}" onchange="syncPkgTitleAllCats(${idx},this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`;
-  card.appendChild(titleWrap);
+  card.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
 
-  // Details (shared)
   const detailWrap = document.createElement('div');
   detailWrap.style.marginBottom = '.75rem';
-  const editorId = `pkg-editor-unified-${idx}`;
+  const editorId = `pkg-editor-${cat}-${idx}`;
   const btnStyle = `padding:.2rem .45rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;line-height:1;`;
   detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details</label>
     <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;align-items:center;">
@@ -3154,7 +3187,7 @@ function buildUnifiedPkgCard(idx, cats) {
       <button type="button" onclick="pkgCmd('insertUnorderedList','${editorId}')" style="${btnStyle}">• List</button>
       <button type="button" onclick="pkgCmd('insertOrderedList','${editorId}')" style="${btnStyle}">1. List</button>
       <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
-      <select id="font-sel-unified-${idx}" onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;min-width:90px;">
+      <select id="font-sel-${cat}-${idx}" onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;min-width:90px;">
         <option value="">Font</option>
         <option value="DM Sans, sans-serif">DM Sans</option>
         <option value="Georgia, serif">Georgia</option>
@@ -3163,194 +3196,109 @@ function buildUnifiedPkgCard(idx, cats) {
         <option value="Times New Roman, serif">Times</option>
       </select>
     </div>
-    <div id="${editorId}" contenteditable="true" oninput="syncPkgDetailsAllCats(${idx},this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${primaryPkg.details||''}</div>`;
+    <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
   card.appendChild(detailWrap);
 
-  // Pricing section per active category
-  cats.forEach(cat => {
-    const pkg = mobPackages[cat][idx] || newMobPackage();
-    const isWedding = cat === 'wedding';
-    const reqAll = !!(pkg.reqAll);
-    const section = document.createElement('div');
-    section.style.cssText = 'margin-bottom:1rem;padding:.75rem;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:6px;';
-    section.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;border-bottom:1px solid rgba(0,245,196,.15);padding-bottom:.4rem;">${catLabels[cat]} Pricing</div>`;
+  const priceWrap = document.createElement('div');
+  priceWrap.style.marginBottom = '.75rem';
+  const priceLabel = isWedding ? 'Reception' : '';
+  const reqAll = !!(pkg.reqAll);
+  priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
 
-    // 4/5/6 hr prices
-    const priceLabel = isWedding ? 'Reception' : '';
-    ['4','5','6'].forEach(hrs => {
-      const priceField = `price${hrs}`;
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
-      row.innerHTML = `
-        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hr${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
-        <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
-        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
-      section.appendChild(row);
-    });
-
-    // Require request toggle
-    const reqToggleRow = document.createElement('div');
-    reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-top:.6rem;margin-bottom:.6rem;padding:.5rem .65rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
-    reqToggleRow.innerHTML = `
-      <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
-      <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
-    section.appendChild(reqToggleRow);
-
-    // Overtime
-    const otRow = document.createElement('div');
-    otRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;';
-    otRow.innerHTML = `
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Overtime:</span>
-      <div style="display:flex;align-items:center;gap:.5rem;flex:1;">
-        <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
-        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
-        <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>
-      </div>`;
-    section.appendChild(otRow);
-
-    // Wedding-only cocktail
-    if (isWedding) {
-      const cocktailWrap = document.createElement('div');
-      cocktailWrap.id = `mob-pkg-cocktail-wrap-${cat}-${idx}`;
-      cocktailWrap.style.cssText = `margin-top:.75rem;padding:.65rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll?'display:none;':''}`;
-      const incl = pkg.cocktailIncluded !== false;
-      cocktailWrap.innerHTML = `
-        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl?'0':'.6rem'};">
-          <input type="checkbox" ${incl?'checked':''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('div').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
-          <span style="font-size:.82rem;color:var(--white);">Cocktail hour included in package</span>
-        </label>
-        <div class="cocktail-price-wrap" style="${incl?'display:none;':''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
-          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Add-on price:</span>
-          <span style="color:var(--muted);font-size:.85rem;">$</span>
-          <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-        </div>`;
-      section.appendChild(cocktailWrap);
-    }
-
-    card.appendChild(section);
+  ['4','5','6'].forEach(hrs => {
+    const priceField = `price${hrs}`;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
+    row.innerHTML = `
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
+    priceWrap.appendChild(row);
   });
 
-  // Setup hours (shared — use primary cat)
+  const reqToggleRow = document.createElement('div');
+  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-top:.6rem;margin-bottom:.6rem;padding:.55rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
+  reqToggleRow.innerHTML = `
+    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
+    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
+  priceWrap.appendChild(reqToggleRow);
+
+  const otRow = document.createElement('div');
+  otRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.25rem;';
+  otRow.innerHTML = `
+    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Hourly Overtime:</span>
+    <div style="display:flex;align-items:center;gap:.5rem;flex:1;">
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
+      <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>
+    </div>`;
+  priceWrap.appendChild(otRow);
+  card.appendChild(priceWrap);
+
+  if (isWedding) {
+    const cocktailWrap = document.createElement('div');
+    cocktailWrap.id = `mob-pkg-cocktail-wrap-${cat}-${idx}`;
+    cocktailWrap.style.cssText = `margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll?'display:none;':''}`;
+    const incl = pkg.cocktailIncluded !== false;
+    cocktailWrap.innerHTML = `
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl?'0':'.6rem'};">
+        <input type="checkbox" ${incl?'checked':''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
+        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in package</span>
+      </label>
+      <div class="cocktail-price-wrap" style="${incl?'display:none;':''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Cocktail Hour Price:</span>
+        <span style="color:var(--muted);font-size:.85rem;">$</span>
+        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+      </div>`;
+    card.appendChild(cocktailWrap);
+  }
+
   const setupWrap = document.createElement('div');
   setupWrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;';
   setupWrap.innerHTML = `
-    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);">Hours required to set up prior to event:</label>
-    <select onchange="syncPkgSetupAllCats(${idx},this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">
+    <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);">The number of hours required to set up prior to event start time:</label>
+    <select onchange="mobPkgChange('${cat}',${idx},'setupHours',this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;cursor:pointer;">
       <option value="">—</option>
-      ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${primaryPkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
+      ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${pkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
     </select>`;
   card.appendChild(setupWrap);
 
-  // Photo (shared — use primary cat)
   const photoWrap = document.createElement('div');
   photoWrap.style.marginBottom = '.5rem';
-  const photoBoxId = `pkg-photo-box-unified-${idx}`;
-  const photoPreviewId = `pkg-photo-preview-unified-${idx}`;
-  const photoStatusId = `pkg-photo-status-unified-${idx}`;
+  const photoBoxId = `pkg-photo-box-${cat}-${idx}`;
+  const photoPreviewId = `pkg-photo-preview-${cat}-${idx}`;
+  const photoStatusId = `pkg-photo-status-${cat}-${idx}`;
   photoWrap.innerHTML = `
     <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Setup Photo</label>
-    <div class="upload-box${primaryPkg.photo?' has-image':''}" id="${photoBoxId}" style="position:relative;border:2px dashed var(--border);border-radius:6px;cursor:pointer;overflow:hidden;background:var(--deep);">
-      <input type="file" accept="image/*" onchange="handleUnifiedPkgPhotoUpload(this,${idx},'${photoPreviewId}','${photoStatusId}','${photoBoxId}')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2;">
-      <div class="upload-placeholder" style="${primaryPkg.photo?'display:none;':''}display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem .75rem;gap:.4rem;min-height:90px;pointer-events:none;">
+    <div class="upload-box${pkg.photo?' has-image':''}" id="${photoBoxId}" style="position:relative;border:2px dashed var(--border);border-radius:6px;cursor:pointer;overflow:hidden;background:var(--deep);">
+      <input type="file" accept="image/*" onchange="handlePkgPhotoUpload(this,'${cat}',${idx},'${photoPreviewId}','${photoStatusId}','${photoBoxId}')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2;">
+      <div class="upload-placeholder" style="${pkg.photo?'display:none;':''}display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem .75rem;gap:.4rem;min-height:90px;pointer-events:none;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted);opacity:.6;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Click to upload photo</span>
         <span style="font-size:.68rem;color:var(--muted);">JPG, PNG, WebP</span>
       </div>
-      <div class="upload-preview" id="${photoPreviewId}" style="${primaryPkg.photo?'':'display:none;'}position:relative;">
-        <img src="${escHtml(primaryPkg.photo||'')}" alt="Package photo" style="width:100%;max-height:140px;object-fit:cover;display:block;">
+      <div class="upload-preview" id="${photoPreviewId}" style="${pkg.photo?'':'display:none;'}position:relative;">
+        <img src="${escHtml(pkg.photo||'')}" alt="Package photo" style="width:100%;max-height:140px;object-fit:cover;display:block;">
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"><span style="color:var(--white);font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;pointer-events:none;">Change Photo</span></div>
-        <button type="button" onclick="removeUnifiedPkgPhoto(event,${idx},'${photoPreviewId}','${photoBoxId}')" style="position:absolute;top:6px;right:6px;background:rgba(5,5,7,.7);border:1px solid rgba(255,95,95,.4);border-radius:4px;color:#ff5f5f;cursor:pointer;font-size:.7rem;padding:2px 6px;z-index:3;" title="Remove photo">✕</button>
+        <button type="button" onclick="removePkgPhoto(event,'${cat}',${idx},'${photoPreviewId}','${photoBoxId}')" style="position:absolute;top:6px;right:6px;background:rgba(5,5,7,.7);border:1px solid rgba(255,95,95,.4);border-radius:4px;color:#ff5f5f;cursor:pointer;font-size:.7rem;padding:2px 6px;z-index:3;" title="Remove photo">✕</button>
       </div>
     </div>
     <div id="${photoStatusId}" class="upload-status"></div>`;
   card.appendChild(photoWrap);
 
-  // Save button — saves all cats for this idx
   const saveRow = document.createElement('div');
   saveRow.style.cssText = 'margin-top:.75rem;display:flex;align-items:center;gap:.75rem;';
   saveRow.innerHTML = `
-    <button type="button" onclick="mobSaveAllCatsPackage(${idx},this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Package</button>
-    <span id="mob-pkg-save-unified-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--neon);"></span>`;
+    <button type="button" onclick="mobSavePackages('${cat}',${idx},this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Package</button>
+    <span id="mob-pkg-save-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--neon);"></span>`;
   card.appendChild(saveRow);
 
   return card;
 }
 
-// Sync shared fields across all cats
-function syncPkgTitleAllCats(idx, val) {
-  ['general','wedding','mitzvah'].forEach(c => { if (mobPackages[c]?.[idx]) mobPackages[c][idx].title = val; });
-}
-function syncPkgDetailsAllCats(idx, val) {
-  ['general','wedding','mitzvah'].forEach(c => { if (mobPackages[c]?.[idx]) mobPackages[c][idx].details = val; });
-}
-function syncPkgSetupAllCats(idx, val) {
-  ['general','wedding','mitzvah'].forEach(c => { if (mobPackages[c]?.[idx]) mobPackages[c][idx].setupHours = val; });
-}
-
-function removeUnifiedPackage(idx) {
-  ['general','wedding','mitzvah'].forEach(c => {
-    if (mobPackages[c] && mobPackages[c].length > idx) mobPackages[c].splice(idx, 1);
-  });
-  renderAllPackages();
-}
-
-async function handleUnifiedPkgPhotoUpload(input, idx, previewId, statusId, boxId) {
-  const file = input.files[0];
-  if (!file || !currentUser) return;
-  const ext = file.name.split('.').pop().toLowerCase();
-  const path = currentUser.id + '/packages/pkg_unified_' + idx + '_' + Date.now() + '.' + ext;
-  const pkgStorageUrl = SUPABASE_URL + '/storage/v1/object/avatars/';
-  const pkgPublicUrl  = SUPABASE_URL + '/storage/v1/object/public/avatars/';
-  const statusEl = document.getElementById(statusId);
-  if (statusEl) { statusEl.textContent = 'Uploading...'; statusEl.className = 'upload-status uploading'; }
-  try {
-    const res = await fetch(pkgStorageUrl + path, {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY, 'Content-Type': file.type, 'x-upsert': 'true' },
-      body: file
-    });
-    if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Upload failed'); }
-    const publicUrl = pkgPublicUrl + path + '?t=' + Date.now();
-    ['general','wedding','mitzvah'].forEach(c => { if (mobPackages[c]?.[idx]) mobPackages[c][idx].photo = publicUrl; });
-    const previewEl = document.getElementById(previewId);
-    const box = document.getElementById(boxId);
-    if (previewEl) {
-      const img = previewEl.querySelector('img');
-      if (img) img.src = publicUrl;
-      previewEl.style.display = '';
-      const placeholder = box?.querySelector('.upload-placeholder');
-      if (placeholder) placeholder.style.display = 'none';
-    }
-    if (box) box.classList.add('has-image');
-    if (statusEl) { statusEl.textContent = '✓ Uploaded'; statusEl.className = 'upload-status success'; setTimeout(() => { statusEl.textContent = ''; }, 2500); }
-  } catch(e) {
-    if (statusEl) { statusEl.textContent = '✗ ' + e.message; statusEl.className = 'upload-status error'; }
-  }
-}
-
-function removeUnifiedPkgPhoto(event, idx, previewId, boxId) {
-  event.preventDefault(); event.stopPropagation();
-  ['general','wedding','mitzvah'].forEach(c => { if (mobPackages[c]?.[idx]) mobPackages[c][idx].photo = ''; });
-  const previewEl = document.getElementById(previewId);
-  const box = document.getElementById(boxId);
-  if (previewEl) previewEl.style.display = 'none';
-  if (box) { box.classList.remove('has-image'); const ph = box.querySelector('.upload-placeholder'); if (ph) ph.style.display = ''; }
-}
-
-async function mobSaveAllCatsPackage(idx, btn) {
-  const alertEl = document.getElementById(`mob-pkg-save-unified-${idx}`);
-  btn.disabled = true; btn.textContent = 'Saving...';
-  try {
-    const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
-    const bs = current?.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
-    bs.mob_packages = mobPackages;
-    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
-    if (error) throw error;
-    if (alertEl) { alertEl.textContent = '✓ Saved'; alertEl.style.color = 'var(--neon)'; setTimeout(() => { alertEl.textContent = ''; }, 2500); }
-  } catch(e) {
-    if (alertEl) { alertEl.textContent = '✗ ' + e.message; alertEl.style.color = '#ff5f5f'; }
-  }
-  btn.disabled = false; btn.textContent = 'Save Package';
+function removeMobPackage(cat, idx) {
+  mobPackages[cat].splice(idx, 1);
+  renderMobPackages(cat);
 }
 
 async function handlePkgPhotoUpload(input, cat, idx, previewId, statusId, boxId) {
