@@ -3181,6 +3181,7 @@ function newMobPackage() {
 
 function buildPkgCard(cat, idx, pkg) {
   const isWedding = cat === 'wedding';
+  const activeCats = getMobActiveCategories();
   const card = document.createElement('div');
   card.style.cssText = 'background:rgba(10,10,16,.6);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;';
 
@@ -3191,6 +3192,10 @@ function buildPkgCard(cat, idx, pkg) {
     ${idx > 0 ? `<button type="button" onclick="removeMobPackage('${cat}',${idx})" style="position:absolute;right:0;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" title="Remove package">✕</button>` : ''}
   `;
   card.appendChild(headerRow);
+
+  // If multiple active categories and this is package 2+, show internal category tabs for pricing
+  const showInternalTabs = idx > 0 && activeCats.length > 1;
+  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
 
   card.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
 
@@ -3219,58 +3224,39 @@ function buildPkgCard(cat, idx, pkg) {
     <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
   card.appendChild(detailWrap);
 
-  const priceWrap = document.createElement('div');
-  priceWrap.style.marginBottom = '.75rem';
-  const priceLabel = isWedding ? 'Reception' : '';
-  const reqAll = !!(pkg.reqAll);
-  priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
+  if (showInternalTabs) {
+    // Build internal tab bar + panes for each active category
+    const tabBar = document.createElement('div');
+    tabBar.style.cssText = 'display:flex;gap:.35rem;margin-bottom:1rem;background:rgba(10,10,16,.6);padding:3px;border-radius:7px;border:1px solid var(--border);overflow-x:auto;';
 
-  ['4','5','6'].forEach(hrs => {
-    const priceField = `price${hrs}`;
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
-    row.innerHTML = `
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
-      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
-      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
-    priceWrap.appendChild(row);
-  });
+    activeCats.forEach((c, ci) => {
+      const tabBtn = document.createElement('button');
+      tabBtn.type = 'button';
+      tabBtn.dataset.internalCat = c;
+      tabBtn.dataset.pkgIdx = idx;
+      tabBtn.dataset.outerCat = cat;
+      tabBtn.textContent = catLabels[c];
+      const isFirst = ci === 0;
+      tabBtn.style.cssText = `flex:1;padding:.45rem .5rem;border:${isFirst?'1px solid var(--neon)':'1px solid transparent'};border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:${isFirst?'var(--neon-dim)':'transparent'};color:${isFirst?'var(--neon)':'var(--muted)'};transition:all .15s;`;
+      tabBtn.onclick = () => switchInternalPkgTab(cat, idx, c, tabBtn);
+      tabBar.appendChild(tabBtn);
+    });
+    card.appendChild(tabBar);
 
-  const reqToggleRow = document.createElement('div');
-  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-top:.6rem;margin-bottom:.6rem;padding:.55rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
-  reqToggleRow.innerHTML = `
-    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
-    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
-  priceWrap.appendChild(reqToggleRow);
+    // Build a pricing pane for each active category
+    activeCats.forEach((c, ci) => {
+      const paneDiv = document.createElement('div');
+      paneDiv.id = `inner-pkg-pane-${cat}-${idx}-${c}`;
+      paneDiv.style.display = ci === 0 ? '' : 'none';
+      buildPricingSection(paneDiv, c, idx);
+      card.appendChild(paneDiv);
+    });
 
-  const otRow = document.createElement('div');
-  otRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.25rem;';
-  otRow.innerHTML = `
-    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Hourly Overtime:</span>
-    <div style="display:flex;align-items:center;gap:.5rem;flex:1;">
-      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
-      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
-      <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>
-    </div>`;
-  priceWrap.appendChild(otRow);
-  card.appendChild(priceWrap);
-
-  if (isWedding) {
-    const cocktailWrap = document.createElement('div');
-    cocktailWrap.id = `mob-pkg-cocktail-wrap-${cat}-${idx}`;
-    cocktailWrap.style.cssText = `margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll?'display:none;':''}`;
-    const incl = pkg.cocktailIncluded !== false;
-    cocktailWrap.innerHTML = `
-      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl?'0':'.6rem'};">
-        <input type="checkbox" ${incl?'checked':''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
-        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in package</span>
-      </label>
-      <div class="cocktail-price-wrap" style="${incl?'display:none;':''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
-        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Cocktail Hour Price:</span>
-        <span style="color:var(--muted);font-size:.85rem;">$</span>
-        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
-      </div>`;
-    card.appendChild(cocktailWrap);
+  } else {
+    // Single category — just show pricing directly (original behavior)
+    const pricePane = document.createElement('div');
+    buildPricingSection(pricePane, cat, idx);
+    card.appendChild(pricePane);
   }
 
   const setupWrap = document.createElement('div');
@@ -3314,6 +3300,84 @@ function buildPkgCard(cat, idx, pkg) {
   card.appendChild(saveRow);
 
   return card;
+}
+
+function buildPricingSection(container, cat, idx) {
+  const pkg = (mobPackages[cat] && mobPackages[cat][idx]) ? mobPackages[cat][idx] : newMobPackage();
+  const isWedding = cat === 'wedding';
+  const priceLabel = isWedding ? 'Reception' : '';
+  const reqAll = !!(pkg.reqAll);
+
+  const priceWrap = document.createElement('div');
+  priceWrap.style.marginBottom = '.75rem';
+  priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
+
+  ['4','5','6'].forEach(hrs => {
+    const priceField = `price${hrs}`;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
+    row.innerHTML = `
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
+    priceWrap.appendChild(row);
+  });
+
+  const reqToggleRow = document.createElement('div');
+  reqToggleRow.style.cssText = 'display:flex;align-items:center;gap:.6rem;margin-top:.6rem;margin-bottom:.6rem;padding:.55rem .75rem;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:6px;cursor:pointer;';
+  reqToggleRow.innerHTML = `
+    <input type="checkbox" id="mob-pkg-reqall-${cat}-${idx}" ${reqAll?'checked':''} onchange="mobPkgReqAllToggle('${cat}',${idx},this.checked)" style="accent-color:var(--neon);width:15px;height:15px;flex-shrink:0;">
+    <label for="mob-pkg-reqall-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);cursor:pointer;line-height:1.4;">Require event host to request price</label>`;
+  priceWrap.appendChild(reqToggleRow);
+
+  const otRow = document.createElement('div');
+  otRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.25rem;';
+  otRow.innerHTML = `
+    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;${reqAll?'opacity:.35;':''}">Hourly Overtime:</span>
+    <div style="display:flex;align-items:center;gap:.5rem;flex:1;">
+      <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
+      <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.overtime||''))}" ${reqAll?'disabled':''} id="mob-pkg-ot-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'overtime',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}">
+      <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;${reqAll?'opacity:.35;':''}">Per Hour</span>
+    </div>`;
+  priceWrap.appendChild(otRow);
+  container.appendChild(priceWrap);
+
+  if (isWedding) {
+    const cocktailWrap = document.createElement('div');
+    cocktailWrap.id = `mob-pkg-cocktail-wrap-${cat}-${idx}`;
+    cocktailWrap.style.cssText = `margin-bottom:.75rem;padding:.75rem;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:6px;${reqAll?'display:none;':''}`;
+    const incl = pkg.cocktailIncluded !== false;
+    cocktailWrap.innerHTML = `
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl?'0':'.6rem'};">
+        <input type="checkbox" ${incl?'checked':''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
+        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in package</span>
+      </label>
+      <div class="cocktail-price-wrap" style="${incl?'display:none;':''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Cocktail Hour Price:</span>
+        <span style="color:var(--muted);font-size:.85rem;">$</span>
+        <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg.cocktailPrice||''))}" id="mob-pkg-cocktail-price-${cat}-${idx}" onchange="mobPkgChange('${cat}',${idx},'cocktailPrice',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">
+      </div>`;
+    container.appendChild(cocktailWrap);
+  }
+}
+
+function switchInternalPkgTab(outerCat, idx, selectedCat, clickedBtn) {
+  const activeCats = getMobActiveCategories();
+  // Update tab button styles
+  const card = clickedBtn.closest('[style*="background:rgba(10,10,16"]');
+  if (card) {
+    card.querySelectorAll('button[data-internal-cat]').forEach(btn => {
+      const active = btn.dataset.internalCat === selectedCat;
+      btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
+      btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
+      btn.style.border = active ? '1px solid var(--neon)' : '1px solid transparent';
+    });
+  }
+  // Show/hide panes
+  activeCats.forEach(c => {
+    const pane = document.getElementById(`inner-pkg-pane-${outerCat}-${idx}-${c}`);
+    if (pane) pane.style.display = c === selectedCat ? '' : 'none';
+  });
 }
 
 function removeMobPackage(cat, idx) {
