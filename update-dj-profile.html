@@ -3317,7 +3317,7 @@ function buildPricingSection(container, cat, idx) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
     row.innerHTML = `
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hr${isWedding && priceLabel ? ' ('+priceLabel+')' : ''} <span style="color:#ff5f5f;">*</span></span>
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hr${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}</span>
       <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
       <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
     priceWrap.appendChild(row);
