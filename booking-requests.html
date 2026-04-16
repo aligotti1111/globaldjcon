@@ -435,7 +435,7 @@ async function fetchVenueDistance(addr1, addr2, elementId) {
     const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180) * Math.cos(p2.lat*Math.PI/180) * Math.sin(dLon/2)**2;
     const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distColor = miles < 5 ? 'var(--neon)' : miles < 15 ? 'var(--amber)' : 'var(--error)';
-    el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};">${miles.toFixed(1)} mi between venues</span>`;
+    el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};">${miles.toFixed(1)} mi to venue</span>`;
   } catch(e) {
     const el = document.getElementById(elementId);
     if (el) el.style.display = 'none';
@@ -637,13 +637,13 @@ function renderMobileCard(b, isIncoming, orderNum) {
   const distId = `dist-${b.id}`;
   const cleanAddress = b.venue_address ? b.venue_address.replace(/,\s*[^,]+ County/i,'') : '';
 
-  const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;">
+  const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;border-radius:10px;">
 
-    <div style="background:rgba(255,255,255,.03);padding:.75rem 1rem;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);">
+    <div style="padding:.85rem 1rem .7rem;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);">
       <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.05em;color:var(--white);line-height:1.1;margin-bottom:2px;">${orderBadge}${eventLabel}</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:4px;">${formatDate(b.event_date)}</div>
-        <div style="font-size:.78rem;color:var(--muted);">Host Name: <span style="color:var(--white);">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.05em;color:var(--white);line-height:1;margin-bottom:3px;">${orderBadge}${eventLabel}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:5px;">${formatDate(b.event_date)}</div>
+        <div style="font-size:.8rem;color:var(--muted);">Host Name: <span style="color:var(--white);font-weight:600;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0;margin-left:.75rem;">
         <span class="${statusClass} status-badge">${statusLabel}</span>
@@ -653,50 +653,59 @@ function renderMobileCard(b, isIncoming, orderNum) {
       </div>
     </div>
 
-    <div style="padding:.85rem 1rem;">
+    <div style="padding:.85rem 1rem;display:flex;flex-direction:column;gap:.85rem;">
 
-      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem .85rem;background:rgba(0,245,196,.07);border:1px solid rgba(0,245,196,.18);border-radius:6px;margin-bottom:.85rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem .9rem;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.15);border-radius:7px;flex-wrap:wrap;">
         <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">Start</div>
-          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${b.start_time ? formatTime(b.start_time) : '—'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">Start</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${b.start_time ? formatTime(b.start_time) : '—'}</div>
         </div>
-        <div style="color:rgba(0,245,196,.4);font-size:1rem;">→</div>
+        <div style="color:rgba(0,245,196,.35);font-size:1.1rem;font-weight:300;">→</div>
         <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">End</div>
-          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${b.end_time ? formatTime(b.end_time) : '—'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">End</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${b.end_time ? formatTime(b.end_time) : '—'}</div>
         </div>
         ${durationLabel ? `
-        <div style="width:1px;height:28px;background:rgba(0,245,196,.25);flex-shrink:0;"></div>
+        <div style="width:1px;height:26px;background:rgba(0,245,196,.2);flex-shrink:0;"></div>
         <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">Duration</div>
-          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${durationLabel}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">Duration</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${durationLabel}</div>
         </div>` : ''}
         ${cocktailPill}
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.85rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
         ${b.venue_name ? `<div style="grid-column:1/-1;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Venue</div>
-          <div style="font-size:.85rem;color:var(--white);">${b.venue_name}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Venue</div>
+          <div style="font-size:.88rem;color:var(--white);">${b.venue_name}</div>
         </div>` : ''}
         ${cleanAddress ? `<div style="grid-column:1/-1;">
-          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.82rem;color:var(--muted);text-decoration:underline;">${cleanAddress}</a>
-          <div id="${distId}" style="font-size:.72rem;color:var(--muted);margin-top:2px;"></div>
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.82rem;color:var(--muted);text-decoration:underline;text-underline-offset:2px;">${cleanAddress}</a>
+          <div id="${distId}" style="font-size:.72rem;color:var(--muted);margin-top:3px;"></div>
         </div>` : ''}
-        ${b.room_details ? `<div style="grid-column:1/-1;"><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Room</div><div style="font-size:.82rem;color:var(--muted);">${b.room_details}</div></div>` : ''}
-        ${b.guest_count ? `<div><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Guests</div><div style="font-size:.85rem;color:var(--white);">${b.guest_count}</div></div>` : ''}
-        ${b.phone ? `<div><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Phone</div><div style="font-size:.85rem;color:var(--white);">${b.phone}</div></div>` : ''}
+        ${b.room_details && b.room_details !== 'None' ? `<div style="grid-column:1/-1;">
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Room</div>
+          <div style="font-size:.85rem;color:var(--muted);">${b.room_details}</div>
+        </div>` : ''}
+        ${b.guest_count ? `<div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Guests</div>
+          <div style="font-size:.88rem;color:var(--white);">${b.guest_count}</div>
+        </div>` : ''}
+        ${b.phone ? `<div>
+          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Phone</div>
+          <div style="font-size:.88rem;color:var(--white);">${b.phone}</div>
+        </div>` : ''}
       </div>
 
-      ${b.notes ? `<div style="background:rgba(255,255,255,.03);border-left:2px solid var(--border);border-radius:0 4px 4px 0;padding:.6rem .8rem;margin-bottom:.85rem;">
-        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Message from booker</div>
-        <div style="font-size:.82rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
+      ${b.notes ? `<div style="background:rgba(255,255,255,.02);border-left:2px solid var(--border);padding:.6rem .85rem;border-radius:0 5px 5px 0;">
+        <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Message from booker</div>
+        <div style="font-size:.83rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
       </div>` : ''}
 
       ${pkgBlock}
       ${priceBlock}
 
-      <div class="req-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;padding-top:.25rem;border-top:1px solid var(--border);">
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
           ${incomingActions}
           ${outgoingActions}
@@ -715,7 +724,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
   setTimeout(() => {
     // Distance calculation
     if (b.venue_address && djZip) {
-      fetchVenueDistance(djZip, b.venue_address, distId);
+      fetchVenueDistance(djZip + ', United States', b.venue_address, distId);
     }
     // Package details lookup
     if (b.package_title && isIncoming) {
