@@ -3545,6 +3545,36 @@ function removeMobPackage(cat, idx) {
 
 async function mobSavePackages(cat, idx, btn) {
   const alertEl = document.getElementById(`mob-pkg-save-${cat}-${idx}`);
+
+  // Validate all active categories for this package
+  const activeCats = getMobActiveCategories();
+  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
+  const errors = [];
+
+  // Title and details are shared — check from current cat's package
+  const sharedPkg = mobPackages[cat]?.[idx];
+  if (!sharedPkg?.title?.trim()) errors.push('Package title is required');
+  if (!sharedPkg?.details?.trim()) errors.push('Package details are required');
+
+  // Prices required per active category (unless reqAll is checked)
+  activeCats.forEach(c => {
+    const p = mobPackages[c]?.[idx];
+    if (!p) { errors.push(`${catLabels[c]} pricing is incomplete`); return; }
+    if (!p.reqAll) {
+      if (!p.price4 && p.price4 !== 0) errors.push(`${catLabels[c]}: 4 hour price required`);
+      if (!p.price5 && p.price5 !== 0) errors.push(`${catLabels[c]}: 5 hour price required`);
+      if (!p.price6 && p.price6 !== 0) errors.push(`${catLabels[c]}: 6 hour price required`);
+    }
+  });
+
+  if (errors.length > 0) {
+    if (alertEl) {
+      alertEl.innerHTML = errors.map(e => `<div style="color:#ff5f5f;font-size:.75rem;">✕ ${e}</div>`).join('');
+      setTimeout(() => { if (alertEl) alertEl.innerHTML = ''; }, 4000);
+    }
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
