@@ -3226,12 +3226,12 @@ function buildCatPane(container, cat, idx) {
   const photoStatusId = `pkg-photo-status-${cat}-${idx}`;
 
   // Title
-  container.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
+  container.appendChild(pkgField('Package Title <span style="color:#ff5f5f;">*</span>', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
 
   // Details
   const detailWrap = document.createElement('div');
   detailWrap.style.marginBottom = '.75rem';
-  detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details</label>
+  detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details <span style="color:#ff5f5f;">*</span></label>
     <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;align-items:center;">
       <button type="button" onclick="pkgCmd('bold','${editorId}')" style="${btnStyle}font-weight:700;">B</button>
       <button type="button" onclick="pkgCmd('italic','${editorId}')" style="${btnStyle}font-style:italic;">I</button>
@@ -3310,14 +3310,14 @@ function buildPricingSection(container, cat, idx) {
 
   const priceWrap = document.createElement('div');
   priceWrap.style.marginBottom = '.75rem';
-  priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing</label>`;
+  priceWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.5rem;">Pricing <span style="color:#ff5f5f;">*</span></label>`;
 
   ['4','5','6'].forEach(hrs => {
     const priceField = `price${hrs}`;
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;';
     row.innerHTML = `
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hour Event${isWedding && priceLabel ? ' ('+priceLabel+')' : ''}:</span>
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:80px;">${hrs} Hr${isWedding && priceLabel ? ' ('+priceLabel+')' : ''} <span style="color:#ff5f5f;">*</span></span>
       <span style="color:var(--muted);font-size:.85rem;${reqAll?'opacity:.35;':''}">$</span>
       <input type="number" min="0" placeholder="0" value="${escHtml(String(pkg[priceField]||''))}" ${reqAll?'disabled':''} onchange="mobPkgChange('${cat}',${idx},'${priceField}',this.value)" style="flex:1;max-width:120px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;${reqAll?'opacity:.35;':''}" id="mob-pkg-price-${cat}-${idx}-${hrs}">`;
     priceWrap.appendChild(row);
@@ -3524,11 +3524,20 @@ function mobPkgChange(cat, idx, field, val) {
   mobPkgAutoSave(cat, idx);
 }
 
+function hasPrice(val) {
+  if (val === null || val === undefined || val === '') return false;
+  const n = parseFloat(val);
+  return !isNaN(n); // 0 is valid
+}
+
+function stripHtml(html) {
+  return (html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
 // Returns the currently active inner category tab for a given package card
 function getActivePkgCat(outerCat, idx) {
   const activeCats = getMobActiveCategories();
   if (activeCats.length <= 1) return outerCat;
-  // Find the active tab button inside the card
   for (const c of activeCats) {
     const pane = document.getElementById(`inner-pkg-pane-${outerCat}-${idx}-${c}`);
     if (pane && pane.style.display !== 'none') return c;
@@ -3541,11 +3550,11 @@ function pkgCatComplete(cat, idx) {
   const p = mobPackages[cat]?.[idx];
   if (!p) return false;
   if (!p.title?.trim()) return false;
-  if (!p.details?.trim()) return false;
+  if (!stripHtml(p.details)) return false;
   if (!p.reqAll) {
-    if (!p.price4 && p.price4 !== 0 && p.price4 !== '0') return false;
-    if (!p.price5 && p.price5 !== 0 && p.price5 !== '0') return false;
-    if (!p.price6 && p.price6 !== 0 && p.price6 !== '0') return false;
+    if (!hasPrice(p.price4)) return false;
+    if (!hasPrice(p.price5)) return false;
+    if (!hasPrice(p.price6)) return false;
   }
   return true;
 }
@@ -3598,13 +3607,13 @@ async function mobSavePackages(cat, idx, btn) {
 
   const sharedPkg = mobPackages[cat]?.[idx];
   if (!sharedPkg?.title?.trim()) errors.push('Package title is required');
-  if (!sharedPkg?.details?.trim()) errors.push('Package details are required');
+  if (!stripHtml(sharedPkg?.details)) errors.push('Package details are required');
 
   const p = mobPackages[activeCat]?.[idx];
   if (!p?.reqAll) {
-    if (!p?.price4 && p?.price4 !== 0 && p?.price4 !== '0') errors.push(`${catLabels[activeCat]}: 4 hour price required`);
-    if (!p?.price5 && p?.price5 !== 0 && p?.price5 !== '0') errors.push(`${catLabels[activeCat]}: 5 hour price required`);
-    if (!p?.price6 && p?.price6 !== 0 && p?.price6 !== '0') errors.push(`${catLabels[activeCat]}: 6 hour price required`);
+    if (!hasPrice(p?.price4)) errors.push(`${catLabels[activeCat]}: 4 hour price required`);
+    if (!hasPrice(p?.price5)) errors.push(`${catLabels[activeCat]}: 5 hour price required`);
+    if (!hasPrice(p?.price6)) errors.push(`${catLabels[activeCat]}: 6 hour price required`);
   }
 
   if (errors.length > 0) {
