@@ -3349,10 +3349,10 @@ function buildPricingSection(container, cat, idx) {
 
 function switchInternalPkgTab(outerCat, idx, selectedCat, clickedBtn) {
   const activeCats = getMobActiveCategories();
-  // Update tab button styles
-  const card = clickedBtn.closest('[style*="background:rgba(10,10,16"]');
-  if (card) {
-    card.querySelectorAll('button[data-internal-cat]').forEach(btn => {
+  // Update tab button styles using the tab bar parent
+  const tabBar = clickedBtn.parentElement;
+  if (tabBar) {
+    tabBar.querySelectorAll('button[data-internal-cat]').forEach(btn => {
       const active = btn.dataset.internalCat === selectedCat;
       btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
       btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
