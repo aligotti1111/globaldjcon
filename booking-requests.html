@@ -727,7 +727,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
       fetchVenueDistance(djZip + ', United States', b.venue_address, distId);
     }
     // Package details lookup
-    if (b.package_title && isIncoming) {
+    if (b.package_title) {
       loadMobPkgDetails(b);
     }
   }, 50);
@@ -737,21 +737,24 @@ function renderMobileCard(b, isIncoming, orderNum) {
 
 async function loadMobPkgDetails(b) {
   try {
-    const { data: djRow } = await db.from('users').select('booking_settings').eq('id', b.dj_id || currentUser.id).single();
+    const djId = b.dj_id || currentUser.id;
+    const { data: djRow } = await db.from('users').select('booking_settings').eq('id', djId).single();
     const bs = djRow?.booking_settings ? (typeof djRow.booking_settings === 'string' ? JSON.parse(djRow.booking_settings) : djRow.booking_settings) : {};
     const catMap = { weddings:'wedding', mitzvah:'mitzvah', bar_mitzvah:'mitzvah' };
     const cat = catMap[b.event_type] || 'general';
-    const pkgs = (bs.mob_packages || {})[cat] || (bs.mob_packages || {})['general'] || [];
-    const pkg = pkgs.find(p => p.title?.trim() === b.package_title?.trim()) || pkgs.find(p => p.title?.trim());
+    // Try matched category first, fall back to general
+    const catPkgs = (bs.mob_packages || {})[cat] || [];
+    const genPkgs = (bs.mob_packages || {})['general'] || [];
+    const findPkg = (pkgs) => pkgs.find(p => p.title?.trim() && p.title.trim() === b.package_title?.trim());
+    const pkg = findPkg(catPkgs) || findPkg(genPkgs) || catPkgs[0] || genPkgs[0];
     if (!pkg) return;
+    // Details may be on the category-specific pkg or the general one
+    const genPkg = findPkg(genPkgs) || genPkgs[catPkgs.indexOf(pkg)];
+    const details = pkg.details || genPkg?.details || '';
     const detailsEl = document.getElementById(`pkg-details-${b.id}`);
-    if (!detailsEl) return;
-    const raw = pkg.details || '';
-    const text = raw.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim();
-    if (text) {
-      detailsEl.innerHTML = pkg.details;
-      detailsEl.style.display = '';
-    }
+    if (!detailsEl || !details) return;
+    detailsEl.innerHTML = details;
+    detailsEl.style.display = '';
   } catch(e) { /* non-fatal */ }
 }
 
