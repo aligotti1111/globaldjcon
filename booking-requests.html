@@ -558,6 +558,17 @@ function renderMobileCard(b, isIncoming, orderNum) {
     const hrs = Math.floor(mins/60);
     const rem = mins%60;
     durationLabel = hrs > 0 ? `${hrs} hr${hrs>1?'s':''}${rem>0?' '+rem+'m':''}` : `${rem}m`;
+
+    // For weddings with cocktail hour, append + X hr(s) cocktail
+    if (b.event_type === 'weddings' && b.cocktail_needed && b.cocktail_start_time) {
+      const [ch,cm] = b.cocktail_start_time.split(':').map(Number);
+      let cockMins = (sh*60+sm)-(ch*60+cm);
+      if (cockMins<=0) cockMins+=1440;
+      const cHrs = Math.floor(cockMins/60);
+      const cRem = cockMins%60;
+      const cockLabel = cHrs > 0 ? `${cHrs} hr${cHrs>1?'s':''}${cRem>0?' '+cRem+'m':''}` : `${cRem}m`;
+      durationLabel += ` + ${cockLabel} cocktail`;
+    }
   }
 
   // Cocktail pill
