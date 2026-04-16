@@ -2805,27 +2805,6 @@ function renderMobPubForm(dateKey) {
         <input type="number" id="mpf-guests" min="1" placeholder="150" style="width:120px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
 
-      <!-- Wedding cocktail section -->
-      <div id="mpf-wedding-fields" style="display:none;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:.75rem;">Cocktail Hour</div>
-        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:.6rem;">
-          <input type="checkbox" id="mpf-cocktail-needed" onchange="mobPubCocktailChange()" style="accent-color:var(--neon);">
-          <span style="font-size:.88rem;color:var(--white);">Cocktail hour music needed</span>
-        </label>
-        <div id="mpf-cocktail-fields" style="display:none;">
-          <div style="margin-bottom:.6rem;">
-            <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Cocktail Start Time</label>
-            <select id="mpf-cocktail-start" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
-              <option value="">Select time...</option>${cocktailTimeOpts}
-            </select>
-          </div>
-          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-            <input type="checkbox" id="mpf-cocktail-same-room" style="accent-color:var(--neon);">
-            <span style="font-size:.85rem;color:var(--white);">Cocktail hour in same room as reception</span>
-          </label>
-        </div>
-      </div>
-
       <!-- Times -->
       <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
@@ -2839,6 +2818,34 @@ function renderMobPubForm(dateKey) {
           <select id="mpf-end-time" onchange="mobPubRenderPackages();mobPubCalcPrice();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
             <option value="">Select time...</option>${timeOpts}
           </select>
+        </div>
+      </div>
+
+      <!-- Wedding cocktail section -->
+      <div id="mpf-wedding-fields" style="display:none;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:.75rem;">Cocktail Hour</div>
+        <div style="font-size:.88rem;color:var(--white);margin-bottom:.6rem;">Is music needed for cocktail hour?</div>
+        <div style="display:flex;gap:.75rem;margin-bottom:.75rem;">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .85rem;border-radius:6px;border:1px solid var(--border);background:var(--deep);flex:1;justify-content:center;" id="mpf-cocktail-yes-label">
+            <input type="radio" name="mpf-cocktail-yn" value="yes" id="mpf-cocktail-yes" onchange="mobPubCocktailChange()" style="accent-color:var(--neon);">
+            <span style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);">Yes</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .85rem;border-radius:6px;border:1px solid var(--border);background:var(--deep);flex:1;justify-content:center;" id="mpf-cocktail-no-label">
+            <input type="radio" name="mpf-cocktail-yn" value="no" id="mpf-cocktail-no" onchange="mobPubCocktailChange()" style="accent-color:var(--neon);">
+            <span style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);">No</span>
+          </label>
+        </div>
+        <div id="mpf-cocktail-fields" style="display:none;">
+          <div style="margin-bottom:.6rem;">
+            <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Cocktail Start Time</label>
+            <select id="mpf-cocktail-start" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+              <option value="">Select time...</option>${cocktailTimeOpts}
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+            <input type="checkbox" id="mpf-cocktail-same-room" style="accent-color:var(--neon);">
+            <span style="font-size:.85rem;color:var(--white);">Cocktail hour in same room as reception</span>
+          </label>
         </div>
       </div>
 
@@ -2890,9 +2897,9 @@ function mobPubEventTypeChange() {
 }
 
 function mobPubCocktailChange() {
-  const cb = document.getElementById('mpf-cocktail-needed');
+  const yes = document.getElementById('mpf-cocktail-yes');
   const fields = document.getElementById('mpf-cocktail-fields');
-  if (fields) fields.style.display = cb && cb.checked ? '' : 'none';
+  if (fields) fields.style.display = yes && yes.checked ? '' : 'none';
 }
 
 function mobPubGetCategory(eventType) {
@@ -3120,7 +3127,7 @@ async function mobPubSubmit(dateKey) {
   const startTime = document.getElementById('mpf-start-time')?.value;
   const endTime = document.getElementById('mpf-end-time')?.value;
   const message = document.getElementById('mpf-message')?.value.trim();
-  const cocktailNeeded = document.getElementById('mpf-cocktail-needed')?.checked || false;
+  const cocktailNeeded = document.getElementById('mpf-cocktail-yes')?.checked || false;
   const cocktailStart = document.getElementById('mpf-cocktail-start')?.value;
   const cocktailSameRoom = document.getElementById('mpf-cocktail-same-room')?.checked || false;
   const isWedding = eventType === 'weddings';
