@@ -646,33 +646,22 @@ function renderMobileCard(b, isIncoming, orderNum) {
     cancelled: 'var(--muted)'
   }[b.status || 'pending'] || 'var(--amber)';
 
-  // Block menu (hidden by default, toggled by ⋯ button)
-  const blockMenu = `
-    <div style="position:relative;">
-      <button onclick="event.stopPropagation();var m=document.getElementById('menu-${b.id}');m.style.display=m.style.display==='block'?'none':'block';" style="background:transparent;border:none;color:var(--muted);cursor:pointer;padding:.3rem;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color='var(--white)'" onmouseout="this.style.color='var(--muted)'" aria-label="More options">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-      </button>
-      <div id="menu-${b.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--deep);border:1px solid var(--border);border-radius:6px;min-width:130px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.4);overflow:hidden;">
-        ${isBlocked
-          ? `<button onclick="unblockUserInline('${targetId}');document.getElementById('menu-${b.id}').style.display='none';" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--white);padding:.6rem .85rem;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='transparent'">Unblock user</button>`
-          : `<button onclick="blockUser('${targetId}','${targetName}');document.getElementById('menu-${b.id}').style.display='none';" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--error);padding:.6rem .85rem;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;" onmouseover="this.style.background='rgba(255,95,95,.08)'" onmouseout="this.style.background='transparent'">Block user</button>`}
-      </div>
-    </div>`;
-
   const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;border-radius:12px;border-left:1px solid var(--border);position:relative;">
 
     <!-- Status accent strip (top) -->
     <div style="height:3px;background:${statusAccent};"></div>
 
-    <!-- ⋯ menu: absolutely positioned so header content stays flush left -->
-    <div style="position:absolute;top:14px;right:14px;z-index:5;">${blockMenu}</div>
+    <!-- Status badge + Block button: absolutely positioned top-right, stacked -->
+    <div style="position:absolute;top:14px;right:14px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
+      <span class="${statusClass} status-badge">${statusLabel}</span>
+      ${isBlocked
+        ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="unblockUserInline('${targetId}')">Unblock</button>`
+        : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);" onclick="blockUser('${targetId}','${targetName}')">Block</button>`}
+    </div>
 
     <!-- SECTION 1: Header — fully stacked, left-aligned -->
     <div style="padding:1rem 1.1rem .9rem;">
-      <div style="margin-bottom:.5rem;">
-        <span class="${statusClass} status-badge">${statusLabel}</span>
-        ${orderBadge}
-      </div>
+      ${orderBadge ? `<div style="margin-bottom:.5rem;">${orderBadge}</div>` : ''}
       <div style="margin-bottom:.5rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem;">Event</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.04em;color:var(--white);line-height:1;">${eventLabel}</div>
@@ -724,9 +713,8 @@ function renderMobileCard(b, isIncoming, orderNum) {
         <div style="font-size:.82rem;color:var(--muted);margin-top:1rem;">
           ${isIncoming ? 'Host Name' : 'To'}: <span style="color:var(--white);font-weight:500;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span>
         </div>
-        ${b.phone ? `<div style="font-size:.82rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.35rem;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
-          <a href="tel:${b.phone}" style="color:var(--white);font-weight:500;text-decoration:none;">${b.phone}</a>
+        ${b.phone ? `<div style="font-size:.82rem;color:var(--muted);margin-top:.3rem;">
+          Phone: <a href="tel:${b.phone}" style="color:var(--white);font-weight:500;text-decoration:none;">${b.phone}</a>
         </div>` : ''}
       </div>` : ''}
 
