@@ -57,12 +57,12 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .tab-btn.active{color:var(--neon);border-bottom-color:var(--neon);}
 .tab-pane{display:none;}
 .tab-pane.active{display:block;}
-.request-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;transition:border-color .2s;}
+.request-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;transition:border-color .2s,transform .2s;}
 .request-card:hover{border-color:var(--muted);}
-.request-card.pending{border-left:3px solid var(--amber);}
-.request-card.approved{border-left:3px solid var(--success);}
-.request-card.denied{border-left:3px solid var(--error);}
-.request-card.counter{border-left:3px solid var(--neon);}
+.request-card.pending{}
+.request-card.approved{}
+.request-card.denied{}
+.request-card.counter{}
 .req-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.85rem;}
 .req-name{font-size:.95rem;font-weight:600;color:var(--white);}
 .req-date{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:2px;}
@@ -72,7 +72,7 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 .status-denied{background:rgba(255,95,95,.15);color:var(--error);}
 .status-counter{background:var(--neon-dim);color:var(--neon);}
 .status-cancelled{background:rgba(107,107,136,.15);color:var(--muted);}
-.request-card.cancelled{border-left:3px solid var(--muted);}
+.request-card.cancelled{}
 .req-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-bottom:.85rem;}
 .req-detail-item{font-size:.8rem;}
 .req-detail-item .lbl{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px;}
@@ -637,87 +637,138 @@ function renderMobileCard(b, isIncoming, orderNum) {
   const distId = `dist-${b.id}`;
   const cleanAddress = b.venue_address ? b.venue_address.replace(/,\s*[^,]+ County/i,'') : '';
 
-  const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;border-radius:10px;">
+  // Status accent (replaces heavy left border — now a subtle top strip)
+  const statusAccent = {
+    pending: 'var(--amber)',
+    approved: 'var(--success)',
+    denied: 'var(--error)',
+    counter: 'var(--neon)',
+    cancelled: 'var(--muted)'
+  }[b.status || 'pending'] || 'var(--amber)';
 
-    <div style="padding:.85rem 1rem .7rem;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);">
-      <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.05em;color:var(--white);line-height:1;margin-bottom:3px;">${orderBadge}${eventLabel}</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:5px;">${formatDate(b.event_date)}</div>
-        <div style="font-size:.8rem;color:var(--muted);">Host Name: <span style="color:var(--white);font-weight:600;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0;margin-left:.75rem;">
-        <span class="${statusClass} status-badge">${statusLabel}</span>
+  // Block menu (hidden by default, toggled by ⋯ button)
+  const blockMenu = `
+    <div style="position:relative;">
+      <button onclick="event.stopPropagation();var m=document.getElementById('menu-${b.id}');m.style.display=m.style.display==='block'?'none':'block';" style="background:transparent;border:none;color:var(--muted);cursor:pointer;padding:.3rem;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color='var(--white)'" onmouseout="this.style.color='var(--muted)'" aria-label="More options">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+      <div id="menu-${b.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--deep);border:1px solid var(--border);border-radius:6px;min-width:130px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.4);overflow:hidden;">
         ${isBlocked
-          ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="unblockUserInline('${targetId}')">Unblock</button>`
-          : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);" onclick="blockUser('${targetId}','${targetName}')">Block</button>`}
+          ? `<button onclick="unblockUserInline('${targetId}');document.getElementById('menu-${b.id}').style.display='none';" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--white);padding:.6rem .85rem;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='transparent'">Unblock user</button>`
+          : `<button onclick="blockUser('${targetId}','${targetName}');document.getElementById('menu-${b.id}').style.display='none';" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--error);padding:.6rem .85rem;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;" onmouseover="this.style.background='rgba(255,95,95,.08)'" onmouseout="this.style.background='transparent'">Block user</button>`}
       </div>
+    </div>`;
+
+  const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;border-radius:12px;border-left:1px solid var(--border);position:relative;">
+
+    <!-- Status accent strip (top) -->
+    <div style="height:3px;background:${statusAccent};"></div>
+
+    <!-- SECTION 1: Header -->
+    <div style="padding:1rem 1.1rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;">
+      <div style="min-width:0;flex:1;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;flex-wrap:wrap;">
+          <span class="${statusClass} status-badge">${statusLabel}</span>
+          ${orderBadge}
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.04em;color:var(--white);line-height:1;margin-bottom:.4rem;">${eventLabel}</div>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.8rem;color:var(--muted);">
+          <span style="display:inline-flex;align-items:center;gap:.3rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span style="color:var(--white);">${formatDate(b.event_date)}</span>
+          </span>
+          <span style="color:var(--border);">•</span>
+          <span>${isIncoming ? 'From' : 'To'} <span style="color:var(--white);font-weight:500;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></span>
+        </div>
+      </div>
+      ${blockMenu}
     </div>
 
-    <div style="padding:.85rem 1rem;display:flex;flex-direction:column;gap:.85rem;">
-
-      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem .9rem;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.15);border-radius:7px;flex-wrap:wrap;">
+    <!-- SECTION 2: Time / Duration -->
+    <div style="margin:0 1.1rem;display:flex;align-items:center;gap:.9rem;padding:.75rem 1rem;background:rgba(0,245,196,.05);border:1px solid rgba(0,245,196,.12);border-radius:8px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.6rem;">
         <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">Start</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${b.start_time ? formatTime(b.start_time) : '—'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Start</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--neon);letter-spacing:.03em;line-height:1;">${b.start_time ? formatTime(b.start_time) : '—'}</div>
         </div>
-        <div style="color:rgba(0,245,196,.35);font-size:1.1rem;font-weight:300;">→</div>
+        <div style="color:rgba(0,245,196,.35);font-size:1rem;font-weight:300;margin:0 .15rem;">→</div>
         <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">End</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${b.end_time ? formatTime(b.end_time) : '—'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">End</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--neon);letter-spacing:.03em;line-height:1;">${b.end_time ? formatTime(b.end_time) : '—'}</div>
         </div>
-        ${durationLabel ? `
-        <div style="width:1px;height:26px;background:rgba(0,245,196,.2);flex-shrink:0;"></div>
-        <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:2px;">Duration</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--neon);">${durationLabel}</div>
-        </div>` : ''}
-        ${cocktailPill}
       </div>
+      ${durationLabel ? `
+      <div style="width:1px;height:30px;background:rgba(0,245,196,.18);flex-shrink:0;"></div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Duration</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--neon);letter-spacing:.03em;line-height:1;">${durationLabel}</div>
+      </div>` : ''}
+      ${cocktailPill}
+    </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
-        ${b.venue_name ? `<div style="grid-column:1/-1;">
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Venue</div>
-          <div style="font-size:.88rem;color:var(--white);">${b.venue_name}</div>
-        </div>` : ''}
-        ${cleanAddress ? `<div style="grid-column:1/-1;">
-          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.82rem;color:var(--muted);text-decoration:underline;text-underline-offset:2px;">${cleanAddress}</a>
-          <div id="${distId}" style="font-size:.72rem;color:var(--muted);margin-top:3px;"></div>
-        </div>` : ''}
-        ${b.room_details && b.room_details !== 'None' ? `<div style="grid-column:1/-1;">
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Room</div>
-          <div style="font-size:.85rem;color:var(--muted);">${b.room_details}</div>
-        </div>` : ''}
-        ${b.guest_count ? `<div>
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Guests</div>
-          <div style="font-size:.88rem;color:var(--white);">${b.guest_count}</div>
-        </div>` : ''}
-        ${b.phone ? `<div>
-          <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Phone</div>
-          <div style="font-size:.88rem;color:var(--white);">${b.phone}</div>
-        </div>` : ''}
-      </div>
-
-      ${b.notes ? `<div style="background:rgba(255,255,255,.02);border-left:2px solid var(--border);padding:.6rem .85rem;border-radius:0 5px 5px 0;">
-        <div style="font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Message from booker</div>
-        <div style="font-size:.83rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
+    <!-- SECTION 3: Venue + logistics -->
+    <div style="padding:1rem 1.1rem .25rem;">
+      ${b.venue_name ? `
+      <div style="margin-bottom:.7rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;">Venue</div>
+        <div style="font-size:1rem;color:var(--white);font-weight:600;line-height:1.3;">${b.venue_name}</div>
+        ${cleanAddress ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.82rem;color:var(--muted);text-decoration:none;line-height:1.4;display:inline-flex;align-items:center;gap:.3rem;margin-top:.2rem;border-bottom:1px dashed var(--border);padding-bottom:1px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${cleanAddress}
+        </a>
+        <div id="${distId}" style="font-size:.72rem;color:var(--muted);margin-top:.3rem;"></div>` : ''}
       </div>` : ''}
 
+      ${b.room_details && b.room_details !== 'None' ? `
+      <div style="margin-bottom:.7rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;">Room</div>
+        <div style="font-size:.88rem;color:var(--white);">${b.room_details}</div>
+      </div>` : ''}
+
+      ${(b.guest_count || b.phone) ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:.7rem .9rem;background:rgba(255,255,255,.015);border:1px solid var(--border);border-radius:7px;">
+        ${b.guest_count ? `<div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem;display:flex;align-items:center;gap:.3rem;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Guests
+          </div>
+          <div style="font-size:1rem;color:var(--white);font-weight:600;">${b.guest_count}</div>
+        </div>` : '<div></div>'}
+        ${b.phone ? `<div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem;display:flex;align-items:center;gap:.3rem;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            Phone
+          </div>
+          <div style="font-size:1rem;color:var(--white);font-weight:600;">${b.phone}</div>
+        </div>` : ''}
+      </div>` : ''}
+    </div>
+
+    ${b.notes ? `
+    <div style="margin:.85rem 1.1rem 0;background:rgba(255,255,255,.02);border-left:2px solid var(--neon);padding:.7rem .9rem;border-radius:0 6px 6px 0;">
+      <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Message from booker</div>
+      <div style="font-size:.85rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
+    </div>` : ''}
+
+    ${(pkgBlock || priceBlock) ? `
+    <div style="padding:1rem 1.1rem 0;">
       ${pkgBlock}
       ${priceBlock}
+    </div>` : ''}
 
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;padding-top:.25rem;border-top:1px solid var(--border);">
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-          ${incomingActions}
-          ${outgoingActions}
-          ${quoteOutgoingActions}
-          <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
-          </button>
-        </div>
-        <div style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
+    <!-- SECTION 4: Actions -->
+    <div style="margin-top:.75rem;padding:.85rem 1.1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:rgba(0,0,0,.25);border-top:1px solid var(--border);">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        ${incomingActions}
+        ${outgoingActions}
+        ${quoteOutgoingActions}
+        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
+        </button>
       </div>
-
+      <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.06em;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
     </div>
+
   </div>`;
 
   // Trigger async tasks after render
