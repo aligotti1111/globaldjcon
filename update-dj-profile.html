@@ -3193,12 +3193,44 @@ function buildPkgCard(cat, idx, pkg) {
     card.appendChild(tabBar);
   }
 
-  card.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
+  if (activeCats.length > 1) {
+    activeCats.forEach((c, ci) => {
+      const paneDiv = document.createElement('div');
+      paneDiv.id = `inner-pkg-pane-${cat}-${idx}-${c}`;
+      paneDiv.style.display = ci === 0 ? '' : 'none';
+      buildCatPane(paneDiv, c, idx);
+      card.appendChild(paneDiv);
+    });
+  } else {
+    const pricePane = document.createElement('div');
+    buildCatPane(pricePane, cat, idx);
+    card.appendChild(pricePane);
+  }
 
+  const saveRow = document.createElement('div');
+  saveRow.style.cssText = 'margin-top:.75rem;display:flex;align-items:center;gap:.75rem;';
+  saveRow.innerHTML = `
+    <button type="button" onclick="mobSavePackages('${cat}',${idx},this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Package</button>
+    <span id="mob-pkg-save-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--neon);"></span>`;
+  card.appendChild(saveRow);
+
+  return card;
+}
+
+function buildCatPane(container, cat, idx) {
+  const pkg = (mobPackages[cat] && mobPackages[cat][idx]) ? mobPackages[cat][idx] : newMobPackage();
+  const btnStyle = `padding:.2rem .45rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;line-height:1;`;
+  const editorId = `pkg-editor-${cat}-${idx}`;
+  const photoBoxId = `pkg-photo-box-${cat}-${idx}`;
+  const photoPreviewId = `pkg-photo-preview-${cat}-${idx}`;
+  const photoStatusId = `pkg-photo-status-${cat}-${idx}`;
+
+  // Title
+  container.appendChild(pkgField('Package Title', `<input type="text" placeholder="e.g. Essentials, Gold, Premium" value="${escHtml(pkg.title||'')}" onchange="mobPkgChange('${cat}',${idx},'title',this.value)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;">`));
+
+  // Details
   const detailWrap = document.createElement('div');
   detailWrap.style.marginBottom = '.75rem';
-  const editorId = `pkg-editor-${cat}-${idx}`;
-  const btnStyle = `padding:.2rem .45rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;line-height:1;`;
   detailWrap.innerHTML = `<label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Details</label>
     <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;align-items:center;">
       <button type="button" onclick="pkgCmd('bold','${editorId}')" style="${btnStyle}font-weight:700;">B</button>
@@ -3218,22 +3250,12 @@ function buildPkgCard(cat, idx, pkg) {
       </select>
     </div>
     <div id="${editorId}" contenteditable="true" data-cat="${cat}" data-idx="${idx}" oninput="mobPkgChange('${cat}',${idx},'details',this.innerHTML)" style="min-height:80px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1rem 1.1rem;color:var(--white);font-size:.85rem;font-family:'DM Sans',sans-serif;line-height:1.6;outline:none;">${pkg.details||''}</div>`;
-  card.appendChild(detailWrap);
+  container.appendChild(detailWrap);
 
-  if (activeCats.length > 1) {
-    activeCats.forEach((c, ci) => {
-      const paneDiv = document.createElement('div');
-      paneDiv.id = `inner-pkg-pane-${cat}-${idx}-${c}`;
-      paneDiv.style.display = ci === 0 ? '' : 'none';
-      buildPricingSection(paneDiv, c, idx);
-      card.appendChild(paneDiv);
-    });
-  } else {
-    const pricePane = document.createElement('div');
-    buildPricingSection(pricePane, cat, idx);
-    card.appendChild(pricePane);
-  }
+  // Pricing
+  buildPricingSection(container, cat, idx);
 
+  // Setup hours
   const setupWrap = document.createElement('div');
   setupWrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;';
   setupWrap.innerHTML = `
@@ -3242,13 +3264,11 @@ function buildPkgCard(cat, idx, pkg) {
       <option value="">—</option>
       ${PKG_SETUP_HOURS.map(h => `<option value="${h}" ${pkg.setupHours===h?'selected':''}>${h} hr${h==='1'?'':'s'}</option>`).join('')}
     </select>`;
-  card.appendChild(setupWrap);
+  container.appendChild(setupWrap);
 
+  // Photo
   const photoWrap = document.createElement('div');
   photoWrap.style.marginBottom = '.5rem';
-  const photoBoxId = `pkg-photo-box-${cat}-${idx}`;
-  const photoPreviewId = `pkg-photo-preview-${cat}-${idx}`;
-  const photoStatusId = `pkg-photo-status-${cat}-${idx}`;
   photoWrap.innerHTML = `
     <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.35rem;">Package Setup Photo</label>
     <div class="upload-box${pkg.photo?' has-image':''}" id="${photoBoxId}" style="position:relative;border:2px dashed var(--border);border-radius:6px;cursor:pointer;overflow:hidden;background:var(--deep);">
@@ -3265,16 +3285,7 @@ function buildPkgCard(cat, idx, pkg) {
       </div>
     </div>
     <div id="${photoStatusId}" class="upload-status"></div>`;
-  card.appendChild(photoWrap);
-
-  const saveRow = document.createElement('div');
-  saveRow.style.cssText = 'margin-top:.75rem;display:flex;align-items:center;gap:.75rem;';
-  saveRow.innerHTML = `
-    <button type="button" onclick="mobSavePackages('${cat}',${idx},this)" style="padding:.5rem 1.1rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Save Package</button>
-    <span id="mob-pkg-save-${cat}-${idx}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--neon);"></span>`;
-  card.appendChild(saveRow);
-
-  return card;
+  container.appendChild(photoWrap);
 }
 
 function buildPricingSection(container, cat, idx) {
