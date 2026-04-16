@@ -3520,6 +3520,53 @@ function mobPkgChange(cat, idx, field, val) {
   if (!mobPackages[cat][idx]) mobPackages[cat][idx] = newMobPackage();
   if (field === 'cocktailIncluded') val = (val === true || val === 'true');
   mobPackages[cat][idx][field] = val;
+  // Auto-save silently if all required fields are filled for the active tab
+  mobPkgAutoSave(cat, idx);
+}
+
+// Returns the currently active inner category tab for a given package card
+function getActivePkgCat(outerCat, idx) {
+  const activeCats = getMobActiveCategories();
+  if (activeCats.length <= 1) return outerCat;
+  // Find the active tab button inside the card
+  for (const c of activeCats) {
+    const pane = document.getElementById(`inner-pkg-pane-${outerCat}-${idx}-${c}`);
+    if (pane && pane.style.display !== 'none') return c;
+  }
+  return activeCats[0];
+}
+
+// Check if a single category's package has all required fields filled
+function pkgCatComplete(cat, idx) {
+  const p = mobPackages[cat]?.[idx];
+  if (!p) return false;
+  if (!p.title?.trim()) return false;
+  if (!p.details?.trim()) return false;
+  if (!p.reqAll) {
+    if (!p.price4 && p.price4 !== 0 && p.price4 !== '0') return false;
+    if (!p.price5 && p.price5 !== 0 && p.price5 !== '0') return false;
+    if (!p.price6 && p.price6 !== 0 && p.price6 !== '0') return false;
+  }
+  return true;
+}
+
+// Silently save if the active category's required fields are all filled
+let _autoSaveTimers = {};
+function mobPkgAutoSave(cat, idx) {
+  const activeCat = getActivePkgCat(cat, idx);
+  if (!pkgCatComplete(activeCat, idx)) return;
+  const key = `${cat}-${idx}`;
+  clearTimeout(_autoSaveTimers[key]);
+  _autoSaveTimers[key] = setTimeout(async () => {
+    try {
+      const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+      const bs = current?.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
+      bs.mob_packages = mobPackages;
+      await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+      const alertEl = document.getElementById(`mob-pkg-save-${cat}-${idx}`);
+      if (alertEl) { alertEl.textContent = '✓ Auto-saved'; alertEl.style.color = 'var(--muted)'; setTimeout(() => { if (alertEl) alertEl.textContent = ''; }, 2000); }
+    } catch(e) { /* silent fail */ }
+  }, 1000);
 }
 
 function mobPkgReqAllToggle(cat, idx, checked) {
@@ -3545,27 +3592,20 @@ function removeMobPackage(cat, idx) {
 
 async function mobSavePackages(cat, idx, btn) {
   const alertEl = document.getElementById(`mob-pkg-save-${cat}-${idx}`);
-
-  // Validate all active categories for this package
-  const activeCats = getMobActiveCategories();
+  const activeCat = getActivePkgCat(cat, idx);
   const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
   const errors = [];
 
-  // Title and details are shared — check from current cat's package
   const sharedPkg = mobPackages[cat]?.[idx];
   if (!sharedPkg?.title?.trim()) errors.push('Package title is required');
   if (!sharedPkg?.details?.trim()) errors.push('Package details are required');
 
-  // Prices required per active category (unless reqAll is checked)
-  activeCats.forEach(c => {
-    const p = mobPackages[c]?.[idx];
-    if (!p) { errors.push(`${catLabels[c]} pricing is incomplete`); return; }
-    if (!p.reqAll) {
-      if (!p.price4 && p.price4 !== 0) errors.push(`${catLabels[c]}: 4 hour price required`);
-      if (!p.price5 && p.price5 !== 0) errors.push(`${catLabels[c]}: 5 hour price required`);
-      if (!p.price6 && p.price6 !== 0) errors.push(`${catLabels[c]}: 6 hour price required`);
-    }
-  });
+  const p = mobPackages[activeCat]?.[idx];
+  if (!p?.reqAll) {
+    if (!p?.price4 && p?.price4 !== 0 && p?.price4 !== '0') errors.push(`${catLabels[activeCat]}: 4 hour price required`);
+    if (!p?.price5 && p?.price5 !== 0 && p?.price5 !== '0') errors.push(`${catLabels[activeCat]}: 5 hour price required`);
+    if (!p?.price6 && p?.price6 !== 0 && p?.price6 !== '0') errors.push(`${catLabels[activeCat]}: 6 hour price required`);
+  }
 
   if (errors.length > 0) {
     if (alertEl) {
