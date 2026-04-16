@@ -3605,7 +3605,7 @@ async function mobSavePackages(cat, idx, btn) {
   const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
   const errors = [];
 
-  const sharedPkg = mobPackages[cat]?.[idx];
+  const sharedPkg = mobPackages[activeCat]?.[idx];
   if (!sharedPkg?.title?.trim()) errors.push('Package title is required');
   if (!stripHtml(sharedPkg?.details)) errors.push('Package details are required');
 
