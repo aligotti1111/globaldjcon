@@ -2842,10 +2842,17 @@ function renderMobPubForm(dateKey) {
               <option value="">Select time...</option>${cocktailTimeOpts}
             </select>
           </div>
-          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
-            <input type="checkbox" id="mpf-cocktail-same-room" style="accent-color:var(--neon);">
-            <span style="font-size:.85rem;color:var(--white);">Cocktail hour in same room as reception</span>
-          </label>
+          <div style="font-size:.85rem;color:var(--white);margin-bottom:.5rem;">Is the cocktail hour in the same room as the reception?</div>
+          <div style="display:flex;gap:.75rem;">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .85rem;border-radius:6px;border:1px solid var(--border);background:var(--deep);flex:1;justify-content:center;">
+              <input type="radio" name="mpf-cocktail-room" value="yes" id="mpf-cocktail-same-room" style="accent-color:var(--neon);">
+              <span style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);">Yes</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .85rem;border-radius:6px;border:1px solid var(--border);background:var(--deep);flex:1;justify-content:center;">
+              <input type="radio" name="mpf-cocktail-room" value="no" style="accent-color:var(--neon);">
+              <span style="font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);">No</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -2946,8 +2953,15 @@ function mobPubRenderPackages() {
     <div id="mpf-pkg-list" style="display:flex;flex-direction:column;gap:.5rem;"></div>`;
 
   const list = document.getElementById('mpf-pkg-list');
+  const generalPkgs = (bs.mob_packages || {})['general'] || [];
   pkgs.forEach((pkg, idx) => {
-    if (!pkg || !pkg.title) return;
+    if (!pkg) return;
+    // Fall back to general package for shared fields if this category's are empty
+    const fallback = generalPkgs[idx] || {};
+    const title = pkg.title?.trim() || fallback.title?.trim();
+    const details = pkg.details || fallback.details;
+    const photo = pkg.photo || fallback.photo;
+    if (!title) return;
     const card = document.createElement('div');
     const isSelected = mobPubSelectedPkg === idx;
     card.style.cssText = `padding:.85rem 1rem;background:${isSelected?'rgba(0,245,196,.08)':'var(--deep)'};border:1px solid ${isSelected?'var(--neon)':'var(--border)'};border-radius:8px;cursor:pointer;transition:all .15s;`;
@@ -2965,12 +2979,12 @@ function mobPubRenderPackages() {
     }
 
     card.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${pkg.details?'.4rem':'0'};">
-        <div style="font-weight:600;font-size:.92rem;color:var(--white);">${pkg.title}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${details?'.4rem':'0'};">
+        <div style="font-weight:600;font-size:.92rem;color:var(--white);">${title}</div>
         ${pricePreview}
       </div>
-      ${pkg.details ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.5;">${pkg.details}</div>` : ''}
-      ${pkg.photo ? `<img src="${pkg.photo}" style="margin-top:.6rem;width:100%;max-height:100px;object-fit:cover;border-radius:5px;border:1px solid var(--border);">` : ''}
+      ${details ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.5;">${details}</div>` : ''}
+      ${photo ? `<img src="${photo}" style="margin-top:.6rem;width:100%;max-height:100px;object-fit:cover;border-radius:5px;border:1px solid var(--border);">` : ''}
       ${isSelected ? `<div style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--neon);letter-spacing:.06em;">✓ SELECTED</div>` : ''}`;
     list.appendChild(card);
   });
@@ -3129,7 +3143,7 @@ async function mobPubSubmit(dateKey) {
   const message = document.getElementById('mpf-message')?.value.trim();
   const cocktailNeeded = document.getElementById('mpf-cocktail-yes')?.checked || false;
   const cocktailStart = document.getElementById('mpf-cocktail-start')?.value;
-  const cocktailSameRoom = document.getElementById('mpf-cocktail-same-room')?.checked || false;
+  const cocktailSameRoom = document.querySelector('input[name="mpf-cocktail-room"]:checked')?.value === 'yes' || false;
   const isWedding = eventType === 'weddings';
 
   if (!phone) { showErr('Please enter your phone number.'); return; }
