@@ -688,8 +688,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
       ${b.cocktail_needed && b.event_type === 'weddings' ? `
       <div style="margin-bottom:.7rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">Cocktail Hour</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--neon);letter-spacing:.03em;line-height:1;">${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">${b.cocktail_same_room ? 'Same room' : 'Separate room'}</div>
+        <div style="font-size:.85rem;color:var(--neon);">${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}${b.cocktail_same_room ? ' · Same room' : ' · Separate room'}</div>
       </div>` : ''}
       <div style="margin-bottom:.7rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">${b.event_type === 'weddings' ? 'Reception Start' : 'Event Start'}</div>
@@ -707,8 +706,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
       ${b.cocktail_needed && b.event_type !== 'weddings' ? `
       <div style="margin-top:.7rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">Cocktail Hour</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--neon);letter-spacing:.03em;line-height:1;">${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">${b.cocktail_same_room ? 'Same room' : 'Separate room'}</div>
+        <div style="font-size:.85rem;color:var(--neon);">${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}${b.cocktail_same_room ? ' · Same room' : ' · Separate room'}</div>
       </div>` : ''}
     </div>
 
