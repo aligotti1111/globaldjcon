@@ -3051,7 +3051,6 @@ const PKG_SETUP_HOURS = ['1','2','3','4','5'];
 
 function renderMobPackageTabs(fromCheckboxes) {
   if (fromCheckboxes) mobSelectedTypes = getMobTypesFromProfile();
-  // Only fall back to checkboxes if mobSelectedTypes is truly empty AND checkboxes have values
   if (!mobSelectedTypes || mobSelectedTypes.length === 0) {
     const fromCbs = getMobTypesFromProfile();
     if (fromCbs.length > 0) mobSelectedTypes = fromCbs;
@@ -3059,75 +3058,28 @@ function renderMobPackageTabs(fromCheckboxes) {
   const cats = getMobActiveCategories();
   const tabsEl = document.getElementById('pkg-cat-tabs');
   const noTypesMsg = document.getElementById('pkg-no-types-msg');
-  if (!tabsEl) return;
+
+  // Hide outer tabs — navigation is now inside each package card
+  if (tabsEl) tabsEl.style.display = 'none';
+  ['general','wedding','mitzvah'].forEach(c => {
+    const p = document.getElementById('pkg-pane-' + c);
+    if (p) p.style.display = 'none';
+  });
 
   if (cats.length === 0) {
-    tabsEl.style.display = 'none';
-    ['general','wedding','mitzvah'].forEach(c => document.getElementById('pkg-pane-' + c).style.display = 'none');
     if (noTypesMsg) noTypesMsg.style.display = 'block';
     return;
   }
   if (noTypesMsg) noTypesMsg.style.display = 'none';
-  tabsEl.style.display = cats.length > 1 ? 'flex' : 'none';
-  tabsEl.innerHTML = '';
 
-  const MOB_GENERAL_EVENT_NAMES = {
-    birthday:'Birthday Parties', graduation:'Graduations', holiday:'Holiday Parties',
-    community:'Community Events', corporate:'Corporate Events', anniversary:'Anniversaries',
-    sweet16:'Sweet 16 / Quinceañera', reunion:'Reunions', school:'School Events', other:'Other'
-  };
-  const catLabels = { general: 'General', wedding: 'Wedding', mitzvah: 'Bar/Bat Mitzvah' };
-  cats.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.dataset.cat = cat;
-    btn.style.cssText = 'flex:1;padding:.55rem .5rem;border:none;border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.35rem;';
-    btn.onclick = () => switchPkgCat(cat);
-
-    const catPkgs = (mobPackages[cat] || []).filter(p => p && p.title && p.title.trim());
-    const needsAttention = (cat === 'wedding' || cat === 'mitzvah') && catPkgs.length === 0;
-    const alertBadge = needsAttention
-      ? `<span title="No packages added yet" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#ff5f5f;color:#fff;font-size:.7rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;">!</span>`
-      : '';
-
-    if (cat === 'general') {
-      const generalTypes = mobSelectedTypes.filter(t => MOB_CAT_GENERAL_TYPES.includes(t));
-      const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
-      btn.innerHTML = `<span>${catLabels[cat]}</span>
-        ${alertBadge}
-        <span style="position:relative;display:inline-flex;align-items:center;"
-          onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block';event.stopPropagation();"
-          onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none';"
-          onmousemove="var t=this.querySelector('.pkg-cat-tip');t.style.top=(event.clientY-t.offsetHeight-10)+'px';t.style.left=event.clientX+'px';"
-          onclick="event.stopPropagation();">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid currentColor;font-size:.6rem;cursor:default;opacity:.8;flex-shrink:0;">i</span>
-          <span class="pkg-cat-tip" style="display:none;position:fixed;background:var(--card);border:1px solid var(--neon);border-radius:8px;padding:.65rem .9rem;font-size:.75rem;color:var(--white);z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;max-width:240px;white-space:normal;line-height:1.6;">${typeList}</span>
-        </span>`;
-    } else {
-      btn.innerHTML = `<span>${catLabels[cat]}</span>${alertBadge}`;
-    }
-
-    tabsEl.appendChild(btn);
-    ['general','wedding','mitzvah'].forEach(c => {
-      document.getElementById('pkg-pane-' + c).style.display = 'none';
-    });
-  });
-
-  switchPkgCat(cats[0]);
+  // Always render into the general pane (single container)
+  const generalPane = document.getElementById('pkg-pane-general');
+  if (generalPane) generalPane.style.display = '';
+  renderMobPackages('general');
 }
 
 function switchPkgCat(cat) {
-  const tabsEl = document.getElementById('pkg-cat-tabs');
-  tabsEl.querySelectorAll('button').forEach(btn => {
-    const active = btn.dataset.cat === cat;
-    btn.style.background = active ? 'var(--neon-dim)' : 'transparent';
-    btn.style.color = active ? 'var(--neon)' : 'var(--muted)';
-    btn.style.border = active ? '1px solid var(--neon)' : '1px solid transparent';
-  });
-  ['general','wedding','mitzvah'].forEach(c => {
-    document.getElementById('pkg-pane-' + c).style.display = c === cat ? '' : 'none';
-  });
-  renderMobPackages(cat);
+  // No-op — outer tabs removed, inner tabs handle navigation
 }
 
 function renderMobPackages(cat) {
@@ -3194,8 +3146,13 @@ function buildPkgCard(cat, idx, pkg) {
   `;
   card.appendChild(headerRow);
 
-  // Category tabs for pricing — show for all packages when multiple active categories
+  // Category tabs inside card — all packages when multiple active categories
   if (activeCats.length > 1) {
+    const MOB_GENERAL_EVENT_NAMES = {
+      birthday:'Birthday Parties', graduation:'Graduations', holiday:'Holiday Parties',
+      community:'Community Events', corporate:'Corporate Events', anniversary:'Anniversaries',
+      sweet16:'Sweet 16 / Quinceañera', reunion:'Reunions', school:'School Events', other:'Other'
+    };
     const tabBar = document.createElement('div');
     tabBar.style.cssText = 'display:flex;gap:.35rem;margin-bottom:1rem;background:rgba(10,10,16,.6);padding:3px;border-radius:7px;border:1px solid var(--border);overflow-x:auto;';
 
@@ -3203,10 +3160,34 @@ function buildPkgCard(cat, idx, pkg) {
       const tabBtn = document.createElement('button');
       tabBtn.type = 'button';
       tabBtn.dataset.internalCat = c;
-      tabBtn.textContent = catLabels[c];
       const isFirst = ci === 0;
-      tabBtn.style.cssText = `flex:1;padding:.45rem .5rem;border:${isFirst?'1px solid var(--neon)':'1px solid transparent'};border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:${isFirst?'var(--neon-dim)':'transparent'};color:${isFirst?'var(--neon)':'var(--muted)'};transition:all .15s;`;
+      tabBtn.style.cssText = `flex:1;padding:.45rem .5rem;border:${isFirst?'1px solid var(--neon)':'1px solid transparent'};border-radius:5px;font-family:"Space Mono",monospace;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:${isFirst?'var(--neon-dim)':'transparent'};color:${isFirst?'var(--neon)':'var(--muted)'};transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.3rem;`;
       tabBtn.onclick = () => switchInternalPkgTab(cat, idx, c, tabBtn);
+
+      // Exclamation badge for wedding/mitzvah with no saved packages
+      const catPkgs = (mobPackages[c] || []).filter(p => p && p.title && p.title.trim());
+      const needsAttention = (c === 'wedding' || c === 'mitzvah') && catPkgs.length === 0;
+      const alertBadge = needsAttention
+        ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#ff5f5f;color:#fff;font-size:.6rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;">!</span>`
+        : '';
+
+      if (c === 'general') {
+        const generalTypes = mobSelectedTypes.filter(t => MOB_CAT_GENERAL_TYPES.includes(t));
+        const typeList = generalTypes.map(t => MOB_GENERAL_EVENT_NAMES[t] || t).join(', ') || 'All general events';
+        tabBtn.innerHTML = `<span>${catLabels[c]}</span>
+          ${alertBadge}
+          <span style="position:relative;display:inline-flex;align-items:center;"
+            onmouseenter="this.querySelector('.pkg-cat-tip').style.display='block';event.stopPropagation();"
+            onmouseleave="this.querySelector('.pkg-cat-tip').style.display='none';"
+            onmousemove="var t=this.querySelector('.pkg-cat-tip');t.style.top=(event.clientY-t.offsetHeight-10)+'px';t.style.left=event.clientX+'px';"
+            onclick="event.stopPropagation();">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid currentColor;font-size:.55rem;cursor:default;opacity:.8;flex-shrink:0;">i</span>
+            <span class="pkg-cat-tip" style="display:none;position:fixed;background:var(--card);border:1px solid var(--neon);border-radius:8px;padding:.65rem .9rem;font-size:.75rem;color:var(--white);z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:'DM Sans',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;max-width:240px;white-space:normal;line-height:1.6;">${typeList}</span>
+          </span>`;
+      } else {
+        tabBtn.innerHTML = `<span>${catLabels[c]}</span>${alertBadge}`;
+      }
+
       tabBar.appendChild(tabBtn);
     });
     card.appendChild(tabBar);
@@ -3240,7 +3221,6 @@ function buildPkgCard(cat, idx, pkg) {
   card.appendChild(detailWrap);
 
   if (activeCats.length > 1) {
-    // Build a pricing pane for each active category
     activeCats.forEach((c, ci) => {
       const paneDiv = document.createElement('div');
       paneDiv.id = `inner-pkg-pane-${cat}-${idx}-${c}`;
@@ -3249,7 +3229,6 @@ function buildPkgCard(cat, idx, pkg) {
       card.appendChild(paneDiv);
     });
   } else {
-    // Single category — just show pricing directly
     const pricePane = document.createElement('div');
     buildPricingSection(pricePane, cat, idx);
     card.appendChild(pricePane);
