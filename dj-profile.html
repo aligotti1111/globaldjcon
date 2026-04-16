@@ -2554,13 +2554,13 @@ function drawMobPubCal() {
     const isAvail = !isPast && !isBeyond && !isBooked && !isUnavail && !isFull;
 
     let bg = 'transparent';
-    if (isSelected) bg = 'rgba(0,245,196,.25)';
+    if (isSelected) bg = 'rgba(255,179,71,.2)';
     else if (isBooked) bg = 'rgba(255,60,60,.2)';
     else if (isUnavail || isFull) bg = 'rgba(90,90,120,.15)';
     else if (isToday) bg = 'rgba(0,245,196,.15)';
     else if (isAvail) bg = 'rgba(0,245,196,.08)';
 
-    let numColor = isPast||isBeyond ? 'var(--muted)' : isBooked ? '#ff5f5f' : isUnavail||isFull ? 'var(--muted)' : isToday||isSelected ? 'var(--neon)' : 'var(--white)';
+    let numColor = isPast||isBeyond ? 'var(--muted)' : isBooked ? '#ff5f5f' : isUnavail||isFull ? 'var(--muted)' : isSelected ? 'var(--amber)' : isToday ? 'var(--neon)' : 'var(--white)';
 
     let badge = '';
     if (mobPubIsOwner && !isPast) {
@@ -2579,7 +2579,7 @@ function drawMobPubCal() {
     }
 
     const isLastRow = Math.floor((firstDay+d-1)/7) === Math.floor((firstDay+daysInMonth-1)/7);
-    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--neon);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
+    html += `<div style="position:relative;border-right:1px solid var(--border);border-bottom:1px solid var(--border);${isLastRow?'border-bottom:none;':''}min-height:70px;padding:.35rem .15rem .25rem;background:${bg};${isToday?'outline:2px solid var(--neon);outline-offset:-1px;':''}${isSelected?'outline:2px solid var(--amber);outline-offset:-1px;':''}display:flex;flex-direction:column;align-items:center;overflow:hidden;">
       <div style="font-size:clamp(.75rem,1.5vw,.95rem);color:${numColor};line-height:1;">${d}</div>
       ${badge}
     </div>`;
@@ -2806,10 +2806,11 @@ function renderMobPubForm(dateKey) {
       </div>
 
       <!-- Times -->
+      <div style="font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;">${dateLabel}</div>
       <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
           <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;" id="mpf-start-label">Event Start Time</label>
-          <select id="mpf-start-time" onchange="mobPubRenderPackages();mobPubCalcPrice();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+          <select id="mpf-start-time" onchange="mobPubRenderPackages();mobPubCalcPrice();mobPubCheckCocktailTime();" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
             <option value="">Select time...</option>${timeOpts}
           </select>
         </div>
@@ -2838,9 +2839,10 @@ function renderMobPubForm(dateKey) {
         <div id="mpf-cocktail-fields" style="display:none;">
           <div style="margin-bottom:.6rem;">
             <label style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.3rem;">Cocktail Start Time</label>
-            <select id="mpf-cocktail-start" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <select id="mpf-cocktail-start" onchange="mobPubCheckCocktailTime()" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.88rem;font-family:'DM Sans',sans-serif;outline:none;">
               <option value="">Select time...</option>${cocktailTimeOpts}
             </select>
+            <div id="mpf-cocktail-time-warn" style="display:none;margin-top:.4rem;font-size:.78rem;color:var(--amber);">⚠ Cocktail hour must start before the reception. Please select an earlier time.</div>
           </div>
           <div style="font-size:.85rem;color:var(--white);margin-bottom:.5rem;">Is the cocktail hour in the same room as the reception?</div>
           <div style="display:flex;gap:.75rem;">
@@ -2907,6 +2909,34 @@ function mobPubCocktailChange() {
   const yes = document.getElementById('mpf-cocktail-yes');
   const fields = document.getElementById('mpf-cocktail-fields');
   if (fields) fields.style.display = yes && yes.checked ? '' : 'none';
+}
+
+function mobPubCheckCocktailTime() {
+  const cocktailVal = document.getElementById('mpf-cocktail-start')?.value;
+  const receptionVal = document.getElementById('mpf-start-time')?.value;
+  const warn = document.getElementById('mpf-cocktail-time-warn');
+  if (!warn) return;
+  if (cocktailVal && receptionVal && cocktailVal >= receptionVal) {
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function mobPubViewPhoto(e, url) {
+  e.preventDefault();
+  const existing = document.getElementById('mobpub-photo-lightbox');
+  if (existing) existing.remove();
+  const lb = document.createElement('div');
+  lb.id = 'mobpub-photo-lightbox';
+  lb.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+  lb.onclick = () => lb.remove();
+  lb.innerHTML = `
+    <div style="position:relative;max-width:90vw;max-height:85vh;">
+      <img src="${url}" style="max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px;border:1px solid var(--border);">
+      <button style="position:absolute;top:-12px;right:-12px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--white);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;" onclick="document.getElementById('mobpub-photo-lightbox').remove()">✕</button>
+    </div>`;
+  document.body.appendChild(lb);
 }
 
 function mobPubGetCategory(eventType) {
@@ -2984,7 +3014,7 @@ function mobPubRenderPackages() {
         ${pricePreview}
       </div>
       ${details ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.5;">${details}</div>` : ''}
-      ${photo ? `<img src="${photo}" style="margin-top:.6rem;width:100%;max-height:100px;object-fit:cover;border-radius:5px;border:1px solid var(--border);">` : ''}
+      ${photo ? `<a href="#" onclick="mobPubViewPhoto(event,'${photo}')" style="display:inline-block;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:underline;text-underline-offset:3px;">View sample of setup</a>` : ''}
       ${isSelected ? `<div style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--neon);letter-spacing:.06em;">✓ SELECTED</div>` : ''}`;
     list.appendChild(card);
   });
@@ -3151,6 +3181,7 @@ async function mobPubSubmit(dateKey) {
   if (!venueName) { showErr('Please enter the venue name.'); return; }
   if (!venueAddress) { showErr('Please enter the venue address.'); return; }
   if (!startTime) { showErr('Please select a start time.'); return; }
+  if (cocktailNeeded && cocktailStart && cocktailStart >= startTime) { showErr('Cocktail hour start time must be before the reception start time.'); return; }
   if (mobPubSelectedPkg === null) { showErr('Please select a package.'); return; }
 
   const cat = mobPubGetCategory(eventType);
