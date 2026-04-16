@@ -354,11 +354,13 @@ function formatTime(t) {
 }
 
 let blockedUsers = [];
+let djZip = null;
 async function loadAllBookings() {
-  // Fetch fresh blocked_users list for current user
+  // Fetch fresh blocked_users list and DJ zip for distance calculations
   try {
-    const { data: me } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
+    const { data: me } = await db.from('users').select('blocked_users,zip').eq('id', currentUser.id).single();
     blockedUsers = me?.blocked_users || [];
+    if (me?.zip) djZip = me.zip;
   } catch(e) {}
 
   // Outgoing: requests this user made (as requester)
@@ -546,6 +548,26 @@ function renderMobileCard(b, isIncoming, orderNum) {
   const orderBadge = orderNum ? `<span style="font-family:'Space Mono',monospace;font-size:.48rem;background:rgba(255,179,71,.15);color:var(--amber);border:1px solid rgba(255,179,71,.3);border-radius:3px;padding:1px 5px;margin-right:.4rem;">#${orderNum}</span>` : '';
   const eventLabel = MOB_EVENT_LABELS[b.event_type] || b.event_type || '—';
 
+  // Duration calculation
+  let durationLabel = '';
+  if (b.start_time && b.end_time) {
+    const [sh,sm] = b.start_time.split(':').map(Number);
+    let [eh,em] = b.end_time.split(':').map(Number);
+    let mins = (eh*60+em)-(sh*60+sm);
+    if (mins<=0) mins+=1440;
+    const hrs = Math.floor(mins/60);
+    const rem = mins%60;
+    durationLabel = hrs > 0 ? `${hrs} hr${hrs>1?'s':''}${rem>0?' '+rem+'m':''}` : `${rem}m`;
+  }
+
+  // Cocktail pill
+  const cocktailPill = b.cocktail_needed ? `
+    <div style="width:1px;height:28px;background:rgba(0,245,196,.3);flex-shrink:0;"></div>
+    <div style="display:inline-flex;align-items:center;gap:5px;font-size:.65rem;padding:3px 9px;border-radius:20px;background:rgba(0,245,196,.1);color:var(--neon);border:1px solid rgba(0,245,196,.25);white-space:nowrap;">
+      🍸 Cocktail ${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}${b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
+    </div>` : '';
+
+  // Price block
   const priceBlock = (() => {
     if (b.quoted_rate) {
       const isApproved = b.status === 'approved';
@@ -556,10 +578,10 @@ function renderMobileCard(b, isIncoming, orderNum) {
         ? (b.cocktail_included
             ? `<div style="font-size:.72rem;color:var(--neon);margin-top:.3rem;">🍸 Cocktail hour included</div>`
             : b.cocktail_price
-              ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">🍸 Cocktail hour add-on: <span style="color:var(--white);">$${Number(b.cocktail_price).toLocaleString()}</span></div>`
+              ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">🍸 Cocktail add-on: <span style="color:var(--white);">$${Number(b.cocktail_price).toLocaleString()}</span></div>`
               : `<div style="font-size:.72rem;color:var(--amber);margin-top:.3rem;">🍸 Cocktail hour pricing TBD</div>`)
         : '';
-      return `<div style="margin:1rem 0;border:1px solid ${borderColor};border-radius:8px;padding:.75rem 1rem;background:${bgColor};display:inline-block;">
+      return `<div style="border:1px solid ${borderColor};border-radius:8px;padding:.75rem 1rem;background:${bgColor};display:inline-block;margin-bottom:.75rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:${borderColor};margin-bottom:.25rem;">${labelText}</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">$${Number(b.quoted_rate).toLocaleString()}</div>
         ${b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
@@ -567,10 +589,25 @@ function renderMobileCard(b, isIncoming, orderNum) {
         ${cocktailLine}
       </div>`;
     }
-    return isQuote ? `<div style="margin:1rem 0;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '';
+    return isQuote ? `<div style="margin-bottom:.75rem;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '';
   })();
 
-  const cocktailInfo = b.cocktail_needed ? `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);margin-top:4px;">🍸 Cocktail hour · Start: ${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'} · ${b.cocktail_same_room ? 'Same room' : 'Separate room'}</div>` : '';
+  // Package block (details loaded async after render)
+  const pkgBlock = b.package_title ? `
+    <div id="pkg-block-${b.id}" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:rgba(255,255,255,.03);">
+        <div style="font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
+        ${b.quoted_rate ? '' : '<div style="font-family:\'Space Mono\',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">See price above</div>'}
+      </div>
+      <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:none;"></div>
+      ${b.cocktail_needed ? `<div style="font-size:.72rem;padding:.4rem .9rem;border-top:1px solid var(--border);color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};">
+        🍸 ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
+      </div>` : ''}
+    </div>` : '';
+
+  const targetId = isIncoming ? b.requester_id : b.dj_id;
+  const targetName = isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ');
+  const isBlocked = blockedUsers.includes(targetId);
 
   const incomingActions = isIncoming && b.status === 'pending' ? `
     <button class="btn btn-primary btn-sm" onclick="mobUpdateStatus('${b.id}','approved')">
@@ -597,43 +634,116 @@ function renderMobileCard(b, isIncoming, orderNum) {
     <button class="btn btn-danger btn-sm" onclick="requesterUpdateStatus('${b.id}','denied')">Decline Quote</button>
   ` : '';
 
-  return `<div class="${cardClass}" id="card-${b.id}">
-    <div class="req-header">
+  const distId = `dist-${b.id}`;
+  const cleanAddress = b.venue_address ? b.venue_address.replace(/,\s*[^,]+ County/i,'') : '';
+
+  const html = `<div class="${cardClass}" id="card-${b.id}" style="padding:0;overflow:hidden;">
+
+    <div style="background:rgba(255,255,255,.03);padding:.75rem 1rem;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);">
       <div>
-        <div style="display:inline-block;font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;letter-spacing:.06em;color:var(--neon);background:rgba(0,245,196,.08);border:1px solid rgba(0,245,196,.25);border-radius:5px;padding:.2rem .6rem;margin-bottom:.45rem;">${formatDate(b.event_date)}${b.start_time ? ' · ' + formatTime(b.start_time) + (b.end_time ? ' – ' + formatTime(b.end_time) : '') : ''}</div>
-        <div class="req-name">${orderBadge}${eventLabel}</div>
-        <div style="font-size:.82rem;color:var(--muted);margin-top:3px;">${b.venue_name || ''}${b.venue_name && b.venue_address ? ' · ' : ''}${b.venue_address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="color:var(--muted);text-decoration:underline;">${b.venue_address.replace(/,\s*[^,]+ County/i,'')}</a>` : ''}</div>
-        ${b.room_details ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${b.room_details}</div>` : ''}
-        ${b.guest_count ? `<div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:3px;">Guests: <span style="color:var(--white);">${b.guest_count}</span></div>` : ''}
-        ${b.phone ? `<div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:3px;">Phone: <span style="color:var(--white);">${b.phone}</span></div>` : ''}
-        ${b.package_title ? `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);margin-top:5px;">📦 ${b.package_title}</div>` : ''}
-        ${cocktailInfo}
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.05em;color:var(--white);line-height:1.1;margin-bottom:2px;">${orderBadge}${eventLabel}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:4px;">${formatDate(b.event_date)}</div>
+        <div style="font-size:.78rem;color:var(--muted);">Host Name: <span style="color:var(--white);">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0;margin-left:.75rem;">
         <span class="${statusClass} status-badge">${statusLabel}</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.05em;color:var(--muted);">${isIncoming ? 'From: ' : 'To: '}<span style="color:var(--white);">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span></span>
-        ${(() => {
-          const targetId = isIncoming ? b.requester_id : b.dj_id;
-          const targetName = isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ');
-          const isBlocked = blockedUsers.includes(targetId);
-          return isBlocked
-            ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="unblockUserInline('${targetId}')">Unblock</button>`
-            : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);" onclick="blockUser('${targetId}','${targetName}')">Block</button>`;
-        })()}
+        ${isBlocked
+          ? `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="unblockUserInline('${targetId}')">Unblock</button>`
+          : `<button class="btn btn-sm" style="font-size:.5rem;padding:.2rem .5rem;background:var(--error);border-color:var(--error);color:var(--white);" onclick="blockUser('${targetId}','${targetName}')">Block</button>`}
       </div>
     </div>
-    ${priceBlock}
-    ${b.notes ? `<div class="req-notes">"${b.notes}"</div>` : ''}
-    <div class="req-actions">
-      ${incomingActions}
-      ${outgoingActions}
-      ${quoteOutgoingActions}
-      <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${isIncoming ? b.requester_id : b.dj_id}')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
-      </button>
+
+    <div style="padding:.85rem 1rem;">
+
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.55rem .85rem;background:rgba(0,245,196,.07);border:1px solid rgba(0,245,196,.18);border-radius:6px;margin-bottom:.85rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">Start</div>
+          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${b.start_time ? formatTime(b.start_time) : '—'}</div>
+        </div>
+        <div style="color:rgba(0,245,196,.4);font-size:1rem;">→</div>
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">End</div>
+          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${b.end_time ? formatTime(b.end_time) : '—'}</div>
+        </div>
+        ${durationLabel ? `
+        <div style="width:1px;height:28px;background:rgba(0,245,196,.25);flex-shrink:0;"></div>
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);margin-bottom:1px;">Duration</div>
+          <div style="font-size:.95rem;font-weight:700;color:var(--neon);">${durationLabel}</div>
+        </div>` : ''}
+        ${cocktailPill}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.85rem;">
+        ${b.venue_name ? `<div style="grid-column:1/-1;">
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Venue</div>
+          <div style="font-size:.85rem;color:var(--white);">${b.venue_name}</div>
+        </div>` : ''}
+        ${cleanAddress ? `<div style="grid-column:1/-1;">
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}" target="_blank" style="font-size:.82rem;color:var(--muted);text-decoration:underline;">${cleanAddress}</a>
+          <div id="${distId}" style="font-size:.72rem;color:var(--muted);margin-top:2px;"></div>
+        </div>` : ''}
+        ${b.room_details ? `<div style="grid-column:1/-1;"><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Room</div><div style="font-size:.82rem;color:var(--muted);">${b.room_details}</div></div>` : ''}
+        ${b.guest_count ? `<div><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Guests</div><div style="font-size:.85rem;color:var(--white);">${b.guest_count}</div></div>` : ''}
+        ${b.phone ? `<div><div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Phone</div><div style="font-size:.85rem;color:var(--white);">${b.phone}</div></div>` : ''}
+      </div>
+
+      ${b.notes ? `<div style="background:rgba(255,255,255,.03);border-left:2px solid var(--border);border-radius:0 4px 4px 0;padding:.6rem .8rem;margin-bottom:.85rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Message from booker</div>
+        <div style="font-size:.82rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
+      </div>` : ''}
+
+      ${pkgBlock}
+      ${priceBlock}
+
+      <div class="req-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          ${incomingActions}
+          ${outgoingActions}
+          ${quoteOutgoingActions}
+          <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
+          </button>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
+      </div>
+
     </div>
-    <div style="text-align:right;font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.6rem;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
   </div>`;
+
+  // Trigger async tasks after render
+  setTimeout(() => {
+    // Distance calculation
+    if (b.venue_address && djZip) {
+      fetchVenueDistance(djZip, b.venue_address, distId);
+    }
+    // Package details lookup
+    if (b.package_title && isIncoming) {
+      loadMobPkgDetails(b);
+    }
+  }, 50);
+
+  return html;
+}
+
+async function loadMobPkgDetails(b) {
+  try {
+    const { data: djRow } = await db.from('users').select('booking_settings').eq('id', b.dj_id || currentUser.id).single();
+    const bs = djRow?.booking_settings ? (typeof djRow.booking_settings === 'string' ? JSON.parse(djRow.booking_settings) : djRow.booking_settings) : {};
+    const catMap = { weddings:'wedding', mitzvah:'mitzvah', bar_mitzvah:'mitzvah' };
+    const cat = catMap[b.event_type] || 'general';
+    const pkgs = (bs.mob_packages || {})[cat] || (bs.mob_packages || {})['general'] || [];
+    const pkg = pkgs.find(p => p.title?.trim() === b.package_title?.trim()) || pkgs.find(p => p.title?.trim());
+    if (!pkg) return;
+    const detailsEl = document.getElementById(`pkg-details-${b.id}`);
+    if (!detailsEl) return;
+    const raw = pkg.details || '';
+    const text = raw.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim();
+    if (text) {
+      detailsEl.innerHTML = pkg.details;
+      detailsEl.style.display = '';
+    }
+  } catch(e) { /* non-fatal */ }
 }
 
 // Mobile booking status update
