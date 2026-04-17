@@ -578,45 +578,52 @@ function renderMobileCard(b, isIncoming, orderNum) {
       🍸 Cocktail ${b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}${b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
     </div>` : '';
 
-  // Price block
-  const priceBlock = (() => {
-    if (b.quoted_rate) {
-      const isApproved = b.status === 'approved';
-      const borderColor = isApproved ? 'var(--neon)' : 'var(--amber)';
-      const bgColor = isApproved ? 'rgba(0,245,196,.05)' : 'rgba(255,179,71,.05)';
-      const labelText = isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price';
-      const cocktailLine = b.cocktail_needed
-        ? (b.cocktail_included
-            ? `<div style="font-size:.72rem;color:var(--neon);margin-top:.3rem;">🍸 Cocktail hour included</div>`
-            : b.cocktail_price
-              ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">🍸 Cocktail add-on: <span style="color:var(--white);">$${Number(b.cocktail_price).toLocaleString()}</span></div>`
-              : `<div style="font-size:.72rem;color:var(--amber);margin-top:.3rem;">🍸 Cocktail hour pricing TBD</div>`)
-        : '';
-      return `<div style="border:1px solid ${borderColor};border-radius:8px;padding:.85rem 1rem;background:${bgColor};display:block;margin-bottom:.75rem;">
-        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:${borderColor};margin-bottom:.25rem;">${labelText}</div>
+  // Unified package + price block — everything in one frame, price on top
+  const unifiedPkgPriceBlock = (() => {
+    const hasPrice = !!b.quoted_rate;
+    const hasPkg = !!b.package_title;
+    if (!hasPrice && !hasPkg && !isQuote) return '';
+
+    const isApproved = b.status === 'approved';
+    const borderColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--border)';
+    const bgColor = hasPrice ? (isApproved ? 'rgba(0,245,196,.05)' : 'rgba(255,179,71,.05)') : 'rgba(255,255,255,.02)';
+    const labelColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)';
+    const labelText = hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '';
+
+    // Price section
+    const priceSection = hasPrice ? `
+      <div style="padding:.85rem 1rem;">
+        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:${labelColor};margin-bottom:.25rem;">${labelText}</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">$${Number(b.quoted_rate).toLocaleString()}</div>
         ${b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
         ${b.counter_rate ? `<div style="margin-top:.4rem;font-family:'Space Mono',monospace;font-size:.52rem;color:var(--neon);">Counter: $${Number(b.counter_rate).toLocaleString()}${b.counter_message ? ` — "${b.counter_message}"` : ''}</div>` : ''}
-        ${cocktailLine}
-      </div>`;
-    }
-    return isQuote ? `<div style="margin-bottom:.75rem;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '';
+      </div>` : (isQuote ? `
+      <div style="padding:.85rem 1rem;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '');
+
+    // Package section (title + details)
+    const inlineDetails = b.package_details ? b.package_details : '';
+    const pkgSection = hasPkg ? `
+      <div id="pkg-block-${b.id}" style="border-top:1px solid ${borderColor};">
+        <div style="padding:.6rem .9rem;background:rgba(255,255,255,.03);font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
+        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
+      </div>` : '';
+
+    // Cocktail footer
+    const cocktailFooter = b.cocktail_needed ? `
+      <div style="font-size:.72rem;padding:.45rem .9rem;border-top:1px solid ${borderColor};color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};background:rgba(0,0,0,.15);">
+        ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
+      </div>` : '';
+
+    return `<div style="border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:.75rem;background:${bgColor};">
+      ${priceSection}
+      ${pkgSection}
+      ${cocktailFooter}
+    </div>`;
   })();
 
-  // Package block — package_details is saved on the booking row (travels with booking).
-  // For older rows that don't have package_details saved, loadMobPkgDetails will fill it in.
-  const inlineDetails = b.package_details ? b.package_details : '';
-  const pkgBlock = b.package_title ? `
-    <div id="pkg-block-${b.id}" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:rgba(255,255,255,.03);">
-        <div style="font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
-        ${b.quoted_rate ? '' : '<div style="font-family:\'Space Mono\',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">See price above</div>'}
-      </div>
-      <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
-      ${b.cocktail_needed ? `<div style="font-size:.72rem;padding:.4rem .9rem;border-top:1px solid var(--border);color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};">
-        🍸 ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
-      </div>` : ''}
-    </div>` : '';
+  // Legacy variables kept as empty strings so existing template references don't break
+  const priceBlock = '';
+  const pkgBlock = '';
 
   const targetId = isIncoming ? b.requester_id : b.dj_id;
   const targetName = isIncoming ? (b.requester_name||'this user') : (b.dj_name||'this DJ');
@@ -750,10 +757,9 @@ function renderMobileCard(b, isIncoming, orderNum) {
       <div style="font-size:.85rem;color:var(--white);line-height:1.55;font-style:italic;">"${b.notes}"</div>
     </div>` : ''}
 
-    ${(pkgBlock || priceBlock) ? `
+    ${unifiedPkgPriceBlock ? `
     <div style="padding:1rem 1.1rem 0;">
-      ${pkgBlock}
-      ${priceBlock}
+      ${unifiedPkgPriceBlock}
     </div>` : ''}
 
     <!-- SECTION 4: Actions — left-aligned, timestamp on its own line above -->
