@@ -586,7 +586,6 @@ function renderMobileCard(b, isIncoming, orderNum) {
 
     const isApproved = b.status === 'approved';
     const borderColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--border)';
-    const bgColor = hasPrice ? (isApproved ? 'rgba(0,245,196,.05)' : 'rgba(255,179,71,.05)') : 'rgba(255,255,255,.02)';
     const labelColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)';
     const labelText = hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '';
 
@@ -614,7 +613,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
         ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
       </div>` : '';
 
-    return `<div style="border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:.75rem;background:${bgColor};">
+    return `<div style="border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
       ${priceSection}
       ${pkgSection}
       ${cocktailFooter}
@@ -730,12 +729,6 @@ function renderMobileCard(b, isIncoming, orderNum) {
           ${cleanAddress}
         </a>
         <div id="${distId}" style="font-size:.75rem;color:var(--muted);margin-top:.35rem;"></div>` : ''}
-        <div style="font-size:.82rem;color:var(--muted);margin-top:1rem;">
-          ${isIncoming ? 'Host Name' : 'To'}: <span style="color:var(--white);font-weight:500;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span>
-        </div>
-        ${b.phone ? `<div style="font-size:.82rem;color:var(--muted);margin-top:.3rem;">
-          Phone: <a href="tel:${b.phone}" style="color:var(--white);font-weight:500;text-decoration:none;">${b.phone}</a>
-        </div>` : ''}
       </div>` : ''}
 
       ${b.room_details && b.room_details !== 'None' ? `
@@ -749,6 +742,15 @@ function renderMobileCard(b, isIncoming, orderNum) {
         <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;">Guests</div>
         <div style="font-size:1rem;color:var(--white);font-weight:600;">${b.guest_count}</div>
       </div>` : ''}
+
+      <div style="margin-bottom:.85rem;">
+        <div style="font-size:.82rem;color:var(--muted);">
+          ${isIncoming ? 'Host Name' : 'To'}: <span style="color:var(--white);font-weight:500;">${isIncoming ? (b.requester_name||'Unknown') : (b.dj_name||'DJ')}</span>
+        </div>
+        ${b.phone ? `<div style="font-size:.82rem;color:var(--muted);margin-top:.3rem;">
+          Phone: <a href="tel:${b.phone}" style="color:var(--white);font-weight:500;text-decoration:none;">${b.phone}</a>
+        </div>` : ''}
+      </div>
     </div>
 
     ${b.notes ? `
