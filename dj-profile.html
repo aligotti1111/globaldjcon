@@ -526,12 +526,18 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
       <div id="ib-root" style="display:none;max-width:520px;margin:2rem auto 0;padding:0 1rem;">
         <div id="ib-page-content" style="display:none;">
 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-bottom:1rem;">
-            <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;"></div>
-            <button class="btn btn-outline" onclick="ib_openMsgModal()" style="flex-shrink:0;font-size:.6rem;padding:.45rem .8rem;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-              Message with Questions
-            </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-bottom:1rem;flex-wrap:wrap;">
+            <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0;"></div>
+            <div style="display:flex;gap:.5rem;flex-shrink:0;">
+              <button class="btn btn-outline" onclick="ib_openMsgModal()" style="font-size:.6rem;padding:.45rem .8rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Message with Questions
+              </button>
+              <button class="btn btn-outline" onclick="ib_closeInline()" style="font-size:.6rem;padding:.45rem .8rem;" title="Close booking form">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Close
+              </button>
+            </div>
           </div>
 
           <div id="ib-alert-area"></div>
@@ -577,11 +583,15 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 
             <!-- Date / Time -->
             <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+              <!-- Read-only date display (date is selected via the calendar above) -->
+              <div style="text-align:center;margin-bottom:.85rem;padding-bottom:.85rem;border-bottom:1px solid var(--border);">
+                <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;">Event Date</div>
+                <div id="ib-event-date-display" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.04em;color:var(--neon);line-height:1;">—</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:.45rem;">To change the date, pick a different day on the calendar above.</div>
+                <!-- Hidden input retains the value for validation, rate lookup, and submit payload -->
+                <input type="hidden" id="ib-event-date">
+              </div>
               <div style="display:flex;gap:.6rem;justify-content:center;">
-                <div style="flex:1;min-width:0;">
-                  <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;text-align:center;">Date</div>
-                  <input type="date" id="ib-event-date" onchange="ib_checkBookingWindow()" style="width:100%;height:38px;line-height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:0 .5rem;color:var(--white);font-size:.7rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;appearance:none;-webkit-appearance:none;text-align:center;">
-                </div>
                 <div style="flex:1;min-width:0;">
                   <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;text-align:center;">Set Start Time</div>
                   <select id="ib-start-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
@@ -1427,7 +1437,7 @@ function drawPubCalMonth() {
 
   // Events list below calendar
   if (monthEvents.length) {
-    html += `<div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
+    html += `<div id="pub-cal-events-list" style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;">Events This Month</div>
       <div style="display:flex;flex-direction:column;gap:.5rem;max-width:600px;">`;
     monthEvents.forEach(({ key, d, dayData }) => {
@@ -3544,6 +3554,10 @@ async function ib_openForInline(djSlug, dateKey) {
   if (!root || !content) return;
   root.style.display = 'block';
 
+  // Hide the "Events This Month" list while the booking form is open
+  const eventsList = document.getElementById('pub-cal-events-list');
+  if (eventsList) eventsList.style.display = 'none';
+
   // Reset form every time a new date is picked (clear previous selections so form is fresh)
   ib_resetForm();
 
@@ -3560,8 +3574,11 @@ async function ib_openForInline(djSlug, dateKey) {
   // Set selected date into the form
   if (dateKey) {
     document.getElementById('ib-event-date').value = dateKey;
+    const readableDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const displayEl = document.getElementById('ib-event-date-display');
+    if (displayEl) displayEl.textContent = readableDate;
     const sub = document.getElementById('ib-booking-date-sub');
-    if (sub) sub.textContent = 'Booking for ' + new Date(dateKey + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    if (sub) sub.textContent = 'Booking for ' + readableDate;
     ib_checkBookingWindow();
   }
 
@@ -3578,6 +3595,22 @@ async function ib_openForInline(djSlug, dateKey) {
 
   // Scroll the form into view
   root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Close the inline booking form: hide it, restore the Events This Month list,
+// remove any success screen, and scroll back to the calendar.
+function ib_closeInline() {
+  const root = document.getElementById('ib-root');
+  if (root) root.style.display = 'none';
+  const eventsList = document.getElementById('pub-cal-events-list');
+  if (eventsList) eventsList.style.display = '';
+  const successScreen = document.getElementById('ib-success-screen');
+  if (successScreen) successScreen.remove();
+  // Reset content visibility in case it was hidden by success screen flow
+  const content = document.getElementById('ib-page-content');
+  if (content) content.style.display = 'none';
+  const cal = document.getElementById('p-booking-calendar');
+  if (cal && cal.scrollIntoView) cal.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Clear any previous selections / values so the form is fresh for a new date
@@ -4021,7 +4054,7 @@ async function ib_submitBooking() {
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">Request Sent!</div>
       <div style="font-size:.92rem;color:var(--muted);max-width:380px;margin:0 auto 2rem;line-height:1.6;">Your booking request has been sent to <strong style="color:var(--white);">${ib_djData.name}</strong>. They will be in touch shortly.</div>
       <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
-        <a href="/" class="btn btn-primary">Back to Directory</a>
+        <button class="btn btn-primary" onclick="ib_closeInline()">Back to Calendar</button>
         <a href="/inbox.html" class="btn btn-outline">Go to Inbox</a>
       </div>`;
     // Remove previous success if it exists
