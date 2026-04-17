@@ -876,7 +876,7 @@ function listRowHTML(dj) {
   } catch(e) {}
 
   const bookBtn = bookingEnabled
-    ? `<button class="dll-contact-btn" onclick="event.stopPropagation();${!currentUser ? 'showSignupPrompt()' : `window.location.href='/book.html?dj=${slug}'`}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:none;background:var(--neon);color:var(--black);font-weight:700;cursor:pointer;white-space:nowrap;">Book</button>`
+    ? `<button class="dll-contact-btn" onclick="event.stopPropagation();${!currentUser ? 'showSignupPrompt()' : `window.location.href='/${slug}'`}" style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .5rem;border-radius:3px;border:none;background:var(--neon);color:var(--black);font-weight:700;cursor:pointer;white-space:nowrap;">Book</button>`
     : '';
 
   let contactBtn;
