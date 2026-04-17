@@ -589,21 +589,28 @@ function renderMobileCard(b, isIncoming, orderNum) {
     const labelColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)';
     const labelText = hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '';
 
-    // Price section — centered at bottom
+    // Price section — price on left, duration on right (centered block)
     const priceSection = hasPrice ? `
-      <div style="padding:.85rem 1rem;text-align:center;">
-        <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:${labelColor};margin-bottom:.25rem;">${labelText}</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.05em;color:var(--white);line-height:1.1;">$${Number(b.quoted_rate).toLocaleString()}</div>
-        ${b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
-        ${b.counter_rate ? `<div style="margin-top:.4rem;font-family:'Space Mono',monospace;font-size:.52rem;color:var(--neon);">Counter: $${Number(b.counter_rate).toLocaleString()}${b.counter_message ? ` — "${b.counter_message}"` : ''}</div>` : ''}
+      <div style="padding:1rem;display:flex;justify-content:center;align-items:center;gap:2rem;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:${labelColor};margin-bottom:.35rem;">${labelText}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:var(--white);line-height:1;">$${Number(b.quoted_rate).toLocaleString()}</div>
+          ${b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
+          ${b.counter_rate ? `<div style="margin-top:.4rem;font-family:'Space Mono',monospace;font-size:.52rem;color:var(--neon);">Counter: $${Number(b.counter_rate).toLocaleString()}${b.counter_message ? ` — "${b.counter_message}"` : ''}</div>` : ''}
+        </div>
+        ${durationLabel ? `
+        <div style="text-align:center;">
+          <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Duration</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:var(--neon);line-height:1;">${durationLabel}</div>
+        </div>` : ''}
       </div>` : (isQuote ? `
       <div style="padding:.85rem 1rem;text-align:center;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '');
 
-    // Package section (title + details) — details now white
+    // Package section (title in Bebas Neue like event name, details white)
     const inlineDetails = b.package_details ? b.package_details : '';
     const pkgSection = hasPkg ? `
       <div id="pkg-block-${b.id}">
-        <div style="padding:.6rem .9rem;background:rgba(255,255,255,.03);font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
+        <div style="padding:.75rem .9rem;background:rgba(255,255,255,.03);font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--white);line-height:1;">${b.package_title}</div>
         <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
       </div>` : '';
 
