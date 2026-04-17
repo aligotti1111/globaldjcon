@@ -602,18 +602,18 @@ function renderMobileCard(b, isIncoming, orderNum) {
     // Package section (title + details)
     const inlineDetails = b.package_details ? b.package_details : '';
     const pkgSection = hasPkg ? `
-      <div id="pkg-block-${b.id}" style="border-top:1px solid ${borderColor};">
+      <div id="pkg-block-${b.id}" style="border-top:1px solid var(--border);">
         <div style="padding:.6rem .9rem;background:rgba(255,255,255,.03);font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
         <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
       </div>` : '';
 
     // Cocktail footer
     const cocktailFooter = b.cocktail_needed ? `
-      <div style="font-size:.72rem;padding:.45rem .9rem;border-top:1px solid ${borderColor};color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};background:rgba(0,0,0,.15);">
+      <div style="font-size:.72rem;padding:.45rem .9rem;border-top:1px solid var(--border);color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};background:rgba(0,0,0,.15);">
         ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
       </div>` : '';
 
-    return `<div style="border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
+    return `<div style="border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
       ${priceSection}
       ${pkgSection}
       ${cocktailFooter}
@@ -687,9 +687,9 @@ function renderMobileCard(b, isIncoming, orderNum) {
     <!-- SECTION: Date & Time -->
     <div style="padding:.25rem 1.1rem .25rem;">
       <div style="font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--neon);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--white);">Date & Time</div>
-      <div style="padding:.85rem 1rem;background:rgba(0,245,196,.05);border:1px solid rgba(0,245,196,.12);border-radius:8px;margin-bottom:1rem;">
-        <div style="font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;margin-bottom:.7rem;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:.95rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;margin-bottom:.8rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span style="color:var(--white);">${b.event_date ? new Date(b.event_date + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—'}</span>
         </div>
         ${b.cocktail_needed && b.event_type === 'weddings' ? `
