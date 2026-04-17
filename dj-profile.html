@@ -3232,6 +3232,7 @@ async function mobPubSubmit(dateKey) {
       package_title: pkg.title,
       package_category: cat,
       package_index: mobPubSelectedPkg,
+      package_details: pkg.details || null,
       quoted_rate: totalPrice||null,
       deposit_pct: depositPct||null,
       deposit_amount: depositAmount||null,

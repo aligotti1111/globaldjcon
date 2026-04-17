@@ -603,14 +603,16 @@ function renderMobileCard(b, isIncoming, orderNum) {
     return isQuote ? `<div style="margin-bottom:.75rem;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '';
   })();
 
-  // Package block (details loaded async after render)
+  // Package block — package_details is saved on the booking row (travels with booking).
+  // For older rows that don't have package_details saved, loadMobPkgDetails will fill it in.
+  const inlineDetails = b.package_details ? b.package_details : '';
   const pkgBlock = b.package_title ? `
     <div id="pkg-block-${b.id}" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.75rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:rgba(255,255,255,.03);">
         <div style="font-size:.88rem;font-weight:700;color:var(--white);">${b.package_title}</div>
         ${b.quoted_rate ? '' : '<div style="font-family:\'Space Mono\',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">See price above</div>'}
       </div>
-      <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:none;"></div>
+      <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
       ${b.cocktail_needed ? `<div style="font-size:.72rem;padding:.4rem .9rem;border-top:1px solid var(--border);color:${b.cocktail_included ? 'var(--neon)' : b.cocktail_price ? 'var(--muted)' : 'var(--amber)'};">
         🍸 ${b.cocktail_included ? 'Cocktail hour included in package' : b.cocktail_price ? `Cocktail add-on: $${Number(b.cocktail_price).toLocaleString()}` : 'Cocktail hour pricing TBD'}
       </div>` : ''}
@@ -775,8 +777,8 @@ function renderMobileCard(b, isIncoming, orderNum) {
     if (b.venue_address && djZip) {
       fetchVenueDistance(djZip + ', United States', b.venue_address, distId);
     }
-    // Package details lookup
-    if (b.package_title) {
+    // Package details lookup — only needed for legacy rows where details weren't saved on the row
+    if (b.package_title && !b.package_details) {
       loadMobPkgDetails(b);
     }
   }, 50);
