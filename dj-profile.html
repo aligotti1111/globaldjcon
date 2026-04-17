@@ -3818,8 +3818,13 @@ function ib_updateRateDisplay() {
     }
   }
 
+  // Read selected times — rate section should stay hidden until the user has
+  // picked both start and end times AND an equipment option (or offer).
+  const startTime = document.getElementById('ib-start-time')?.value;
+  const endTime = document.getElementById('ib-end-time')?.value;
+
   let html = '';
-  if (!equip && !allowOffers) {
+  if (!startTime || !endTime || (!equip && !allowOffers)) {
     area.innerHTML = '';
     section.style.display = 'none';
     return;
