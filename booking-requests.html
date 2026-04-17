@@ -611,7 +611,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
     const pkgSection = hasPkg ? `
       <div id="pkg-block-${b.id}">
         <div style="padding:.75rem .9rem;background:rgba(255,255,255,.03);font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--white);line-height:1;">${b.package_title}</div>
-        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
+        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem .6rem 1.85rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
       </div>` : '';
 
     // Cocktail footer
