@@ -223,6 +223,14 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <div class="modal-title">Send Counter Offer</div>
       <button onclick="closeCounter()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
     </div>
+    <div id="counter-event-details" style="display:none;border:1px solid var(--white);border-radius:8px;padding:.75rem .9rem;margin-bottom:1rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;">Event</div>
+      <div id="counter-event-date" style="font-size:.9rem;color:var(--white);margin-bottom:.35rem;"></div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:.82rem;color:var(--muted);">
+        <div>Time: <span id="counter-event-time" style="color:var(--white);"></span></div>
+        <div>Duration: <span id="counter-event-duration" style="color:var(--white);"></span></div>
+      </div>
+    </div>
     <div id="counter-current-rate" style="display:none;border:1px solid var(--amber);border-radius:8px;padding:.65rem .9rem;margin-bottom:1rem;background:rgba(255,179,71,.05);">
       <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
         <div style="width:14px;height:14px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1439,11 +1447,39 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
   document.getElementById('counter-amount').value = '';
   document.getElementById('counter-message').value = '';
   document.getElementById('counter-alert').innerHTML = '';
+
+  // Event details block (club/bar only)
+  const detailsEl = document.getElementById('counter-event-details');
+  const b = [...incomingBookings, ...outgoingBookings].find(x => x.id === bookingId);
+  if (b && b.booking_type === 'club_bar' && detailsEl) {
+    const dateStr = b.event_date ? new Date(b.event_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' }) : '—';
+    let timeStr = '—';
+    let durStr = '—';
+    if (b.start_time && b.end_time) {
+      timeStr = formatTime(b.start_time) + ' – ' + formatTime(b.end_time);
+      const [sh,sm] = b.start_time.split(':').map(Number);
+      let [eh,em] = b.end_time.split(':').map(Number);
+      let mins = (eh*60+em) - (sh*60+sm);
+      if (mins < 0) mins += 24*60;
+      const hrs = Math.floor(mins/60); const rem = mins % 60;
+      durStr = hrs > 0 ? `${hrs} hr${hrs>1?'s':''}${rem>0?' '+rem+'m':''}` : `${rem}m`;
+    } else if (b.start_time) {
+      timeStr = formatTime(b.start_time);
+    }
+    document.getElementById('counter-event-date').textContent = dateStr;
+    document.getElementById('counter-event-time').textContent = timeStr;
+    document.getElementById('counter-event-duration').textContent = durStr;
+    detailsEl.style.display = 'block';
+  } else if (detailsEl) {
+    detailsEl.style.display = 'none';
+  }
+
   const rateEl = document.getElementById('counter-current-rate');
   const rateValEl = document.getElementById('counter-current-rate-val');
   const rateLabelEl = document.getElementById('counter-current-rate-label');
-  const currentRate = counterRate || offerAmount || quotedRate;
-  const label = counterRate ? 'Last Counter' : offerAmount ? 'Their Offer' : 'Quoted Rate';
+  // Only show yellow box for actual counter exchanges, not the initial quoted rate
+  const currentRate = counterRate || offerAmount;
+  const label = counterRate ? 'Last Counter' : 'Their Offer';
   if (currentRate && rateEl && rateValEl) {
     if (rateLabelEl) rateLabelEl.textContent = label;
     rateValEl.textContent = sym + Number(currentRate).toLocaleString() + ' ' + currency;
