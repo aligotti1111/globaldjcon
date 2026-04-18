@@ -253,6 +253,10 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
       <button onclick="closeMsg()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
     </div>
     <div class="form-row">
+      <label>Subject</label>
+      <input type="text" id="msg-subject" placeholder="Subject" />
+    </div>
+    <div class="form-row">
       <label>Message</label>
       <textarea id="msg-body" rows="4" placeholder="Your message..."></textarea>
     </div>
@@ -1632,6 +1636,7 @@ function openMsg(bookingId, userId) {
   activeMsgBookingId = bookingId;
   activeMsgUserId = userId;
   document.getElementById('msg-body').value = '';
+  document.getElementById('msg-subject').value = buildMsgSubject(bookingId);
   document.getElementById('msg-alert').innerHTML = '';
   document.getElementById('msg-modal').style.display = 'flex';
 }
@@ -1654,10 +1659,11 @@ function closeMsg() { document.getElementById('msg-modal').style.display = 'none
 
 async function sendMsg() {
   const body = document.getElementById('msg-body').value.trim();
+  const subject = document.getElementById('msg-subject').value.trim() || buildMsgSubject(activeMsgBookingId);
   const alertEl = document.getElementById('msg-alert');
   if (!body) { alertEl.innerHTML = '<div class="alert alert-error">Enter a message.</div>'; return; }
   try {
-    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, from_name: currentUser.name, subject: buildMsgSubject(activeMsgBookingId), message: body, read: false });
+    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, from_name: currentUser.name, subject: subject, message: body, read: false });
     if (error) throw error;
     alertEl.innerHTML = '<div class="alert alert-success">✓ Message sent!</div>';
     setTimeout(() => closeMsg(), 1500);
