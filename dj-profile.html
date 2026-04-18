@@ -587,11 +587,8 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
             <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
               <!-- Hidden input retains the value for validation, rate lookup, and submit payload -->
               <input type="hidden" id="ib-event-date">
-              <div style="display:flex;gap:.6rem;justify-content:center;align-items:flex-end;">
-                <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
-                  <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Event Date</div>
-                  <div id="ib-event-date-display" style="font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;text-transform:uppercase;line-height:1.2;height:38px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 .25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">—</div>
-                </div>
+              <div id="ib-event-date-display" style="font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;color:var(--neon);letter-spacing:.08em;text-transform:uppercase;text-align:center;margin-bottom:.85rem;line-height:1.2;">—</div>
+              <div style="display:flex;gap:.75rem;justify-content:center;align-items:flex-end;max-width:360px;margin:0 auto;">
                 <div style="flex:1;min-width:0;">
                   <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Set Start Time</div>
                   <select id="ib-start-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
