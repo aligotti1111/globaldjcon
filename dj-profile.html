@@ -540,12 +540,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
           <div id="ib-alert-area"></div>
 
           <!-- Single compact card -->
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;">
-
-            <!-- Top-right: date inside card -->
-            <div style="position:absolute;top:.9rem;right:1rem;z-index:5;">
-              <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--neon);letter-spacing:.06em;text-transform:uppercase;line-height:1.2;"></div>
-            </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
 
             <!-- Event Type -->
             <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
@@ -585,15 +580,13 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 
             <!-- Date / Time -->
             <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
-              <!-- Read-only date display (date is selected via the calendar above) -->
-              <div style="text-align:center;margin-bottom:.85rem;padding-bottom:.85rem;border-bottom:1px solid var(--border);">
-                <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;">Event Date</div>
-                <div id="ib-event-date-display" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.04em;color:var(--neon);line-height:1;">—</div>
-                <div style="font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:.45rem;">To change the date, pick a different day on the calendar above.</div>
-                <!-- Hidden input retains the value for validation, rate lookup, and submit payload -->
-                <input type="hidden" id="ib-event-date">
-              </div>
-              <div style="display:flex;gap:.6rem;justify-content:center;">
+              <!-- Hidden input retains the value for validation, rate lookup, and submit payload -->
+              <input type="hidden" id="ib-event-date">
+              <div style="display:flex;gap:.6rem;justify-content:center;align-items:flex-end;">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+                  <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Event Date</div>
+                  <div id="ib-event-date-display" style="font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;color:var(--neon);letter-spacing:.06em;text-transform:uppercase;line-height:1.2;height:38px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 .25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">—</div>
+                </div>
                 <div style="flex:1;min-width:0;">
                   <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Set Start Time</div>
                   <select id="ib-start-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
@@ -3576,11 +3569,10 @@ async function ib_openForInline(djSlug, dateKey) {
   // Set selected date into the form
   if (dateKey) {
     document.getElementById('ib-event-date').value = dateKey;
-    const readableDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const dt = new Date(dateKey + 'T12:00:00');
+    const compactDate = dt.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric'});
     const displayEl = document.getElementById('ib-event-date-display');
-    if (displayEl) displayEl.textContent = readableDate;
-    const sub = document.getElementById('ib-booking-date-sub');
-    if (sub) sub.textContent = 'Booking for ' + readableDate;
+    if (displayEl) displayEl.textContent = compactDate;
     ib_checkBookingWindow();
   }
 
