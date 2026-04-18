@@ -527,10 +527,13 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
       <div id="ib-root" style="display:none;max-width:900px;margin:2rem auto 0;padding:0 1rem;">
         <div id="ib-page-content" style="display:none;">
 
-          <div style="margin-bottom:1rem;">
+          <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;">
             <button class="btn btn-outline" onclick="ib_openMsgModal()" style="font-size:.6rem;padding:.45rem .8rem;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
               Message with Questions
+            </button>
+            <button onclick="ib_closeInline()" title="Close booking form" style="background:transparent;border:1px solid var(--border);color:var(--white);border-radius:6px;padding:.35rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
 
@@ -539,12 +542,9 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
           <!-- Single compact card -->
           <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;">
 
-            <!-- Top-right: date + close -->
-            <div style="position:absolute;top:.9rem;right:1rem;z-index:5;display:flex;align-items:center;gap:.75rem;">
+            <!-- Top-right: date inside card -->
+            <div style="position:absolute;top:.9rem;right:1rem;z-index:5;">
               <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--neon);letter-spacing:.06em;text-transform:uppercase;line-height:1.2;"></div>
-              <button onclick="ib_closeInline()" title="Close booking form" style="background:transparent;border:1px solid var(--border);color:var(--white);border-radius:6px;padding:.35rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
             </div>
 
             <!-- Event Type -->
