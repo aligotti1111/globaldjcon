@@ -764,8 +764,8 @@ function renderMobileCard(b, isIncoming, orderNum) {
           Phone: <a href="tel:${b.phone}" style="color:var(--white);font-weight:500;text-decoration:none;">${b.phone}</a>
         </div>` : ''}
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')" style="width:100%;justify-content:center;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message ${isIncoming ? (b.requester_name || 'Booker') : (b.dj_name || 'DJ')}
+      <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')" style="font-size:.6rem;padding:.4rem .75rem;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message ${isIncoming ? (b.requester_name || 'Booker') : (b.dj_name || 'DJ')}
       </button>
     </div></div>
 
@@ -791,9 +791,6 @@ function renderMobileCard(b, isIncoming, orderNum) {
         ${incomingActions}
         ${outgoingActions}
         ${quoteOutgoingActions}
-        <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
-        </button>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.06em;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
@@ -1272,8 +1269,8 @@ function renderCard(b, isIncoming, orderNum) {
               ${isIncoming ? 'Booker' : 'DJ'}: <span style="color:var(--white);font-weight:500;">${isIncoming ? (b.requester_name && b.requester_name !== 'none' ? b.requester_name : 'Unknown') : (b.dj_name && b.dj_name !== 'none' ? b.dj_name : 'DJ')}</span>
             </div>
           </div>
-          <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')" style="width:100%;justify-content:center;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message ${isIncoming ? (b.requester_name && b.requester_name !== 'none' ? b.requester_name : 'Booker') : (b.dj_name && b.dj_name !== 'none' ? b.dj_name : 'DJ')}
+          <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')" style="font-size:.6rem;padding:.4rem .75rem;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message ${isIncoming ? (b.requester_name && b.requester_name !== 'none' ? b.requester_name : 'Booker') : (b.dj_name && b.dj_name !== 'none' ? b.dj_name : 'DJ')}
           </button>
         </div>
       </div>
@@ -1310,9 +1307,6 @@ function renderCard(b, isIncoming, orderNum) {
           ${incomingActions}
           ${outgoingActions}
           ${counterResponseActions}
-          <button class="btn btn-outline btn-sm" onclick="openMsg('${b.id}','${targetId}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Message
-          </button>
         </div>
         <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.06em;">Requested ${new Date(b.created_at).toLocaleDateString()}</div>
       </div>
