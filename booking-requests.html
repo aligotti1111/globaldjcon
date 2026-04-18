@@ -1635,6 +1635,21 @@ function openMsg(bookingId, userId) {
   document.getElementById('msg-alert').innerHTML = '';
   document.getElementById('msg-modal').style.display = 'flex';
 }
+
+function buildMsgSubject(bookingId) {
+  const b = [...incomingBookings, ...outgoingBookings].find(x => x.id === bookingId);
+  if (!b) return 'Re: Your Booking Request';
+  let dateStr = '';
+  if (b.event_date) {
+    const d = new Date(b.event_date + 'T12:00:00');
+    dateStr = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  }
+  const venue = b.venue_name || '';
+  if (dateStr && venue) return `Booking: ${dateStr} @ ${venue}`;
+  if (dateStr) return `Booking: ${dateStr}`;
+  if (venue) return `Booking: ${venue}`;
+  return 'Re: Your Booking Request';
+}
 function closeMsg() { document.getElementById('msg-modal').style.display = 'none'; }
 
 async function sendMsg() {
@@ -1642,7 +1657,7 @@ async function sendMsg() {
   const alertEl = document.getElementById('msg-alert');
   if (!body) { alertEl.innerHTML = '<div class="alert alert-error">Enter a message.</div>'; return; }
   try {
-    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, from_name: currentUser.name, subject: 'Re: Your Booking Request', message: body, read: false });
+    const { error } = await db.from('messages').insert({ from_user_id: currentUser.id, to_user_id: activeMsgUserId, from_name: currentUser.name, subject: buildMsgSubject(activeMsgBookingId), message: body, read: false });
     if (error) throw error;
     alertEl.innerHTML = '<div class="alert alert-success">✓ Message sent!</div>';
     setTimeout(() => closeMsg(), 1500);
