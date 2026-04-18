@@ -540,7 +540,12 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
           <div id="ib-alert-area"></div>
 
           <!-- Single compact card -->
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;">
+
+            <!-- Top-right: date inside card -->
+            <div style="position:absolute;top:.9rem;right:1rem;z-index:5;">
+              <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--neon);letter-spacing:.06em;text-transform:uppercase;line-height:1.2;"></div>
+            </div>
 
             <!-- Event Type -->
             <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
@@ -3570,9 +3575,12 @@ async function ib_openForInline(djSlug, dateKey) {
   if (dateKey) {
     document.getElementById('ib-event-date').value = dateKey;
     const dt = new Date(dateKey + 'T12:00:00');
-    const compactDate = dt.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric'});
+    const compactDate = dt.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    const readableDate = dt.toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
     const displayEl = document.getElementById('ib-event-date-display');
     if (displayEl) displayEl.textContent = compactDate;
+    const sub = document.getElementById('ib-booking-date-sub');
+    if (sub) sub.textContent = readableDate;
     ib_checkBookingWindow();
   }
 
