@@ -3601,6 +3601,9 @@ async function ib_openForInline(djSlug, dateKey) {
     if (pubCalRollingActive && typeof pubCalShowRolling === 'function') {
       try { pubCalShowRolling(); } catch(e) {}
     }
+    // Re-hide events list (calendar redraw recreates the DOM, resetting display)
+    const eventsListAfter = document.getElementById('pub-cal-events-list');
+    if (eventsListAfter) eventsListAfter.style.display = 'none';
   }
 
   // Pre-fill country from user profile
