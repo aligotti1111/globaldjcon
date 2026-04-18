@@ -594,12 +594,17 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
               <div style="display:flex;gap:.75rem;justify-content:center;align-items:flex-end;max-width:360px;margin:0 auto;">
                 <div style="flex:1;min-width:0;">
                   <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Set Start Time</div>
-                  <select id="ib-start-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
+                  <select id="ib-start-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();ib_checkPostMidnight();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
                 </div>
                 <div style="flex:1;min-width:0;">
                   <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.35rem;text-align:center;">Set End Time</div>
                   <select id="ib-end-time" onchange="ib_updateRateDisplay();ib_updateSetDuration();" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .25rem;color:var(--white);font-size:.65rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;text-align:center;"></select>
                 </div>
+              </div>
+              <!-- Post-midnight event date confirmation (shown when start_time >= 00:00 and < 06:00) -->
+              <div id="ib-post-midnight-confirm" style="display:none;margin-top:.85rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.3);border-radius:8px;padding:.85rem 1rem;">
+                <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:#ffb347;margin-bottom:.5rem;line-height:1.5;">⚠️ The set start time listed is after 12 AM. Please confirm the actual event start date:</div>
+                <select id="ib-confirmed-event-date" onchange="ib_onConfirmedDateChange()" style="width:100%;height:38px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"></select>
               </div>
               <div id="ib-set-duration" style="display:none;margin-top:.6rem;text-align:center;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;color:var(--neon);"></div>
               <div id="ib-booking-window-notice" style="display:none;margin-top:.75rem;background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.3);border-radius:8px;padding:.85rem 1rem;font-size:.82rem;color:#ffb347;line-height:1.6;"></div>
@@ -3515,6 +3520,8 @@ let ib_djData = null;
 let ib_bookingSettings = null;
 let ib_addrTimer = null;
 let ib_initialized = false;
+// Tracks the date the user originally clicked on the calendar (before any post-midnight confirmation)
+let ib_clickedDateKey = null;
 
 function ib_currentUser() {
   try { return JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null'); }
@@ -3583,6 +3590,9 @@ async function ib_openForInline(djSlug, dateKey) {
 
   // Set selected date into the form
   if (dateKey) {
+    // Remember the originally-clicked date — the post-midnight confirmation dropdown
+    // will offer this date (and the day before/after) as options.
+    ib_clickedDateKey = dateKey;
     document.getElementById('ib-event-date').value = dateKey;
     const dt = new Date(dateKey + 'T12:00:00');
     const compactDate = dt.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
@@ -3675,6 +3685,7 @@ function ib_resetForm() {
   const warn = document.getElementById('ib-warnings-area'); if (warn) warn.innerHTML = '';
   const setDur = document.getElementById('ib-set-duration'); if (setDur) setDur.style.display = 'none';
   const notice = document.getElementById('ib-booking-window-notice'); if (notice) notice.style.display = 'none';
+  const pmc = document.getElementById('ib-post-midnight-confirm'); if (pmc) pmc.style.display = 'none';
   const alertEl = document.getElementById('ib-submit-alert'); if (alertEl) alertEl.innerHTML = '';
   const topAlert = document.getElementById('ib-alert-area'); if (topAlert) topAlert.innerHTML = '';
   const btn = document.getElementById('ib-submit-btn');
@@ -3696,6 +3707,78 @@ function ib_updateSetDuration() {
   const label = hrs > 0 && mins > 0 ? `${hrs}hr ${mins}min` : hrs > 0 ? `${hrs} hour${hrs !== 1 ? 's' : ''}` : `${mins} min`;
   el.textContent = `⏱ Total Set Time: ${label}`;
   el.style.display = 'block';
+}
+
+// Helper: shift a YYYY-MM-DD key by N days (N can be negative)
+function ib_shiftDateKey(key, deltaDays) {
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+// If start_time is 12 AM – 5:59 AM, show a field asking the user to confirm
+// the actual event date (since the set technically starts on the day after
+// the "night" it belongs to). Options: day before / clicked day / day after.
+// Preselects the clicked day.
+function ib_checkPostMidnight() {
+  const startVal = document.getElementById('ib-start-time')?.value;
+  const pmc = document.getElementById('ib-post-midnight-confirm');
+  const sel = document.getElementById('ib-confirmed-event-date');
+  const hiddenDate = document.getElementById('ib-event-date');
+  if (!pmc || !sel || !hiddenDate) return;
+
+  const isPostMidnight = startVal && /^0[0-5]:/.test(startVal); // 00:00 through 05:59
+  if (!isPostMidnight || !ib_clickedDateKey) {
+    // Hide the field and revert hidden event_date to the originally clicked date
+    pmc.style.display = 'none';
+    if (ib_clickedDateKey) hiddenDate.value = ib_clickedDateKey;
+    return;
+  }
+
+  // Build dropdown options: day before, clicked day, day after
+  const before = ib_shiftDateKey(ib_clickedDateKey, -1);
+  const after = ib_shiftDateKey(ib_clickedDateKey, 1);
+  const fmt = k => new Date(k + 'T12:00:00').toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const opts = [
+    { key: before, label: fmt(before) },
+    { key: ib_clickedDateKey, label: fmt(ib_clickedDateKey) },
+    { key: after, label: fmt(after) },
+  ];
+  sel.innerHTML = opts.map(o => `<option value="${o.key}"${o.key === ib_clickedDateKey ? ' selected' : ''}>${o.label}</option>`).join('');
+  pmc.style.display = 'block';
+
+  // Ensure the hidden event_date reflects the current dropdown selection
+  hiddenDate.value = sel.value;
+  // Update date displays
+  ib_syncDateDisplays(sel.value);
+}
+
+// Called when the user changes the confirmed event date dropdown
+function ib_onConfirmedDateChange() {
+  const sel = document.getElementById('ib-confirmed-event-date');
+  const hiddenDate = document.getElementById('ib-event-date');
+  if (!sel || !hiddenDate) return;
+  hiddenDate.value = sel.value;
+  ib_syncDateDisplays(sel.value);
+  // Booking-window + rate may depend on the date → refresh
+  ib_checkBookingWindow();
+  ib_updateRateDisplay();
+}
+
+// Sync the two on-card date displays (inline + top-right) with the given YYYY-MM-DD
+function ib_syncDateDisplays(dateKey) {
+  if (!dateKey) return;
+  const dt = new Date(dateKey + 'T12:00:00');
+  const compactDate = dt.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  const readableDate = dt.toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const displayEl = document.getElementById('ib-event-date-display');
+  if (displayEl) displayEl.textContent = compactDate;
+  const sub = document.getElementById('ib-booking-date-sub');
+  if (sub) sub.textContent = readableDate;
 }
 
 function ib_selectPill(el, name, value) {
