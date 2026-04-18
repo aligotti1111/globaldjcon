@@ -526,14 +526,14 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
       <div id="ib-root" style="display:none;max-width:520px;margin:2rem auto 0;padding:0 1rem;">
         <div id="ib-page-content" style="display:none;">
 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-bottom:1rem;flex-wrap:wrap;">
-            <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0;"></div>
-            <div style="display:flex;gap:.5rem;flex-shrink:0;">
-              <button class="btn btn-outline" onclick="ib_openMsgModal()" style="font-size:.6rem;padding:.45rem .8rem;">
+          <div style="margin-bottom:1rem;">
+            <div id="ib-booking-date-sub" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.6rem;line-height:1.4;"></div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+              <button class="btn btn-outline" onclick="ib_openMsgModal()" style="font-size:.6rem;padding:.45rem .8rem;flex:1;justify-content:center;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
                 Message with Questions
               </button>
-              <button class="btn btn-outline" onclick="ib_closeInline()" style="font-size:.6rem;padding:.45rem .8rem;" title="Close booking form">
+              <button class="btn btn-outline" onclick="ib_closeInline()" style="font-size:.6rem;padding:.45rem .8rem;flex-shrink:0;" title="Close booking form">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 Close
               </button>
