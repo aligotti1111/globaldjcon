@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
   --border: #1e1e30;
   --neon: #00f5c4;
   --neon-dim: rgba(0,245,196,0.12);
+  --neon-dark: #0a6f61;
   --pink: #f5e642;
   --pink-dim: rgba(245,230,66,0.12);
   --white: #f0f0f8;
@@ -3365,14 +3366,14 @@ function mobPubRenderPackages() {
     // Price preview
     let priceHtml = '';
     if (pkg.reqAll) {
-      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);white-space:nowrap;">Price on request</div>`;
+      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon-dark);white-space:nowrap;">Price on request</div>`;
     } else {
       const has4 = pkg.price4, has5 = pkg.price5, has6 = pkg.price6;
       if (has4||has5||has6) {
         const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
         priceHtml = `<div style="text-align:right;line-height:1;white-space:nowrap;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.2rem;">From</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon);">$${Number(price).toLocaleString()}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon-dark);margin-bottom:.2rem;">From</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon-dark);">$${Number(price).toLocaleString()}</div>
         </div>`;
       }
     }
