@@ -112,6 +112,8 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
 }
 #counter-mob-pkg-details ul{margin:0;padding-left:1rem;}
 #counter-mob-pkg-details li{margin-bottom:.15rem;}
+#counter-mob-pkg-removed ul{margin:0;padding-left:1rem;}
+#counter-mob-pkg-removed li{margin-bottom:.15rem;}
 #counter-modal .form-row label{color:var(--white);}
 </style>
 </head>
@@ -245,13 +247,20 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
         <div id="counter-mob-cocktail" style="display:none;margin-top:.4rem;font-size:.65rem;color:var(--neon);background:rgba(0,245,196,.08);border:1px solid rgba(0,245,196,.25);border-radius:4px;padding:.25rem .5rem;"></div>
       </div>
       <div id="counter-mob-pkg" style="display:none;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.3rem .5rem .3rem .8rem;background:rgba(255,255,255,.03);">
-          <div id="counter-mob-pkg-title" style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.04em;color:var(--white);line-height:1.1;"></div>
-          <button type="button" id="counter-mob-pkg-edit-btn" onclick="startPkgEdit()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;padding:.2rem .35rem;display:flex;align-items:center;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.3rem .5rem .3rem .8rem;background:rgba(255,255,255,.03);gap:.5rem;">
+          <div style="display:flex;align-items:center;gap:.5rem;min-width:0;flex:1;">
+            <div id="counter-mob-pkg-title" style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.04em;color:var(--white);line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+            <span id="counter-mob-pkg-edited-pill" style="display:none;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:1px 5px;flex-shrink:0;">Edited</span>
+          </div>
+          <button type="button" id="counter-mob-pkg-edit-btn" onclick="startPkgEdit()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;padding:.2rem .35rem;align-items:center;flex-shrink:0;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
         </div>
         <div id="counter-mob-pkg-details" style="display:none;padding:.45rem .8rem .45rem 1.1rem;font-size:.72rem;color:var(--white);line-height:1.5;border-top:1px solid var(--border);word-wrap:break-word;overflow-wrap:break-word;"></div>
+        <div id="counter-mob-pkg-removed-wrap" style="display:none;border-top:1px solid var(--amber);background:rgba(255,179,71,.06);">
+          <div style="padding:.3rem .8rem;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);">Removed</div>
+          <div id="counter-mob-pkg-removed" style="padding:0 .8rem .45rem 1.1rem;font-size:.72rem;color:var(--amber);line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;"></div>
+        </div>
         <div id="counter-mob-pkg-editor" style="display:none;border-top:1px solid var(--border);padding:.5rem .8rem;">
           <textarea id="counter-mob-pkg-textarea" rows="5" placeholder="One item per line" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem;color:var(--white);font-size:.75rem;font-family:'DM Sans',sans-serif;resize:vertical;"></textarea>
           <div style="display:flex;gap:.4rem;margin-top:.4rem;">
@@ -1471,77 +1480,122 @@ async function _doUpdateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// Extract package details <li> items as plain text, SKIPPING items already marked
-// as removed (strikethrough). Returns array of currently-active item strings.
-function extractPkgItems(html) {
-  if (!html) return [];
+const PKG_REMOVED_MARKER = '<!--GDJ_REMOVED-->';
+
+// Parse package_details HTML into { activeHtml, removedItems, hasEdits }.
+// The stored HTML may be a plain <ul>...</ul> (unedited), or split by PKG_REMOVED_MARKER.
+// An "edited" flag is stamped as <!--GDJ_EDITED--> at the start when edits occurred.
+function parsePkgHtml(html) {
+  if (!html) return { activeHtml: '', removedItems: [], hasEdits: false };
+  const hasEdits = html.includes('<!--GDJ_EDITED-->');
+  const cleaned = html.replace('<!--GDJ_EDITED-->', '');
+  const idx = cleaned.indexOf(PKG_REMOVED_MARKER);
+  if (idx === -1) return { activeHtml: cleaned, removedItems: [], hasEdits };
+  const activeHtml = cleaned.slice(0, idx);
+  const removedHtml = cleaned.slice(idx + PKG_REMOVED_MARKER.length);
   const tmp = document.createElement('div');
-  tmp.innerHTML = html;
+  tmp.innerHTML = removedHtml;
+  const removedItems = Array.from(tmp.querySelectorAll('li')).map(li => li.textContent.trim()).filter(Boolean);
+  return { activeHtml, removedItems, hasEdits };
+}
+
+// Extract the ACTIVE items (plain text) from a package_details HTML string.
+function extractPkgItems(html) {
+  const { activeHtml } = parsePkgHtml(html);
+  if (!activeHtml) return [];
+  const tmp = document.createElement('div');
+  tmp.innerHTML = activeHtml;
   const lis = tmp.querySelectorAll('li');
   if (lis.length === 0) {
     const txt = tmp.textContent.trim();
     return txt ? [txt] : [];
   }
-  return Array.from(lis)
-    .filter(li => {
-      const style = (li.getAttribute('style') || '').toLowerCase();
-      return !style.includes('line-through');
-    })
-    .map(li => li.textContent.trim())
-    .filter(Boolean);
+  return Array.from(lis).map(li => li.textContent.trim()).filter(Boolean);
 }
 
 function startPkgEdit() {
   const pkgDet = document.getElementById('counter-mob-pkg-details');
+  const removedWrap = document.getElementById('counter-mob-pkg-removed-wrap');
   const editor = document.getElementById('counter-mob-pkg-editor');
   const textarea = document.getElementById('counter-mob-pkg-textarea');
   const items = extractPkgItems(pkgEditCurrentHtml);
   textarea.value = items.join('\n');
   pkgDet.style.display = 'none';
+  if (removedWrap) removedWrap.style.display = 'none';
   editor.style.display = 'block';
   textarea.focus();
 }
 
 function cancelPkgEdit() {
-  const pkgDet = document.getElementById('counter-mob-pkg-details');
   const editor = document.getElementById('counter-mob-pkg-editor');
   editor.style.display = 'none';
-  if (pkgEditCurrentHtml) {
-    pkgDet.innerHTML = pkgEditCurrentHtml;
+  // Re-render whatever we had before edit mode
+  renderPkgView(pkgEditCurrentHtml);
+}
+
+// Render the package view (active list, removed box, edited pill) from a stored HTML string
+function renderPkgView(html) {
+  const pkgDet = document.getElementById('counter-mob-pkg-details');
+  const removedWrap = document.getElementById('counter-mob-pkg-removed-wrap');
+  const removedBox = document.getElementById('counter-mob-pkg-removed');
+  const editedPill = document.getElementById('counter-mob-pkg-edited-pill');
+  const parsed = parsePkgHtml(html);
+  if (parsed.activeHtml) {
+    pkgDet.innerHTML = parsed.activeHtml;
     pkgDet.style.display = 'block';
+  } else {
+    pkgDet.innerHTML = '';
+    pkgDet.style.display = 'none';
   }
+  if (parsed.removedItems.length) {
+    const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    removedBox.innerHTML = '<ul>' + parsed.removedItems.map(i => `<li>${esc(i)}</li>`).join('') + '</ul>';
+    removedWrap.style.display = 'block';
+  } else {
+    removedWrap.style.display = 'none';
+  }
+  if (editedPill) editedPill.style.display = parsed.hasEdits ? 'inline-block' : 'none';
 }
 
 function savePkgEdit() {
   const textarea = document.getElementById('counter-mob-pkg-textarea');
-  const pkgDet = document.getElementById('counter-mob-pkg-details');
   const editor = document.getElementById('counter-mob-pkg-editor');
   const newItems = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
   const origSet = new Set(pkgEditOriginalItems);
   const newSet = new Set(newItems);
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Kept + added items in the order the DJ typed them
+
+  // Active list — kept items plain, added items amber
   const liHtml = newItems.map(item => {
-    if (origSet.has(item)) {
-      return `<li>${esc(item)}</li>`;
-    }
+    if (origSet.has(item)) return `<li>${esc(item)}</li>`;
     return `<li style="color:#FFB347;">${esc(item)}</li>`;
   }).join('');
-  // Removed originals, appended at the end, shown struck through in amber
-  const removedHtml = pkgEditOriginalItems
-    .filter(item => !newSet.has(item))
-    .map(item => `<li style="color:#FFB347;text-decoration:line-through;">${esc(item)}</li>`)
-    .join('');
-  const allHtml = liHtml + removedHtml;
-  const newHtml = allHtml ? `<ul>${allHtml}</ul>` : '';
-  pkgEditCurrentHtml = newHtml;
-  // After saving, the "current" kept items become the new baseline for any future edit.
-  // Previously-removed items stay struck through in the saved HTML (and extractPkgItems
-  // skips them), so re-editing won't resurface them in the textarea.
+  const activeHtml = newItems.length ? `<ul>${liHtml}</ul>` : '';
+
+  // Collect removed items from this save + any previously-removed items still in storage
+  const prev = parsePkgHtml(pkgEditCurrentHtml);
+  const removedThisSave = pkgEditOriginalItems.filter(item => !newSet.has(item));
+  const allRemovedSet = new Set([...prev.removedItems, ...removedThisSave]);
+  // If the DJ re-added a previously-removed item, drop it from the removed list
+  for (const item of newItems) allRemovedSet.delete(item);
+  const removedItems = Array.from(allRemovedSet);
+
+  // Detect if this counter has any edits at all (additions, removals, or prior edits carried over)
+  const addedCount = newItems.filter(i => !origSet.has(i)).length;
+  const hasEdits = addedCount > 0 || removedItems.length > 0 || prev.hasEdits;
+
+  // Compose final HTML
+  let finalHtml = '';
+  if (hasEdits) finalHtml += '<!--GDJ_EDITED-->';
+  finalHtml += activeHtml;
+  if (removedItems.length) {
+    finalHtml += PKG_REMOVED_MARKER + '<ul>' + removedItems.map(i => `<li>${esc(i)}</li>`).join('') + '</ul>';
+  }
+
+  pkgEditCurrentHtml = finalHtml;
   pkgEditOriginalItems = newItems.slice();
-  pkgDet.innerHTML = newHtml;
-  pkgDet.style.display = newHtml ? 'block' : 'none';
   editor.style.display = 'none';
+  renderPkgView(finalHtml);
 }
 
 function openCounter(bookingId, currency, group, counterRate, offerAmount, quotedRate) {
@@ -1627,17 +1681,9 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
     if (pkgEditor) pkgEditor.style.display = 'none';
     if (b.package_title) {
       document.getElementById('counter-mob-pkg-title').textContent = b.package_title;
-      const pkgDet = document.getElementById('counter-mob-pkg-details');
-      if (b.package_details) {
-        pkgDet.innerHTML = b.package_details;
-        pkgDet.style.display = 'block';
-      } else {
-        pkgDet.innerHTML = '';
-        pkgDet.style.display = 'none';
-      }
-      // Seed editor state: capture current <li> texts as originals (stripping existing amber spans first)
       pkgEditCurrentHtml = b.package_details || '';
       pkgEditOriginalItems = extractPkgItems(pkgEditCurrentHtml);
+      renderPkgView(pkgEditCurrentHtml);
       // Pencil only for DJ countering mobile booking
       if (pkgEditBtn) pkgEditBtn.style.display = (group === 'in') ? 'flex' : 'none';
       pkgWrap.style.display = 'block';
