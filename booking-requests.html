@@ -1451,7 +1451,7 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
   // Event details block (club/bar only)
   const detailsEl = document.getElementById('counter-event-details');
   const b = [...incomingBookings, ...outgoingBookings].find(x => x.id === bookingId);
-  if (b && b.booking_type === 'club_bar' && detailsEl) {
+  if (b && b.booking_type !== 'mobile' && detailsEl) {
     const dateStr = b.event_date ? new Date(b.event_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' }) : '—';
     let timeStr = '—';
     let durStr = '—';
