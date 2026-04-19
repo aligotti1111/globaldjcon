@@ -1471,18 +1471,24 @@ async function _doUpdateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// Extract package details <li> items as plain text (strips amber spans). Returns array of strings.
+// Extract package details <li> items as plain text, SKIPPING items already marked
+// as removed (strikethrough). Returns array of currently-active item strings.
 function extractPkgItems(html) {
   if (!html) return [];
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
   const lis = tmp.querySelectorAll('li');
   if (lis.length === 0) {
-    // No list structure — treat as single-item
     const txt = tmp.textContent.trim();
     return txt ? [txt] : [];
   }
-  return Array.from(lis).map(li => li.textContent.trim()).filter(Boolean);
+  return Array.from(lis)
+    .filter(li => {
+      const style = (li.getAttribute('style') || '').toLowerCase();
+      return !style.includes('line-through');
+    })
+    .map(li => li.textContent.trim())
+    .filter(Boolean);
 }
 
 function startPkgEdit() {
@@ -1512,16 +1518,27 @@ function savePkgEdit() {
   const editor = document.getElementById('counter-mob-pkg-editor');
   const newItems = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
   const origSet = new Set(pkgEditOriginalItems);
-  // Build new HTML with amber span around changed/new items
+  const newSet = new Set(newItems);
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Kept + added items in the order the DJ typed them
   const liHtml = newItems.map(item => {
     if (origSet.has(item)) {
       return `<li>${esc(item)}</li>`;
     }
     return `<li style="color:#FFB347;">${esc(item)}</li>`;
   }).join('');
-  const newHtml = newItems.length ? `<ul>${liHtml}</ul>` : '';
+  // Removed originals, appended at the end, shown struck through in amber
+  const removedHtml = pkgEditOriginalItems
+    .filter(item => !newSet.has(item))
+    .map(item => `<li style="color:#FFB347;text-decoration:line-through;">${esc(item)}</li>`)
+    .join('');
+  const allHtml = liHtml + removedHtml;
+  const newHtml = allHtml ? `<ul>${allHtml}</ul>` : '';
   pkgEditCurrentHtml = newHtml;
+  // After saving, the "current" kept items become the new baseline for any future edit.
+  // Previously-removed items stay struck through in the saved HTML (and extractPkgItems
+  // skips them), so re-editing won't resurface them in the textarea.
+  pkgEditOriginalItems = newItems.slice();
   pkgDet.innerHTML = newHtml;
   pkgDet.style.display = newHtml ? 'block' : 'none';
   editor.style.display = 'none';
