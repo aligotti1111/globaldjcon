@@ -2939,6 +2939,149 @@ async function mobPubOwnerSaveDay(key, userId) {
   await mobPubOwnerSaveDays(userId, days);
 }
 
+// Phone format helper: formats a phone input value as the user types based on country code.
+// Supports common countries; falls back to a generic grouped format for others.
+const MPF_PHONE_FORMATS = {
+  'US': { pattern: [3,3,4], placeholder: '(555) 555-5555', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return '(' + d;
+    if (d.length <= 6) return '(' + d.slice(0,3) + ') ' + d.slice(3);
+    return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6,10);
+  }},
+  'CA': { pattern: [3,3,4], placeholder: '(555) 555-5555', render: d => MPF_PHONE_FORMATS.US.render(d) },
+  'GB': { placeholder: '07123 456789', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 5) return d;
+    return d.slice(0,5) + ' ' + d.slice(5,11);
+  }},
+  'AU': { placeholder: '0412 345 678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 4) return d;
+    if (d.length <= 7) return d.slice(0,4) + ' ' + d.slice(4);
+    return d.slice(0,4) + ' ' + d.slice(4,7) + ' ' + d.slice(7,10);
+  }},
+  'DE': { placeholder: '0151 12345678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 4) return d;
+    return d.slice(0,4) + ' ' + d.slice(4,12);
+  }},
+  'FR': { placeholder: '01 23 45 67 89', render: d => {
+    if (d.length === 0) return '';
+    const parts = [];
+    for (let i = 0; i < d.length && i < 10; i += 2) parts.push(d.slice(i, i+2));
+    return parts.join(' ');
+  }},
+  'ES': { placeholder: '612 34 56 78', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 5) return d.slice(0,3) + ' ' + d.slice(3);
+    if (d.length <= 7) return d.slice(0,3) + ' ' + d.slice(3,5) + ' ' + d.slice(5);
+    return d.slice(0,3) + ' ' + d.slice(3,5) + ' ' + d.slice(5,7) + ' ' + d.slice(7,9);
+  }},
+  'IT': { placeholder: '312 345 6789', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,10);
+  }},
+  'NL': { placeholder: '06 12345678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 2) return d;
+    return d.slice(0,2) + ' ' + d.slice(2,10);
+  }},
+  'MX': { placeholder: '55 1234 5678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 2) return d;
+    if (d.length <= 6) return d.slice(0,2) + ' ' + d.slice(2);
+    return d.slice(0,2) + ' ' + d.slice(2,6) + ' ' + d.slice(6,10);
+  }},
+  'BR': { placeholder: '(11) 91234-5678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 2) return '(' + d;
+    if (d.length <= 7) return '(' + d.slice(0,2) + ') ' + d.slice(2);
+    return '(' + d.slice(0,2) + ') ' + d.slice(2,7) + '-' + d.slice(7,11);
+  }},
+  'JP': { placeholder: '090-1234-5678', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return d.slice(0,3) + '-' + d.slice(3);
+    return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7,11);
+  }},
+  'IN': { placeholder: '98765 43210', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 5) return d;
+    return d.slice(0,5) + ' ' + d.slice(5,10);
+  }},
+  'IE': { placeholder: '085 123 4567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,10);
+  }},
+  'NZ': { placeholder: '021 123 4567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,10);
+  }},
+  'ZA': { placeholder: '082 123 4567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,10);
+  }},
+  'AE': { placeholder: '050 123 4567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,10);
+  }},
+  'SG': { placeholder: '9123 4567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 4) return d;
+    return d.slice(0,4) + ' ' + d.slice(4,8);
+  }},
+  'CH': { placeholder: '079 123 45 67', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + ' ' + d.slice(3);
+    if (d.length <= 8) return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6);
+    return d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6,8) + ' ' + d.slice(8,10);
+  }},
+  'SE': { placeholder: '070 123 45 67', render: d => MPF_PHONE_FORMATS.CH.render(d) },
+  'NO': { placeholder: '412 34 567', render: d => {
+    if (d.length === 0) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 5) return d.slice(0,3) + ' ' + d.slice(3);
+    return d.slice(0,3) + ' ' + d.slice(3,5) + ' ' + d.slice(5,8);
+  }},
+  'DK': { placeholder: '12 34 56 78', render: d => MPF_PHONE_FORMATS.FR.render(d) }
+};
+
+function mpf_getCountryCode() {
+  const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
+  if (!cu || !cu.country) return 'US';
+  const map = {'United States':'US','United Kingdom':'GB','Canada':'CA','Australia':'AU','Germany':'DE','France':'FR','Spain':'ES','Italy':'IT','Netherlands':'NL','Sweden':'SE','Norway':'NO','Denmark':'DK','New Zealand':'NZ','Singapore':'SG','South Africa':'ZA','UAE':'AE','India':'IN','Japan':'JP','Mexico':'MX','Brazil':'BR','Switzerland':'CH','Ireland':'IE'};
+  return map[cu.country] || 'US';
+}
+
+function mpf_formatPhone(raw, countryCode) {
+  const digits = String(raw||'').replace(/\D/g,'');
+  const fmt = MPF_PHONE_FORMATS[countryCode] || MPF_PHONE_FORMATS.US;
+  return fmt.render(digits);
+}
+
+function mpf_initPhoneField() {
+  const el = document.getElementById('mpf-phone');
+  if (!el) return;
+  const code = mpf_getCountryCode();
+  const fmt = MPF_PHONE_FORMATS[code] || MPF_PHONE_FORMATS.US;
+  el.placeholder = fmt.placeholder;
+  el.addEventListener('input', () => {
+    el.value = mpf_formatPhone(el.value, code);
+  });
+}
+
 function mobPubSelectDate(key) {
   mobPubSelectedDate = key;
   mobPubSelectedPkg = null;
@@ -3011,7 +3154,7 @@ function renderMobPubForm(dateKey) {
 
       <!-- Guest Count -->
       <div style="margin-bottom:1rem;">
-        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Number of Guests</label>
+        <label style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);display:block;margin-bottom:.4rem;">Estimated Number of Guests</label>
         <input type="number" id="mpf-guests" min="1" placeholder="150" style="width:120px;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
 
@@ -3094,6 +3237,8 @@ function renderMobPubForm(dateKey) {
 
   // Render packages for any already-selected event type (none yet)
   mobPubRenderPackages();
+  // Initialize phone formatter based on booker's country
+  mpf_initPhoneField();
 }
 
 function mobPubEventTypeChange() {
