@@ -3371,8 +3371,8 @@ function mobPubRenderPackages() {
       if (has4||has5||has6) {
         const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
         priceHtml = `<div style="text-align:right;line-height:1;white-space:nowrap;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">From</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon);">$${Number(price).toLocaleString()}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:.2rem;">From</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--amber);">$${Number(price).toLocaleString()}</div>
         </div>`;
       }
     }
@@ -3401,7 +3401,7 @@ function mobPubRenderPackages() {
 
     card.innerHTML = `
       ${checkBadge}
-      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:rgba(0,245,196,.08);">
+      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:var(--neon-dim);">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--white);line-height:1.1;">${title}</div>
         ${priceHtml}
       </div>
