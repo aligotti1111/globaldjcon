@@ -233,6 +233,23 @@ exports.handler = async (event) => {
     const { requesterName, requesterEmail, djName, counterRate, counterMessage, eventDate, venueName, currency, packageTitle, packageDetails } = body;
     const sym = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$'}[currency||'USD'] || '$';
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
+
+    // Parse packageDetails: may contain <!--GDJ_EDITED--> marker and/or <!--GDJ_REMOVED--> split
+    let pkgActiveHtml = '';
+    let pkgRemovedHtml = '';
+    let pkgEdited = false;
+    if (packageDetails) {
+      let pd = String(packageDetails);
+      if (pd.includes('<!--GDJ_EDITED-->')) { pkgEdited = true; pd = pd.replace('<!--GDJ_EDITED-->', ''); }
+      const idx = pd.indexOf('<!--GDJ_REMOVED-->');
+      if (idx === -1) {
+        pkgActiveHtml = pd;
+      } else {
+        pkgActiveHtml = pd.slice(0, idx);
+        pkgRemovedHtml = pd.slice(idx + '<!--GDJ_REMOVED-->'.length);
+      }
+    }
+
     emailPayload = {
       from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
       subject: `Counter Offer from ${escHtml(djName)}`,
@@ -245,10 +262,16 @@ exports.handler = async (event) => {
           ${counterMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(counterMessage)}"</div>` : ''}
         </div>
         ${packageTitle ? `<div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:6px;">Package</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3em;color:#1a1a2e;margin-bottom:10px;">${escHtml(packageTitle)}</div>
-          ${packageDetails ? `<div style="color:#333;line-height:1.6;font-size:14px;">${packageDetails}</div>
-          <div style="margin-top:10px;font-size:11px;color:#888;">Items in <span style="color:#FFB347;font-weight:700;">amber</span> have changed; items with a <span style="color:#FFB347;text-decoration:line-through;">strikethrough</span> were removed.</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3em;color:#1a1a2e;">${escHtml(packageTitle)}</div>
+            ${pkgEdited ? `<span style="font-family:monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#FFB347;border:1px solid #FFB347;border-radius:3px;padding:2px 6px;">Edited</span>` : ''}
+          </div>
+          ${pkgActiveHtml ? `<div style="color:#333;line-height:1.6;font-size:14px;">${pkgActiveHtml}</div>` : ''}
+          ${pkgRemovedHtml ? `<div style="margin-top:12px;border-top:1px solid #FFB347;background:rgba(255,179,71,.08);border-radius:0 0 6px 6px;padding:8px 12px;">
+            <div style="font-family:monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#FFB347;margin-bottom:4px;">Removed</div>
+            <div style="color:#FFB347;line-height:1.6;font-size:14px;">${pkgRemovedHtml}</div>
+          </div>` : ''}
+          ${pkgEdited ? `<div style="margin-top:10px;font-size:11px;color:#888;">Items shown in <span style="color:#FFB347;font-weight:700;">amber</span> were added or changed by the DJ. Items in the "Removed" box were taken out of the package.</div>` : ''}
         </div>` : ''}
         <a href="${SITE_URL}/inbox.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to DJ</a>
       `)
