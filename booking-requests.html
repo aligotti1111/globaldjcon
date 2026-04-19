@@ -639,18 +639,22 @@ function renderMobileCard(b, isIncoming, orderNum) {
     if (!hasPrice && !hasPkg && !isQuote) return '';
 
     const isApproved = b.status === 'approved';
+    const hasCounter = !!b.counter_rate && !isApproved;
     const borderColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--border)';
-    const labelColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)';
-    const labelText = hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '';
+    // When a counter exists, the big price = counter (neon), label = NEW OFFER
+    const labelColor = hasCounter ? 'var(--neon)' : (hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)');
+    const labelText = hasCounter ? 'New Offer' : (hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '');
+    const bigPriceVal = hasCounter ? b.counter_rate : b.quoted_rate;
+    const bigPriceColor = hasCounter ? 'var(--neon)' : 'var(--white)';
 
     // Price section — price on left, duration on right (centered block)
     const priceSection = hasPrice ? `
       <div style="padding:1rem;display:flex;justify-content:center;align-items:center;gap:2rem;flex-wrap:wrap;">
         <div style="text-align:center;">
           <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:${labelColor};margin-bottom:.35rem;">${labelText}</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:var(--white);line-height:1;">$${Number(b.quoted_rate).toLocaleString()}</div>
-          ${b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
-          ${b.counter_rate ? `<div style="margin-top:.4rem;font-family:'Space Mono',monospace;font-size:.52rem;color:var(--neon);">Counter: $${Number(b.counter_rate).toLocaleString()}${b.counter_message ? ` — "${b.counter_message}"` : ''}</div>` : ''}
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:${bigPriceColor};line-height:1;">$${Number(bigPriceVal).toLocaleString()}</div>
+          ${hasCounter ? `<div style="margin-top:.45rem;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Initial Offer: <span style="color:var(--white);">$${Number(b.quoted_rate).toLocaleString()}</span></div>` : ''}
+          ${!hasCounter && b.deposit_amount ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem;">Deposit (${b.deposit_pct}%): $${Number(b.deposit_amount).toLocaleString()}</div>` : ''}
         </div>
         ${durationLabel ? `
         <div style="text-align:center;">
@@ -660,12 +664,38 @@ function renderMobileCard(b, isIncoming, orderNum) {
       </div>` : (isQuote ? `
       <div style="padding:.85rem 1rem;text-align:center;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '');
 
-    // Package section (title in Bebas Neue like event name, details white)
-    const inlineDetails = b.package_details ? b.package_details : '';
+    // Package section — parse the edited/removed split structure so it renders cleanly in the card
+    let pkgActiveHtml = '';
+    let pkgRemovedItems = [];
+    let pkgEdited = false;
+    if (b.package_details) {
+      let pd = String(b.package_details);
+      if (pd.includes('<!--GDJ_EDITED-->')) { pkgEdited = true; pd = pd.replace('<!--GDJ_EDITED-->', ''); }
+      const idx = pd.indexOf('<!--GDJ_REMOVED-->');
+      if (idx === -1) {
+        pkgActiveHtml = pd;
+      } else {
+        pkgActiveHtml = pd.slice(0, idx);
+        const remHtml = pd.slice(idx + '<!--GDJ_REMOVED-->'.length);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = remHtml;
+        pkgRemovedItems = Array.from(tmp.querySelectorAll('li')).map(li => li.textContent.trim()).filter(Boolean);
+      }
+    }
+    const editedPill = pkgEdited ? ` <span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:1px 6px;vertical-align:middle;">Edited</span>` : '';
+    const removedBox = pkgRemovedItems.length ? `
+      <div style="border-top:1px solid var(--amber);background:rgba(255,179,71,.06);">
+        <div style="padding:.35rem .9rem;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);">Removed</div>
+        <div style="padding:0 .9rem .55rem 1.85rem;font-size:.78rem;color:var(--amber);line-height:1.6;">
+          <ul style="margin:0;padding-left:1rem;">${pkgRemovedItems.map(i => `<li>${i.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</li>`).join('')}</ul>
+        </div>
+      </div>` : '';
+
     const pkgSection = hasPkg ? `
       <div id="pkg-block-${b.id}">
-        <div style="padding:.75rem .9rem;background:rgba(255,255,255,.03);font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--white);line-height:1;">${b.package_title}</div>
-        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem .6rem 1.85rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${inlineDetails ? '' : 'none'};">${inlineDetails}</div>
+        <div style="padding:.75rem .9rem;background:rgba(255,255,255,.03);font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--white);line-height:1;">${b.package_title}${editedPill}</div>
+        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem .6rem 1.85rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${pkgActiveHtml ? '' : 'none'};">${pkgActiveHtml}</div>
+        ${removedBox}
       </div>` : '';
 
     // Cocktail footer
