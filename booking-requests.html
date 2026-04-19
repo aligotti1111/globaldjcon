@@ -1536,7 +1536,7 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
       document.getElementById('counter-mob-pkg-title').textContent = b.package_title;
       const pkgDet = document.getElementById('counter-mob-pkg-details');
       if (b.package_details) {
-        pkgDet.textContent = b.package_details;
+        pkgDet.innerHTML = b.package_details;
         pkgDet.style.display = 'block';
       } else {
         pkgDet.style.display = 'none';
