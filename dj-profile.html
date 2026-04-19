@@ -3240,7 +3240,7 @@ function renderMobPubForm(dateKey) {
         <textarea id="mpf-message" placeholder="Tell the DJ about your event..." rows="3" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;"></textarea>
       </div>
 
-      <button type="button" id="mpf-submit-btn" onclick="mobPubSubmit('${dateKey}')" style="width:100%;padding:.9rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Request Booking</button>
+      <button type="button" id="mpf-submit-btn" onclick="mobPubSubmit('${dateKey}')" style="width:100%;padding:.9rem;background:var(--white);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Request Booking</button>
     </div>`;
 
   // Render packages for any already-selected event type (none yet)
@@ -3401,7 +3401,7 @@ function mobPubRenderPackages() {
 
     card.innerHTML = `
       ${checkBadge}
-      <div style="padding:.75rem .9rem;display:flex;align-items:center;justify-content:center;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:var(--neon);position:relative;">
+      <div style="padding:.75rem .9rem;display:flex;align-items:center;justify-content:center;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:var(--white);position:relative;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--black);line-height:1.1;text-align:center;">${title}</div>
         ${priceHtml ? `<div style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);">${priceHtml}</div>` : ''}
       </div>
@@ -3512,7 +3512,7 @@ function mobPubCalcPrice() {
         overtimeNote.style.display = 'none';
       }
     }
-    if (submitBtn) { submitBtn.textContent = 'Request Booking'; submitBtn.style.background = 'var(--neon)'; }
+    if (submitBtn) { submitBtn.textContent = 'Request Booking'; submitBtn.style.background = 'var(--white)'; }
   }
 }
 
