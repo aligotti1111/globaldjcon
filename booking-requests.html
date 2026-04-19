@@ -641,15 +641,15 @@ function renderMobileCard(b, isIncoming, orderNum) {
     const isApproved = b.status === 'approved';
     const hasCounter = !!b.counter_rate && !isApproved;
     const borderColor = hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--border)';
-    // When a counter exists, the big price = counter (neon), label = NEW OFFER
-    const labelColor = hasCounter ? 'var(--neon)' : (hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)');
+    // When a counter exists, the big price = counter (amber), label = NEW OFFER
+    const labelColor = hasCounter ? 'var(--amber)' : (hasPrice ? (isApproved ? 'var(--neon)' : 'var(--amber)') : 'var(--muted)');
     const labelText = hasCounter ? 'New Offer' : (hasPrice ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price') : '');
     const bigPriceVal = hasCounter ? b.counter_rate : b.quoted_rate;
-    const bigPriceColor = hasCounter ? 'var(--neon)' : 'var(--white)';
+    const bigPriceColor = hasCounter ? 'var(--amber)' : 'var(--white)';
 
     // Price section — price on left, duration on right (centered block)
     const priceSection = hasPrice ? `
-      <div style="padding:1rem;display:flex;justify-content:center;align-items:center;gap:2rem;flex-wrap:wrap;">
+      <div style="padding:1rem;display:flex;justify-content:center;align-items:flex-start;gap:2rem;flex-wrap:wrap;">
         <div style="text-align:center;">
           <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:${labelColor};margin-bottom:.35rem;">${labelText}</div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:${bigPriceColor};line-height:1;">$${Number(bigPriceVal).toLocaleString()}</div>
