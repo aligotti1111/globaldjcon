@@ -3227,7 +3227,7 @@ function renderMobPubForm(dateKey) {
       </div>
 
       <!-- Price display -->
-      <div id="mpf-price-display" style="display:none;background:rgba(0,245,196,.06);border:1px solid rgba(0,245,196,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+      <div id="mpf-price-display" style="display:none;text-align:center;padding:1rem 0;margin-bottom:1rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Estimated Price</div>
         <div id="mpf-price-value" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--neon);letter-spacing:.04em;"></div>
         <div id="mpf-deposit-display" style="font-size:.78rem;color:var(--muted);margin-top:.25rem;"></div>
@@ -3401,9 +3401,9 @@ function mobPubRenderPackages() {
 
     card.innerHTML = `
       ${checkBadge}
-      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:var(--neon-dim);">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--white);line-height:1.1;">${title}</div>
-        ${priceHtml}
+      <div style="padding:.75rem .9rem;display:flex;align-items:center;justify-content:center;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:var(--neon);position:relative;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--black);line-height:1.1;text-align:center;">${title}</div>
+        ${priceHtml ? `<div style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);">${priceHtml}</div>` : ''}
       </div>
       ${(details || photo) ? `<div style="padding:.75rem .9rem ${isSelected?'2.3rem':'.75rem'};display:flex;gap:.75rem;align-items:flex-start;flex:1;">
         ${thumbHtml}
