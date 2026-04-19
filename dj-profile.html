@@ -3230,7 +3230,7 @@ function renderMobPubForm(dateKey) {
       <!-- Price display -->
       <div id="mpf-price-display" style="display:none;text-align:center;padding:1rem 0;margin-bottom:1rem;">
         <div style="font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Estimated Price</div>
-        <div id="mpf-price-value" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--neon);letter-spacing:.04em;"></div>
+        <div id="mpf-price-value" style="font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--neon);letter-spacing:.04em;"></div>
         <div id="mpf-deposit-display" style="font-size:.78rem;color:var(--muted);margin-top:.25rem;"></div>
         <div id="mpf-overtime-note" style="display:none;font-size:.72rem;color:var(--amber);margin-top:.35rem;"></div>
       </div>
@@ -3366,14 +3366,13 @@ function mobPubRenderPackages() {
     // Price preview
     let priceHtml = '';
     if (pkg.reqAll) {
-      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon-dark);white-space:nowrap;">Price on request</div>`;
+      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon-dark);white-space:nowrap;font-weight:700;">Price on request</div>`;
     } else {
       const has4 = pkg.price4, has5 = pkg.price5, has6 = pkg.price6;
       if (has4||has5||has6) {
         const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
         priceHtml = `<div style="text-align:right;line-height:1;white-space:nowrap;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon-dark);margin-bottom:.2rem;">From</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon-dark);">$${Number(price).toLocaleString()}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em;color:var(--neon-dark);">$${Number(price).toLocaleString()}</div>
         </div>`;
       }
     }
@@ -3498,7 +3497,7 @@ function mobPubCalcPrice() {
   } else {
     priceVal.textContent = `$${price.toLocaleString()}`;
     priceVal.style.color = 'var(--neon)';
-    priceVal.style.fontSize = '2rem';
+    priceVal.style.fontSize = '3rem';
     if (depositPct > 0) {
       const dep = (price * depositPct / 100).toFixed(2);
       if (depositDisplay) depositDisplay.textContent = `Deposit required: $${Number(dep).toLocaleString()} (${depositPct}%)`;
