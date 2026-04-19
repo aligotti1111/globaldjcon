@@ -3335,7 +3335,7 @@ function mobPubRenderPackages() {
   }
 
   wrap.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.6rem;">Select a Package</div>
-    <div id="mpf-pkg-list" style="display:flex;flex-direction:column;gap:.5rem;"></div>`;
+    <div id="mpf-pkg-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>`;
 
   const list = document.getElementById('mpf-pkg-list');
   const generalPkgs = (bs.mob_packages || {})['general'] || [];
@@ -3349,28 +3349,76 @@ function mobPubRenderPackages() {
     if (!title) return;
     const card = document.createElement('div');
     const isSelected = mobPubSelectedPkg === idx;
-    card.style.cssText = `padding:.85rem 1rem;background:${isSelected?'rgba(0,245,196,.08)':'var(--deep)'};border:1px solid ${isSelected?'var(--neon)':'var(--border)'};border-radius:8px;cursor:pointer;transition:all .15s;`;
+    card.style.cssText = `position:relative;background:${isSelected?'rgba(0,245,196,.06)':'var(--deep)'};border:1px solid ${isSelected?'var(--neon)':'var(--border)'};border-radius:10px;cursor:pointer;transition:all .15s;overflow:hidden;${isSelected?'box-shadow:0 0 0 1px rgba(0,245,196,.35);':''}`;
+    card.onmouseenter = () => { if (!isSelected) card.style.borderColor = 'rgba(0,245,196,.4)'; };
+    card.onmouseleave = () => { if (!isSelected) card.style.borderColor = 'var(--border)'; };
     card.onclick = () => { mobPubSelectedPkg = idx; mobPubRenderPackages(); mobPubCalcPrice(); };
 
-    let pricePreview = '';
+    // Price preview
+    let priceHtml = '';
     if (pkg.reqAll) {
-      pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">Price on request</span>`;
+      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;">Price on request</div>`;
     } else {
       const has4 = pkg.price4, has5 = pkg.price5, has6 = pkg.price6;
       if (has4||has5||has6) {
         const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
-        pricePreview = `<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);">from $${Number(price).toLocaleString()}</span>`;
+        priceHtml = `<div style="text-align:right;line-height:1;white-space:nowrap;">
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;">From</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon);">$${Number(price).toLocaleString()}</div>
+        </div>`;
       }
     }
 
+    // Parse details into bullet items (if it's already a <ul>, split; otherwise treat as plain text)
+    let detailsHtml = '';
+    if (details) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = details;
+      const lis = tmp.querySelectorAll('li');
+      if (lis.length) {
+        detailsHtml = '<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.3rem;">' +
+          Array.from(lis).map(li => `<li style="display:flex;gap:.5rem;align-items:flex-start;font-size:.82rem;color:var(--white);line-height:1.4;">
+            <span style="color:var(--neon);flex-shrink:0;margin-top:1px;">✓</span>
+            <span>${li.innerHTML}</span>
+          </li>`).join('') + '</ul>';
+      } else {
+        detailsHtml = `<div style="font-size:.82rem;color:var(--white);line-height:1.5;opacity:.85;">${details}</div>`;
+      }
+    }
+
+    // Photo thumbnail if present
+    const thumbId = `pkg-thumb-${mobPubDjData.id || 'x'}-${idx}`;
+    const thumbHtml = photo ? `
+      <div style="flex-shrink:0;width:88px;height:88px;border-radius:6px;overflow:hidden;background:var(--card);border:1px solid var(--border);position:relative;cursor:zoom-in;" id="${thumbId}">
+        <img src="${photo}" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent 50%);pointer-events:none;"></div>
+        <div style="position:absolute;bottom:3px;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);pointer-events:none;">Sample</div>
+      </div>` : '';
+
+    // Selected check badge
+    const checkBadge = isSelected ? `
+      <div style="position:absolute;top:.6rem;right:.6rem;width:22px;height:22px;border-radius:50%;background:var(--neon);display:flex;align-items:center;justify-content:center;z-index:2;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>` : '';
+
     card.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${details?'.4rem':'0'};">
-        <div style="font-weight:600;font-size:.92rem;color:var(--white);">${title}</div>
-        ${pricePreview}
+      ${checkBadge}
+      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};${isSelected?'background:rgba(0,245,196,.04);':''}">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--white);line-height:1.1;padding-right:${isSelected?'1.8rem':'0'};">${title}</div>
+        ${priceHtml}
       </div>
-      ${details ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.5;">${details}</div>` : ''}
-      ${photo ? `<a href="#" onclick="mobPubViewPhoto(event,'${photo}')" style="display:inline-block;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);text-decoration:underline;text-underline-offset:3px;">View sample of setup</a>` : ''}
-      ${isSelected ? `<div style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--neon);letter-spacing:.06em;">✓ SELECTED</div>` : ''}`;
+      ${(details || photo) ? `<div style="padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start;">
+        ${thumbHtml}
+        <div style="flex:1;min-width:0;">${detailsHtml || '<div style="font-size:.78rem;color:var(--muted);font-style:italic;">Details available on request</div>'}</div>
+      </div>` : ''}`;
+
+    // Wire the thumbnail click separately so it doesn't also trigger card select
+    if (photo) {
+      setTimeout(() => {
+        const thumb = document.getElementById(thumbId);
+        if (thumb) thumb.onclick = (e) => { e.stopPropagation(); mobPubViewPhoto(e, photo); };
+      }, 0);
+    }
     list.appendChild(card);
   });
 }
