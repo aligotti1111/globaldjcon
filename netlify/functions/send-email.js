@@ -248,7 +248,7 @@ exports.handler = async (event) => {
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:6px;">Package</div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3em;color:#1a1a2e;margin-bottom:10px;">${escHtml(packageTitle)}</div>
           ${packageDetails ? `<div style="color:#333;line-height:1.6;font-size:14px;">${packageDetails}</div>
-          <div style="margin-top:10px;font-size:11px;color:#888;">Items in <span style="color:#FFB347;font-weight:700;">amber</span> have changed from the original package.</div>` : ''}
+          <div style="margin-top:10px;font-size:11px;color:#888;">Items in <span style="color:#FFB347;font-weight:700;">amber</span> have changed; items with a <span style="color:#FFB347;text-decoration:line-through;">strikethrough</span> were removed.</div>` : ''}
         </div>` : ''}
         <a href="${SITE_URL}/inbox.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to DJ</a>
       `)
