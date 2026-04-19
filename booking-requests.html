@@ -245,8 +245,20 @@ header{position:relative;z-index:10;border-bottom:1px solid var(--border);backgr
         <div id="counter-mob-cocktail" style="display:none;margin-top:.4rem;font-size:.65rem;color:var(--neon);background:rgba(0,245,196,.08);border:1px solid rgba(0,245,196,.25);border-radius:4px;padding:.25rem .5rem;"></div>
       </div>
       <div id="counter-mob-pkg" style="display:none;border-top:1px solid var(--border);">
-        <div id="counter-mob-pkg-title" style="padding:.3rem .8rem;font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.04em;color:var(--white);line-height:1.1;background:rgba(255,255,255,.03);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.3rem .5rem .3rem .8rem;background:rgba(255,255,255,.03);">
+          <div id="counter-mob-pkg-title" style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.04em;color:var(--white);line-height:1.1;"></div>
+          <button type="button" id="counter-mob-pkg-edit-btn" onclick="startPkgEdit()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;padding:.2rem .35rem;display:flex;align-items:center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+        </div>
         <div id="counter-mob-pkg-details" style="display:none;padding:.45rem .8rem .45rem 1.1rem;font-size:.72rem;color:var(--white);line-height:1.5;border-top:1px solid var(--border);word-wrap:break-word;overflow-wrap:break-word;"></div>
+        <div id="counter-mob-pkg-editor" style="display:none;border-top:1px solid var(--border);padding:.5rem .8rem;">
+          <textarea id="counter-mob-pkg-textarea" rows="5" placeholder="One item per line" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem;color:var(--white);font-size:.75rem;font-family:'DM Sans',sans-serif;resize:vertical;"></textarea>
+          <div style="display:flex;gap:.4rem;margin-top:.4rem;">
+            <button type="button" onclick="savePkgEdit()" style="flex:1;background:var(--amber);color:var(--black);border:none;border-radius:4px;padding:.35rem .5rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-weight:700;">Save</button>
+            <button type="button" onclick="cancelPkgEdit()" style="flex:1;background:none;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:.35rem .5rem;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="counter-current-rate" style="display:none;border:1px solid var(--amber);border-radius:8px;padding:.65rem .9rem;margin-bottom:1rem;background:rgba(255,179,71,.05);">
@@ -302,6 +314,8 @@ let activeMsgBookingId = null;
 let activeMsgUserId = null;
 let incomingBookings = [];
 let outgoingBookings = [];
+let pkgEditOriginalItems = []; // original <li> text items for diffing
+let pkgEditCurrentHtml = ''; // current package_details HTML (with any amber spans)
 
 // Club/Bar DJ = has incoming booking feature; mobile DJs and all other roles = outgoing only
 const isClubBarDJ = currentUser && currentUser.role === 'dj' && currentUser.dj_type !== 'mobile';
@@ -1457,6 +1471,62 @@ async function _doUpdateStatus(bookingId, status) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+// Extract package details <li> items as plain text (strips amber spans). Returns array of strings.
+function extractPkgItems(html) {
+  if (!html) return [];
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const lis = tmp.querySelectorAll('li');
+  if (lis.length === 0) {
+    // No list structure — treat as single-item
+    const txt = tmp.textContent.trim();
+    return txt ? [txt] : [];
+  }
+  return Array.from(lis).map(li => li.textContent.trim()).filter(Boolean);
+}
+
+function startPkgEdit() {
+  const pkgDet = document.getElementById('counter-mob-pkg-details');
+  const editor = document.getElementById('counter-mob-pkg-editor');
+  const textarea = document.getElementById('counter-mob-pkg-textarea');
+  const items = extractPkgItems(pkgEditCurrentHtml);
+  textarea.value = items.join('\n');
+  pkgDet.style.display = 'none';
+  editor.style.display = 'block';
+  textarea.focus();
+}
+
+function cancelPkgEdit() {
+  const pkgDet = document.getElementById('counter-mob-pkg-details');
+  const editor = document.getElementById('counter-mob-pkg-editor');
+  editor.style.display = 'none';
+  if (pkgEditCurrentHtml) {
+    pkgDet.innerHTML = pkgEditCurrentHtml;
+    pkgDet.style.display = 'block';
+  }
+}
+
+function savePkgEdit() {
+  const textarea = document.getElementById('counter-mob-pkg-textarea');
+  const pkgDet = document.getElementById('counter-mob-pkg-details');
+  const editor = document.getElementById('counter-mob-pkg-editor');
+  const newItems = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
+  const origSet = new Set(pkgEditOriginalItems);
+  // Build new HTML with amber span around changed/new items
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const liHtml = newItems.map(item => {
+    if (origSet.has(item)) {
+      return `<li>${esc(item)}</li>`;
+    }
+    return `<li style="color:#FFB347;">${esc(item)}</li>`;
+  }).join('');
+  const newHtml = newItems.length ? `<ul>${liHtml}</ul>` : '';
+  pkgEditCurrentHtml = newHtml;
+  pkgDet.innerHTML = newHtml;
+  pkgDet.style.display = newHtml ? 'block' : 'none';
+  editor.style.display = 'none';
+}
+
 function openCounter(bookingId, currency, group, counterRate, offerAmount, quotedRate) {
   activeCounterBookingId = bookingId;
   activeCounterGroup = group;
@@ -1535,6 +1605,9 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
 
     // Package
     const pkgWrap = document.getElementById('counter-mob-pkg');
+    const pkgEditBtn = document.getElementById('counter-mob-pkg-edit-btn');
+    const pkgEditor = document.getElementById('counter-mob-pkg-editor');
+    if (pkgEditor) pkgEditor.style.display = 'none';
     if (b.package_title) {
       document.getElementById('counter-mob-pkg-title').textContent = b.package_title;
       const pkgDet = document.getElementById('counter-mob-pkg-details');
@@ -1542,10 +1615,17 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
         pkgDet.innerHTML = b.package_details;
         pkgDet.style.display = 'block';
       } else {
+        pkgDet.innerHTML = '';
         pkgDet.style.display = 'none';
       }
+      // Seed editor state: capture current <li> texts as originals (stripping existing amber spans first)
+      pkgEditCurrentHtml = b.package_details || '';
+      pkgEditOriginalItems = extractPkgItems(pkgEditCurrentHtml);
+      // Pencil only for DJ countering mobile booking
+      if (pkgEditBtn) pkgEditBtn.style.display = (group === 'in') ? 'flex' : 'none';
       pkgWrap.style.display = 'block';
     } else {
+      if (pkgEditBtn) pkgEditBtn.style.display = 'none';
       pkgWrap.style.display = 'none';
     }
     mobEl.style.display = 'block';
@@ -1581,16 +1661,21 @@ async function submitCounter() {
       const { data: current } = await db.from('bookings').select('negotiation_log').eq('id', activeCounterBookingId).single();
       const log = current?.negotiation_log || [];
       log.push({ from: 'dj', amount: Number(amount), message, created_at: new Date().toISOString() });
-      const { error } = await db.from('bookings').update({ status: 'counter', counter_rate: amount, counter_message: message, negotiation_log: log, updated_at: new Date().toISOString() }).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
+      // If DJ edited package details, include the updated HTML (with amber spans) in the update
+      const updatePayload = { status: 'counter', counter_rate: amount, counter_message: message, negotiation_log: log, updated_at: new Date().toISOString() };
+      const bRef = incomingBookings.find(x => x.id === activeCounterBookingId);
+      const pkgChanged = bRef && bRef.booking_type === 'mobile' && pkgEditCurrentHtml !== (bRef.package_details || '');
+      if (pkgChanged) updatePayload.package_details = pkgEditCurrentHtml;
+      const { error } = await db.from('bookings').update(updatePayload).eq('id', activeCounterBookingId).eq('dj_id', currentUser.id);
       if (error) throw error;
       const b = incomingBookings.find(x => x.id === activeCounterBookingId);
-      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; }
+      if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; if (pkgChanged) b.package_details = pkgEditCurrentHtml; }
       if (b) {
         const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
         if (requester?.email) {
           fetch('/.netlify/functions/send-email', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ type: 'booking_counter', recipientName: requester.name, recipientEmail: requester.email, senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+            body: JSON.stringify({ type: 'booking_counter', recipientName: requester.name, recipientEmail: requester.email, senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency, packageTitle: b.package_title, packageDetails: b.package_details })
           }).catch(() => {});
         }
       }
