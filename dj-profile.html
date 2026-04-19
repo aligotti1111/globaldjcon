@@ -3240,7 +3240,7 @@ function renderMobPubForm(dateKey) {
         <textarea id="mpf-message" placeholder="Tell the DJ about your event..." rows="3" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;color:var(--white);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;"></textarea>
       </div>
 
-      <button type="button" id="mpf-submit-btn" onclick="mobPubSubmit('${dateKey}')" style="width:100%;padding:.9rem;background:var(--white);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Request Booking</button>
+      <button type="button" id="mpf-submit-btn" onclick="mobPubSubmit('${dateKey}')" style="width:100%;padding:.9rem;background:var(--neon);border:none;border-radius:6px;color:var(--black);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Request Booking</button>
     </div>`;
 
   // Render packages for any already-selected event type (none yet)
@@ -3365,14 +3365,14 @@ function mobPubRenderPackages() {
     // Price preview
     let priceHtml = '';
     if (pkg.reqAll) {
-      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;">Price on request</div>`;
+      priceHtml = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);white-space:nowrap;">Price on request</div>`;
     } else {
       const has4 = pkg.price4, has5 = pkg.price5, has6 = pkg.price6;
       if (has4||has5||has6) {
         const price = has4?pkg.price4:has5?pkg.price5:pkg.price6;
         priceHtml = `<div style="text-align:right;line-height:1;white-space:nowrap;">
-          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:.2rem;">From</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--amber);">$${Number(price).toLocaleString()}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.2rem;">From</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon);">$${Number(price).toLocaleString()}</div>
         </div>`;
       }
     }
@@ -3406,8 +3406,8 @@ function mobPubRenderPackages() {
         ${priceHtml ? `<div style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);">${priceHtml}</div>` : ''}
       </div>
       ${(details || photo) ? `<div style="padding:.75rem .9rem ${isSelected?'2.3rem':'.75rem'};display:flex;gap:.75rem;align-items:flex-start;flex:1;">
-        ${thumbHtml}
         <div style="flex:1;min-width:0;">${detailsHtml || '<div style="font-size:.78rem;color:var(--muted);font-style:italic;">Details available on request</div>'}</div>
+        ${thumbHtml}
       </div>` : (isSelected ? '<div style="height:2rem;"></div>' : '')}`;
 
     // Wire the thumbnail click separately so it doesn't also trigger card select
@@ -3493,7 +3493,7 @@ function mobPubCalcPrice() {
     priceVal.style.fontSize = '1.2rem';
     if (depositDisplay) depositDisplay.textContent = '';
     if (overtimeNote) overtimeNote.style.display = 'none';
-    if (submitBtn) { submitBtn.textContent = 'Request Quote'; submitBtn.style.background = 'var(--muted)'; }
+    if (submitBtn) { submitBtn.textContent = 'Request Quote'; submitBtn.style.background = 'var(--neon)'; }
   } else {
     priceVal.textContent = `$${price.toLocaleString()}`;
     priceVal.style.color = 'var(--neon)';
@@ -3512,7 +3512,7 @@ function mobPubCalcPrice() {
         overtimeNote.style.display = 'none';
       }
     }
-    if (submitBtn) { submitBtn.textContent = 'Request Booking'; submitBtn.style.background = 'var(--white)'; }
+    if (submitBtn) { submitBtn.textContent = 'Request Booking'; submitBtn.style.background = 'var(--neon)'; }
   }
 }
 
