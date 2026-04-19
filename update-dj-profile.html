@@ -312,6 +312,9 @@ input[type=number] { -moz-appearance:textfield; }
 /* Rate field styling */
 .currency-symbol { color:var(--neon) !important; }
 input[type=number] { color:var(--neon) !important; }
+ul.gdj-check-list{list-style:none;padding-left:.25rem;margin:.25rem 0;}
+ul.gdj-check-list li{position:relative;padding-left:1.5rem;margin-bottom:.25rem;}
+ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:var(--neon);font-weight:700;}
 </style>
 </head>
 <body>
@@ -3238,6 +3241,7 @@ function buildCatPane(container, cat, idx) {
       <button type="button" onclick="pkgCmd('underline','${editorId}')" style="${btnStyle}text-decoration:underline;">U</button>
       <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
       <button type="button" onclick="pkgCmd('insertUnorderedList','${editorId}')" style="${btnStyle}">• List</button>
+      <button type="button" onclick="pkgCheckList('${editorId}')" style="${btnStyle}color:var(--neon);">✓ List</button>
       <button type="button" onclick="pkgCmd('insertOrderedList','${editorId}')" style="${btnStyle}">1. List</button>
       <span style="width:1px;height:18px;background:var(--border);margin:0 2px;"></span>
       <select id="font-sel-${cat}-${idx}" onchange="pkgFont(this,'${editorId}')" style="padding:.22rem .4rem;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--white);font-size:.72rem;cursor:pointer;outline:none;min-width:90px;">
@@ -3451,6 +3455,38 @@ function pkgCmd(cmd, editorId) {
   const el = document.getElementById(editorId);
   if (el) el.focus();
   document.execCommand(cmd, false, null);
+}
+
+// Insert (or toggle) a checkmark-styled bulleted list. Uses execCommand('insertUnorderedList')
+// and then finds the enclosing <ul> at the selection and stamps class="gdj-check-list"
+// so both the editor preview and the public booking page can render it as a ✓ list.
+function pkgCheckList(editorId) {
+  const el = document.getElementById(editorId);
+  if (!el) return;
+  el.focus();
+  // Find the <ul> the selection is inside (if any) BEFORE running the command
+  const getContainingUL = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node = sel.anchorNode;
+    if (!node) return null;
+    if (node.nodeType === 3) node = node.parentElement;
+    while (node && node !== el) {
+      if (node.tagName === 'UL') return node;
+      node = node.parentElement;
+    }
+    return null;
+  };
+  const existingUL = getContainingUL();
+  if (existingUL) {
+    // Already in a UL — toggle the class rather than running the command (which would unwrap it)
+    existingUL.classList.toggle('gdj-check-list');
+  } else {
+    document.execCommand('insertUnorderedList', false, null);
+    const newUL = getContainingUL();
+    if (newUL) newUL.classList.add('gdj-check-list');
+  }
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function pkgFont(select, editorId) {

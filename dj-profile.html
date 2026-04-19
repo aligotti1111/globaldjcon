@@ -391,6 +391,14 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .ib-msg-modal .ib-submit-btn{background:var(--neon);border:none;color:var(--black);padding:.8rem 2rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:opacity .2s;width:100%;}
 .ib-msg-modal .ib-submit-btn:hover{opacity:.85;}
 @media(max-width:600px){#ib-root .ib-form-row-half{grid-template-columns:1fr;}#ib-root #ib-event-date,#ib-root #ib-start-time,#ib-root #ib-end-time{font-size:.65rem !important;padding:.5rem .2rem !important;}}
+.mpf-pkg-grid{display:grid;grid-template-columns:1fr;gap:.75rem;}
+@media (min-width:760px){.mpf-pkg-grid{grid-template-columns:1fr 1fr;}}
+.mpf-pkg-details-body ul{margin:.25rem 0;padding-left:1.1rem;}
+.mpf-pkg-details-body ol{margin:.25rem 0;padding-left:1.25rem;}
+.mpf-pkg-details-body li{margin-bottom:.2rem;}
+.mpf-pkg-details-body ul.gdj-check-list{list-style:none;padding-left:.25rem;}
+.mpf-pkg-details-body ul.gdj-check-list li{position:relative;padding-left:1.5rem;margin-bottom:.25rem;}
+.mpf-pkg-details-body ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:var(--neon);font-weight:700;}
 </style>
 </head>
 <body>
@@ -3335,7 +3343,7 @@ function mobPubRenderPackages() {
   }
 
   wrap.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--white);margin-bottom:.6rem;">Select a Package</div>
-    <div id="mpf-pkg-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>`;
+    <div id="mpf-pkg-list" class="mpf-pkg-grid"></div>`;
 
   const list = document.getElementById('mpf-pkg-list');
   const generalPkgs = (bs.mob_packages || {})['general'] || [];
@@ -3349,8 +3357,8 @@ function mobPubRenderPackages() {
     if (!title) return;
     const card = document.createElement('div');
     const isSelected = mobPubSelectedPkg === idx;
-    card.style.cssText = `position:relative;background:${isSelected?'rgba(0,245,196,.06)':'var(--deep)'};border:1px solid ${isSelected?'var(--neon)':'var(--border)'};border-radius:10px;cursor:pointer;transition:all .15s;overflow:hidden;${isSelected?'box-shadow:0 0 0 1px rgba(0,245,196,.35);':''}`;
-    card.onmouseenter = () => { if (!isSelected) card.style.borderColor = 'rgba(0,245,196,.4)'; };
+    card.style.cssText = `position:relative;background:var(--deep);border:1px solid ${isSelected?'var(--white)':'var(--border)'};border-radius:10px;cursor:pointer;transition:border-color .15s;overflow:hidden;display:flex;flex-direction:column;`;
+    card.onmouseenter = () => { if (!isSelected) card.style.borderColor = 'rgba(255,255,255,.35)'; };
     card.onmouseleave = () => { if (!isSelected) card.style.borderColor = 'var(--border)'; };
     card.onclick = () => { mobPubSelectedPkg = idx; mobPubRenderPackages(); mobPubCalcPrice(); };
 
@@ -3369,21 +3377,11 @@ function mobPubRenderPackages() {
       }
     }
 
-    // Parse details into bullet items (if it's already a <ul>, split; otherwise treat as plain text)
+    // Render details as-is (preserves whatever formatting the DJ chose: plain bullets,
+    // numbered list, or the gdj-check-list variant, all styled via CSS)
     let detailsHtml = '';
     if (details) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = details;
-      const lis = tmp.querySelectorAll('li');
-      if (lis.length) {
-        detailsHtml = '<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.3rem;">' +
-          Array.from(lis).map(li => `<li style="display:flex;gap:.5rem;align-items:flex-start;font-size:.82rem;color:var(--white);line-height:1.4;">
-            <span style="color:var(--neon);flex-shrink:0;margin-top:1px;">✓</span>
-            <span>${li.innerHTML}</span>
-          </li>`).join('') + '</ul>';
-      } else {
-        detailsHtml = `<div style="font-size:.82rem;color:var(--white);line-height:1.5;opacity:.85;">${details}</div>`;
-      }
+      detailsHtml = `<div class="mpf-pkg-details-body" style="font-size:.82rem;color:var(--white);line-height:1.5;">${details}</div>`;
     }
 
     // Photo thumbnail if present
@@ -3395,22 +3393,22 @@ function mobPubRenderPackages() {
         <div style="position:absolute;bottom:3px;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.06em;text-transform:uppercase;color:var(--white);pointer-events:none;">Sample</div>
       </div>` : '';
 
-    // Selected check badge
+    // Selected check badge — bottom-right so it doesn't overlap title or price
     const checkBadge = isSelected ? `
-      <div style="position:absolute;top:.6rem;right:.6rem;width:22px;height:22px;border-radius:50%;background:var(--neon);display:flex;align-items:center;justify-content:center;z-index:2;">
+      <div style="position:absolute;bottom:.6rem;right:.6rem;width:22px;height:22px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;z-index:2;">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
       </div>` : '';
 
     card.innerHTML = `
       ${checkBadge}
-      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};${isSelected?'background:rgba(0,245,196,.04);':''}">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--white);line-height:1.1;padding-right:${isSelected?'1.8rem':'0'};">${title}</div>
+      <div style="padding:.75rem .9rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:${details||photo?'1px solid var(--border)':'none'};background:rgba(0,245,196,.08);">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.03em;color:var(--white);line-height:1.1;">${title}</div>
         ${priceHtml}
       </div>
-      ${(details || photo) ? `<div style="padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start;">
+      ${(details || photo) ? `<div style="padding:.75rem .9rem ${isSelected?'2.3rem':'.75rem'};display:flex;gap:.75rem;align-items:flex-start;flex:1;">
         ${thumbHtml}
         <div style="flex:1;min-width:0;">${detailsHtml || '<div style="font-size:.78rem;color:var(--muted);font-style:italic;">Details available on request</div>'}</div>
-      </div>` : ''}`;
+      </div>` : (isSelected ? '<div style="height:2rem;"></div>' : '')}`;
 
     // Wire the thumbnail click separately so it doesn't also trigger card select
     if (photo) {
