@@ -659,7 +659,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
         ${durationLabel ? `
         <div style="text-align:center;">
           <div style="font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem;">Duration</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--neon);line-height:1;">${durationLabel}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:.05em;color:var(--neon);line-height:1;">${durationLabel}</div>
         </div>` : ''}
       </div>` : (isQuote ? `
       <div style="padding:.85rem 1rem;text-align:center;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--amber);">Awaiting price from DJ</div>` : '');
@@ -682,7 +682,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
         pkgRemovedItems = Array.from(tmp.querySelectorAll('li')).map(li => li.textContent.trim()).filter(Boolean);
       }
     }
-    const editedPill = pkgEdited ? `<div style="padding:.3rem .9rem .3rem 1.85rem;"><span style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:1px 6px;">Edited</span></div>` : '';
+    const editedTag = pkgEdited ? `<div style="text-align:right;margin-top:.35rem;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);">Edited</div>` : '';
     const removedBox = pkgRemovedItems.length ? `
       <div style="border-top:1px solid var(--amber);background:rgba(255,179,71,.06);">
         <div style="padding:.35rem .9rem;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);">Removed</div>
@@ -694,8 +694,7 @@ function renderMobileCard(b, isIncoming, orderNum) {
     const pkgSection = hasPkg ? `
       <div id="pkg-block-${b.id}">
         <div style="padding:.75rem .9rem;background:rgba(255,255,255,.03);font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--white);line-height:1;">${b.package_title}</div>
-        ${editedPill}
-        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem .6rem 1.85rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${pkgActiveHtml ? '' : 'none'};">${pkgActiveHtml}</div>
+        <div id="pkg-details-${b.id}" style="padding:.6rem .9rem .6rem 1.85rem;font-size:.8rem;color:var(--white);line-height:1.6;border-top:1px solid var(--border);display:${(pkgActiveHtml || pkgEdited) ? '' : 'none'};">${pkgActiveHtml}${editedTag}</div>
         ${removedBox}
       </div>` : '';
 
