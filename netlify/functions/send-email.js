@@ -230,7 +230,7 @@ exports.handler = async (event) => {
     };
 
   } else if (type === 'booking_counter') {
-    const { requesterName, requesterEmail, djName, counterRate, counterMessage, eventDate, venueName, currency } = body;
+    const { requesterName, requesterEmail, djName, counterRate, counterMessage, eventDate, venueName, currency, packageTitle, packageDetails } = body;
     const sym = {USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$'}[currency||'USD'] || '$';
     const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
     emailPayload = {
@@ -244,101 +244,13 @@ exports.handler = async (event) => {
           <div style="font-size:2em;font-weight:700;color:#00b89a;">${sym}${Number(counterRate).toLocaleString()} <span style="font-size:.6em;color:#888;">${currency||'USD'}</span></div>
           ${counterMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(counterMessage)}"</div>` : ''}
         </div>
+        ${packageTitle ? `<div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:6px;">Package</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3em;color:#1a1a2e;margin-bottom:10px;">${escHtml(packageTitle)}</div>
+          ${packageDetails ? `<div style="color:#333;line-height:1.6;font-size:14px;">${packageDetails}</div>
+          <div style="margin-top:10px;font-size:11px;color:#888;">Items in <span style="color:#FFB347;font-weight:700;">amber</span> have changed from the original package.</div>` : ''}
+        </div>` : ''}
         <a href="${SITE_URL}/inbox.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to DJ</a>
-      `)
-    };
-
-  // ── MOBILE BOOKING REQUEST (to DJ) ────────────────────────────────
-  } else if (type === 'mob_booking_request') {
-    const { djName, djEmail, requesterName, eventDate, eventType, venueName, venueAddress, roomDetails, guestCount, packageTitle, packageCategory, startTime, endTime, cocktailNeeded, cocktailStartTime, cocktailSameRoom, totalPrice, depositAmount, depositPct, notes, isQuote, djZip, venueZip } = body;
-    const formatT = t => { if(!t) return ''; const [h,m]=t.split(':').map(Number); const p=h<12?'AM':'PM'; return (h%12||12)+':'+String(m).padStart(2,'0')+' '+p; };
-    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
-    const subject = isQuote ? `Quote Request from ${escHtml(requesterName)} – ${dateStr}` : `New Booking Request from ${escHtml(requesterName)} – ${dateStr}`;
-    emailPayload = {
-      from: FROM, reply_to: REPLY_TO, to: [djEmail],
-      subject,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${isQuote ? 'Quote Request' : 'New Booking Request'}</h2>
-        <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(djName)}, you have a new ${isQuote ? 'quote request' : 'booking request'} from <strong>${escHtml(requesterName)}</strong>.</p>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Date</td></tr>
-          <tr><td style="color:#1a1a2e;padding-bottom:12px;font-weight:600;">${dateStr}</td></tr>
-          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Event Type</td></tr>
-          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${escHtml(eventType||'—')}</td></tr>
-          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Venue</td></tr>
-          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${escHtml(venueName||'—')}${venueAddress?'<br><span style="color:#888;font-size:12px;">'+escHtml(venueAddress)+'</span>':''}${roomDetails?'<br><span style="color:#888;font-size:12px;">'+escHtml(roomDetails)+'</span>':''}</td></tr>
-          ${guestCount ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Guests</td></tr><tr><td style="color:#1a1a2e;padding-bottom:12px;">${escHtml(String(guestCount))}</td></tr>` : ''}
-          <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">${packageCategory === 'wedding' ? 'Reception Time' : 'Event Time'}</td></tr>
-          <tr><td style="color:#1a1a2e;padding-bottom:12px;">${formatT(startTime)}${endTime?' – '+formatT(endTime):''}</td></tr>
-          ${cocktailNeeded ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Cocktail Hour</td></tr><tr><td style="color:#1a1a2e;padding-bottom:12px;">Requested · Start: ${formatT(cocktailStartTime)||'TBD'} · ${cocktailSameRoom?'Same room as reception':'Separate room'}</td></tr>` : ''}
-          ${packageTitle ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Package Selected</td></tr><tr><td style="color:#1a1a2e;padding-bottom:12px;font-weight:600;">${escHtml(packageTitle)}</td></tr>` : ''}
-          ${totalPrice && !isQuote ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Total Price</td></tr><tr><td style="color:#00b89a;font-weight:700;font-size:1.1em;padding-bottom:12px;">$${Number(totalPrice).toLocaleString()}</td></tr>` : ''}
-          ${depositAmount && !isQuote ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Deposit Required (${depositPct}%)</td></tr><tr><td style="color:#1a1a2e;font-weight:600;padding-bottom:12px;">$${Number(depositAmount).toLocaleString()}</td></tr>` : ''}
-          ${djZip && venueZip ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Distance</td></tr><tr><td style="color:#1a1a2e;padding-bottom:12px;">Your zip: ${escHtml(djZip)} · Venue zip: ${escHtml(venueZip)}</td></tr>` : ''}
-          ${notes ? `<tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Message from Booker</td></tr><tr><td style="color:#333333;line-height:1.6;padding-bottom:12px;">${escHtml(notes)}</td></tr>` : ''}
-        </table>
-        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">${isQuote ? 'Respond to Quote Request' : 'View Booking Request'}</a>
-      `)
-    };
-
-  // ── MOBILE BOOKING REQUEST CONFIRMATION (to booker) ───────────────
-  } else if (type === 'mob_booking_confirm') {
-    const { requesterName, requesterEmail, djName, eventDate, packageTitle, totalPrice, depositAmount, depositPct, isQuote } = body;
-    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
-    emailPayload = {
-      from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: isQuote ? `Quote Request Sent to ${escHtml(djName)}` : `Booking Request Sent to ${escHtml(djName)}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, your ${isQuote ? 'quote request' : 'booking request'} has been sent to <strong>${escHtml(djName)}</strong> for <strong>${dateStr}</strong>.</p>
-        ${packageTitle ? `<p style="color:#666666;margin-bottom:12px;">Package: <strong>${escHtml(packageTitle)}</strong></p>` : ''}
-        ${totalPrice && !isQuote ? `<p style="color:#666666;margin-bottom:8px;">Total: <strong style="color:#00b89a;">$${Number(totalPrice).toLocaleString()}</strong></p>` : ''}
-        ${depositAmount && !isQuote ? `<p style="color:#666666;margin-bottom:24px;">Deposit due (${depositPct}%): <strong>$${Number(depositAmount).toLocaleString()}</strong></p>` : ''}
-        ${isQuote ? `<p style="color:#666666;margin-bottom:24px;">The DJ will review your event details and send a price back to you.</p>` : `<p style="color:#666666;margin-bottom:24px;">The DJ will review and respond to your request shortly.</p>`}
-        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">View My Requests</a>
-      `)
-    };
-
-  // ── MOBILE BOOKING STATUS (approved/denied/countered — to booker) ──
-  } else if (type === 'mob_booking_status') {
-    const { requesterName, requesterEmail, djName, status, eventDate, packageTitle, counterPrice, counterMessage, djEmail } = body;
-    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
-    const statusColor = status==='approved'?'#3ddc84':status==='denied'?'#ff5f5f':'#ffb347';
-    const statusLabel = status==='approved'?'Approved':status==='denied'?'Denied':'Counter Offer';
-    const recipients = [requesterEmail];
-    if (djEmail) recipients.push(djEmail);
-    emailPayload = {
-      from: FROM, reply_to: REPLY_TO, to: recipients,
-      subject: `Booking ${statusLabel} – ${escHtml(djName)} · ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel}</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, your booking with <strong>${escHtml(djName)}</strong> on <strong>${dateStr}</strong> has been <span style="color:${statusColor};font-weight:700;">${statusLabel.toLowerCase()}</span>.</p>
-        ${packageTitle ? `<p style="color:#666666;margin-bottom:12px;">Package: <strong>${escHtml(packageTitle)}</strong></p>` : ''}
-        ${status==='counter' && counterPrice ? `<div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Counter Price</div><div style="font-size:2em;font-weight:700;color:#00b89a;">$${Number(counterPrice).toLocaleString()}</div>${counterMessage?`<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(counterMessage)}"</div>`:''}</div>` : ''}
-        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">View Booking</a>
-      `)
-    };
-
-  // ── MOBILE QUOTE RESPONSE (DJ sends price back to booker) ──────────
-  } else if (type === 'mob_quote_response') {
-    const { requesterName, requesterEmail, djName, eventDate, packageTitle, quotedPrice, overtimeRate, eventHours, depositAmount, depositPct, djMessage } = body;
-    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
-    const hoursLabel = eventHours ? `${eventHours} Hour Event Price` : 'Event Price';
-    emailPayload = {
-      from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
-      subject: `Price from ${escHtml(djName)} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Your Price is Ready</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent pricing for your event on <strong>${dateStr}</strong>.</p>
-        ${packageTitle ? `<p style="color:#666666;margin-bottom:12px;">Package: <strong>${escHtml(packageTitle)}</strong></p>` : ''}
-        <div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">${escHtml(hoursLabel)}</div>
-          <div style="font-size:2em;font-weight:700;color:#00b89a;margin-bottom:12px;">$${Number(quotedPrice).toLocaleString()}</div>
-          ${overtimeRate ? `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Hourly Overtime Rate</div><div style="font-size:1.3em;font-weight:700;color:#1a1a2e;margin-bottom:12px;">$${Number(overtimeRate).toLocaleString()} / hr</div>` : ''}
-          ${depositAmount ? `<div style="font-size:13px;color:#666;">Deposit required (${depositPct}%): <strong>$${Number(depositAmount).toLocaleString()}</strong></div>` : ''}
-          ${djMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(djMessage)}"</div>` : ''}
-        </div>
-        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Accept or Decline</a>
       `)
     };
 
