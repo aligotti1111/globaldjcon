@@ -6,6 +6,7 @@
 <title>Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     --black: #050507;
@@ -499,10 +500,8 @@
 // ═══════════════════════════════════════════════════════
 // SUPABASE CONFIGURATION
 // ═══════════════════════════════════════════════════════
-
-const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// db is already initialized by /auth.js as window.db
+// window.currentUser is managed by /auth.js and available via GDJAuth
 
 // ─── CONFIG ───────────────────────────────────────────
 const ADMIN_PASSWORD = 'spinlist2025';
@@ -514,7 +513,6 @@ async function loadDJs(){
     .from('users')
     .select('*')
     .eq('role', 'dj')
-    .eq('confirmed', true)
     .neq('profile_private', true)
     .order('name');
   
@@ -535,9 +533,9 @@ async function loadDJs(){
     zip: dj.zip,
     rate: dj.rate,
     rating: dj.rating || 0,
-    avail: dj.avail || 'available',
+    avail: dj.availability || 'available',
     phone: dj.phone,
-    email: dj.email,
+    email: null,
     website: dj.website,
     instagram: dj.instagram,
     tiktok: dj.tiktok,
@@ -562,8 +560,8 @@ let DJS = [];
 function goTo(view){
   // Check auth for admin panel
   if(view === 'admin') {
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-    if (!currentUser || currentUser.role !== 'admin') {
+    const isAdmin = sessionStorage.getItem('adminUser') === '1';
+    if (!isAdmin) {
       alert('Please sign in with admin credentials to access the admin panel.');
       window.location.href = 'login.html';
       return;
@@ -583,9 +581,7 @@ function doLogin(){
   window.location.href = 'login.html';
 }
 function logout(){ 
-  localStorage.removeItem('currentUser');
-  sessionStorage.removeItem('currentUser');
-  window.location.reload();
+  GDJAuth.signOut('/');
 }
 
 
@@ -706,11 +702,10 @@ const COUNTRY_NAMES = Object.keys(COUNTRY_FLAGS);
 
 // Determine active country — logged in user's country or default US
 let activeCountry = 'United States';
-(function() {
-  const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+GDJAuth.ready((cu) => {
   if (cu && cu.country) activeCountry = cu.country;
   updateCountryFlag();
-})();
+});
 
 function updateCountryFlag() {
   const flag = COUNTRY_FLAGS[activeCountry] || '🌍';
@@ -863,8 +858,8 @@ function listRowHTML(dj) {
   const typeClass = dj.type || 'none';
   const location = [dj.city, dj.state].filter(Boolean).join(', ') || '—';
   const slug = djSlug(dj);
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  const isClaimed = dj.password && dj.password.length > 0;
+  const currentUser = window.currentUser || null;
+  const isClaimed = true; // New auth system: presence in public.users means confirmed account
 
   // Check if booking is enabled for this DJ (Club/Bar DJs only)
   let bookingEnabled = false;
@@ -1008,8 +1003,8 @@ document.querySelectorAll('.pill.active').forEach(pill => updatePillText(pill, t
 
 // Check if admin hash is present and user is logged in
 if (window.location.hash === '#admin') {
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  if (currentUser && currentUser.role === 'admin') {
+  const isAdmin = sessionStorage.getItem('adminUser') === '1';
+  if (isAdmin) {
     (async () => {
       DJS = await loadDJs();
       goTo('admin');
@@ -1028,9 +1023,7 @@ window.addEventListener('openAdmin', () => {
 });
 
 // Check if user is logged in and update header buttons
-(function() {
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-  
+GDJAuth.ready((currentUser) => {
   if (currentUser) {
     document.getElementById('signin-btn').style.display = 'none';
     document.getElementById('signup-btn').style.display = 'none';
@@ -1108,7 +1101,7 @@ window.addEventListener('openAdmin', () => {
     var si = document.getElementById('signin-btn'); if (si) { si.style.setProperty('display','inline-flex','important'); si.style.fontSize = '.58rem'; si.style.padding = '.45rem .7rem'; }
     var lo = document.getElementById('mobile-menu-loggedout'); if (lo) lo.style.display = 'block';
   }
-})();
+});
 
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
