@@ -996,10 +996,14 @@ document.querySelectorAll('.pill.active').forEach(pill => updatePillText(pill, t
 
 // init
 
-// Load DJs from Supabase
-(async () => {
-  await renderPublic(true);
-})();
+// Load DJs from Supabase — wait for auth to resolve first
+GDJAuth.ready(async () => {
+  try {
+    await renderPublic(true);
+  } catch (e) {
+    console.error('[index] renderPublic failed:', e);
+  }
+});
 
 // Check if admin hash is present and user is logged in
 if (window.location.hash === '#admin') {
