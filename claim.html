@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claim Your Profile - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
 :root {
   --black: #050507;
@@ -225,8 +227,7 @@ async function submitClaim() {
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
 function gdcSetupMobileMenu(){
-  var cu=null;
-  try{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}catch(e){}
+  var cu = window.currentUser || null;
   if(!cu){
     var lo=document.getElementById('mobile-menu-loggedout');if(lo)lo.style.display='block';
     return;
@@ -239,7 +240,13 @@ function gdcSetupMobileMenu(){
     var v=document.getElementById('mobile-menu-venue');if(v)v.style.display='block';
   }
 }
-document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.ready) {
+    GDJAuth.ready(gdcSetupMobileMenu);
+  } else {
+    gdcSetupMobileMenu();
+  }
+});
 
 </script>
 
