@@ -126,7 +126,9 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields for claim_request' }) };
     }
     const profileUrl = slug ? `${SITE_URL}/${slug}` : 'N/A';
-    emailPayload = {
+
+    // Email 1: notification to admin
+    const adminPayload = {
       from: FROM,
       reply_to: [claimantEmail],
       to: [ADMIN_EMAIL],
@@ -151,6 +153,60 @@ exports.handler = async (event) => {
         <a href="mailto:${claimantEmail}?subject=Re: Your Profile Claim for ${encodeURIComponent(bizName)}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to Claimant</a>
       `)
     };
+
+    // Email 2: receipt/confirmation to the claimant
+    const claimantPayload = {
+      from: FROM,
+      to: [claimantEmail],
+      subject: `We received your claim request for ${bizName}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Claim Request Received</h2>
+        <p style="color:#333333;line-height:1.65;margin-bottom:16px;">Hi ${escHtml(claimantName)},</p>
+        <p style="color:#333333;line-height:1.65;margin-bottom:24px;">Thanks for submitting a claim request for <strong>${escHtml(bizName)}</strong>. Our team will review your submission and reach out within 1–2 business days.</p>
+        <p style="color:#333333;line-height:1.65;margin-bottom:8px;">Here's a copy of what you submitted:</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Business / DJ Name</td></tr>
+            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(bizName)}</td></tr>
+            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Profile URL</td></tr>
+            <tr><td style="padding-bottom:14px;"><a href="${profileUrl}" style="color:#00f5c4;">${profileUrl}</a></td></tr>
+            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Verification Info</td></tr>
+            <tr><td style="color:#333333;line-height:1.65;">${escHtml(verifyMsg || 'None provided').replace(/\n/g, '<br>')}</td></tr>
+          </table>
+        </div>
+        <p style="color:#666666;font-size:13px;line-height:1.65;">If you have questions in the meantime, just reply to this email.</p>
+      `)
+    };
+
+    // Send both emails in parallel
+    try {
+      const [adminRes, claimantRes] = await Promise.all([
+        fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` },
+          body: JSON.stringify(adminPayload)
+        }),
+        fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` },
+          body: JSON.stringify(claimantPayload)
+        })
+      ]);
+      const adminResult = await adminRes.json();
+      if (!adminRes.ok) {
+        console.error('Admin email send error:', adminResult);
+        return { statusCode: 500, headers, body: JSON.stringify({ error: adminResult.message || 'Admin email send failed' }) };
+      }
+      // Claimant receipt is a nice-to-have — log failures but don't fail the request
+      if (!claimantRes.ok) {
+        const claimantResult = await claimantRes.json();
+        console.error('Claimant receipt email error (non-fatal):', claimantResult);
+      }
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, id: adminResult.id }) };
+    } catch (err) {
+      console.error('Claim email error:', err);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
+    }
 
   // ── 5. CONTACT US ─────────────────────────────────────────────────
   } else if (type === 'contact_us') {
