@@ -611,15 +611,32 @@ function goToLogin(){
 function doLogin(){
   window.location.href = 'login.html';
 }
-function logout(){ 
-  if (typeof GDJAuth !== 'undefined' && GDJAuth.signOut) {
-    GDJAuth.signOut('/');
-  } else {
-    // Fallback: sign out directly and redirect
-    try { db.auth.signOut(); } catch(e) {}
-    try { sessionStorage.clear(); localStorage.removeItem('currentUser'); } catch(e) {}
-    window.location.href = '/';
-  }
+function logout(){
+  // Clear Supabase session from localStorage directly (the SDK's signOut hangs)
+  try {
+    const authKey = 'sb-hwqvzuusquruhwguqole-auth-token';
+    const raw = localStorage.getItem(authKey);
+    let token = '';
+    if (raw) {
+      try {
+        const s = JSON.parse(raw);
+        token = (s && s.access_token) || (s && s.currentSession && s.currentSession.access_token) || '';
+      } catch(e) {}
+    }
+    // Fire-and-forget server-side logout (revokes refresh token)
+    if (token) {
+      fetch('https://hwqvzuusquruhwguqole.supabase.co/auth/v1/logout', {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + token }
+      }).catch(() => {});
+    }
+    // Clear local session state
+    localStorage.removeItem(authKey);
+    sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('adminUser');
+  } catch(e) {}
+  window.location.href = '/';
 }
 
 
