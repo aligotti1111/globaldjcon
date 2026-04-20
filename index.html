@@ -504,10 +504,28 @@
 if (!window.db && window.supabase && window.supabase.createClient) {
   window.db = window.supabase.createClient(
     'https://hwqvzuusquruhwguqole.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE',
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      }
+    }
   );
 }
 const db = window.db;
+
+// Clean up URL hash after login redirect (Supabase appends tokens there).
+// We wait briefly for the SDK to process them, then remove from the URL.
+if (window.location.hash && window.location.hash.includes('access_token')) {
+  setTimeout(() => {
+    try {
+      history.replaceState(null, document.title, window.location.pathname + window.location.search);
+    } catch(e) {}
+  }, 500);
+}
 
 // ─── CONFIG ───────────────────────────────────────────
 const ADMIN_PASSWORD = 'spinlist2025';

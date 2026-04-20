@@ -27,7 +27,14 @@
 
   // Create the shared client (use existing if another script already made one on this page)
   if (!window.db) {
-    window.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      }
+    });
   }
   const db = window.db;
 
