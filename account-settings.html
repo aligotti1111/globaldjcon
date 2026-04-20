@@ -160,7 +160,7 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
 
     <div class="form-group">
       <label>Venue Page Owner</label>
-      <input type="text" id="setting-name" placeholder="Your full name">
+      <input type="text" id="setting-venue-owner-name" placeholder="Your full name">
     </div>
 
     <div class="form-group">
@@ -361,12 +361,18 @@ let currentUser = null;
 })();
 
 function initUI() {
+  // DJs manage everything (profile + account settings) in update-dj-profile.html
+  if (currentUser.role === 'dj') {
+    window.location.href = '/update-dj-profile.html';
+    return;
+  }
+
   // Pre-fill fields
   document.getElementById('setting-name').value = currentUser.name || '';
   document.getElementById('setting-email').value = currentUser.email || '';
   document.getElementById('setting-country').value = currentUser.country || '';
   document.getElementById('account-subtitle').textContent =
-    `${currentUser.role === 'host' ? 'Party Host' : currentUser.role === 'venue' ? 'Venue' : 'DJ'} Account`;
+    `${currentUser.role === 'host' ? 'Party Host' : 'Venue'} Account`;
 
   // Venue-specific sections
   if (currentUser.role === 'venue') {
@@ -380,7 +386,7 @@ function initUI() {
       const data = rows && rows[0];
       if (data) {
         document.getElementById('setting-venue-name').value = data.venue_name || '';
-        document.getElementById('setting-name').value = data.name || '';
+        document.getElementById('setting-venue-owner-name').value = data.name || '';
         document.getElementById('setting-venue-slug').value = data.slug || '';
         document.getElementById('setting-address').value = data.address || '';
         document.getElementById('setting-city').value = data.city || '';
@@ -499,7 +505,7 @@ async function saveVenueAll() {
       const ex = await apiGet('users?select=id&slug=eq.' + encodeURIComponent(slug) + '&id=neq.' + encodeURIComponent(currentUser.id) + '&limit=1');
       if (ex && ex.length > 0) throw new Error('That profile URL is already taken.');
     }
-    const ownerName = document.getElementById('setting-name').value.trim();
+    const ownerName = document.getElementById('setting-venue-owner-name').value.trim();
     const country = document.getElementById('setting-country-venue').value;
     await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
     updateCurrentUser({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
