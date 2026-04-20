@@ -156,6 +156,11 @@ button:disabled {
   color: var(--error);
   border-color: rgba(255,95,95,0.35);
 }
+.alert-success {
+  background: rgba(61,220,132,0.12);
+  color: #3ddc84;
+  border-color: rgba(61,220,132,0.35);
+}
 .links {
   text-align: center;
   margin-top: 20px;
@@ -225,89 +230,72 @@ const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function hashPassword(password) {
-  if (!password) return null;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'gdj_salt_2025');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// ── POST-CONFIRMATION BANNER ──────────────────────────────
+// Supabase appends tokens in the URL hash after email confirmation.
+// If we see them, show a success banner and strip the hash from the URL.
+(function checkJustConfirmed() {
+  const hash = window.location.hash || '';
+  const params = new URLSearchParams(window.location.search);
+  const confirmed = hash.includes('access_token') || params.get('confirmed') === '1';
+  if (confirmed) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const alertEl = document.getElementById('alert');
+      if (alertEl) {
+        alertEl.innerHTML = '<div class="alert alert-success">Your email is confirmed. You can now log in.</div>';
+      }
+    });
+    // Clean up the URL so refresh doesn't keep showing the banner
+    if (window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+})();
 
+// ── LOGIN SUBMIT ──────────────────────────────────────────
 document.getElementById('login-form').addEventListener('submit', async function(e) {
   e.preventDefault();
-  
+
   const btn = document.getElementById('submit-btn');
-  const alert = document.getElementById('alert');
-  
+  const alertEl = document.getElementById('alert');
+
   btn.disabled = true;
   btn.textContent = 'Logging In...';
-  alert.innerHTML = '';
-  
+  alertEl.innerHTML = '';
+
   const email = document.getElementById('email').value.toLowerCase();
   const password = document.getElementById('password').value;
-  
+
   try {
+    // Hardcoded admin path (kept separate from Supabase Auth for now)
     if (email === 'admin@globaldjconnect.com' && password === 'spinlist2025') {
-      sessionStorage.setItem('currentUser', JSON.stringify({
-        email: email,
-        role: 'admin',
-        name: 'Admin'
-      }));
+      sessionStorage.setItem('adminUser', '1');
       window.location.href = 'admin.html';
       return;
     }
 
-    // Try hashed password first (accounts created/edited via admin)
-    const hashedPassword = await hashPassword(password);
-    let { data, error } = await db
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('password', hashedPassword)
-      .single();
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
 
-    // Fall back to plain text (accounts created via signup before hashing was added)
-    if (error || !data) {
-      const result = await db
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-
-      if (result.error || !result.data) {
-        throw new Error('Invalid email or password');
+    if (error) {
+      if (/email not confirmed/i.test(error.message)) {
+        throw new Error('Please confirm your email before logging in. Check your inbox for the confirmation link.');
       }
-
-      data = result.data;
-
-      // Migrate plain text password to hashed for next login
-      await db.from('users').update({ password: hashedPassword }).eq('id', data.id);
+      if (/invalid login credentials/i.test(error.message)) {
+        throw new Error('Invalid email or password.');
+      }
+      throw error;
     }
-    
-    if (!data.confirmed) {
-      throw new Error('Please confirm your email before logging in');
+
+    if (!data || !data.session) {
+      throw new Error('Login failed. Please try again.');
     }
-    
-    sessionStorage.setItem('currentUser', JSON.stringify(data));
-    localStorage.setItem('currentUser', JSON.stringify(data));
-    
-    // Role-based redirect
+
+    // Successful login — redirect
     const params = new URLSearchParams(window.location.search);
     const returnUrl = params.get('return');
-    if (returnUrl) {
-      window.location.href = returnUrl;
-    } else if (data.role === 'admin') {
-      window.location.href = 'admin.html';
-    } else if (data.role === 'dj') {
-      window.location.href = 'index.html';
-    } else {
-      window.location.href = 'index.html';
-    }
-    
+    window.location.href = returnUrl || '/';
+
   } catch (error) {
-    alert.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+    alertEl.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
     btn.disabled = false;
     btn.textContent = 'Log In';
   }
