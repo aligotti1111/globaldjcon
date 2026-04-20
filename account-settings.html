@@ -6,12 +6,12 @@
 <title>Account Settings - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <script>
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
 function gdcSetupMobileMenu(){
-  var cu=null;
-  try{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}catch(e){}
+  var cu = window.currentUser || null;
   if(!cu){
     var lo=document.getElementById('mobile-menu-loggedout');if(lo)lo.style.display='block';
     return;
@@ -24,7 +24,14 @@ function gdcSetupMobileMenu(){
     var v=document.getElementById('mobile-menu-venue');if(v)v.style.display='block';
   }
 }
-document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
+// Wait for GDJAuth (auth.js) to resolve the session before setting up the menu
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.ready) {
+    GDJAuth.ready(gdcSetupMobileMenu);
+  } else {
+    gdcSetupMobileMenu();
+  }
+});
 
 </script>
 <style>
@@ -300,40 +307,91 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
 <script>
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// The SDK is used only for auth.updateUser (email/password). DB reads/writes use raw fetch.
+const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
+});
 
-const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-if (!currentUser) { window.location.href = '/login.html'; }
+// ── Session + raw-fetch helpers (SDK query chains can hang) ───────────────
+const AUTH_KEY = 'sb-hwqvzuusquruhwguqole-auth-token';
+function getAccessToken() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return '';
+    const s = JSON.parse(raw);
+    return (s && s.access_token) || (s && s.currentSession && s.currentSession.access_token) || '';
+  } catch(e) { return ''; }
+}
+function authHeaders() {
+  const tok = getAccessToken();
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: 'Bearer ' + (tok || SUPABASE_KEY),
+    'Content-Type': 'application/json'
+  };
+}
+async function apiGet(path) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: authHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+}
+async function apiPatch(path, body) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: 'PATCH',
+    headers: Object.assign({ Prefer: 'return=representation' }, authHeaders()),
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let msg = 'Update failed';
+    try { const j = await res.json(); msg = j.message || j.hint || msg; } catch(e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
 
-// Pre-fill fields
-document.getElementById('setting-name').value = currentUser.name || '';
-document.getElementById('setting-email').value = currentUser.email || '';
-document.getElementById('setting-country').value = currentUser.country || '';
-document.getElementById('account-subtitle').textContent = 
-  `${currentUser.role === 'host' ? 'Party Host' : currentUser.role === 'venue' ? 'Venue' : 'DJ'} Account`;
+// ── Resolve current user (from auth.js, or redirect to login) ─────────────
+let currentUser = null;
+(async function bootstrap() {
+  const cu = (typeof GDJAuth !== 'undefined' && GDJAuth.waitUntilReady)
+    ? await GDJAuth.waitUntilReady()
+    : null;
+  if (!cu) { window.location.href = '/login.html'; return; }
+  currentUser = cu;
+  initUI();
+})();
 
-// Venue-specific sections
-if (currentUser.role === 'venue') {
-  document.getElementById('venue-name-card').style.display = '';
-  // Hide generic profile card for venues — name/country are in venue card
-  document.querySelector('.settings-card:not([id])') && (() => {
+function initUI() {
+  // Pre-fill fields
+  document.getElementById('setting-name').value = currentUser.name || '';
+  document.getElementById('setting-email').value = currentUser.email || '';
+  document.getElementById('setting-country').value = currentUser.country || '';
+  document.getElementById('account-subtitle').textContent =
+    `${currentUser.role === 'host' ? 'Party Host' : currentUser.role === 'venue' ? 'Venue' : 'DJ'} Account`;
+
+  // Venue-specific sections
+  if (currentUser.role === 'venue') {
+    document.getElementById('venue-name-card').style.display = '';
+    // Hide generic profile card for venues — name/country are in venue card
     const cards = document.querySelectorAll('.settings-card');
     cards.forEach(c => { if (c.querySelector('#setting-name') && !c.id) c.style.display = 'none'; });
-  })();
-  // Load venue data from DB
-  (async () => {
-    const { data } = await db.from('users').select('venue_name,slug,address,city,state,zip,country,name').eq('id', currentUser.id).single();
-    if (data) {
-      document.getElementById('setting-venue-name').value = data.venue_name || '';
-      document.getElementById('setting-name').value = data.name || '';
-      document.getElementById('setting-venue-slug').value = data.slug || '';
-      document.getElementById('setting-address').value = data.address || '';
-      document.getElementById('setting-city').value = data.city || '';
-      document.getElementById('setting-state').value = data.state || '';
-      document.getElementById('setting-zip').value = data.zip || '';
-      document.getElementById('setting-country-venue').value = data.country || '';
-    }
-  })();
+    // Load venue data from DB
+    (async () => {
+      const rows = await apiGet('users?select=venue_name,slug,address,city,state,zip,country,name&id=eq.' + encodeURIComponent(currentUser.id));
+      const data = rows && rows[0];
+      if (data) {
+        document.getElementById('setting-venue-name').value = data.venue_name || '';
+        document.getElementById('setting-name').value = data.name || '';
+        document.getElementById('setting-venue-slug').value = data.slug || '';
+        document.getElementById('setting-address').value = data.address || '';
+        document.getElementById('setting-city').value = data.city || '';
+        document.getElementById('setting-state').value = data.state || '';
+        document.getElementById('setting-zip').value = data.zip || '';
+        document.getElementById('setting-country-venue').value = data.country || '';
+      }
+    })();
+  }
+
+  loadBlockedUsers();
 }
 
 function showAlert(elId, type, msg) {
@@ -342,10 +400,10 @@ function showAlert(elId, type, msg) {
   setTimeout(() => { el.innerHTML = ''; }, 4000);
 }
 
-function updateStoredUser(updates) {
-  const updated = { ...currentUser, ...updates };
-  if (sessionStorage.getItem('currentUser')) sessionStorage.setItem('currentUser', JSON.stringify(updated));
-  if (localStorage.getItem('currentUser')) localStorage.setItem('currentUser', JSON.stringify(updated));
+// Keep the in-memory user in sync after edits (no longer writes to sessionStorage — auth.js owns the session)
+function updateCurrentUser(updates) {
+  currentUser = Object.assign({}, currentUser, updates);
+  window.currentUser = currentUser;
 }
 
 async function saveProfile() {
@@ -355,9 +413,8 @@ async function saveProfile() {
   if (!name || !country) { showAlert('alert-profile', 'error', 'Please fill in all fields.'); return; }
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const { error } = await db.from('users').update({ name, country }).eq('id', currentUser.id);
-    if (error) throw error;
-    updateStoredUser({ name, country });
+    await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { name, country });
+    updateCurrentUser({ name, country });
     showAlert('alert-profile', 'success', '✓ Profile updated.');
   } catch(e) {
     showAlert('alert-profile', 'error', e.message);
@@ -373,16 +430,18 @@ async function saveEmail() {
   if (!newEmail || !confirmPw) { showAlert('alert-email', 'error', 'Please fill in all fields.'); return; }
   btn.disabled = true; btn.textContent = 'Updating...';
   try {
-    // Verify current password
-    const { data: user } = await db.from('users').select('password').eq('id', currentUser.id).single();
-    if (!user || user.password !== confirmPw) throw new Error('Current password is incorrect.');
-    // Check email not taken
-    const { data: existing } = await db.from('users').select('id').eq('email', newEmail).neq('id', currentUser.id).limit(1);
-    if (existing && existing.length > 0) throw new Error('That email is already in use.');
-    const { error } = await db.from('users').update({ email: newEmail }).eq('id', currentUser.id);
+    // Re-authenticate with current password to confirm the user
+    const { error: authErr } = await db.auth.signInWithPassword({
+      email: currentUser.email,
+      password: confirmPw
+    });
+    if (authErr) throw new Error('Current password is incorrect.');
+
+    // Supabase Auth handles email uniqueness and sends a confirmation email to the new address
+    const { error } = await db.auth.updateUser({ email: newEmail });
     if (error) throw error;
-    updateStoredUser({ email: newEmail });
-    showAlert('alert-email', 'success', '✓ Email updated.');
+
+    showAlert('alert-email', 'success', '✓ Confirmation email sent to ' + newEmail + '. Click the link to complete the change.');
     document.getElementById('confirm-password-email').value = '';
   } catch(e) {
     showAlert('alert-email', 'error', e.message);
@@ -401,10 +460,16 @@ async function savePassword() {
   if (newPw !== confirmPw) { showAlert('alert-password', 'error', 'New passwords do not match.'); return; }
   btn.disabled = true; btn.textContent = 'Updating...';
   try {
-    const { data: user } = await db.from('users').select('password').eq('id', currentUser.id).single();
-    if (!user || user.password !== current) throw new Error('Current password is incorrect.');
-    const { error } = await db.from('users').update({ password: newPw }).eq('id', currentUser.id);
+    // Verify current password by signing in (refreshes the session)
+    const { error: authErr } = await db.auth.signInWithPassword({
+      email: currentUser.email,
+      password: current
+    });
+    if (authErr) throw new Error('Current password is incorrect.');
+
+    const { error } = await db.auth.updateUser({ password: newPw });
     if (error) throw error;
+
     showAlert('alert-password', 'success', '✓ Password updated.');
     document.getElementById('current-password').value = '';
     document.getElementById('new-password').value = '';
@@ -431,14 +496,13 @@ async function saveVenueAll() {
   try {
     // Check slug availability (skip if unchanged)
     if (slug !== (currentUser.slug || '')) {
-      const { data: ex } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+      const ex = await apiGet('users?select=id&slug=eq.' + encodeURIComponent(slug) + '&id=neq.' + encodeURIComponent(currentUser.id) + '&limit=1');
       if (ex && ex.length > 0) throw new Error('That profile URL is already taken.');
     }
     const ownerName = document.getElementById('setting-name').value.trim();
     const country = document.getElementById('setting-country-venue').value;
-    const { error } = await db.from('users').update({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country }).eq('id', currentUser.id);
-    if (error) throw error;
-    updateStoredUser({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
+    await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
+    updateCurrentUser({ venue_name: venueName, name: ownerName || venueName, slug, address, city, state, zip, country });
     showAlert('alert-venue-name', 'success', '✓ Venue profile saved.');
   } catch(e) { showAlert('alert-venue-name', 'error', e.message); }
   finally { btn.disabled = false; btn.textContent = 'Save Venue Profile'; }
@@ -451,9 +515,8 @@ async function saveVenueName() {
   if (!venueName) { showAlert('alert-venue-name', 'error', 'Please enter a venue name.'); return; }
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const { error } = await db.from('users').update({ venue_name: venueName, name: venueName }).eq('id', currentUser.id);
-    if (error) throw error;
-    updateStoredUser({ venue_name: venueName, name: venueName });
+    await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { venue_name: venueName, name: venueName });
+    updateCurrentUser({ venue_name: venueName, name: venueName });
     showAlert('alert-venue-name', 'success', '✓ Venue name updated.');
   } catch(e) { showAlert('alert-venue-name', 'error', e.message); }
   finally { btn.disabled = false; btn.textContent = 'Save Venue Name'; }
@@ -473,14 +536,14 @@ async function checkVenueSlug(val) {
   if (!slug) { statusEl.textContent = ''; altWrap.style.display = 'none'; return; }
   statusEl.textContent = 'Checking...'; statusEl.style.color = 'var(--muted)';
   venueSlugTimeout = setTimeout(async () => {
-    const { data } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+    const data = await apiGet('users?select=id&slug=eq.' + encodeURIComponent(slug) + '&id=neq.' + encodeURIComponent(currentUser.id) + '&limit=1');
     if (data && data.length > 0) {
       venueSlugAvailable = false;
       statusEl.textContent = '✗ That URL is taken.'; statusEl.style.color = 'var(--error)';
       // Generate alternatives
       const opts = [slug + '-venue', slug + '-' + new Date().getFullYear(), slug + '-events', slug + '-official'];
       const optEls = await Promise.all(opts.map(async o => {
-        const { data: ex } = await db.from('users').select('id').eq('slug', o).limit(1);
+        const ex = await apiGet('users?select=id&slug=eq.' + encodeURIComponent(o) + '&limit=1');
         const taken = ex && ex.length > 0;
         return `<button type="button" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:.3rem .65rem;border-radius:4px;border:1px solid ${taken?'var(--border)':'var(--neon)'};color:${taken?'var(--muted)':'var(--neon)'};background:transparent;cursor:${taken?'not-allowed':'pointer'};${taken?'text-decoration:line-through;opacity:.4;':''}" ${taken?'disabled':''} onclick="selectVenueSlug('${o}')">${o}</button>`;
       }));
@@ -507,11 +570,10 @@ async function saveVenueSlug() {
   if (!slug) { showAlert('alert-venue-slug', 'error', 'Please enter a URL.'); return; }
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const { data: ex } = await db.from('users').select('id').eq('slug', slug).neq('id', currentUser.id).limit(1);
+    const ex = await apiGet('users?select=id&slug=eq.' + encodeURIComponent(slug) + '&id=neq.' + encodeURIComponent(currentUser.id) + '&limit=1');
     if (ex && ex.length > 0) throw new Error('That URL is already taken.');
-    const { error } = await db.from('users').update({ slug }).eq('id', currentUser.id);
-    if (error) throw error;
-    updateStoredUser({ slug });
+    await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { slug });
+    updateCurrentUser({ slug });
     showAlert('alert-venue-slug', 'success', '✓ Profile URL updated.');
   } catch(e) { showAlert('alert-venue-slug', 'error', e.message); }
   finally { btn.disabled = false; btn.textContent = 'Save Profile URL'; }
@@ -561,25 +623,33 @@ async function saveVenueAddress() {
   const zip = document.getElementById('setting-zip').value.trim();
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const { error } = await db.from('users').update({ address, city, state, zip }).eq('id', currentUser.id);
-    if (error) throw error;
-    updateStoredUser({ address, city, state, zip });
+    await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { address, city, state, zip });
+    updateCurrentUser({ address, city, state, zip });
     showAlert('alert-venue-address', 'success', '✓ Address updated.');
   } catch(e) { showAlert('alert-venue-address', 'error', e.message); }
   finally { btn.disabled = false; btn.textContent = 'Save Address'; }
 }
 
 function navLogout() {
-  localStorage.removeItem('currentUser');
-  sessionStorage.removeItem('currentUser');
-  window.location.href = '/';
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.signOut) {
+    GDJAuth.signOut('/');
+  } else {
+    try {
+      const tok = getAccessToken();
+      if (tok) fetch(SUPABASE_URL + '/auth/v1/logout', { method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + tok } }).catch(() => {});
+      localStorage.removeItem(AUTH_KEY);
+    } catch(e) {}
+    window.location.href = '/';
+  }
 }
 
 async function loadBlockedUsers() {
-  const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
-  const blockedIds = data?.blocked_users || [];
+  if (!currentUser) return;
+  const rows = await apiGet('users?select=blocked_users&id=eq.' + encodeURIComponent(currentUser.id));
+  const blockedIds = (rows && rows[0] && rows[0].blocked_users) || [];
   if (!blockedIds.length) return;
-  const { data: users } = await db.from('users').select('id,name').in('id', blockedIds);
+  const inList = blockedIds.map(id => '"' + id + '"').join(',');
+  const users = await apiGet('users?select=id,name&id=in.(' + inList + ')');
   if (!users || !users.length) return;
   const section = document.getElementById('blocked-users-section');
   const list = document.getElementById('blocked-users-list');
@@ -592,15 +662,14 @@ async function loadBlockedUsers() {
 }
 
 async function unblockUser(userId) {
-  const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
-  const updated = (data?.blocked_users || []).filter(id => id !== userId);
-  await db.from('users').update({ blocked_users: updated }).eq('id', currentUser.id);
+  const rows = await apiGet('users?select=blocked_users&id=eq.' + encodeURIComponent(currentUser.id));
+  const current = (rows && rows[0] && rows[0].blocked_users) || [];
+  const updated = current.filter(id => id !== userId);
+  await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { blocked_users: updated });
   loadBlockedUsers();
   const section = document.getElementById('blocked-users-section');
   if (updated.length === 0) section.style.display = 'none';
 }
-
-loadBlockedUsers();
 </script>
 </body>
 </html>
