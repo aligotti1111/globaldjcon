@@ -10,7 +10,52 @@
 <title>DJ Profile - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <script>
+// Bootstrap: read Supabase Auth session and populate sessionStorage.currentUser
+// so the 30+ legacy reads throughout this file keep working unchanged.
+// Uses raw fetch (SDK getSession hangs on this environment).
+(function bootstrapCurrentUser(){
+  var SUPABASE_URL_BOOT = 'https://hwqvzuusquruhwguqole.supabase.co';
+  var SUPABASE_KEY_BOOT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+  var AUTH_KEY = 'sb-hwqvzuusquruhwguqole-auth-token';
+
+  var tokenStr = localStorage.getItem(AUTH_KEY);
+  if(!tokenStr) return; // not logged in — legacy reads will return null, which existing code handles
+
+  var parsed = null;
+  try { parsed = JSON.parse(tokenStr); } catch(e) { return; }
+
+  var accessToken = (parsed && parsed.access_token) || (parsed && parsed.currentSession && parsed.currentSession.access_token);
+  var authUser   = (parsed && parsed.user)         || (parsed && parsed.currentSession && parsed.currentSession.user);
+  if(!accessToken || !authUser || !authUser.id) return;
+
+  // If sessionStorage.currentUser is already fresh for this user id, skip the fetch
+  try {
+    var existing = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+    if (existing && existing.id === authUser.id) {
+      window.currentUser = existing;
+      return;
+    }
+  } catch(e) {}
+
+  // Fetch the user's public profile row (anon key, RLS lets public read)
+  fetch(SUPABASE_URL_BOOT + '/rest/v1/users?select=*&id=eq.' + encodeURIComponent(authUser.id) + '&limit=1', {
+    headers: { apikey: SUPABASE_KEY_BOOT, Authorization: 'Bearer ' + accessToken }
+  }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+    var profile = rows && rows[0];
+    if (!profile) return;
+    // Merge auth email so legacy code that reads currentUser.email still works
+    profile.email = authUser.email || profile.email || null;
+    sessionStorage.setItem('currentUser', JSON.stringify(profile));
+    window.currentUser = profile;
+    // Re-render mobile menu now that session is loaded
+    if (typeof gdcSetupMobileMenu === 'function') gdcSetupMobileMenu();
+    // Dispatch event so page code can react if it wants
+    try { window.dispatchEvent(new Event('gdc-auth-ready')); } catch(e) {}
+  }).catch(function(){});
+})();
+
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
 function gdcSetupMobileMenu(){
@@ -2634,7 +2679,14 @@ async function doInlineSave(btn) {
 function navLogout() {
   localStorage.removeItem('currentUser');
   sessionStorage.removeItem('currentUser');
-  window.location.reload();
+  // Also clear Supabase Auth session
+  if (window.GDJAuth && typeof window.GDJAuth.signOut === 'function') {
+    window.GDJAuth.signOut('/');
+    return;
+  }
+  // Fallback: clear the auth token directly
+  localStorage.removeItem('sb-hwqvzuusquruhwguqole-auth-token');
+  window.location.href = '/';
 }
 
 function toggleEventTypesPopup(e) {
