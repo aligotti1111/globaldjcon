@@ -40,7 +40,7 @@ exports.handler = async (event) => {
     role,       // 'dj' | 'host' | 'venue'
     name,
     slug,       // required for dj/venue, optional for host
-    type,       // dj-specific: 'mobile-event' | 'club' | etc
+    type,       // dj-specific
     country, state, city, zip,
     rate, travel_distance,
     phone, website, instagram, tiktok, facebook, soundcloud,
@@ -88,11 +88,9 @@ exports.handler = async (event) => {
     body: JSON.stringify({
       email: placeholderEmail,
       password: randomPassword,
-      email_confirm: true,      // bypass email verification for admin-created accounts
+      email_confirm: true,
       user_metadata: {
-        role, name, slug, type, country, state, city, zip,
-        // NOTE: The handle_new_user() trigger will read this and populate public.users.
-        // That trigger inserts WITH claimed=false because this account is unclaimed.
+        role, name, slug, type, country, state, city, zip
       }
     })
   });
@@ -109,8 +107,7 @@ exports.handler = async (event) => {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Auth user created but no ID returned' }) };
   }
 
-  // ── Update public.users row with the full DJ/venue details ────────
-  // The handle_new_user trigger created a base row; we now fill in the rest and mark unclaimed.
+  // ── Update public.users row with full details + mark unclaimed ───
   const profileUpdates = {
     role, name, slug, type,
     country, state, city, zip,
@@ -118,10 +115,8 @@ exports.handler = async (event) => {
     phone, website, instagram, tiktok, facebook, soundcloud,
     bio,
     venue_name, address,
-    claimed: false  // admin-created, not yet claimed by real user
+    claimed: false
   };
-
-  // Strip undefined values so we don't overwrite existing data with nulls
   Object.keys(profileUpdates).forEach(k => {
     if (profileUpdates[k] === undefined) delete profileUpdates[k];
   });
@@ -165,7 +160,6 @@ exports.handler = async (event) => {
   };
 };
 
-// Random URL-safe password. crypto is available in Node 18+ on Netlify.
 function cryptoRandomPassword(len = 20) {
   const crypto = require('crypto');
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
