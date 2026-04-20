@@ -3,7 +3,7 @@
 //   1. Swaps the auth user's email from placeholder to the claimant's real email
 //   2. Marks the user as claimed=true
 //   3. Marks the claim as approved
-//   4. Triggers a Supabase password reset email (which also serves as the "set your password" welcome)
+//   4. Triggers a Supabase password reset email (doubles as "set your password" welcome)
 
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 
@@ -67,7 +67,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Claim has no claimant email' }) };
   }
 
-  // ── Verify new email isn't already taken by another auth user ─────
+  // ── Check new email isn't already taken by a different user ──────
   const emailCheckRes = await fetch(
     `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(newEmail)}`,
     { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
@@ -93,7 +93,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         email: newEmail,
-        email_confirm: true  // new email is pre-confirmed (we trust the admin's judgment)
+        email_confirm: true
       })
     }
   );
@@ -137,7 +137,6 @@ exports.handler = async (event) => {
   );
 
   // ── Trigger "set your password" email via Supabase's recover flow ─
-  // This generates a recovery link and sends it to the new email.
   const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
     method: 'POST',
     headers: {
@@ -151,7 +150,7 @@ exports.handler = async (event) => {
   if (!recoverRes.ok) {
     const errText = await recoverRes.text();
     console.warn('[admin-approve-claim] recover email send may have failed:', errText);
-    // Don't fail the whole request — the email swap succeeded, admin can manually re-send from dashboard
+    // Non-fatal; the email swap already succeeded
   }
 
   return {
