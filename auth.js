@@ -52,19 +52,40 @@
     }
   }
 
-  // Fetch the public.users profile row for a given auth user id
-  async function loadProfile(userId) {
+  // Fetch the public.users profile row for a given auth user id (raw fetch — SDK can hang)
+  async function loadProfile(userId, accessToken) {
     if (!userId) return null;
-    const { data, error } = await db
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) {
-      console.error('[auth.js] profile load error', error);
+    try {
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/users?select=*&id=eq.' + encodeURIComponent(userId),
+        { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + (accessToken || SUPABASE_KEY) } }
+      );
+      if (!res.ok) {
+        console.error('[auth.js] profile load HTTP', res.status);
+        return null;
+      }
+      const rows = await res.json();
+      return (rows && rows[0]) || null;
+    } catch (e) {
+      console.error('[auth.js] profile load error', e);
       return null;
     }
-    return data;
+  }
+
+  // Read the session straight from localStorage (the SDK's getSession can hang)
+  function readStoredSession() {
+    try {
+      const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+      const raw = localStorage.getItem('sb-' + projectRef + '-auth-token');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Supabase has used a few shapes over time — normalize them
+      if (parsed && parsed.access_token && parsed.user) return parsed;
+      if (parsed && parsed.currentSession) return parsed.currentSession;
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   // Merge auth.users fields we want into the profile row so pages see
@@ -83,10 +104,10 @@
   // Resolve the current session and load profile; fires ready callbacks
   async function resolveInitialSession() {
     try {
-      const { data: { session } } = await db.auth.getSession();
+      const session = readStoredSession();
       _session = session || null;
       if (session && session.user) {
-        const profile = await loadProfile(session.user.id);
+        const profile = await loadProfile(session.user.id, session.access_token);
         _currentUser = hydrateUser(session.user, profile);
       } else {
         _currentUser = null;
@@ -105,7 +126,7 @@
   db.auth.onAuthStateChange(async (event, session) => {
     _session = session || null;
     if (session && session.user) {
-      const profile = await loadProfile(session.user.id);
+      const profile = await loadProfile(session.user.id, session.access_token);
       _currentUser = hydrateUser(session.user, profile);
     } else {
       _currentUser = null;
@@ -152,16 +173,34 @@
     // Force-refetch the profile row (e.g., after updating account settings)
     async refreshProfile() {
       if (!_session || !_session.user) return null;
-      const profile = await loadProfile(_session.user.id);
+      const profile = await loadProfile(_session.user.id, _session.access_token);
       _currentUser = hydrateUser(_session.user, profile);
       window.currentUser = _currentUser;
       return _currentUser;
     },
 
-    // Sign out and redirect
+    // Sign out and redirect (uses raw fetch — the SDK's signOut can hang)
     async signOut(redirectTo = '/') {
-      try { await db.auth.signOut(); } catch (e) {}
-      // Also clear legacy storage keys from the old auth system, just in case
+      try {
+        const authKey = 'sb-hwqvzuusquruhwguqole-auth-token';
+        const raw = localStorage.getItem(authKey);
+        let token = '';
+        if (raw) {
+          try {
+            const s = JSON.parse(raw);
+            token = (s && s.access_token) || (s && s.currentSession && s.currentSession.access_token) || '';
+          } catch (e) {}
+        }
+        if (token) {
+          // Fire-and-forget server-side logout
+          fetch(SUPABASE_URL + '/auth/v1/logout', {
+            method: 'POST',
+            headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token }
+          }).catch(() => {});
+        }
+        localStorage.removeItem(authKey);
+      } catch (e) {}
+      // Also clear legacy storage keys from the old auth system
       try {
         sessionStorage.removeItem('currentUser');
         localStorage.removeItem('currentUser');
