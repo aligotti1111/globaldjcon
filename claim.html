@@ -162,6 +162,9 @@ h1 { font-family:'Bebas Neue',sans-serif; font-size:3rem; letter-spacing:.04em; 
 </div>
 
 <script>
+const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+
 // Pre-fill from URL params
 (function() {
   const params = new URLSearchParams(window.location.search);
@@ -182,7 +185,7 @@ async function submitClaim() {
   const btn = document.getElementById('submit-btn');
   const alertEl = document.getElementById('alert');
   const yourName = document.getElementById('your-name').value.trim();
-  const yourEmail = document.getElementById('your-email').value.trim();
+  const yourEmail = document.getElementById('your-email').value.trim().toLowerCase();
   const bizName = document.getElementById('biz-name').value.trim();
   const verifyMsg = document.getElementById('verify-msg').value.trim();
   const slug = document.getElementById('profile-slug').value.trim();
@@ -197,6 +200,41 @@ async function submitClaim() {
   alertEl.innerHTML = '';
 
   try {
+    // Resolve the target user ID from the slug, if provided (used by admin to approve)
+    let targetUserId = null;
+    if (slug) {
+      try {
+        const lookupRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/users?select=id&slug=eq.${encodeURIComponent(slug)}&limit=1`,
+          { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
+        );
+        if (lookupRes.ok) {
+          const rows = await lookupRes.json();
+          if (rows && rows[0]) targetUserId = rows[0].id;
+        }
+      } catch(e) {}
+    }
+
+    // Insert claim into profile_claims (admin panel pulls from here)
+    await fetch(`${SUPABASE_URL}/rest/v1/profile_claims`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({
+        claimant_name: yourName,
+        claimant_email: yourEmail,
+        target_user_id: targetUserId,
+        target_slug: slug || '',
+        target_biz_name: bizName,
+        verify_msg: verifyMsg || null
+      })
+    }).catch(() => {});
+
+    // Send notification email to admin + receipt email to claimant
     await fetch('/.netlify/functions/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
