@@ -3,9 +3,11 @@
 //   1. Swaps the auth user's email from placeholder to the claimant's real email
 //   2. Marks the user as claimed=true
 //   3. Marks the claim as approved
-//   4. Triggers a Supabase password reset email (doubles as "set your password" welcome)
+//   4. Generates a recovery link (no email sent by Supabase)
+//   5. Sends our custom "Your account is ready" welcome email via send-email.js
 
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
+const SITE_URL = 'https://globaldjconnect.com';
 
 exports.handler = async (event) => {
   const headers = {
@@ -136,21 +138,65 @@ exports.handler = async (event) => {
     }
   );
 
-  // ── Trigger "set your password" email via Supabase's recover flow ─
-  const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+  // ── Generate a recovery link (does NOT send Supabase email) ───────
+  let setPasswordUrl = '';
+  const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: 'POST',
     headers: {
       apikey: SERVICE_KEY,
       Authorization: `Bearer ${SERVICE_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ email: newEmail })
+    body: JSON.stringify({
+      type: 'recovery',
+      email: newEmail,
+      options: {
+        redirect_to: `${SITE_URL}/reset-password.html`
+      }
+    })
   });
 
-  if (!recoverRes.ok) {
-    const errText = await recoverRes.text();
-    console.warn('[admin-approve-claim] recover email send may have failed:', errText);
-    // Non-fatal; the email swap already succeeded
+  if (linkRes.ok) {
+    const linkData = await linkRes.json();
+    // Supabase returns action_link at top level or inside properties
+    setPasswordUrl = linkData.action_link
+      || (linkData.properties && linkData.properties.action_link)
+      || '';
+  } else {
+    const errText = await linkRes.text();
+    console.error('[admin-approve-claim] generate_link failed:', errText);
+  }
+
+  if (!setPasswordUrl) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        partial: true,
+        user_id: claim.target_user_id,
+        new_email: newEmail,
+        warning: 'Claim approved but could not generate password setup link. User should use Forgot Password flow.'
+      })
+    };
+  }
+
+  // ── Send welcome email via send-email.js (claim_approved type) ────
+  const welcomeSend = await fetch(`${SITE_URL}/.netlify/functions/send-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'claim_approved',
+      name: claim.claimant_name,
+      email: newEmail,
+      bizName: claim.target_biz_name,
+      setPasswordUrl: setPasswordUrl
+    })
+  });
+
+  if (!welcomeSend.ok) {
+    const errText = await welcomeSend.text();
+    console.warn('[admin-approve-claim] welcome email failed (non-fatal):', errText);
   }
 
   return {
@@ -160,7 +206,7 @@ exports.handler = async (event) => {
       success: true,
       user_id: claim.target_user_id,
       new_email: newEmail,
-      message: 'Claim approved. Password setup email sent to ' + newEmail + '.'
+      message: 'Claim approved. Welcome email sent to ' + newEmail + '.'
     })
   };
 };
