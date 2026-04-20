@@ -532,45 +532,52 @@ const ADMIN_PASSWORD = 'spinlist2025';
 const STORE_KEY = 'spinlist_djs_v1';
 
 // ─── DATA ─────────────────────────────────────────────
-async function loadDJs(){ 
-  const { data, error } = await db
-    .from('users')
-    .select('*')
-    .eq('role', 'dj')
-    .neq('profile_private', true)
-    .order('name');
-  
-  if (error) {
-    console.error('Error loading DJs:', error);
+// Using raw fetch because the Supabase SDK sometimes hangs in this environment
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+
+async function loadDJs(){
+  try {
+    const res = await fetch(
+      'https://hwqvzuusquruhwguqole.supabase.co/rest/v1/users?select=*&role=eq.dj&order=name.asc',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) {
+      console.error('loadDJs HTTP error:', res.status);
+      return [];
+    }
+    const data = await res.json();
+    // Filter out profile_private=true on the client (keep the query simple)
+    const visible = (data || []).filter(d => d.profile_private !== true);
+    // Transform Supabase data to match our format
+    return visible.map(dj => ({
+      id: dj.id,
+      slug: dj.slug,
+      name: dj.name,
+      type: dj.type,
+      country: dj.country,
+      state: dj.state,
+      city: dj.city,
+      zip: dj.zip,
+      rate: dj.rate,
+      rating: dj.rating || 0,
+      avail: dj.availability || 'available',
+      phone: dj.phone,
+      email: null,
+      website: dj.website,
+      instagram: dj.instagram,
+      tiktok: dj.tiktok,
+      facebook: dj.facebook,
+      soundcloud: dj.soundcloud,
+      bio: dj.bio,
+      avatar_url: dj.avatar_url,
+      travel_distance: dj.travel_distance,
+      event_specialization: dj.event_specialization,
+      club_genres: dj.club_genres
+    }));
+  } catch (err) {
+    console.error('loadDJs failed:', err);
     return [];
   }
-  
-  // Transform Supabase data to match our format
-  return data.map(dj => ({
-    id: dj.id,
-    slug: dj.slug,
-    name: dj.name,
-    type: dj.type,
-    country: dj.country,
-    state: dj.state,
-    city: dj.city,
-    zip: dj.zip,
-    rate: dj.rate,
-    rating: dj.rating || 0,
-    avail: dj.availability || 'available',
-    phone: dj.phone,
-    email: null,
-    website: dj.website,
-    instagram: dj.instagram,
-    tiktok: dj.tiktok,
-    facebook: dj.facebook,
-    soundcloud: dj.soundcloud,
-    bio: dj.bio,
-    avatar_url: dj.avatar_url,
-    travel_distance: dj.travel_distance,
-    event_specialization: dj.event_specialization,
-    club_genres: dj.club_genres
-  }));
 }
 
 async function saveDJs(djList){ 
