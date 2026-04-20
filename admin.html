@@ -330,6 +330,115 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
   </div>
 </div>
 
+<!-- Edit user modal -->
+<div class="creds-modal" id="edit-modal" style="display:none;">
+  <div class="creds-box" style="max-width:780px;max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+      <div class="creds-title" style="margin:0;color:var(--admin);">Edit Account</div>
+      <button onclick="closeEditModal()" style="background:transparent;border:none;color:var(--muted);font-size:1.5rem;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div class="creds-sub" id="edit-sub" style="margin-bottom:1.5rem;"></div>
+    <input type="hidden" id="edit-user-id">
+
+    <div class="form-section-label" style="margin-bottom:1rem;">Identity</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="edit-name">
+      </div>
+      <div class="form-group" id="edit-group-venue-name" style="display:none;">
+        <label class="form-label">Venue Name</label>
+        <input class="form-input" id="edit-venue-name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Slug</label>
+        <input class="form-input" id="edit-slug">
+        <p class="form-hint">globaldjconnect.com/<span id="edit-slug-preview">slug</span></p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-select" id="edit-role" onchange="updateEditRole()">
+          <option value="dj">DJ</option>
+          <option value="host">Host</option>
+          <option value="venue">Venue</option>
+        </select>
+      </div>
+      <div class="form-group" id="edit-group-type">
+        <label class="form-label">DJ Type</label>
+        <select class="form-select" id="edit-type">
+          <option value="">— Not set —</option>
+          <option value="mobile-event">Mobile / Event</option>
+          <option value="club">Club / Bar</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+    <div class="form-section-label" style="margin-bottom:1rem;">Location</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Country</label>
+        <input class="form-input" id="edit-country">
+      </div>
+      <div class="form-group">
+        <label class="form-label">State / Province</label>
+        <input class="form-input" id="edit-state">
+      </div>
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <input class="form-input" id="edit-city">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Zip</label>
+        <input class="form-input" id="edit-zip">
+      </div>
+      <div class="form-group" id="edit-group-address" style="display:none;">
+        <label class="form-label">Street Address</label>
+        <input class="form-input" id="edit-address">
+      </div>
+      <div class="form-group" id="edit-group-travel" style="display:none;">
+        <label class="form-label">Travel Distance (mi)</label>
+        <input class="form-input" id="edit-travel-distance" type="number">
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+    <div class="form-section-label" style="margin-bottom:1rem;">Bio</div>
+    <textarea class="form-textarea" id="edit-bio" style="min-height:90px;"></textarea>
+
+    <div class="form-divider"></div>
+    <div class="form-section-label" style="margin-bottom:1rem;">Contact</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="edit-phone"></div>
+      <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="edit-website"></div>
+      <div class="form-group"><label class="form-label">Instagram</label><input class="form-input" id="edit-instagram"></div>
+      <div class="form-group"><label class="form-label">SoundCloud</label><input class="form-input" id="edit-soundcloud"></div>
+      <div class="form-group"><label class="form-label">TikTok</label><input class="form-input" id="edit-tiktok"></div>
+      <div class="form-group"><label class="form-label">Facebook</label><input class="form-input" id="edit-facebook"></div>
+      <div class="form-group"><label class="form-label">Twitch</label><input class="form-input" id="edit-twitch"></div>
+    </div>
+
+    <div class="form-divider"></div>
+    <div class="form-section-label" style="margin-bottom:1rem;">Flags</div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="edit-claimed" style="accent-color:var(--admin);">
+        <span style="font-size:.85rem;">Claimed</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="edit-private" style="accent-color:var(--admin);">
+        <span style="font-size:.85rem;">Profile Private (hidden from directory)</span>
+      </label>
+    </div>
+
+    <div style="display:flex;gap:.75rem;align-items:center;margin-top:1.5rem;flex-wrap:wrap;">
+      <button class="btn btn-admin" id="edit-save-btn" onclick="saveEdit()" style="flex:1;justify-content:center;">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <span class="form-fb" id="edit-fb"></span>
+    </div>
+  </div>
+</div>
+
 <!-- Credentials reveal modal -->
 <div class="creds-modal" id="creds-modal" style="display:none;">
   <div class="creds-box">
@@ -385,6 +494,7 @@ function ensureAdminKey() {
 }
 
 // ── Public-read helpers (users + claim lookup) ─────────────────────
+const userCache = {}; // id -> full user object, populated by loadUsers
 async function apiGet(path) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
     headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
@@ -678,6 +788,8 @@ async function loadUsers(role) {
   list.innerHTML = '<div class="empty-admin">Loading...</div>';
 
   const users = await apiGet('users?select=*&role=eq.' + role + '&order=name');
+  // Cache by id so edit modal can populate without another fetch
+  (users || []).forEach(u => { userCache[u.id] = u; });
   const count = (users || []).length;
   document.getElementById(role + '-count').textContent = count + (count === 1 ? ' account' : ' accounts');
 
@@ -699,6 +811,7 @@ async function loadUsers(role) {
       <div class="ar-name">${escapeHtml(name || 'Unnamed')}</div>
       <div class="ar-detail">${escapeHtml(loc || '—')}</div>
       <div class="ar-detail">${escapeHtml(u.slug || '—')}</div>
+      <button class="btn btn-admin" onclick="openEditModal('${u.id}')" style="padding:.4rem .8rem;font-size:.6rem;">Edit</button>
       <button class="btn btn-outline" onclick="viewUser('${u.slug}')" style="padding:.4rem .8rem;font-size:.6rem;">View</button>
       <button class="btn btn-danger" onclick="deleteUser('${u.id}','${escapeHtml(name || 'this user').replace(/'/g, "\\'")}')">Delete</button>
     </div>`;
@@ -721,6 +834,133 @@ async function deleteUser(id, name) {
     loadStats();
   } catch (err) {
     alert('✗ ' + (err.message || 'Delete failed'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EDIT USER MODAL
+// ═══════════════════════════════════════════════════════════════════
+function openEditModal(userId) {
+  const u = userCache[userId];
+  if (!u) {
+    alert('User data not found in cache. Try refreshing the tab.');
+    return;
+  }
+
+  document.getElementById('edit-user-id').value = u.id;
+  document.getElementById('edit-sub').textContent = (u.name || u.venue_name || 'Account') + ' • ' + (u.role || '').toUpperCase();
+
+  // Identity
+  setVal('edit-name', u.name);
+  setVal('edit-venue-name', u.venue_name);
+  setVal('edit-slug', u.slug);
+  setVal('edit-role', u.role || 'dj');
+  setVal('edit-type', u.type || '');
+
+  // Location
+  setVal('edit-country', u.country);
+  setVal('edit-state', u.state);
+  setVal('edit-city', u.city);
+  setVal('edit-zip', u.zip);
+  setVal('edit-address', u.address);
+  setVal('edit-travel-distance', u.travel_distance || '');
+
+  // Bio
+  setVal('edit-bio', u.bio);
+
+  // Contact
+  ['phone','website','instagram','soundcloud','tiktok','facebook','twitch'].forEach(k => setVal('edit-' + k, u[k]));
+
+  // Flags
+  document.getElementById('edit-claimed').checked = u.claimed !== false;
+  document.getElementById('edit-private').checked = u.profile_private === true;
+
+  // Adjust visible groups based on role
+  updateEditRole();
+
+  // Reset feedback
+  document.getElementById('edit-fb').textContent = '';
+  document.getElementById('edit-fb').className = 'form-fb';
+  document.getElementById('edit-slug-preview').textContent = u.slug || 'slug';
+
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function setVal(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = (v === null || v === undefined) ? '' : v;
+}
+
+function updateEditRole() {
+  const role = document.getElementById('edit-role').value;
+  document.getElementById('edit-group-venue-name').style.display = role === 'venue' ? 'flex' : 'none';
+  document.getElementById('edit-group-address').style.display = role === 'venue' ? 'flex' : 'none';
+  document.getElementById('edit-group-type').style.display = role === 'dj' ? 'flex' : 'none';
+  document.getElementById('edit-group-travel').style.display = role === 'dj' ? 'flex' : 'none';
+}
+
+// Live slug preview in edit modal
+document.getElementById('edit-slug').addEventListener('input', (e) => {
+  const s = (e.target.value || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+  document.getElementById('edit-slug-preview').textContent = s || 'slug';
+});
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+async function saveEdit() {
+  const btn = document.getElementById('edit-save-btn');
+  const fb = document.getElementById('edit-fb');
+  const userId = document.getElementById('edit-user-id').value;
+
+  const updates = {
+    name: document.getElementById('edit-name').value.trim() || null,
+    venue_name: document.getElementById('edit-venue-name').value.trim() || null,
+    slug: (document.getElementById('edit-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '')) || null,
+    role: document.getElementById('edit-role').value,
+    type: document.getElementById('edit-type').value || null,
+    country: document.getElementById('edit-country').value.trim() || null,
+    state: document.getElementById('edit-state').value.trim() || null,
+    city: document.getElementById('edit-city').value.trim() || null,
+    zip: document.getElementById('edit-zip').value.trim() || null,
+    address: document.getElementById('edit-address').value.trim() || null,
+    bio: document.getElementById('edit-bio').value.trim() || null,
+    phone: document.getElementById('edit-phone').value.trim() || null,
+    website: document.getElementById('edit-website').value.trim() || null,
+    instagram: document.getElementById('edit-instagram').value.trim() || null,
+    soundcloud: document.getElementById('edit-soundcloud').value.trim() || null,
+    tiktok: document.getElementById('edit-tiktok').value.trim() || null,
+    facebook: document.getElementById('edit-facebook').value.trim() || null,
+    twitch: document.getElementById('edit-twitch').value.trim() || null,
+    claimed: document.getElementById('edit-claimed').checked,
+    profile_private: document.getElementById('edit-private').checked
+  };
+  const td = document.getElementById('edit-travel-distance').value.trim();
+  if (td !== '') updates.travel_distance = parseInt(td, 10) || null;
+
+  btn.disabled = true; btn.textContent = 'Saving...';
+  fb.textContent = ''; fb.className = 'form-fb';
+
+  try {
+    const result = await adminPost('admin-update-user', { user_id: userId, updates });
+    fb.textContent = '✓ Saved';
+    fb.className = 'form-fb ok';
+    // Update cache with new values
+    if (result.user) userCache[userId] = result.user;
+    // Refresh the visible list
+    const role = updates.role;
+    setTimeout(() => {
+      closeEditModal();
+      const active = document.querySelector('.tab-btn.active').dataset.tab;
+      if (['djs','hosts','venues'].includes(active)) loadUsers(active.slice(0, -1));
+    }, 700);
+  } catch (err) {
+    fb.textContent = '✗ ' + (err.message || 'Save failed');
+    fb.className = 'form-fb err';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
   }
 }
 
