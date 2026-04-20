@@ -500,8 +500,14 @@
 // ═══════════════════════════════════════════════════════
 // SUPABASE CONFIGURATION
 // ═══════════════════════════════════════════════════════
-// db is already initialized by /auth.js as window.db
-// window.currentUser is managed by /auth.js and available via GDJAuth
+// Ensure db exists even if auth.js hasn't loaded/run yet.
+if (!window.db && window.supabase && window.supabase.createClient) {
+  window.db = window.supabase.createClient(
+    'https://hwqvzuusquruhwguqole.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE'
+  );
+}
+const db = window.db;
 
 // ─── CONFIG ───────────────────────────────────────────
 const ADMIN_PASSWORD = 'spinlist2025';
@@ -581,7 +587,14 @@ function doLogin(){
   window.location.href = 'login.html';
 }
 function logout(){ 
-  GDJAuth.signOut('/');
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.signOut) {
+    GDJAuth.signOut('/');
+  } else {
+    // Fallback: sign out directly and redirect
+    try { db.auth.signOut(); } catch(e) {}
+    try { sessionStorage.clear(); localStorage.removeItem('currentUser'); } catch(e) {}
+    window.location.href = '/';
+  }
 }
 
 
@@ -702,10 +715,15 @@ const COUNTRY_NAMES = Object.keys(COUNTRY_FLAGS);
 
 // Determine active country — logged in user's country or default US
 let activeCountry = 'United States';
-GDJAuth.ready((cu) => {
-  if (cu && cu.country) activeCountry = cu.country;
-  updateCountryFlag();
-});
+if (typeof GDJAuth !== 'undefined' && GDJAuth.ready) {
+  GDJAuth.ready((cu) => {
+    if (cu && cu.country) activeCountry = cu.country;
+    updateCountryFlag();
+  });
+} else {
+  // GDJAuth not available — just leave default and update flag
+  setTimeout(() => { try { updateCountryFlag(); } catch(e) {} }, 0);
+}
 
 function updateCountryFlag() {
   const flag = COUNTRY_FLAGS[activeCountry] || '🌍';
@@ -996,14 +1014,14 @@ document.querySelectorAll('.pill.active').forEach(pill => updatePillText(pill, t
 
 // init
 
-// Load DJs from Supabase — wait for auth to resolve first
-GDJAuth.ready(async () => {
+// Load DJs from Supabase — runs IMMEDIATELY, does not wait for auth
+(async () => {
   try {
     await renderPublic(true);
   } catch (e) {
     console.error('[index] renderPublic failed:', e);
   }
-});
+})();
 
 // Check if admin hash is present and user is logged in
 if (window.location.hash === '#admin') {
@@ -1027,7 +1045,19 @@ window.addEventListener('openAdmin', () => {
 });
 
 // Check if user is logged in and update header buttons
-GDJAuth.ready((currentUser) => {
+// Uses db.auth.getSession() directly in case GDJAuth helper isn't loaded
+(async function() {
+  let currentUser = null;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session && session.user) {
+      const { data: profile } = await db.from('users').select('*').eq('id', session.user.id).maybeSingle();
+      currentUser = Object.assign({}, profile || {}, { id: session.user.id, email: session.user.email });
+    }
+  } catch (e) {
+    console.error('[index] session check failed:', e);
+  }
+
   if (currentUser) {
     document.getElementById('signin-btn').style.display = 'none';
     document.getElementById('signup-btn').style.display = 'none';
@@ -1105,7 +1135,7 @@ GDJAuth.ready((currentUser) => {
     var si = document.getElementById('signin-btn'); if (si) { si.style.setProperty('display','inline-flex','important'); si.style.fontSize = '.58rem'; si.style.padding = '.45rem .7rem'; }
     var lo = document.getElementById('mobile-menu-loggedout'); if (lo) lo.style.display = 'block';
   }
-});
+})();
 
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
