@@ -879,14 +879,26 @@ function lookupSignupZip(zip) {
   }, 600);
 }
 
-// ── EMAIL UNIQUENESS CHECK ──────────────────────────────
-async function checkEmailTaken(email) {
-  const { data } = await db.from('users').select('id, role').eq('email', email).limit(1);
-  if (data && data.length > 0) {
-    const role = data[0].role;
-    const roleLabel = role === 'dj' ? 'DJ' : role === 'host' ? 'Party Host' : role === 'venue' ? 'Venue' : role;
-    throw new Error(`This email is already registered as a ${roleLabel} account. Please use a different email or log in.`);
-  }
+// ── POST-SIGNUP CONFIRMATION VIEW ───────────────────────
+function showConfirmView(email) {
+  const container = document.querySelector('.container');
+  container.innerHTML = `
+    <div class="logo">
+      <a href="/" style="text-decoration:none;"><h1>GLOBAL DJ CONNECT</h1></a>
+      <p class="tagline">Directory & Booking</p>
+    </div>
+    <div style="text-align:center;padding:20px 0;">
+      <div style="width:64px;height:64px;margin:0 auto 24px;border-radius:50%;background:var(--neon-dim);border:1px solid var(--neon);display:flex;align-items:center;justify-content:center;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;margin-bottom:16px;color:var(--white);">Check your email</h2>
+      <p style="color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:8px;">We sent a confirmation link to</p>
+      <p style="color:var(--neon);font-family:'Space Mono',monospace;font-size:14px;margin-bottom:24px;word-break:break-all;">${email}</p>
+      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:32px;">Click the link in that email to verify your account, then log in.</p>
+      <button onclick="window.location.href='login.html'" style="background:var(--neon);color:var(--black);border:none;padding:14px 28px;border-radius:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Go to Login</button>
+      <p style="color:var(--muted);font-size:11px;margin-top:24px;">Didn't get the email? Check your spam folder.</p>
+    </div>
+  `;
 }
 
 // ── DJ FORM SUBMIT ──────────────────────────────────────
@@ -914,29 +926,35 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
     btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
   }
   try {
-    await checkEmailTaken(document.getElementById('dj-email').value.toLowerCase());
-    const { error } = await db.from('users').insert([{
-      email: document.getElementById('dj-email').value.toLowerCase(),
+    const email = document.getElementById('dj-email').value.toLowerCase();
+    const { error } = await db.auth.signUp({
+      email,
       password: document.getElementById('dj-password').value,
-      name, slug: finalSlug, type: types.join(', '),
-      country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
-      city: document.getElementById('dj-city').value,
-      state: document.getElementById('dj-state').value,
-      travel_distance: document.getElementById('dj-travel').value || null,
-      zip: document.getElementById('dj-zip').value,
-      confirmed: true, role: 'dj'
-    }]);
-    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
-    const { data: newUser } = await db.from('users').select('*').eq('email', document.getElementById('dj-email').value.toLowerCase()).single();
-    if (newUser) { sessionStorage.setItem('currentUser', JSON.stringify(newUser)); localStorage.setItem('currentUser', JSON.stringify(newUser)); }
-    // Send welcome email
-    await fetch('/.netlify/functions/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'welcome', name: name, email: document.getElementById('dj-email').value.toLowerCase(), role: 'dj', slug: finalSlug })
-    }).catch(() => {});
-    const returnUrl = new URLSearchParams(window.location.search).get('return');
-    window.location.href = returnUrl || ('/' + finalSlug);
+      options: {
+        emailRedirectTo: window.location.origin + '/login.html',
+        data: {
+          role: 'dj',
+          name,
+          slug: finalSlug,
+          type: types.join(', '),
+          country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
+          city: document.getElementById('dj-city').value,
+          state: document.getElementById('dj-state').value,
+          travel_distance: document.getElementById('dj-travel').value || '',
+          zip: document.getElementById('dj-zip').value
+        }
+      }
+    });
+    if (error) {
+      if (/already registered|already been registered|User already/i.test(error.message)) {
+        throw new Error('An account with this email already exists. Please log in instead.');
+      }
+      if (/duplicate key.*slug/i.test(error.message)) {
+        throw new Error('That URL was just taken. Please pick another.');
+      }
+      throw error;
+    }
+    showConfirmView(email);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create DJ Account';
@@ -962,20 +980,22 @@ document.getElementById('form-host').addEventListener('submit', async function(e
     btn.disabled = false; btn.textContent = 'Create Host Account'; return;
   }
   try {
-    await checkEmailTaken(email.toLowerCase());
-    const { error } = await db.from('users').insert([{
-      name, email: email.toLowerCase(), password, country, confirmed: true, role: 'host'
-    }]);
-    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
-    const { data: newHost } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
-    if (newHost) { sessionStorage.setItem('currentUser', JSON.stringify(newHost)); localStorage.setItem('currentUser', JSON.stringify(newHost)); }
-    await fetch('/.netlify/functions/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'welcome', name: name, email: email.toLowerCase(), role: 'host' })
-    }).catch(() => {});
-    const returnUrl = new URLSearchParams(window.location.search).get('return');
-    window.location.href = returnUrl || '/';
+    const emailLower = email.toLowerCase();
+    const { error } = await db.auth.signUp({
+      email: emailLower,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin + '/login.html',
+        data: { role: 'host', name, country }
+      }
+    });
+    if (error) {
+      if (/already registered|already been registered|User already/i.test(error.message)) {
+        throw new Error('An account with this email already exists. Please log in instead.');
+      }
+      throw error;
+    }
+    showConfirmView(emailLower);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Host Account';
@@ -1002,7 +1022,7 @@ document.getElementById('form-venue').addEventListener('submit', async function(
     btn.disabled = false; btn.textContent = 'Create Venue Account'; return;
   }
   try {
-    await checkEmailTaken(email.toLowerCase());
+    const emailLower = email.toLowerCase();
     // Use chosen alternative slug if selected, otherwise generate from venue name
     const venueEditVal = document.getElementById('venue-slug-edit').value.trim();
     const chosenVenueSlug = (venueEditVal ? makeSlug(venueEditVal) : null) || document.getElementById('venue-name').dataset.chosenSlug;
@@ -1013,21 +1033,31 @@ document.getElementById('form-venue').addEventListener('submit', async function(
       if (!ex || ex.length === 0) break;
       venueSlug = baseSlug + '-' + slugSuffix++;
     }
-    const { error } = await db.from('users').insert([{
-      name: venueName, email: email.toLowerCase(), password,
-      country, zip, confirmed: true, role: 'venue',
-      venue_name: venueName, slug: venueSlug
-    }]);
-    if (error) { if (error.code === '23505') throw new Error('An account with this email already exists'); throw error; }
-    const { data: newVenue } = await db.from('users').select('*').eq('email', email.toLowerCase()).single();
-    if (newVenue) { sessionStorage.setItem('currentUser', JSON.stringify(newVenue)); localStorage.setItem('currentUser', JSON.stringify(newVenue)); }
-    await fetch('/.netlify/functions/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'welcome', name: venueName, email: email.toLowerCase(), role: 'venue' })
-    }).catch(() => {});
-    const returnUrl = new URLSearchParams(window.location.search).get('return');
-    window.location.href = returnUrl || '/';
+    const { error } = await db.auth.signUp({
+      email: emailLower,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin + '/login.html',
+        data: {
+          role: 'venue',
+          name: venueName,
+          venue_name: venueName,
+          slug: venueSlug,
+          country,
+          zip
+        }
+      }
+    });
+    if (error) {
+      if (/already registered|already been registered|User already/i.test(error.message)) {
+        throw new Error('An account with this email already exists. Please log in instead.');
+      }
+      if (/duplicate key.*slug/i.test(error.message)) {
+        throw new Error('That URL was just taken. Please try again.');
+      }
+      throw error;
+    }
+    showConfirmView(emailLower);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Venue Account';
