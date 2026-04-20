@@ -6,6 +6,7 @@
 <title>Booking Requests - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <script>
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
@@ -1744,6 +1745,11 @@ function openCounter(bookingId, currency, group, counterRate, offerAmount, quote
 function closeCounter() { document.getElementById('counter-modal').style.display = 'none'; }
 
 async function submitCounter() {
+  // Gate: require verified email to send counter-offers
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('send counter-offers')) {
+    return;
+  }
+
   const amount = document.getElementById('counter-amount').value;
   const message = document.getElementById('counter-message').value.trim();
   const alertEl = document.getElementById('counter-alert');

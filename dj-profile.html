@@ -2543,6 +2543,11 @@ async function sendMessage() {
     return;
   }
 
+  // Gate: require verified email to send messages
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('send messages')) {
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Sending...';
   alertEl.innerHTML = '';
@@ -3583,6 +3588,11 @@ async function mobPubSubmit(dateKey) {
   const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
   if (!cu) { showBookingGate(); return; }
 
+  // Gate: require verified email to book a DJ
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('book a DJ')) {
+    return;
+  }
+
   const alertEl = document.getElementById('mob-pub-form-alert');
   const submitBtn = document.getElementById('mpf-submit-btn');
   const bs = mobPubBs;
@@ -4240,6 +4250,12 @@ async function ib_submitBooking() {
   const alertEl = document.getElementById('ib-submit-alert');
   const cu = ib_currentUser();
   if (!cu) { showBookingGate(); return; }
+
+  // Gate: require verified email to book a DJ
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('book a DJ')) {
+    return;
+  }
+
   const d = ib_collectFormData();
 
   if (!d.venue_type) { alertEl.innerHTML = '<div class="ib-alert ib-alert-error">Please select Bar or Club.</div>'; return; }
@@ -4433,6 +4449,12 @@ async function ib_sendMsg(btn) {
   const alertEl = document.getElementById('ib-msg-alert');
   const cu = ib_currentUser();
   if (!cu) { showBookingGate(); return; }
+
+  // Gate: require verified email to send messages
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('send messages')) {
+    return;
+  }
+
   if (!subject || !body) { alertEl.innerHTML = '<div class="ib-alert ib-alert-error">Please fill in subject and message.</div>'; return; }
   const orig = btn.textContent; btn.textContent = 'Sending...'; btn.disabled = true;
   try {

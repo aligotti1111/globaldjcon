@@ -230,20 +230,31 @@ const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── POST-CONFIRMATION BANNER ──────────────────────────────
-// Supabase appends tokens in the URL hash after email confirmation.
-// If we see them, show a success banner and strip the hash from the URL.
+// ── POST-CONFIRMATION HANDLING ────────────────────────────
+// If the user arrives here after clicking an email confirmation link
+// in a fresh browser (no existing session), show a confirmation banner.
+// If they already have a session, just send them to their dashboard.
 (function checkJustConfirmed() {
   const hash = window.location.hash || '';
   const params = new URLSearchParams(window.location.search);
   const confirmed = hash.includes('access_token') || params.get('confirmed') === '1';
   if (confirmed) {
-    document.addEventListener('DOMContentLoaded', () => {
+    // Give the SDK a moment to process the URL hash and establish a session
+    setTimeout(() => {
+      try {
+        const raw = localStorage.getItem('sb-hwqvzuusquruhwguqole-auth-token');
+        if (raw) {
+          // Already logged in — send them to their dashboard
+          window.location.href = '/account-settings.html?emailverified=1';
+          return;
+        }
+      } catch (e) {}
+      // No session — show the banner and let them log in
       const alertEl = document.getElementById('alert');
       if (alertEl) {
-        alertEl.innerHTML = '<div class="alert alert-success">Your email is confirmed. You can now log in.</div>';
+        alertEl.innerHTML = '<div class="alert alert-success">✓ Your email is verified. Please log in to continue.</div>';
       }
-    });
+    }, 600);
     // Clean up the URL so refresh doesn't keep showing the banner
     if (window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -276,9 +287,6 @@ document.getElementById('login-form').addEventListener('submit', async function(
     const { data, error } = await db.auth.signInWithPassword({ email, password });
 
     if (error) {
-      if (/email not confirmed/i.test(error.message)) {
-        throw new Error('Please confirm your email before logging in. Check your inbox for the confirmation link.');
-      }
       if (/invalid login credentials/i.test(error.message)) {
         throw new Error('Invalid email or password.');
       }

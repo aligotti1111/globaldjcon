@@ -879,9 +879,16 @@ function lookupSignupZip(zip) {
   }, 600);
 }
 
-// ── POST-SIGNUP CONFIRMATION VIEW ───────────────────────
-function showConfirmView(email) {
+// ── POST-SIGNUP REDIRECT ────────────────────────────────
+// User is now logged in (Supabase creates a session even with Confirm email on).
+// Show a brief welcome, then send them to the appropriate starting page.
+// Email verification happens in background; they'll be gated on messaging/booking
+// by GDJAuth.requireVerifiedEmail() until they click the email link.
+function showWelcomeAndRedirect(email, role, slug) {
   const container = document.querySelector('.container');
+  const startPage = role === 'dj'
+    ? '/update-dj-profile.html?welcome=1'
+    : '/?welcome=1';
   container.innerHTML = `
     <div class="logo">
       <a href="/" style="text-decoration:none;"><h1>GLOBAL DJ CONNECT</h1></a>
@@ -889,16 +896,19 @@ function showConfirmView(email) {
     </div>
     <div style="text-align:center;padding:20px 0;">
       <div style="width:64px;height:64px;margin:0 auto 24px;border-radius:50%;background:var(--neon-dim);border:1px solid var(--neon);display:flex;align-items:center;justify-content:center;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
-      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;margin-bottom:16px;color:var(--white);">Check your email</h2>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:8px;">We sent a confirmation link to</p>
-      <p style="color:var(--neon);font-family:'Space Mono',monospace;font-size:14px;margin-bottom:24px;word-break:break-all;">${email}</p>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:32px;">Click the link in that email to verify your account, then log in.</p>
-      <button onclick="window.location.href='login.html'" style="background:var(--neon);color:var(--black);border:none;padding:14px 28px;border-radius:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Go to Login</button>
-      <p style="color:var(--muted);font-size:11px;margin-top:24px;">Didn't get the email? Check your spam folder.</p>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;margin-bottom:12px;color:var(--success);">Account Created</h2>
+      <p style="color:var(--white);font-size:15px;line-height:1.6;margin-bottom:20px;">Welcome to Global DJ Connect. You're signed in.</p>
+      <div style="background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:14px 18px;margin:0 auto 24px;max-width:420px;text-align:left;">
+        <p style="color:#ffb347;font-size:12px;font-family:'Space Mono',monospace;letter-spacing:.08em;margin-bottom:6px;">✉ VERIFY YOUR EMAIL</p>
+        <p style="color:var(--muted);font-size:13px;line-height:1.55;">We sent a link to <span style="color:var(--neon);">${email}</span>. Click it to unlock messaging and booking. You can browse in the meantime.</p>
+      </div>
+      <a href="${startPage}" style="display:inline-block;background:var(--neon);color:var(--black);border:none;padding:14px 32px;border-radius:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-decoration:none;">Continue</a>
     </div>
   `;
+  // Auto-redirect after 3 seconds if they don't click
+  setTimeout(() => { window.location.href = startPage; }, 3500);
 }
 
 // ── DJ FORM SUBMIT ──────────────────────────────────────
@@ -931,7 +941,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       email,
       password: document.getElementById('dj-password').value,
       options: {
-        emailRedirectTo: window.location.origin + '/login.html',
+        emailRedirectTo: window.location.origin + '/account-settings.html?emailverified=1',
         data: {
           role: 'dj',
           name,
@@ -954,7 +964,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       }
       throw error;
     }
-    showConfirmView(email);
+    showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create DJ Account';
@@ -985,7 +995,7 @@ document.getElementById('form-host').addEventListener('submit', async function(e
       email: emailLower,
       password,
       options: {
-        emailRedirectTo: window.location.origin + '/login.html',
+        emailRedirectTo: window.location.origin + '/account-settings.html?emailverified=1',
         data: { role: 'host', name, country }
       }
     });
@@ -995,7 +1005,7 @@ document.getElementById('form-host').addEventListener('submit', async function(e
       }
       throw error;
     }
-    showConfirmView(emailLower);
+    showWelcomeAndRedirect(emailLower, 'host');
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Host Account';
@@ -1037,7 +1047,7 @@ document.getElementById('form-venue').addEventListener('submit', async function(
       email: emailLower,
       password,
       options: {
-        emailRedirectTo: window.location.origin + '/login.html',
+        emailRedirectTo: window.location.origin + '/account-settings.html?emailverified=1',
         data: {
           role: 'venue',
           name: venueName,
@@ -1057,7 +1067,7 @@ document.getElementById('form-venue').addEventListener('submit', async function(
       }
       throw error;
     }
-    showConfirmView(emailLower);
+    showWelcomeAndRedirect(emailLower, 'venue', venueSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = 'Create Venue Account';
