@@ -304,28 +304,31 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
 
   <!-- MANAGE DJS TAB -->
   <div id="tab-djs" class="tab-content">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">DJ Accounts</div>
       <span id="dj-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
     </div>
+    <input type="search" class="form-input admin-search" id="dj-search" placeholder="Search by email, name, or slug..." oninput="filterList('dj')" style="margin-bottom:1rem;">
     <div id="dj-list" class="admin-list"></div>
   </div>
 
   <!-- MANAGE HOSTS TAB -->
   <div id="tab-hosts" class="tab-content">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">Party Host Accounts</div>
       <span id="host-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
     </div>
+    <input type="search" class="form-input admin-search" id="host-search" placeholder="Search by email, name, or slug..." oninput="filterList('host')" style="margin-bottom:1rem;">
     <div id="host-list" class="admin-list"></div>
   </div>
 
   <!-- MANAGE VENUES TAB -->
   <div id="tab-venues" class="tab-content">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">Venue Accounts</div>
       <span id="venue-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
     </div>
+    <input type="search" class="form-input admin-search" id="venue-search" placeholder="Search by email, name, or slug..." oninput="filterList('venue')" style="margin-bottom:1rem;">
     <div id="venue-list" class="admin-list"></div>
   </div>
 </div>
@@ -788,32 +791,78 @@ function escapeHtml(s) {
 // ═══════════════════════════════════════════════════════════════════
 // MANAGE USERS
 // ═══════════════════════════════════════════════════════════════════
+// Per-role cache of full user list (for client-side filtering)
+const listCache = { dj: [], host: [], venue: [] };
+// Map of user_id -> email (populated by admin-list-emails)
+let emailMap = {};
+let emailMapPromise = null;
+
+async function ensureEmailMap(force) {
+  if (!force && emailMapPromise) return emailMapPromise;
+  emailMapPromise = adminPost('admin-list-emails', {}).then(r => {
+    emailMap = {};
+    (r && r.users || []).forEach(u => { emailMap[u.id] = u.email || ''; });
+    return emailMap;
+  }).catch(err => {
+    console.error('[admin] failed to load emails:', err);
+    return {};
+  });
+  return emailMapPromise;
+}
+
 async function loadUsers(role) {
   const list = document.getElementById(role + '-list');
   list.innerHTML = '<div class="empty-admin">Loading...</div>';
 
-  const users = await apiGet('users?select=*&role=eq.' + role + '&order=name');
+  const [users] = await Promise.all([
+    apiGet('users?select=*&role=eq.' + role + '&order=name'),
+    ensureEmailMap()
+  ]);
+
   // Cache by id so edit modal can populate without another fetch
   (users || []).forEach(u => { userCache[u.id] = u; });
-  const count = (users || []).length;
-  document.getElementById(role + '-count').textContent = count + (count === 1 ? ' account' : ' accounts');
+  listCache[role] = users || [];
 
-  if (count === 0) {
-    list.innerHTML = `<div class="empty-admin">No ${role} accounts yet.</div>`;
+  document.getElementById(role + '-count').textContent =
+    (users || []).length + ((users || []).length === 1 ? ' account' : ' accounts');
+
+  renderUserList(role);
+}
+
+function renderUserList(role) {
+  const list = document.getElementById(role + '-list');
+  const users = listCache[role] || [];
+  const q = (document.getElementById(role + '-search').value || '').trim().toLowerCase();
+
+  let filtered = users;
+  if (q) {
+    filtered = users.filter(u => {
+      const name = role === 'venue' ? (u.venue_name || u.name || '') : (u.name || '');
+      const email = emailMap[u.id] || '';
+      const slug = u.slug || '';
+      return name.toLowerCase().includes(q)
+        || email.toLowerCase().includes(q)
+        || slug.toLowerCase().includes(q);
+    });
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-admin">${q ? 'No matches for "' + escapeHtml(q) + '"' : 'No ' + role + ' accounts yet.'}</div>`;
     return;
   }
 
-  list.innerHTML = users.map(u => {
+  list.innerHTML = filtered.map(u => {
     const unclaimedBadge = !u.claimed ? '<span class="ar-type unclaimed">Unclaimed</span>' : '';
-    const typeBadge = role === 'dj'
-      ? `<span class="ar-type ${u.type === 'club' ? 'club' : 'mobile'}">${u.type === 'club' ? 'Club/Bar' : 'Mobile/Event'}</span>`
-      : `<span class="ar-type ${role}">${role}</span>`;
     const name = role === 'venue' ? (u.venue_name || u.name) : u.name;
     const loc = [u.city, u.state, u.country].filter(Boolean).join(', ');
+    const email = emailMap[u.id] || '';
+    const emailCell = email
+      ? `<div class="ar-detail" title="${escapeHtml(email)}">${escapeHtml(email)}</div>`
+      : `<div class="ar-detail" style="color:#6b6b88;font-style:italic;">no email</div>`;
     return `<div class="admin-row">
-      ${typeBadge}
       ${unclaimedBadge}
       <div class="ar-name">${escapeHtml(name || 'Unnamed')}</div>
+      ${emailCell}
       <div class="ar-detail">${escapeHtml(loc || '—')}</div>
       <div class="ar-detail">${escapeHtml(u.slug || '—')}</div>
       <button class="btn btn-admin" onclick="openEditModal('${u.id}')" style="padding:.4rem .8rem;font-size:.6rem;">Edit</button>
@@ -821,6 +870,10 @@ async function loadUsers(role) {
       <button class="btn btn-danger" onclick="deleteUser('${u.id}','${escapeHtml(name || 'this user').replace(/'/g, "\\'")}')">Delete</button>
     </div>`;
   }).join('');
+}
+
+function filterList(role) {
+  renderUserList(role);
 }
 
 function viewUser(slug) {
@@ -982,8 +1035,11 @@ async function saveEdit() {
     fb.className = 'form-fb ok';
     // Update cache with new values
     if (result.user) userCache[userId] = result.user;
+    // If email changed, update the email map so the list reflects it without a full refetch
+    if (result.email_updated && result.email) {
+      emailMap[userId] = result.email;
+    }
     // Refresh the visible list
-    const role = updates.role;
     setTimeout(() => {
       closeEditModal();
       const active = document.querySelector('.tab-btn.active').dataset.tab;
