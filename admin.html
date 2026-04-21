@@ -350,6 +350,11 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <label class="form-label">Venue Name</label>
         <input class="form-input" id="edit-venue-name">
       </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label class="form-label">Email <span style="color:var(--muted);font-weight:400;">(login email — changing this changes how the user signs in)</span></label>
+        <input class="form-input" id="edit-email" type="email" placeholder="Loading...">
+        <p class="form-hint" id="edit-email-hint" style="color:var(--muted);">New email is auto-confirmed; no verification email sent to user.</p>
+      </div>
       <div class="form-group">
         <label class="form-label">Slug</label>
         <input class="form-input" id="edit-slug">
@@ -850,6 +855,26 @@ function openEditModal(userId) {
   document.getElementById('edit-user-id').value = u.id;
   document.getElementById('edit-sub').textContent = (u.name || u.venue_name || 'Account') + ' • ' + (u.role || '').toUpperCase();
 
+  // Email lives on auth.users — fetch via admin endpoint
+  const emailInput = document.getElementById('edit-email');
+  const emailHint = document.getElementById('edit-email-hint');
+  emailInput.value = '';
+  emailInput.placeholder = 'Loading...';
+  emailInput.disabled = true;
+  emailInput.dataset.original = '';
+  if (emailHint) { emailHint.textContent = 'New email is auto-confirmed; no verification email sent to user.'; emailHint.style.color = ''; }
+  adminPost('admin-get-user-email', { user_id: u.id }).then(r => {
+    const e = (r && r.email) || '';
+    emailInput.value = e;
+    emailInput.placeholder = 'No email on file';
+    emailInput.dataset.original = e;
+    emailInput.disabled = false;
+  }).catch(err => {
+    emailInput.placeholder = 'Could not load email';
+    emailInput.disabled = false;
+    if (emailHint) { emailHint.textContent = 'Lookup error: ' + (err.message || 'failed'); emailHint.style.color = 'var(--error,#ff5f5f)'; }
+  });
+
   // Identity
   setVal('edit-name', u.name);
   setVal('edit-venue-name', u.venue_name);
@@ -939,6 +964,14 @@ async function saveEdit() {
   };
   const td = document.getElementById('edit-travel-distance').value.trim();
   if (td !== '') updates.travel_distance = parseInt(td, 10) || null;
+
+  // Include email only if it changed (auth.users update is more expensive + auditable)
+  const emailEl = document.getElementById('edit-email');
+  const newEmail = (emailEl.value || '').trim().toLowerCase();
+  const origEmail = (emailEl.dataset.original || '').trim().toLowerCase();
+  if (newEmail && newEmail !== origEmail) {
+    updates.email = newEmail;
+  }
 
   btn.disabled = true; btn.textContent = 'Saving...';
   fb.textContent = ''; fb.className = 'form-fb';
