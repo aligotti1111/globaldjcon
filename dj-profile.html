@@ -776,7 +776,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 <script>
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 function initials(name) {
   if (!name) return '?';
