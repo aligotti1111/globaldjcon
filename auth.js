@@ -227,8 +227,12 @@
       const profile = await loadProfile(_session.user.id, _session.access_token);
       _currentUser = hydrateUser(_session.user, profile);
       window.currentUser = _currentUser;
+      renderNav();
       return _currentUser;
     },
+
+    // Re-render the top nav toolbar (exposed so pages can trigger it manually if needed)
+    renderNav() { renderNav(); },
 
     // Sign out and redirect (uses raw fetch — the SDK's signOut can hang)
     async signOut(redirectTo = '/') {
@@ -262,6 +266,145 @@
   };
 
   window.GDJAuth = GDJAuth;
+
+  // ── Top nav toolbar rendering ─────────────────────────────────────────────
+  // Single source of truth for what buttons show in the header across all pages.
+  // Rules:
+  //   Logged out:    Sign In + Create Account
+  //   DJ:            Inbox, Booking Requests, View My Profile (hide on own
+  //                  profile page), Update My Profile (hide on update page),
+  //                  Logout
+  //   Venue / host:  Inbox, Booking Requests, Settings, Logout
+  // Pages opt in by including <div class="nav-btns" id="nav-btns"></div> in
+  // their header. This helper will wipe and rebuild that container.
+  function currentPath() {
+    var p = (window.location.pathname || '/').toLowerCase();
+    // Strip trailing slash (except for root) and .html extension for matching
+    if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+    return p;
+  }
+
+  function isOnUpdateProfilePage() {
+    var p = currentPath();
+    return p === '/update-dj-profile' || p === '/update-dj-profile.html';
+  }
+
+  function isOnOwnDjProfilePage(user) {
+    if (!user || user.role !== 'dj' || !user.slug) return false;
+    var p = currentPath();
+    // DJ profiles render at /<slug> or /<slug>.html or /dj-profile.html?slug=<slug>
+    var slug = String(user.slug).toLowerCase();
+    if (p === '/' + slug || p === '/' + slug + '.html') return true;
+    if (p === '/dj-profile' || p === '/dj-profile.html') {
+      // Check query string for slug match
+      var qs = new URLSearchParams(window.location.search);
+      var qSlug = (qs.get('slug') || qs.get('dj') || '').toLowerCase();
+      if (qSlug && qSlug === slug) return true;
+    }
+    return false;
+  }
+
+  // SVG icons used in the nav (kept inline to avoid extra requests)
+  var NAV_SVGS = {
+    signin:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
+    signup:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>',
+    profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    edit:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+    inbox:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+    booking: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    settings:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+    logout:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>'
+  };
+
+  function buildNavHtml(user) {
+    if (!user) {
+      return (
+        '<a href="/login.html" id="nav-signin" class="btn btn-outline">' +
+          NAV_SVGS.signin + '<span class="nav-btn-text">Sign In</span>' +
+        '</a>' +
+        '<a href="/signup.html" id="nav-signup" class="btn btn-primary">' +
+          NAV_SVGS.signup + '<span class="nav-btn-text">Create Account</span>' +
+        '</a>'
+      );
+    }
+
+    var parts = [];
+
+    // Inbox + Booking Requests — all logged-in users, all pages
+    parts.push(
+      '<a href="/inbox.html" class="inbox-nav-btn" id="nav-inbox-btn" title="Inbox">' +
+        NAV_SVGS.inbox +
+        '<span class="inbox-badge" id="nav-unread-count" style="display:none;"></span>' +
+      '</a>'
+    );
+    parts.push(
+      '<a href="/booking-requests.html" class="inbox-nav-btn" id="nav-booking-requests-btn" title="Booking Requests">' +
+        NAV_SVGS.booking +
+        '<span class="inbox-badge" id="nav-booking-count" style="display:none;"></span>' +
+      '</a>'
+    );
+
+    if (user.role === 'dj') {
+      // DJ: View My Profile (hide on own profile), Update My Profile (hide on update page)
+      if (!isOnOwnDjProfilePage(user) && user.slug) {
+        parts.push(
+          '<a href="/' + encodeURIComponent(user.slug) + '" id="nav-view-profile" class="btn btn-outline">' +
+            NAV_SVGS.profile + '<span class="nav-btn-text">View My Profile</span>' +
+          '</a>'
+        );
+      }
+      if (!isOnUpdateProfilePage()) {
+        parts.push(
+          '<a href="/update-dj-profile.html" id="nav-profile" class="btn btn-primary">' +
+            NAV_SVGS.edit +
+            '<span class="nav-btn-text"><span class="hide-mobile">Update </span>My Profile</span>' +
+          '</a>'
+        );
+      }
+    } else {
+      // Venue / host: Settings icon
+      parts.push(
+        '<a href="/account-settings.html" class="inbox-nav-btn" id="nav-settings-btn" title="Account Settings">' +
+          NAV_SVGS.settings +
+        '</a>'
+      );
+    }
+
+    // Logout — always last for logged-in users
+    parts.push(
+      '<button id="nav-logout" class="btn btn-outline" onclick="GDJAuth.signOut()">' +
+        NAV_SVGS.logout + '<span class="nav-btn-text">Log Out</span>' +
+      '</button>'
+    );
+
+    return parts.join('');
+  }
+
+  function renderNav() {
+    var container = document.getElementById('nav-btns');
+    if (!container) return;
+    container.innerHTML = buildNavHtml(_currentUser);
+  }
+
+  // Initial render: as soon as the DOM has the #nav-btns container, paint with
+  // whatever state we have (may be logged-out initially; will re-render when
+  // auth resolves below).
+  function scheduleInitialNavRender() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderNav);
+    } else {
+      renderNav();
+    }
+  }
+  scheduleInitialNavRender();
+
+  // Re-render once auth resolves and on every subsequent auth state change
+  GDJAuth.ready(renderNav);
+  db.auth.onAuthStateChange(() => {
+    // A tick later so _currentUser has been updated by the onAuthStateChange
+    // listener higher up in this file
+    setTimeout(renderNav, 0);
+  });
 
   // ── Verification banner auto-injection ────────────────────────────────────
   // When logged in but email is not verified, show a sticky banner on the page
