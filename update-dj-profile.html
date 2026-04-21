@@ -1819,12 +1819,17 @@ clubGenres.forEach(cb => {
       updateNameLabel();
     }
     
-    // Load mobile party types from event_types
+    // Load mobile party types from event_types.
+    // For Mobile DJs with NO event_types saved yet (e.g., new account), default to ALL checked.
+    const isMobileType = (data.type || '').includes('mobile-event');
     if (data.event_types) {
       data.event_types.split(',').map(s => s.trim()).forEach(partyType => {
         const checkbox = document.querySelector(`input[name="mobile-events"][value="${partyType}"]`);
         if (checkbox) checkbox.checked = true;
       });
+    } else if (isMobileType) {
+      // New Mobile DJ — pre-check every event type as a sensible default
+      document.querySelectorAll('input[name="mobile-events"]').forEach(cb => { cb.checked = true; });
     }
     
     // Load club genres
@@ -1841,7 +1846,10 @@ clubGenres.forEach(cb => {
         }
       });
     }
-    
+
+    // Now that type checkboxes are set from loaded data, refresh which tabs are visible
+    if (typeof checkShowBookingTab === 'function') checkShowBookingTab();
+
   } catch (error) {
     console.error('[update-dj-profile] Load error:', error);
     document.getElementById('alert').innerHTML = '<div class="alert alert-error">Failed to load profile: ' + (error.message || 'Unknown error') + '</div>';
@@ -2030,7 +2038,8 @@ function setMobileCheckboxLocked(locked) {
 function checkShowBookingTab() {
   const isClub = document.getElementById('club-checkbox').checked;
   const isMobile = document.getElementById('mobile-checkbox').checked;
-  document.getElementById('tab-btn-booking').style.display = (isClub || isMobile) ? '' : 'none';
+  // Booking tab always visible for now (until subscription is added)
+  document.getElementById('tab-btn-booking').style.display = '';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
   document.getElementById('mobile-booking-section').style.display = isMobile ? 'block' : 'none';
   if (isClub) updateRateFields(null);
