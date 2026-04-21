@@ -384,17 +384,21 @@
 
   // Inject self-contained styles for the nav buttons so they look right
   // on every page regardless of that page's local CSS.
+  // Mirrors the .btn / .btn-outline / .btn-primary / .inbox-nav-btn styles
+  // from dj-profile.html so the nav looks identical everywhere.
   function injectNavStyles() {
     if (document.getElementById('gdj-nav-styles')) return;
     var css = ''
       + '#nav-btns{display:flex;gap:.5rem;align-items:center;flex-wrap:nowrap;}'
-      + '.gdj-nav-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .9rem;border-radius:6px;font-family:"Space Mono",monospace;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid transparent;line-height:1;white-space:nowrap;}'
-      + '.gdj-nav-outline{background:transparent;color:#fff;border-color:#fff;}'
+      + '.gdj-nav-btn{display:inline-flex;align-items:center;gap:.45rem;font-family:"Space Mono",monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:.6rem 1rem;border-radius:6px;border:1px solid;cursor:pointer;text-decoration:none;transition:all .2s;white-space:nowrap;line-height:1;}'
+      + '.gdj-nav-btn svg{width:14px;height:14px;flex-shrink:0;}'
+      + '.gdj-nav-outline{background:transparent;border-color:#1e1e30;color:#fff;}'
       + '.gdj-nav-outline:hover{border-color:#00f5c4;color:#00f5c4;}'
-      + '.gdj-nav-primary{background:#00f5c4;color:#050507;border-color:#00f5c4;}'
-      + '.gdj-nav-primary:hover{background:#00d8ad;border-color:#00d8ad;}'
-      + '.gdj-nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;border:1px solid rgba(255,255,255,.2);color:#fff;text-decoration:none;cursor:pointer;background:transparent;}'
+      + '.gdj-nav-primary{background:#00f5c4;border-color:#00f5c4;color:#050507;font-weight:700;}'
+      + '.gdj-nav-primary:hover{opacity:.85;}'
+      + '.gdj-nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1px solid #1e1e30;color:#9a9aaf;cursor:pointer;background:transparent;transition:all .2s;text-decoration:none;}'
       + '.gdj-nav-icon:hover{border-color:#00f5c4;color:#00f5c4;}'
+      + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
       + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}}';
     var style = document.createElement('style');
