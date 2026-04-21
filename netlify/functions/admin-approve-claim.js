@@ -141,22 +141,90 @@ exports.handler = async (event) => {
     }
   );
 
-  // ── Trigger "set your password" email via Supabase's recover flow ─
-  // This generates a recovery link and sends it to the new email.
-  const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
-    method: 'POST',
-    headers: {
-      apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ email: newEmail })
-  });
+  // ── Fetch target user's public profile (name, slug, bizName) for the email ─
+  let targetProfile = null;
+  try {
+    const pRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?select=name,venue_name,slug,role&id=eq.${encodeURIComponent(claim.target_user_id)}&limit=1`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+    );
+    if (pRes.ok) {
+      const rows = await pRes.json();
+      targetProfile = rows && rows[0] ? rows[0] : null;
+    }
+  } catch (e) { /* non-fatal */ }
 
-  if (!recoverRes.ok) {
-    const errText = await recoverRes.text();
-    console.warn('[admin-approve-claim] recover email send may have failed:', errText);
-    // Don't fail the whole request — the email swap succeeded, admin can manually re-send from dashboard
+  // ── Generate our own one-time password-setup token ──────────────────
+  // We deliberately DO NOT use Supabase's built-in recovery flow here, because
+  // that endpoint triggers Supabase's stock "Reset Your Password" email which
+  // is (a) off-brand and (b) semantically wrong — this isn't a password reset,
+  // it's a fresh account activation following an admin-approved claim.
+  // Instead we generate a token, store it in our own password_setup_tokens
+  // table, and include it in a custom "Profile Claimed" email.
+  let setPasswordToken = null;
+  let tokenStoreOk = false;
+  try {
+    // Generate a URL-safe 32-byte token (64 hex chars)
+    const crypto = require('crypto');
+    setPasswordToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/password_setup_tokens`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({
+        token: setPasswordToken,
+        user_id: claim.target_user_id,
+        email: newEmail,
+        expires_at: expiresAt
+      })
+    });
+    tokenStoreOk = insertRes.ok;
+    if (!insertRes.ok) {
+      const errText = await insertRes.text();
+      console.error('[admin-approve-claim] token insert failed:', errText);
+    }
+  } catch (e) {
+    console.error('[admin-approve-claim] token generation error:', e);
+  }
+
+  // Determine the public site URL for the link (Netlify forwards the host)
+  const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'globaldjconnect.com';
+  const proto = event.headers['x-forwarded-proto'] || 'https';
+  const siteBase = `${proto}://${host}`;
+  const setPasswordLink = tokenStoreOk
+    ? `${siteBase}/set-password.html?token=${encodeURIComponent(setPasswordToken)}`
+    : null;
+
+  // ── Send the custom "Profile Claimed" email ──────────────────────
+  let emailSent = false;
+  if (setPasswordLink) {
+    try {
+      const emailRes = await fetch(`${siteBase}/.netlify/functions/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'profile_claimed',
+          email: newEmail,
+          name: targetProfile && targetProfile.name ? targetProfile.name : null,
+          bizName: targetProfile ? (targetProfile.venue_name || targetProfile.name) : null,
+          slug: targetProfile && targetProfile.slug ? targetProfile.slug : null,
+          setPasswordLink: setPasswordLink
+        })
+      });
+      emailSent = emailRes.ok;
+      if (!emailRes.ok) {
+        const errText = await emailRes.text();
+        console.error('[admin-approve-claim] send-email failed:', errText);
+      }
+    } catch (e) {
+      console.error('[admin-approve-claim] send-email error:', e);
+    }
   }
 
   return {
@@ -166,7 +234,10 @@ exports.handler = async (event) => {
       success: true,
       user_id: claim.target_user_id,
       new_email: newEmail,
-      message: 'Claim approved. Password setup email sent to ' + newEmail + '.'
+      email_sent: emailSent,
+      message: emailSent
+        ? 'Claim approved. Profile-claimed email sent to ' + newEmail + '.'
+        : 'Claim approved, but the email send may have failed. Check Netlify logs.'
     })
   };
 };
