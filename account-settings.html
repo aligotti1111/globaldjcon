@@ -352,11 +352,46 @@ async function apiPatch(path, body) {
 // ── Resolve current user (from auth.js, or redirect to login) ─────────────
 let currentUser = null;
 (async function bootstrap() {
+  // If arriving from an email confirmation link, the URL hash contains auth tokens
+  // that the Supabase SDK needs time to process before a session exists.
+  const hasUrlAuthFragment = (window.location.hash || '').includes('access_token');
+  const isEmailVerifyReturn = new URLSearchParams(window.location.search).get('emailverified') === '1';
+  if (hasUrlAuthFragment || isEmailVerifyReturn) {
+    // Give the SDK up to 2 seconds to process hash + establish session
+    const maxWait = 2000;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const stored = localStorage.getItem('sb-hwqvzuusquruhwguqole-auth-token');
+      if (stored) break;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    // Force auth.js to re-read the session now that it's established
+    if (typeof GDJAuth !== 'undefined' && GDJAuth.refreshProfile) {
+      await GDJAuth.refreshProfile();
+    }
+  }
+
   const cu = (typeof GDJAuth !== 'undefined' && GDJAuth.waitUntilReady)
     ? await GDJAuth.waitUntilReady()
     : null;
   if (!cu) { window.location.href = '/login.html'; return; }
   currentUser = cu;
+
+  // Show "email verified" success banner
+  if (isEmailVerifyReturn) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;';
+    banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
+    const container = document.querySelector('.container') || document.body.firstChild;
+    if (container) container.insertBefore(banner, container.firstChild);
+    setTimeout(() => banner.style.opacity = '0', 6000);
+    setTimeout(() => banner.remove(), 7000);
+    // Clean the URL
+    if (window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
   initUI();
 })();
 
