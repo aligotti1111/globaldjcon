@@ -939,7 +939,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
   }
   try {
     const email = document.getElementById('dj-email').value.toLowerCase();
-    const { error } = await db.auth.signUp({
+    const { data: signUpData, error } = await db.auth.signUp({
       email,
       password: document.getElementById('dj-password').value,
       options: {
@@ -965,6 +965,10 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
         throw new Error('That URL was just taken. Please pick another.');
       }
       throw error;
+    }
+    // Detect duplicate email (Supabase's enumeration protection returns empty identities)
+    if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Please log in instead.');
     }
     showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
@@ -993,7 +997,7 @@ document.getElementById('form-host').addEventListener('submit', async function(e
   }
   try {
     const emailLower = email.toLowerCase();
-    const { error } = await db.auth.signUp({
+    const { data: signUpData, error } = await db.auth.signUp({
       email: emailLower,
       password,
       options: {
@@ -1006,6 +1010,9 @@ document.getElementById('form-host').addEventListener('submit', async function(e
         throw new Error('An account with this email already exists. Please log in instead.');
       }
       throw error;
+    }
+    if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Please log in instead.');
     }
     showWelcomeAndRedirect(emailLower, 'host');
   } catch (err) {
@@ -1045,7 +1052,7 @@ document.getElementById('form-venue').addEventListener('submit', async function(
       if (!ex || ex.length === 0) break;
       venueSlug = baseSlug + '-' + slugSuffix++;
     }
-    const { error } = await db.auth.signUp({
+    const { data: signUpData, error } = await db.auth.signUp({
       email: emailLower,
       password,
       options: {
@@ -1068,6 +1075,9 @@ document.getElementById('form-venue').addEventListener('submit', async function(
         throw new Error('That URL was just taken. Please try again.');
       }
       throw error;
+    }
+    if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Please log in instead.');
     }
     showWelcomeAndRedirect(emailLower, 'venue', venueSlug);
   } catch (err) {
