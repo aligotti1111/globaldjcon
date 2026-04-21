@@ -2111,11 +2111,12 @@ function _doToggleBooking(enabled, skipSave) {
   const thumb = document.getElementById('booking-toggle-thumb');
   document.getElementById('booking-setup').style.display = enabled ? 'block' : 'none';
   const calSection = document.getElementById('cal-section');
-  if (calSection) calSection.style.display = enabled ? '' : 'none';
+  const isClubChecked = document.getElementById('club-checkbox').checked;
+  if (calSection) calSection.style.display = (enabled && isClubChecked) ? '' : 'none';
   track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
-  if (enabled) renderCal();
+  if (enabled && isClubChecked) renderCal();
   if (enabled && document.getElementById('mobile-checkbox').checked) {
     renderMobCal(); renderMobPackageTabs();
     setClubOptionVisible(false);
