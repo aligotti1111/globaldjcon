@@ -1665,6 +1665,16 @@ clubGenres.forEach(cb => {
 
 // Load user data
 (async function() {
+  // Wait for auth.js to resolve the session before loading profile data
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.waitUntilReady) {
+    const cu = await GDJAuth.waitUntilReady();
+    if (cu) currentUser = cu;
+  }
+  if (!currentUser) {
+    // authGate above will redirect; just stop here
+    return;
+  }
+
   // Show email verified banner if arrived from email confirmation link
   const isEmailVerifyReturn = new URLSearchParams(window.location.search).get('emailverified') === '1';
   if (isEmailVerifyReturn) {
@@ -1681,8 +1691,30 @@ clubGenres.forEach(cb => {
   }
 
   try {
-    const { data, error } = await db.from('users').select('*').eq('id', currentUser.id).single();
-    if (error) throw error;
+    // Use raw fetch with the access token from auth.js — the SDK's internal session
+    // state can race with this initial load, so we go direct.
+    const session = (typeof GDJAuth !== 'undefined' && GDJAuth.session) ? GDJAuth.session() : null;
+    const accessToken = session && session.access_token;
+    const SUPABASE_URL_LOCAL = 'https://hwqvzuusquruhwguqole.supabase.co';
+    const SUPABASE_KEY_LOCAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+    const profileRes = await fetch(
+      SUPABASE_URL_LOCAL + '/rest/v1/users?select=*&id=eq.' + encodeURIComponent(currentUser.id) + '&limit=1',
+      {
+        headers: {
+          apikey: SUPABASE_KEY_LOCAL,
+          Authorization: 'Bearer ' + (accessToken || SUPABASE_KEY_LOCAL)
+        }
+      }
+    );
+    if (!profileRes.ok) {
+      const errText = await profileRes.text();
+      throw new Error('Profile fetch failed: ' + profileRes.status + ' ' + errText);
+    }
+    const profileRows = await profileRes.json();
+    const data = profileRows && profileRows[0];
+    if (!data) throw new Error('Profile not found');
+    // Email lives on auth.users now, not public.users — use the one from currentUser (auth.js merges it in)
+    if (!data.email) data.email = currentUser.email;
     
     document.getElementById('email').value = data.email;
     document.getElementById('name').value = data.name || '';
@@ -1811,8 +1843,8 @@ clubGenres.forEach(cb => {
     }
     
   } catch (error) {
-    console.error('Error:', error);
-    document.getElementById('alert').innerHTML = '<div class="alert alert-error">Failed to load profile</div>';
+    console.error('[update-dj-profile] Load error:', error);
+    document.getElementById('alert').innerHTML = '<div class="alert alert-error">Failed to load profile: ' + (error.message || 'Unknown error') + '</div>';
   }
 })();
 
