@@ -306,7 +306,10 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
   <div id="tab-djs" class="tab-content">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">DJ Accounts</div>
-      <span id="dj-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <span id="dj-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+        <button class="btn btn-outline" onclick="refreshUsers('dj')" style="padding:.4rem .8rem;font-size:.6rem;">↻ Refresh</button>
+      </div>
     </div>
     <input type="search" class="form-input admin-search" id="dj-search" placeholder="Search by email, name, or slug..." oninput="filterList('dj')" style="margin-bottom:1rem;">
     <div id="dj-list" class="admin-list"></div>
@@ -316,7 +319,10 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
   <div id="tab-hosts" class="tab-content">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">Party Host Accounts</div>
-      <span id="host-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <span id="host-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+        <button class="btn btn-outline" onclick="refreshUsers('host')" style="padding:.4rem .8rem;font-size:.6rem;">↻ Refresh</button>
+      </div>
     </div>
     <input type="search" class="form-input admin-search" id="host-search" placeholder="Search by email, name, or slug..." oninput="filterList('host')" style="margin-bottom:1rem;">
     <div id="host-list" class="admin-list"></div>
@@ -326,7 +332,10 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
   <div id="tab-venues" class="tab-content">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;">
       <div class="form-section-label" style="margin:0;">Venue Accounts</div>
-      <span id="venue-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <span id="venue-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);"></span>
+        <button class="btn btn-outline" onclick="refreshUsers('venue')" style="padding:.4rem .8rem;font-size:.6rem;">↻ Refresh</button>
+      </div>
     </div>
     <input type="search" class="form-input admin-search" id="venue-search" placeholder="Search by email, name, or slug..." oninput="filterList('venue')" style="margin-bottom:1rem;">
     <div id="venue-list" class="admin-list"></div>
@@ -760,8 +769,15 @@ async function approveClaim(claimId) {
   try {
     const result = await adminPost('admin-approve-claim', { claim_id: claimId, reviewed_notes: notes });
     alert('✓ ' + (result.message || 'Claim approved'));
+    // Bust the email-map cache so the approved DJ's new email shows up
+    emailMapPromise = null;
     loadClaims();
     loadStats();
+    // If the DJs tab is currently open, reload it with fresh email data
+    const active = document.querySelector('.tab-btn.active');
+    if (active && ['djs','hosts','venues'].includes(active.dataset.tab)) {
+      loadUsers(active.dataset.tab.slice(0, -1));
+    }
   } catch (err) {
     alert('✗ ' + (err.message || 'Approval failed'));
     btns.forEach(b => b.disabled = false);
@@ -857,7 +873,7 @@ function renderUserList(role) {
     const loc = [u.city, u.state, u.country].filter(Boolean).join(', ');
     const email = emailMap[u.id] || '';
     const emailCell = email
-      ? `<div class="ar-detail" title="${escapeHtml(email)}">${escapeHtml(email)}</div>`
+      ? `<div class="ar-detail" style="color:var(--white);" title="${escapeHtml(email)}">${escapeHtml(email)}</div>`
       : `<div class="ar-detail" style="color:#6b6b88;font-style:italic;">no email</div>`;
     return `<div class="admin-row">
       ${unclaimedBadge}
@@ -874,6 +890,13 @@ function renderUserList(role) {
 
 function filterList(role) {
   renderUserList(role);
+}
+
+// Force a full resync — drops the email cache and re-pulls both users + emails.
+// Used by the per-tab "↻ Refresh" button and after email-changing admin actions.
+async function refreshUsers(role) {
+  emailMapPromise = null;
+  await loadUsers(role);
 }
 
 function viewUser(slug) {
@@ -1038,6 +1061,8 @@ async function saveEdit() {
     // If email changed, update the email map so the list reflects it without a full refetch
     if (result.email_updated && result.email) {
       emailMap[userId] = result.email;
+      // Bust the promise cache too, so next explicit reload re-fetches from source of truth
+      emailMapPromise = null;
     }
     // Refresh the visible list
     setTimeout(() => {
