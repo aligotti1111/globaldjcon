@@ -2638,28 +2638,43 @@ async function loadInboxBadge() {
   setInterval(refreshBookingBadge, 30000);
 }
 
-// Nav auth state
-(function() {
+// Nav auth state — runs immediately AND re-runs when the async bootstrap finishes
+function gdcUpdateNavAuth() {
   const user = sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser');
-  if (user) {
-    const parsedUser = JSON.parse(user);
-    document.getElementById('nav-signin').style.display = 'none';
-    document.getElementById('nav-signup').style.display = 'none';
-    document.getElementById('nav-logout').style.display = 'inline-flex';
-    loadInboxBadge();
+  if (!user) return;
+  let parsedUser;
+  try { parsedUser = JSON.parse(user); } catch(e) { return; }
+  if (!parsedUser) return;
 
-    document.getElementById('nav-booking-requests-btn').style.display = 'inline-flex';
-    if (parsedUser.role === 'dj') {
-      document.getElementById('nav-profile').style.display = 'inline-flex';
-      if (parsedUser.slug) {
-        document.getElementById('nav-view-profile').href = '/' + parsedUser.slug;
-        document.getElementById('nav-view-profile').style.display = 'inline-flex';
+  const signinEl = document.getElementById('nav-signin');
+  const signupEl = document.getElementById('nav-signup');
+  const logoutEl = document.getElementById('nav-logout');
+  if (signinEl) signinEl.style.display = 'none';
+  if (signupEl) signupEl.style.display = 'none';
+  if (logoutEl) logoutEl.style.display = 'inline-flex';
+
+  if (typeof loadInboxBadge === 'function') loadInboxBadge();
+
+  const bkBtn = document.getElementById('nav-booking-requests-btn');
+  if (bkBtn) bkBtn.style.display = 'inline-flex';
+
+  if (parsedUser.role === 'dj') {
+    const profBtn = document.getElementById('nav-profile');
+    if (profBtn) profBtn.style.display = 'inline-flex';
+    if (parsedUser.slug) {
+      const viewBtn = document.getElementById('nav-view-profile');
+      if (viewBtn) {
+        viewBtn.href = '/' + parsedUser.slug;
+        viewBtn.style.display = 'inline-flex';
       }
-    } else {
-      document.getElementById('nav-settings-btn').style.display = 'inline-flex';
     }
+  } else {
+    const settingsBtn = document.getElementById('nav-settings-btn');
+    if (settingsBtn) settingsBtn.style.display = 'inline-flex';
   }
-})();
+}
+gdcUpdateNavAuth();
+window.addEventListener('gdc-auth-ready', gdcUpdateNavAuth);
 
 async function doInlineSave(btn) {
   const key = btn.getAttribute('data-key');
