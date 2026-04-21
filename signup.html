@@ -918,36 +918,63 @@ function lookupSignupZip(zip) {
   }, 600);
 }
 
-// ── POST-SIGNUP REDIRECT ────────────────────────────────
-// User is now logged in (Supabase creates a session even with Confirm email on).
-// Show a brief welcome, then send them to the appropriate starting page.
-// Email verification happens in background; they'll be gated on messaging/booking
-// by GDJAuth.requireVerifiedEmail() until they click the email link.
+// ── POST-SIGNUP "CHECK YOUR EMAIL" SCREEN ────────────────
+// User has signed up but isn't logged in yet (Supabase requires email confirmation
+// before issuing a session). Show a clear instruction to check their inbox.
+// When they click the link, Supabase will create the session and land them on
+// account-settings.html (or update-dj-profile.html for DJs via redirect).
 function showWelcomeAndRedirect(email, role, slug) {
   const container = document.querySelector('.container');
-  const startPage = role === 'dj'
-    ? '/update-dj-profile.html?welcome=1'
-    : '/?welcome=1';
   container.innerHTML = `
     <div class="logo">
       <a href="/" style="text-decoration:none;"><h1>GLOBAL DJ CONNECT</h1></a>
       <p class="tagline">Directory & Booking</p>
     </div>
     <div style="text-align:center;padding:20px 0;">
-      <div style="width:64px;height:64px;margin:0 auto 24px;border-radius:50%;background:var(--neon-dim);border:1px solid var(--neon);display:flex;align-items:center;justify-content:center;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <div style="width:72px;height:72px;margin:0 auto 24px;border-radius:50%;background:var(--neon-dim);border:1px solid var(--neon);display:flex;align-items:center;justify-content:center;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       </div>
-      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;margin-bottom:12px;color:var(--success);">Account Created</h2>
-      <p style="color:var(--white);font-size:15px;line-height:1.6;margin-bottom:20px;">Welcome to Global DJ Connect. You're signed in.</p>
-      <div style="background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.25);border-radius:8px;padding:14px 18px;margin:0 auto 24px;max-width:420px;text-align:left;">
-        <p style="color:#ffb347;font-size:12px;font-family:'Space Mono',monospace;letter-spacing:.08em;margin-bottom:6px;">✉ VERIFY YOUR EMAIL</p>
-        <p style="color:var(--muted);font-size:13px;line-height:1.55;">We sent a link to <span style="color:var(--neon);">${email}</span>. Click it to unlock messaging and booking. You can browse in the meantime.</p>
-      </div>
-      <a href="${startPage}" style="display:inline-block;background:var(--neon);color:var(--black);border:none;padding:14px 32px;border-radius:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-decoration:none;">Continue</a>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:.04em;margin-bottom:14px;color:var(--white);">Check Your Email</h2>
+      <p style="color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:8px;">We sent a confirmation link to</p>
+      <p style="color:var(--neon);font-family:'Space Mono',monospace;font-size:15px;margin-bottom:28px;word-break:break-all;">${email}</p>
+      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto;">Click the link in that email to activate your account and sign in. The link expires in 1 hour.</p>
+      <p style="color:var(--muted);font-size:12px;margin-top:20px;">Didn't get it? Check your spam folder, or <a href="javascript:void(0)" id="resend-link" style="color:var(--neon);text-decoration:underline;">resend the email</a>.</p>
+      <p style="color:var(--muted);font-size:11px;margin-top:32px;">Already verified? <a href="/login.html" style="color:var(--neon);text-decoration:underline;">Sign in</a></p>
     </div>
   `;
-  // Auto-redirect after 3 seconds if they don't click
-  setTimeout(() => { window.location.href = startPage; }, 3500);
+
+  // Wire up resend link
+  const resendLink = document.getElementById('resend-link');
+  if (resendLink) {
+    resendLink.addEventListener('click', async function() {
+      const orig = resendLink.textContent;
+      resendLink.textContent = 'Sending...';
+      resendLink.style.pointerEvents = 'none';
+      try {
+        const { error } = await db.auth.resend({
+          type: 'signup',
+          email: email,
+          options: { emailRedirectTo: window.location.origin + '/account-settings.html?emailverified=1' }
+        });
+        if (error) throw error;
+        resendLink.textContent = '✓ Sent — check your inbox';
+        resendLink.style.color = 'var(--success)';
+        setTimeout(() => {
+          resendLink.textContent = orig;
+          resendLink.style.color = 'var(--neon)';
+          resendLink.style.pointerEvents = 'auto';
+        }, 5000);
+      } catch (err) {
+        resendLink.textContent = '✗ ' + (err.message || 'Failed to resend');
+        resendLink.style.color = 'var(--error)';
+        setTimeout(() => {
+          resendLink.textContent = orig;
+          resendLink.style.color = 'var(--neon)';
+          resendLink.style.pointerEvents = 'auto';
+        }, 4000);
+      }
+    });
+  }
 }
 
 // ── DJ FORM SUBMIT ──────────────────────────────────────
@@ -1008,18 +1035,6 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       throw new Error('An account with this email already exists. Please log in instead.');
     }
 
-    // If signUp didn't return a session (Supabase config requires email confirmation first),
-    // explicitly sign the user in so they get a working session immediately.
-    if (!signUpData.session) {
-      const password = document.getElementById('dj-password').value;
-      const { error: signInError } = await db.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        // If sign-in fails because email isn't confirmed yet, that's fine — the welcome page
-        // will still show, but they'll need to confirm before they can do gated actions.
-        console.warn('[signup] Auto-sign-in after signup failed:', signInError.message);
-      }
-    }
-
     showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -1063,12 +1078,6 @@ document.getElementById('form-host').addEventListener('submit', async function(e
     }
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
-    }
-
-    // Force a session if signUp didn't create one
-    if (!signUpData.session) {
-      const { error: signInError } = await db.auth.signInWithPassword({ email: emailLower, password });
-      if (signInError) console.warn('[signup] Auto-sign-in failed:', signInError.message);
     }
 
     showWelcomeAndRedirect(emailLower, 'host');
@@ -1135,12 +1144,6 @@ document.getElementById('form-venue').addEventListener('submit', async function(
     }
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
-    }
-
-    // Force a session if signUp didn't create one
-    if (!signUpData.session) {
-      const { error: signInError } = await db.auth.signInWithPassword({ email: emailLower, password });
-      if (signInError) console.warn('[signup] Auto-sign-in failed:', signInError.message);
     }
 
     showWelcomeAndRedirect(emailLower, 'venue', venueSlug);
