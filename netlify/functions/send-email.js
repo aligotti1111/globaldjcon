@@ -191,6 +191,58 @@ exports.handler = async (event) => {
       `)
     };
 
+  // ── 4a. CLAIM RECEIVED (receipt to the person submitting the claim) ──
+  } else if (type === 'claim_received') {
+    const { claimantName, claimantEmail, bizName, slug } = body;
+    if (!claimantEmail || !bizName) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields for claim_received' }) };
+    }
+    const profileUrl = slug ? `${SITE_URL}/${slug}` : SITE_URL;
+    const greet = claimantName ? escHtml(claimantName) : 'there';
+    emailPayload = {
+      from: FROM,
+      reply_to: REPLY_TO,
+      to: [claimantEmail],
+      subject: `We received your claim request for "${bizName}"`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Claim Request Received</h2>
+        <p style="color:#666666;margin-bottom:16px;">Hi ${greet},</p>
+        <p style="color:#666666;margin-bottom:16px;">We got your request to claim <strong style="color:#1a1a2e;">${escHtml(bizName)}</strong> on Global DJ Connect.</p>
+        <p style="color:#666666;margin-bottom:24px;">Our team will review your request and reach back out within 1–2 business days. Once approved, you'll receive a separate email with a link to set your password and take over the profile.</p>
+        ${slug ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <div style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;margin-bottom:6px;">Profile Being Claimed</div>
+          <a href="${profileUrl}" style="color:#00b89a;word-break:break-all;">${profileUrl}</a>
+        </div>` : ''}
+        <p style="color:#666666;font-size:12px;margin-top:24px;">Questions in the meantime? Just reply to this email.</p>
+      `)
+    };
+
+  // ── 4b. PROFILE CLAIMED (approval notice + set-password link) ──────
+  } else if (type === 'profile_claimed') {
+    const { name, email, bizName, slug, setPasswordLink } = body;
+    if (!email || !setPasswordLink) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields for profile_claimed' }) };
+    }
+    const profileUrl = slug ? `${SITE_URL}/${slug}` : SITE_URL;
+    const greet = name ? escHtml(name) : 'there';
+    const biz = bizName ? escHtml(bizName) : 'your profile';
+    emailPayload = {
+      from: FROM,
+      reply_to: REPLY_TO,
+      to: [email],
+      subject: `Your profile "${bizName || 'listing'}" on Global DJ Connect has been claimed`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Profile Claimed — Welcome!</h2>
+        <p style="color:#666666;margin-bottom:16px;">Hi ${greet},</p>
+        <p style="color:#666666;margin-bottom:16px;">Your claim for <strong style="color:#1a1a2e;">${biz}</strong> on Global DJ Connect has been approved. The profile is now yours to manage.</p>
+        <p style="color:#666666;margin-bottom:24px;">To finish activating your account, set your password using the button below. This link expires in 1 hour.</p>
+        <a href="${setPasswordLink}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">Set My Password</a>
+        ${slug ? `<p style="color:#666666;font-size:13px;margin-top:24px;">Once you're in, you can view and edit your profile at:</p>
+        <p style="margin-bottom:20px;"><a href="${profileUrl}" style="color:#00b89a;word-break:break-all;">${profileUrl}</a></p>` : ''}
+        <p style="color:#666666;font-size:12px;margin-top:24px;">If you didn't request this claim, please reply to this email and we'll look into it.</p>
+      `)
+    };
+
   // ── 5. CONTACT US ─────────────────────────────────────────────────
   } else if (type === 'contact_us') {
     const { name, subject, message } = body; const email = (body.email || '').toLowerCase().trim();
