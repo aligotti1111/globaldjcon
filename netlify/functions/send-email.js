@@ -235,7 +235,7 @@ exports.handler = async (event) => {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Profile Claimed — Welcome!</h2>
         <p style="color:#666666;margin-bottom:16px;">Hi ${greet},</p>
         <p style="color:#666666;margin-bottom:16px;">Your claim for <strong style="color:#1a1a2e;">${biz}</strong> on Global DJ Connect has been approved. The profile is now yours to manage.</p>
-        <p style="color:#666666;margin-bottom:24px;">To finish activating your account, set your password using the button below. This link expires in 1 hour.</p>
+        <p style="color:#666666;margin-bottom:24px;">To finish activating your account, set your password using the button below. This link expires in 24 hours.</p>
         <a href="${setPasswordLink}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">Set My Password</a>
         ${slug ? `<p style="color:#666666;font-size:13px;margin-top:24px;">Once you're in, you can view and edit your profile at:</p>
         <p style="margin-bottom:20px;"><a href="${profileUrl}" style="color:#00b89a;word-break:break-all;">${profileUrl}</a></p>` : ''}
