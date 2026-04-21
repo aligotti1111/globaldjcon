@@ -1099,7 +1099,9 @@ async function hashPassword(password) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+// currentUser is set either by auth.js (new flow) or from legacy sessionStorage (old flow).
+// We use let (not const) so the async auth.js resolution can populate it before we gate on it.
+let currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
 
 // ── IMAGE UPLOAD & CROP ─────────────────────────────────
 const BUCKET = 'avatars';
@@ -1318,11 +1320,23 @@ function loadAvatarPreview(url) {
   }
   document.getElementById('avatar-top-info').innerHTML = '<strong>Profile Photo</strong><span>Click to change</span>';
 }
-if (!currentUser) {
-  window.location.href = 'login.html';
-} else if (currentUser.role !== 'dj' && currentUser.role !== 'admin') {
-  window.location.href = 'account-settings.html';
-}
+// Wait for auth.js to resolve the session before deciding where to send the user.
+// auth.js may be hydrating window.currentUser from a Supabase Auth session that
+// hasn't been written to sessionStorage yet (e.g., fresh signup, page reload).
+(async function authGate() {
+  // Give auth.js a chance to resolve if it hasn't already
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.waitUntilReady) {
+    const cu = await GDJAuth.waitUntilReady();
+    if (cu) currentUser = cu;
+  }
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
+  if (currentUser.role !== 'dj' && currentUser.role !== 'admin') {
+    window.location.href = 'account-settings.html';
+  }
+})();
 
 // ── ZIP LOOKUP ───────────────────────────────────────────
 let zipTimeout = null;
