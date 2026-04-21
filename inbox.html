@@ -198,8 +198,10 @@ const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
 const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
-if (!currentUser) { window.location.href = '/login.html'; }
+// currentUser may be null at script-parse time — auth.js hydrates sessionStorage
+// asynchronously after a Supabase Auth session loads. Use `let` and re-read
+// after GDJAuth.ready resolves before redirecting.
+let currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
 
 // allMessages = only top-level (parent_id is null) messages addressed to current user
 // allReplies = all replies (parent_id not null) in any thread the user is part of
@@ -487,58 +489,71 @@ function updateBadge() {
   }
 }
 
-// Load messages + replies
-(async function() {
-  try {
-    // Load top-level messages received by current user
-    const { data: received, error: e1 } = await db
-      .from('messages')
-      .select('*')
-      .eq('to_user_id', currentUser.id)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false });
-    if (e1) throw e1;
-
-    // Also load top-level messages SENT by current user (so sender sees replies)
-    const { data: sent, error: e2 } = await db
-      .from('messages')
-      .select('*')
-      .eq('from_user_id', currentUser.id)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false });
-
-    // Merge and deduplicate by id
-    const combined = [...(received || []), ...(sent || [])];
-    const seen = new Set();
-    allMessages = combined.filter(m => {
-      if (seen.has(m.id)) return false;
-      seen.add(m.id);
-      return true;
-    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    // Load all replies in those threads
-    const parentIds = allMessages.map(m => m.id);
-    if (parentIds.length) {
-      const { data: replies } = await db
+// Load messages + replies — wait for auth to resolve first
+function gdcInitInbox() {
+  if (!currentUser) {
+    currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+  }
+  if (!currentUser && window.GDJAuth && window.GDJAuth.user) {
+    currentUser = window.GDJAuth.user();
+  }
+  if (!currentUser) {
+    window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
+    return;
+  }
+  (async function() {
+    try {
+      // Load top-level messages received by current user
+      const { data: received, error: e1 } = await db
         .from('messages')
         .select('*')
-        .in('parent_id', parentIds)
-        .order('created_at', { ascending: true });
-      allReplies = replies || [];
-    }
+        .eq('to_user_id', currentUser.id)
+        .is('parent_id', null)
+        .order('created_at', { ascending: false });
+      if (e1) throw e1;
 
-    // Render AFTER replies are loaded so unread state is correct
-    renderMessages();
-    updateBadge();
-    const unread = allMessages.filter(m => !m.read && m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id).length +
-                   allReplies.filter(r => !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id).length;
-    document.getElementById('inbox-subtitle').textContent =
-      unread > 0 ? `${unread} unread message${unread > 1 ? 's' : ''}` : 'Your messages from party hosts and venues';
-  } catch(err) {
-    document.getElementById('messages-container').innerHTML =
-      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error</div><div class="empty-sub">' + err.message + '</div></div>';
-  }
-})();
+      // Also load top-level messages SENT by current user (so sender sees replies)
+      const { data: sent, error: e2 } = await db
+        .from('messages')
+        .select('*')
+        .eq('from_user_id', currentUser.id)
+        .is('parent_id', null)
+        .order('created_at', { ascending: false });
+
+      // Merge and deduplicate by id
+      const combined = [...(received || []), ...(sent || [])];
+      const seen = new Set();
+      allMessages = combined.filter(m => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      // Load all replies in those threads
+      const parentIds = allMessages.map(m => m.id);
+      if (parentIds.length) {
+        const { data: replies } = await db
+          .from('messages')
+          .select('*')
+          .in('parent_id', parentIds)
+          .order('created_at', { ascending: true });
+        allReplies = replies || [];
+      }
+
+      // Render AFTER replies are loaded so unread state is correct
+      renderMessages();
+      updateBadge();
+      const unread = allMessages.filter(m => !m.read && m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id).length +
+                     allReplies.filter(r => !r.read && r.to_user_id === currentUser.id && r.from_user_id !== currentUser.id).length;
+      document.getElementById('inbox-subtitle').textContent =
+        unread > 0 ? `${unread} unread message${unread > 1 ? 's' : ''}` : 'Your messages from party hosts and venues';
+    } catch(err) {
+      document.getElementById('messages-container').innerHTML =
+        '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error</div><div class="empty-sub">' + err.message + '</div></div>';
+    }
+  })();
+}
+if (window.GDJAuth) GDJAuth.ready(gdcInitInbox); else document.addEventListener('DOMContentLoaded', gdcInitInbox);
 
 // Nav visibility handled by GDJAuth.renderNav() in auth.js.
 // Defer badge fetch until nav has rendered so the badge element exists.
