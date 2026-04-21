@@ -1103,6 +1103,43 @@ async function hashPassword(password) {
 // We use let (not const) so the async auth.js resolution can populate it before we gate on it.
 let currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
 
+// Helper: PATCH the current user's row using raw fetch with the active access token.
+// Use this instead of `db.from('users').update(...).eq('id', currentUser.id)` to avoid
+// the SDK silently no-op'ing writes when its session header isn't attached yet.
+// Returns { ok: true, data } on success, { ok: false, error } on failure.
+async function updateUserRow(updateData) {
+  try {
+    const session = (typeof GDJAuth !== 'undefined' && GDJAuth.session) ? GDJAuth.session() : null;
+    const accessToken = session && session.access_token;
+    if (!accessToken) return { ok: false, error: 'Not authenticated' };
+    if (!currentUser || !currentUser.id) return { ok: false, error: 'No current user' };
+    const res = await fetch(
+      'https://hwqvzuusquruhwguqole.supabase.co/rest/v1/users?id=eq.' + encodeURIComponent(currentUser.id),
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(updateData)
+      }
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      return { ok: false, error: 'HTTP ' + res.status + ': ' + errText };
+    }
+    const rows = await res.json();
+    if (!rows || rows.length === 0) {
+      return { ok: false, error: 'No rows updated (permissions?)' };
+    }
+    return { ok: true, data: rows[0] };
+  } catch (e) {
+    return { ok: false, error: e.message || 'Update failed' };
+  }
+}
+
 // ── IMAGE UPLOAD & CROP ─────────────────────────────────
 const BUCKET = 'avatars';
 const STORAGE_URL = SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/';
@@ -1931,13 +1968,38 @@ document.getElementById('profile-form').addEventListener('submit', async functio
       testimonials: collectTestimonials(),
       profile_private: document.getElementById('profile-private').checked,
     };
-    
-    const password = document.getElementById('password').value;
-    if (password) updateData.password = await hashPassword(password);
-    
-    const { error } = await db.from('users').update(updateData).eq('id', currentUser.id);
-    if (error) throw error;
-    
+
+    // password column was removed during Supabase Auth migration; ignore any
+    // password field on this form (password changes happen via account-settings).
+
+    // Use raw fetch with explicit auth token — the SDK can silently no-op on writes
+    const session = (typeof GDJAuth !== 'undefined' && GDJAuth.session) ? GDJAuth.session() : null;
+    const accessToken = session && session.access_token;
+    if (!accessToken) throw new Error('Not authenticated. Please refresh and sign in again.');
+    const SUPABASE_URL_LOCAL = 'https://hwqvzuusquruhwguqole.supabase.co';
+    const SUPABASE_KEY_LOCAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
+    const saveRes = await fetch(
+      SUPABASE_URL_LOCAL + '/rest/v1/users?id=eq.' + encodeURIComponent(currentUser.id),
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_KEY_LOCAL,
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(updateData)
+      }
+    );
+    if (!saveRes.ok) {
+      const errText = await saveRes.text();
+      throw new Error('Save failed (' + saveRes.status + '): ' + errText);
+    }
+    const saved = await saveRes.json();
+    if (!saved || saved.length === 0) {
+      throw new Error('Save returned no rows — your update may have been blocked by permissions.');
+    }
+
     alertBox.innerHTML = '<div class="alert alert-success">Profile updated successfully!</div>';
     formDirty = false;
     formSaved = true;
@@ -2130,7 +2192,7 @@ function _doToggleBooking(enabled, skipSave) {
       const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
       const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
       bs.booking_enabled = enabled;
-      const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+      const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
       if (error) throw error;
       const alertEl = document.getElementById('booking-alert');
       if (alertEl) { alertEl.innerHTML = `<div class="alert alert-success">✓ Booking ${enabled ? 'activated' : 'deactivated'}.</div>`; setTimeout(() => alertEl.innerHTML = '', 3000); }
@@ -2305,7 +2367,7 @@ async function saveBookingWindow() {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     bs.booking_window_months = months;
-    await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    await updateUserRow({ booking_settings: JSON.stringify(bs) });
   } catch(e) { console.error('Error saving booking window:', e); }
 }
 
@@ -2686,7 +2748,7 @@ async function autoSaveCalendar() {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     bs.booking_days = bookingDays;
-    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
     if (error) throw error;
     if (alertEl) { alertEl.innerHTML = '<span style="font-size:.6rem;color:var(--success);">✓ Calendar saved</span>'; setTimeout(() => alertEl.innerHTML = '', 2000); }
   } catch(e) {
@@ -2819,7 +2881,7 @@ async function savePartialBooking(btn, alertId, fields) {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     Object.assign(bs, fields);
-    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
     if (error) throw error;
     if (alertEl) { alertEl.style.color = 'var(--success)'; alertEl.textContent = '✓ Saved'; setTimeout(() => alertEl.textContent = '', 2500); }
     formDirty = false;
@@ -2853,7 +2915,7 @@ async function saveBookingSettings() {
       base_rate: document.getElementById('base-rate-val')?.value || null,
       booking_days: bookingDays,
     };
-    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(settings) }).eq('id', currentUser.id);
+    const _ur = await updateUserRow({ booking_settings: JSON.stringify(settings) }); const error = _ur.ok ? null : { message: _ur.error };
     if (error) throw error;
     // Verify it saved by re-reading
     const { data: check } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
@@ -3107,7 +3169,7 @@ async function mobAutoSaveCalendar() {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     bs.mob_booking_days = mobBookingDays;
-    await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    await updateUserRow({ booking_settings: JSON.stringify(bs) });
   } catch(e) { console.error('mobAutoSaveCalendar error:', e); }
 }
 
@@ -3118,7 +3180,7 @@ async function mobAutoSave() {
     bs.mob_booking_window = parseInt(document.getElementById('mob-booking-window')?.value || '24');
     bs.mob_bookings_per_day = parseInt(document.getElementById('mob-bookings-per-day')?.value || '1');
     bs.mob_deposit_pct = parseInt(document.getElementById('mob-deposit-pct')?.value || '0');
-    await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    await updateUserRow({ booking_settings: JSON.stringify(bs) });
   } catch(e) { console.error('mobAutoSave error:', e); }
 }
 
@@ -3681,7 +3743,7 @@ function mobPkgAutoSave(cat, idx) {
       const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
       const bs = current?.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
       bs.mob_packages = mobPackages;
-      await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+      await updateUserRow({ booking_settings: JSON.stringify(bs) });
       const alertEl = document.getElementById(`mob-pkg-save-${cat}-${idx}`);
       if (alertEl) { alertEl.textContent = '✓ Auto-saved'; alertEl.style.color = 'var(--muted)'; setTimeout(() => { if (alertEl) alertEl.textContent = ''; }, 2000); }
     } catch(e) { /* silent fail */ }
@@ -3739,7 +3801,7 @@ async function mobSavePackages(cat, idx, btn) {
     const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
     const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
     bs.mob_packages = mobPackages;
-    const { error } = await db.from('users').update({ booking_settings: JSON.stringify(bs) }).eq('id', currentUser.id);
+    const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
     if (error) throw error;
     if (alertEl) { alertEl.textContent = '✓ Saved'; alertEl.style.color = 'var(--neon)'; setTimeout(() => { alertEl.textContent = ''; }, 2500); }
     // Refresh tab badges only — don't reset mobSelectedTypes
@@ -3858,7 +3920,7 @@ async function loadBlockedUsers() {
 async function unblockUser(userId) {
   const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
   const updated = (data?.blocked_users || []).filter(id => id !== userId);
-  await db.from('users').update({ blocked_users: updated }).eq('id', currentUser.id);
+  await updateUserRow({ blocked_users: updated });
   loadBlockedUsers();
   if (updated.length === 0) document.getElementById('blocked-users-section').style.display = 'none';
 }
