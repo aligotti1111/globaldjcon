@@ -68,14 +68,19 @@ exports.handler = async (event) => {
   }
 
   // ── Verify new email isn't already taken by another auth user ─────
+  // Note: GET /auth/v1/admin/users ignores ?email= query params and returns
+  // the full list. We must filter the returned users by email client-side.
   const emailCheckRes = await fetch(
-    `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(newEmail)}`,
+    `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
     { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
   );
   if (emailCheckRes.ok) {
     const result = await emailCheckRes.json();
     const users = result.users || [];
-    const conflict = users.find(u => u.id !== claim.target_user_id);
+    const conflict = users.find(u =>
+      u.id !== claim.target_user_id &&
+      (u.email || '').toLowerCase() === newEmail
+    );
     if (conflict) {
       return { statusCode: 409, headers, body: JSON.stringify({ error: 'That email is already registered to another account.' }) };
     }

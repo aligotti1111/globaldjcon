@@ -63,16 +63,22 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email format invalid' }) };
     }
 
-    // Check the new email isn't already on a different auth user
+    // Check the new email isn't already on a different auth user.
+    // Note: GET /auth/v1/admin/users ignores ?email= query params, so we must
+    // pull the list and filter client-side. per_page=1000 covers up to 1000
+    // users; paginate if your user base exceeds that.
     try {
       const conflictRes = await fetch(
-        `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(emailChange)}`,
+        `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
         { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
       );
       if (conflictRes.ok) {
         const result = await conflictRes.json();
         const users = (result && result.users) || [];
-        const conflict = users.find(u => u.id !== user_id);
+        const conflict = users.find(u =>
+          u.id !== user_id &&
+          (u.email || '').toLowerCase() === emailChange
+        );
         if (conflict) {
           return { statusCode: 409, headers, body: JSON.stringify({ error: 'That email is already in use by another account' }) };
         }
