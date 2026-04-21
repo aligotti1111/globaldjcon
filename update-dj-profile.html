@@ -1007,7 +1007,7 @@ ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:
           </div><!-- end mobile-booking-section -->
 
           <!-- Calendar Section (club) -->
-          <div id="cal-section" style="background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
+          <div id="cal-section" style="display:none;background:var(--deep);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;">
             <div style="background:rgba(0,245,196,.08);border-bottom:1px solid rgba(0,245,196,.2);padding:.6rem 1.25rem;text-align:center;">
               <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white);line-height:1;">Availability Calendar</div>
             </div>
@@ -2042,6 +2042,8 @@ function checkShowBookingTab() {
   document.getElementById('tab-btn-booking').style.display = '';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
   document.getElementById('mobile-booking-section').style.display = isMobile ? 'block' : 'none';
+  const calSection = document.getElementById('cal-section');
+  if (calSection) calSection.style.display = isClub ? 'block' : 'none';
   if (isClub) updateRateFields(null);
 }
 document.getElementById('mobile-checkbox').addEventListener('change', function() {
