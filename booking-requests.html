@@ -957,20 +957,20 @@ async function _doMobUpdateStatus(bookingId, status) {
       } catch(calErr) { console.error('Mobile calendar update failed:', calErr); }
     }
 
-    // Email both parties
+    // Email both parties — server resolves emails from auth.users
     if (b) {
-      const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
-      if (requester?.email) {
-        fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'mob_booking_status',
-            requesterName: requester.name, requesterEmail: requester.email,
-            djName: currentUser.name, djEmail: currentUser.email,
-            status, eventDate: b.event_date, packageTitle: b.package_title,
-          })
-        }).catch(e => console.warn('Mobile status email failed:', e));
-      }
+      const { data: requester } = await db.from('users').select('name').eq('id', b.requester_id).single();
+      fetch('/.netlify/functions/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'mob_booking_status',
+          requesterUserId: b.requester_id,
+          requesterName: requester?.name || '',
+          djUserId: currentUser.id,
+          djName: currentUser.name,
+          status, eventDate: b.event_date, packageTitle: b.package_title,
+        })
+      }).catch(e => console.warn('Mobile status email failed:', e));
     }
 
     const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
@@ -1130,24 +1130,23 @@ async function sendMobQuote(eventHours, hasCocktail) {
       if (hasCocktail) { b.cocktail_price = cocktailPrice; b.cocktail_included = cocktailIncluded; }
     }
 
-    // Email booker
+    // Email booker — server resolves email from auth.users by requesterUserId
     if (b) {
-      const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
-      if (requester?.email) {
-        fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'mob_quote_response',
-            requesterName: requester.name, requesterEmail: requester.email,
-            djName: currentUser.name, eventDate: b.event_date,
-            packageTitle: b.package_title, quotedPrice: price,
-            overtimeRate: overtime, eventHours,
-            depositAmount, depositPct: activeQuoteDepositPct,
-            djMessage: msg,
-            cocktailIncluded, cocktailPrice,
-          })
-        }).catch(e => console.warn('Quote response email failed:', e));
-      }
+      const { data: requester } = await db.from('users').select('name').eq('id', b.requester_id).single();
+      fetch('/.netlify/functions/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'mob_quote_response',
+          requesterUserId: b.requester_id,
+          requesterName: requester?.name || '',
+          djName: currentUser.name, eventDate: b.event_date,
+          packageTitle: b.package_title, quotedPrice: price,
+          overtimeRate: overtime, eventHours,
+          depositAmount, depositPct: activeQuoteDepositPct,
+          djMessage: msg,
+          cocktailIncluded, cocktailPrice,
+        })
+      }).catch(e => console.warn('Quote response email failed:', e));
     }
 
     document.getElementById('mob-quote-modal').remove();
@@ -1445,61 +1444,57 @@ async function _doUpdateStatus(bookingId, status) {
       } catch(calErr) { console.error('Calendar update failed:', calErr); }
     }
 
-    // Send email notifications
+    // Send email notifications — server resolves emails from auth.users
     if (b) {
-      const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
+      const { data: requester } = await db.from('users').select('name').eq('id', b.requester_id).single();
 
-      if (requester?.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'booking_status',
-            requesterName: requester.name,
-            requesterEmail: requester.email,
-            djName: currentUser.name,
-            status,
-            eventDate: b.event_date,
-            venueName: b.venue_name,
-            venueAddress: b.venue_address,
-            venueType: b.venue_type,
-            setType: b.set_type,
-            startTime: b.start_time,
-            endTime: b.end_time,
-            equipment: b.equipment,
-            notes: b.notes,
-            quotedRate: b.quoted_rate,
-            offerAmount: b.offer_amount,
-            currency: b.currency,
-          })
-        }).catch(e => console.warn('Requester status email failed:', e));
-      }
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'booking_status',
+          requesterUserId: b.requester_id,
+          requesterName: requester?.name || '',
+          djName: currentUser.name,
+          status,
+          eventDate: b.event_date,
+          venueName: b.venue_name,
+          venueAddress: b.venue_address,
+          venueType: b.venue_type,
+          setType: b.set_type,
+          startTime: b.start_time,
+          endTime: b.end_time,
+          equipment: b.equipment,
+          notes: b.notes,
+          quotedRate: b.quoted_rate,
+          offerAmount: b.offer_amount,
+          currency: b.currency,
+        })
+      }).catch(e => console.warn('Requester status email failed:', e));
 
-      if (currentUser.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'booking_dj_confirm',
-            djName: currentUser.name,
-            djEmail: currentUser.email,
-            requesterName: requester?.name || 'The requester',
-            status,
-            eventDate: b.event_date,
-            venueName: b.venue_name,
-            venueAddress: b.venue_address,
-            venueType: b.venue_type,
-            setType: b.set_type,
-            startTime: b.start_time,
-            endTime: b.end_time,
-            equipment: b.equipment,
-            notes: b.notes,
-            quotedRate: b.quoted_rate,
-            offerAmount: b.offer_amount,
-            currency: b.currency,
-          })
-        }).catch(e => console.warn('DJ confirm email failed:', e));
-      }
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'booking_dj_confirm',
+          djUserId: currentUser.id,
+          djName: currentUser.name,
+          requesterName: requester?.name || 'The requester',
+          status,
+          eventDate: b.event_date,
+          venueName: b.venue_name,
+          venueAddress: b.venue_address,
+          venueType: b.venue_type,
+          setType: b.set_type,
+          startTime: b.start_time,
+          endTime: b.end_time,
+          equipment: b.equipment,
+          notes: b.notes,
+          quotedRate: b.quoted_rate,
+          offerAmount: b.offer_amount,
+          currency: b.currency,
+        })
+      }).catch(e => console.warn('DJ confirm email failed:', e));
     }
 
     // Re-render the active incoming tab
@@ -1770,13 +1765,11 @@ async function submitCounter() {
       const b = incomingBookings.find(x => x.id === activeCounterBookingId);
       if (b) { b.status = 'counter'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; if (pkgChanged) b.package_details = pkgEditCurrentHtml; }
       if (b) {
-        const { data: requester } = await db.from('users').select('email,name').eq('id', b.requester_id).single();
-        if (requester?.email) {
-          fetch('/.netlify/functions/send-email', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ type: 'booking_counter', recipientName: requester.name, recipientEmail: requester.email, senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency, packageTitle: b.package_title, packageDetails: b.package_details })
-          }).catch(() => {});
-        }
+        const { data: requester } = await db.from('users').select('name').eq('id', b.requester_id).single();
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ type: 'booking_counter', recipientUserId: b.requester_id, recipientName: requester?.name || '', senderName: currentUser.name, fromRole: 'dj', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency, packageTitle: b.package_title, packageDetails: b.package_details })
+        }).catch(() => {});
       }
       closeCounter();
       const activeInBtn = document.querySelector('#incoming-section .tab-btn.active');
@@ -1791,13 +1784,11 @@ async function submitCounter() {
       const b = outgoingBookings.find(x => x.id === activeCounterBookingId);
       if (b) { b.status = 'pending'; b.counter_rate = amount; b.counter_message = message; b.negotiation_log = log; }
       if (b) {
-        const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
-        if (dj?.email) {
-          fetch('/.netlify/functions/send-email', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ type: 'booking_counter', recipientName: dj.name, recipientEmail: dj.email, senderName: currentUser.name, fromRole: 'booker', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
-          }).catch(() => {});
-        }
+        const { data: dj } = await db.from('users').select('name').eq('id', b.dj_id).single();
+        fetch('/.netlify/functions/send-email', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ type: 'booking_counter', recipientUserId: b.dj_id, recipientName: dj?.name || '', senderName: currentUser.name, fromRole: 'booker', counterRate: amount, counterMessage: message, eventDate: b.event_date, venueName: b.venue_name, currency: b.currency })
+        }).catch(() => {});
       }
       closeCounter();
       const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
@@ -1821,34 +1812,30 @@ async function _doRequesterUpdateStatus(bookingId, status) {
     if (b) b.status = status;
     // Email DJ
     if (b) {
-      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
-      if (dj?.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'booking_dj_confirm', djName: dj.name, djEmail: dj.email,
-            requesterName: currentUser.name, status,
-            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
-            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
-            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
-            quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
-          })
-        }).catch(() => {});
-      }
+      const { data: dj } = await db.from('users').select('name').eq('id', b.dj_id).single();
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'booking_dj_confirm', djUserId: b.dj_id, djName: dj?.name || '',
+          requesterName: currentUser.name, status,
+          eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+          venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+          endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+          quotedRate: b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+        })
+      }).catch(() => {});
       // Email booker confirmation
-      if (currentUser.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'booking_status', requesterName: currentUser.name, requesterEmail: currentUser.email,
-            djName: dj?.name || '', status,
-            eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
-            venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
-            endTime: b.end_time, equipment: b.equipment, notes: b.notes,
-            quotedRate: b.counter_rate || b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
-          })
-        }).catch(() => {});
-      }
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'booking_status', requesterUserId: currentUser.id, requesterName: currentUser.name,
+          djName: dj?.name || '', status,
+          eventDate: b.event_date, venueName: b.venue_name, venueAddress: b.venue_address,
+          venueType: b.venue_type, setType: b.set_type, startTime: b.start_time,
+          endTime: b.end_time, equipment: b.equipment, notes: b.notes,
+          quotedRate: b.counter_rate || b.quoted_rate, offerAmount: b.offer_amount, currency: b.currency,
+        })
+      }).catch(() => {});
     }
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();
@@ -1899,7 +1886,7 @@ async function _doCancelOffer(bookingId) {
     const b = outgoingBookings.find(x => x.id === bookingId);
     if (b) b.status = 'cancelled';
     if (b) {
-      const { data: dj } = await db.from('users').select('email,name').eq('id', b.dj_id).single();
+      const { data: dj } = await db.from('users').select('name').eq('id', b.dj_id).single();
       const emailPayload = {
         type: 'booking_cancelled',
         requesterName: currentUser.name,
@@ -1913,18 +1900,14 @@ async function _doCancelOffer(bookingId) {
         endTime: b.end_time,
         currency: b.currency,
       };
-      if (dj?.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ ...emailPayload, recipientName: dj.name, recipientEmail: dj.email, recipientRole: 'dj' })
-        }).catch(() => {});
-      }
-      if (currentUser.email) {
-        fetch('/.netlify/functions/send-email', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ ...emailPayload, recipientName: currentUser.name, recipientEmail: currentUser.email, recipientRole: 'requester' })
-        }).catch(() => {});
-      }
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ...emailPayload, recipientUserId: b.dj_id, recipientName: dj?.name || '', recipientRole: 'dj' })
+      }).catch(() => {});
+      fetch('/.netlify/functions/send-email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ...emailPayload, recipientUserId: currentUser.id, recipientName: currentUser.name, recipientRole: 'requester' })
+      }).catch(() => {});
     }
     const activeOutBtn = document.querySelector('#outgoing-section .tab-btn.active');
     if (activeOutBtn) renderList('out', activeOutBtn.id.replace('out-tab-','')); updateTabCounts();

@@ -2565,23 +2565,21 @@ async function sendMessage() {
     }]);
     if (error) throw error;
 
-    // Email notification to DJ
-    const { data: djData } = await db.from('users').select('email, name').eq('id', contactDjUserId).single();
-    if (djData?.email) {
-      await fetch('/.netlify/functions/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'inbox_notification',
-          recipientName: djData.name || '',
-          recipientEmail: djData.email,
-          senderName: currentUser.name || 'Someone',
-          senderEmail: null,
-          subject: subject,
-          message: message
-        })
-      }).catch(() => {});
-    }
+    // Email notification to DJ — server resolves email from auth.users by recipientUserId
+    const { data: djData } = await db.from('users').select('name').eq('id', contactDjUserId).single();
+    await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'inbox_notification',
+        recipientUserId: contactDjUserId,
+        recipientName: djData?.name || '',
+        senderName: currentUser.name || 'Someone',
+        senderEmail: null,
+        subject: subject,
+        message: message
+      })
+    }).catch(() => {});
 
     document.getElementById('contact-form-wrap').style.display = 'none';
     alertEl.innerHTML = '<div class="contact-alert contact-success">✓ Message sent! The DJ will be in touch.</div>';
@@ -3687,30 +3685,28 @@ async function mobPubSubmit(dateKey) {
     const { error } = await db.from('bookings').insert(insertPayload);
     if (error) throw error;
 
-    // Email to DJ
+    // Email to DJ — server will resolve email from auth.users by djUserId
     try {
-      const { data: freshDj } = await db.from('users').select('email,name,zip').eq('id', djData.id).single();
-      if (freshDj?.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'mob_booking_request',
-            djName: djData.name, djEmail: freshDj.email,
-            requesterName: cu.name,
-            eventDate: dateKey, eventType: MOB_EVENT_TYPE_LABELS[eventType]||(eventTypeOther||eventType),
-            venueName, venueAddress, roomDetails:room,
-            guestCount: guests||null,
-            packageTitle: pkg.title, packageCategory: cat,
-            startTime, endTime,
-            cocktailNeeded: isWedding&&cocktailNeeded,
-            cocktailStartTime: cocktailStart,
-            cocktailSameRoom,
-            totalPrice, depositAmount, depositPct,
-            notes: message, isQuote,
-            djZip: freshDj.zip||null, venueZip: null,
-          })
-        });
-      }
+      await fetch('/.netlify/functions/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'mob_booking_request',
+          djUserId: djData.id,
+          djName: djData.name,
+          requesterName: cu.name,
+          eventDate: dateKey, eventType: MOB_EVENT_TYPE_LABELS[eventType]||(eventTypeOther||eventType),
+          venueName, venueAddress, roomDetails:room,
+          guestCount: guests||null,
+          packageTitle: pkg.title, packageCategory: cat,
+          startTime, endTime,
+          cocktailNeeded: isWedding&&cocktailNeeded,
+          cocktailStartTime: cocktailStart,
+          cocktailSameRoom,
+          totalPrice, depositAmount, depositPct,
+          notes: message, isQuote,
+          djZip: djData.zip||null, venueZip: null,
+        })
+      });
     } catch(e) { console.warn('DJ email failed:', e); }
 
     // Confirmation email to booker
@@ -4345,18 +4341,15 @@ async function ib_submitBooking() {
     });
     if (error) throw error;
 
-    // Send email to DJ — fetch fresh email
+    // Send email to DJ — server resolves email from auth.users by djUserId
     try {
-      const { data: freshDj } = await db.from('users').select('email,name').eq('id', ib_djData.id).single();
-      const djEmail = freshDj?.email || ib_djData.email;
-      if (djEmail) {
-        const emailRes = await fetch('/.netlify/functions/send-email', {
+      const emailRes = await fetch('/.netlify/functions/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'booking_request',
+            djUserId: ib_djData.id,
             djName: ib_djData.name,
-            djEmail,
             requesterName: cu.name,
             eventDate: d.event_date,
             venueName: d.venue_name,
@@ -4375,9 +4368,6 @@ async function ib_submitBooking() {
         });
         const emailResult = await emailRes.json().catch(() => ({}));
         if (!emailRes.ok) console.warn('Email send failed:', emailResult);
-      } else {
-        console.warn('DJ has no email on file — booking request email not sent');
-      }
 
       // Confirmation email to requester
       if (cu.email) {

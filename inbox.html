@@ -411,12 +411,13 @@ async function sendReply(e, parentId) {
     const originalMsg = allMessages.find(m => m.id === parentId);
     document.getElementById('thread-' + parentId).innerHTML = renderThread(parentId, originalMsg);
 
-    // Email notification to recipient
-    if (toEmail) {
+    // Email notification to recipient — server falls back to auth.users if email missing
+    if (toEmail || toUserId) {
       await sendEmail({
         type: 'inbox_notification',
+        recipientUserId: toUserId || null,
         recipientName: toName || '',
-        recipientEmail: toEmail,
+        recipientEmail: toEmail || null,
         senderName: currentUser.name,
         senderEmail: null,
         subject: subject.startsWith('Re:') ? subject : 'Re: ' + subject,
