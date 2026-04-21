@@ -229,7 +229,7 @@ async function submitClaim() {
       })
     }).catch(() => {});
 
-    // Send notification email to admin + receipt email to claimant
+    // Notification email to admin
     await fetch('/.netlify/functions/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -241,7 +241,20 @@ async function submitClaim() {
         slug: slug,
         verifyMsg: verifyMsg
       })
-    });
+    }).catch(() => {});
+
+    // Receipt email to the claimant (non-blocking; don't let failures break the UI success state)
+    fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'claim_received',
+        claimantName: yourName,
+        claimantEmail: yourEmail,
+        bizName: bizName,
+        slug: slug
+      })
+    }).catch(() => {});
 
     document.getElementById('claim-form').style.display = 'none';
     document.getElementById('profile-ref').style.display = 'none';
