@@ -321,11 +321,11 @@
   function buildNavHtml(user) {
     if (!user) {
       return (
-        '<a href="/login.html" id="nav-signin" class="btn btn-outline">' +
-          NAV_SVGS.signin + '<span class="nav-btn-text">Sign In</span>' +
+        '<a href="/login.html" id="nav-signin" class="gdj-nav-btn gdj-nav-outline">' +
+          NAV_SVGS.signin + '<span class="gdj-nav-text">Sign In</span>' +
         '</a>' +
-        '<a href="/signup.html" id="nav-signup" class="btn btn-primary">' +
-          NAV_SVGS.signup + '<span class="nav-btn-text">Create Account</span>' +
+        '<a href="/signup.html" id="nav-signup" class="gdj-nav-btn gdj-nav-primary">' +
+          NAV_SVGS.signup + '<span class="gdj-nav-text">Create Account</span>' +
         '</a>'
       );
     }
@@ -334,15 +334,15 @@
 
     // Inbox + Booking Requests — all logged-in users, all pages
     parts.push(
-      '<a href="/inbox.html" class="inbox-nav-btn" id="nav-inbox-btn" title="Inbox">' +
+      '<a href="/inbox.html" class="gdj-nav-icon" id="nav-inbox-btn" title="Inbox">' +
         NAV_SVGS.inbox +
-        '<span class="inbox-badge" id="nav-unread-count" style="display:none;"></span>' +
+        '<span class="gdj-nav-badge" id="nav-unread-count" style="display:none;"></span>' +
       '</a>'
     );
     parts.push(
-      '<a href="/booking-requests.html" class="inbox-nav-btn" id="nav-booking-requests-btn" title="Booking Requests">' +
+      '<a href="/booking-requests.html" class="gdj-nav-icon" id="nav-booking-requests-btn" title="Booking Requests">' +
         NAV_SVGS.booking +
-        '<span class="inbox-badge" id="nav-booking-count" style="display:none;"></span>' +
+        '<span class="gdj-nav-badge" id="nav-booking-count" style="display:none;"></span>' +
       '</a>'
     );
 
@@ -350,23 +350,23 @@
       // DJ: View My Profile (hide on own profile), Update My Profile (hide on update page)
       if (!isOnOwnDjProfilePage(user) && user.slug) {
         parts.push(
-          '<a href="/' + encodeURIComponent(user.slug) + '" id="nav-view-profile" class="btn btn-outline">' +
-            NAV_SVGS.profile + '<span class="nav-btn-text">View My Profile</span>' +
+          '<a href="/' + encodeURIComponent(user.slug) + '" id="nav-view-profile" class="gdj-nav-btn gdj-nav-outline">' +
+            NAV_SVGS.profile + '<span class="gdj-nav-text">View My Profile</span>' +
           '</a>'
         );
       }
       if (!isOnUpdateProfilePage()) {
         parts.push(
-          '<a href="/update-dj-profile.html" id="nav-profile" class="btn btn-primary">' +
+          '<a href="/update-dj-profile.html" id="nav-profile" class="gdj-nav-btn gdj-nav-primary">' +
             NAV_SVGS.edit +
-            '<span class="nav-btn-text"><span class="hide-mobile">Update </span>My Profile</span>' +
+            '<span class="gdj-nav-text">Update My Profile</span>' +
           '</a>'
         );
       }
     } else {
       // Venue / host: Settings icon
       parts.push(
-        '<a href="/account-settings.html" class="inbox-nav-btn" id="nav-settings-btn" title="Account Settings">' +
+        '<a href="/account-settings.html" class="gdj-nav-icon" id="nav-settings-btn" title="Account Settings">' +
           NAV_SVGS.settings +
         '</a>'
       );
@@ -374,17 +374,39 @@
 
     // Logout — always last for logged-in users
     parts.push(
-      '<button id="nav-logout" class="btn btn-outline" onclick="GDJAuth.signOut()">' +
-        NAV_SVGS.logout + '<span class="nav-btn-text">Log Out</span>' +
+      '<button id="nav-logout" class="gdj-nav-btn gdj-nav-outline" onclick="GDJAuth.signOut()">' +
+        NAV_SVGS.logout + '<span class="gdj-nav-text">Log Out</span>' +
       '</button>'
     );
 
     return parts.join('');
   }
 
+  // Inject self-contained styles for the nav buttons so they look right
+  // on every page regardless of that page's local CSS.
+  function injectNavStyles() {
+    if (document.getElementById('gdj-nav-styles')) return;
+    var css = ''
+      + '#nav-btns{display:flex;gap:.5rem;align-items:center;flex-wrap:nowrap;}'
+      + '.gdj-nav-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .9rem;border-radius:6px;font-family:"Space Mono",monospace;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid transparent;line-height:1;white-space:nowrap;}'
+      + '.gdj-nav-outline{background:transparent;color:#fff;border-color:#fff;}'
+      + '.gdj-nav-outline:hover{border-color:#00f5c4;color:#00f5c4;}'
+      + '.gdj-nav-primary{background:#00f5c4;color:#050507;border-color:#00f5c4;}'
+      + '.gdj-nav-primary:hover{background:#00d8ad;border-color:#00d8ad;}'
+      + '.gdj-nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;border:1px solid rgba(255,255,255,.2);color:#fff;text-decoration:none;cursor:pointer;background:transparent;}'
+      + '.gdj-nav-icon:hover{border-color:#00f5c4;color:#00f5c4;}'
+      + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}}';
+    var style = document.createElement('style');
+    style.id = 'gdj-nav-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
   function renderNav() {
     var container = document.getElementById('nav-btns');
     if (!container) return;
+    injectNavStyles();
     container.innerHTML = buildNavHtml(_currentUser);
   }
 
