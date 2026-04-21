@@ -131,6 +131,29 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .alert-success { background: rgba(61,220,132,0.12); color: var(--success); border-color: rgba(61,220,132,0.35); }
 .alert-error { background: rgba(255,95,95,0.12); color: var(--error); border-color: rgba(255,95,95,0.35); }
 
+/* Floating toast alert at bottom of screen — ensures users see it regardless of scroll position */
+#alert {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: 92vw;
+  width: 440px;
+  pointer-events: none;
+}
+#alert:empty { display: none; }
+#alert .alert {
+  margin: 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  animation: alertSlideUp 0.25s ease;
+}
+@keyframes alertSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* URL Preview Box */
 .url-preview {
   margin-top: 10px;
@@ -581,6 +604,20 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const BASE_URL = 'globaldjconnect.com/';
 let currentAccountType = null;
+
+// Auto-dismiss toast alerts after 7 seconds (errors stay long enough to read but don't pile up)
+(function setupAlertObserver() {
+  const alertEl = document.getElementById('alert');
+  if (!alertEl) return;
+  let dismissTimer = null;
+  const observer = new MutationObserver(() => {
+    clearTimeout(dismissTimer);
+    if (alertEl.innerHTML.trim()) {
+      dismissTimer = setTimeout(() => { alertEl.innerHTML = ''; }, 7000);
+    }
+  });
+  observer.observe(alertEl, { childList: true, subtree: true });
+})();
 
 // ── ACCOUNT TYPE SELECTION ──────────────────────────────
 function selectAccountType(type) {
