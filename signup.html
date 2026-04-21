@@ -1007,6 +1007,19 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
     }
+
+    // If signUp didn't return a session (Supabase config requires email confirmation first),
+    // explicitly sign the user in so they get a working session immediately.
+    if (!signUpData.session) {
+      const password = document.getElementById('dj-password').value;
+      const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        // If sign-in fails because email isn't confirmed yet, that's fine — the welcome page
+        // will still show, but they'll need to confirm before they can do gated actions.
+        console.warn('[signup] Auto-sign-in after signup failed:', signInError.message);
+      }
+    }
+
     showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -1051,6 +1064,13 @@ document.getElementById('form-host').addEventListener('submit', async function(e
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
     }
+
+    // Force a session if signUp didn't create one
+    if (!signUpData.session) {
+      const { error: signInError } = await db.auth.signInWithPassword({ email: emailLower, password });
+      if (signInError) console.warn('[signup] Auto-sign-in failed:', signInError.message);
+    }
+
     showWelcomeAndRedirect(emailLower, 'host');
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -1116,6 +1136,13 @@ document.getElementById('form-venue').addEventListener('submit', async function(
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
     }
+
+    // Force a session if signUp didn't create one
+    if (!signUpData.session) {
+      const { error: signInError } = await db.auth.signInWithPassword({ email: emailLower, password });
+      if (signInError) console.warn('[signup] Auto-sign-in failed:', signInError.message);
+    }
+
     showWelcomeAndRedirect(emailLower, 'venue', venueSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
