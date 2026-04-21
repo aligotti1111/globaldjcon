@@ -51,6 +51,54 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'updates object required' }) };
   }
 
+  // ── Optional email change (lives on auth.users, not public.users) ─────
+  // Pull email out of updates so it doesn't fall through to the PATCH below.
+  const emailChange = (typeof updates.email === 'string') ? updates.email.trim().toLowerCase() : null;
+  if (emailChange !== null) {
+    delete updates.email;
+    if (emailChange === '') {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email cannot be empty (omit the field to leave unchanged)' }) };
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailChange)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email format invalid' }) };
+    }
+
+    // Check the new email isn't already on a different auth user
+    try {
+      const conflictRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(emailChange)}`,
+        { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+      );
+      if (conflictRes.ok) {
+        const result = await conflictRes.json();
+        const users = (result && result.users) || [];
+        const conflict = users.find(u => u.id !== user_id);
+        if (conflict) {
+          return { statusCode: 409, headers, body: JSON.stringify({ error: 'That email is already in use by another account' }) };
+        }
+      }
+    } catch (e) { /* non-fatal — let the PUT below surface a real conflict */ }
+
+    // Swap email on auth user, auto-confirmed
+    const authRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(user_id)}`,
+      {
+        method: 'PUT',
+        headers: {
+          apikey: SERVICE_KEY,
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: emailChange, email_confirm: true })
+      }
+    );
+    if (!authRes.ok) {
+      const errText = await authRes.text();
+      console.error('[admin-update-user] email swap failed:', errText);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Email update failed: ' + errText }) };
+    }
+  }
+
   // Build patch from allowed fields only
   const patch = {};
   for (const k of ALLOWED_FIELDS) {
@@ -63,6 +111,10 @@ exports.handler = async (event) => {
   }
 
   if (Object.keys(patch).length === 0) {
+    // If we got here after a successful email change with no other fields, that's still a success.
+    if (emailChange !== null) {
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, email_updated: true }) };
+    }
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'No allowed fields to update' }) };
   }
 
@@ -105,5 +157,5 @@ exports.handler = async (event) => {
     return { statusCode: 404, headers, body: JSON.stringify({ error: 'User not found' }) };
   }
 
-  return { statusCode: 200, headers, body: JSON.stringify({ success: true, user: data[0] }) };
+  return { statusCode: 200, headers, body: JSON.stringify({ success: true, user: data[0], email_updated: emailChange !== null, email: emailChange }) };
 };
