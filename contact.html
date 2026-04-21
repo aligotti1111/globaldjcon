@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contact Us - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
 :root {
   --black: #050507;
@@ -152,6 +154,8 @@ body::before {
 .divider { text-align: center; margin-top: 1.5rem; font-family: 'Space Mono', monospace; font-size: .62rem; color: var(--muted); letter-spacing: .05em; }
 .divider a { color: var(--neon); text-decoration: none; }
 .divider a:hover { text-decoration: underline; }
+.form-group input[readonly] { background: rgba(0,245,196,.04); color: var(--muted); cursor: not-allowed; }
+.signed-hint { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.1em; text-transform:uppercase; color:var(--neon); margin-top:6px; display:block; }
 </style>
 </head>
 <body>
@@ -209,6 +213,36 @@ body::before {
 </div>
 
 <script>
+// If the user is signed in, auto-fill name + email from their account and lock
+// the fields so they can't be accidentally edited. Guests see the normal form.
+if (window.GDJAuth && typeof window.GDJAuth.ready === 'function') {
+  window.GDJAuth.ready((user) => {
+    if (!user) return;
+    const displayName = user.venue_name || user.name || '';
+    const email = user.email || '';
+    const nameInput = document.getElementById('contact-name');
+    const emailInput = document.getElementById('contact-email');
+    if (nameInput && displayName) {
+      nameInput.value = displayName;
+      nameInput.readOnly = true;
+    }
+    if (emailInput && email) {
+      emailInput.value = email;
+      emailInput.readOnly = true;
+    }
+    // Small hint so it's clear why the fields are pre-filled
+    if (email) {
+      const emailGroup = emailInput.closest('.form-group');
+      if (emailGroup && !emailGroup.querySelector('.signed-hint')) {
+        const hint = document.createElement('span');
+        hint.className = 'signed-hint';
+        hint.textContent = '✓ Signed in — we\'ll reply to this email';
+        emailGroup.appendChild(hint);
+      }
+    }
+  });
+}
+
 async function submitContact() {
   const btn = document.getElementById('submit-btn');
   const alertEl = document.getElementById('alert');
