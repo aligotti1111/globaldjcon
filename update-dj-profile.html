@@ -6,6 +6,7 @@
 <title>Update Profile - Global DJ Connect</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
 :root {
   --black: #050507;
@@ -1650,6 +1651,21 @@ clubGenres.forEach(cb => {
 
 // Load user data
 (async function() {
+  // Show email verified banner if arrived from email confirmation link
+  const isEmailVerifyReturn = new URLSearchParams(window.location.search).get('emailverified') === '1';
+  if (isEmailVerifyReturn) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;transition:opacity .5s;';
+    banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
+    const target = document.querySelector('.container') || document.querySelector('main') || document.body;
+    if (target) target.insertBefore(banner, target.firstChild);
+    setTimeout(() => { banner.style.opacity = '0'; }, 6000);
+    setTimeout(() => banner.remove(), 7000);
+    if (window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
   try {
     const { data, error } = await db.from('users').select('*').eq('id', currentUser.id).single();
     if (error) throw error;

@@ -377,30 +377,34 @@ let currentUser = null;
   if (!cu) { window.location.href = '/login.html'; return; }
   currentUser = cu;
 
-  // Show "email verified" success banner
-  if (isEmailVerifyReturn) {
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;';
-    banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
-    const container = document.querySelector('.container') || document.body.firstChild;
-    if (container) container.insertBefore(banner, container.firstChild);
-    setTimeout(() => banner.style.opacity = '0', 6000);
-    setTimeout(() => banner.remove(), 7000);
-    // Clean the URL
-    if (window.history.replaceState) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }
-
   initUI();
 })();
+
+function showEmailVerifiedBanner() {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;';
+  banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
+  const container = document.querySelector('.container') || document.body.firstChild;
+  if (container) container.insertBefore(banner, container.firstChild);
+  setTimeout(() => banner.style.opacity = '0', 6000);
+  setTimeout(() => banner.remove(), 7000);
+  if (window.history.replaceState) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
 
 function initUI() {
   // DJs manage everything (profile + account settings) in update-dj-profile.html
   if (currentUser.role === 'dj') {
-    window.location.href = '/update-dj-profile.html';
+    // Forward the emailverified flag so the DJ page can show the confirmation banner
+    const emailVerifyFlag = new URLSearchParams(window.location.search).get('emailverified');
+    window.location.href = '/update-dj-profile.html' + (emailVerifyFlag ? '?emailverified=' + emailVerifyFlag : '');
     return;
   }
+
+  // Show email verified banner if we arrived from email confirmation link
+  const isEmailVerifyReturn = new URLSearchParams(window.location.search).get('emailverified') === '1';
+  if (isEmailVerifyReturn) showEmailVerifiedBanner();
 
   // Pre-fill fields
   document.getElementById('setting-name').value = currentUser.name || '';
