@@ -319,7 +319,12 @@
   };
 
   function buildNavHtml(user) {
+    var isMobile = (typeof window !== 'undefined') && window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+
     if (!user) {
+      // Mobile: nothing — each page has a hardcoded <a id="mobile-signin-icon" data-keep>
+      // inside #nav-btns that renderNav() preserves across repaints.
+      if (isMobile) return '';
       return (
         '<a href="/login.html" id="nav-signin" class="gdj-nav-btn gdj-nav-outline">' +
           NAV_SVGS.signin + '<span class="gdj-nav-text">Sign In</span>' +
@@ -331,6 +336,9 @@
     }
 
     var parts = [];
+    // On mobile the top bar only carries Inbox + Booking icons. Everything else
+    // (View/Update Profile, Settings, Logout) lives in the hamburger menu that
+    // each page hardcodes. We detect viewport here and bail after the two icons.
 
     // Inbox + Booking Requests — all logged-in users, all pages
     parts.push(
@@ -345,6 +353,8 @@
         '<span class="gdj-nav-badge" id="nav-booking-count" style="display:none;"></span>' +
       '</a>'
     );
+
+    if (isMobile) return parts.join('');
 
     if (user.role === 'dj') {
       // DJ: View My Profile (hide on own profile), Update My Profile (hide on update page)
@@ -403,7 +413,7 @@
       + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
       + '#mobile-signin-icon{display:none;}'
-      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn,#nav-signin,#nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex !important;}}';
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-btns #nav-view-profile,#nav-btns #nav-profile,#nav-btns #nav-logout,#nav-btns #nav-settings-btn,#nav-btns #nav-signin,#nav-btns #nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex !important;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
     style.textContent = css;
@@ -451,6 +461,17 @@
     // listener higher up in this file
     setTimeout(renderNav, 0);
   });
+
+  // Re-render when crossing the mobile breakpoint so the nav updates on
+  // resize / orientation change (mobile uses fewer buttons than desktop)
+  if (window.matchMedia) {
+    try {
+      var mq = window.matchMedia('(max-width: 640px)');
+      var mqHandler = function () { renderNav(); };
+      if (mq.addEventListener) mq.addEventListener('change', mqHandler);
+      else if (mq.addListener) mq.addListener(mqHandler); // older Safari
+    } catch (e) {}
+  }
 
   // ── Verification banner auto-injection ────────────────────────────────────
   // When logged in but email is not verified, show a sticky banner on the page
