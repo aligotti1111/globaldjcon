@@ -209,12 +209,22 @@
         return { ok: false, error: 'Email already verified' };
       }
       try {
-        const { error } = await db.auth.resend({
-          type: 'signup',
-          email: _currentUser.email,
-          options: { emailRedirectTo: window.location.origin + '/account-settings.html?emailverified=1' }
+        // Route through our Netlify function which uses service-role to
+        // generate a fresh signup confirmation link + dispatches via Resend.
+        const res = await fetch('/.netlify/functions/signup-send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: _currentUser.id,
+            email: _currentUser.email,
+            role: _currentUser.role || 'host',
+            slug: _currentUser.slug || null
+          })
         });
-        if (error) return { ok: false, error: error.message };
+        if (!res.ok) {
+          const txt = await res.text();
+          return { ok: false, error: txt || ('HTTP ' + res.status) };
+        }
         return { ok: true };
       } catch (e) {
         return { ok: false, error: (e && e.message) || 'Failed to resend' };
