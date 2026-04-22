@@ -1,14 +1,16 @@
 // netlify/functions/signup-send-verification.js
-// Called immediately after a user signs up (when Supabase "Confirm email" is OFF,
-// so email_confirmed_at gets auto-populated). We:
-//   1) Clear email_confirmed_at so our banner + gates kick in
-//   2) Use Supabase admin API to generate a signup confirmation link
-//   3) Email that link to the user via Resend (through the existing send-email function)
+// Sends an email-verification link to a freshly-signed-up user (or resends on
+// request from the verify-email banner). Uses our own token system stored in
+// public.email_verification_tokens — completely independent of Supabase Auth's
+// email_confirmed_at flag, which Supabase re-populates on every login.
 //
 // POST { user_id, email, role, slug? }
 
+const crypto = require('crypto');
+
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SITE_URL = 'https://globaldjconnect.com';
+const TOKEN_TTL_HOURS = 24;
 
 exports.handler = async (event) => {
   const headers = {
@@ -23,90 +25,60 @@ exports.handler = async (event) => {
   }
 
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
   if (!SERVICE_KEY) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY not set' }) };
+  }
+  if (!RESEND_API_KEY) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'RESEND_API_KEY not set' }) };
   }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); }
   catch (e) { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  const { user_id, email, role, slug } = body;
+  const { user_id, email, role } = body;
   if (!user_id || !email) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'user_id and email are required' }) };
   }
 
-  // Step 1: clear email_confirmed_at so our code treats the user as unverified.
-  // We do this via raw SQL RPC because the admin API doesn't directly support
-  // unsetting this field. We write a direct UPDATE against auth.users using the
-  // service role (which has superuser-ish access).
-  try {
-    const sqlRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/clear_email_confirmation`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ target_user_id: user_id })
-      }
-    );
-    if (!sqlRes.ok) {
-      const txt = await sqlRes.text();
-      console.warn('[signup-send-verification] clear_email_confirmation RPC failed', sqlRes.status, txt);
-      // Non-fatal — continue and try to send email anyway with magiclink
-    }
-  } catch (e) {
-    console.warn('[signup-send-verification] clear exception', e);
-  }
+  // Step 1: generate a fresh token + insert into email_verification_tokens
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_HOURS * 60 * 60 * 1000).toISOString();
 
-  // Step 2: generate a magic link. This works for existing users AND will
-  // confirm their email as a side effect when they click it. Much simpler than
-  // signup-type links which reject existing users.
-  let confirmationUrl;
   try {
-    const linkRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/generate_link`,
+    const insertRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/email_verification_tokens`,
       {
         method: 'POST',
         headers: {
           apikey: SERVICE_KEY,
           Authorization: `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal'
         },
         body: JSON.stringify({
-          type: 'magiclink',
+          token: token,
+          user_id: user_id,
           email: email,
-          options: {
-            redirect_to: `${SITE_URL}/account-settings.html?emailverified=1`
-          }
+          expires_at: expiresAt
         })
       }
     );
-    if (!linkRes.ok) {
-      const txt = await linkRes.text();
-      console.error('[signup-send-verification] generate_link failed', linkRes.status, txt);
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Could not generate confirmation link', detail: txt }) };
-    }
-    const linkData = await linkRes.json();
-    confirmationUrl = (linkData && (linkData.properties?.action_link || linkData.action_link)) || null;
-    if (!confirmationUrl) {
-      console.error('[signup-send-verification] no action_link in response', JSON.stringify(linkData));
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'No confirmation link returned' }) };
+    if (!insertRes.ok) {
+      const txt = await insertRes.text();
+      console.error('[signup-send-verification] token insert failed', insertRes.status, txt);
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Could not create verification token', detail: txt }) };
     }
   } catch (e) {
-    console.error('[signup-send-verification] generate_link exception', e);
+    console.error('[signup-send-verification] token insert exception', e);
     return { statusCode: 500, headers, body: JSON.stringify({ error: String(e) }) };
   }
 
-  // Step 3: send the confirmation email via Resend
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_API_KEY) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'RESEND_API_KEY not set' }) };
-  }
+  // Step 2: build the verification link pointing at our own endpoint
+  const verifyUrl = `${SITE_URL}/.netlify/functions/verify-email?token=${encodeURIComponent(token)}`;
 
+  // Step 3: send the email via Resend
   const logoUrl = 'https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/gdj-logo-email.png';
   const roleDisplay = role === 'dj' ? 'DJ' : (role === 'venue' ? 'Venue' : 'Host');
 
@@ -127,9 +99,9 @@ exports.handler = async (event) => {
         <h1>Confirm Your Email</h1>
         <p>Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
         <p>Click the button below to verify your email and unlock messaging, booking, and all features:</p>
-        <p style="text-align:center;"><a href="${confirmationUrl}" class="btn">Verify Email</a></p>
-        <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${confirmationUrl}</span></p>
-        <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in 24 hours. If you didn't sign up, you can safely ignore this email.</p>
+        <p style="text-align:center;"><a href="${verifyUrl}" class="btn">Verify Email</a></p>
+        <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${verifyUrl}</span></p>
+        <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>
       </div>
       <div class="footer">Global DJ Connect · globaldjconnect.com</div>
     </div>
