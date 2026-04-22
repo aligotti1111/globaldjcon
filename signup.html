@@ -925,6 +925,16 @@ function lookupSignupZip(zip) {
 // account-settings.html (or update-dj-profile.html for DJs via redirect).
 function showWelcomeAndRedirect(email, role, slug) {
   const container = document.querySelector('.container');
+  // DJ-specific block: give them a jump-start to edit their profile while
+  // they wait for the verification email to land.
+  const djBuildBlock = role === 'dj' ? `
+      <div style="margin-top:36px;padding:20px;border:1px solid var(--neon-dim);border-radius:8px;background:rgba(0,245,196,.04);">
+        <p style="color:var(--white);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.05em;margin:0 0 10px;">Begin Building Your Profile</p>
+        <p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 18px;">Add your mixes, photos, equipment, rates, and availability now — you can still edit anytime.</p>
+        <a href="/update-dj-profile.html" style="display:inline-block;background:var(--neon);color:#000;padding:.75rem 1.5rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;font-weight:700;">Edit My Profile →</a>
+      </div>
+  ` : '';
+
   container.innerHTML = `
     <div class="logo">
       <a href="/" style="text-decoration:none;"><h1>GLOBAL DJ CONNECT</h1></a>
@@ -937,9 +947,9 @@ function showWelcomeAndRedirect(email, role, slug) {
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:.04em;margin-bottom:14px;color:var(--white);">Check Your Email</h2>
       <p style="color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:8px;">We sent a confirmation link to</p>
       <p style="color:var(--neon);font-family:'Space Mono',monospace;font-size:15px;margin-bottom:28px;word-break:break-all;">${email}</p>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto;">Click the link in that email to activate your account and sign in. The link expires in 1 hour.</p>
+      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto;">Click the link in that email to activate your account. The link expires in 1 hour.</p>
       <p style="color:var(--muted);font-size:12px;margin-top:20px;">Didn't get it? Check your spam folder, or <a href="javascript:void(0)" id="resend-link" style="color:var(--neon);text-decoration:underline;">resend the email</a>.</p>
-      <p style="color:var(--muted);font-size:11px;margin-top:32px;">Already verified? <a href="/login.html" style="color:var(--neon);text-decoration:underline;">Sign in</a></p>
+      ${djBuildBlock}
     </div>
   `;
 
@@ -1035,6 +1045,25 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       throw new Error('An account with this email already exists. Please log in instead.');
     }
 
+    // Ensure public.users row has all the DJ fields (the auth trigger
+    // doesn't carry over everything reliably). Upsert directly.
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      try {
+        await db.from('users').upsert({
+          id: signUpData.user.id,
+          role: 'dj',
+          name: name,
+          slug: finalSlug,
+          type: types.join(', '),
+          country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
+          city: document.getElementById('dj-city').value,
+          state: document.getElementById('dj-state').value,
+          travel_distance: parseInt(document.getElementById('dj-travel').value, 10) || null,
+          zip: document.getElementById('dj-zip').value
+        }, { onConflict: 'id' });
+      } catch (e) { console.warn('[signup] dj upsert failed (non-fatal):', e); }
+    }
+
     showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -1078,6 +1107,20 @@ document.getElementById('form-host').addEventListener('submit', async function(e
     }
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
+    }
+
+    // Ensure public.users row has all the host fields (the auth trigger
+    // doesn't always carry over country). Upsert directly so the settings
+    // page can populate properly.
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      try {
+        await db.from('users').upsert({
+          id: signUpData.user.id,
+          role: 'host',
+          name: name,
+          country: country
+        }, { onConflict: 'id' });
+      } catch (e) { console.warn('[signup] host upsert failed (non-fatal):', e); }
     }
 
     showWelcomeAndRedirect(emailLower, 'host');
@@ -1144,6 +1187,21 @@ document.getElementById('form-venue').addEventListener('submit', async function(
     }
     if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       throw new Error('An account with this email already exists. Please log in instead.');
+    }
+
+    // Ensure public.users row has all the venue fields
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      try {
+        await db.from('users').upsert({
+          id: signUpData.user.id,
+          role: 'venue',
+          name: venueName,
+          venue_name: venueName,
+          slug: venueSlug,
+          country: country,
+          zip: zip
+        }, { onConflict: 'id' });
+      } catch (e) { console.warn('[signup] venue upsert failed (non-fatal):', e); }
     }
 
     showWelcomeAndRedirect(emailLower, 'venue', venueSlug);

@@ -481,9 +481,6 @@
   function shouldShowVerifyBanner() {
     if (!_currentUser) return false;
     if (_currentUser.confirmed) return false;
-    const path = (window.location.pathname || '').toLowerCase();
-    const skip = ['/login', '/signup', '/forgot-password', '/reset-password', '/claim', '/contact', '/privacy', '/admin'];
-    if (skip.some(p => path === p || path === p + '.html' || path.startsWith(p + '/'))) return false;
     return true;
   }
 
