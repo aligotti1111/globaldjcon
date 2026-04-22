@@ -421,7 +421,7 @@ function showEmailVerifiedBanner() {
   try {
     const banner = document.createElement('div');
     banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;';
-    banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
+    banner.textContent = '✓ Your account is now verified, all account features are now activated.';
     // Find a real element parent — prefer .container, else fall back to <main>
     // or the first element child of <body>. Never use firstChild (could be text).
     const container = document.querySelector('.container')
@@ -430,8 +430,8 @@ function showEmailVerifiedBanner() {
     const firstEl = container.firstElementChild;
     if (firstEl) container.insertBefore(banner, firstEl);
     else container.appendChild(banner);
-    setTimeout(() => banner.style.opacity = '0', 6000);
-    setTimeout(() => banner.remove(), 7000);
+    setTimeout(() => banner.style.opacity = '0', 30000);
+    setTimeout(() => banner.remove(), 31000);
     if (window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
