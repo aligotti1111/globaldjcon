@@ -192,7 +192,7 @@
         const action = actionLabel || 'do this';
         showVerifyModal({
           title: 'Verify Your Email',
-          body: 'You need to verify your email before you can ' + action + '. Check your inbox for the confirmation link.',
+          body: 'You need to verify your email before you can ' + action + '. Check your email account for the confirmation email. Check your spam folder if not in primary inbox.',
           primaryLabel: 'Resend Email',
           primaryAction: 'resend'
         });
