@@ -322,8 +322,7 @@
     var isMobile = (typeof window !== 'undefined') && window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
 
     if (!user) {
-      // Mobile: nothing — each page has a hardcoded <a id="mobile-signin-icon" data-keep>
-      // inside #nav-btns that renderNav() preserves across repaints.
+      // Mobile: render nothing. Each page hardcodes its own Sign In text button.
       if (isMobile) return '';
       return (
         '<a href="/login.html" id="nav-signin" class="gdj-nav-btn gdj-nav-outline">' +
@@ -412,8 +411,10 @@
       + '.gdj-nav-icon:hover{border-color:#00f5c4;color:#00f5c4;}'
       + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
-      + '#mobile-signin-icon{display:none;}'
-      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-btns #nav-view-profile,#nav-btns #nav-profile,#nav-btns #nav-logout,#nav-btns #nav-settings-btn,#nav-btns #nav-signin,#nav-btns #nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex !important;}}';
+      + '.hc-signin{display:inline-flex;align-items:center;gap:.4rem;font-family:"Space Mono",monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:.55rem .9rem;border-radius:6px;border:1px solid #f0f0f8;color:#f0f0f8;text-decoration:none;transition:all .2s;white-space:nowrap;line-height:1;}'
+      + '.hc-signin:hover{border-color:#00f5c4;color:#00f5c4;}'
+      + 'body.is-logged-in .hc-signin{display:none !important;}'
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}.hc-signin{padding:.45rem .7rem;font-size:.58rem;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
     style.textContent = css;
