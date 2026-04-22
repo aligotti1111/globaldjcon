@@ -605,6 +605,13 @@ const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 const BASE_URL = 'globaldjconnect.com/';
 let currentAccountType = null;
 
+// Already-signed-in users shouldn't be on the signup page — bounce them home.
+if (window.GDJAuth && window.GDJAuth.ready) {
+  window.GDJAuth.ready(function(cu) {
+    if (cu) window.location.replace('/');
+  });
+}
+
 // Auto-dismiss toast alerts after 7 seconds (errors stay long enough to read but don't pile up)
 (function setupAlertObserver() {
   const alertEl = document.getElementById('alert');

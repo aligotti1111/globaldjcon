@@ -504,16 +504,25 @@
   function shouldShowVerifyBanner() {
     if (!_currentUser) return false;
     if (_currentUser.confirmed) return false;
+    // Skip banner on auth-flow pages where it's confusing or redundant.
+    const path = (window.location.pathname || '').toLowerCase();
+    const skip = ['/login', '/signup', '/forgot-password', '/reset-password', '/set-password'];
+    if (skip.some(p => path === p || path === p + '.html' || path.startsWith(p + '/'))) return false;
     return true;
   }
 
   function injectVerifyBanner() {
-    if (!shouldShowVerifyBanner()) return;
+    if (!shouldShowVerifyBanner()) {
+      // If we're on a skip page but a banner already exists from a previous
+      // navigation, tear it down.
+      removeVerifyBanner();
+      return;
+    }
     if (document.getElementById('gdj-verify-banner')) return;
 
     const style = document.createElement('style');
     style.textContent = `
-      body { padding-top:44px; }
+      body { padding-top:56px; }
       #gdj-verify-banner { position:fixed; top:0; left:0; right:0; width:100%; z-index:9999; background:linear-gradient(90deg, rgba(255,179,71,.1), rgba(255,179,71,.18), rgba(255,179,71,.1)); border-bottom:1px solid rgba(255,179,71,.35); padding:.6rem 1.5rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; justify-content:center; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.04em; color:#ffb347; box-sizing:border-box; }
       #gdj-verify-banner .msg { flex:0 1 auto; }
       #gdj-verify-banner button { background:transparent; border:1px solid rgba(255,179,71,.5); color:#ffb347; padding:.3rem .8rem; border-radius:4px; font-family:inherit; font-size:inherit; letter-spacing:inherit; cursor:pointer; }

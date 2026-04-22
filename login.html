@@ -231,6 +231,18 @@ const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
 const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Already-signed-in users shouldn't see the login page — bounce them home.
+// (Skip this redirect if a confirmation hash is present so the existing
+// post-confirmation handler below can run.)
+if (!window.location.hash.includes('access_token') &&
+    new URLSearchParams(window.location.search).get('confirmed') !== '1') {
+  if (window.GDJAuth && window.GDJAuth.ready) {
+    window.GDJAuth.ready(function(cu) {
+      if (cu) window.location.replace('/');
+    });
+  }
+}
+
 // ── POST-CONFIRMATION HANDLING ────────────────────────────
 // If the user arrives here after clicking an email confirmation link
 // in a fresh browser (no existing session), show a confirmation banner.
