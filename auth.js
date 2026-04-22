@@ -402,7 +402,8 @@
       + '.gdj-nav-icon:hover{border-color:#00f5c4;color:#00f5c4;}'
       + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
-      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn{display:none !important;}}';
+      + '#mobile-signin-icon{display:none;}'
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn,#nav-signin,#nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
     style.textContent = css;
@@ -414,6 +415,16 @@
     if (!container) return;
     injectNavStyles();
     container.innerHTML = buildNavHtml(_currentUser);
+    // Toggle body classes so hardcoded page elements can show/hide based on auth state
+    if (document.body) {
+      if (_currentUser) {
+        document.body.classList.add('is-logged-in');
+        document.body.classList.remove('is-logged-out');
+      } else {
+        document.body.classList.add('is-logged-out');
+        document.body.classList.remove('is-logged-in');
+      }
+    }
   }
 
   // Initial render: as soon as the DOM has the #nav-btns container, paint with
