@@ -923,6 +923,21 @@ function lookupSignupZip(zip) {
 // before issuing a session). Show a clear instruction to check their inbox.
 // When they click the link, Supabase will create the session and land them on
 // account-settings.html (or update-dj-profile.html for DJs via redirect).
+async function triggerSignupVerification(userId, email, role, slug) {
+  // With Supabase "Confirm email" off, email_confirmed_at gets auto-populated
+  // and no email is sent. This Netlify function un-confirms the user and
+  // dispatches the verification email via Resend.
+  try {
+    await fetch('/.netlify/functions/signup-send-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, email: email, role: role, slug: slug || null })
+    });
+  } catch (e) {
+    console.warn('[signup] verification trigger failed:', e);
+  }
+}
+
 function showWelcomeAndRedirect(email, role, slug) {
   const container = document.querySelector('.container');
   // DJ-specific block: give them a jump-start to edit their profile while
@@ -1064,6 +1079,11 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
       } catch (e) { console.warn('[signup] dj upsert failed (non-fatal):', e); }
     }
 
+    // Clear auto-confirmed flag + send verification email
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      await triggerSignupVerification(signUpData.user.id, email, 'dj', finalSlug);
+    }
+
     showWelcomeAndRedirect(email, 'dj', finalSlug);
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -1121,6 +1141,11 @@ document.getElementById('form-host').addEventListener('submit', async function(e
           country: country
         }, { onConflict: 'id' });
       } catch (e) { console.warn('[signup] host upsert failed (non-fatal):', e); }
+    }
+
+    // Clear auto-confirmed flag + send verification email
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      await triggerSignupVerification(signUpData.user.id, emailLower, 'host', null);
     }
 
     showWelcomeAndRedirect(emailLower, 'host');
@@ -1202,6 +1227,11 @@ document.getElementById('form-venue').addEventListener('submit', async function(
           zip: zip
         }, { onConflict: 'id' });
       } catch (e) { console.warn('[signup] venue upsert failed (non-fatal):', e); }
+    }
+
+    // Clear auto-confirmed flag + send verification email
+    if (signUpData && signUpData.user && signUpData.user.id) {
+      await triggerSignupVerification(signUpData.user.id, emailLower, 'venue', venueSlug);
     }
 
     showWelcomeAndRedirect(emailLower, 'venue', venueSlug);
