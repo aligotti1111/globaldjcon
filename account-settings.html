@@ -392,6 +392,28 @@ let currentUser = null;
   if (!cu) { window.location.href = '/login.html'; return; }
   currentUser = cu;
 
+  // On email-verify return the public.users row may have JUST been inserted by
+  // the trigger — but our first loadProfile() ran before the row existed, so
+  // currentUser has no name/country. Retry-poll the users table directly for
+  // up to 3 seconds to pick up the row the moment it appears.
+  if ((isEmailVerifyReturn || hasUrlAuthFragment) && (!currentUser.name || !currentUser.country)) {
+    const retryDeadline = Date.now() + 3000;
+    while (Date.now() < retryDeadline) {
+      try {
+        const rows = await apiGet('users?select=*&id=eq.' + encodeURIComponent(currentUser.id));
+        const fresh = rows && rows[0];
+        if (fresh && (fresh.name || fresh.country)) {
+          Object.assign(currentUser, fresh);
+          if (typeof GDJAuth !== 'undefined' && GDJAuth.refreshProfile) {
+            try { await GDJAuth.refreshProfile(); } catch(e){}
+          }
+          break;
+        }
+      } catch (e) { /* keep retrying */ }
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+
   initUI();
 })();
 
@@ -421,12 +443,28 @@ function initUI() {
   const isEmailVerifyReturn = new URLSearchParams(window.location.search).get('emailverified') === '1';
   if (isEmailVerifyReturn) showEmailVerifiedBanner();
 
-  // Pre-fill fields
+  // Pre-fill fields — first from currentUser (fast), then re-fetch from DB to
+  // make sure we have the latest values (currentUser can be stale if profile
+  // fields were updated since auth.js loaded the session).
   document.getElementById('setting-name').value = currentUser.name || '';
   document.getElementById('setting-email').value = currentUser.email || '';
   document.getElementById('setting-country').value = currentUser.country || '';
   document.getElementById('account-subtitle').textContent =
     `${currentUser.role === 'host' ? 'Party Host' : 'Venue'} Account`;
+
+  // Re-fetch fresh user row from DB and overwrite fields
+  (async () => {
+    try {
+      const rows = await apiGet('users?select=*&id=eq.' + encodeURIComponent(currentUser.id));
+      const data = rows && rows[0];
+      if (data) {
+        if (data.name) document.getElementById('setting-name').value = data.name;
+        if (data.country) document.getElementById('setting-country').value = data.country;
+        // merge into currentUser so other code on this page sees fresh values
+        Object.assign(currentUser, data);
+      }
+    } catch (e) { console.warn('[account-settings] refresh fetch failed:', e); }
+  })();
 
   // Venue-specific sections
   if (currentUser.role === 'venue') {
