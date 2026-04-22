@@ -403,7 +403,7 @@
       + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
       + '#mobile-signin-icon{display:none;}'
-      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn,#nav-signin,#nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex;}}';
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn,#nav-signin,#nav-signup{display:none !important;}body.is-logged-out #mobile-signin-icon{display:inline-flex !important;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
     style.textContent = css;
@@ -414,7 +414,12 @@
     var container = document.getElementById('nav-btns');
     if (!container) return;
     injectNavStyles();
+    // Preserve hardcoded children marked with data-keep attribute (like the mobile Sign In icon)
+    var preserved = [];
+    var keepers = container.querySelectorAll('[data-keep]');
+    for (var i = 0; i < keepers.length; i++) preserved.push(keepers[i]);
     container.innerHTML = buildNavHtml(_currentUser);
+    for (var j = 0; j < preserved.length; j++) container.appendChild(preserved[j]);
     // Toggle body classes so hardcoded page elements can show/hide based on auth state
     if (document.body) {
       if (_currentUser) {
