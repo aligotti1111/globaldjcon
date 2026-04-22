@@ -402,7 +402,7 @@
       + '.gdj-nav-icon:hover{border-color:#00f5c4;color:#00f5c4;}'
       + '.gdj-nav-icon svg{width:16px;height:16px;}'
       + '.gdj-nav-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ff5f5f;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:monospace;}'
-      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-signin,#nav-signup,#nav-settings-btn{display:none !important;}}';
+      + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}#nav-view-profile,#nav-profile,#nav-logout,#nav-settings-btn{display:none !important;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
     style.textContent = css;
