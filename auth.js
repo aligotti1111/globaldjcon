@@ -93,11 +93,16 @@
   function hydrateUser(authUser, profile) {
     if (!authUser) return null;
     const base = profile || { id: authUser.id };
+    // `confirmed` is sourced from our own public.users.email_verified column
+    // — NOT from Supabase's auth.users.email_confirmed_at, which Supabase
+    // re-populates on every login when the project's "Confirm email" toggle
+    // is off. We control email_verified entirely via our verify-email
+    // Netlify function; the user clicks the link in their email and we
+    // flip the column to true. Default false for new accounts.
     return Object.assign({}, base, {
       id: authUser.id,
       email: authUser.email,
-      // convenience flag
-      confirmed: !!authUser.email_confirmed_at
+      confirmed: !!(profile && profile.email_verified)
     });
   }
 
@@ -231,20 +236,11 @@
       }
     },
 
-    // Force-refetch BOTH the auth user (for email_confirmed_at etc) AND the
-    // public.users profile row. Used after account-level changes on the server
-    // (e.g., after the signup-send-verification fn clears email_confirmed_at).
+    // Force-refetch the profile row from public.users. The `confirmed` flag
+    // is sourced from this row (email_verified column), so re-reading the
+    // row picks up verification changes made by our verify-email function.
     async refreshProfile() {
       if (!_session || !_session.user) return null;
-      // Refresh the auth user from Supabase so fields like email_confirmed_at
-      // reflect server-side changes. We use getUser() which force-fetches from
-      // /auth/v1/user rather than returning cached JWT data.
-      try {
-        const { data, error } = await db.auth.getUser();
-        if (!error && data && data.user) {
-          _session = Object.assign({}, _session, { user: data.user });
-        }
-      } catch (e) { /* keep _session.user as-is if getUser fails */ }
       const profile = await loadProfile(_session.user.id, _session.access_token);
       _currentUser = hydrateUser(_session.user, profile);
       window.currentUser = _currentUser;
