@@ -275,17 +275,33 @@ async function submitClaim() {
 function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
 function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
 function gdcSetupMobileMenu(){
-  var cu = window.currentUser || null;
-  if(!cu){
-    var lo=document.getElementById('mobile-menu-loggedout');if(lo)lo.style.display='block';
-    return;
+  function applyMenu(cu){
+    var lo=document.getElementById('mobile-menu-loggedout');
+    var li=document.getElementById('mobile-menu-loggedin');
+    var d=document.getElementById('mobile-menu-dj');
+    var v=document.getElementById('mobile-menu-venue');
+    if(!cu){
+      if(lo)lo.style.display='block';
+      if(li)li.style.display='none';
+      if(d)d.style.display='none';
+      if(v)v.style.display='none';
+      return;
+    }
+    if(lo)lo.style.display='none';
+    if(li)li.style.display='block';
+    if(cu.role==='dj'){
+      if(d)d.style.display='block';
+      if(v)v.style.display='none';
+      var mv=document.getElementById('mob-view-profile');if(mv&&cu.slug)mv.href='/'+cu.slug;
+    }else{
+      if(v)v.style.display='block';
+      if(d)d.style.display='none';
+    }
   }
-  var li=document.getElementById('mobile-menu-loggedin');if(li)li.style.display='block';
-  if(cu.role==='dj'){
-    var d=document.getElementById('mobile-menu-dj');if(d)d.style.display='block';
-    var mv=document.getElementById('mob-view-profile');if(mv&&cu.slug)mv.href='/'+cu.slug;
+  if(window.GDJAuth&&typeof window.GDJAuth.ready==='function'){
+    window.GDJAuth.ready(applyMenu);
   }else{
-    var v=document.getElementById('mobile-menu-venue');if(v)v.style.display='block';
+    applyMenu(window.currentUser||null);
   }
 }
 document.addEventListener('DOMContentLoaded', function() {
