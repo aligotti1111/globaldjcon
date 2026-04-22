@@ -513,7 +513,7 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      #gdj-verify-banner { position:sticky; top:0; left:0; right:0; z-index:500; background:linear-gradient(90deg, rgba(255,179,71,.1), rgba(255,179,71,.18), rgba(255,179,71,.1)); border-bottom:1px solid rgba(255,179,71,.35); padding:.6rem 1.5rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; justify-content:center; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.04em; color:#ffb347; }
+      #gdj-verify-banner { position:sticky; top:0; left:0; right:0; z-index:500; background:linear-gradient(90deg, rgba(255,179,71,.1), rgba(255,179,71,.18), rgba(255,179,71,.1)); border-bottom:1px solid rgba(255,179,71,.35); padding:.6rem 1.5rem; margin-bottom:1.25rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; justify-content:center; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.04em; color:#ffb347; }
       #gdj-verify-banner .msg { flex:0 1 auto; }
       #gdj-verify-banner button { background:transparent; border:1px solid rgba(255,179,71,.5); color:#ffb347; padding:.3rem .8rem; border-radius:4px; font-family:inherit; font-size:inherit; letter-spacing:inherit; cursor:pointer; }
       #gdj-verify-banner button:hover:not(:disabled) { background:rgba(255,179,71,.12); border-color:#ffb347; }
@@ -529,7 +529,6 @@
     banner.innerHTML = `
       <span class="msg">✉ Verify your email to unlock messaging &amp; booking.</span>
       <button id="gdj-verify-resend" type="button">Resend Email</button>
-      <button class="close" id="gdj-verify-close" type="button" title="Hide for this session">×</button>
     `;
     document.body.insertBefore(banner, document.body.firstChild);
 
@@ -548,15 +547,9 @@
       }
     });
 
-    document.getElementById('gdj-verify-close').addEventListener('click', function() {
-      banner.style.display = 'none';
-      try { sessionStorage.setItem('gdjVerifyBannerHidden', '1'); } catch(e) {}
-    });
-
-    // Respect per-session hide
-    try {
-      if (sessionStorage.getItem('gdjVerifyBannerHidden') === '1') banner.style.display = 'none';
-    } catch (e) {}
+    // Clean up legacy per-session hide flag from older banner versions so the
+    // banner shows even for users who previously dismissed it.
+    try { sessionStorage.removeItem('gdjVerifyBannerHidden'); } catch (e) {}
   }
 
   // Also remove banner if user becomes verified later (e.g., they click link in another tab)
