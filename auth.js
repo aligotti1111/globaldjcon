@@ -416,57 +416,24 @@
     container.innerHTML = buildNavHtml(_currentUser);
   }
 
-  // ── Inject "Home" link into the hamburger when not on the homepage ────
-  // The mobile menu is the same block on every page (defined in page HTML);
-  // we add a Home link at the top dynamically so we don't have to edit 8 files.
-  function maybeInjectHomeLink() {
-    var panel = document.querySelector('#mobile-menu .mobile-menu-panel');
-    if (!panel) return;
-    if (panel.querySelector('#mob-home')) return; // already injected
-    var path = (window.location.pathname || '').toLowerCase();
-    var isHome = path === '/' || path === '/index.html' || path === '';
-    if (isHome) return; // no Home link needed on homepage
-
-    var home = document.createElement('a');
-    home.id = 'mob-home';
-    home.href = '/';
-    home.className = 'mobile-menu-item';
-    home.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4a2 2 0 01-2-2v-4a2 2 0 00-2-2h-0a2 2 0 00-2 2v4a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home';
-    // Insert at the very top (before the close button is fine — close stays positioned absolute)
-    var closeBtn = panel.querySelector('.mobile-menu-close');
-    if (closeBtn && closeBtn.nextSibling) {
-      panel.insertBefore(home, closeBtn.nextSibling);
-    } else {
-      panel.insertBefore(home, panel.firstChild);
-    }
-    // Add a divider after Home so it groups visually with subsequent items
-    var hr = document.createElement('hr');
-    hr.className = 'mobile-menu-divider';
-    panel.insertBefore(hr, home.nextSibling);
-  }
-
   // Initial render: as soon as the DOM has the #nav-btns container, paint with
   // whatever state we have (may be logged-out initially; will re-render when
   // auth resolves below).
   function scheduleInitialNavRender() {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () {
-        renderNav();
-        maybeInjectHomeLink();
-      });
+      document.addEventListener('DOMContentLoaded', renderNav);
     } else {
       renderNav();
-      maybeInjectHomeLink();
     }
   }
   scheduleInitialNavRender();
 
   // Re-render once auth resolves and on every subsequent auth state change
-  GDJAuth.ready(function () { renderNav(); maybeInjectHomeLink(); });
+  GDJAuth.ready(renderNav);
   db.auth.onAuthStateChange(() => {
     // A tick later so _currentUser has been updated by the onAuthStateChange
     // listener higher up in this file
-    setTimeout(function () { renderNav(); maybeInjectHomeLink(); }, 0);
+    setTimeout(renderNav, 0);
   });
 
   // ── Verification banner auto-injection ────────────────────────────────────
