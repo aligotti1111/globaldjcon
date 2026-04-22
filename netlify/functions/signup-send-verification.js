@@ -36,30 +36,35 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'user_id and email are required' }) };
   }
 
-  // Step 1: clear email_confirmed_at so our code treats the user as unverified
+  // Step 1: clear email_confirmed_at so our code treats the user as unverified.
+  // We do this via raw SQL RPC because the admin API doesn't directly support
+  // unsetting this field. We write a direct UPDATE against auth.users using the
+  // service role (which has superuser-ish access).
   try {
-    const clearRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(user_id)}`,
+    const sqlRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/clear_email_confirmation`,
       {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           apikey: SERVICE_KEY,
           Authorization: `Bearer ${SERVICE_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email_confirm: false })
+        body: JSON.stringify({ target_user_id: user_id })
       }
     );
-    if (!clearRes.ok) {
-      const txt = await clearRes.text();
-      console.error('[signup-send-verification] clear email_confirm failed', clearRes.status, txt);
-      // Non-fatal — try to continue and send email anyway
+    if (!sqlRes.ok) {
+      const txt = await sqlRes.text();
+      console.warn('[signup-send-verification] clear_email_confirmation RPC failed', sqlRes.status, txt);
+      // Non-fatal — continue and try to send email anyway with magiclink
     }
   } catch (e) {
-    console.error('[signup-send-verification] clear exception', e);
+    console.warn('[signup-send-verification] clear exception', e);
   }
 
-  // Step 2: generate a signup confirmation link via admin API
+  // Step 2: generate a magic link. This works for existing users AND will
+  // confirm their email as a side effect when they click it. Much simpler than
+  // signup-type links which reject existing users.
   let confirmationUrl;
   try {
     const linkRes = await fetch(
@@ -72,7 +77,7 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          type: 'signup',
+          type: 'magiclink',
           email: email,
           options: {
             redirect_to: `${SITE_URL}/account-settings.html?emailverified=1`
