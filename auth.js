@@ -181,22 +181,25 @@
     },
 
     // Gate a critical action behind email verification. Returns true if user may proceed.
-    // If blocked, shows a friendly alert + returns false. Use at the top of booking/messaging handlers.
+    // If blocked, shows a themed in-page modal + returns false. Use at the top of booking/messaging handlers.
     //   if (!GDJAuth.requireVerifiedEmail()) return;
     requireVerifiedEmail(actionLabel) {
       if (!_currentUser) {
-        alert('Please sign in first.');
+        showVerifyModal({ title: 'Sign In Required', body: 'Please sign in first.', primaryLabel: 'Sign In', primaryHref: '/login.html' });
         return false;
       }
       if (!_currentUser.confirmed) {
         const action = actionLabel || 'do this';
-        const msg = 'Please verify your email before you can ' + action + '.\n\nCheck your inbox for the confirmation link — or click "Resend" in the banner at the top of the page.';
-        alert(msg);
+        showVerifyModal({
+          title: 'Verify Your Email',
+          body: 'You need to verify your email before you can ' + action + '. Check your inbox for the confirmation link.',
+          primaryLabel: 'Resend Email',
+          primaryAction: 'resend'
+        });
         // Nudge the banner to flash if present
         const banner = document.getElementById('gdj-verify-banner');
         if (banner) {
           banner.style.animation = 'none';
-          // restart animation
           void banner.offsetWidth;
           banner.style.animation = 'gdjVerifyFlash 1s ease';
         }
@@ -509,6 +512,70 @@
     const skip = ['/login', '/signup', '/forgot-password', '/reset-password', '/set-password'];
     if (skip.some(p => path === p || path === p + '.html' || path.startsWith(p + '/'))) return false;
     return true;
+  }
+
+  // Themed in-page modal used by requireVerifiedEmail in place of the browser alert.
+  // opts: { title, body, primaryLabel, primaryHref?, primaryAction? }
+  function showVerifyModal(opts) {
+    const existing = document.getElementById('gdj-verify-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'gdj-verify-modal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:gdjModalFade .15s ease;';
+    overlay.innerHTML = `
+      <style>
+        @keyframes gdjModalFade { from { opacity:0; } to { opacity:1; } }
+        @keyframes gdjModalSlide { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        #gdj-verify-modal .gdj-modal-card { background:#13131e; border:1px solid rgba(255,179,71,.3); border-radius:12px; max-width:440px; width:100%; padding:32px 28px; text-align:center; animation:gdjModalSlide .2s ease; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+        #gdj-verify-modal .gdj-modal-icon { width:56px; height:56px; margin:0 auto 18px; border-radius:50%; background:rgba(255,179,71,.12); border:1px solid rgba(255,179,71,.4); display:flex; align-items:center; justify-content:center; }
+        #gdj-verify-modal h3 { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:.05em; color:#ffb347; margin:0 0 12px; }
+        #gdj-verify-modal p { color:#c4c4d4; font-size:14px; line-height:1.6; margin:0 0 22px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+        #gdj-verify-modal .gdj-modal-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        #gdj-verify-modal button, #gdj-verify-modal a { font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; padding:.7rem 1.4rem; border-radius:6px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; border:1px solid; background:transparent; }
+        #gdj-verify-modal .primary { background:#ffb347; border-color:#ffb347; color:#000; font-weight:700; }
+        #gdj-verify-modal .primary:hover:not(:disabled) { background:#ffc170; border-color:#ffc170; }
+        #gdj-verify-modal .secondary { border-color:#3a3a4e; color:#c4c4d4; }
+        #gdj-verify-modal .secondary:hover { border-color:#5a5a6e; color:#fff; }
+        #gdj-verify-modal button:disabled { opacity:.5; cursor:default; }
+      </style>
+      <div class="gdj-modal-card" role="dialog" aria-modal="true" aria-labelledby="gdj-modal-title">
+        <div class="gdj-modal-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <h3 id="gdj-modal-title">${opts.title || 'Verification Required'}</h3>
+        <p>${opts.body || ''}</p>
+        <div class="gdj-modal-actions">
+          ${opts.primaryHref
+            ? `<a href="${opts.primaryHref}" class="primary">${opts.primaryLabel || 'OK'}</a>`
+            : `<button type="button" class="primary" id="gdj-modal-primary">${opts.primaryLabel || 'OK'}</button>`}
+          <button type="button" class="secondary" id="gdj-modal-close">Close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.getElementById('gdj-modal-close').addEventListener('click', close);
+    const primaryBtn = document.getElementById('gdj-modal-primary');
+    if (primaryBtn) {
+      primaryBtn.addEventListener('click', async () => {
+        if (opts.primaryAction === 'resend') {
+          primaryBtn.disabled = true;
+          const orig = primaryBtn.textContent;
+          primaryBtn.textContent = 'Sending...';
+          const result = await GDJAuth.resendVerificationEmail();
+          if (result.ok) {
+            primaryBtn.textContent = '✓ Sent — check your inbox';
+            setTimeout(close, 2500);
+          } else {
+            primaryBtn.textContent = '✗ ' + (result.error || 'Failed');
+            setTimeout(() => { primaryBtn.textContent = orig; primaryBtn.disabled = false; }, 4000);
+          }
+        } else {
+          close();
+        }
+      });
+    }
   }
 
   function injectVerifyBanner() {
