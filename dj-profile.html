@@ -1112,16 +1112,21 @@ const GENRE_LABELS = {
           bookBtn.style.cursor = 'pointer';
           bookBtn.onclick = function(e) {
             e.preventDefault();
-            const cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null');
+            const cu = (window.GDJAuth && window.GDJAuth.user && window.GDJAuth.user()) || null;
             if (!cu) {
               showBookingGate();
-            } else {
-              const bookingTabBtn = document.getElementById('tab-btn-booking');
-              if (bookingTabBtn) {
-                switchTab('booking', bookingTabBtn);
-                document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                if (!isMobileDJ) setTimeout(() => pubCalShowRolling(), 400);
-              }
+              return;
+            }
+            // Unverified: don't open the booking form. Use the standard
+            // requireVerifiedEmail alert which also flashes the top banner.
+            if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('book a DJ')) {
+              return;
+            }
+            const bookingTabBtn = document.getElementById('tab-btn-booking');
+            if (bookingTabBtn) {
+              switchTab('booking', bookingTabBtn);
+              document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
+              if (!isMobileDJ) setTimeout(() => pubCalShowRolling(), 400);
             }
           };
         }
@@ -2500,8 +2505,9 @@ let contactDjUserId = null;
 let contactDjSlug = null;
 
 function openContactModal() {
-  const isLoggedIn = !!(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser'));
-  if (!isLoggedIn) { showGateModal(); return; }
+  const cu = (window.GDJAuth && window.GDJAuth.user && window.GDJAuth.user()) || null;
+  if (!cu) { showGateModal(); return; }
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('send messages')) return;
   document.getElementById('contact-modal').classList.add('active');
   document.getElementById('contact-alert').innerHTML = '';
   document.getElementById('contact-subject').value = '';
@@ -2798,8 +2804,9 @@ function drawMobPubCal() {
         <button type="button" onclick="mobPubOwnerEdit('${key}')" title="Edit day"
           style="position:absolute;bottom:4px;right:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:0;line-height:1;">✏️</button>`;
     } else if (!mobPubIsOwner && isAvail) {
-      const cu = JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');
-      const action = cu ? `mobPubSelectDate('${key}')` : `showBookingGate()`;
+      // mobPubBookDayGated handles signed-out (showBookingGate), unverified
+      // (requireVerifiedEmail alert + banner flash), and verified (open form).
+      const action = `mobPubBookDayGated('${key}')`;
       badge = `<div style="font-family:'Space Mono',monospace;font-size:.6rem;padding:2px 5px;border-radius:3px;background:rgba(0,245,196,.18);color:var(--neon);border:1px solid rgba(0,245,196,.2);cursor:pointer;margin-top:2px;" onclick="${action}">Book</div>`;
     } else if (!mobPubIsOwner && isBooked && dayData.eventName && dayData.location !== 'Private') {
       badge = `<div style="font-size:clamp(.42rem,.9vw,.55rem);color:#ff7070;line-height:1.2;text-align:center;margin-top:2px;">${dayData.eventName}</div>`;
@@ -3097,6 +3104,13 @@ function mpf_initPhoneField() {
   el.addEventListener('input', () => {
     el.value = mpf_formatPhone(el.value, code);
   });
+}
+
+function mobPubBookDayGated(key) {
+  const cu = (window.GDJAuth && window.GDJAuth.user && window.GDJAuth.user()) || null;
+  if (!cu) { showBookingGate(); return; }
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('book a DJ')) return;
+  mobPubSelectDate(key);
 }
 
 function mobPubSelectDate(key) {
@@ -3764,6 +3778,9 @@ function ib_ensureInitialized() {
 async function ib_openForInline(djSlug, dateKey) {
   const cu = ib_currentUser();
   if (!cu) { showBookingGate(); return; }
+  // Unverified users can't open the booking form — bounce them with the
+  // standard verify alert + flash the top banner.
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('book a DJ')) return;
 
   ib_ensureInitialized();
 
@@ -4399,6 +4416,9 @@ async function ib_submitBooking() {
 
 // Message modal (inline booking)
 function ib_openMsgModal() {
+  const cu = (window.GDJAuth && window.GDJAuth.user && window.GDJAuth.user()) || null;
+  if (!cu) { showBookingGate(); return; }
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('send messages')) return;
   document.getElementById('ib-msg-modal-title').textContent = 'Message ' + (ib_djData?.name || 'DJ');
   document.getElementById('ib-msg-modal').style.display = 'flex';
 }
