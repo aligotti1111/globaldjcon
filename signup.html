@@ -933,6 +933,25 @@ async function triggerSignupVerification(userId, email, role, slug) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, email: email, role: role, slug: slug || null })
     });
+    // After the function clears email_confirmed_at server-side, force auth.js
+    // to re-read the user row so _currentUser.confirmed flips to false and the
+    // banner + gates activate immediately.
+    try {
+      if (window.GDJAuth && window.GDJAuth.refreshProfile) {
+        await window.GDJAuth.refreshProfile();
+      }
+      // Also force a full session refresh — the access token's JWT still has
+      // email_confirmed_at from when it was issued. Getting a new session
+      // picks up the server-side clear we just did.
+      if (window.db && window.db.auth && window.db.auth.refreshSession) {
+        await window.db.auth.refreshSession();
+      } else if (typeof db !== 'undefined' && db.auth && db.auth.refreshSession) {
+        await db.auth.refreshSession();
+      }
+      if (window.GDJAuth && window.GDJAuth.refreshProfile) {
+        await window.GDJAuth.refreshProfile();
+      }
+    } catch (e) { console.warn('[signup] refresh after verification failed:', e); }
   } catch (e) {
     console.warn('[signup] verification trigger failed:', e);
   }
