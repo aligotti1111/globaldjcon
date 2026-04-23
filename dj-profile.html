@@ -1125,9 +1125,21 @@ const GENRE_LABELS = {
             const bookingTabBtn = document.getElementById('tab-btn-booking');
             if (bookingTabBtn) {
               switchTab('booking', bookingTabBtn);
-              document.getElementById('tab-booking').scrollIntoView({ behavior: 'smooth', block: 'start' });
-              if (!isMobileDJ) setTimeout(() => pubCalShowRolling(), 400);
+              // Switch to the 12-month rolling grid (capped at the DJ's own
+              // booking window setting). Both DJ types get this view on click.
+              if (isMobileDJ) {
+                setTimeout(() => { try { mobPubShowRolling(); } catch(e){} }, 400);
+              } else {
+                setTimeout(() => pubCalShowRolling(), 400);
+              }
             }
+            // Scroll to the calendar itself (not just the tab pane). This works
+            // even when the booking tab is already active — the user gets
+            // visual feedback that the click "did" something.
+            const cal = document.getElementById('p-booking-calendar')
+              || document.getElementById('mob-pub-calendar')
+              || document.getElementById('tab-booking');
+            if (cal) cal.scrollIntoView({ behavior: 'smooth', block: 'start' });
           };
         }
       } catch(e) {}
@@ -2690,6 +2702,7 @@ let mobPubCalYear = new Date().getFullYear();
 let mobPubCalMonth = new Date().getMonth();
 let mobPubSelectedDate = null;
 let mobPubSelectedPkg = null;
+let mobPubRollingActive = false;
 
 const MOB_EVENT_TYPE_LABELS = {
   weddings:'Wedding', birthday:'Birthday Party', corporate:'Corporate Event',
@@ -2727,12 +2740,15 @@ function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
 
   container.innerHTML = `
     <div id="mob-pub-cal-wrap">
-      <div id="mob-pub-cal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
-        <div id="mob-pub-cal-label" style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);"></div>
-        <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+      <div id="mob-pub-cal-single-wrap">
+        <div id="mob-pub-cal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
+          <div id="mob-pub-cal-label" style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);"></div>
+          <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+        </div>
+        <div id="mob-pub-cal-grid"></div>
       </div>
-      <div id="mob-pub-cal-grid"></div>
+      <div id="mob-pub-cal-rolling-wrap" style="display:none;"></div>
       <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--neon);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,245,196,.15);border:1px solid rgba(0,245,196,.3);display:inline-block;"></span>Available</div>
         <div style="display:flex;align-items:center;gap:.4rem;font-family:'Space Mono',monospace;font-size:.58rem;color:#ff5f5f;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.3);display:inline-block;"></span>Booked</div>
@@ -3104,6 +3120,87 @@ function mpf_initPhoneField() {
   el.addEventListener('input', () => {
     el.value = mpf_formatPhone(el.value, code);
   });
+}
+
+// Rolling 12-month grid view for mobile DJ profiles. Shown when the user
+// clicks "Book Now" — gives them the same compressed all-year overview the
+// club/bar DJs get via pubCalShowRolling/drawRolling12Months. Capped at the
+// DJ's mob_booking_window setting (defaults 24mo for mobile DJs).
+function mobPubShowRolling() {
+  if (!mobPubRollingActive) mobPubToggleView();
+}
+
+function mobPubToggleView() {
+  mobPubRollingActive = !mobPubRollingActive;
+  const single = document.getElementById('mob-pub-cal-single-wrap');
+  const rolling = document.getElementById('mob-pub-cal-rolling-wrap');
+  if (!single || !rolling) return;
+  if (mobPubRollingActive) {
+    single.style.display = 'none';
+    rolling.style.display = 'block';
+    mobPubDrawRolling();
+  } else {
+    single.style.display = '';
+    rolling.style.display = 'none';
+  }
+}
+
+function mobPubDrawRolling() {
+  const rolling = document.getElementById('mob-pub-cal-rolling-wrap');
+  if (!rolling || !mobPubBs) return;
+  const windowMonths = mobPubBs.mob_booking_window || 12;
+  const bookingDays = mobPubBs.mob_booking_days || {};
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const dayLabels = ['S','M','T','W','T','F','S'];
+
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;">`;
+
+  for (let i = 0; i < windowMonths; i++) {
+    let mo = today.getMonth() + i;
+    let yr = today.getFullYear() + Math.floor(mo / 12);
+    mo = mo % 12;
+    const firstDay = new Date(yr, mo, 1).getDay();
+    const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+
+    html += `<div style="background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.6rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;color:var(--white);margin-bottom:.4rem;">${monthNames[mo]} <span style="color:var(--neon);">${yr}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px;">
+        ${dayLabels.map(d=>`<div style="font-family:'Space Mono',monospace;font-size:.42rem;text-align:center;color:var(--muted);">${d}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;">`;
+
+    for (let b = 0; b < firstDay; b++) html += `<div></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayData = bookingDays[key] || {};
+      const isPast = key < todayKey;
+      const isBooked = dayData.booked;
+      const isUnavail = dayData.unavailable;
+      const isToday = key === todayKey;
+      const isAvail = !isPast && !isBooked && !isUnavail;
+
+      let bg = 'transparent';
+      let color = 'var(--muted)';
+      if (isPast) { bg = 'transparent'; color = '#3a3a4e'; }
+      else if (isBooked) { bg = 'rgba(255,95,95,.12)'; color = '#ff5f5f'; }
+      else if (isUnavail) { bg = 'rgba(107,107,136,.12)'; color = 'var(--muted)'; }
+      else if (isAvail) { bg = 'rgba(0,245,196,.1)'; color = 'var(--neon)'; }
+
+      const cellAttrs = (!mobPubIsOwner && isAvail)
+        ? `cursor:pointer;" onclick="mobPubBookDayGated('${key}')`
+        : `cursor:default;`;
+      const todayOutline = isToday ? 'outline:1px solid var(--neon);outline-offset:-1px;' : '';
+
+      html += `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:.5rem;background:${bg};color:${color};border-radius:2px;${todayOutline}${cellAttrs}">${d}</div>`;
+    }
+
+    html += `</div></div>`;
+  }
+  html += `</div>`;
+  rolling.innerHTML = html;
 }
 
 function mobPubBookDayGated(key) {
