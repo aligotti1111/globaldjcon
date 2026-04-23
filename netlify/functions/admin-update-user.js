@@ -12,7 +12,8 @@ const ALLOWED_FIELDS = [
   'phone', 'website', 'instagram', 'soundcloud', 'tiktok', 'facebook', 'twitch',
   'travel_distance',
   'profile_private',
-  'claimed'
+  'claimed',
+  'email_verified'
 ];
 
 exports.handler = async (event) => {
