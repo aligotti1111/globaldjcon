@@ -409,58 +409,49 @@ ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:
       
       <div class="form-group">
         <label>Type</label>
-        <div class="checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" name="type" value="mobile-event" id="mobile-checkbox" onchange="updateNameLabel()">
-            Mobile DJ
-          </label>
-          
-          <!-- Mobile event specialization - appears right under mobile checkbox -->
-          <div id="mobile-spec" class="specialization-box" style="display:none;">
-            <div id="mobile-parties">
-              <span class="sub-label">Mobile Party Types (select all that apply)</span>
-              <div class="checkbox-grid">
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="weddings"> Weddings</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="corporate"> Corporate Events</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="birthday"> Birthday Parties</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="anniversary"> Anniversaries</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="graduation"> Graduations</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="sweet16"> Sweet 16 / Quinceañera</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="mitzvah"> Bar/Bat Mitzvahs</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="reunion"> Reunions</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="holiday"> Holiday Parties</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="school"> School Events</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="community"> Community Events</label>
-                <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="other"> Other</label>
-              </div>
-            </div>
-          </div>
-          
-          <div id="club-dj-option">
-          <label class="checkbox-label">
-            <input type="checkbox" name="type" value="club" id="club-checkbox" onchange="updateNameLabel();">
-            Club/Bar DJ
-          </label>
-          
-          <!-- Club genres - appears right under club checkbox -->
-          <div id="club-spec" class="specialization-box" style="display:none;">
-            <div class="genre-title">Music Genres (select all that apply)</div>
+        <div id="dj-type-display" style="padding:.7rem .9rem;background:var(--deep);border:1px solid var(--border);border-radius:6px;color:var(--white);font-size:.9rem;display:flex;align-items:center;gap:.6rem;">
+          <span id="dj-type-label">—</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">(cannot be changed)</span>
+        </div>
+
+        <!-- Mobile event specialization - shown only for Mobile DJs -->
+        <div id="mobile-spec" class="specialization-box" style="display:none;margin-top:1rem;">
+          <div id="mobile-parties">
+            <span class="sub-label">Mobile Party Types (select all that apply)</span>
             <div class="checkbox-grid">
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="open-format"> Open Format</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="hip-hop"> Hip Hop</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="edm"> EDM / Electronic</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="house"> House</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="techno"> Techno</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="top40"> Top 40</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="rnb"> R&B</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="latin"> Latin / Reggaeton</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="country"> Country</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="rock"> Rock</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="disco"> Disco / Funk</label>
-              <label class="checkbox-label"><input type="checkbox" name="club-genres" value="afrobeats"> Afrobeats</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="weddings"> Weddings</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="corporate"> Corporate Events</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="birthday"> Birthday Parties</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="anniversary"> Anniversaries</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="graduation"> Graduations</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="sweet16"> Sweet 16 / Quinceañera</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="mitzvah"> Bar/Bat Mitzvahs</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="reunion"> Reunions</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="holiday"> Holiday Parties</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="school"> School Events</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="community"> Community Events</label>
+              <label class="checkbox-label"><input type="checkbox" name="mobile-events" value="other"> Other</label>
             </div>
           </div>
-          </div><!-- end club-dj-option -->
+        </div>
+
+        <!-- Club genres - shown only for Club DJs -->
+        <div id="club-spec" class="specialization-box" style="display:none;margin-top:1rem;">
+          <div class="genre-title">Music Genres (select all that apply)</div>
+          <div class="checkbox-grid">
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="open-format"> Open Format</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="hip-hop"> Hip Hop</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="edm"> EDM / Electronic</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="house"> House</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="techno"> Techno</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="top40"> Top 40</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="rnb"> R&B</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="latin"> Latin / Reggaeton</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="country"> Country</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="rock"> Rock</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="disco"> Disco / Funk</label>
+            <label class="checkbox-label"><input type="checkbox" name="club-genres" value="afrobeats"> Afrobeats</label>
+          </div>
         </div>
       </div>
 
@@ -964,7 +955,7 @@ ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:
                 <!-- No party types warning -->
                 <div id="pkg-no-types-msg" style="display:none;background:rgba(107,107,136,.08);border:1px solid rgba(107,107,136,.2);border-radius:8px;padding:1rem;text-align:center;margin-bottom:1rem;">
                   <div style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem;">You haven't selected any Mobile Party Types yet.</div>
-                  <button type="button" onclick="switchProfileTab('general',document.querySelector('.profile-tab'));document.getElementById('mobile-checkbox').checked=true;document.getElementById('mobile-spec').style.display='block';document.getElementById('mobile-parties').scrollIntoView({behavior:'smooth'});" style="padding:.5rem 1rem;background:var(--neon-dim);border:1px solid var(--neon);color:var(--neon);font-family:'Space Mono',monospace;font-size:.62rem;border-radius:6px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Go Select Party Types</button>
+                  <button type="button" onclick="switchProfileTab('general',document.querySelector('.profile-tab'));document.getElementById('mobile-parties').scrollIntoView({behavior:'smooth'});" style="padding:.5rem 1rem;background:var(--neon-dim);border:1px solid var(--neon);color:var(--neon);font-family:'Space Mono',monospace;font-size:.62rem;border-radius:6px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Go Select Party Types</button>
                 </div>
 
                 <!-- Category tabs -->
@@ -1085,6 +1076,9 @@ ul.gdj-check-list li::before{content:"✓";position:absolute;left:0;top:0;color:
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cXZ6dXVzcXVydWh3Z3Vxb2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjkxNjUsImV4cCI6MjA4NzE0NTE2NX0.TKoNk-u5bEKgVy-pXRrCYv8Iui8SzIa5ExiVUyEJ6UE';
 const db = window.db || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// DJ type ('mobile' or 'club') — populated from data.dj_type during loadProfile, immutable on this page
+let userDjType = null;
 
 async function hashPassword(password) {
   if (!password) return null;
@@ -1720,56 +1714,7 @@ document.getElementById('slug-input').addEventListener('input', function() {
   }, 500);
 });
 
-// Toggle mobile specialization
-document.getElementById('mobile-checkbox').addEventListener('change', function() {
-  const bookingActive = document.getElementById('booking-enabled').checked;
-  if (bookingActive && this.checked) {
-    this.checked = false; // silently block — cannot switch while booking is active
-    return;
-  }
-  document.getElementById('mobile-spec').style.display = this.checked ? 'block' : 'none';
-  if (this.checked) {
-    document.getElementById('club-checkbox').checked = false;
-    document.getElementById('club-spec').style.display = 'none';
-    document.querySelectorAll('input[name="club-genres"]').forEach(cb => cb.checked = false);
-  }
-});
 
-// Toggle club genres
-document.getElementById('club-checkbox').addEventListener('change', function() {
-  // If mobile booking is active, block switching to club
-  const mobileBookingActive = document.getElementById('mobile-checkbox').checked && document.getElementById('booking-enabled').checked;
-  if (this.checked && mobileBookingActive) {
-    this.checked = false; // revert immediately
-    showMobileBookingLockModal();
-    return;
-  }
-  document.getElementById('club-spec').style.display = this.checked ? 'block' : 'none';
-  if (this.checked) {
-    document.getElementById('mobile-checkbox').checked = false;
-    document.getElementById('mobile-spec').style.display = 'none';
-    document.querySelectorAll('input[name="mobile-events"]').forEach(cb => cb.checked = false);
-  }
-  checkShowBookingTab();
-  updateNameLabel();
-});
-
-function showMobileBookingLockModal() {
-  const existing = document.getElementById('mob-lock-modal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'mob-lock-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:1.5rem;';
-  modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.05em;color:var(--white);margin-bottom:.75rem;">Cannot Switch Account Type</div>
-      <p style="font-size:.85rem;color:var(--muted);line-height:1.7;margin-bottom:1.5rem;">Your account is registered as a <strong style="color:var(--white);">Mobile DJ</strong> with booking activated. You cannot switch to a Club/Bar DJ account.</p>
-      <div style="display:flex;">
-        <button type="button" onclick="document.getElementById('mob-lock-modal').remove()" style="flex:1;padding:.75rem;background:var(--neon-dim);border:1px solid var(--neon);border-radius:6px;color:var(--neon);font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">OK</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
 
 
 
@@ -1933,8 +1878,24 @@ clubGenres.forEach(cb => {
     document.getElementById('video_url_2').value = data.video_url_2 || '';
     document.getElementById('video_url_3').value = data.video_url_3 || '';
 
-    // Load testimonials + show tab for mobile DJs
-    const isMobile = (data.type || '').includes('mobile-event');
+    // Determine DJ type — single canonical source of truth, immutable on this page
+    userDjType = data.dj_type || null;
+    const isMobile = userDjType === 'mobile';
+    const isClub = userDjType === 'club';
+
+    // Populate the read-only Type display
+    const typeLabelEl = document.getElementById('dj-type-label');
+    if (typeLabelEl) {
+      typeLabelEl.textContent = isMobile ? 'Mobile DJ' : (isClub ? 'Club/Bar DJ' : '—');
+    }
+
+    // Show the relevant sub-section
+    if (isMobile) document.getElementById('mobile-spec').style.display = 'block';
+    if (isClub) document.getElementById('club-spec').style.display = 'block';
+
+    updateNameLabel();
+
+    // Show testimonials tab for Mobile DJs
     if (isMobile) {
       document.getElementById('tab-btn-testimonials').style.display = '';
       if (data.testimonials) {
@@ -1944,28 +1905,15 @@ clubGenres.forEach(cb => {
         } catch(e) {}
       }
     }
-    
-    // Load types (single select — use first type only)
-    if (data.type) {
-      const type = data.type.split(',')[0].trim();
-      const checkbox = document.querySelector(`input[name="type"][value="${type}"]`);
-      if (checkbox) {
-        checkbox.checked = true;
-        if (type === 'mobile-event') document.getElementById('mobile-spec').style.display = 'block';
-        if (type === 'club') document.getElementById('club-spec').style.display = 'block';
-      }
-      updateNameLabel();
-    }
-    
+
     // Load mobile party types from event_types.
     // For Mobile DJs with NO event_types saved yet (e.g., new account), default to ALL checked.
-    const isMobileType = (data.type || '').includes('mobile-event');
     if (data.event_types) {
       data.event_types.split(',').map(s => s.trim()).forEach(partyType => {
         const checkbox = document.querySelector(`input[name="mobile-events"][value="${partyType}"]`);
         if (checkbox) checkbox.checked = true;
       });
-    } else if (isMobileType) {
+    } else if (isMobile) {
       // New Mobile DJ — pre-check every event type as a sensible default
       document.querySelectorAll('input[name="mobile-events"]').forEach(cb => { cb.checked = true; });
     }
@@ -2005,16 +1953,6 @@ document.getElementById('profile-form').addEventListener('submit', async functio
   btn.textContent = 'Saving...';
   alertBox.innerHTML = '';
   
-  const typeCheckboxes = document.querySelectorAll('input[name="type"]:checked');
-  const types = Array.from(typeCheckboxes).map(cb => cb.value);
-  
-  if (types.length === 0) {
-    alertBox.innerHTML = '<div class="alert alert-error">Please select at least one DJ type</div>';
-    btn.disabled = false;
-    btn.textContent = 'Save Changes';
-    return;
-  }
-  
   try {
     // Slug validation
     const rawSlug = document.getElementById('slug-input').value.trim();
@@ -2026,7 +1964,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
 
     
     let clubGenresData = null;
-    if (document.getElementById('club-checkbox').checked) {
+    if (userDjType === 'club') {
       const genres = Array.from(document.querySelectorAll('input[name="club-genres"]:checked')).map(cb => cb.value);
       if (genres.length > 0) clubGenresData = genres.join(',');
     }
@@ -2038,7 +1976,6 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     const updateData = {
       name: document.getElementById('name').value,
       slug: finalSlug || undefined,
-      type: types.join(', '),
       city: document.getElementById('city').value,
       state: document.getElementById('state').value,
       country: document.getElementById('country').value,
@@ -2176,14 +2113,12 @@ window.addEventListener('beforeunload', function(e) {
 
 // Show booking tab for all DJs
 function updateNameLabel() {
-  const isMobile = document.getElementById('mobile-checkbox').checked;
-  const isClub = document.getElementById('club-checkbox').checked;
   const label = document.getElementById('name-label');
   const input = document.getElementById('name');
-  if (isMobile && !isClub) {
+  if (userDjType === 'mobile') {
     if (label) label.textContent = 'Company Name';
     if (input) input.placeholder = 'Premier Events LLC';
-  } else if (isClub && !isMobile) {
+  } else if (userDjType === 'club') {
     if (label) label.textContent = 'DJ Name';
     if (input) input.placeholder = 'DJ Nova';
   } else {
@@ -2192,22 +2127,9 @@ function updateNameLabel() {
   }
 }
 
-function setClubOptionVisible(visible) {
-  const el = document.getElementById('club-dj-option');
-  if (el) el.style.display = visible ? '' : 'none';
-}
-
-function setMobileCheckboxLocked(locked) {
-  const cb = document.getElementById('mobile-checkbox');
-  const label = cb.closest('.checkbox-label');
-  if (label) {
-    label.style.display = locked ? 'none' : '';
-  }
-}
-
 function checkShowBookingTab() {
-  const isClub = document.getElementById('club-checkbox').checked;
-  const isMobile = document.getElementById('mobile-checkbox').checked;
+  const isClub = userDjType === 'club';
+  const isMobile = userDjType === 'mobile';
   // Booking tab always visible for now (until subscription is added)
   document.getElementById('tab-btn-booking').style.display = '';
   document.getElementById('club-booking-section').style.display = isClub ? 'block' : 'none';
@@ -2215,18 +2137,14 @@ function checkShowBookingTab() {
   const calSection = document.getElementById('cal-section');
   if (calSection) calSection.style.display = isClub ? 'block' : 'none';
   if (isClub) updateRateFields(null);
+  if (isMobile) renderMobPackageTabs(true);
 }
-document.getElementById('mobile-checkbox').addEventListener('change', function() {
-  checkShowBookingTab();
-  if (this.checked) renderMobPackageTabs(true);
-});
 
 // Toggle booking setup visibility
 function toggleBookingSetup(userInitiated) {
   const checkbox = document.getElementById('booking-enabled');
   const enabled = checkbox.checked;
-  const isClub = document.getElementById('club-checkbox').checked;
-  const isMobile = document.getElementById('mobile-checkbox').checked;
+  const isClub = userDjType === 'club';
 
   // Club DJs: warn when activating for first time
   if (enabled && userInitiated && isClub) {
@@ -2258,7 +2176,7 @@ function showBookingActivateModal() {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.05em;color:var(--white);margin-bottom:.75rem;">Activate Booking?</div>
-      <p style="font-size:.85rem;color:var(--muted);line-height:1.7;margin-bottom:1rem;">Once you activate the booking feature, your account is locked as a <strong style="color:var(--white);">Club/Bar DJ</strong>. The Mobile DJ option will no longer be available while booking is active.</p>
+      <p style="font-size:.85rem;color:var(--muted);line-height:1.7;margin-bottom:1rem;">Activating booking will allow venues to send you booking requests for the dates you've made available.</p>
 
       <div style="display:flex;gap:.75rem;">
         <button type="button" onclick="document.getElementById('booking-activate-modal').remove()" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Cancel</button>
@@ -2281,17 +2199,15 @@ function _doToggleBooking(enabled, skipSave) {
   const thumb = document.getElementById('booking-toggle-thumb');
   document.getElementById('booking-setup').style.display = enabled ? 'block' : 'none';
   const calSection = document.getElementById('cal-section');
-  const isClubChecked = document.getElementById('club-checkbox').checked;
-  if (calSection) calSection.style.display = (enabled && isClubChecked) ? '' : 'none';
+  const isClub = userDjType === 'club';
+  const isMobile = userDjType === 'mobile';
+  if (calSection) calSection.style.display = (enabled && isClub) ? '' : 'none';
   track.style.background = enabled ? 'var(--neon)' : 'var(--border)';
   thumb.style.background = enabled ? 'var(--black)' : 'var(--muted)';
   thumb.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
-  if (enabled && isClubChecked) renderCal();
-  if (enabled && document.getElementById('mobile-checkbox').checked) {
+  if (enabled && isClub) renderCal();
+  if (enabled && isMobile) {
     renderMobCal(); renderMobPackageTabs();
-    setClubOptionVisible(false);
-  } else if (!enabled && document.getElementById('mobile-checkbox').checked) {
-    setClubOptionVisible(true);
   }
   if (skipSave) return;
   // Save only booking_enabled — all other settings untouched.
@@ -3966,10 +3882,10 @@ async function mobSavePackages(cat, idx, btn) {
 
 // ── LOAD BOOKING SETTINGS ─────────────────────────────────
 async function loadBookingSettings() {
-  const { data } = await db.from('users').select('booking_settings,type,event_types').eq('id', currentUser.id).single();
+  const { data } = await db.from('users').select('booking_settings,dj_type,event_types').eq('id', currentUser.id).single();
   if (!data) return;
-  const isClub = (data.type||'').includes('club');
-  const isMobile = (data.type||'').includes('mobile');
+  const isClub = data.dj_type === 'club';
+  const isMobile = data.dj_type === 'mobile';
   // Show booking tab
   if (isClub || isMobile) {
     document.getElementById('tab-btn-booking').style.display = '';
@@ -3977,7 +3893,6 @@ async function loadBookingSettings() {
   // Show correct section
   if (isClub) {
     document.getElementById('club-booking-section').style.display = 'block';
-    setMobileCheckboxLocked(true); // permanently hide Mobile DJ option for club accounts
   }
   if (isMobile) {
     document.getElementById('mobile-booking-section').style.display = 'block';
@@ -4031,7 +3946,7 @@ async function loadBookingSettings() {
     const cs = document.getElementById('cal-section');
     if (cs) cs.style.display = (enabled && isClub) ? '' : 'none';
     if (enabled && isClub) renderCal();
-    if (enabled && isMobile) { renderMobCal(); renderMobPackageTabs(); setClubOptionVisible(false); }
+    if (enabled && isMobile) { renderMobCal(); renderMobPackageTabs(); }
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
 

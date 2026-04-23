@@ -357,7 +357,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
       <div class="form-group">
         <label>Type</label>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
-          <button type="button" class="type-btn" data-value="mobile-event" onclick="selectDjType('mobile-event')">
+          <button type="button" class="type-btn" data-value="mobile" onclick="selectDjType('mobile')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
             Mobile DJ
           </button>
@@ -650,7 +650,7 @@ function selectDjType(value) {
   if (btn) btn.classList.add('selected');
   const label = document.getElementById('name-label');
   const input = document.getElementById('name');
-  if (value === 'mobile-event') {
+  if (value === 'mobile') {
     if (label) label.textContent = 'Company Name';
     if (input) input.placeholder = 'Premier Events LLC';
   } else if (value === 'club') {
@@ -1027,9 +1027,10 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
 
   const types = Array.from(document.querySelectorAll('.type-btn.selected')).map(b => b.dataset.value);
   if (types.length === 0) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please select at least one DJ type</div>';
+    alertEl.innerHTML = '<div class="alert alert-error">Please select your DJ type</div>';
     btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
   }
+  const djType = types[0];
   const name = document.getElementById('name').value;
   const slugEditVal = document.getElementById('slug-edit').value.trim();
   const finalSlug = (slugEditVal ? makeSlug(slugEditVal) : null) || chosenSlug || makeSlug(name);
@@ -1053,7 +1054,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
           role: 'dj',
           name,
           slug: finalSlug,
-          type: types.join(', '),
+          dj_type: djType,
           country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
           city: document.getElementById('dj-city').value,
           state: document.getElementById('dj-state').value,
@@ -1085,7 +1086,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
           role: 'dj',
           name: name,
           slug: finalSlug,
-          type: types.join(', '),
+          dj_type: djType,
           country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
           city: document.getElementById('dj-city').value,
           state: document.getElementById('dj-state').value,
