@@ -498,7 +498,14 @@
     for (var i = 0; i < keepers.length; i++) preserved.push(keepers[i]);
     container.innerHTML = buildNavHtml(_currentUser);
     for (var j = 0; j < preserved.length; j++) container.appendChild(preserved[j]);
-    // Toggle body classes so hardcoded page elements can show/hide based on auth state
+  }
+
+  // Toggle body/html auth-state classes — runs on every page once auth resolves,
+  // independent of whether the page has a nav-btns container. Without this, pages
+  // like the homepage (which renders its own header) would never lose the
+  // is-auth-pending class and stay invisible forever.
+  function applyAuthBodyClasses() {
+    document.documentElement.classList.remove('is-auth-pending');
     if (document.body) {
       document.body.classList.remove('is-auth-pending');
       if (_currentUser) {
@@ -509,7 +516,6 @@
         document.body.classList.remove('is-logged-in');
       }
     }
-    document.documentElement.classList.remove('is-auth-pending');
   }
 
   // Initial render: as soon as the DOM has the #nav-btns container, paint with
@@ -525,6 +531,7 @@
   scheduleInitialNavRender();
 
   // Re-render once auth resolves and on every subsequent auth state change
+  GDJAuth.ready(applyAuthBodyClasses);
   GDJAuth.ready(renderNav);
   db.auth.onAuthStateChange(() => {
     // A tick later so _currentUser has been updated by the onAuthStateChange
