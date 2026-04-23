@@ -719,7 +719,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 
     <!-- About Tab -->
     <div class="tab-pane active" id="tab-about">
-      <p class="bio-text" id="p-bio">Coming Soon</p>
+      <p class="tab-empty" id="p-bio">Coming Soon</p>
       <div class="info-grid" id="p-info-grid"></div>
     </div>
 
@@ -878,8 +878,16 @@ const GENRE_LABELS = {
   }
 
   // ── ABOUT TAB ──────────────────────────────────────────
-  if (data.bio) {
-    document.getElementById('p-bio').textContent = data.bio;
+  const bioEl = document.getElementById('p-bio');
+  if (bioEl) {
+    if (data.bio) {
+      bioEl.className = 'bio-text';
+      bioEl.textContent = data.bio;
+    } else {
+      // Match the empty-state look used by Mixes/Photos/Video tabs
+      bioEl.className = 'tab-empty';
+      bioEl.textContent = 'Coming Soon';
+    }
   }
 
   // Info grid — rate & availability
