@@ -25,6 +25,41 @@
     return;
   }
 
+  // Mark the document as auth-pending IMMEDIATELY so pages can hide
+  // signed-in/signed-out specific UI until the session is resolved (kills the
+  // "flash of signed-out content" when a user reloads). Stamp <html> right now
+  // (synchronous, before <body> may even exist) and propagate to <body> once
+  // it parses.
+  document.documentElement.classList.add('is-auth-pending');
+  function _markBodyPending() {
+    if (document.body) document.body.classList.add('is-auth-pending');
+  }
+  if (document.body) _markBodyPending();
+  else document.addEventListener('DOMContentLoaded', _markBodyPending, { once: true });
+
+  // Inject the pending-state CSS RIGHT NOW (before <head> finishes parsing
+  // ideally) so the rules below are active during the auth-resolution window.
+  // We rely on visibility:hidden (not display:none) so layout stays stable —
+  // when auth resolves and the pending class is removed, elements simply
+  // become visible without reflow.
+  (function injectPendingCss() {
+    if (document.getElementById('gdj-auth-pending-styles')) return;
+    var pendingCss = ''
+      + 'html.is-auth-pending #signin-btn,'
+      + 'html.is-auth-pending #signup-btn,'
+      + 'html.is-auth-pending #signup-btn-mobile,'
+      + 'html.is-auth-pending #view-profile-btn,'
+      + 'html.is-auth-pending #profile-btn,'
+      + 'html.is-auth-pending .hc-signin,'
+      + 'html.is-auth-pending #nav-btns'
+      + '{visibility:hidden !important;}';
+    var s = document.createElement('style');
+    s.id = 'gdj-auth-pending-styles';
+    s.textContent = pendingCss;
+    // Inject into <head> if available, else fall back to documentElement
+    (document.head || document.documentElement).appendChild(s);
+  })();
+
   // Create the shared client (use existing if another script already made one on this page)
   if (!window.db) {
     window.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -440,6 +475,12 @@
       + '.hc-signin{display:inline-flex;align-items:center;gap:.4rem;font-family:"Space Mono",monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:.55rem .9rem;border-radius:6px;border:1px solid #f0f0f8;color:#f0f0f8;text-decoration:none;transition:all .2s;white-space:nowrap;line-height:1;}'
       + '.hc-signin:hover{border-color:#00f5c4;color:#00f5c4;}'
       + 'body.is-logged-in .hc-signin{display:none !important;}'
+      // Hide auth-dependent UI while we resolve the session — kills the
+      // flash-of-signed-out content on reload. Covers the homepage Sign In /
+      // Create Account buttons too (they have known IDs).
+      + 'body.is-auth-pending .hc-signin{visibility:hidden !important;}'
+      + 'body.is-auth-pending #nav-btns{visibility:hidden !important;}'
+      + 'body.is-auth-pending #signin-btn,body.is-auth-pending #signup-btn,body.is-auth-pending #signup-btn-mobile,body.is-auth-pending #view-profile-btn,body.is-auth-pending #profile-btn{visibility:hidden !important;}'
       + '@media (max-width:640px){.gdj-nav-text{display:none;}.gdj-nav-btn{padding:.55rem .7rem;}.hc-signin{padding:.45rem .7rem;font-size:.58rem;}}';
     var style = document.createElement('style');
     style.id = 'gdj-nav-styles';
@@ -459,6 +500,7 @@
     for (var j = 0; j < preserved.length; j++) container.appendChild(preserved[j]);
     // Toggle body classes so hardcoded page elements can show/hide based on auth state
     if (document.body) {
+      document.body.classList.remove('is-auth-pending');
       if (_currentUser) {
         document.body.classList.add('is-logged-in');
         document.body.classList.remove('is-logged-out');
@@ -467,6 +509,7 @@
         document.body.classList.remove('is-logged-in');
       }
     }
+    document.documentElement.classList.remove('is-auth-pending');
   }
 
   // Initial render: as soon as the DOM has the #nav-btns container, paint with
