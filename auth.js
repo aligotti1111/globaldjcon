@@ -589,23 +589,41 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      body { padding-top:56px; }
-      #gdj-verify-banner { position:fixed; top:0; left:0; right:0; width:100%; z-index:9999; background:linear-gradient(90deg, rgba(255,179,71,.1), rgba(255,179,71,.18), rgba(255,179,71,.1)); border-bottom:1px solid rgba(255,179,71,.35); padding:.6rem 1.5rem; display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; justify-content:center; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.04em; color:#ffb347; box-sizing:border-box; }
-      #gdj-verify-banner .msg { flex:0 1 auto; }
-      #gdj-verify-banner button { background:transparent; border:1px solid rgba(255,179,71,.5); color:#ffb347; padding:.3rem .8rem; border-radius:4px; font-family:inherit; font-size:inherit; letter-spacing:inherit; cursor:pointer; }
+      #gdj-verify-banner { position:fixed; top:0; left:0; right:0; width:100%; z-index:9999; background:linear-gradient(90deg, rgba(255,179,71,.1), rgba(255,179,71,.18), rgba(255,179,71,.1)); border-bottom:1px solid rgba(255,179,71,.35); padding:.55rem 1rem; display:flex; align-items:center; gap:.6rem; justify-content:center; font-family:'Space Mono',monospace; font-size:.7rem; letter-spacing:.04em; color:#ffb347; box-sizing:border-box; }
+      #gdj-verify-banner .msg { flex:0 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      #gdj-verify-banner button { background:transparent; border:1px solid rgba(255,179,71,.5); color:#ffb347; padding:.25rem .65rem; border-radius:4px; font-family:inherit; font-size:inherit; letter-spacing:inherit; cursor:pointer; flex:0 0 auto; white-space:nowrap; }
       #gdj-verify-banner button:hover:not(:disabled) { background:rgba(255,179,71,.12); border-color:#ffb347; }
       #gdj-verify-banner button:disabled { opacity:.5; cursor:default; }
       @keyframes gdjVerifyFlash { 0%{background:rgba(255,179,71,.45);} 100%{background:rgba(255,179,71,.12);} }
+      @media(max-width:600px) {
+        #gdj-verify-banner { padding:.5rem .6rem; gap:.5rem; font-size:.6rem; }
+        #gdj-verify-banner button { padding:.25rem .55rem; font-size:.55rem; }
+      }
     `;
     document.head.appendChild(style);
 
     const banner = document.createElement('div');
     banner.id = 'gdj-verify-banner';
+    const isNarrow = window.matchMedia('(max-width:600px)').matches;
+    const msgText = isNarrow
+      ? '✉ Verify email to unlock booking.'
+      : '✉ Verify your email to unlock messaging &amp; booking.';
     banner.innerHTML = `
-      <span class="msg">✉ Verify your email to unlock messaging &amp; booking.</span>
-      <button id="gdj-verify-resend" type="button">Resend Email</button>
+      <span class="msg">${msgText}</span>
+      <button id="gdj-verify-resend" type="button">Resend</button>
     `;
     document.body.insertBefore(banner, document.body.firstChild);
+
+    // Push the page content down by the banner's actual height so nothing slides
+    // beneath it. Recompute on resize since the height changes between mobile
+    // and desktop breakpoints.
+    function syncBodyPad() {
+      const b = document.getElementById('gdj-verify-banner');
+      if (!b) { document.body.style.paddingTop = ''; return; }
+      document.body.style.paddingTop = b.offsetHeight + 'px';
+    }
+    syncBodyPad();
+    window.addEventListener('resize', syncBodyPad);
 
     document.getElementById('gdj-verify-resend').addEventListener('click', async function() {
       const btn = this;
@@ -631,6 +649,7 @@
   function removeVerifyBanner() {
     const b = document.getElementById('gdj-verify-banner');
     if (b) b.remove();
+    document.body.style.paddingTop = '';
   }
 
   // Hook banner into ready resolution
