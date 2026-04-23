@@ -3598,7 +3598,7 @@ function buildPricingSection(container, cat, idx) {
     cocktailWrap.innerHTML = `
       <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-bottom:${incl?'0':'.6rem'};">
         <input type="checkbox" ${incl?'checked':''} onchange="mobPkgChange('${cat}',${idx},'cocktailIncluded',this.checked);this.closest('[style]').querySelector('.cocktail-price-wrap').style.display=this.checked?'none':'';" style="accent-color:var(--neon);">
-        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in package</span>
+        <span style="font-size:.82rem;color:var(--white);">Cocktail hour music included in reception price?</span>
       </label>
       <div class="cocktail-price-wrap" style="${incl?'display:none;':''}margin-top:.5rem;display:flex;align-items:center;gap:.5rem;">
         <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);white-space:nowrap;">Cocktail Hour Price:</span>
@@ -3800,6 +3800,10 @@ function mobPkgChange(cat, idx, field, val) {
   if (!mobPackages[cat][idx]) mobPackages[cat][idx] = newMobPackage();
   if (field === 'cocktailIncluded') val = (val === true || val === 'true');
   mobPackages[cat][idx][field] = val;
+  // Flag the form dirty so the "leave site?" warning fires on unsaved edits.
+  // Auto-save below only fires when ALL required fields are filled, so without
+  // this flag a partial entry would be lost silently if the user navigates away.
+  formDirty = true;
   // Auto-save silently if all required fields are filled for the active tab
   mobPkgAutoSave(cat, idx);
 }
@@ -3852,6 +3856,9 @@ function mobPkgAutoSave(cat, idx) {
       const bs = current?.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
       bs.mob_packages = mobPackages;
       await updateUserRow({ booking_settings: JSON.stringify(bs) });
+      // Saved successfully — clear the dirty flag so the leave-site warning
+      // doesn't fire when the user navigates away.
+      formDirty = false;
       const alertEl = document.getElementById(`mob-pkg-save-${cat}-${idx}`);
       if (alertEl) { alertEl.textContent = '✓ Auto-saved'; alertEl.style.color = 'var(--muted)'; setTimeout(() => { if (alertEl) alertEl.textContent = ''; }, 2000); }
     } catch(e) { /* silent fail */ }
@@ -3911,26 +3918,35 @@ async function mobSavePackages(cat, idx, btn) {
     bs.mob_packages = mobPackages;
     const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
     if (error) throw error;
+    // Saved successfully — clear the dirty flag so the leave-site warning
+    // doesn't fire when the user navigates away.
+    formDirty = false;
     if (alertEl) { alertEl.textContent = '✓ Saved'; alertEl.style.color = 'var(--neon)'; setTimeout(() => { alertEl.textContent = ''; }, 2500); }
     // Refresh tab badges only — don't reset mobSelectedTypes
-    const tabsEl = document.getElementById('pkg-cat-tabs');
-    if (tabsEl) {
-      tabsEl.querySelectorAll('button[data-cat]').forEach(btn => {
-        const c = btn.dataset.cat;
+    // Two places to update: the outer pkg-cat-tabs (hidden but kept in sync)
+    // AND the inner card tabs (data-internal-cat) which are what the user
+    // actually sees on each package card.
+    const updateBadges = (root) => {
+      if (!root) return;
+      root.querySelectorAll('button[data-cat],button[data-internal-cat]').forEach(btn => {
+        const c = btn.dataset.internalCat || btn.dataset.cat;
         const catPkgs = (mobPackages[c] || []).filter(p => p && p.title && p.title.trim());
         const needsAttention = (c === 'wedding' || c === 'mitzvah') && catPkgs.length === 0;
         const badge = btn.querySelector('span[style*="clip-path"]');
         if (needsAttention && !badge) {
           const b = document.createElement('span');
           b.title = 'No packages added yet';
-          b.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#ff5f5f;color:#fff;font-size:.7rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;';
+          b.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#ff5f5f;color:#fff;font-size:.6rem;font-weight:900;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0;';
           b.textContent = '!';
           btn.appendChild(b);
         } else if (!needsAttention && badge) {
           badge.remove();
         }
       });
-    }
+    };
+    updateBadges(document.getElementById('pkg-cat-tabs'));
+    // Inner card tabs live inside each package card under #pkg-pane-general
+    updateBadges(document.getElementById('pkg-pane-general'));
   } catch(e) {
     if (alertEl) { alertEl.textContent = '✗ ' + e.message; alertEl.style.color = 'var(--error)'; }
   }
