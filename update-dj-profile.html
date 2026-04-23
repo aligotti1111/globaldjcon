@@ -1770,13 +1770,18 @@ clubGenres.forEach(cb => {
   if (isEmailVerifyReturn) {
     const banner = document.createElement('div');
     banner.style.cssText = 'background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.4);color:#3ddc84;padding:.85rem 1.2rem;margin:0 0 1.5rem;border-radius:8px;font-family:\'Space Mono\',monospace;font-size:.78rem;letter-spacing:.03em;text-align:center;transition:opacity .5s;';
-    banner.textContent = '✓ Your email is verified. You can now send messages and book DJs.';
+    banner.textContent = '✓ Your account is now verified, all account features are now activated.';
     const target = document.querySelector('.container') || document.querySelector('main') || document.body;
     if (target) target.insertBefore(banner, target.firstChild);
-    setTimeout(() => { banner.style.opacity = '0'; }, 6000);
-    setTimeout(() => banner.remove(), 7000);
+    setTimeout(() => { banner.style.opacity = '0'; }, 30000);
+    setTimeout(() => banner.remove(), 31000);
     if (window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    // Force auth.js to re-read public.users so email_verified updates and the
+    // orange "verify your email" banner disappears immediately.
+    if (window.GDJAuth && window.GDJAuth.refreshProfile) {
+      try { window.GDJAuth.refreshProfile(); } catch(e){}
     }
   }
 

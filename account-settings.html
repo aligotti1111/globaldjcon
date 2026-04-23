@@ -435,6 +435,11 @@ function showEmailVerifiedBanner() {
     if (window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+    // Force auth.js to re-read public.users so email_verified updates and the
+    // orange "verify your email" banner disappears immediately.
+    if (window.GDJAuth && window.GDJAuth.refreshProfile) {
+      try { window.GDJAuth.refreshProfile(); } catch(e){}
+    }
   } catch (e) { console.warn('[account-settings] banner failed:', e); }
 }
 
