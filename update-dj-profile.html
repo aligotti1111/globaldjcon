@@ -1516,6 +1516,9 @@ function switchProfileTab(name, btn) {
 
 // Show a "verify your email" overlay over a tab if user is unverified.
 // Hides the actual tab content and shows a clear message + resend button.
+// Uses data-gdj-gate-hid="1" to mark which children WE hid, so we don't
+// clobber display state set by other code (like loadBookingSettings hiding
+// #booking-setup when booking_enabled is false).
 function applyTabVerificationGate(tabName, messageText) {
   const pane = document.getElementById('tab-' + tabName);
   if (!pane) return;
@@ -1525,13 +1528,28 @@ function applyTabVerificationGate(tabName, messageText) {
 
   if (isVerified) {
     if (overlay) overlay.remove();
-    // Re-show original content
-    Array.from(pane.children).forEach(c => { if (c.id !== overlayId) c.style.display = ''; });
+    // Only restore display on children WE hid — leave others alone so other
+    // code's display:none (e.g. booking-setup when booking is off) stands.
+    Array.from(pane.children).forEach(c => {
+      if (c.id === overlayId) return;
+      if (c.dataset && c.dataset.gdjGateHid === '1') {
+        c.style.display = '';
+        delete c.dataset.gdjGateHid;
+      }
+    });
     return;
   }
 
-  // Not verified — hide all original children, inject overlay
-  Array.from(pane.children).forEach(c => { if (c.id !== overlayId) c.style.display = 'none'; });
+  // Not verified — hide all original children and tag them so we can restore later
+  Array.from(pane.children).forEach(c => {
+    if (c.id === overlayId) return;
+    // Don't touch elements that are already display:none for unrelated reasons —
+    // just skip them. They stay hidden, we don't tag them.
+    const cs = window.getComputedStyle ? window.getComputedStyle(c) : null;
+    if (cs && cs.display === 'none') return;
+    c.style.display = 'none';
+    c.dataset.gdjGateHid = '1';
+  });
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = overlayId;
