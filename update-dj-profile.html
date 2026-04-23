@@ -1289,6 +1289,13 @@ async function handleUpload(input, filename, hiddenId, previewId, statusId) {
   const file = input.files[0];
   if (!file) return;
   if (!currentUser) return;
+  // Gallery uploads require a verified email. Profile-pic upload (openCropModal)
+  // is intentionally not gated so users can personalize while their email is
+  // pending verification.
+  if (window.GDJAuth && !window.GDJAuth.requireVerifiedEmail('upload gallery photos')) {
+    input.value = ''; // clear the file input so the chooser reopens cleanly next time
+    return;
+  }
   const ext = file.name.split('.').pop().toLowerCase();
   const path = currentUser.id + '/' + filename + '.' + ext;
   const statusEl = document.getElementById(statusId);
@@ -1497,41 +1504,43 @@ function switchProfileTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
 
-  // Booking tab is gated behind email verification
-  if (name === 'booking') applyBookingVerificationGate();
+  // Booking & Photos tabs are gated behind email verification
+  if (name === 'booking') applyTabVerificationGate('booking', "You'll need to verify your email before activating the booking feature.");
+  if (name === 'photos') applyTabVerificationGate('photos', "You'll need to verify your email before you can upload photos to your profile.");
 }
 
-// Show a "verify your email" overlay over the booking tab if user is unverified.
-// Hides the actual booking content and shows a clear message + resend button.
-function applyBookingVerificationGate() {
-  const pane = document.getElementById('tab-booking');
+// Show a "verify your email" overlay over a tab if user is unverified.
+// Hides the actual tab content and shows a clear message + resend button.
+function applyTabVerificationGate(tabName, messageText) {
+  const pane = document.getElementById('tab-' + tabName);
   if (!pane) return;
   const isVerified = !!(window.GDJAuth && window.GDJAuth.isEmailVerified && window.GDJAuth.isEmailVerified());
-  let overlay = document.getElementById('booking-verify-overlay');
+  const overlayId = tabName + '-verify-overlay';
+  let overlay = document.getElementById(overlayId);
 
   if (isVerified) {
     if (overlay) overlay.remove();
     // Re-show original content
-    Array.from(pane.children).forEach(c => { if (c.id !== 'booking-verify-overlay') c.style.display = ''; });
+    Array.from(pane.children).forEach(c => { if (c.id !== overlayId) c.style.display = ''; });
     return;
   }
 
   // Not verified — hide all original children, inject overlay
-  Array.from(pane.children).forEach(c => { if (c.id !== 'booking-verify-overlay') c.style.display = 'none'; });
+  Array.from(pane.children).forEach(c => { if (c.id !== overlayId) c.style.display = 'none'; });
   if (!overlay) {
     overlay = document.createElement('div');
-    overlay.id = 'booking-verify-overlay';
+    overlay.id = overlayId;
     overlay.style.cssText = 'background:#13131e;border:1px solid rgba(255,179,71,.4);border-radius:12px;padding:48px 32px;margin:24px 0;text-align:center;';
     overlay.innerHTML = `
       <div style="width:64px;height:64px;margin:0 auto 20px;border-radius:50%;background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.4);display:flex;align-items:center;justify-content:center;">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       </div>
       <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.05em;color:#ffb347;margin:0 0 12px;">Verify Your Email</h3>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 24px;max-width:420px;margin-left:auto;margin-right:auto;">You'll need to verify your email before activating the booking feature. Check your inbox for the confirmation link.</p>
-      <button type="button" id="booking-overlay-resend" style="background:transparent;border:1px solid #ffb347;color:#ffb347;padding:.7rem 1.5rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Resend Verification Email</button>
+      <p style="color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 24px;max-width:420px;margin-left:auto;margin-right:auto;">${messageText} Check your email account for the confirmation email. Check your spam folder if not in primary inbox.</p>
+      <button type="button" class="${tabName}-overlay-resend" style="background:transparent;border:1px solid #ffb347;color:#ffb347;padding:.7rem 1.5rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">Resend Verification Email</button>
     `;
     pane.appendChild(overlay);
-    document.getElementById('booking-overlay-resend').addEventListener('click', async function() {
+    overlay.querySelector('button').addEventListener('click', async function() {
       const btn = this;
       const orig = btn.textContent;
       btn.disabled = true;
@@ -1547,6 +1556,11 @@ function applyBookingVerificationGate() {
   }
 }
 
+// Backwards-compat shim — older code may still call applyBookingVerificationGate.
+function applyBookingVerificationGate() {
+  applyTabVerificationGate('booking', "You'll need to verify your email before activating the booking feature.");
+}
+
 // Auto-switch to tab based on URL hash (e.g. #mixes, #photos, #social, #video)
 (function() {
   const hash = window.location.hash.replace('#', '').toLowerCase();
@@ -1559,12 +1573,18 @@ function applyBookingVerificationGate() {
   }
 })();
 
-// When auth resolves (or changes), if the user is currently viewing the booking
+// When auth resolves (or changes), if the user is currently viewing a gated
 // tab, re-apply the verification gate so the overlay shows/hides accordingly.
 if (window.GDJAuth && window.GDJAuth.ready) {
   window.GDJAuth.ready(function() {
-    const pane = document.getElementById('tab-booking');
-    if (pane && pane.classList.contains('active')) applyBookingVerificationGate();
+    const bookingPane = document.getElementById('tab-booking');
+    if (bookingPane && bookingPane.classList.contains('active')) {
+      applyTabVerificationGate('booking', "You'll need to verify your email before activating the booking feature.");
+    }
+    const photosPane = document.getElementById('tab-photos');
+    if (photosPane && photosPane.classList.contains('active')) {
+      applyTabVerificationGate('photos', "You'll need to verify your email before you can upload photos to your profile.");
+    }
   });
 }
 const BASE_URL = 'globaldjconnect.com/';
