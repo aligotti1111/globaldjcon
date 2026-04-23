@@ -1269,6 +1269,8 @@ async function applyCrop() {
       if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Upload failed'); }
       const publicUrl = PUBLIC_URL + path + '?t=' + Date.now();
       document.getElementById('avatar_url').value = publicUrl;
+      // Programmatic .value sets don't fire change events, so flag dirty manually.
+      formDirty = true;
       // Show in circle
       const img = document.getElementById('avatar-img');
       img.src = publicUrl;
@@ -1317,6 +1319,8 @@ async function handleUpload(input, filename, hiddenId, previewId, statusId) {
     if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Upload failed'); }
     const publicUrl = PUBLIC_URL + path + '?t=' + Date.now();
     document.getElementById(hiddenId).value = publicUrl;
+    // Programmatic .value sets don't fire change events, so flag dirty manually.
+    formDirty = true;
     const img = previewEl.querySelector('img');
     img.src = publicUrl;
     previewEl.classList.add('visible');
