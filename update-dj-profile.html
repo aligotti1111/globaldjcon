@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth.js"></script>
+<script src="/ui-chrome.js"></script>
 <style>
 :root {
   --black: #050507;
@@ -2122,10 +2123,17 @@ function deleteGalleryImg(e, num) {
 // ── UNSAVED CHANGES WARNING ──────────────────────────────
 let formDirty = false;
 let formSaved = false;
+// Only count input/change events as "dirty" once the user has actually
+// interacted with the page — this avoids false positives from programmatic
+// value sets, browser autofill, and bubbled events during initial load.
+let userInteracted = false;
+['pointerdown','keydown','touchstart'].forEach(evt => {
+  window.addEventListener(evt, () => { userInteracted = true; }, { once: true, capture: true });
+});
 
-// Mark form dirty on any input change
-document.getElementById('profile-form').addEventListener('change', (e) => { if (!e.target.closest('#club-booking-section') && !e.target.closest('#mobile-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
-document.getElementById('profile-form').addEventListener('input', (e) => { if (!e.target.closest('#club-booking-section') && !e.target.closest('#mobile-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
+// Mark form dirty on any input change (only after real user interaction)
+document.getElementById('profile-form').addEventListener('change', (e) => { if (userInteracted && !e.target.closest('#club-booking-section') && !e.target.closest('#mobile-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
+document.getElementById('profile-form').addEventListener('input', (e) => { if (userInteracted && !e.target.closest('#club-booking-section') && !e.target.closest('#mobile-booking-section') && e.target.id !== 'booking-enabled') formDirty = true; });
 
 // Mark saved on successful submit
 const originalSubmit = document.getElementById('profile-form').onsubmit;
