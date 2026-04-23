@@ -4034,7 +4034,21 @@ async function loadBookingSettings() {
     if (enabled && isMobile) { renderMobCal(); renderMobPackageTabs(); setClubOptionVisible(false); }
   } catch(e) { console.error('Error loading booking settings:', e); }
 }
-loadBookingSettings().then(() => { formDirty = false; });
+
+// Both loaders need currentUser populated. Defer them until GDJAuth resolves
+// (auth.js sets currentUser via the awaited block above, but these were running
+// at module-load time before that ever completed — causing null.id crashes
+// AND making the booking-enabled toggle appear unchecked on reload because
+// loadBookingSettings silently failed).
+(async function deferredLoaders() {
+  if (typeof GDJAuth !== 'undefined' && GDJAuth.waitUntilReady) {
+    const cu = await GDJAuth.waitUntilReady();
+    if (cu && !currentUser) currentUser = cu;
+  }
+  if (!currentUser || !currentUser.id) return;
+  try { await loadBookingSettings(); formDirty = false; } catch(e) { console.error('loadBookingSettings:', e); }
+  try { await loadBlockedUsers(); } catch(e) { console.error('loadBlockedUsers:', e); }
+})();
 
 async function loadBlockedUsers() {
   const { data } = await db.from('users').select('blocked_users').eq('id', currentUser.id).single();
@@ -4059,8 +4073,6 @@ async function unblockUser(userId) {
   loadBlockedUsers();
   if (updated.length === 0) document.getElementById('blocked-users-section').style.display = 'none';
 }
-
-loadBlockedUsers();
 
 let _confirmCallback = null;
 function showConfirm(message, okLabel, okStyle, callback) {
