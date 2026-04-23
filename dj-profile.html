@@ -3155,7 +3155,13 @@ function mobPubDrawRolling() {
   const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const dayLabels = ['S','M','T','W','T','F','S'];
 
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;">`;
+  // 3-up grid on desktop, single column on mobile (≤600px). Inline styles can't
+  // hold media queries, so we stamp a small <style> block alongside the grid.
+  let html = `<style>
+    .mob-pub-rolling-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
+    @media(max-width:600px) { .mob-pub-rolling-grid { grid-template-columns:1fr; } }
+  </style>
+  <div class="mob-pub-rolling-grid">`;
 
   for (let i = 0; i < windowMonths; i++) {
     let mo = today.getMonth() + i;
