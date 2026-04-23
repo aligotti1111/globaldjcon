@@ -2740,10 +2740,14 @@ function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
 
   container.innerHTML = `
     <div id="mob-pub-cal-wrap">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem;">
+        <button type="button" id="mob-pub-cal-view-toggle" onclick="mobPubToggleView()"
+          style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .85rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;">12 Months</button>
+      </div>
       <div id="mob-pub-cal-single-wrap">
         <div id="mob-pub-cal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
           <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
-          <div id="mob-pub-cal-label" style="font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);"></div>
+          <div id="mob-pub-cal-label" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);"></div>
           <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
         </div>
         <div id="mob-pub-cal-grid"></div>
@@ -3134,14 +3138,25 @@ function mobPubToggleView() {
   mobPubRollingActive = !mobPubRollingActive;
   const single = document.getElementById('mob-pub-cal-single-wrap');
   const rolling = document.getElementById('mob-pub-cal-rolling-wrap');
+  const toggle = document.getElementById('mob-pub-cal-view-toggle');
   if (!single || !rolling) return;
   if (mobPubRollingActive) {
     single.style.display = 'none';
     rolling.style.display = 'block';
+    if (toggle) {
+      toggle.textContent = '← Month View';
+      toggle.style.borderColor = 'var(--neon)';
+      toggle.style.color = 'var(--neon)';
+    }
     mobPubDrawRolling();
   } else {
     single.style.display = '';
     rolling.style.display = 'none';
+    if (toggle) {
+      toggle.textContent = '12 Months';
+      toggle.style.borderColor = 'var(--border)';
+      toggle.style.color = 'var(--muted)';
+    }
   }
 }
 
