@@ -876,7 +876,6 @@ function renderUserList(role) {
 
   list.innerHTML = filtered.map(u => {
     const unclaimedBadge = !u.claimed ? '<span class="ar-type unclaimed">Unclaimed</span>' : '';
-    const unverifiedBadge = u.email_verified !== true ? '<span class="ar-type" style="background:rgba(255,179,71,.15);color:#ffb347;border:1px solid rgba(255,179,71,.4);">Unverified</span>' : '';
     const name = role === 'venue' ? (u.venue_name || u.name) : u.name;
     const loc = [u.city, u.state, u.country].filter(Boolean).join(', ');
     const email = emailMap[u.id] || '';
@@ -888,7 +887,6 @@ function renderUserList(role) {
       : '';
     return `<div class="admin-row">
       ${unclaimedBadge}
-      ${unverifiedBadge}
       <div class="ar-name">${escapeHtml(name || 'Unnamed')}</div>
       ${emailCell}
       <div class="ar-detail">${escapeHtml(loc || '—')}</div>
