@@ -2294,19 +2294,30 @@ function _doToggleBooking(enabled, skipSave) {
     setClubOptionVisible(true);
   }
   if (skipSave) return;
-  // Save only booking_enabled — all other settings untouched
+  // Save only booking_enabled — all other settings untouched.
+  // After saving, re-read the row to verify the value actually persisted.
+  // (If a parallel write races, the toggle could appear to "succeed" then
+  // silently disappear on the next page load. The verify catches that.)
   (async () => {
+    const alertEl = document.getElementById('booking-alert');
     try {
       const { data: current } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
       const bs = current && current.booking_settings ? (typeof current.booking_settings === 'string' ? JSON.parse(current.booking_settings) : current.booking_settings) : {};
       bs.booking_enabled = enabled;
-      const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) }); const error = _ur.ok ? null : { message: _ur.error };
-      if (error) throw error;
-      const alertEl = document.getElementById('booking-alert');
+      const _ur = await updateUserRow({ booking_settings: JSON.stringify(bs) });
+      if (!_ur.ok) throw new Error(_ur.error || 'Save failed');
+
+      // Verify by re-reading the row from the DB
+      const { data: verify } = await db.from('users').select('booking_settings').eq('id', currentUser.id).single();
+      const verifyBs = verify && verify.booking_settings ? (typeof verify.booking_settings === 'string' ? JSON.parse(verify.booking_settings) : verify.booking_settings) : {};
+      if (verifyBs.booking_enabled !== enabled) {
+        console.error('[booking] save verification FAILED — wrote', enabled, 'but DB shows', verifyBs.booking_enabled, 'full row:', verifyBs);
+        if (alertEl) alertEl.innerHTML = `<div class="alert alert-error">✗ Save did not persist. Please try again or contact support. (DB shows booking_enabled=${verifyBs.booking_enabled})</div>`;
+        return;
+      }
       if (alertEl) { alertEl.innerHTML = `<div class="alert alert-success">✓ Booking ${enabled ? 'activated' : 'deactivated'}.</div>`; setTimeout(() => alertEl.innerHTML = '', 3000); }
     } catch(e) {
       console.error('Failed to save booking enabled state:', e);
-      const alertEl = document.getElementById('booking-alert');
       if (alertEl) alertEl.innerHTML = `<div class="alert alert-error">✗ ${e.message}</div>`;
     }
   })();
