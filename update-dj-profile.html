@@ -1910,9 +1910,10 @@ clubGenres.forEach(cb => {
       document.querySelectorAll('input[name="mobile-events"]').forEach(cb => { cb.checked = true; });
     }
     
-    // Load club genres
-    if (data.club_genres) {
-      data.club_genres.split(',').forEach(genre => {
+    // Load club genres (text[] column — comes back as a real array)
+    if (data.club_genres && data.club_genres.length) {
+      const genreArr = Array.isArray(data.club_genres) ? data.club_genres : String(data.club_genres).split(',');
+      genreArr.forEach(genre => {
         const cb = document.querySelector(`input[name="club-genres"][value="${genre}"]`);
         if (cb) {
           cb.checked = true;
@@ -1958,7 +1959,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     let clubGenresData = null;
     if (userDjType === 'club') {
       const genres = Array.from(document.querySelectorAll('input[name="club-genres"]:checked')).map(cb => cb.value);
-      if (genres.length > 0) clubGenresData = genres.join(',');
+      if (genres.length > 0) clubGenresData = genres;  // text[] column — send array, not joined string
     }
 
     // Combine mobile party types + event type tags into one field

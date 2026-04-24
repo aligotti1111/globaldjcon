@@ -981,8 +981,8 @@ const GENRE_LABELS = {
     });
   }
 
-  if (data.club_genres) {
-    const genres = data.club_genres.split(',').map(s => s.trim()).filter(Boolean);
+  if (data.club_genres && data.club_genres.length) {
+    const genres = (Array.isArray(data.club_genres) ? data.club_genres : String(data.club_genres).split(',')).map(s => s.trim()).filter(Boolean);
     genres.forEach(g => {
       tagHtml += `<span class="tag pink">${GENRE_LABELS[g] || g}</span>`;
     });
