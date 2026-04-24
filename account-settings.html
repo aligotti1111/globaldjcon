@@ -441,9 +441,13 @@ function initUI() {
         document.getElementById('setting-venue-name').value = data.venue_name || '';
         document.getElementById('setting-venue-owner-name').value = data.name || '';
         document.getElementById('setting-venue-slug').value = data.slug || '';
-        // Build a single full-address string for the visible field; keep parts in hidden inputs
-        const stateZip = [data.state || '', data.zip || ''].filter(Boolean).join(' ');
-        const fullAddress = [data.address || '', data.city || '', stateZip].filter(Boolean).join(', ');
+        // Build a single full-address string for the visible field; only show it if
+        // there's an actual street, otherwise leave blank so the placeholder shows.
+        let fullAddress = '';
+        if (data.address) {
+          const stateZip = [data.state || '', data.zip || ''].filter(Boolean).join(' ');
+          fullAddress = [data.address, data.city || '', stateZip].filter(Boolean).join(', ');
+        }
         document.getElementById('setting-address').value = fullAddress;
         document.getElementById('setting-city').value = data.city || '';
         document.getElementById('setting-state').value = data.state || '';
