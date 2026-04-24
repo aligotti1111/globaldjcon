@@ -313,13 +313,13 @@
   .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
   .dj-list-row:hover { border-color:var(--neon); }
   .dj-list-row.club { border-left:3px solid var(--pink); }
-  .dj-list-row.mobile-event { border-left:3px solid var(--neon); }
+  .dj-list-row.mobile { border-left:3px solid var(--neon); }
   .dll-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:.95rem; flex-shrink:0; overflow:hidden; position:relative; }
   .dll-name-wrap { display:flex; flex-direction:column; justify-content:center; min-width:0; }
   .dll-name { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.04em; }  .dll-location { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-contact { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dll-type { font-family:'Space Mono',monospace; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; padding:.2rem .55rem; border-radius:100px; text-align:center; white-space:nowrap; }
-  .dll-type.mobile-event { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
+  .dll-type.mobile { background:var(--neon-dim); color:var(--neon); border:1px solid rgba(0,245,196,.2); }
   .dll-type.club { background:var(--pink-dim); color:var(--pink); border:1px solid rgba(245,230,66,.2); }
   .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
   @media(max-width:900px) {
@@ -460,7 +460,7 @@
     <div style="width:100%; height:1px; background:var(--border); margin:.5rem 0;"></div>
     <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;width:100%;">
       <div class="filter-pills">
-        <button class="pill active" data-filter="mobile-event">Mobile DJ</button>
+        <button class="pill active" data-filter="mobile">Mobile DJ</button>
         <button class="pill pink active" data-filter="club">Club/Bar DJs</button>
       </div>
       <div class="view-toggle" style="margin-left:auto;">
@@ -557,7 +557,7 @@ async function loadDJs(){
       id: dj.id,
       slug: dj.slug,
       name: dj.name,
-      type: dj.type,
+      dj_type: dj.dj_type,
       country: dj.country,
       state: dj.state,
       city: dj.city,
@@ -666,7 +666,7 @@ const IC={
 };
 
 // ─── PUBLIC RENDER ────────────────────────────────────
-let activeFilters=new Set(['mobile-event','club']);
+let activeFilters=new Set(['mobile','club']);
 let searchTerm='';
 let sortMode='name';
 let userLocation=null;
@@ -813,7 +813,7 @@ document.addEventListener('click', () => {
 async function renderPublic(reload=false){
   if(reload || !DJS.length) DJS = await loadDJs();
   let list=DJS.filter(dj=>{
-    const t = activeFilters.size === 0 || activeFilters.has(dj.type) || (activeFilters.size === 2);
+    const t = activeFilters.size === 0 || activeFilters.has(dj.dj_type) || (activeFilters.size === 2);
     const q=searchTerm.toLowerCase();
     const looksLikeLocation = /\d/.test(q);
     const s=!q||looksLikeLocation||[dj.name,dj.zip].some(v=>(v||'').toLowerCase().includes(q));
@@ -898,14 +898,14 @@ async function renderPublic(reload=false){
 }
 
 function cardHTML(dj,i){
-  const typeClass=dj.type||'mobile';
-  const typeBadge=dj.type?`<div class="type-badge">${dj.type==='club'?'🎧 Club/Bar':'🎵 Mobile'}</div>`:'';
+  const typeClass=dj.dj_type||'mobile';
+  const typeBadge=dj.dj_type?`<div class="type-badge">${dj.dj_type==='club'?'🎧 Club/Bar':'🎵 Mobile'}</div>`:'';
   const slug=djSlug(dj);
   return `
   <div class="dj-card ${typeClass}" style="animation-delay:${i*.03}s;cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
     <div class="card-glow"></div>
     <div class="card-top">
-      <div class="avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
+      <div class="avatar" style="${avatarStyle(dj.dj_type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
       ${typeBadge}
     </div>
     <div class="dj-name">${dj.name||'Unknown DJ'}</div>
@@ -918,8 +918,8 @@ function cardHTML(dj,i){
 }
 
 function listRowHTML(dj) {
-  const typeLabel = dj.type === 'club' ? '🎧 Club/Bar' : dj.type === 'mobile-event' ? '🎵 Mobile' : '—';
-  const typeClass = dj.type || 'none';
+  const typeLabel = dj.dj_type === 'club' ? '🎧 Club/Bar' : dj.dj_type === 'mobile' ? '🎵 Mobile' : '—';
+  const typeClass = dj.dj_type || 'none';
   const location = [dj.city, dj.state].filter(Boolean).join(', ') || '—';
   const slug = djSlug(dj);
   const currentUser = window.currentUser || null;
@@ -928,7 +928,7 @@ function listRowHTML(dj) {
   // Check if booking is enabled for this DJ (Club/Bar DJs only)
   let bookingEnabled = false;
   try {
-    const isClub = (dj.type || '').toLowerCase().includes('club');
+    const isClub = dj.dj_type === 'club';
     if (isClub && dj.booking_settings) {
       const bs = typeof dj.booking_settings === 'string' ? JSON.parse(dj.booking_settings) : dj.booking_settings;
       bookingEnabled = !!(bs && bs.booking_enabled);
@@ -951,8 +951,8 @@ function listRowHTML(dj) {
   }
 
   return `
-  <div class="dj-list-row ${dj.type||''}" style="cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
-    <div class="dll-avatar" style="${avatarStyle(dj.type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
+  <div class="dj-list-row ${dj.dj_type||''}" style="cursor:pointer;" onclick="window.location.href=djProfileURL('${slug}')">
+    <div class="dll-avatar" style="${avatarStyle(dj.dj_type)}">${dj.avatar_url ? `<img src="${dj.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : initials(dj.name)}</div>
     <div class="dll-name-wrap">
       <div class="dll-name">${dj.name||'Unknown DJ'}</div>
       <div class="dll-location">📍 ${location}${dj._distance&&dj._distance<9999?` <span style="color:var(--neon)">(${Math.round(dj._distance)}mi)</span>`:''}</div>
@@ -996,7 +996,7 @@ function renderAdminList(){
     
     return `
     <div class="admin-row">
-      <span class="ar-type ${dj.type||'mobile'}">${dj.type==='club'?'club/bar':dj.type||'—'}</span>
+      <span class="ar-type ${dj.dj_type||'mobile'}">${dj.dj_type==='club'?'club/bar':dj.dj_type||'—'}</span>
       <span class="ar-name">${dj.name||'<em style="color:var(--muted);font-family:DM Sans">Unnamed</em>'}${dj.real?` <span style="font-family:'DM Sans';font-size:.73rem;color:var(--muted);font-weight:400;font-style:italic">(${dj.real})</span>`:''} ${accountBadge}</span>
       <span class="ar-city">${dj.city||'—'}</span>
       <span class="ar-contact">${dj.email||dj.phone||'No contact info'}</span>
