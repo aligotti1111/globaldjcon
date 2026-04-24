@@ -328,6 +328,29 @@ exports.handler = async (event) => {
       `)
     };
 
+  } else if (type === 'mob_booking_status') {
+    // Mobile (event) DJ booking status: a Mobile DJ approved or denied a request.
+    // Sends an email to the requester (host who booked).
+    const { requesterName, requesterEmail: requesterEmailIn, requesterUserId, djName, status, eventDate, packageTitle } = body;
+    const requesterEmail = await pickEmail(requesterEmailIn, requesterUserId);
+    if (!requesterEmail) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Could not resolve requester email for mob_booking_status' }) };
+    }
+    const dateStr = eventDate ? new Date(eventDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '—';
+    const statusColor = status === 'approved' ? '#3ddc84' : status === 'denied' ? '#ff5f5f' : '#ffb347';
+    const pkgLine = packageTitle ? `<p style="color:#666666;margin-bottom:16px;">Package: <strong style="color:#1a1a2e;">${escHtml(packageTitle)}</strong></p>` : '';
+    emailPayload = {
+      from: FROM, reply_to: REPLY_TO, to: [requesterEmail],
+      subject: `Booking ${status.charAt(0).toUpperCase()+status.slice(1)} – ${escHtml(djName)}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${status.charAt(0).toUpperCase()+status.slice(1)}</h2>
+        <p style="color:#666666;margin-bottom:16px;">Hi ${escHtml(requesterName)}, your booking request to <strong>${escHtml(djName)}</strong> for ${dateStr} has been <span style="color:${statusColor};font-weight:700;">${status}</span>.</p>
+        ${pkgLine}
+        ${status === 'approved' ? `<p style="color:#666666;margin-bottom:24px;">The DJ will be in touch with further details about your event.</p>` : ''}
+        <a href="${SITE_URL}/booking-requests.html" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">View My Bookings</a>
+      `)
+    };
+
   } else if (type === 'booking_counter') {
     const { recipientName, recipientEmail: recipientEmailIn, recipientUserId, senderName, fromRole, counterRate, counterMessage, eventDate, venueName, currency } = body;
     const recipientEmail = await pickEmail(recipientEmailIn, recipientUserId);
