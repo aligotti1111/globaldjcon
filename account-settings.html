@@ -150,24 +150,14 @@ header { border-bottom:1px solid var(--border); background:rgba(5,5,7,.9); backd
     </div>
 
     <div class="form-group" style="position:relative;">
-      <label>Street Address</label>
-      <input type="text" id="setting-address" placeholder="123 Main St" oninput="debounceAddressLookup()" autocomplete="off">
+      <label>Address</label>
+      <input type="text" id="setting-address" placeholder="123 Main St, City, State ZIP" oninput="debounceAddressLookup()" autocomplete="off">
       <div id="address-suggestions" style="position:absolute; top:100%; left:0; right:0; z-index:50;"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-      <div class="form-group">
-        <label>City</label>
-        <input type="text" id="setting-city" placeholder="New York">
-      </div>
-      <div class="form-group">
-        <label>State / Province</label>
-        <input type="text" id="setting-state" placeholder="NY">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Zip / Postal Code</label>
-      <input type="text" id="setting-zip" placeholder="10001">
-    </div>
+    <!-- Hidden city/state/zip — populated by autocomplete, used by save handler -->
+    <input type="hidden" id="setting-city">
+    <input type="hidden" id="setting-state">
+    <input type="hidden" id="setting-zip">
     <div class="form-group" id="venue-country-group">
       <label>Country</label>
       <select id="setting-country-venue">
@@ -451,7 +441,10 @@ function initUI() {
         document.getElementById('setting-venue-name').value = data.venue_name || '';
         document.getElementById('setting-venue-owner-name').value = data.name || '';
         document.getElementById('setting-venue-slug').value = data.slug || '';
-        document.getElementById('setting-address').value = data.address || '';
+        // Build a single full-address string for the visible field; keep parts in hidden inputs
+        const stateZip = [data.state || '', data.zip || ''].filter(Boolean).join(' ');
+        const fullAddress = [data.address || '', data.city || '', stateZip].filter(Boolean).join(', ');
+        document.getElementById('setting-address').value = fullAddress;
         document.getElementById('setting-city').value = data.city || '';
         document.getElementById('setting-state').value = data.state || '';
         document.getElementById('setting-zip').value = data.zip || '';
@@ -555,10 +548,19 @@ async function saveVenueAll() {
   const btn = document.getElementById('save-venue-name-btn');
   const venueName = document.getElementById('setting-venue-name').value.trim();
   const slug = makeVenueSlug(document.getElementById('setting-venue-slug').value);
-  const address = document.getElementById('setting-address').value.trim();
+  const fullAddress = document.getElementById('setting-address').value.trim();
   const city = document.getElementById('setting-city').value.trim();
   const state = document.getElementById('setting-state').value.trim();
   const zip = document.getElementById('setting-zip').value.trim();
+  // The visible field holds the joined "street, city, state zip" — extract just the street
+  // for the DB's address column. If the user edited the field manually after autocomplete,
+  // we save whatever they entered as the street and let city/state/zip stay as last selected.
+  let address = fullAddress;
+  if (city && fullAddress.includes(', ' + city)) {
+    address = fullAddress.split(', ' + city)[0].trim();
+  } else if (fullAddress.includes(',')) {
+    address = fullAddress.split(',')[0].trim();
+  }
   if (!venueName) { showAlert('alert-venue-name', 'error', 'Venue name is required.'); return; }
   if (!slug) { showAlert('alert-venue-slug', 'error', 'Profile URL is required.'); return; }
   btn.disabled = true; btn.textContent = 'Saving...';
@@ -699,32 +701,39 @@ async function lookupAddress() {
 }
 function selectAddress(street, city, state, zip, display) {
   console.log('[selectAddress]', {street, city, state, zip});
-  // Cancel any pending Nominatim lookup
   clearTimeout(addrTimeout);
-  // Disable oninput temporarily so writing to setting-address doesn't re-trigger lookup
+  // Disable oninput while we write so we don't re-trigger lookup
   const addrEl = document.getElementById('setting-address');
   const savedOninput = addrEl.getAttribute('oninput');
   addrEl.removeAttribute('oninput');
 
-  const finalStreet = street || (display ? display.split(',')[0] : '') || '';
-  addrEl.value = finalStreet;
+  // Build a single human-friendly address string for the visible field
+  const stateZip = [state || '', zip || ''].filter(Boolean).join(' ');
+  const fullAddress = [street || '', city || '', stateZip].filter(Boolean).join(', ');
+  addrEl.value = fullAddress;
+  // Hidden fields for save handler / DB columns
   document.getElementById('setting-city').value = city || '';
   document.getElementById('setting-state').value = state || '';
   document.getElementById('setting-zip').value = zip || '';
   document.getElementById('address-suggestions').innerHTML = '';
   addrEl.blur();
 
-  // Restore oninput on next tick so future typing still triggers lookups
   setTimeout(() => {
     if (savedOninput) addrEl.setAttribute('oninput', savedOninput);
   }, 100);
 }
 async function saveVenueAddress() {
   const btn = document.getElementById('save-venue-address-btn');
-  const address = document.getElementById('setting-address').value.trim();
+  const fullAddress = document.getElementById('setting-address').value.trim();
   const city = document.getElementById('setting-city').value.trim();
   const state = document.getElementById('setting-state').value.trim();
   const zip = document.getElementById('setting-zip').value.trim();
+  let address = fullAddress;
+  if (city && fullAddress.includes(', ' + city)) {
+    address = fullAddress.split(', ' + city)[0].trim();
+  } else if (fullAddress.includes(',')) {
+    address = fullAddress.split(',')[0].trim();
+  }
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     await apiPatch('users?id=eq.' + encodeURIComponent(currentUser.id), { address, city, state, zip });
