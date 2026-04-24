@@ -680,17 +680,25 @@ async function lookupAddress() {
       const item = document.createElement('div');
       item.className = 'addr-suggestion';
       item.textContent = display.length > 60 ? display.substring(0,60)+'…' : display;
-      // mousedown fires BEFORE the input's blur, so the click registers reliably
-      item.addEventListener('mousedown', (e) => {
+      // Capture pointer events BEFORE the input can react.
+      // pointerdown fires before mousedown, before any focus changes, and before
+      // the input's oninput handler can fire from any keyboard buffer.
+      const handler = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         selectAddress(street, city, state, zip, display);
-      });
+      };
+      item.addEventListener('pointerdown', handler);
+      item.addEventListener('mousedown', handler);
+      item.addEventListener('click', handler);
       wrap.appendChild(item);
     });
     suggestEl.appendChild(wrap);
   } catch(e) { suggestEl.innerHTML = ''; }
 }
 function selectAddress(street, city, state, zip, display) {
+  console.log('[selectAddress] called:', {street, city, state, zip});
   // Cancel any pending Nominatim lookup that could overwrite the field after selection
   clearTimeout(addrTimeout);
   const finalStreet = street || display.split(',')[0];
