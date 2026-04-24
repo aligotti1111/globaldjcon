@@ -173,7 +173,7 @@ header { position:relative; z-index:10; border-bottom:1px solid var(--border); b
 .hero-name { font-family:'Bebas Neue',sans-serif; font-size:3.5rem; letter-spacing:.03em; line-height:1; margin-bottom:.5rem; }
 .hero-badges { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; }
 .type-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .7rem; border-radius:100px; border:1px solid; }
-.type-badge.mobile-event { background:var(--neon-dim); color:var(--neon); border-color:rgba(0,245,196,.3); }
+.type-badge.mobile { background:var(--neon-dim); color:var(--neon); border-color:rgba(0,245,196,.3); }
 .type-badge.club { background:var(--pink-dim); color:var(--pink); border-color:rgba(245,230,66,.3); }
 .avail-badge { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .7rem; border-radius:100px; border:1px solid; }
 .avail-badge.available { background:rgba(61,220,132,.1); color:var(--success); border-color:rgba(61,220,132,.3); }
@@ -836,7 +836,7 @@ const GENRE_LABELS = {
   document.body.appendChild(shareUrlEl);
 
   // Avatar
-  const typeClass = data.type === 'club' ? 'club' : data.type === 'mobile-event' ? 'mobile' : 'none';
+  const typeClass = data.dj_type === 'club' ? 'club' : data.dj_type === 'mobile' ? 'mobile' : 'none';
   const avatar = document.getElementById('p-avatar');
   avatar.className = `hero-avatar ${typeClass}`;
   if (data.avatar_url) {
@@ -853,9 +853,9 @@ const GENRE_LABELS = {
 
   // Badges
   const badges = document.getElementById('p-badges');
-  if (data.type) {
-    const typeLabel = data.type === 'club' ? '🎧 Club / Bar DJ' : '🎵 Mobile / Event DJ';
-    badges.innerHTML += `<span class="type-badge ${data.type}">${typeLabel}</span>`;
+  if (data.dj_type) {
+    const typeLabel = data.dj_type === 'club' ? '🎧 Club / Bar DJ' : '🎵 Mobile / Event DJ';
+    badges.innerHTML += `<span class="type-badge ${data.dj_type}">${typeLabel}</span>`;
   }
 
 
@@ -869,7 +869,7 @@ const GENRE_LABELS = {
   if (data.dj_start_year) {
     const years = new Date().getFullYear() - parseInt(data.dj_start_year);
     const yrsEl = document.getElementById('p-years');
-    const isMobile = (data.type || '') === 'mobile-event';
+    const isMobile = data.dj_type === 'mobile';
     if (isMobile) {
       yrsEl.textContent = years <= 1 ? '1+ Year of Experience' : `${years}+ Years of Experience`;
     } else {
@@ -928,7 +928,7 @@ const GENRE_LABELS = {
   }
 
   // ── TESTIMONIALS TAB (Mobile DJs only) ─────────────────
-  if ((data.type || '').includes('mobile-event') && data.testimonials) {
+  if (data.dj_type === 'mobile' && data.testimonials) {
     try {
       const tList = JSON.parse(data.testimonials);
       if (tList && tList.length) {
@@ -960,7 +960,7 @@ const GENRE_LABELS = {
   const heroTags = document.getElementById('p-hero-tags');
   let tagHtml = '';
 
-  const isMobileDJProfile = (data.type || '').includes('mobile-event') || (data.type || '').includes('mobile');
+  const isMobileDJProfile = data.dj_type === 'mobile';
 
   if (data.event_types && isMobileDJProfile) {
     // Mobile DJs: single clickable badge that reveals event types in a popup
@@ -1073,8 +1073,8 @@ const GENRE_LABELS = {
     return;
   }
 
-  const isClubDJ = (data.type || '').toLowerCase().includes('club');
-  const isMobileDJ = (data.type || '').toLowerCase().includes('mobile');
+  const isClubDJ = data.dj_type === 'club';
+  const isMobileDJ = data.dj_type === 'mobile';
 
   if (isClubDJ && data.booking_settings) {
     try {
