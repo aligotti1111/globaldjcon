@@ -44,25 +44,25 @@ function renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDec
   container.innerHTML = `
     <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
       <button type="button" id="owner-cal-prev-btn" onclick="ownerCalPrev()"
-        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
+        style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">‹</button>
+        onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">‹</button>
       <select id="owner-cal-month-select" onchange="ownerCalJumpSplit()"
-        style="flex:2;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.04em;cursor:pointer;outline:none;">
+        style="flex:2;background:var(--deep);border:1px solid var(--white);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.04em;cursor:pointer;outline:none;">
         ${monthOpts}
       </select>
       <select id="owner-cal-year-select" onchange="ownerCalJumpSplit()"
-        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
+        style="flex:1;background:var(--deep);border:1px solid var(--white);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;">
         ${yearOpts}
       </select>
       <button type="button" id="owner-cal-next-btn" onclick="ownerCalNext()"
-        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
+        style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">›</button>
+        onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">›</button>
       <button type="button" id="owner-cal-view-toggle" onclick="ownerCalToggleView()"
-        style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;transition:all .2s;margin-left:auto;"
+        style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .75rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;transition:all .2s;margin-left:auto;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-        onmouseout="if(!this.dataset.active){this.style.borderColor='var(--border)';this.style.color='var(--muted)'}">${ownerCalWindowLabel()}</button>
+        onmouseout="if(!this.dataset.active){this.style.borderColor='var(--white)';this.style.color='var(--white)'}">${ownerCalWindowLabel()}</button>
     </div>
     <div id="owner-cal-single-wrap">
       <div id="owner-cal-grid-wrap"></div>
@@ -209,8 +209,8 @@ function ownerCalToggleView() {
     if (mSel) mSel.style.display = '';
     if (ySel) ySel.style.display = '';
     toggle.textContent = ownerCalWindowLabel();
-    toggle.style.borderColor = 'var(--border)';
-    toggle.style.color = 'var(--muted)';
+    toggle.style.borderColor = 'var(--white)';
+    toggle.style.color = 'var(--white)';
     delete toggle.dataset.active;
   }
 }
