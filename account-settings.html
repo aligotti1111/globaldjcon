@@ -699,18 +699,51 @@ async function lookupAddress() {
 }
 function selectAddress(street, city, state, zip, display) {
   console.log('[selectAddress] called:', {street, city, state, zip});
-  // Cancel any pending Nominatim lookup that could overwrite the field after selection
+  // Cancel any pending Nominatim lookup
   clearTimeout(addrTimeout);
-  const finalStreet = street || display.split(',')[0];
-  const addrEl = document.getElementById('setting-address');
-  addrEl.value = finalStreet;
-  document.getElementById('setting-city').value = city;
-  document.getElementById('setting-state').value = state;
-  document.getElementById('setting-zip').value = zip;
+
+  const finalStreet = street || display.split(',')[0] || '';
+  const setField = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) { console.warn('[selectAddress] element missing:', id); return; }
+    // Use the native setter so frameworks/listeners get notified properly
+    const proto = Object.getPrototypeOf(el);
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(el, val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  setField('setting-address', finalStreet);
+  setField('setting-city', city || '');
+  setField('setting-state', state || '');
+  setField('setting-zip', zip || '');
   document.getElementById('address-suggestions').innerHTML = '';
-  // Remove focus so the input doesn't re-fire oninput (which would re-query Nominatim
-  // and could clobber the value with whatever the user typed before clicking).
-  addrEl.blur();
+
+  // Some browsers/extensions or pending timers may clear the fields a frame later.
+  // Re-apply on the next tick AND after 100ms to ensure values stick.
+  requestAnimationFrame(() => {
+    setField('setting-address', finalStreet);
+    setField('setting-city', city || '');
+    setField('setting-state', state || '');
+    setField('setting-zip', zip || '');
+  });
+  setTimeout(() => {
+    setField('setting-address', finalStreet);
+    setField('setting-city', city || '');
+    setField('setting-state', state || '');
+    setField('setting-zip', zip || '');
+    console.log('[selectAddress] final values:', {
+      street: document.getElementById('setting-address').value,
+      city: document.getElementById('setting-city').value,
+      state: document.getElementById('setting-state').value,
+      zip: document.getElementById('setting-zip').value
+    });
+  }, 100);
+
+  // Remove focus from the address input so any keyboard buffer can't re-fire oninput
+  const addrEl = document.getElementById('setting-address');
+  if (addrEl) addrEl.blur();
 }
 async function saveVenueAddress() {
   const btn = document.getElementById('save-venue-address-btn');
