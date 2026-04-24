@@ -260,7 +260,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
       <div class="form-group" id="group-type" style="margin-bottom:1rem;">
         <label class="form-label">DJ Type <span class="opt">optional</span></label>
         <div class="type-toggle">
-          <button class="type-opt" id="type-mobile" type="button" onclick="setType('mobile-event')">🎵 Mobile/Event</button>
+          <button class="type-opt" id="type-mobile" type="button" onclick="setType('mobile')">🎵 Mobile/Event</button>
           <button class="type-opt" id="type-club" type="button" onclick="setType('club')">🎧 Club/Bar</button>
         </div>
       </div>
@@ -391,7 +391,7 @@ body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-s
         <label class="form-label">DJ Type</label>
         <select class="form-select" id="edit-type">
           <option value="">— Not set —</option>
-          <option value="mobile-event">Mobile / Event</option>
+          <option value="mobile">Mobile / Event</option>
           <option value="club">Club / Bar</option>
         </select>
       </div>
@@ -603,7 +603,7 @@ function setType(t) {
   currentType = t;
   document.getElementById('type-mobile').classList.remove('active-mobile');
   document.getElementById('type-club').classList.remove('active-club');
-  if (t === 'mobile-event') document.getElementById('type-mobile').classList.add('active-mobile');
+  if (t === 'mobile') document.getElementById('type-mobile').classList.add('active-mobile');
   if (t === 'club') document.getElementById('type-club').classList.add('active-club');
 }
 
@@ -683,7 +683,7 @@ async function createAccount() {
     role: currentRole,
     name,
     slug: slug || undefined,
-    type: currentRole === 'dj' ? (currentType || undefined) : undefined,
+    dj_type: currentRole === 'dj' ? (currentType || undefined) : undefined,
     country, city, state, zip,
     phone: document.getElementById('f-phone').value.trim() || undefined,
     website: document.getElementById('f-website').value.trim() || undefined,
@@ -989,7 +989,7 @@ function openEditModal(userId) {
   setVal('edit-venue-name', u.venue_name);
   setVal('edit-slug', u.slug);
   setVal('edit-role', u.role || 'dj');
-  setVal('edit-type', u.type || '');
+  setVal('edit-type', u.dj_type || '');
 
   // Location
   setVal('edit-country', u.country);
@@ -1055,7 +1055,7 @@ async function saveEdit() {
     venue_name: document.getElementById('edit-venue-name').value.trim() || null,
     slug: (document.getElementById('edit-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '')) || null,
     role: document.getElementById('edit-role').value,
-    type: document.getElementById('edit-type').value || null,
+    dj_type: document.getElementById('edit-type').value || null,
     country: document.getElementById('edit-country').value.trim() || null,
     state: document.getElementById('edit-state').value.trim() || null,
     city: document.getElementById('edit-city').value.trim() || null,
