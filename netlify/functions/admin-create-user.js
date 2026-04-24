@@ -118,7 +118,8 @@ exports.handler = async (event) => {
     phone, website, instagram, tiktok, facebook, soundcloud,
     bio,
     venue_name, address,
-    claimed: false  // admin-created, not yet claimed by real user
+    claimed: false,         // admin-created, not yet claimed by real user
+    email_verified: true    // admin-created accounts skip email verification
   };
 
   // Strip undefined values so we don't overwrite existing data with nulls
