@@ -87,7 +87,7 @@ function drawPubCalMonth() {
 
     const monthEvents = [];
 
-  let html = `<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--white);margin-bottom:.75rem;">${PUB_CAL_MONTHS[m]} ${y}</div>`;
+  let html = `<div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);margin-bottom:.75rem;">${PUB_CAL_MONTHS[m]} ${y}</div>`;
   html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:8px 8px 0 0;overflow:hidden;width:100%;box-sizing:border-box;">`;
 
   // Day name headers
