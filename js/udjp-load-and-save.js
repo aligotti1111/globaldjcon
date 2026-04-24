@@ -213,6 +213,11 @@ clubGenres.forEach(cb => {
     // Now that type checkboxes are set from loaded data, refresh which tabs are visible
     if (typeof checkShowBookingTab === 'function') checkShowBookingTab();
 
+    // Initial load may have flagged the form dirty (e.g. addTestimonialField sets
+    // it for each existing testimonial). Reset so the leave-site warning only
+    // fires after genuine user edits.
+    formDirty = false;
+
   } catch (error) {
     console.error('[update-dj-profile] Load error:', error);
     document.getElementById('alert').innerHTML = '<div class="alert alert-error">Failed to load profile: ' + (error.message || 'Unknown error') + '</div>';
