@@ -5,7 +5,7 @@
 const SUPABASE_URL = 'https://hwqvzuusquruhwguqole.supabase.co';
 
 const ALLOWED_FIELDS = [
-  'name', 'slug', 'role', 'type',
+  'name', 'slug', 'role', 'dj_type',
   'venue_name', 'address',
   'country', 'state', 'city', 'zip',
   'bio',

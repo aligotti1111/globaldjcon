@@ -40,7 +40,7 @@ exports.handler = async (event) => {
     role,       // 'dj' | 'host' | 'venue'
     name,
     slug,       // required for dj/venue, optional for host
-    type,       // dj-specific: 'mobile-event' | 'club' | etc
+    dj_type,    // dj-specific: 'mobile' | 'club'
     country, state, city, zip,
     rate, travel_distance,
     phone, website, instagram, tiktok, facebook, soundcloud,
@@ -90,7 +90,7 @@ exports.handler = async (event) => {
       password: randomPassword,
       email_confirm: true,      // bypass email verification for admin-created accounts
       user_metadata: {
-        role, name, slug, type, country, state, city, zip,
+        role, name, slug, dj_type, country, state, city, zip,
         // NOTE: The handle_new_user() trigger will read this and populate public.users.
         // That trigger inserts WITH claimed=false because this account is unclaimed.
       }
@@ -112,7 +112,7 @@ exports.handler = async (event) => {
   // ── Update public.users row with the full DJ/venue details ────────
   // The handle_new_user trigger created a base row; we now fill in the rest and mark unclaimed.
   const profileUpdates = {
-    role, name, slug, type,
+    role, name, slug, dj_type,
     country, state, city, zip,
     rate, travel_distance,
     phone, website, instagram, tiktok, facebook, soundcloud,
