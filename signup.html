@@ -1031,6 +1031,11 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
     btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
   }
   const djType = types[0];
+  const travelRaw = document.getElementById('dj-travel').value;
+  if (!travelRaw) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please select how far you\'re willing to travel</div>';
+    btn.disabled = false; btn.textContent = 'Create DJ Account'; return;
+  }
   const name = document.getElementById('name').value;
   const slugEditVal = document.getElementById('slug-edit').value.trim();
   const finalSlug = (slugEditVal ? makeSlug(slugEditVal) : null) || chosenSlug || makeSlug(name);
@@ -1058,7 +1063,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
           country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
           city: document.getElementById('dj-city').value,
           state: document.getElementById('dj-state').value,
-          travel_distance: document.getElementById('dj-travel').value || '',
+          travel_distance: travelRaw,
           zip: document.getElementById('dj-zip').value
         }
       }
@@ -1081,6 +1086,9 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
     // doesn't carry over everything reliably). Upsert directly.
     if (signUpData && signUpData.user && signUpData.user.id) {
       try {
+        // Preserve 'worldwide' string; numeric distances stored as their integer value.
+        // Column is text, so either string is valid.
+        const travelVal = travelRaw === 'worldwide' ? 'worldwide' : (parseInt(travelRaw, 10) || null);
         await db.from('users').upsert({
           id: signUpData.user.id,
           role: 'dj',
@@ -1090,7 +1098,7 @@ document.getElementById('form-dj').addEventListener('submit', async function(e) 
           country: document.getElementById('dj-country').value || document.getElementById('dj-country-select').value,
           city: document.getElementById('dj-city').value,
           state: document.getElementById('dj-state').value,
-          travel_distance: parseInt(document.getElementById('dj-travel').value, 10) || null,
+          travel_distance: travelVal,
           zip: document.getElementById('dj-zip').value,
           email_verified: false
         }, { onConflict: 'id' });

@@ -1074,7 +1074,7 @@ async function saveEdit() {
     email_verified: document.getElementById('edit-email-verified').checked
   };
   const td = document.getElementById('edit-travel-distance').value.trim();
-  if (td !== '') updates.travel_distance = parseInt(td, 10) || null;
+  if (td !== '') updates.travel_distance = td === 'worldwide' ? 'worldwide' : (parseInt(td, 10) || null);
 
   // Include email only if it changed (auth.users update is more expensive + auditable)
   const emailEl = document.getElementById('edit-email');
