@@ -691,11 +691,18 @@ async function lookupAddress() {
   } catch(e) { suggestEl.innerHTML = ''; }
 }
 function selectAddress(street, city, state, zip, display) {
-  document.getElementById('setting-address').value = street || display.split(',')[0];
+  // Cancel any pending Nominatim lookup that could overwrite the field after selection
+  clearTimeout(addrTimeout);
+  const finalStreet = street || display.split(',')[0];
+  const addrEl = document.getElementById('setting-address');
+  addrEl.value = finalStreet;
   document.getElementById('setting-city').value = city;
   document.getElementById('setting-state').value = state;
   document.getElementById('setting-zip').value = zip;
   document.getElementById('address-suggestions').innerHTML = '';
+  // Remove focus so the input doesn't re-fire oninput (which would re-query Nominatim
+  // and could clobber the value with whatever the user typed before clicking).
+  addrEl.blur();
 }
 async function saveVenueAddress() {
   const btn = document.getElementById('save-venue-address-btn');
