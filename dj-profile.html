@@ -57,43 +57,6 @@
   }).catch(function(){});
 })();
 
-function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
-function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
-function gdcSetupMobileMenu(){
-  // Wait until auth.js has resolved auth state before showing anything in the
-  // hamburger menu. Otherwise we can't reliably tell logged-in from logged-out.
-  function applyMenu(cu){
-    var lo=document.getElementById('mobile-menu-loggedout');
-    var li=document.getElementById('mobile-menu-loggedin');
-    var d=document.getElementById('mobile-menu-dj');
-    var v=document.getElementById('mobile-menu-venue');
-    if(!cu){
-      if(lo)lo.style.display='block';
-      if(li)li.style.display='none';
-      if(d)d.style.display='none';
-      if(v)v.style.display='none';
-      return;
-    }
-    if(lo)lo.style.display='none';
-    if(li)li.style.display='block';
-    if(cu.role==='dj'){
-      if(d)d.style.display='block';
-      if(v)v.style.display='none';
-      var mv=document.getElementById('mob-view-profile');if(mv&&cu.slug)mv.href='/'+cu.slug;
-    }else{
-      if(v)v.style.display='block';
-      if(d)d.style.display='none';
-    }
-  }
-  if(window.GDJAuth&&typeof window.GDJAuth.ready==='function'){
-    window.GDJAuth.ready(applyMenu);
-  }else{
-    // Fallback: read sessionStorage directly (legacy path)
-    var cu=null;try{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}catch(e){}
-    applyMenu(cu);
-  }
-}
-document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
 </script>
 <link rel="stylesheet" href="/css/dj-profile.css">
 </head>

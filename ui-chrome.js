@@ -407,3 +407,61 @@
     } catch (e) {}
   }
 })();
+
+
+// ============================================================================
+//  Mobile hamburger menu — show/hide based on auth state.
+//  Pages that include the standard hamburger markup (#mobile-menu, #mobile-menu-loggedout,
+//  #mobile-menu-loggedin, #mobile-menu-dj, #mobile-menu-venue) get this for free.
+//  Previously inlined into 7 different HTML files; consolidated here.
+// ============================================================================
+(function () {
+  function applyMenu(cu) {
+    var lo = document.getElementById('mobile-menu-loggedout');
+    var li = document.getElementById('mobile-menu-loggedin');
+    var d  = document.getElementById('mobile-menu-dj');
+    var v  = document.getElementById('mobile-menu-venue');
+    if (!cu) {
+      if (lo) lo.style.display = 'block';
+      if (li) li.style.display = 'none';
+      if (d)  d.style.display  = 'none';
+      if (v)  v.style.display  = 'none';
+      return;
+    }
+    if (lo) lo.style.display = 'none';
+    if (li) li.style.display = 'block';
+    if (cu.role === 'dj') {
+      if (d) d.style.display = 'block';
+      if (v) v.style.display = 'none';
+      var mv = document.getElementById('mob-view-profile');
+      if (mv && cu.slug) mv.href = '/' + cu.slug;
+    } else {
+      if (v) v.style.display = 'block';
+      if (d) d.style.display = 'none';
+    }
+  }
+
+  // Public: pages still call gdcSetupMobileMenu() in some places (e.g. after auth refresh)
+  window.gdcSetupMobileMenu = function () {
+    if (window.GDJAuth && typeof window.GDJAuth.ready === 'function') {
+      window.GDJAuth.ready(applyMenu);
+    } else {
+      var cu = window.currentUser || null;
+      if (!cu) {
+        try { cu = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || 'null'); } catch (e) {}
+      }
+      applyMenu(cu);
+    }
+  };
+
+  // Open/close helpers used by the hamburger button + close button
+  window.openMobileMenu  = function () { var el = document.getElementById('mobile-menu'); if (el) el.classList.add('open'); };
+  window.closeMobileMenu = function () { var el = document.getElementById('mobile-menu'); if (el) el.classList.remove('open'); };
+
+  // Auto-init on DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.gdcSetupMobileMenu);
+  } else {
+    window.gdcSetupMobileMenu();
+  }
+})();

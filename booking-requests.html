@@ -8,42 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth.js"></script>
 <script src="/ui-chrome.js"></script>
-<script>
-function openMobileMenu(){document.getElementById('mobile-menu').classList.add('open');}
-function closeMobileMenu(){document.getElementById('mobile-menu').classList.remove('open');}
-function gdcSetupMobileMenu(){
-  function applyMenu(cu){
-    var lo=document.getElementById('mobile-menu-loggedout');
-    var li=document.getElementById('mobile-menu-loggedin');
-    var d=document.getElementById('mobile-menu-dj');
-    var v=document.getElementById('mobile-menu-venue');
-    if(!cu){
-      if(lo)lo.style.display='block';
-      if(li)li.style.display='none';
-      if(d)d.style.display='none';
-      if(v)v.style.display='none';
-      return;
-    }
-    if(lo)lo.style.display='none';
-    if(li)li.style.display='block';
-    if(cu.role==='dj'){
-      if(d)d.style.display='block';
-      if(v)v.style.display='none';
-      var mv=document.getElementById('mob-view-profile');if(mv&&cu.slug)mv.href='/'+cu.slug;
-    }else{
-      if(v)v.style.display='block';
-      if(d)d.style.display='none';
-    }
-  }
-  if(window.GDJAuth&&typeof window.GDJAuth.ready==='function'){
-    window.GDJAuth.ready(applyMenu);
-  }else{
-    var cu=null;try{cu=JSON.parse(sessionStorage.getItem('currentUser')||localStorage.getItem('currentUser')||'null');}catch(e){}
-    applyMenu(cu);
-  }
-}
-document.addEventListener('DOMContentLoaded',gdcSetupMobileMenu);
-</script>
 <style>
 :root{--black:#050507;--deep:#0a0a10;--card:#13131e;--border:#1e1e30;--neon:#00f5c4;--neon-dim:rgba(0,245,196,0.12);--pink:#f5e642;--white:#f0f0f8;--muted:#6b6b88;--success:#3ddc84;--error:#ff5f5f;--amber:#ffb347;}
 *{margin:0;padding:0;box-sizing:border-box;}
