@@ -665,16 +665,29 @@ async function lookupAddress() {
     const res = await fetch(url);
     const data = await res.json();
     if (!data || !data.length) { suggestEl.innerHTML = ''; return; }
-    suggestEl.innerHTML = `<div class="addr-suggestions">${data.map(r => {
+    // Build the dropdown as DOM nodes so we can bind event listeners directly,
+    // avoiding HTML-string injection issues (apostrophes in street names etc.).
+    suggestEl.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'addr-suggestions';
+    data.forEach(r => {
       const addr = r.address;
       const city = addr.suburb || addr.city || addr.town || addr.village || '';
       const state = addr.state || '';
       const zip = addr.postcode || '';
       const display = r.display_name;
-      return `<div class="addr-suggestion" onclick="selectAddress('${(addr.house_number?addr.house_number+' ':'')+(addr.road||'')}','${city}','${state}','${zip}','${display.replace(/'/g,"\\'")}')">
-        ${display.length > 60 ? display.substring(0,60)+'…' : display}
-      </div>`;
-    }).join('')}</div>`;
+      const street = (addr.house_number ? addr.house_number + ' ' : '') + (addr.road || '');
+      const item = document.createElement('div');
+      item.className = 'addr-suggestion';
+      item.textContent = display.length > 60 ? display.substring(0,60)+'…' : display;
+      // mousedown fires BEFORE the input's blur, so the click registers reliably
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectAddress(street, city, state, zip, display);
+      });
+      wrap.appendChild(item);
+    });
+    suggestEl.appendChild(wrap);
   } catch(e) { suggestEl.innerHTML = ''; }
 }
 function selectAddress(street, city, state, zip, display) {
