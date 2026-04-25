@@ -298,7 +298,10 @@ function renderMobileCard(b, isIncoming, orderNum) {
   setTimeout(() => {
     // Distance calculation
     if (b.venue_address && djZip) {
-      fetchVenueDistance(djZip + ', United States', b.venue_address, distId);
+      // For incoming bookings (the DJ is reviewing), also pass their travel limit
+      // so an "outside travel range" warning can be appended.
+      const limit = isIncoming ? (currentUser && currentUser.travel_distance) : null;
+      fetchVenueDistance(djZip + ', United States', b.venue_address, distId, limit);
     }
     // Package details lookup — only needed for legacy rows where details weren't saved on the row
     if (b.package_title && !b.package_details) {

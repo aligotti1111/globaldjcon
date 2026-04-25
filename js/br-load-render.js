@@ -63,7 +63,7 @@ function bookingsOverlap(a, b) {
   return aStart < bEndAdj && bStart < aEndAdj;
 }
 
-async function fetchVenueDistance(addr1, addr2, elementId) {
+async function fetchVenueDistance(addr1, addr2, elementId, travelLimit) {
   try {
     const geo = async (addr) => {
       const r = await fetch(`/.netlify/functions/geocode?address=${encodeURIComponent(addr)}`);
@@ -81,7 +81,16 @@ async function fetchVenueDistance(addr1, addr2, elementId) {
     const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180) * Math.cos(p2.lat*Math.PI/180) * Math.sin(dLon/2)**2;
     const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distColor = miles < 5 ? 'var(--neon)' : miles < 15 ? 'var(--amber)' : 'var(--error)';
-    el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};">${miles.toFixed(1)} mi to venue</span>`;
+    let html = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${distColor}" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:${distColor};">${miles.toFixed(1)} mi to venue</span>`;
+    // If the DJ has a finite travel limit and this event exceeds it, append a warning.
+    // travelLimit can be a number, a numeric string, "worldwide", null, or undefined.
+    if (travelLimit != null && travelLimit !== '' && String(travelLimit).toLowerCase() !== 'worldwide') {
+      const limitNum = Number(travelLimit);
+      if (!isNaN(limitNum) && miles > limitNum) {
+        html += `<div style="margin-top:.35rem;padding:.4rem .6rem;background:rgba(255,200,0,.12);border:1px solid rgba(255,200,0,.4);border-radius:4px;color:#ffc800;font-size:.7rem;font-family:'Space Mono',monospace;letter-spacing:.05em;text-transform:uppercase;">⚠ Outside your ${limitNum} mi travel range</div>`;
+      }
+    }
+    el.innerHTML = html;
   } catch(e) {
     const el = document.getElementById(elementId);
     if (el) el.style.display = 'none';
