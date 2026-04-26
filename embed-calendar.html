@@ -56,8 +56,28 @@
     --white: #1a1a2e;
     --deep: #f8fafc;
     --card: #ffffff;
-    --border: #e5e7eb;
+    --border: #d1d5db;
     --muted: #6b7280;
+    /* Use a darker, more legible accent in light mode — the bright neon cyan
+       has no contrast against white. This still feels brand-related but reads. */
+    --neon: #0a8e76;
+    --neon-dim: rgba(10, 142, 118, 0.12);
+    --neon-dark: #065f4f;
+    --black: #ffffff;
+  }
+  /* Light-mode-specific overrides for elements the calendar renders inline */
+  body[data-theme="light"] .cal-badge {
+    background: #0a8e76 !important;
+    color: #ffffff !important;
+    border-color: #0a8e76 !important;
+  }
+  body[data-theme="light"] .cal-badge:hover {
+    background: #065f4f !important;
+  }
+  /* Calendar grid borders + day numbers need darker tones in light mode */
+  body[data-theme="light"] #pub-cal-grid-wrap > div,
+  body[data-theme="light"] #pub-cal-rolling-wrap > div {
+    border-color: #d1d5db !important;
   }
   /* Footer — small attribution + click-through */
   .embed-footer {
@@ -92,6 +112,10 @@
     font-family: 'Space Mono', monospace;
     font-size: 12px;
   }
+  /* Hide the view-toggle button (1 MONTH / 12 MONTHS) — embeds are always
+     month-by-month. The button is part of djp-cal-public.js which we share
+     with the main site, so we hide rather than remove. */
+  #pub-cal-view-toggle { display: none !important; }
 </style>
 </head>
 <body>
