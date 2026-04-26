@@ -380,6 +380,23 @@
   }
   scheduleInitialNavRender();
 
+  // Brute-force safety net: regardless of whatever class-toggling races
+  // happen between auth.js and this file, ensure body is NOT stuck in
+  // is-auth-pending after the page settles. This guarantees the nav
+  // becomes visible even if the normal applyAuthBodyClasses path missed.
+  function forceClearPending() {
+    if (document.body) document.body.classList.remove('is-auth-pending');
+    document.documentElement.classList.remove('is-auth-pending');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', forceClearPending);
+  } else {
+    forceClearPending();
+  }
+  // Final belt-and-suspenders: after the page has had a beat to settle,
+  // clear it once more in case anything re-added it.
+  setTimeout(forceClearPending, 500);
+
   // Re-render once auth resolves
   GDJAuth.ready(applyAuthBodyClasses);
   GDJAuth.ready(function () {
