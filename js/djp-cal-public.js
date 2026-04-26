@@ -433,7 +433,11 @@ function drawRolling12Months() {
 
   let html = `<div class="cal-months-grid">`;
 
-  for (let i = 0; i < pubCalWindowMonths; i++) {
+  // The 12-month view is exactly that — 12 months. The DJ's booking window
+  // (which can be up to several years) governs nav range, not how many
+  // months we render in this view.
+  const monthsToRender = Math.min(pubCalWindowMonths || 12, 12);
+  for (let i = 0; i < monthsToRender; i++) {
     let mo = today.getMonth() + i;
     let yr = today.getFullYear() + Math.floor(mo / 12);
     mo = mo % 12;
