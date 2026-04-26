@@ -4,7 +4,7 @@
 // ── PUBLIC BOOKING CALENDAR ───────────────────────────────
 const PUB_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const PUB_DAY_LABELS = ['S','M','T','W','T','F','S'];
-let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '', pubCalWindowMonths = 12;
+let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '', pubCalDjName = '', pubCalWindowMonths = 12;
 // Tracks the date currently selected in the inline booking form so the calendar can highlight it
 let ibPubSelectedDate = null;
 
@@ -26,10 +26,32 @@ function pubCalInRange(y, m) {
   const v = y * 12 + m;
   return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
 }
+// Brief toast message anchored above the calendar — shown when the visitor
+// tries to navigate past the DJ's booking window.
+function pubCalShowOutOfRangeMsg() {
+  const container = document.getElementById('p-booking-calendar');
+  if (!container) return;
+  let msg = document.getElementById('pub-cal-range-msg');
+  if (!msg) {
+    msg = document.createElement('div');
+    msg.id = 'pub-cal-range-msg';
+    msg.style.cssText = 'margin-bottom:.75rem;padding:.6rem .85rem;background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.4);border-radius:6px;color:#ffb347;font-family:"Space Mono",monospace;font-size:.65rem;letter-spacing:.04em;text-align:center;line-height:1.45;';
+    container.insertBefore(msg, container.firstChild);
+  }
+  const who = pubCalDjName || pubCalDjSlug || 'This DJ';
+  msg.textContent = `${who} only accepts bookings up to ${pubCalWindowLabel()} in advance.`;
+  msg.style.display = 'block';
+  // Auto-dismiss after 4 seconds
+  clearTimeout(window._pubCalRangeMsgT);
+  window._pubCalRangeMsgT = setTimeout(() => { msg.style.display = 'none'; }, 4000);
+}
 
-function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate, bookingWindowMonths) {
+function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate, bookingWindowMonths, djName) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
+  // Optional: caller can pass DJ's display name for friendlier out-of-range message.
+  // Falls back to slug if not provided.
+  if (djName) pubCalDjName = djName;
   pubCalWindowMonths = bookingWindowMonths || 12;
   if (isOwner) {
     renderOwnerCalendar(bookingDays, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, bookingWindowMonths || 12);
@@ -313,15 +335,20 @@ function pubCalNav(dir) {
   let newY = pubCalYear;
   if (newM > 11) { newM = 0; newY++; }
   if (newM < 0) { newM = 11; newY--; }
-  // Don't navigate past the booking window or before the current month
-  if (!pubCalInRange(newY, newM)) return;
+  // Don't navigate past the booking window or before the current month.
+  // Only show the message when going FORWARD past the window — going past
+  // "today" is silent (nothing useful to say there).
+  if (!pubCalInRange(newY, newM)) {
+    if (dir > 0) pubCalShowOutOfRangeMsg();
+    return;
+  }
   pubCalMonth = newM; pubCalYear = newY;
   drawPubCalMonth();
 }
 
 function pubCalJump(val) {
   const [y, m] = val.split('-').map(Number);
-  if (!pubCalInRange(y, m)) return;
+  if (!pubCalInRange(y, m)) { pubCalShowOutOfRangeMsg(); return; }
   pubCalYear = y; pubCalMonth = m;
   drawPubCalMonth();
 }
@@ -330,16 +357,16 @@ function pubCalJumpSplit() {
   const m = parseInt(document.getElementById('pub-cal-month-select').value);
   const y = parseInt(document.getElementById('pub-cal-year-select').value);
   // If the user picked an out-of-range combo (e.g. window cuts off mid-year),
-  // snap to the nearest in-range month.
+  // snap to the nearest in-range month and let them know why.
   let targetY = y, targetM = m;
   if (!pubCalInRange(targetY, targetM)) {
+    pubCalShowOutOfRangeMsg();
     const min = pubCalMinYM(), max = pubCalMaxYM();
     const v = targetY * 12 + targetM;
     const minV = min.year * 12 + min.month;
     const maxV = max.year * 12 + max.month;
     const clamped = Math.max(minV, Math.min(maxV, v));
     targetY = Math.floor(clamped / 12); targetM = clamped % 12;
-    // Reflect the clamped value back into the dropdowns so the UI matches
     const ms = document.getElementById('pub-cal-month-select');
     const ys = document.getElementById('pub-cal-year-select');
     if (ms) ms.value = targetM;
