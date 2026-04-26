@@ -79,7 +79,7 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, e
   }
 
   container.innerHTML = `
-    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:nowrap;">
       <button type="button" id="pub-cal-prev" onclick="pubCalNav(-1)"
         style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;"
         onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
