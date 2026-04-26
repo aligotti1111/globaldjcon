@@ -200,9 +200,16 @@ window.showBookedEventPopup = function () { /* no-op in embed */ };
       ? JSON.parse(data.booking_settings || '{}')
       : (data.booking_settings || {}); } catch (e) {}
 
+    // Pick the right field based on DJ type. Mobile DJs store availability in
+    // `mob_booking_days`, club DJs in `booking_days`. The schema split exists
+    // because the two flows have very different per-day data shapes.
+    const bookingDays = (data.dj_type === 'mobile')
+      ? (bs.mob_booking_days || {})
+      : (bs.booking_days || bs.mob_booking_days || {});
+
     // Render via the existing public-calendar function
     renderPublicCalendar(
-      bs.booking_days || {},
+      bookingDays,
       data.slug,
       false,                      // isOwner — always false on embed
       bs.allow_offers,
