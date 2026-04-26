@@ -148,10 +148,6 @@
         <button onclick="copyShareUrl()" id="copy-btn" class="action-btn ghost" title="Copy Link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="18" height="18" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
-        <!-- Owner-only: opens embed-code modal. Shown after profile loads if booking enabled. -->
-        <button onclick="openEmbedModal()" id="embed-cal-btn" class="action-btn ghost" style="display:none;" title="Embed Calendar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        </button>
       </div>
     </div>
   </div>
@@ -170,6 +166,13 @@
 
     <!-- Booking/Availability Tab -->
     <div class="tab-pane" id="tab-booking">
+      <!-- Owner-only: opens embed-code modal. Shown after profile loads if booking enabled. -->
+      <div id="embed-cal-btn-wrap" style="display:none;text-align:right;margin-bottom:.75rem;">
+        <button onclick="openEmbedModal()" id="embed-cal-btn" style="display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .95rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--white);font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--white)';">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Embed Calendar
+        </button>
+      </div>
       <div id="p-booking-calendar"></div>
 
       <!-- Inline club/bar booking form (shown after user clicks a date) — ported from book.html -->
@@ -718,8 +721,8 @@ const GENRE_LABELS = {
     try {
       const bs = typeof data.booking_settings === 'string' ? JSON.parse(data.booking_settings) : data.booking_settings;
       if (bs.booking_enabled) {
-        const embedBtn = document.getElementById('embed-cal-btn');
-        if (embedBtn) embedBtn.style.display = 'inline-flex';
+        const embedBtnWrap = document.getElementById('embed-cal-btn-wrap');
+        if (embedBtnWrap) embedBtnWrap.style.display = 'block';
         // Stash slug + name on window so the modal generator can use them
         window._embedDjSlug = effectiveSlug;
         window._embedDjName = data.name || '';
