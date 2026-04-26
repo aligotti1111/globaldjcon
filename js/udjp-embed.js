@@ -27,7 +27,7 @@
   window.updateEmbedCode = function () {
     const slug = (window.currentUser && window.currentUser.slug) || '';
     if (!slug) return;
-    const months = document.getElementById('embed-months').value;
+    const months = 1; // Embeds always 1 month — keeps iframe height sensible
     const theme = document.getElementById('embed-theme').value;
     const height = document.getElementById('embed-height').value;
     const code = buildEmbedSnippet(slug, months, theme, height);
