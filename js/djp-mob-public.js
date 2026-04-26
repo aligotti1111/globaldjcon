@@ -11,6 +11,57 @@ let mobPubCalMonth = new Date().getMonth();
 let mobPubSelectedDate = null;
 let mobPubSelectedPkg = null;
 let mobPubRollingActive = false;
+// Cached lat/lon for the DJ's home zip — fetched once per session via Nominatim
+let mobPubDjCoords = null;
+
+// Haversine distance between two lat/lon points, returned in miles.
+function mobPubHaversineMiles(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const R = 3958.8; // Earth's radius in miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// One-shot Nominatim lookup for the DJ's zip → {lat, lon}. Cached for the session.
+async function mobPubGetDjCoords(zip) {
+  if (mobPubDjCoords) return mobPubDjCoords;
+  if (!zip) return null;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&limit=1`);
+    const data = await res.json();
+    if (data && data[0]) {
+      mobPubDjCoords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      return mobPubDjCoords;
+    }
+  } catch(e) { /* network or parse fail — silently skip the warning */ }
+  return null;
+}
+
+// Distance-warning modal: returns a Promise<boolean> — true if host wants to proceed.
+function mobPubConfirmDistance(miles, limit, djName) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML = `
+      <div style="background:var(--card);border:1px solid rgba(255,200,0,.45);border-radius:12px;max-width:440px;width:100%;padding:1.75rem 1.5rem;box-shadow:0 12px 48px rgba(0,0,0,.5);">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:#ffc800;margin-bottom:.85rem;">⚠ Outside Travel Range</div>
+        <div style="font-size:.9rem;color:var(--white);line-height:1.5;margin-bottom:1.25rem;">
+          This event is approximately <strong>${miles} miles</strong> from ${djName}'s home base. Their listed travel range is <strong>${limit} miles</strong>.
+          <br><br>
+          You can still send the request, but the DJ may decline or charge an additional travel fee.
+        </div>
+        <div style="display:flex;gap:.6rem;">
+          <button type="button" id="mpf-dist-cancel" style="flex:1;padding:.75rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Cancel</button>
+          <button type="button" id="mpf-dist-confirm" style="flex:1;padding:.75rem;background:#ffc800;border:none;border-radius:6px;color:#000;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Send Anyway</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#mpf-dist-cancel').onclick = () => { document.body.removeChild(overlay); resolve(false); };
+    overlay.querySelector('#mpf-dist-confirm').onclick = () => { document.body.removeChild(overlay); resolve(true); };
+  });
+}
 
 const MOB_EVENT_TYPE_LABELS = {
   weddings:'Wedding', birthday:'Birthday Party', corporate:'Corporate Event',
@@ -48,17 +99,16 @@ function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
 
   container.innerHTML = `
     <div id="mob-pub-cal-wrap">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem;">
-        <button type="button" id="mob-pub-cal-view-toggle" onclick="mobPubToggleView()"
-          style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .85rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;"
-          onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
-          onmouseout="if(this.textContent!=='← Month View'){this.style.borderColor='var(--white)';this.style.color='var(--white)'}">12 Months</button>
-      </div>
       <div id="mob-pub-cal-single-wrap">
-        <div id="mob-pub-cal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <!-- Single header row holds prev/label/next AND the toggle (embed btn injected by dj-profile) -->
+        <div id="mob-pub-cal-header" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:nowrap;">
           <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">‹</button>
-          <div id="mob-pub-cal-label" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);"></div>
+          <div id="mob-pub-cal-label" style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);"></div>
           <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">›</button>
+          <button type="button" id="mob-pub-cal-view-toggle" onclick="mobPubToggleView()"
+            style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .85rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;white-space:nowrap;"
+            onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
+            onmouseout="if(this.textContent!=='← Month View'){this.style.borderColor='var(--white)';this.style.color='var(--white)'}">12 Months</button>
         </div>
         <div id="mob-pub-cal-grid"></div>
       </div>
@@ -967,12 +1017,15 @@ function mobPubCalcPrice() {
 }
 
 let mobPubAddrTimeout = null;
+let mobPubVenueCoords = null; // {lat, lon} of last picked address (for distance check)
 function mobPubAddressAuto(input) {
   clearTimeout(mobPubAddrTimeout);
   const val = input.value.trim();
   const suggestions = document.getElementById('mpf-addr-suggestions');
   if (!suggestions) return;
   if (val.length < 3) { suggestions.style.display='none'; return; }
+  // User is typing — invalidate any previously captured coords until they pick a new suggestion
+  mobPubVenueCoords = null;
   mobPubAddrTimeout = setTimeout(async () => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`);
@@ -982,17 +1035,23 @@ function mobPubAddressAuto(input) {
       suggestions.innerHTML = results.map(r => {
         const parts = r.display_name.split(',');
         const clean = parts.filter(p => !/county/i.test(p)).join(',').trim();
-        return `<div style="padding:.6rem .85rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,245,196,.08)'" onmouseout="this.style.background=''" onclick="mobPubPickAddr('${clean.replace(/'/g,'\\\'')}')">${clean}</div>`;
+        return `<div style="padding:.6rem .85rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,245,196,.08)'" onmouseout="this.style.background=''" onclick="mobPubPickAddr('${clean.replace(/'/g,'\\\'')}', ${r.lat||'null'}, ${r.lon||'null'})">${clean}</div>`;
       }).join('');
     } catch(e) { suggestions.style.display='none'; }
   }, 350);
 }
 
-function mobPubPickAddr(addr) {
+function mobPubPickAddr(addr, lat, lon) {
   const input = document.getElementById('mpf-venue-address');
   if (input) input.value = addr;
   const suggestions = document.getElementById('mpf-addr-suggestions');
   if (suggestions) suggestions.style.display = 'none';
+  // Store coords for the distance-check at submit time
+  if (lat != null && lon != null) {
+    mobPubVenueCoords = { lat: parseFloat(lat), lon: parseFloat(lon) };
+  } else {
+    mobPubVenueCoords = null;
+  }
 }
 
 async function mobPubSubmit(dateKey) {
@@ -1043,6 +1102,26 @@ async function mobPubSubmit(dateKey) {
   const cat = mobPubGetCategory(eventType);
   const pkg = ((bs.mob_packages||{})[cat]||[])[mobPubSelectedPkg];
   if (!pkg) { showErr('Invalid package selected.'); return; }
+
+  // ── Distance check ──────────────────────────────────────────
+  // If the DJ has a finite travel limit and the venue is further than that,
+  // warn the host before submitting. Skip if DJ travels worldwide, if no DJ
+  // zip is set, or if the host typed an address freehand without picking a suggestion.
+  const travelDist = djData.travel_distance;
+  const travelIsFinite = travelDist != null && travelDist !== '' && String(travelDist).toLowerCase() !== 'worldwide' && !isNaN(Number(travelDist));
+  if (travelIsFinite && djData.zip && mobPubVenueCoords) {
+    const djCoords = await mobPubGetDjCoords(djData.zip);
+    if (djCoords) {
+      const miles = mobPubHaversineMiles(djCoords.lat, djCoords.lon, mobPubVenueCoords.lat, mobPubVenueCoords.lon);
+      const limit = Number(travelDist);
+      if (miles > limit) {
+        // Wait for host's confirmation before continuing
+        const proceed = await mobPubConfirmDistance(Math.round(miles), limit, djData.name || 'this DJ');
+        if (!proceed) { return; }
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
 
   // Determine price / quote
   let totalPrice = null, isQuote = false, depositAmount = null;
