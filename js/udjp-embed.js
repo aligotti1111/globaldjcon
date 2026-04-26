@@ -4,10 +4,11 @@
 
 (function () {
   // Build the embed snippet for the current settings.
-  // Includes a small auto-resize listener so the iframe height tracks its
-  // content (needed because iframes don't auto-fit by default).
+  // We use the direct embed-calendar.html URL (not the pretty /embed/ rewrite)
+  // because Netlify's _redirects rule can drop query params when the source URL
+  // already has its own. The explicit URL bypasses that ambiguity.
   function buildEmbedSnippet(slug, months, theme, height) {
-    const src = `https://globaldjconnect.com/embed/${encodeURIComponent(slug)}/calendar?theme=${theme}&months=${months}`;
+    const src = `https://globaldjconnect.com/embed-calendar.html?slug=${encodeURIComponent(slug)}&theme=${theme}&months=${months}`;
     return (
       `<!-- Global DJ Connect — availability calendar -->\n` +
       `<iframe id="gdc-cal-${slug}" src="${src}" ` +
@@ -34,7 +35,7 @@
     if (out) out.value = code;
     const preview = document.getElementById('embed-preview-iframe');
     if (preview) {
-      preview.src = `/embed/${encodeURIComponent(slug)}/calendar?theme=${theme}&months=${months}`;
+      preview.src = `/embed-calendar.html?slug=${encodeURIComponent(slug)}&theme=${theme}&months=${months}`;
       preview.style.height = height + 'px';
     }
   };
@@ -68,20 +69,20 @@
     }
   });
 
-  // Initial population — wait for currentUser to be loaded by auth.js
-  function tryInit() {
+  // Initial population — wait for auth.js to resolve currentUser.
+  // Prefer GDJAuth.ready (the official hook) over polling.
+  function init() {
     if (window.currentUser && window.currentUser.slug) {
       updateEmbedCode();
-      return true;
     }
-    return false;
   }
-  if (!tryInit()) {
-    // Retry every 200ms for up to 6 seconds (auth.js usually resolves in <1s)
-    let attempts = 0;
-    const iv = setInterval(() => {
-      attempts++;
-      if (tryInit() || attempts > 30) clearInterval(iv);
-    }, 200);
+  if (window.GDJAuth && typeof window.GDJAuth.ready === 'function') {
+    window.GDJAuth.ready(init);
+  } else {
+    // Fallback for any environment where GDJAuth isn't loaded yet — listen
+    // for the userChanged event auth.js fires whenever currentUser is set
+    document.addEventListener('GDJAuth:userChanged', init);
+    // And try immediately in case it's already loaded
+    init();
   }
 })();
