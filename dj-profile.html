@@ -72,6 +72,9 @@
       body.is-logged-in .hc-signin-btn,body.is-logged-in .hc-signup-btn{display:none !important;}
       /* Mobile: hide Create Account, shrink Sign In */
       @media(max-width:600px){.hc-signup-btn{display:none !important;}.hc-signin-btn{padding:.45rem .7rem !important;font-size:.6rem !important;}}
+      /* This page renders its own logged-out buttons via data-keep above; hide the
+         builder-rendered duplicates from auth.js/ui-chrome.js to avoid 4 buttons. */
+      #nav-signin,#nav-signup{display:none !important;}
     </style>
   </div>
 </header>
