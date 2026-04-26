@@ -153,6 +153,11 @@
       + '.hc-signin{display:inline-flex;align-items:center;gap:.4rem;font-family:"Space Mono",monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:.55rem .9rem;border-radius:6px;border:1px solid #f0f0f8;color:#f0f0f8;text-decoration:none;transition:all .2s;white-space:nowrap;line-height:1;}'
       + '.hc-signin:hover{border-color:#00f5c4;color:#00f5c4;}'
       + 'body.is-logged-in .hc-signin{display:none !important;}'
+      // Desktop: hide the hardcoded fallback Sign In button (only the
+      // builder-rendered nav-signin + nav-signup should show on desktop).
+      // The .hc-signin is purely a mobile fallback because buildNavHtml
+      // returns empty for logged-out mobile.
+      + '@media (min-width:641px){.hc-signin{display:none !important;}}'
       // Defense-in-depth pending rules (the load-critical copy lives in auth.js)
       + 'body.is-auth-pending .hc-signin{visibility:hidden !important;}'
       + 'body.is-auth-pending #nav-btns{visibility:hidden !important;}'
@@ -195,11 +200,6 @@
         document.body.classList.add('is-logged-out');
         document.body.classList.remove('is-logged-in');
       }
-    } else {
-      // Body didn't exist yet — defer until it does so we don't leave
-      // is-auth-pending stuck on a body that gets the class added later
-      // by auth.js's DOMContentLoaded fallback.
-      document.addEventListener('DOMContentLoaded', applyAuthBodyClasses, { once: true });
     }
   }
 
@@ -379,23 +379,6 @@
     }
   }
   scheduleInitialNavRender();
-
-  // Brute-force safety net: regardless of whatever class-toggling races
-  // happen between auth.js and this file, ensure body is NOT stuck in
-  // is-auth-pending after the page settles. This guarantees the nav
-  // becomes visible even if the normal applyAuthBodyClasses path missed.
-  function forceClearPending() {
-    if (document.body) document.body.classList.remove('is-auth-pending');
-    document.documentElement.classList.remove('is-auth-pending');
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', forceClearPending);
-  } else {
-    forceClearPending();
-  }
-  // Final belt-and-suspenders: after the page has had a beat to settle,
-  // clear it once more in case anything re-added it.
-  setTimeout(forceClearPending, 500);
 
   // Re-render once auth resolves
   GDJAuth.ready(applyAuthBodyClasses);
