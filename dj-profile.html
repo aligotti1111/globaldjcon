@@ -723,11 +723,12 @@ const GENRE_LABELS = {
         window._embedDjSlug = effectiveSlug;
         window._embedDjName = data.name || '';
         // Insert the embed button into the calendar nav row, right before the
-        // 12 MONTHS toggle. Use margin-left:auto so it (and the toggle) sit
-        // pinned to the right end. Defer until calendar header has rendered.
+        // 12 MONTHS toggle. Club DJs use #pub-cal-view-toggle, mobile DJs use
+        // #mob-pub-cal-view-toggle — try both. Defer until calendar header has rendered.
         setTimeout(() => {
           const embedBtn = document.getElementById('embed-cal-btn');
-          const toggle = document.getElementById('pub-cal-view-toggle');
+          const toggle = document.getElementById('pub-cal-view-toggle')
+                      || document.getElementById('mob-pub-cal-view-toggle');
           if (embedBtn && toggle && toggle.parentNode) {
             embedBtn.style.display = 'inline-flex';
             embedBtn.style.marginLeft = 'auto';
@@ -735,7 +736,7 @@ const GENRE_LABELS = {
             toggle.style.marginLeft = '0';
             toggle.parentNode.insertBefore(embedBtn, toggle);
           }
-        }, 50);
+        }, 100);
       }
     } catch(e) { /* ignore — bad JSON in booking_settings */ }
   }
