@@ -207,7 +207,15 @@ window.showBookedEventPopup = function () { /* no-op in embed */ };
       ? (bs.mob_booking_days || {})
       : (bs.booking_days || bs.mob_booking_days || {});
 
-    // Render via the existing public-calendar function
+    // Pick the right window-cap field too — mobile DJs use mob_booking_window,
+    // club DJs use booking_window_months. Default to 12 if neither set.
+    const windowMonths = (data.dj_type === 'mobile')
+      ? (bs.mob_booking_window || 12)
+      : (bs.booking_window_months || bs.mob_booking_window || 12);
+
+    // Render via the existing public-calendar function. We pass the DJ's actual
+    // booking window cap (e.g. 36 months) NOT the embed `months` display setting.
+    // The renderer uses the cap to limit navigation arrows + year dropdown.
     renderPublicCalendar(
       bookingDays,
       data.slug,
@@ -221,7 +229,7 @@ window.showBookedEventPopup = function () { /* no-op in embed */ };
       bs.rate_with_decks,
       bs.rate_no_equip,
       bs.base_rate,
-      months
+      windowMonths
     );
     postHeight();
   } catch (e) {
