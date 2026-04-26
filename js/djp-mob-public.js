@@ -100,16 +100,19 @@ function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
   container.innerHTML = `
     <div id="mob-pub-cal-wrap">
       <div id="mob-pub-cal-single-wrap">
-        <!-- Single header row holds prev/label/next AND the toggle (embed btn injected by dj-profile) -->
+        <!-- Single header row holds prev/dropdowns/next AND the toggle (embed btn injected by dj-profile) -->
         <div id="mob-pub-cal-header" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:nowrap;">
-          <button type="button" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">‹</button>
-          <div id="mob-pub-cal-label" style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);"></div>
-          <button type="button" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">›</button>
+          <button type="button" id="mob-pub-cal-prev" onclick="mobPubCalNav(-1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">‹</button>
+          <select id="mob-pub-cal-month-select" onchange="mobPubCalJumpSplit()" style="flex:2;background:var(--deep);border:1px solid var(--white);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.04em;cursor:pointer;outline:none;"></select>
+          <select id="mob-pub-cal-year-select" onchange="mobPubCalJumpSplit()" style="flex:1;background:var(--deep);border:1px solid var(--white);border-radius:5px;padding:.4rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;outline:none;"></select>
+          <button type="button" id="mob-pub-cal-next" onclick="mobPubCalNav(1)" style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .8rem;cursor:pointer;font-size:.9rem;transition:all .2s;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--white)';this.style.color='var(--white)'">›</button>
           <button type="button" id="mob-pub-cal-view-toggle" onclick="mobPubToggleView()"
             style="background:transparent;border:1px solid var(--white);color:var(--white);border-radius:5px;padding:.4rem .85rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;white-space:nowrap;"
             onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'"
             onmouseout="if(this.textContent!=='← Month View'){this.style.borderColor='var(--white)';this.style.color='var(--white)'}">12 Months</button>
         </div>
+        <!-- Month-name header below the controls -->
+        <div id="mob-pub-cal-label" style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--neon);text-shadow:0 0 18px rgba(0,245,196,.35);margin-bottom:.75rem;"></div>
         <div id="mob-pub-cal-grid"></div>
       </div>
       <div id="mob-pub-cal-rolling-wrap" style="display:none;"></div>
@@ -121,6 +124,77 @@ function renderMobilePublicBooking(djData, bs, isOwner, djSlug) {
     </div>
     <div id="mob-pub-booking-form" style="display:none;margin-top:1.5rem;"></div>`;
 
+  drawMobPubCal();
+  mobPubPopulateDropdowns();
+}
+
+// ── Booking-window helpers (mirrors club calendar) ─────────────
+function mobPubMaxYM() {
+  const win = (mobPubBs && mobPubBs.mob_booking_window) || 24;
+  const t = new Date();
+  const totalMonths = t.getFullYear() * 12 + t.getMonth() + win;
+  return { year: Math.floor(totalMonths / 12), month: totalMonths % 12 };
+}
+function mobPubMinYM() {
+  const t = new Date();
+  return { year: t.getFullYear(), month: t.getMonth() };
+}
+function mobPubInRange(y, m) {
+  const min = mobPubMinYM(), max = mobPubMaxYM();
+  const v = y * 12 + m;
+  return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
+}
+function mobPubShowOutOfRangeMsg() {
+  const wrap = document.getElementById('mob-pub-cal-wrap');
+  if (!wrap) return;
+  let msg = document.getElementById('mob-pub-cal-range-msg');
+  if (!msg) {
+    msg = document.createElement('div');
+    msg.id = 'mob-pub-cal-range-msg';
+    msg.style.cssText = 'margin-bottom:.75rem;padding:.6rem .85rem;background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.4);border-radius:6px;color:#ffb347;font-family:"Space Mono",monospace;font-size:.65rem;letter-spacing:.04em;text-align:center;line-height:1.45;';
+    wrap.insertBefore(msg, wrap.firstChild);
+  }
+  const win = (mobPubBs && mobPubBs.mob_booking_window) || 24;
+  const label = win < 12 ? `${win} Month${win > 1 ? 's' : ''}` : `${win/12} Year${win/12 > 1 ? 's' : ''}`;
+  const who = (mobPubDjData && mobPubDjData.name) || 'This DJ';
+  msg.textContent = `${who} only accepts bookings up to ${label} in advance.`;
+  msg.style.display = 'block';
+  clearTimeout(window._mobPubRangeMsgT);
+  window._mobPubRangeMsgT = setTimeout(() => { msg.style.display = 'none'; }, 4000);
+}
+
+// Populate the month + year dropdowns based on the DJ's booking window
+function mobPubPopulateDropdowns() {
+  const monthSel = document.getElementById('mob-pub-cal-month-select');
+  const yearSel = document.getElementById('mob-pub-cal-year-select');
+  if (!monthSel || !yearSel) return;
+  monthSel.innerHTML = PUB_CAL_MONTHS.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+  const today = new Date();
+  const maxYM = mobPubMaxYM();
+  const curY = today.getFullYear();
+  let opts = '';
+  for (let y = curY; y <= maxYM.year; y++) opts += `<option value="${y}">${y}</option>`;
+  yearSel.innerHTML = opts;
+  monthSel.value = mobPubCalMonth;
+  yearSel.value = mobPubCalYear;
+}
+
+// Handler when user picks from month/year dropdowns
+function mobPubCalJumpSplit() {
+  const m = parseInt(document.getElementById('mob-pub-cal-month-select').value);
+  const y = parseInt(document.getElementById('mob-pub-cal-year-select').value);
+  let targetY = y, targetM = m;
+  if (!mobPubInRange(targetY, targetM)) {
+    mobPubShowOutOfRangeMsg();
+    const min = mobPubMinYM(), max = mobPubMaxYM();
+    const v = targetY * 12 + targetM;
+    const minV = min.year * 12 + min.month;
+    const maxV = max.year * 12 + max.month;
+    const clamped = Math.max(minV, Math.min(maxV, v));
+    targetY = Math.floor(clamped / 12); targetM = clamped % 12;
+  }
+  mobPubCalMonth = targetM;
+  mobPubCalYear = targetY;
   drawMobPubCal();
 }
 
@@ -134,6 +208,30 @@ function drawMobPubCal() {
   const maxDate = new Date(today.getFullYear(), today.getMonth() + windowMonths, today.getDate());
   const label = document.getElementById('mob-pub-cal-label');
   if (label) label.textContent = PUB_CAL_MONTHS[m] + ' ' + y;
+  // Sync dropdowns to current month/year
+  const mSel = document.getElementById('mob-pub-cal-month-select');
+  const ySel = document.getElementById('mob-pub-cal-year-select');
+  if (mSel) mSel.value = m;
+  if (ySel) ySel.value = y;
+  // Dim/disable prev/next at bounds
+  const prevBtn = document.getElementById('mob-pub-cal-prev');
+  const nextBtn = document.getElementById('mob-pub-cal-next');
+  if (prevBtn || nextBtn) {
+    const min = mobPubMinYM(), max = mobPubMaxYM();
+    const cur = y * 12 + m;
+    const atMin = cur <= (min.year * 12 + min.month);
+    const atMax = cur >= (max.year * 12 + max.month);
+    if (prevBtn) {
+      prevBtn.disabled = atMin;
+      prevBtn.style.opacity = atMin ? '0.3' : '1';
+      prevBtn.style.cursor = atMin ? 'not-allowed' : 'pointer';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = atMax;
+      nextBtn.style.opacity = atMax ? '0.3' : '1';
+      nextBtn.style.cursor = atMax ? 'not-allowed' : 'pointer';
+    }
+  }
 
   const grid = document.getElementById('mob-pub-cal-grid');
   if (!grid) return;
@@ -206,9 +304,18 @@ function drawMobPubCal() {
 }
 
 function mobPubCalNav(dir) {
-  mobPubCalMonth += dir;
-  if (mobPubCalMonth > 11) { mobPubCalMonth = 0; mobPubCalYear++; }
-  if (mobPubCalMonth < 0) { mobPubCalMonth = 11; mobPubCalYear--; }
+  let newM = mobPubCalMonth + dir;
+  let newY = mobPubCalYear;
+  if (newM > 11) { newM = 0; newY++; }
+  if (newM < 0) { newM = 11; newY--; }
+  // Don't navigate past the booking window or before the current month.
+  // Show the friendly toast only when going forward past the window.
+  if (!mobPubInRange(newY, newM)) {
+    if (dir > 0) mobPubShowOutOfRangeMsg();
+    return;
+  }
+  mobPubCalMonth = newM;
+  mobPubCalYear = newY;
   drawMobPubCal();
 }
 
