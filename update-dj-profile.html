@@ -728,6 +728,62 @@
           </div>
 
           <div id="booking-alert" style="margin-top:.75rem;"></div>
+
+          <!-- Embed on Your Site -->
+          <div id="embed-code-section" style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.85rem;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.08em;color:var(--white);line-height:1;">Embed on Your Site</div>
+              <div style="padding:.18rem .5rem;background:var(--neon-dim);border:1px solid var(--neon);border-radius:4px;color:var(--neon);font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;">New</div>
+            </div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.5;">
+              Show your live availability calendar on your personal website, EPK, or Linktree. When a host clicks a date, they'll be sent here to book.
+            </div>
+
+            <!-- Customization controls -->
+            <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.3rem;">Months</div>
+                <select id="embed-months" onchange="updateEmbedCode()" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;">
+                  <option value="1">1 Month</option>
+                  <option value="3">3 Months</option>
+                  <option value="12" selected>12 Months</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.3rem;">Theme</div>
+                <select id="embed-theme" onchange="updateEmbedCode()" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;">
+                  <option value="dark" selected>Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.3rem;">Height</div>
+                <select id="embed-height" onchange="updateEmbedCode()" style="background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;">
+                  <option value="600" selected>600 px</option>
+                  <option value="500">500 px</option>
+                  <option value="700">700 px</option>
+                  <option value="800">800 px</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Code snippet -->
+            <div style="position:relative;">
+              <textarea id="embed-code-output" readonly rows="6" style="width:100%;background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:.85rem 1rem;padding-right:6.5rem;color:var(--white);font-family:'Space Mono',monospace;font-size:.7rem;line-height:1.55;resize:vertical;outline:none;"></textarea>
+              <button type="button" id="embed-copy-btn" onclick="copyEmbedCode()" style="position:absolute;top:.55rem;right:.55rem;padding:.45rem .85rem;background:var(--neon);border:none;color:var(--black);font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:4px;cursor:pointer;">Copy</button>
+            </div>
+            <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;color:var(--muted);margin-top:.5rem;line-height:1.5;">
+              Paste this snippet into your website's HTML. The auto-resize script makes it fit naturally on mobile.
+            </div>
+
+            <!-- Live preview -->
+            <div style="margin-top:1.25rem;">
+              <div style="font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);margin-bottom:.5rem;">Live Preview</div>
+              <iframe id="embed-preview-iframe" src="" style="width:100%;height:600px;border:1px solid var(--border);border-radius:6px;background:var(--deep);"></iframe>
+            </div>
+          </div>
+          <!-- /Embed on Your Site -->
+
         </div>
       </div>
 
@@ -770,6 +826,7 @@
 <script src="/js/udjp-booking-club.js"></script>
 <script src="/js/udjp-booking-mobile.js"></script>
 <script src="/js/udjp-misc.js"></script>
+<script src="/js/udjp-embed.js"></script>
 <div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;padding:1.5rem;">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:360px;">
     <div id="confirm-message" style="font-size:.95rem;color:var(--white);margin-bottom:1.5rem;line-height:1.5;"></div>

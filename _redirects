@@ -1,3 +1,4 @@
 /privacy.html  /privacy.html  200
 /privacy  /privacy.html  200
+/embed/:slug/calendar  /embed-calendar.html?slug=:slug  200
 /:slug  /dj-profile.html?dj=:slug  200
