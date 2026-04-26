@@ -213,6 +213,10 @@ window.showBookedEventPopup = function () { /* no-op in embed */ };
       ? (bs.mob_booking_window || 12)
       : (bs.booking_window_months || bs.mob_booking_window || 12);
 
+    // Make the DJ's display name available to the calendar so the
+    // out-of-range nav message can name them ("Joey only accepts bookings up to 3 Years in advance.")
+    window.pubCalDjName = data.name || '';
+
     // Render via the existing public-calendar function. We pass the DJ's actual
     // booking window cap (e.g. 36 months) NOT the embed `months` display setting.
     // The renderer uses the cap to limit navigation arrows + year dropdown.
@@ -229,7 +233,8 @@ window.showBookedEventPopup = function () { /* no-op in embed */ };
       bs.rate_with_decks,
       bs.rate_no_equip,
       bs.base_rate,
-      windowMonths
+      windowMonths,
+      data.name || ''
     );
     postHeight();
   } catch (e) {
