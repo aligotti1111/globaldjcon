@@ -8,6 +8,25 @@ let pubCalYear, pubCalMonth, pubCalBookingDays = {}, pubCalDjSlug = '', pubCalWi
 // Tracks the date currently selected in the inline booking form so the calendar can highlight it
 let ibPubSelectedDate = null;
 
+// Returns {year, month} of the latest month a visitor can navigate to,
+// based on today + the DJ's booking window setting.
+function pubCalMaxYM() {
+  const t = new Date();
+  const totalMonths = t.getFullYear() * 12 + t.getMonth() + (pubCalWindowMonths || 12);
+  return { year: Math.floor(totalMonths / 12), month: totalMonths % 12 };
+}
+// Returns {year, month} of the earliest month — the current month (no past nav)
+function pubCalMinYM() {
+  const t = new Date();
+  return { year: t.getFullYear(), month: t.getMonth() };
+}
+// True if (y, m) is within [min, max] inclusive
+function pubCalInRange(y, m) {
+  const min = pubCalMinYM(), max = pubCalMaxYM();
+  const v = y * 12 + m;
+  return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
+}
+
 function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, equipFull, equipDecks, equipNone, globalRateType, globalRateSystem, globalRateDecks, globalRateNoEquip, globalBaseRate, bookingWindowMonths) {
   pubCalBookingDays = bookingDays || {};
   pubCalDjSlug = djSlug || '';
@@ -30,7 +49,10 @@ function renderPublicCalendar(bookingDays, djSlug, isOwner, globalAllowOffers, e
     monthOpts += `<option value="${i}">${name}</option>`;
   });
   const curY = today.getFullYear();
-  for (let y = curY; y <= curY + 5; y++) {
+  // Only allow years up through the booking-window cap (e.g. window=36 months
+  // → can navigate up to ~3 years out; 12 months → 1 year)
+  const maxYM = pubCalMaxYM();
+  for (let y = curY; y <= maxYM.year; y++) {
     yearOpts += `<option value="${y}">${y}</option>`;
   }
 
@@ -80,6 +102,26 @@ function drawPubCalMonth() {
   const ySel = document.getElementById('pub-cal-year-select');
   if (mSel) mSel.value = m;
   if (ySel) ySel.value = y;
+
+  // Dim/disable prev/next buttons when at the bounds of the booking window
+  const prevBtn = document.getElementById('pub-cal-prev');
+  const nextBtn = document.getElementById('pub-cal-next');
+  if (prevBtn || nextBtn) {
+    const min = pubCalMinYM(), max = pubCalMaxYM();
+    const cur = y * 12 + m;
+    const atMin = cur <= (min.year * 12 + min.month);
+    const atMax = cur >= (max.year * 12 + max.month);
+    if (prevBtn) {
+      prevBtn.disabled = atMin;
+      prevBtn.style.opacity = atMin ? '0.3' : '1';
+      prevBtn.style.cursor = atMin ? 'not-allowed' : 'pointer';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = atMax;
+      nextBtn.style.opacity = atMax ? '0.3' : '1';
+      nextBtn.style.cursor = atMax ? 'not-allowed' : 'pointer';
+    }
+  }
 
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const firstDay = new Date(y, m, 1).getDay();
@@ -267,14 +309,19 @@ function formatTime12(t) {
 }
 
 function pubCalNav(dir) {
-  pubCalMonth += dir;
-  if (pubCalMonth > 11) { pubCalMonth = 0; pubCalYear++; }
-  if (pubCalMonth < 0) { pubCalMonth = 11; pubCalYear--; }
+  let newM = pubCalMonth + dir;
+  let newY = pubCalYear;
+  if (newM > 11) { newM = 0; newY++; }
+  if (newM < 0) { newM = 11; newY--; }
+  // Don't navigate past the booking window or before the current month
+  if (!pubCalInRange(newY, newM)) return;
+  pubCalMonth = newM; pubCalYear = newY;
   drawPubCalMonth();
 }
 
 function pubCalJump(val) {
   const [y, m] = val.split('-').map(Number);
+  if (!pubCalInRange(y, m)) return;
   pubCalYear = y; pubCalMonth = m;
   drawPubCalMonth();
 }
@@ -282,7 +329,23 @@ function pubCalJump(val) {
 function pubCalJumpSplit() {
   const m = parseInt(document.getElementById('pub-cal-month-select').value);
   const y = parseInt(document.getElementById('pub-cal-year-select').value);
-  pubCalMonth = m; pubCalYear = y;
+  // If the user picked an out-of-range combo (e.g. window cuts off mid-year),
+  // snap to the nearest in-range month.
+  let targetY = y, targetM = m;
+  if (!pubCalInRange(targetY, targetM)) {
+    const min = pubCalMinYM(), max = pubCalMaxYM();
+    const v = targetY * 12 + targetM;
+    const minV = min.year * 12 + min.month;
+    const maxV = max.year * 12 + max.month;
+    const clamped = Math.max(minV, Math.min(maxV, v));
+    targetY = Math.floor(clamped / 12); targetM = clamped % 12;
+    // Reflect the clamped value back into the dropdowns so the UI matches
+    const ms = document.getElementById('pub-cal-month-select');
+    const ys = document.getElementById('pub-cal-year-select');
+    if (ms) ms.value = targetM;
+    if (ys) ys.value = targetY;
+  }
+  pubCalMonth = targetM; pubCalYear = targetY;
   drawPubCalMonth();
 }
 
