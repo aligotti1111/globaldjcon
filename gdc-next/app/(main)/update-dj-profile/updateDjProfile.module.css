@@ -166,8 +166,8 @@
 .checkboxLabel {
   display: flex;
   align-items: center;
-  gap: .8rem;
-  padding: .35rem .6rem;
+  gap: .6rem;
+  padding: .45rem .7rem;
   background: transparent;
   border: 1px solid rgba(30, 30, 48, .5);
   border-radius: 6px;
@@ -175,15 +175,23 @@
   font-size: .8rem;
   color: var(--white);
   margin: 0;
+  /* Prevent the text label from collapsing the input. */
+  min-width: 0;
 }
 .checkboxLabel:hover {
   border-color: var(--neon);
 }
-.checkboxLabel input[type='checkbox'] {
+/* Direct class on the input — avoids any CSS Modules attribute-selector
+   issues. The previous `.checkboxLabel input[type='checkbox']` rule was
+   silently not winning the cascade for reasons that weren't obvious. */
+.checkboxInput {
+  appearance: auto;
+  -webkit-appearance: checkbox;
   accent-color: var(--neon);
-  flex-shrink: 0;
+  flex: 0 0 15px;
   width: 15px;
   height: 15px;
+  margin: 0;
   cursor: pointer;
 }
 

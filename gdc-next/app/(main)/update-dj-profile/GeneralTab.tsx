@@ -155,6 +155,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                 <label key={t.val} className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
+                    className={styles.checkboxInput}
                     checked={state.mobileEvents.includes(t.val)}
                     onChange={(e) => {
                       const next = e.target.checked
@@ -181,6 +182,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                 <label key={g.val} className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
+                    className={styles.checkboxInput}
                     checked={state.clubGenres.includes(g.val)}
                     onChange={(e) => {
                       const next = e.target.checked
