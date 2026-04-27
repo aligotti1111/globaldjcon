@@ -1,0 +1,10 @@
+# Netlify configuration for the Next.js app inside this folder.
+# This tells Netlify to use the official Next.js runtime plugin,
+# which handles SSR, App Router, API routes, and middleware.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
