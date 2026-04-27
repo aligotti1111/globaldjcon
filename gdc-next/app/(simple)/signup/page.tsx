@@ -3,27 +3,25 @@
 // Signup page.
 // Mirrors vanilla signup.html flow:
 //   1. Account type selector (DJ / Host / Venue)
-//   2. Type-specific form
-//   3. Success screen ("Check your email") with resend link
-//
-// Each form submits via Supabase signUp, then upserts the public.users row
-// to ensure all fields land correctly (the auth trigger in Supabase doesn't
-// always carry every column).
-//
-// Slug auto-suggestions and ZIP-to-city lookup are deferred to a follow-up
-// session — for now the user types their preferred slug, and city/state
-// stay empty until populated later from their profile page.
+//   2. Type-specific form with:
+//      - Real-time slug availability check + alternative suggestions (DJ + Venue)
+//      - ZIP-code → city/state autofill via Nominatim (DJ + Venue)
+//   3. Success screen ("Check your email") with token-based verification email
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   COUNTRIES,
   TRAVEL_DISTANCES,
+  generateDjAlternatives,
+  generateVenueAlternatives,
   makeSlug,
   type AccountType,
   type DjType,
 } from './helpers';
+import { SlugInput, type SlugStatus } from './SlugInput';
+import { ZipLookup } from './ZipLookup';
 import styles from './signup.module.css';
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
@@ -32,6 +30,7 @@ interface SuccessInfo {
   email: string;
   role: AccountType;
   slug: string | null;
+  userId: string | null;
 }
 
 export default function SignupPage() {
@@ -167,7 +166,6 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
   );
 }
 
-// Reusable Back button used by all 3 forms
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className={styles.formBack} onClick={onClick}>
@@ -177,6 +175,31 @@ function BackButton({ onClick }: { onClick: () => void }) {
       Back
     </button>
   );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Helper: trigger token-based verification email after a successful signUp.
+// Calls our /api/signup-send-verification route which generates a token,
+// stores it in email_verification_tokens, and emails the user a link.
+// ──────────────────────────────────────────────────────────────────────────
+async function triggerSignupVerification(
+  userId: string,
+  email: string,
+  role: AccountType,
+  slug: string | null
+) {
+  try {
+    const res = await fetch('/api/signup-send-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, email, role, slug }),
+    });
+    if (!res.ok) {
+      console.warn('[signup] verification email request failed:', res.status);
+    }
+  } catch (e) {
+    console.warn('[signup] verification email exception:', e);
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -192,84 +215,36 @@ function DjForm({ onBack, onSuccess }: {
   const [password, setPassword] = useState('');
   const [djType, setDjType] = useState<DjType | null>(null);
   const [name, setName] = useState('');
-  const [slugEdit, setSlugEdit] = useState('');
+  // The slug shown in the URL input. Auto-derived from `name` until the user
+  // either edits it directly or picks an alternative.
+  const [slug, setSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle');
+
   const [country, setCountry] = useState('United States');
   const [zip, setZip] = useState('');
+  const [city, setCity] = useState('');
+  const [stateRegion, setStateRegion] = useState('');
   const [travel, setTravel] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // City and state are derived from the ZIP code via Nominatim lookup
-  // (matches vanilla sgn-zip.js). The user doesn't enter them directly —
-  // they auto-fill as the user types a valid ZIP, and a small status line
-  // below the ZIP input shows what was found.
-  const [city, setCity] = useState('');
-  const [stateRegion, setStateRegion] = useState('');
-  const [zipStatus, setZipStatus] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  // Auto-derive slug from name unless the user typed a custom one.
-  const effectiveSlug = slugEdit ? makeSlug(slugEdit) : makeSlug(name);
-
-  // ── ZIP lookup ────────────────────────────────────────────────────────
-  // Debounced 600ms after the user stops typing, looks up the ZIP via
-  // Nominatim. Country code from the COUNTRIES list narrows the search.
-  // Mirrors vanilla lookupSignupZip() behavior including NYC borough
-  // detection. If the user changes country, we re-lookup the same ZIP.
-  useEffect(() => {
-    if (!zip || zip.trim().length < 4) {
-      setCity('');
-      setStateRegion('');
-      setZipStatus(null);
-      return;
+  // Sync slug from name unless the user has manually edited it
+  function handleNameChange(newName: string) {
+    setName(newName);
+    if (!slugManuallyEdited) {
+      setSlug(makeSlug(newName));
     }
-    const timer = setTimeout(async () => {
-      setZipStatus({ msg: 'Looking up...', ok: true });
-      try {
-        const countryEntry = COUNTRIES.find(c => c.name === country);
-        const countryCode = countryEntry?.code || '';
-        const url = countryCode
-          ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycodes=${countryCode}&format=json&limit=1&addressdetails=1`
-          : `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&format=json&limit=1&addressdetails=1`;
-        const res = await fetch(url, {
-          headers: { 'Accept-Language': 'en' },
-        });
-        const data = await res.json();
-        if (data && data[0]) {
-          const addr = data[0].address || {};
-          const displayName = data[0].display_name || '';
-          const nycBoroughs = ['Staten Island', 'Brooklyn', 'Queens', 'The Bronx', 'Manhattan'];
-          const boroughMatch = nycBoroughs.find(b => displayName.includes(b));
-          const foundCity = boroughMatch
-            || addr.city_district
-            || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null)
-            || addr.town
-            || addr.city
-            || addr.municipality
-            || addr.village
-            || addr.hamlet
-            || '';
-          const foundState = addr.state || '';
-          setCity(foundCity);
-          setStateRegion(foundState);
-          const summary = [foundCity, foundState, country].filter(Boolean).join(', ');
-          setZipStatus({ msg: summary, ok: true });
-        } else {
-          setCity('');
-          setStateRegion('');
-          setZipStatus({ msg: 'ZIP not found', ok: false });
-        }
-      } catch {
-        setZipStatus(null);
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [zip, country]);
+  }
+  function handleSlugChange(newSlug: string) {
+    setSlugManuallyEdited(true);
+    setSlug(newSlug);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // Validation matches vanilla submit logic
     if (!djType) {
       setError('Please select your DJ type');
       return;
@@ -290,23 +265,21 @@ function DjForm({ onBack, onSuccess }: {
       setError('Please enter your ZIP / postal code.');
       return;
     }
-    if (!effectiveSlug) {
+    if (!slug) {
       setError('Please enter a name so we can create your profile URL.');
+      return;
+    }
+    if (slugStatus === 'taken') {
+      setError('That URL is taken. Please pick an available alternative.');
+      return;
+    }
+    if (slugStatus === 'checking') {
+      setError('Still checking URL availability — please wait a moment.');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Pre-check slug availability (best effort — race conditions handled below)
-      const { data: existing } = await supabase
-        .from('users')
-        .select('id')
-        .eq('slug', effectiveSlug)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        throw new Error('That URL is already taken. Please pick a different name or URL.');
-      }
-
       const emailLower = email.toLowerCase().trim();
       const travelVal = travel === 'worldwide' ? 'worldwide' : (parseInt(travel, 10) || null);
 
@@ -318,7 +291,7 @@ function DjForm({ onBack, onSuccess }: {
           data: {
             role: 'dj',
             name,
-            slug: effectiveSlug,
+            slug,
             dj_type: djType,
             country,
             city,
@@ -338,20 +311,16 @@ function DjForm({ onBack, onSuccess }: {
         }
         throw signUpError;
       }
-      // Supabase enumeration protection: empty identities array means existing email
       if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
         throw new Error('An account with this email already exists. Please log in instead.');
       }
 
-      // Upsert public.users row to make sure all DJ fields land
-      // (the auth trigger doesn't always carry every column over).
-      // city/state were populated by the Nominatim ZIP lookup above.
       if (signUpData?.user?.id) {
         await supabase.from('users').upsert({
           id: signUpData.user.id,
           role: 'dj',
           name,
-          slug: effectiveSlug,
+          slug,
           dj_type: djType,
           country,
           city,
@@ -360,9 +329,13 @@ function DjForm({ onBack, onSuccess }: {
           zip,
           email_verified: false,
         }, { onConflict: 'id' });
+
+        // Fire-and-forget the verification email — we don't block the
+        // success screen on this so the user gets immediate feedback.
+        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug);
       }
 
-      onSuccess({ email: emailLower, role: 'dj', slug: effectiveSlug });
+      onSuccess({ email: emailLower, role: 'dj', slug, userId: signUpData?.user?.id ?? null });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
       setError(msg);
@@ -447,23 +420,17 @@ function DjForm({ onBack, onSuccess }: {
           type="text"
           placeholder="DJ Nova or Premier Events LLC"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           required
         />
-        {name && (
-          <div className={styles.urlPreview}>
-            <span className={styles.urlPreviewLabel}>Your Profile URL</span>
-            <div className={styles.urlPreviewRow}>
-              <span className={styles.urlPreviewPrefix}>globaldjconnect.com/</span>
-              <input
-                type="text"
-                className={styles.urlPreviewInput}
-                placeholder="your-url"
-                value={slugEdit || makeSlug(name)}
-                onChange={(e) => setSlugEdit(e.target.value)}
-              />
-            </div>
-          </div>
+        {slug && (
+          <SlugInput
+            value={slug}
+            onChange={handleSlugChange}
+            onStatusChange={setSlugStatus}
+            generateAlternatives={generateDjAlternatives}
+            placeholder="your-url"
+          />
         )}
       </div>
 
@@ -481,28 +448,14 @@ function DjForm({ onBack, onSuccess }: {
 
       <div className={styles.formGroup}>
         <label htmlFor="dj-zip">Zip / Postal Code</label>
-        <input
-          id="dj-zip"
-          type="text"
-          placeholder="e.g. 10001"
-          value={zip}
-          onChange={(e) => setZip(e.target.value)}
+        <ZipLookup
+          inputId="dj-zip"
+          zip={zip}
+          country={country}
+          onZipChange={setZip}
+          onLocationResolved={(c, s) => { setCity(c); setStateRegion(s); }}
           required
         />
-        {zipStatus && (
-          <div
-            style={{
-              marginTop: '0.45rem',
-              fontSize: '0.78rem',
-              fontFamily: "'Space Mono', monospace",
-              letterSpacing: '0.04em',
-              color: zipStatus.ok ? '#3ddc84' : 'var(--muted)',
-              minHeight: '1.1rem',
-            }}
-          >
-            {zipStatus.msg}
-          </div>
-        )}
       </div>
 
       <div className={styles.formGroup}>
@@ -583,9 +536,11 @@ function HostForm({ onBack, onSuccess }: {
           country,
           email_verified: false,
         }, { onConflict: 'id' });
+
+        triggerSignupVerification(signUpData.user.id, emailLower, 'host', null);
       }
 
-      onSuccess({ email: emailLower, role: 'host', slug: null });
+      onSuccess({ email: emailLower, role: 'host', slug: null, userId: signUpData?.user?.id ?? null });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
       setError(msg);
@@ -671,15 +626,29 @@ function VenueForm({ onBack, onSuccess }: {
 }) {
   const supabase = createClient();
   const [venueName, setVenueName] = useState('');
-  const [slugEdit, setSlugEdit] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United States');
   const [zip, setZip] = useState('');
+  const [city, setCity] = useState('');
+  const [stateRegion, setStateRegion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const effectiveSlug = slugEdit ? makeSlug(slugEdit) : makeSlug(venueName);
+  function handleVenueNameChange(newName: string) {
+    setVenueName(newName);
+    if (!slugManuallyEdited) {
+      setSlug(makeSlug(newName));
+    }
+  }
+  function handleSlugChange(newSlug: string) {
+    setSlugManuallyEdited(true);
+    setSlug(newSlug);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -693,30 +662,21 @@ function VenueForm({ onBack, onSuccess }: {
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (!effectiveSlug) {
+    if (!slug) {
       setError('Please enter a venue name so we can create your profile URL.');
+      return;
+    }
+    if (slugStatus === 'taken') {
+      setError('That URL is taken. Please pick an available alternative.');
+      return;
+    }
+    if (slugStatus === 'checking') {
+      setError('Still checking URL availability — please wait a moment.');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Find an available slug — append -2, -3, etc. if taken
-      let venueSlug = effectiveSlug;
-      let suffix = 2;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data: ex } = await supabase
-          .from('users')
-          .select('id')
-          .eq('slug', venueSlug)
-          .limit(1);
-        if (!ex || ex.length === 0) break;
-        venueSlug = `${effectiveSlug}-${suffix++}`;
-        if (suffix > 100) {
-          throw new Error('Could not generate a unique URL. Please try a different venue name.');
-        }
-      }
-
       const emailLower = email.toLowerCase().trim();
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: emailLower,
@@ -727,8 +687,10 @@ function VenueForm({ onBack, onSuccess }: {
             role: 'venue',
             name: venueName,
             venue_name: venueName,
-            slug: venueSlug,
+            slug,
             country,
+            city,
+            state: stateRegion,
             zip,
           },
         },
@@ -752,14 +714,18 @@ function VenueForm({ onBack, onSuccess }: {
           role: 'venue',
           name: venueName,
           venue_name: venueName,
-          slug: venueSlug,
+          slug,
           country,
+          city,
+          state: stateRegion,
           zip,
           email_verified: false,
         }, { onConflict: 'id' });
+
+        triggerSignupVerification(signUpData.user.id, emailLower, 'venue', slug);
       }
 
-      onSuccess({ email: emailLower, role: 'venue', slug: venueSlug });
+      onSuccess({ email: emailLower, role: 'venue', slug, userId: signUpData?.user?.id ?? null });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
       setError(msg);
@@ -786,23 +752,17 @@ function VenueForm({ onBack, onSuccess }: {
           type="text"
           placeholder="The Grand Ballroom"
           value={venueName}
-          onChange={(e) => setVenueName(e.target.value)}
+          onChange={(e) => handleVenueNameChange(e.target.value)}
           required
         />
-        {venueName && (
-          <div className={styles.urlPreview}>
-            <span className={styles.urlPreviewLabel}>Your Profile URL</span>
-            <div className={styles.urlPreviewRow}>
-              <span className={styles.urlPreviewPrefix}>globaldjconnect.com/</span>
-              <input
-                type="text"
-                className={styles.urlPreviewInput}
-                placeholder="your-venue-url"
-                value={slugEdit || makeSlug(venueName)}
-                onChange={(e) => setSlugEdit(e.target.value)}
-              />
-            </div>
-          </div>
+        {slug && (
+          <SlugInput
+            value={slug}
+            onChange={handleSlugChange}
+            onStatusChange={setSlugStatus}
+            generateAlternatives={generateVenueAlternatives}
+            placeholder="your-venue-url"
+          />
         )}
       </div>
       <div className={styles.formGroup}>
@@ -843,12 +803,12 @@ function VenueForm({ onBack, onSuccess }: {
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="venue-zip">Zip Code</label>
-        <input
-          id="venue-zip"
-          type="text"
-          placeholder="60601"
-          value={zip}
-          onChange={(e) => setZip(e.target.value)}
+        <ZipLookup
+          inputId="venue-zip"
+          zip={zip}
+          country={country}
+          onZipChange={setZip}
+          onLocationResolved={(c, s) => { setCity(c); setStateRegion(s); }}
           required
         />
       </div>
@@ -865,21 +825,29 @@ function VenueForm({ onBack, onSuccess }: {
 // ──────────────────────────────────────────────────────────────────────────
 
 function SuccessScreen({ info }: { info: SuccessInfo }) {
-  const supabase = createClient();
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [resendMsg, setResendMsg] = useState('');
 
   async function handleResend() {
     setResendStatus('sending');
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: info.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/account-settings?emailverified=1`,
-        },
+      // Hit our own endpoint. We pass user_id when we have it (always do
+      // here since the success screen comes right after a successful signUp);
+      // the API route also supports lookup-by-email as a fallback.
+      const res = await fetch('/api/signup-send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: info.userId,
+          email: info.email,
+          role: info.role,
+          slug: info.slug,
+        }),
       });
-      if (error) throw error;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to resend');
+      }
       setResendStatus('sent');
       setResendMsg('✓ Sent — check your inbox');
       setTimeout(() => { setResendStatus('idle'); setResendMsg(''); }, 5000);
@@ -902,7 +870,7 @@ function SuccessScreen({ info }: { info: SuccessInfo }) {
       <p className={styles.successSubLine}>We sent a confirmation link to</p>
       <p className={styles.successEmail}>{info.email}</p>
       <p className={styles.successHint}>
-        Click the link in that email to activate your account. The link expires in 1 hour.
+        Click the link in that email to activate your account. The link expires in 24 hours.
       </p>
       <p className={styles.resendLine}>
         Didn&apos;t get it? Check your spam folder, or{' '}

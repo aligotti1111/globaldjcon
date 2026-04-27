@@ -56,3 +56,34 @@ export function makeSlug(text: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 }
+
+// Generate alternative slugs when the user's first choice is taken.
+// Mirrors vanilla generateAlternatives() in sgn-slug-dj.js.
+export function generateDjAlternatives(slug: string): string[] {
+  if (!slug) return [];
+  const parts = slug.split('-');
+  const candidates = [
+    parts.join('_'),
+    parts.join(''),
+    parts.join('.'),
+    slug.startsWith('dj-') ? slug : 'dj-' + slug,
+    slug + '-official',
+    slug + '-music',
+    slug + '-mixes',
+  ];
+  return [...new Set(candidates)].filter(s => s !== slug && s.length > 0).slice(0, 6);
+}
+
+// Mirrors vanilla generateVenueAlternatives() in sgn-slug-venue.js.
+export function generateVenueAlternatives(slug: string): string[] {
+  if (!slug) return [];
+  const candidates = [
+    slug + '-venue',
+    slug + '-events',
+    slug + '-official',
+    slug + '-nyc',
+    slug + '-' + new Date().getFullYear(),
+    slug + '-club',
+  ];
+  return [...new Set(candidates)].filter(s => s !== slug && s.length > 0).slice(0, 6);
+}
