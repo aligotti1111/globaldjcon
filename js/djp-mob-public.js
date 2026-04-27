@@ -1308,19 +1308,18 @@ async function mobPubSubmit(dateKey) {
       });
     } catch(e) { console.warn('DJ email failed:', e); }
 
-    // Confirmation email to booker
+    // Confirmation email to booker — server resolves email from auth.users by requesterUserId
     try {
-      if (cu.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'mob_booking_confirm',
-            requesterName: cu.name, requesterEmail: cu.email,
-            djName: djData.name, eventDate: dateKey,
-            packageTitle: pkg.title, totalPrice, depositAmount, depositPct, isQuote,
-          })
-        });
-      }
+      await fetch('/.netlify/functions/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'mob_booking_confirm',
+          requesterUserId: cu.id,
+          requesterName: cu.name,
+          djName: djData.name, eventDate: dateKey,
+          packageTitle: pkg.title, totalPrice, depositAmount, depositPct, isQuote,
+        })
+      });
     } catch(e) { console.warn('Booker confirm email failed:', e); }
 
     const djName = mobPubDjData?.name || 'The DJ';
