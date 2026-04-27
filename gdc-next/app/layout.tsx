@@ -38,7 +38,7 @@ export default function RootLayout({
           <AuthProvider>
             <Header />
             <MobileMenu />
-            <main>{children}</main>
+            {children}
             <Footer />
           </AuthProvider>
         </div>
