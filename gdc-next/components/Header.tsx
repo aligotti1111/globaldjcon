@@ -2,17 +2,35 @@
 
 // Header — matches the vanilla site's #view-public header structure exactly,
 // so the existing CSS in index.css styles it correctly.
+//
+// Logged-in nav matches vanilla ui-chrome.js logic:
+//   DJ:      View My Profile + Update Profile + Bookings + Inbox + Log Out
+//   Others:  Bookings + Inbox + Settings (gear) + Log Out
+//   Admin:   Admin button (in addition to above based on role)
 
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
 
   const openMenu = () => {
     const menu = document.getElementById('mobile-menu');
     if (menu) menu.style.display = 'flex';
   };
+
+  // Sign out and do a FULL page reload so server components re-render
+  // with the new (signed-out) auth state. Without the full reload, the
+  // homepage and other server-rendered pages would keep stale data.
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  const isDj = user?.role === 'dj';
 
   return (
     <header>
@@ -36,7 +54,8 @@ export default function Header() {
         <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center' }}>
           {loading ? null : user ? (
             <>
-              {user.role === 'dj' && user.slug && (
+              {/* DJ-only: View My Profile + Update Profile (NO settings gear) */}
+              {isDj && user.slug && (
                 <Link
                   href={`/${user.slug}`}
                   className="btn btn-outline"
@@ -49,7 +68,7 @@ export default function Header() {
                   <span className="btn-text">View My Profile</span>
                 </Link>
               )}
-              {user.role === 'dj' && (
+              {isDj && (
                 <Link
                   href="/update-dj-profile"
                   className="btn btn-primary"
@@ -61,6 +80,8 @@ export default function Header() {
                   <span className="btn-text">Update Profile</span>
                 </Link>
               )}
+
+              {/* Shared by all logged-in users: Bookings + Inbox icons */}
               <Link href="/booking-requests" className="inbox-nav-btn" title="Booking Requests" style={{ textDecoration: 'none' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
@@ -73,12 +94,17 @@ export default function Header() {
                   <polyline points="22,6 12,13 2,6" />
                 </svg>
               </Link>
-              <Link href="/account-settings" className="inbox-nav-btn" title="Account Settings" style={{ textDecoration: 'none' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-                </svg>
-              </Link>
+
+              {/* Non-DJ users get the settings gear; DJs already have Update Profile above */}
+              {!isDj && (
+                <Link href="/account-settings" className="inbox-nav-btn" title="Account Settings" style={{ textDecoration: 'none' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                  </svg>
+                </Link>
+              )}
+
               {user.role === 'admin' && (
                 <Link
                   href="/admin"
@@ -88,7 +114,10 @@ export default function Header() {
                   <span className="btn-text">Admin</span>
                 </Link>
               )}
-              <button onClick={signOut} className="btn btn-outline">
+
+              {/* Log Out — full page reload after sign-out so server-rendered
+                  pages see the new auth state (no stale data) */}
+              <button onClick={handleSignOut} className="btn btn-outline" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
                 </svg>
