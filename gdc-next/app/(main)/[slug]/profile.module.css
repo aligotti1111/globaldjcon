@@ -1,0 +1,681 @@
+/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
+   CSS Module → class names auto-hashed, descendant element selectors preserved.
+
+   Excluded from port (handled elsewhere or not relevant for Session 1):
+   - body / body::before reset (already in app/styles/index.css)
+   - header / nav-* (handled by our Header component)
+   - mobile-menu (handled by our MobileMenu component)
+   - hamburger-btn (handled by Header component)
+   - #day-editor-modal (owner-only feature, future session)
+   - #ib-root (booking form, future session)
+   - .lightbox (added simply — JS interaction in Session 3)
+   - inline-edit-popover, avatar-edit-overlay, tab-add-cta (owner-mode, future session)
+   - gate-modal, contact-modal, ib-msg-modal (modals, future session)
+   - .cal-* (calendar, Session 4)
+   - .mpf-* (mobile package form, future session)
+*/
+
+/* ── LOADING / ERROR — when slug not found ───────────────── */
+.statusWrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+.statusBox {
+  text-align: center;
+}
+.statusBox h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.5rem;
+  color: var(--muted);
+  margin-bottom: .5rem;
+}
+.statusBox p {
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* ── CLAIM BAR ─────────────────────────────────────────── */
+.claimBar {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 179, 71, .06);
+  border-bottom: 1px solid rgba(255, 179, 71, .2);
+  padding: .65rem 4rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.claimBar svg {
+  color: #ffb347;
+  flex-shrink: 0;
+}
+.claimBar p {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .04em;
+  color: rgba(255, 179, 71, .85);
+  margin: 0;
+}
+.claimBar a {
+  color: #ffb347;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.claimBar a:hover {
+  opacity: .75;
+}
+@media (max-width: 900px) {
+  .claimBar {
+    padding: .65rem 1.5rem;
+  }
+}
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  z-index: 50;
+  padding: 3rem 4rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 2.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.heroAvatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3.8rem;
+  letter-spacing: .04em;
+  flex-shrink: 0;
+  border: 2px solid;
+  overflow: hidden;
+  position: relative;
+}
+.heroAvatarMobile {
+  background: var(--neon-dim);
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .3);
+}
+.heroAvatarClub {
+  background: var(--pink-dim);
+  color: var(--pink);
+  border-color: rgba(245, 230, 66, .3);
+}
+.heroAvatarNone {
+  background: rgba(255, 255, 255, .05);
+  color: var(--white);
+  border-color: var(--border);
+}
+.heroAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  position: absolute;
+  inset: 0;
+}
+.heroInfo {
+  flex: 1;
+  min-width: 0;
+}
+.heroName {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3.5rem;
+  letter-spacing: .03em;
+  line-height: 1;
+  margin-bottom: .5rem;
+}
+.heroBadges {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-bottom: .6rem;
+}
+.typeBadge {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .25rem .7rem;
+  border-radius: 100px;
+  border: 1px solid;
+}
+.typeBadgeMobile {
+  background: var(--neon-dim);
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .3);
+}
+.typeBadgeClub {
+  background: var(--pink-dim);
+  color: var(--pink);
+  border-color: rgba(245, 230, 66, .3);
+}
+
+.heroLocation {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--muted);
+  font-size: .82rem;
+  margin-bottom: .2rem;
+}
+.heroYears {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .3rem;
+  margin-bottom: .6rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(240, 240, 248, .45);
+  border: 1px solid rgba(240, 240, 248, .1);
+  background: rgba(240, 240, 248, .04);
+  padding: .2rem .6rem;
+  border-radius: 100px;
+}
+.heroTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .5rem;
+  margin-bottom: .8rem;
+}
+
+/* Tag pill styles */
+.tag {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .3rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  color: var(--muted);
+  background: var(--deep);
+}
+.tagNeon {
+  border-color: rgba(0, 245, 196, .25);
+  color: var(--neon);
+  background: var(--neon-dim);
+}
+.tagPink {
+  border-color: rgba(245, 230, 66, .25);
+  color: var(--pink);
+  background: var(--pink-dim);
+}
+/* Smaller hero variants for the badges INSIDE hero-tags row */
+.tagSmall {
+  font-size: .55rem;
+  padding: .2rem .6rem;
+}
+.tagSmallNeon {
+  border-color: rgba(0, 245, 196, .2);
+  color: rgba(0, 245, 196, .7);
+  background: rgba(0, 245, 196, .06);
+}
+.tagSmallPink {
+  border-color: rgba(245, 230, 66, .2);
+  color: rgba(245, 230, 66, .7);
+  background: rgba(245, 230, 66, .06);
+}
+
+/* ── HERO ACTION BUTTONS (socials, contact, book now) ─── */
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1.2rem;
+  flex-wrap: wrap;
+}
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .65rem .9rem;
+  border-radius: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+  border: 1px solid;
+  white-space: nowrap;
+  min-width: 46px;
+  min-height: 46px;
+  position: relative;
+}
+.actionBtnPrimary {
+  background: var(--neon-dim);
+  border-color: rgba(0, 245, 196, .4);
+  color: var(--neon);
+}
+.actionBtnPrimary:hover {
+  background: rgba(0, 245, 196, .22);
+}
+.actionBtnGhost {
+  background: rgba(255, 255, 255, .04);
+  border-color: rgba(255, 255, 255, .12);
+  color: var(--white);
+}
+.actionBtnGhost:hover {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .25);
+}
+.actionBtnPhone {
+  background: rgba(61, 220, 132, .1);
+  border-color: rgba(61, 220, 132, .35);
+  color: #3ddc84;
+}
+.actionBtnPhone:hover {
+  background: rgba(61, 220, 132, .18);
+}
+.actionBtnWebsite {
+  background: rgba(0, 245, 196, .2);
+  border-color: rgba(0, 245, 196, .35);
+  color: var(--neon);
+}
+.actionBtnWebsite:hover {
+  background: rgba(0, 245, 196, .18);
+}
+.actionBtnSoundcloud {
+  background: rgba(255, 85, 0, .12);
+  border-color: rgba(255, 85, 0, .4);
+  color: #ff5500;
+}
+.actionBtnSoundcloud:hover {
+  background: rgba(255, 85, 0, .2);
+}
+.actionBtnInstagram {
+  background: rgba(225, 48, 108, .12);
+  border-color: rgba(225, 48, 108, .4);
+  color: #e1306c;
+}
+.actionBtnInstagram:hover {
+  background: rgba(225, 48, 108, .2);
+}
+.actionBtnTiktok {
+  background: rgba(105, 201, 208, .12);
+  border-color: rgba(105, 201, 208, .4);
+  color: #69c9d0;
+}
+.actionBtnTiktok:hover {
+  background: rgba(105, 201, 208, .2);
+}
+.actionBtnFacebook {
+  background: rgba(24, 119, 242, .12);
+  border-color: rgba(24, 119, 242, .4);
+  color: #1877f2;
+}
+.actionBtnFacebook:hover {
+  background: rgba(24, 119, 242, .2);
+}
+.actionBtnTwitch {
+  background: rgba(145, 70, 255, .12);
+  border-color: rgba(145, 70, 255, .4);
+  color: #9146ff;
+}
+.actionBtnTwitch:hover {
+  background: rgba(145, 70, 255, .2);
+}
+.actionBtnRate {
+  background: rgba(255, 179, 71, .1);
+  border-color: rgba(255, 179, 71, .3);
+  color: var(--amber);
+  cursor: default;
+}
+.actionBtnBookNow {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: var(--black);
+  font-weight: 700;
+}
+
+/* Tooltip on action buttons (vanilla uses [title]:hover::after) */
+.actionBtn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, .9);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: .3rem .6rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── BODY (page content area below hero) ──────────────── */
+.body {
+  position: relative;
+  z-index: 2;
+  padding: 2rem 4rem 4rem;
+}
+
+/* ── TABS ─────────────────────────────────────────────── */
+.tabsNav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin: 0 -4rem 2rem;
+  padding: 0 4rem;
+  width: calc(100% + 8rem);
+}
+.tabBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .85rem 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .2s;
+  margin-bottom: -1px;
+  flex: 1;
+  text-align: center;
+}
+.tabBtn:hover {
+  color: var(--white);
+}
+.tabBtnActive {
+  color: var(--neon);
+  border-bottom-color: var(--neon);
+}
+.tabPane {
+  display: none;
+}
+.tabPaneActive {
+  display: block;
+}
+
+/* ── ABOUT TAB ────────────────────────────────────────── */
+.bioText {
+  color: var(--white);
+  line-height: 1.75;
+  font-size: .95rem;
+  white-space: pre-wrap;
+}
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+.infoItem {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+}
+.infoItem label {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: .3rem;
+}
+.infoItem span {
+  font-size: .92rem;
+  color: var(--white);
+}
+
+/* ── MIXES TAB ────────────────────────────────────────── */
+.mediaList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.mediaEmbedWrap {
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.mediaEmbedWrap iframe {
+  display: block;
+}
+
+/* ── IMAGES TAB ───────────────────────────────────────── */
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  max-width: 70%;
+}
+.imageGrid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.imageGrid img:hover {
+  opacity: .85;
+}
+
+/* ── VIDEO TAB ────────────────────────────────────────── */
+.videoList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.videoWrap {
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  position: relative;
+  padding-top: 24.5%;
+  max-width: 392px;
+}
+.videoWrap iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ── TESTIMONIALS TAB (mobile DJs only) ───────────────── */
+.testimonialItem {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.testimonialBlurb {
+  font-size: .9rem;
+  line-height: 1.7;
+  color: var(--white);
+  margin-bottom: 1rem;
+  font-style: italic;
+  opacity: .9;
+}
+.testimonialBlurb::before {
+  content: '"';
+  color: var(--neon);
+  font-size: 1.4rem;
+  line-height: 0;
+  vertical-align: -.4rem;
+  margin-right: .2rem;
+}
+.testimonialBlurb::after {
+  content: '"';
+  color: var(--neon);
+  font-size: 1.4rem;
+  line-height: 0;
+  vertical-align: -.4rem;
+  margin-left: .2rem;
+}
+.testimonialMeta {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.testimonialName {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--neon);
+}
+.testimonialDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .05em;
+}
+
+/* Empty state for tabs */
+.tabEmpty {
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  color: var(--muted);
+  letter-spacing: .06em;
+  padding: 2rem 0;
+}
+
+/* ── LIGHTBOX ─────────────────────────────────────────── */
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .92);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.lightboxActive {
+  display: flex;
+}
+.lightbox img {
+  max-width: 90vw;
+  max-height: 88vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.lightboxClose {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.8rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.lightboxClose:hover {
+  color: var(--white);
+}
+
+/* ── DESKTOP HERO LAYOUT (default) ────────────────────── */
+.heroTopRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.heroNameCol {
+  display: none; /* mobile only — see media query below */
+}
+.heroMobileDivider {
+  display: none; /* mobile only — see media query below */
+}
+
+/* ── RESPONSIVE — MOBILE LAYOUT ───────────────────────── */
+@media (max-width: 900px) {
+  .hero,
+  .body {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  .hero {
+    flex-direction: column;
+    gap: 0;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  .heroTopRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+  }
+  .heroAvatar {
+    width: 99px !important;
+    height: 99px !important;
+    font-size: 2.2rem;
+    flex-shrink: 0;
+  }
+  .heroNameCol {
+    display: block;
+    flex: 1;
+    min-width: 0;
+  }
+  /* On mobile, hide the name + badges that live inside heroInfo —
+     mobile shows them in heroNameCol next to the avatar instead.
+     Matches vanilla's: .hero-info .hero-name, .hero-info .hero-badges { display:none; } */
+  .heroInfo .heroName,
+  .heroInfo .heroBadges {
+    display: none;
+  }
+  .heroInfo {
+    width: 100%;
+  }
+  .heroMobileDivider {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: .9rem 0 .75rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .tabsNav {
+    overflow-x: auto;
+  }
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+  .imageGrid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+  }
+  .body {
+    padding-left: .75rem;
+    padding-right: .75rem;
+  }
+}
