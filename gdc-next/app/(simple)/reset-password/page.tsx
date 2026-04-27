@@ -1,31 +1,50 @@
 'use client';
 
 // Reset Password page.
-// Mirrors vanilla reset-password.html behavior, with one important addition:
-// we handle BOTH the implicit flow (token in URL hash, what vanilla uses)
-// AND the PKCE flow (code in URL query param). Supabase Auth can be
-// configured either way at the project level — handling both means this
-// page works regardless of how the project is set up.
+// Mirrors vanilla reset-password.html behavior — uses the IMPLICIT flow
+// (token in URL hash) to match what vanilla does, since vanilla works in
+// production. We use a dedicated @supabase/supabase-js client configured
+// for implicit flow rather than the @supabase/ssr default (which is PKCE).
+//
+// PKCE was attempted first but failed: it requires a code_verifier in
+// localStorage that gets lost between the forgot-password page and the
+// recovery email link, even within the same browser. Implicit flow has
+// no such dependency.
 //
 // Flow:
 //   1. User clicks reset link in their email
-//   2. Supabase redirects them here with either #access_token=... or ?code=...
-//   3. We process either to establish a recovery session
+//   2. Supabase redirects them here with #access_token=... in the hash
+//   3. detectSessionInUrl auto-processes the hash → session established
 //   4. User enters new password (with strength requirements)
-//   5. supabase.auth.updateUser({ password }) updates the password
+//   5. updateUser({ password }) updates the password
 //   6. Success screen with role-aware CTA
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import styles from '../forgot-password/forgot-password.module.css';
 
 type Phase = 'verifying' | 'ready' | 'updating' | 'success' | 'error';
 
 function ResetPasswordForm() {
-  const supabase = createClient();
-  const searchParams = useSearchParams();
+  // Single client instance for this page, configured for implicit flow.
+  // useMemo keeps it stable across re-renders (creating Supabase clients
+  // multiple times can cause auth state weirdness).
+  const supabase: SupabaseClient = useMemo(
+    () => createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          flowType: 'implicit',
+          detectSessionInUrl: true, // process #access_token in the URL hash
+          persistSession: true,     // so updateUser has the session
+          autoRefreshToken: true,
+        },
+      }
+    ),
+    []
+  );
 
   const [phase, setPhase] = useState<Phase>('verifying');
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,36 +62,14 @@ function ResetPasswordForm() {
   const numOk = /[0-9]/.test(password);
   const allMet = lenOk && upperOk && numOk;
 
-  // ── Verify the recovery token from the URL ──────────────────────────────
-  // This runs once on mount. We try BOTH:
-  //   (a) PKCE flow: ?code=... → exchangeCodeForSession
-  //   (b) Implicit flow: #access_token=... — the SDK auto-processes it,
-  //       we just wait briefly then check getSession()
+  // ── Verify the recovery token from the URL hash ─────────────────────────
+  // The implicit-flow client auto-detects the access_token from the hash;
+  // we just need to wait briefly then check if a session was established.
   useEffect(() => {
     let cancelled = false;
 
     async function verify() {
       try {
-        // PKCE flow first
-        const code = searchParams.get('code');
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!cancelled) {
-            if (error) {
-              setErrorMsg('This reset link is invalid or has expired. Please request a new one.');
-              setPhase('error');
-              return;
-            }
-            setPhase('ready');
-            // Clean the URL
-            if (window.history.replaceState) {
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
-            return;
-          }
-        }
-
-        // Implicit flow: SDK processes hash automatically. Give it a moment.
         const hash = window.location.hash || '';
         const hasAccessToken = hash.includes('access_token');
         const hasRecovery = hash.includes('type=recovery');
@@ -96,7 +93,7 @@ function ResetPasswordForm() {
           return;
         }
         setPhase('ready');
-        // Clean the URL
+        // Clean the URL so a refresh doesn't re-trigger anything
         if (window.history.replaceState) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }

@@ -3,18 +3,37 @@
 // Forgot Password page.
 // Mirrors vanilla forgot-password.html behavior:
 //   - User enters email
-//   - We call supabase.auth.resetPasswordForEmail
+//   - We call resetPasswordForEmail using a dedicated implicit-flow client
+//     (NOT @supabase/ssr's PKCE-flow client) so the recovery email link
+//     uses #access_token (matching vanilla, no code_verifier dependency)
 //   - Always show success (don't reveal whether email is registered — privacy)
 //   - The reset link in the email lands on /reset-password
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { useAuth } from '@/components/AuthProvider';
 import styles from './forgot-password.module.css';
 
+// Dedicated client for password recovery — uses implicit flow so the email
+// link contains the access_token in the URL hash (matches vanilla's behavior)
+// instead of the PKCE flow which requires a code_verifier in localStorage that
+// gets lost in some setups.
+function createImplicitFlowClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        flowType: 'implicit',
+        persistSession: false, // no need — we just use this for the reset call
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
+
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
   const { user, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -36,10 +55,11 @@ export default function ForgotPasswordPage() {
     const emailLower = email.toLowerCase().trim();
 
     try {
+      const client = createImplicitFlowClient();
       // Supabase generates the recovery token + sends the email.
       // We get back errors but intentionally ignore them — we don't want to
       // reveal whether an email is registered (enumeration protection).
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(emailLower, {
+      const { error: resetError } = await client.auth.resetPasswordForEmail(emailLower, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (resetError) {
