@@ -1,0 +1,466 @@
+/* Signup styles — matches vanilla signup.html design.
+   Scoped via CSS Module so they don't leak. */
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+.container {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 50px 40px;
+  border-radius: 12px;
+  max-width: 520px;
+  width: 100%;
+}
+.logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.logo a {
+  text-decoration: none;
+}
+.logo h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  background: linear-gradient(135deg, var(--white) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  background: var(--deep);
+  padding: 4px;
+  border-radius: 8px;
+}
+.tab {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .2s;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+}
+.tab.active {
+  background: var(--card);
+  color: var(--neon);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+/* ── Account type selection ──────────────────────────── */
+.acctTypeQuestion {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: .04em;
+  color: var(--white);
+  margin-bottom: 18px;
+}
+.acctTypeList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.acctTypeBtn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+  width: 100%;
+  color: var(--white);
+  font-family: inherit;
+}
+.acctTypeBtn:hover {
+  border-color: var(--neon);
+  background: rgba(0, 245, 196, .04);
+}
+.acctTypeIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--neon-dim);
+  border: 1px solid rgba(0, 245, 196, .25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon);
+  flex-shrink: 0;
+}
+.acctTypeInfo {
+  flex: 1;
+  min-width: 0;
+}
+.acctTypeName {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: .04em;
+  color: var(--white);
+  margin-bottom: 2px;
+}
+.acctTypeDesc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.acctTypeArrow {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ── Back button + type label ────────────────────────── */
+.formBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: 16px;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: color .15s;
+}
+.formBack:hover {
+  color: var(--neon);
+}
+.formTypeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 245, 196, .3);
+  background: rgba(0, 245, 196, .08);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: 18px;
+}
+.formTypeLabelHost {
+  color: #ffb347;
+  border-color: rgba(255, 179, 71, .3);
+  background: rgba(255, 179, 71, .08);
+}
+.formTypeLabelVenue {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, .3);
+  background: rgba(167, 139, 250, .08);
+}
+
+/* ── Form fields ─────────────────────────────────────── */
+.formGroup {
+  margin-bottom: 20px;
+}
+.formGroup label {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.formGroup input,
+.formGroup select {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.formGroup input:focus,
+.formGroup select:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .07);
+}
+.formGroup select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%236b6b88' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  padding-right: 40px;
+}
+
+/* ── DJ-type pill buttons (Mobile / Club) ────────────── */
+.typeBtnGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.typeBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  transition: all .15s;
+  text-align: left;
+}
+.typeBtn:hover {
+  border-color: var(--neon);
+  color: var(--white);
+}
+.typeBtnSelected {
+  border-color: var(--neon);
+  background: rgba(0, 245, 196, .08);
+  color: var(--neon);
+}
+
+/* ── URL preview pill (slug input row) ───────────────── */
+.urlPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.urlPreviewLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.urlPreviewRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.urlPreviewPrefix {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.urlPreviewInput {
+  flex: 1;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px;
+  padding: 6px 10px !important;
+  color: var(--white) !important;
+  font-family: 'Space Mono', monospace !important;
+  font-size: 12px !important;
+}
+
+/* ── Submit button + alerts ──────────────────────────── */
+.submitBtn {
+  width: 100%;
+  padding: 14px;
+  background: var(--neon);
+  color: var(--black);
+  border: none;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.submitBtn:hover:not(:disabled) {
+  opacity: .85;
+}
+.submitBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.alert {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.alertError {
+  background: rgba(255, 95, 95, .1);
+  border: 1px solid rgba(255, 95, 95, .3);
+  color: var(--error);
+}
+.alertSuccess {
+  background: rgba(61, 220, 132, .1);
+  border: 1px solid rgba(61, 220, 132, .3);
+  color: #3ddc84;
+}
+
+/* ── Bottom links ────────────────────────────────────── */
+.divider {
+  text-align: center;
+  margin: 25px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.divider a {
+  color: var(--neon);
+  text-decoration: none;
+}
+.divider a:hover {
+  text-decoration: underline;
+}
+.contactLink {
+  text-align: center;
+  margin-top: 1rem;
+}
+.contactLink a {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .2s;
+}
+.contactLink a:hover {
+  color: var(--neon);
+}
+
+/* ── Success screen ──────────────────────────────────── */
+.successWrap {
+  text-align: center;
+  padding: 20px 0;
+}
+.successIconCircle {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.successTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: .04em;
+  margin-bottom: 14px;
+  color: var(--white);
+}
+.successSubLine {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.successEmail {
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  margin-bottom: 28px;
+  word-break: break-all;
+}
+.successHint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.resendLine {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 20px;
+}
+.resendLink {
+  color: var(--neon);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+.djBuildBlock {
+  margin-top: 36px;
+  padding: 20px;
+  border: 1px solid var(--neon-dim);
+  border-radius: 8px;
+  background: rgba(0, 245, 196, .04);
+  text-align: left;
+}
+.djBuildTitle {
+  color: var(--white);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: .05em;
+  margin: 0 0 10px;
+}
+.djBuildDesc {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.djBuildBtn {
+  display: inline-block;
+  background: var(--neon);
+  color: #000;
+  padding: .75rem 1.5rem;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  font-weight: 700;
+}
