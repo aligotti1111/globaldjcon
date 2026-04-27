@@ -3455,19 +3455,18 @@ async function mobPubSubmit(dateKey) {
       });
     } catch(e) { console.warn('DJ email failed:', e); }
 
-    // Confirmation email to booker
+    // Confirmation email to booker — server resolves email from auth.users by requesterUserId
     try {
-      if (cu.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            type: 'mob_booking_confirm',
-            requesterName: cu.name, requesterEmail: cu.email,
-            djName: djData.name, eventDate: dateKey,
-            packageTitle: pkg.title, totalPrice, depositAmount, depositPct, isQuote,
-          })
-        });
-      }
+      await fetch('/.netlify/functions/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type: 'mob_booking_confirm',
+          requesterUserId: cu.id,
+          requesterName: cu.name,
+          djName: djData.name, eventDate: dateKey,
+          packageTitle: pkg.title, totalPrice, depositAmount, depositPct, isQuote,
+        })
+      });
     } catch(e) { console.warn('Booker confirm email failed:', e); }
 
     const djName = mobPubDjData?.name || 'The DJ';
@@ -4118,32 +4117,30 @@ async function ib_submitBooking() {
         const emailResult = await emailRes.json().catch(() => ({}));
         if (!emailRes.ok) console.warn('Email send failed:', emailResult);
 
-      // Confirmation email to requester
-      if (cu.email) {
-        await fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'booking_request_confirmation',
-            djName: ib_djData.name,
-            requesterName: cu.name,
-            requesterEmail: cu.email,
-            eventDate: d.event_date,
-            venueName: d.venue_name,
-            venueAddress: d.venue_address,
-            venueType: d.venue_type,
-            setType: d.set_type,
-            startTime: d.start_time,
-            endTime: d.end_time,
-            equipment: d.equipment,
-            venueEquipDetail: d.venue_equip_text,
-            notes: d.notes,
-            offerAmount: d.offer_amount,
-            quotedRate: displayRate,
-            currency,
-          })
-        }).catch(e => console.warn('Confirmation email error:', e));
-      }
+      // Confirmation email to requester — server resolves email from auth.users by requesterUserId
+      await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_request_confirmation',
+          djName: ib_djData.name,
+          requesterUserId: cu.id,
+          requesterName: cu.name,
+          eventDate: d.event_date,
+          venueName: d.venue_name,
+          venueAddress: d.venue_address,
+          venueType: d.venue_type,
+          setType: d.set_type,
+          startTime: d.start_time,
+          endTime: d.end_time,
+          equipment: d.equipment,
+          venueEquipDetail: d.venue_equip_text,
+          notes: d.notes,
+          offerAmount: d.offer_amount,
+          quotedRate: displayRate,
+          currency,
+        })
+      }).catch(e => console.warn('Confirmation email error:', e));
     } catch(emailErr) {
       console.warn('Email send error (non-blocking):', emailErr);
     }
