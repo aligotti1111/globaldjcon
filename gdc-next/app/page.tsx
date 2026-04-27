@@ -1,9 +1,6 @@
 // Homepage — DJ directory.
-// SERVER COMPONENT: data fetch happens on the server, page renders with data
-// already in the HTML. No loading spinner, better SEO, faster first paint.
-// This replaces all of idx-init.js + idx-render.js + idx-filters.js.
-//
-// (Filters/search will live in a Client Component child for interactivity.)
+// SERVER COMPONENT: data fetch happens on the server.
+// Class names match the vanilla site's index.css so styling carries over.
 
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
@@ -22,27 +19,51 @@ export default async function HomePage() {
     .returns<UserProfile[]>();
 
   return (
-    <div className="page-container">
-      <section className="hero">
-        <h1>Global DJ Connect</h1>
-        <p>Find and book DJs worldwide.</p>
-      </section>
+    <>
+      <section className="header-bg" />
 
-      <section className="dj-grid">
-        {djs?.map(dj => (
-          <Link key={dj.id} href={`/${dj.slug}`} className="dj-card">
-            <h3>{dj.name}</h3>
-            <p>
-              {[dj.city, dj.state, dj.country].filter(Boolean).join(', ')}
-            </p>
-            {dj.dj_type && (
-              <span className="dj-type-badge">
-                {dj.dj_type === 'club' ? 'Club DJ' : 'Mobile DJ'}
-              </span>
-            )}
-          </Link>
-        ))}
-      </section>
-    </div>
+      <div className="main">
+        <div className="grid">
+          {(!djs || djs.length === 0) && (
+            <div className="empty-state">
+              <div className="empty-icon">🎧</div>
+              <div className="empty-title">No DJs Found</div>
+              <div className="empty-sub">Check back soon</div>
+            </div>
+          )}
+
+          {djs?.map(dj => {
+            const cardClass = `dj-card ${dj.dj_type === 'club' ? 'club' : ''}`.trim();
+            const location = [dj.city, dj.state, dj.country].filter(Boolean).join(', ');
+            const initial = (dj.name || '?').charAt(0).toUpperCase();
+
+            return (
+              <Link
+                key={dj.id}
+                href={`/${dj.slug}`}
+                className={cardClass}
+                style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+              >
+                <div className="card-glow" />
+                <div className="card-top">
+                  <div className="avatar">{initial}</div>
+                  <div>
+                    <div className="dj-name">{dj.name}</div>
+                    {location && <div className="location">{location}</div>}
+                  </div>
+                </div>
+                {dj.dj_type && (
+                  <div className="card-footer">
+                    <span className="type-badge">
+                      {dj.dj_type === 'club' ? 'Club DJ' : 'Mobile DJ'}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
