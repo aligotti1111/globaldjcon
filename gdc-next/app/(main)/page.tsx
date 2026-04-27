@@ -20,8 +20,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="header-bg" />
-
       <div className="main">
         <div className="grid">
           {(!djs || djs.length === 0) && (
