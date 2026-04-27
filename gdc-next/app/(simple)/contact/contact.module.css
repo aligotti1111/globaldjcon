@@ -1,0 +1,192 @@
+/* Scoped styles for the Contact page — matches vanilla contact.html design. */
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+.container {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 50px 40px;
+  border-radius: 12px;
+  max-width: 520px;
+  width: 100%;
+}
+.logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.logo a {
+  text-decoration: none;
+}
+.logo h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  background: linear-gradient(135deg, var(--white) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.pageTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: .08em;
+  color: var(--white);
+  margin-bottom: .3rem;
+}
+.pageSub {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+.formGroup {
+  margin-bottom: 20px;
+  position: relative;
+}
+.formGroup label {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .07);
+}
+.formGroup input[readonly] {
+  opacity: .7;
+  cursor: not-allowed;
+}
+.formGroup textarea {
+  min-height: 130px;
+  resize: vertical;
+  font-family: 'DM Sans', sans-serif;
+}
+.formGroup select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%236b6b88' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  padding-right: 40px;
+}
+.signedHint {
+  display: block;
+  margin-top: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--success);
+}
+.submitBtn {
+  width: 100%;
+  padding: 14px;
+  background: var(--neon);
+  color: var(--black);
+  border: none;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.submitBtn:hover:not(:disabled) {
+  opacity: .85;
+}
+.submitBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.alert {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.alertError {
+  background: rgba(255, 95, 95, .1);
+  border: 1px solid rgba(255, 95, 95, .3);
+  color: var(--error);
+}
+.alert a {
+  color: var(--neon);
+}
+.successView {
+  text-align: center;
+  padding: 2rem 0;
+}
+.successIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+.successTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: .06em;
+  color: var(--white);
+  margin-bottom: .5rem;
+}
+.successSub {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  line-height: 1.9;
+}
+.divider {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.divider a {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--muted);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color .2s;
+}
+.divider a:hover {
+  color: var(--neon);
+}

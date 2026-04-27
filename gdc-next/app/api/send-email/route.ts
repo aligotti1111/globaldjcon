@@ -12,6 +12,7 @@ import { resolveUserEmail } from '@/lib/supabase/admin';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
+const ADMIN_EMAIL = 'info@globaldjconnect.com';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://globaldjconnect.com';
 
 // ── Payload types ──────────────────────────────────────────────────────
@@ -101,10 +102,13 @@ export async function POST(request: Request) {
   }
 
   // Build the email payload based on type.
-  // (Only one example below — the new dev fills in the other types
-  // by following the pattern. The full implementation lives in
-  // EMAIL_TEMPLATES.md alongside this file.)
-  let emailPayload: { from: string; reply_to: string; to: string[]; subject: string; html: string };
+  let emailPayload: {
+    from: string;
+    reply_to: string | string[];
+    to: string[];
+    subject: string;
+    html: string;
+  };
 
   if (type === 'booking_request') {
     const djEmail = await pickEmail(
@@ -137,6 +141,46 @@ export async function POST(request: Request) {
         <a href="${SITE_URL}/booking-requests" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;">View Booking Request</a>
       `),
     };
+  } else if (type === 'contact_us') {
+    // Contact form submission. Sends to admin inbox with the user's email
+    // as reply-to so admin can reply directly to the sender.
+    const name = (body.name as string | undefined)?.trim();
+    const email = (body.email as string | undefined)?.toLowerCase().trim();
+    const subject = (body.subject as string | undefined)?.trim();
+    const message = (body.message as string | undefined)?.trim();
+    if (!name || !email || !subject || !message) {
+      return NextResponse.json(
+        { error: 'Missing fields for contact_us' },
+        { status: 400 }
+      );
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+    emailPayload = {
+      from: FROM,
+      reply_to: [email],
+      to: [ADMIN_EMAIL],
+      subject: `Contact Form: ${subject}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Contact Message</h2>
+        <p style="color:#666;margin-bottom:24px;">Someone submitted the contact form on Global DJ Connect.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Name</td></tr>
+            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(name)}</td></tr>
+            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Email</td></tr>
+            <tr><td style="color:#00f5c4;padding-bottom:14px;"><a href="mailto:${email}" style="color:#00f5c4;">${escHtml(email)}</a></td></tr>
+            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Subject</td></tr>
+            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(subject)}</td></tr>
+            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Message</td></tr>
+            <tr><td style="color:#333;line-height:1.65;">${escHtml(message).replace(/\n/g, '<br>')}</td></tr>
+          </table>
+        </div>
+        <a href="mailto:${email}?subject=Re: ${encodeURIComponent(subject)}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to ${escHtml(name)}</a>
+      `),
+    };
+
   } else {
     // Other types — copy the implementations from the old send-email.js.
     // The new dev should port each handler one at a time.
