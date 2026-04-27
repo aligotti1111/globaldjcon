@@ -122,7 +122,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
 
   // Hero tags — event types (mobile DJs only, as a popup) vs separate tags
   const isMobileDJ = data.dj_type === 'mobile';
-  const isClubDJ = data.dj_type === 'club';
   const eventTypes = data.event_types
     ? data.event_types.split(',').map(s => s.trim()).filter(Boolean)
     : [];
@@ -239,21 +238,26 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
               </div>
             )}
 
-            {/* Event types + genres as hero tags */}
+            {/* Event types + genres as hero tags.
+                Mobile DJs get ONE "Events Serviced ▾" badge that pops a list
+                on click (vanilla dj-profile.html lines 572-583). Other DJ
+                types get all event types as separate inline tags. Genres
+                always render as separate pink tags. */}
             {(eventTypes.length > 0 || genres.length > 0) && (
               <div className={styles.heroTags}>
-                {/* Mobile DJs: event types as ONE clickable tag with a popup.
-                    For Session 1 we render them as plain tags (matching the
-                    "else" branch in vanilla). The popup behavior is in
-                    Session 2 with the mobile-DJ-specific layout work. */}
-                {eventTypes.map(e => (
-                  <span
-                    key={`event-${e}`}
-                    className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallNeon}`}
-                  >
-                    {EVENT_TYPE_LABELS[e] || e}
-                  </span>
-                ))}
+                {eventTypes.length > 0 && isMobileDJ && (
+                  <EventsServicedBadge events={eventTypes} />
+                )}
+                {eventTypes.length > 0 && !isMobileDJ && (
+                  eventTypes.map(e => (
+                    <span
+                      key={`event-${e}`}
+                      className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallNeon}`}
+                    >
+                      {EVENT_TYPE_LABELS[e] || e}
+                    </span>
+                  ))
+                )}
                 {genres.map(g => (
                   <span
                     key={`genre-${g}`}
@@ -422,6 +426,65 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
         )}
       </div>
     </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// EventsServicedBadge — mobile DJs only.
+// One clickable tag pill ("Events Serviced ▾") that toggles a popup listing
+// the actual event types. Faithful port of vanilla dj-profile.html lines
+// 572-583 (markup) + 2327-2337 (toggle + outside-click logic).
+// ──────────────────────────────────────────────────────────────────────────
+
+function EventsServicedBadge({ events }: { events: string[] }) {
+  const [open, setOpen] = useState(false);
+
+  // Click anywhere outside the badge → close. Vanilla attaches a global
+  // document listener; we do the same with a capture-phase check on whether
+  // the click target is inside our badge wrapper.
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // Allow clicks inside the badge to bubble through the badge's own
+      // onClick (which toggles); only close if the click was outside.
+      if (!target.closest('[data-events-serviced-badge]')) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [open]);
+
+  return (
+    <span
+      data-events-serviced-badge
+      className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallNeon} ${styles.eventsBadge}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpen(o => !o);
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setOpen(o => !o);
+        }
+      }}
+    >
+      Events Serviced ▾
+      {open && (
+        <div className={styles.eventsPopup}>
+          {events.map(ev => (
+            <div key={ev} className={styles.eventsPopupItem}>
+              {EVENT_TYPE_LABELS[ev] || ev}
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }
 

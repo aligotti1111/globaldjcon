@@ -232,6 +232,36 @@
   background: rgba(245, 230, 66, .06);
 }
 
+/* Events Serviced badge — mobile DJs only.
+   Single clickable badge that opens a popup listing event types.
+   Vanilla dj-profile.html lines 577-582 (inline styles ported here). */
+.eventsBadge {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+.eventsPopup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  min-width: 180px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+.eventsPopupItem {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--neon);
+  padding: .2rem 0;
+  white-space: nowrap;
+}
+
 /* ── HERO ACTION BUTTONS (socials, contact, book now) ─── */
 .heroActions {
   display: flex;
