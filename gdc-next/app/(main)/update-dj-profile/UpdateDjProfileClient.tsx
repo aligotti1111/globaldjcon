@@ -71,19 +71,31 @@ interface Props {
 export default function UpdateDjProfileClient({ initialProfile, authEmail }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('general');
 
-  const [general, setGeneral] = useState<GeneralFormState>({
-    name: initialProfile.name || '',
-    slug: initialProfile.slug || '',
-    bio: initialProfile.bio || '',
-    phone: initialProfile.phone || '',
-    zip: initialProfile.zip || '',
-    country: initialProfile.country || '',
-    travelDistance: initialProfile.travel_distance || '',
-    djStartYear: initialProfile.dj_start_year || '',
-    mobileEvents: (initialProfile.event_types || '')
-      .split(',').map(s => s.trim()).filter(Boolean),
-    clubGenres: initialProfile.club_genres || [],
-    profilePrivate: !!initialProfile.profile_private,
+  const [general, setGeneral] = useState<GeneralFormState>(() => {
+    // Vanilla default: a Mobile DJ with no event_types saved yet (new account)
+    // gets ALL 12 mobile party types pre-checked. Club DJs default to none
+    // (genres are opt-in). See udjp-load-and-save.js lines 185-195.
+    const savedEventTypes = (initialProfile.event_types || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const defaultMobileEvents = savedEventTypes.length > 0
+      ? savedEventTypes
+      : (initialProfile.dj_type === 'mobile'
+          ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','mitzvah','reunion','holiday','school','community','other']
+          : []);
+
+    return {
+      name: initialProfile.name || '',
+      slug: initialProfile.slug || '',
+      bio: initialProfile.bio || '',
+      phone: initialProfile.phone || '',
+      zip: initialProfile.zip || '',
+      country: initialProfile.country || '',
+      travelDistance: initialProfile.travel_distance || '',
+      djStartYear: initialProfile.dj_start_year || '',
+      mobileEvents: defaultMobileEvents,
+      clubGenres: initialProfile.club_genres || [],
+      profilePrivate: !!initialProfile.profile_private,
+    };
   });
 
   const [bookingSettings, setBookingSettings] = useState<BookingSettings>(
