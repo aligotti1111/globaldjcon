@@ -10,6 +10,8 @@ import Link from 'next/link';
 import styles from './profile.module.css';
 import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
 import { buildMixEmbed, buildVideoEmbed } from './embeds';
+import { parseBookingSettings } from './bookingSettings';
+import PublicCalendar from './PublicCalendar';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
@@ -46,6 +48,7 @@ export interface DjProfileData {
   profile_private: boolean | null;
   claimed: boolean | null;
   testimonials: string | null;      // JSON-stringified
+  booking_settings: string | null;  // JSON-stringified — see bookingSettings.ts
   mix_url_1: string | null;
   mix_url_2: string | null;
   mix_url_3: string | null;
@@ -64,7 +67,11 @@ interface Testimonial {
   date?: string;
 }
 
-type TabKey = 'about' | 'mixes' | 'images' | 'video' | 'testimonials';
+type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials';
+
+// Parse booking settings ONCE, outside the component (it's pure data) —
+// but we need profile.dj_type and booking_settings, so it has to live inside.
+// Done inline via parseBookingSettings near the top of the component below.
 
 interface Props {
   data: DjProfileData;
@@ -73,7 +80,24 @@ interface Props {
 }
 
 export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('about');
+  // ── Booking settings parsing & "show calendar tab" decision ──────────
+  // Vanilla shows the Availability tab (and makes it the default) ONLY for
+  // CLUB DJs whose booking_settings has booking_enabled=true. Mobile DJs
+  // also show a booking tab in vanilla but with a totally different widget
+  // (mobile booking flow, deferred to a later session). For now we treat
+  // mobile-DJ booking as "tab not yet enabled" and show their About tab
+  // by default — same UX as a club DJ without booking enabled.
+  const bookingSettings = parseBookingSettings(data.booking_settings);
+  const isClubDJ = data.dj_type === 'club';
+  const showAvailabilityTab = !!(
+    isClubDJ &&
+    bookingSettings &&
+    bookingSettings.booking_enabled
+  );
+
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    showAvailabilityTab ? 'booking' : 'about'
+  );
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Set page title to the DJ's name (matches vanilla document.title)
@@ -278,6 +302,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
         <div className={styles.body}>
           {/* Tab nav */}
           <nav className={styles.tabsNav}>
+            {showAvailabilityTab && (
+              <button
+                className={tabClass('booking')}
+                onClick={() => setActiveTab('booking')}
+                type="button"
+              >
+                Availability
+              </button>
+            )}
             <button className={tabClass('about')} onClick={() => setActiveTab('about')} type="button">
               About
             </button>
@@ -300,6 +333,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
               </button>
             )}
           </nav>
+
+          {/* Availability tab — public booking calendar */}
+          {showAvailabilityTab && (
+            <div className={paneClass('booking')}>
+              <PublicCalendar
+                bookingDays={bookingSettings!.booking_days || {}}
+                bookingWindowMonths={bookingSettings!.booking_window_months || 12}
+                djSlug={effectiveSlug}
+                djName={data.name || ''}
+                isLoggedIn={isLoggedIn}
+              />
+            </div>
+          )}
 
           {/* About tab */}
           <div className={paneClass('about')}>
