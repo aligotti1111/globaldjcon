@@ -203,10 +203,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     return `${styles.tabBtn} ${activeTab === t ? styles.tabBtnActive : ''}`;
   }
 
-  // Site URL for the slug preview. ALWAYS use the production domain
-  // (globaldjconnect.com) — even on staging the share link should point
-  // at production. NEXT_PUBLIC_SITE_URL is the env override.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://globaldjconnect.com';
+  // Site URL for the slug preview. ALWAYS production — even on staging
+  // the share link should point at globaldjconnect.com, never a Netlify
+  // preview URL (which would be useless to share with anyone).
+  const siteUrl = 'https://globaldjconnect.com';
 
   return (
     <div className={styles.container}>

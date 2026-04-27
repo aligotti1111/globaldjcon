@@ -181,8 +181,10 @@
 .checkboxLabel:hover {
   border-color: var(--neon);
 }
-.checkboxLabel input[type='checkbox'] {
-  /* Force a fixed size — flex was squashing the default to ~0px. */
+/* Direct class on the input — avoids any CSS Modules attribute-selector
+   issues. The previous `.checkboxLabel input[type='checkbox']` rule was
+   silently not winning the cascade for reasons that weren't obvious. */
+.checkboxInput {
   appearance: auto;
   -webkit-appearance: checkbox;
   accent-color: var(--neon);
