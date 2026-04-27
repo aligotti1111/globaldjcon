@@ -14,7 +14,7 @@
 // session — for now the user types their preferred slug, and city/state
 // stay empty until populated later from their profile page.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -199,13 +199,71 @@ function DjForm({ onBack, onSuccess }: {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // City and state are intentionally NOT in the form. They get populated
-  // from the ZIP code via the Nominatim lookup (deferred to Session 3).
-  // For now they're submitted as empty strings — the user can update them
-  // later from their profile page.
+  // City and state are derived from the ZIP code via Nominatim lookup
+  // (matches vanilla sgn-zip.js). The user doesn't enter them directly —
+  // they auto-fill as the user types a valid ZIP, and a small status line
+  // below the ZIP input shows what was found.
+  const [city, setCity] = useState('');
+  const [stateRegion, setStateRegion] = useState('');
+  const [zipStatus, setZipStatus] = useState<{ msg: string; ok: boolean } | null>(null);
 
   // Auto-derive slug from name unless the user typed a custom one.
   const effectiveSlug = slugEdit ? makeSlug(slugEdit) : makeSlug(name);
+
+  // ── ZIP lookup ────────────────────────────────────────────────────────
+  // Debounced 600ms after the user stops typing, looks up the ZIP via
+  // Nominatim. Country code from the COUNTRIES list narrows the search.
+  // Mirrors vanilla lookupSignupZip() behavior including NYC borough
+  // detection. If the user changes country, we re-lookup the same ZIP.
+  useEffect(() => {
+    if (!zip || zip.trim().length < 4) {
+      setCity('');
+      setStateRegion('');
+      setZipStatus(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setZipStatus({ msg: 'Looking up...', ok: true });
+      try {
+        const countryEntry = COUNTRIES.find(c => c.name === country);
+        const countryCode = countryEntry?.code || '';
+        const url = countryCode
+          ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycodes=${countryCode}&format=json&limit=1&addressdetails=1`
+          : `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&format=json&limit=1&addressdetails=1`;
+        const res = await fetch(url, {
+          headers: { 'Accept-Language': 'en' },
+        });
+        const data = await res.json();
+        if (data && data[0]) {
+          const addr = data[0].address || {};
+          const displayName = data[0].display_name || '';
+          const nycBoroughs = ['Staten Island', 'Brooklyn', 'Queens', 'The Bronx', 'Manhattan'];
+          const boroughMatch = nycBoroughs.find(b => displayName.includes(b));
+          const foundCity = boroughMatch
+            || addr.city_district
+            || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null)
+            || addr.town
+            || addr.city
+            || addr.municipality
+            || addr.village
+            || addr.hamlet
+            || '';
+          const foundState = addr.state || '';
+          setCity(foundCity);
+          setStateRegion(foundState);
+          const summary = [foundCity, foundState, country].filter(Boolean).join(', ');
+          setZipStatus({ msg: summary, ok: true });
+        } else {
+          setCity('');
+          setStateRegion('');
+          setZipStatus({ msg: 'ZIP not found', ok: false });
+        }
+      } catch {
+        setZipStatus(null);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [zip, country]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -263,8 +321,8 @@ function DjForm({ onBack, onSuccess }: {
             slug: effectiveSlug,
             dj_type: djType,
             country,
-            city: '',
-            state: '',
+            city,
+            state: stateRegion,
             travel_distance: travel,
             zip,
           },
@@ -287,8 +345,7 @@ function DjForm({ onBack, onSuccess }: {
 
       // Upsert public.users row to make sure all DJ fields land
       // (the auth trigger doesn't always carry every column over).
-      // city/state are populated server-side from ZIP in Session 3;
-      // for now they're empty and the user can edit later.
+      // city/state were populated by the Nominatim ZIP lookup above.
       if (signUpData?.user?.id) {
         await supabase.from('users').upsert({
           id: signUpData.user.id,
@@ -297,8 +354,8 @@ function DjForm({ onBack, onSuccess }: {
           slug: effectiveSlug,
           dj_type: djType,
           country,
-          city: '',
-          state: '',
+          city,
+          state: stateRegion,
           travel_distance: travelVal,
           zip,
           email_verified: false,
@@ -432,6 +489,20 @@ function DjForm({ onBack, onSuccess }: {
           onChange={(e) => setZip(e.target.value)}
           required
         />
+        {zipStatus && (
+          <div
+            style={{
+              marginTop: '0.45rem',
+              fontSize: '0.78rem',
+              fontFamily: "'Space Mono', monospace",
+              letterSpacing: '0.04em',
+              color: zipStatus.ok ? '#3ddc84' : 'var(--muted)',
+              minHeight: '1.1rem',
+            }}
+          >
+            {zipStatus.msg}
+          </div>
+        )}
       </div>
 
       <div className={styles.formGroup}>
