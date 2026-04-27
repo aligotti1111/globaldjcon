@@ -23,12 +23,15 @@
 // date currently shows an alert. Same placeholder pattern as Session 4.
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './mobileCalendar.module.css';
 import {
+  type BookingSettings,
   type MobileBookingDays,
   type MobileDayData,
   windowLabel,
 } from './bookingSettings';
+import MobileBookingForm from './MobileBookingForm';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -42,20 +45,14 @@ const DAY_LABEL_LONG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface Props {
-  bookingDays: MobileBookingDays;
-  bookingWindowMonths: number;     // default 24 for mobile DJs
-  defaultBookingsPerDay: number;   // default 1 — used when a day has no override
-  djSlug: string;
+  // Profile data the form needs
+  djId: string;
   djName: string;
+  djSlug: string;
+  djEventTypes: string | null;     // comma-separated, used to filter event-type select
+  // Full booking settings — needed for both the calendar AND the form (packages, deposit, etc.)
+  bookingSettings: BookingSettings;
   isLoggedIn: boolean;
-  // Currently-selected date (YYYY-MM-DD). Will be driven by the booking
-  // form when it lives below this calendar — null for now since the form
-  // is deferred.
-  selectedDate?: string | null;
-  // Called when the user clicks "Book" on an available cell. Currently
-  // shows a placeholder alert; later session will open the form.
-  onBookDate?: (dateKey: string) => void;
-  onLoggedOutBookAttempt?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -93,21 +90,28 @@ function isInRange(y: number, m: number, windowMonths: number): boolean {
 // ─────────────────────────────────────────────────────────────────────────
 
 export default function MobilePublicCalendar({
-  bookingDays,
-  bookingWindowMonths,
-  defaultBookingsPerDay,
+  djId,
   djName,
   djSlug,
+  djEventTypes,
+  bookingSettings,
   isLoggedIn,
-  selectedDate = null,
-  onBookDate,
-  onLoggedOutBookAttempt,
 }: Props) {
+  // Pull values out of bookingSettings — same defaults as before
+  const bookingDays = bookingSettings.mob_booking_days || {};
+  const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
+  const defaultBookingsPerDay = bookingSettings.mob_bookings_per_day || 1;
+
+  // Auth — needed for the form (booker id + email + name)
+  const { user: currentUser } = useAuth();
+
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [rollingActive, setRollingActive] = useState(false);
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
+  // Selected date drives the form below the calendar. null = no form shown.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Auto-dismiss the range message after 4s, matching club calendar parity.
   useEffect(() => {
@@ -171,21 +175,12 @@ export default function MobilePublicCalendar({
 
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!isLoggedIn) {
-      if (onLoggedOutBookAttempt) {
-        onLoggedOutBookAttempt();
-      } else {
-        // Placeholder — gate modal comes in a later session.
-        alert('Please log in to book this DJ.');
-      }
+    if (!isLoggedIn || !currentUser) {
+      // Logged-out: placeholder (gate modal comes in a later session)
+      alert('Please log in to book this DJ.');
       return;
     }
-    if (onBookDate) {
-      onBookDate(key);
-    } else {
-      // Placeholder — booking form comes in a later session.
-      alert(`Booking form coming soon. Selected: ${key}`);
-    }
+    setSelectedDate(key);
   }
 
   // ── Bounds for prev/next ─────────────────────────────────────────
@@ -300,6 +295,28 @@ export default function MobilePublicCalendar({
           <span className={styles.legendDot} />Unavailable
         </div>
       </div>
+
+      {/* BOOKING FORM — appears below the calendar after a date is selected.
+          We use the date-key as a React key so picking a different date
+          remounts the form (clearing any in-progress input). */}
+      {selectedDate && currentUser && (
+        <MobileBookingForm
+          key={selectedDate}
+          dateKey={selectedDate}
+          dj={{
+            id: djId,
+            name: djName,
+            slug: djSlug,
+            event_types: djEventTypes,
+          }}
+          bookingSettings={bookingSettings}
+          currentUser={{
+            id: currentUser.id,
+            email: currentUser.email,
+            name: currentUser.name,
+          }}
+        />
+      )}
     </div>
   );
 }

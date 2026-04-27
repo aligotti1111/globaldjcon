@@ -350,11 +350,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
           {showMobileBookingTab && (
             <div className={paneClass('booking')}>
               <MobilePublicCalendar
-                bookingDays={bookingSettings!.mob_booking_days || {}}
-                bookingWindowMonths={bookingSettings!.mob_booking_window || 24}
-                defaultBookingsPerDay={bookingSettings!.mob_bookings_per_day || 1}
-                djSlug={effectiveSlug}
+                djId={data.id}
                 djName={data.name || ''}
+                djSlug={effectiveSlug}
+                djEventTypes={data.event_types}
+                bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
               />
             </div>

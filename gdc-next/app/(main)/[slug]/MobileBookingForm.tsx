@@ -1,0 +1,788 @@
+'use client';
+
+// MobileBookingForm — booking-request form for mobile DJ profiles.
+// Faithful port of vanilla djp-mob-public.js renderMobPubForm + submission
+// logic (lines 709–1340).
+//
+// Shown directly below the calendar when the user clicks Book on an
+// available date. All form fields, package selection, and live price
+// calculation match vanilla.
+//
+// DEFERRED to a follow-up session (per scope agreement):
+//   - Nominatim address autocomplete suggestions
+//   - Distance-check + travel-warning modal
+//   - International phone formats (this session is US-only)
+//   - mob_booking_request / mob_booking_confirm email types — these aren't
+//     even in vanilla send-email.js (calls fail silently in prod). When the
+//     email types are added in a later session, uncomment the fetch calls
+//     near the bottom of handleSubmit. For now booking inserts succeed but
+//     no email is sent — same behavior as vanilla.
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import styles from './mobileBookingForm.module.css';
+import {
+  type BookingSettings,
+  type MobilePackage,
+} from './bookingSettings';
+import {
+  MOB_EVENT_TYPE_LABELS,
+  MOB_TIME_OPTIONS,
+  formatUSPhone,
+  getPackageCategory,
+  calcPrice,
+  formatLongDate,
+} from './mobileBookingForm';
+
+interface DjLite {
+  id: string;
+  name: string | null;
+  slug: string | null;
+  event_types: string | null;  // comma-separated
+}
+
+interface CurrentUser {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+}
+
+interface Props {
+  dateKey: string;
+  dj: DjLite;
+  bookingSettings: BookingSettings;
+  currentUser: CurrentUser;
+}
+
+export default function MobileBookingForm({
+  dateKey,
+  dj,
+  bookingSettings,
+  currentUser,
+}: Props) {
+  // ── Form state ────────────────────────────────────────────────────
+  const [phone, setPhone] = useState('');
+  const [eventType, setEventType] = useState('');
+  const [eventTypeOther, setEventTypeOther] = useState('');
+  const [venueName, setVenueName] = useState('');
+  const [venueAddress, setVenueAddress] = useState('');
+  const [room, setRoom] = useState('');
+  const [guests, setGuests] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [message, setMessage] = useState('');
+
+  // Wedding-only cocktail fields
+  const [cocktailNeeded, setCocktailNeeded] = useState<boolean | null>(null);
+  const [cocktailStart, setCocktailStart] = useState('');
+  const [cocktailSameRoom, setCocktailSameRoom] = useState<boolean | null>(null);
+
+  // Package selection (index into packages array)
+  const [selectedPkgIdx, setSelectedPkgIdx] = useState<number | null>(null);
+
+  // Photo lightbox (when clicking a package thumbnail)
+  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<string | null>(null);
+
+  // Submit state
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successState, setSuccessState] = useState<{ isQuote: boolean } | null>(null);
+
+  // Scroll the form into view on mount
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  // ── Derived data ─────────────────────────────────────────────────
+  const dateLabel = formatLongDate(dateKey);
+  const isWedding = eventType === 'weddings';
+  const eventTypesAllowed = useMemo(() => {
+    return (dj.event_types || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }, [dj.event_types]);
+
+  // Packages — picked by category, fall back to general[idx] for shared fields
+  const cat = getPackageCategory(eventType);
+  const packagesAll = bookingSettings.mob_packages || {};
+  const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
+  const generalPkgs: MobilePackage[] = packagesAll.general || [];
+
+  // "Form is ready for package preview" — vanilla mobPubFormReady gate.
+  // Note: this is what vanilla checks before showing packages, NOT what's
+  // required for submit. Submit has its own validation below.
+  const formReadyForPackages = !!(
+    eventType && venueName.trim() && venueAddress.trim() && startTime && endTime
+  );
+
+  // Live price calculation when we have a package + times
+  const selectedPkg =
+    selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
+  const depositPct = bookingSettings.mob_deposit_pct || 0;
+  const priceResult = useMemo(() => {
+    if (!selectedPkg || !formReadyForPackages) return null;
+    return calcPrice(selectedPkg, startTime, endTime, depositPct);
+  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages]);
+
+  // Reset selected package when event type changes (vanilla parity —
+  // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
+  useEffect(() => {
+    setSelectedPkgIdx(null);
+  }, [eventType]);
+
+  // Cocktail-time warning: cocktail must start before reception
+  const cocktailWarn =
+    cocktailNeeded === true &&
+    cocktailStart &&
+    startTime &&
+    cocktailStart >= startTime;
+
+  // ── Phone formatting on input ────────────────────────────────────
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setPhone(formatUSPhone(e.target.value));
+  }
+
+  // ── Lightbox ESC + body scroll lock ──────────────────────────────
+  useEffect(() => {
+    if (!photoLightboxUrl) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPhotoLightboxUrl(null);
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [photoLightboxUrl]);
+
+  // ── Submit ────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    setErrorMsg(null);
+
+    // Validation
+    if (!phone.trim()) { setErrorMsg('Please enter your phone number.'); return; }
+    if (!eventType) { setErrorMsg('Please select an event type.'); return; }
+    if (!venueName.trim()) { setErrorMsg('Please enter the venue name.'); return; }
+    if (!venueAddress.trim()) { setErrorMsg('Please enter the venue address.'); return; }
+    if (!startTime) { setErrorMsg('Please select a start time.'); return; }
+    if (cocktailWarn) {
+      setErrorMsg('Cocktail hour start time must be before the reception start time.');
+      return;
+    }
+    if (selectedPkgIdx == null) { setErrorMsg('Please select a package.'); return; }
+    if (!selectedPkg) { setErrorMsg('Invalid package selected.'); return; }
+
+    // Compute final price (re-run; UI value may be stale)
+    const finalPrice = calcPrice(selectedPkg, startTime, endTime, depositPct);
+
+    setSubmitting(true);
+
+    try {
+      const supabase = createClient();
+      const insertPayload = {
+        dj_id: dj.id,
+        requester_id: currentUser.id,
+        dj_slug: dj.slug,
+        booking_type: 'mobile',
+        event_date: dateKey,
+        event_type: eventType === 'other' ? (eventTypeOther.trim() || 'other') : eventType,
+        venue_name: venueName.trim(),
+        venue_address: venueAddress.trim(),
+        room_details: room.trim() || null,
+        guest_count: guests ? parseInt(guests, 10) : null,
+        start_time: startTime,
+        end_time: endTime || null,
+        phone: phone.trim(),
+        cocktail_needed: isWedding ? !!cocktailNeeded : null,
+        cocktail_start_time: isWedding && cocktailNeeded ? cocktailStart : null,
+        cocktail_same_room: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
+        package_title: selectedPkg.title || null,
+        package_category: cat,
+        package_index: selectedPkgIdx,
+        quoted_rate: finalPrice.price,
+        deposit_pct: depositPct || null,
+        deposit_amount: finalPrice.depositAmount,
+        is_quote: finalPrice.isQuote,
+        notes: message.trim() || null,
+        status: 'pending',
+      };
+
+      // Insert booking — using `unknown as never` because the Booking type
+      // in db.ts is incomplete (missing dj_slug, event_type, room_details,
+      // guest_count, phone, cocktail_*, package_index). The actual Supabase
+      // table has these columns; the type just doesn't capture them yet.
+      const { error: insertError } = await supabase
+        .from('bookings')
+        .insert(insertPayload as unknown as never);
+
+      if (insertError) throw insertError;
+
+      // EMAIL SENDING — skipped in this session.
+      //
+      // Vanilla calls /.netlify/functions/send-email with type
+      // 'mob_booking_request' (to DJ) and 'mob_booking_confirm' (to booker)
+      // here, but those types aren't actually implemented in vanilla's
+      // send-email.js (calls return 400 and fail silently due to try/catch).
+      // We have the same behavior — booking is saved to DB, no emails sent.
+      //
+      // When the email types are added in a future session, restore these:
+      //
+      // try {
+      //   await fetch('/api/send-email', {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({
+      //       type: 'mob_booking_request',
+      //       djUserId: dj.id, djName: dj.name,
+      //       requesterName: currentUser.name,
+      //       eventDate: dateKey,
+      //       eventType: MOB_EVENT_TYPE_LABELS[eventType] || eventTypeOther || eventType,
+      //       venueName: venueName.trim(), venueAddress: venueAddress.trim(),
+      //       roomDetails: room.trim(), guestCount: guests || null,
+      //       packageTitle: selectedPkg.title, packageCategory: cat,
+      //       startTime, endTime,
+      //       cocktailNeeded: isWedding && cocktailNeeded,
+      //       cocktailStartTime: cocktailStart,
+      //       cocktailSameRoom: !!cocktailSameRoom,
+      //       totalPrice: finalPrice.price,
+      //       depositAmount: finalPrice.depositAmount,
+      //       depositPct,
+      //       notes: message.trim(),
+      //       isQuote: finalPrice.isQuote,
+      //     }),
+      //   });
+      // } catch (e) { console.warn('DJ email failed:', e); }
+      //
+      // try {
+      //   if (currentUser.email) {
+      //     await fetch('/api/send-email', {
+      //       method: 'POST',
+      //       headers: { 'Content-Type': 'application/json' },
+      //       body: JSON.stringify({
+      //         type: 'mob_booking_confirm',
+      //         requesterName: currentUser.name, requesterEmail: currentUser.email,
+      //         djName: dj.name, eventDate: dateKey,
+      //         packageTitle: selectedPkg.title,
+      //         totalPrice: finalPrice.price,
+      //         depositAmount: finalPrice.depositAmount,
+      //         depositPct,
+      //         isQuote: finalPrice.isQuote,
+      //       }),
+      //     });
+      //   }
+      // } catch (e) { console.warn('Booker confirm email failed:', e); }
+
+      setSuccessState({ isQuote: finalPrice.isQuote });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Submission failed';
+      setErrorMsg(`Error: ${msg}`);
+      setSubmitting(false);
+    }
+  }
+
+  // ── Success state ────────────────────────────────────────────────
+  if (successState) {
+    const djName = dj.name || 'The DJ';
+    return (
+      <div ref={rootRef} className={styles.successCard}>
+        <div className={styles.successCheck}>✓</div>
+        <div className={styles.successTitle}>
+          {successState.isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}
+        </div>
+        <div className={styles.successMsg}>
+          {djName} will be in touch shortly.
+        </div>
+      </div>
+    );
+  }
+
+  // ── Form render ──────────────────────────────────────────────────
+  const submitLabel = priceResult?.isQuote ? 'Request Quote' : 'Request Booking';
+
+  return (
+    <>
+      <div ref={rootRef} className={styles.formCard}>
+        <div className={styles.formHeaderRow}>
+          <div className={styles.formTitle}>Request Booking</div>
+          <div className={styles.formDate}>{dateLabel}</div>
+        </div>
+
+        {errorMsg && <div className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
+
+        {/* Phone */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-phone">Phone Number</label>
+          <input
+            id="mpf-phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="(555) 555-5555"
+            value={phone}
+            onChange={handlePhoneChange}
+            className={styles.input}
+            autoComplete="tel"
+          />
+        </div>
+
+        {/* Event Type */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-event-type">Type of Event</label>
+          <select
+            id="mpf-event-type"
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+            className={styles.select}
+          >
+            <option value="">Select event type...</option>
+            {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
+              eventTypesAllowed.includes(val) ? (
+                <option key={val} value={val}>{lbl}</option>
+              ) : null
+            )}
+          </select>
+          {eventType === 'other' && (
+            <input
+              type="text"
+              placeholder="Describe your event..."
+              value={eventTypeOther}
+              onChange={(e) => setEventTypeOther(e.target.value)}
+              className={styles.input}
+              style={{ marginTop: '.4rem' }}
+            />
+          )}
+        </div>
+
+        {/* Venue Name */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-venue-name">Venue Name</label>
+          <input
+            id="mpf-venue-name"
+            type="text"
+            placeholder="The Grand Ballroom"
+            value={venueName}
+            onChange={(e) => setVenueName(e.target.value)}
+            className={styles.input}
+          />
+        </div>
+
+        {/* Venue Address — autocomplete deferred to next session */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-venue-address">Venue Address</label>
+          <input
+            id="mpf-venue-address"
+            type="text"
+            placeholder="123 Main St, City, State"
+            value={venueAddress}
+            onChange={(e) => setVenueAddress(e.target.value)}
+            className={styles.input}
+            autoComplete="off"
+          />
+        </div>
+
+        {/* Room Details */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-room">
+            Room Details <span className={styles.optional}>(optional)</span>
+          </label>
+          <input
+            id="mpf-room"
+            type="text"
+            placeholder="e.g. Grand Ballroom, 3rd Floor Terrace"
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+            className={styles.input}
+          />
+        </div>
+
+        {/* Guests */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-guests">Estimated Number of Guests</label>
+          <input
+            id="mpf-guests"
+            type="number"
+            min={1}
+            placeholder="150"
+            value={guests}
+            onChange={(e) => setGuests(e.target.value)}
+            className={`${styles.input} ${styles.smallNumberInput}`}
+          />
+        </div>
+
+        {/* Times */}
+        <div className={styles.timesLabel}>{dateLabel}</div>
+        <div className={styles.timesRow}>
+          <div className={styles.timeCol}>
+            <label htmlFor="mpf-start-time">
+              {isWedding ? 'Reception Start Time' : 'Event Start Time'}
+            </label>
+            <select
+              id="mpf-start-time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className={styles.select}
+            >
+              <option value="">Select time...</option>
+              {MOB_TIME_OPTIONS.map(o => (
+                <option key={o.val} value={o.val}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.timeCol}>
+            <label htmlFor="mpf-end-time">
+              {isWedding ? 'Reception End Time' : 'Event End Time'}
+            </label>
+            <select
+              id="mpf-end-time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className={styles.select}
+            >
+              <option value="">Select time...</option>
+              {MOB_TIME_OPTIONS.map(o => (
+                <option key={o.val} value={o.val}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Wedding cocktail-hour subsection */}
+        {isWedding && (
+          <div className={styles.weddingFields}>
+            <div className={styles.weddingHeader}>Cocktail Hour</div>
+            <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
+            <div className={styles.radioGroup}>
+              <label className={styles.radioPill}>
+                <input
+                  type="radio"
+                  name="mpf-cocktail-yn"
+                  checked={cocktailNeeded === true}
+                  onChange={() => setCocktailNeeded(true)}
+                />
+                <span className={styles.radioPillLabel}>Yes</span>
+              </label>
+              <label className={styles.radioPill}>
+                <input
+                  type="radio"
+                  name="mpf-cocktail-yn"
+                  checked={cocktailNeeded === false}
+                  onChange={() => setCocktailNeeded(false)}
+                />
+                <span className={styles.radioPillLabel}>No</span>
+              </label>
+            </div>
+            {cocktailNeeded === true && (
+              <div>
+                <div style={{ marginBottom: '.6rem' }}>
+                  <label
+                    htmlFor="mpf-cocktail-start"
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.58rem',
+                      letterSpacing: '.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--white)',
+                      display: 'block',
+                      marginBottom: '.3rem',
+                    }}
+                  >
+                    Cocktail Start Time
+                  </label>
+                  <select
+                    id="mpf-cocktail-start"
+                    value={cocktailStart}
+                    onChange={(e) => setCocktailStart(e.target.value)}
+                    className={styles.select}
+                  >
+                    <option value="">Select time...</option>
+                    {MOB_TIME_OPTIONS.map(o => (
+                      <option key={o.val} value={o.val}>{o.label}</option>
+                    ))}
+                  </select>
+                  {cocktailWarn && (
+                    <div className={styles.cocktailWarn}>
+                      ⚠ Cocktail hour must start before the reception. Please select an earlier time.
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '.85rem', color: 'var(--white)', marginBottom: '.5rem' }}>
+                  Is the cocktail hour in the same room as the reception?
+                </div>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioPill}>
+                    <input
+                      type="radio"
+                      name="mpf-cocktail-room"
+                      checked={cocktailSameRoom === true}
+                      onChange={() => setCocktailSameRoom(true)}
+                    />
+                    <span className={styles.radioPillLabel}>Yes</span>
+                  </label>
+                  <label className={styles.radioPill}>
+                    <input
+                      type="radio"
+                      name="mpf-cocktail-room"
+                      checked={cocktailSameRoom === false}
+                      onChange={() => setCocktailSameRoom(false)}
+                    />
+                    <span className={styles.radioPillLabel}>No</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Packages */}
+        <div className={styles.formRow}>
+          <PackagesSection
+            formReady={formReadyForPackages}
+            eventType={eventType}
+            categoryPkgs={categoryPkgs}
+            generalPkgs={generalPkgs}
+            selectedPkgIdx={selectedPkgIdx}
+            onSelect={(idx) => setSelectedPkgIdx(idx)}
+            onPhotoClick={(url) => setPhotoLightboxUrl(url)}
+          />
+        </div>
+
+        {/* Price display */}
+        {priceResult && selectedPkgIdx != null && (
+          <div className={styles.priceDisplay}>
+            <div className={styles.priceLabel}>Estimated Price</div>
+            <div
+              className={
+                priceResult.isQuote
+                  ? `${styles.priceValue} ${styles.priceValueQuote}`
+                  : styles.priceValue
+              }
+            >
+              {priceResult.isQuote || priceResult.price == null
+                ? 'Price on Request'
+                : `$${priceResult.price.toLocaleString()}`}
+            </div>
+            {priceResult.price != null && depositPct > 0 && priceResult.depositAmount != null && (
+              <div className={styles.depositText}>
+                Deposit required: ${priceResult.depositAmount.toLocaleString()} ({depositPct}%)
+              </div>
+            )}
+            {priceResult.price != null && depositPct === 0 && (
+              <div className={styles.depositText}>No deposit required</div>
+            )}
+            {priceResult.overtimeHours > 0 && selectedPkg?.overtime && (
+              <div className={styles.overtimeNote}>
+                Includes {priceResult.overtimeHours}hr overtime at ${selectedPkg.overtime}/hr
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Message */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-message">
+            Message <span className={styles.optional}>(optional)</span>
+          </label>
+          <textarea
+            id="mpf-message"
+            placeholder="Tell the DJ about your event..."
+            rows={3}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className={styles.textarea}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className={styles.submitBtn}
+        >
+          {submitting ? 'Submitting...' : submitLabel}
+        </button>
+      </div>
+
+      {/* Photo lightbox for package thumbnails */}
+      {photoLightboxUrl && (
+        <div
+          className={styles.photoLightbox}
+          onClick={() => setPhotoLightboxUrl(null)}
+        >
+          <div
+            className={styles.photoLightboxInner}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photoLightboxUrl}
+              alt="Package preview"
+              className={styles.photoLightboxImg}
+            />
+            <button
+              type="button"
+              onClick={() => setPhotoLightboxUrl(null)}
+              className={styles.photoLightboxClose}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PackagesSection — handles the placeholder, no-packages-found, and the
+// package grid when ready. Pulled out for clarity.
+// ─────────────────────────────────────────────────────────────────────────
+
+function PackagesSection({
+  formReady,
+  eventType,
+  categoryPkgs,
+  generalPkgs,
+  selectedPkgIdx,
+  onSelect,
+  onPhotoClick,
+}: {
+  formReady: boolean;
+  eventType: string;
+  categoryPkgs: MobilePackage[];
+  generalPkgs: MobilePackage[];
+  selectedPkgIdx: number | null;
+  onSelect: (idx: number) => void;
+  onPhotoClick: (url: string) => void;
+}) {
+  if (!formReady) {
+    return (
+      <div className={styles.packagesPlaceholder}>
+        Available packages will appear once we have all the information about your event.
+      </div>
+    );
+  }
+  if (!eventType) {
+    return null;
+  }
+
+  // Filter to packages with a usable title (matches vanilla's `if (!title) return`)
+  const usablePackages = categoryPkgs
+    .map((pkg, idx) => {
+      const fallback = generalPkgs[idx] || {};
+      const title = (pkg.title?.trim()) || (fallback.title?.trim());
+      if (!pkg || !title) return null;
+      return {
+        idx,
+        pkg,
+        fallback,
+        title,
+        details: pkg.details ?? fallback.details,
+        photo: pkg.photo ?? fallback.photo,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
+
+  if (usablePackages.length === 0) {
+    return (
+      <div className={styles.noPackagesMsg}>
+        No packages available for this event type. Message the DJ to discuss your event.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className={styles.packagesLabel}>Select a Package</div>
+      <div className={styles.packagesGrid}>
+        {usablePackages.map(({ idx, pkg, title, details, photo }) => {
+          const isSelected = selectedPkgIdx === idx;
+
+          // Price preview on the card head
+          let priceEl: React.ReactNode = null;
+          if (pkg.reqAll) {
+            priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
+          } else {
+            const has4 = pkg.price4 != null && pkg.price4 !== '';
+            const has5 = pkg.price5 != null && pkg.price5 !== '';
+            const has6 = pkg.price6 != null && pkg.price6 !== '';
+            if (has4 || has5 || has6) {
+              const previewPrice = has4 ? pkg.price4 : has5 ? pkg.price5 : pkg.price6;
+              priceEl = (
+                <div className={styles.packagePrice}>
+                  ${Number(previewPrice).toLocaleString()}
+                </div>
+              );
+            }
+          }
+
+          const hasBody = !!(details || photo);
+
+          return (
+            <div
+              key={idx}
+              className={`${styles.packageCard} ${isSelected ? styles.packageCardSelected : ''}`}
+              onClick={() => onSelect(idx)}
+              role="button"
+            >
+              {isSelected && (
+                <div className={styles.packageCheck}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              )}
+
+              <div
+                className={`${styles.packageHead} ${hasBody ? styles.packageHeadHasBody : ''}`}
+              >
+                <div className={styles.packageTitle}>{title}</div>
+                {priceEl && (
+                  <div className={styles.packagePriceWrap}>{priceEl}</div>
+                )}
+              </div>
+
+              {hasBody && (
+                <div
+                  className={`${styles.packageBody} ${isSelected ? styles.packageBodySelected : ''}`}
+                >
+                  <div className={styles.packageDetails}>
+                    {details ? (
+                      // Vanilla preserves the DJ's chosen formatting (bullets,
+                      // numbered list, gdj-check-list). Details come from the
+                      // DJ's profile editor — trusted source. Render as HTML.
+                      // eslint-disable-next-line react/no-danger
+                      <div dangerouslySetInnerHTML={{ __html: details }} />
+                    ) : (
+                      <div className={styles.packageDetailsEmpty}>
+                        Details available on request
+                      </div>
+                    )}
+                  </div>
+                  {photo && (
+                    <div
+                      className={styles.packageThumb}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPhotoClick(photo);
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photo} alt="" />
+                      <div className={styles.packageThumbOverlay} />
+                      <div className={styles.packageThumbLabel}>Sample</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isSelected && !hasBody && <div style={{ height: '2rem' }} />}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
