@@ -1,0 +1,27 @@
+// (main) layout — wraps pages with the full site chrome:
+// header, mobile menu, footer, and the #view-public class wrapper
+// that the vanilla CSS uses for layout/scoping.
+//
+// Pages in this group: homepage, DJ profile, dashboard, etc.
+// Pages NOT in this group (simple pages like privacy/contact) use
+// the (simple) layout instead — they get just the global font/CSS
+// from the root layout but no site header.
+
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import MobileMenu from '@/components/MobileMenu';
+
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div id="view-public" className="view active">
+      <Header />
+      <MobileMenu />
+      {children}
+      <Footer />
+    </div>
+  );
+}
