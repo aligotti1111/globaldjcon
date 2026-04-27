@@ -1,0 +1,180 @@
+/* Login page styles — scoped via CSS Module so they don't leak.
+   Matches vanilla login.html design exactly. */
+
+.body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 100vh;
+}
+.container {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 50px 40px;
+  border-radius: 12px;
+  max-width: 450px;
+  width: 100%;
+}
+.logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.logo a {
+  text-decoration: none;
+}
+.logo h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  background: linear-gradient(135deg, var(--white) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  background: var(--deep);
+  padding: 4px;
+  border-radius: 8px;
+}
+.tab {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .2s;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+}
+.tab.active {
+  background: var(--card);
+  color: var(--neon);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.formGroup {
+  margin-bottom: 20px;
+}
+.formGroup label {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.formGroup input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.formGroup input:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .07);
+}
+.submitBtn {
+  width: 100%;
+  padding: 14px;
+  background: var(--neon);
+  color: var(--black);
+  border: none;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.submitBtn:hover:not(:disabled) {
+  opacity: .85;
+}
+.submitBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.alert {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.alertError {
+  background: rgba(255, 95, 95, .1);
+  border: 1px solid rgba(255, 95, 95, .3);
+  color: var(--error);
+}
+.alertSuccess {
+  background: rgba(61, 220, 132, .1);
+  border: 1px solid rgba(61, 220, 132, .3);
+  color: #3ddc84;
+}
+.links {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+}
+.links a {
+  color: var(--neon);
+  text-decoration: none;
+}
+.links a:hover {
+  text-decoration: underline;
+}
+.divider {
+  text-align: center;
+  margin: 25px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.divider a {
+  color: var(--neon);
+  text-decoration: none;
+}
+.divider a:hover {
+  text-decoration: underline;
+}
+.contactLink {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+.contactLink a {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .2s;
+}
+.contactLink a:hover {
+  color: var(--neon);
+}
