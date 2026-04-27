@@ -414,11 +414,17 @@ function DjForm({ onBack, onSuccess }: {
       </div>
 
       <div className={styles.formGroup}>
-        <label htmlFor="dj-name">DJ / Company Name</label>
+        <label htmlFor="dj-name">
+          {djType === 'mobile' ? 'Company Name' : djType === 'club' ? 'DJ Name' : 'DJ / Company Name'}
+        </label>
         <input
           id="dj-name"
           type="text"
-          placeholder="DJ Nova or Premier Events LLC"
+          placeholder={
+            djType === 'mobile' ? 'Premier Events LLC' :
+            djType === 'club' ? 'DJ Nova' :
+            'DJ Nova or Premier Events LLC'
+          }
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           required

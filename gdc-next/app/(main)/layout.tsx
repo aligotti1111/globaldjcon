@@ -10,6 +10,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MobileMenu from '@/components/MobileMenu';
+import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 
 export default function MainLayout({
   children,
@@ -18,6 +19,7 @@ export default function MainLayout({
 }) {
   return (
     <div id="view-public" className="view active">
+      <VerifyEmailBanner />
       <Header />
       <MobileMenu />
       {children}

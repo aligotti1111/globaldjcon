@@ -42,31 +42,47 @@ function LoginForm() {
     searchParams.get('redirect') || searchParams.get('return') || '/';
 
   // ── Already-signed-in redirect ──────────────────────────────────────────
+  // If the user is already logged in, redirect them to the destination —
+  // UNLESS we just came here from email verification (we want them to see
+  // the confirmation banner first, then redirect after a short delay).
   useEffect(() => {
     if (authLoading) return;
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
     const hasAccessToken = hash.includes('access_token');
     const isConfirmed = searchParams.get('confirmed') === '1';
-    if (user && !hasAccessToken && !isConfirmed) {
+    const isEmailVerified = searchParams.get('emailverified') === '1';
+    if (user && !hasAccessToken && !isConfirmed && !isEmailVerified) {
       window.location.replace(destination);
     }
   }, [user, authLoading, searchParams, destination]);
 
   // ── Post-email-confirmation handling ────────────────────────────────────
+  // Two URL patterns can land here from a verification flow:
+  //   1) ?emailverified=1 — our own /api/verify-email redirected here after
+  //      flipping email_verified=true. Show a green success banner. If they
+  //      already have a session, redirect home after a moment so the banner
+  //      shows briefly. Otherwise let them sign in.
+  //   2) #access_token=... or ?confirmed=1 — legacy Supabase-confirmation flow.
+  //      Same treatment.
   useEffect(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
     const hasAccessToken = hash.includes('access_token');
     const isConfirmed = searchParams.get('confirmed') === '1';
-    if (!hasAccessToken && !isConfirmed) return;
+    const isEmailVerified = searchParams.get('emailverified') === '1';
+    if (!hasAccessToken && !isConfirmed && !isEmailVerified) return;
+
+    // Show the success banner immediately
+    setSuccess('✓ Your email is verified! You can now access all features.');
 
     const timer = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        window.location.href = '/account-settings?emailverified=1';
+        // Already logged in — send them home so they can keep using the site
+        window.location.href = '/';
         return;
       }
-      setSuccess('✓ Your email is verified. Please log in to continue.');
-    }, 600);
+      // No session — leave the banner showing so they can log in
+    }, 1500);
 
     if (typeof window !== 'undefined' && window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname);

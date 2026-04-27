@@ -91,7 +91,7 @@ export async function GET(request: Request) {
 
   // Already used? Treat as success — user may have clicked twice.
   if (tokenRow.used_at) {
-    return NextResponse.redirect(`${origin}/account-settings?emailverified=1`, 302);
+    return NextResponse.redirect(`${origin}/login?emailverified=1`, 302);
   }
 
   if (new Date(tokenRow.expires_at) < new Date()) {
@@ -130,6 +130,9 @@ export async function GET(request: Request) {
     console.warn('[verify-email] mark-used failed (non-fatal)', e);
   }
 
-  // Step 4: redirect to settings page with the verified flag set
-  return NextResponse.redirect(`${origin}/account-settings?emailverified=1`, 302);
+  // Step 4: redirect to login page with the verified flag set. The login page
+  // shows a green banner when ?emailverified=1 is present. If the user already
+  // has a session in this browser, the login page will detect it and bounce
+  // them to the homepage — but the banner shows briefly first.
+  return NextResponse.redirect(`${origin}/login?emailverified=1`, 302);
 }
