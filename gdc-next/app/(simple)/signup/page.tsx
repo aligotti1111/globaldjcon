@@ -11,7 +11,8 @@
 // always carry every column).
 //
 // Slug auto-suggestions and ZIP-to-city lookup are deferred to a follow-up
-// session — for now the user types their preferred slug and city/state manually.
+// session — for now the user types their preferred slug, and city/state
+// stay empty until populated later from their profile page.
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -193,12 +194,15 @@ function DjForm({ onBack, onSuccess }: {
   const [name, setName] = useState('');
   const [slugEdit, setSlugEdit] = useState('');
   const [country, setCountry] = useState('United States');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [travel, setTravel] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // City and state are intentionally NOT in the form. They get populated
+  // from the ZIP code via the Nominatim lookup (deferred to Session 3).
+  // For now they're submitted as empty strings — the user can update them
+  // later from their profile page.
 
   // Auto-derive slug from name unless the user typed a custom one.
   const effectiveSlug = slugEdit ? makeSlug(slugEdit) : makeSlug(name);
@@ -222,6 +226,10 @@ function DjForm({ onBack, onSuccess }: {
     }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!zip.trim()) {
+      setError('Please enter your ZIP / postal code.');
       return;
     }
     if (!effectiveSlug) {
@@ -255,8 +263,8 @@ function DjForm({ onBack, onSuccess }: {
             slug: effectiveSlug,
             dj_type: djType,
             country,
-            city,
-            state,
+            city: '',
+            state: '',
             travel_distance: travel,
             zip,
           },
@@ -279,6 +287,8 @@ function DjForm({ onBack, onSuccess }: {
 
       // Upsert public.users row to make sure all DJ fields land
       // (the auth trigger doesn't always carry every column over).
+      // city/state are populated server-side from ZIP in Session 3;
+      // for now they're empty and the user can edit later.
       if (signUpData?.user?.id) {
         await supabase.from('users').upsert({
           id: signUpData.user.id,
@@ -287,8 +297,8 @@ function DjForm({ onBack, onSuccess }: {
           slug: effectiveSlug,
           dj_type: djType,
           country,
-          city,
-          state,
+          city: '',
+          state: '',
           travel_distance: travelVal,
           zip,
           email_verified: false,
@@ -413,28 +423,6 @@ function DjForm({ onBack, onSuccess }: {
       </div>
 
       <div className={styles.formGroup}>
-        <label htmlFor="dj-city">City</label>
-        <input
-          id="dj-city"
-          type="text"
-          placeholder="e.g. New York"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-state">State / Region</label>
-        <input
-          id="dj-state"
-          type="text"
-          placeholder="e.g. NY"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
         <label htmlFor="dj-zip">Zip / Postal Code</label>
         <input
           id="dj-zip"
@@ -442,6 +430,7 @@ function DjForm({ onBack, onSuccess }: {
           placeholder="e.g. 10001"
           value={zip}
           onChange={(e) => setZip(e.target.value)}
+          required
         />
       </div>
 
