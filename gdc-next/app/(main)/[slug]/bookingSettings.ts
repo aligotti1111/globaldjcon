@@ -2,6 +2,7 @@
 // Vanilla stores this as a JSON-stringified string in users.booking_settings.
 
 // Per-day booking data keyed by YYYY-MM-DD in booking_settings.booking_days
+// (used by club DJs for the public calendar view)
 export interface DayData {
   booked?: boolean;
   unavailable?: boolean;
@@ -15,13 +16,31 @@ export interface DayData {
 
 export type BookingDays = Record<string, DayData>;
 
-// The full booking_settings object. Many fields are for the booking-form
-// flow (rates, equipment) which we don't need for the public calendar yet.
+// MOBILE-DJ per-day data. Different shape from club: tracks remaining
+// `bookings_available` capacity (mobile DJs can have multiple bookings per
+// day until that drops to zero, at which point the day is "Full").
+// Stored under booking_settings.mob_booking_days.
+export interface MobileDayData {
+  booked?: boolean;
+  unavailable?: boolean;
+  eventName?: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;        // 'Private' hides eventName publicly
+  bookings_available?: number; // remaining capacity for this date
+}
+
+export type MobileBookingDays = Record<string, MobileDayData>;
+
+// The full booking_settings object. The same JSON column holds both
+// club-DJ and mobile-DJ booking config — different prefixes for each.
+// Many fields are used by booking-form flows (Session B), not the calendar.
 export interface BookingSettings {
+  // ── Club DJ fields ───────────────────────────────────────────
   booking_enabled?: boolean;
   booking_days?: BookingDays;
   booking_window_months?: number; // default 12 — how far ahead visitors can navigate
-  // Booking-form fields (used by Session 5 work, not by the calendar itself)
+  // Booking-form fields (Session 5 work)
   allow_offers?: boolean;
   equip_full?: boolean;
   equip_decks?: boolean;
@@ -31,6 +50,28 @@ export interface BookingSettings {
   rate_with_decks?: number | string;
   rate_no_equip?: number | string;
   base_rate?: number | string;
+
+  // ── Mobile DJ fields (mob_* prefix) ──────────────────────────
+  // Same boolean booking_enabled controls both — vanilla checks this
+  // alongside dj_type to decide which calendar to render.
+  mob_booking_days?: MobileBookingDays;
+  mob_booking_window?: number;      // default 24 — mobile DJs typically book further out
+  mob_bookings_per_day?: number;    // default 1 — capacity per date
+  mob_packages?: Record<string, MobilePackage[]>;  // 'general' | 'wedding' | 'mitzvah'
+  mob_deposit_pct?: number;
+}
+
+// Mobile DJ package — used by the booking form (Session B) but declared
+// here so the type lives with the rest of booking_settings.
+export interface MobilePackage {
+  title?: string;
+  details?: string;          // HTML-formatted package details
+  photo?: string;            // sample photo URL
+  price4?: number | string;  // 4hr rate
+  price5?: number | string;  // 5hr rate
+  price6?: number | string;  // 6hr rate
+  overtime?: number | string; // per-hour overtime rate
+  reqAll?: boolean;          // "Price on request" — no auto-quote
 }
 
 // Vanilla stores booking_settings as a JSON string. This helper parses it

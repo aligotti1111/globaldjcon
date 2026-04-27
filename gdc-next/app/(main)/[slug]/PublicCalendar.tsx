@@ -425,9 +425,6 @@ function SingleMonthView({
             )}
           </>
         );
-        if (eventName && !isPrivate) {
-          monthEvents.push({ day: d, key, data: dayData });
-        }
       } else if (isUnavail) {
         inner = null; // no badge for unavail
       } else {
@@ -442,6 +439,13 @@ function SingleMonthView({
           </div>
         );
       }
+    }
+
+    // Collect public booked events for the list-below — FUTURE events only.
+    // (Vanilla shows past events in the list too, but the product decision
+    // here is to hide past events to keep the list focused on what's coming up.)
+    if (!isPast && isBooked && dayData.eventName && !isPrivate) {
+      monthEvents.push({ day: d, key, data: dayData });
     }
 
     const cellClickHandler = isBooked && !isPrivate && dayData.eventName

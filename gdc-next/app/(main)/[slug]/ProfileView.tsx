@@ -12,6 +12,7 @@ import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
 import { buildMixEmbed, buildVideoEmbed } from './embeds';
 import { parseBookingSettings } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
+import MobilePublicCalendar from './MobilePublicCalendar';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
@@ -80,23 +81,23 @@ interface Props {
 }
 
 export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) {
-  // ── Booking settings parsing & "show calendar tab" decision ──────────
-  // Vanilla shows the Availability tab (and makes it the default) ONLY for
-  // CLUB DJs whose booking_settings has booking_enabled=true. Mobile DJs
-  // also show a booking tab in vanilla but with a totally different widget
-  // (mobile booking flow, deferred to a later session). For now we treat
-  // mobile-DJ booking as "tab not yet enabled" and show their About tab
-  // by default — same UX as a club DJ without booking enabled.
+  // ── Booking settings parsing & "show booking tab" decision ──────────
+  // Vanilla shows a booking tab (and makes it the default) when the DJ has
+  // booking_enabled — but the WIDGET inside that tab differs by DJ type:
+  //   - Club DJ → Availability calendar (PublicCalendar) showing event dates
+  //   - Mobile DJ → Booking calendar (MobilePublicCalendar) for direct booking
+  // Tab labels also differ: "Availability" for club, "Booking" for mobile,
+  // matching vanilla bookingTabBtn.textContent flips at line 707 of dj-profile.html.
   const bookingSettings = parseBookingSettings(data.booking_settings);
   const isClubDJ = data.dj_type === 'club';
-  const showAvailabilityTab = !!(
-    isClubDJ &&
-    bookingSettings &&
-    bookingSettings.booking_enabled
-  );
+  const isMobileDJBooking = data.dj_type === 'mobile';
+  const bookingEnabled = !!(bookingSettings && bookingSettings.booking_enabled);
+  const showClubAvailabilityTab = isClubDJ && bookingEnabled;
+  const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
+  const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
 
   const [activeTab, setActiveTab] = useState<TabKey>(
-    showAvailabilityTab ? 'booking' : 'about'
+    showBookingTab ? 'booking' : 'about'
   );
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -302,13 +303,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
         <div className={styles.body}>
           {/* Tab nav */}
           <nav className={styles.tabsNav}>
-            {showAvailabilityTab && (
+            {showBookingTab && (
               <button
                 className={tabClass('booking')}
                 onClick={() => setActiveTab('booking')}
                 type="button"
               >
-                Availability
+                {showMobileBookingTab ? 'Booking' : 'Availability'}
               </button>
             )}
             <button className={tabClass('about')} onClick={() => setActiveTab('about')} type="button">
@@ -334,12 +335,24 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
             )}
           </nav>
 
-          {/* Availability tab — public booking calendar */}
-          {showAvailabilityTab && (
+          {/* Booking tab — different component for club vs mobile DJs */}
+          {showClubAvailabilityTab && (
             <div className={paneClass('booking')}>
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
+                djSlug={effectiveSlug}
+                djName={data.name || ''}
+                isLoggedIn={isLoggedIn}
+              />
+            </div>
+          )}
+          {showMobileBookingTab && (
+            <div className={paneClass('booking')}>
+              <MobilePublicCalendar
+                bookingDays={bookingSettings!.mob_booking_days || {}}
+                bookingWindowMonths={bookingSettings!.mob_booking_window || 24}
+                defaultBookingsPerDay={bookingSettings!.mob_bookings_per_day || 1}
                 djSlug={effectiveSlug}
                 djName={data.name || ''}
                 isLoggedIn={isLoggedIn}
