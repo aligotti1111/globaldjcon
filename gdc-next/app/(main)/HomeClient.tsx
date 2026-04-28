@@ -129,7 +129,15 @@ export default function HomeClient({ initialDjs }: Props) {
   const [sortMode, setSortMode] = useState<'name' | 'nearest'>('name');
   const [activeCountry, setActiveCountry] = useState('United States');
   const [showCountryMenu, setShowCountryMenu] = useState(false);
-  const [nearMeStatus, setNearMeStatus] = useState<'idle' | 'getting' | 'found' | 'error'>('idle');
+  const [nearMeStatus, setNearMeStatus] = useState<'idle' | 'getting' | 'geocoding' | 'found' | 'error'>('idle');
+
+  // How many cards to show. Defaults to 100 — Show More adds another 100.
+  // Reset to 100 whenever filters/search change.
+  const [visibleCount, setVisibleCount] = useState(100);
+
+  // Progress while geocoding DJ zips after Near Me / zip search.
+  // Format: { done, total } so we can show "Loaded 12/87".
+  const [geocodeProgress, setGeocodeProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Force re-render when distances are cached on djs (a setState trigger
   // since we mutate djsRef.current in place during async geocoding).
@@ -177,11 +185,31 @@ export default function HomeClient({ initialDjs }: Props) {
   // ─── When userLocation changes, geocode each DJ's zip/city for distance.
   // Fire-and-forget per DJ; bump distanceVersion when each batch lands so
   // the UI re-renders with the populated _distance values.
+  // We also track progress so the user sees "Loaded X/Y" while batches run.
   useEffect(() => {
-    if (!userLocation) return;
+    if (!userLocation) {
+      setGeocodeProgress(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const todo = djsRef.current.filter((dj) => !dj._coords && (dj.zip || dj.city));
+      const total = todo.length;
+      // If all DJs already have coords cached, we can compute distances
+      // immediately without any network calls.
+      if (total === 0) {
+        djsRef.current.forEach((dj) => {
+          if (dj._coords) {
+            dj._distance = calcDistance(userLocation.lat, userLocation.lng, dj._coords.lat, dj._coords.lng);
+          }
+        });
+        setDistanceVersion((v) => v + 1);
+        setGeocodeProgress(null);
+        if (nearMeStatus === 'geocoding') setNearMeStatus('found');
+        return;
+      }
+      setGeocodeProgress({ done: 0, total });
+      let done = 0;
       // Batch: 5 at a time so we don't spam Nominatim
       for (let i = 0; i < todo.length; i += 5) {
         if (cancelled) return;
@@ -200,12 +228,25 @@ export default function HomeClient({ initialDjs }: Props) {
               dj._distance = calcDistance(userLocation.lat, userLocation.lng, dj._coords.lat, dj._coords.lng);
             }
           });
+          done += batch.length;
+          setGeocodeProgress({ done, total });
           setDistanceVersion((v) => v + 1);
         }
       }
+      if (!cancelled) {
+        setGeocodeProgress(null);
+        if (nearMeStatus === 'geocoding') setNearMeStatus('found');
+      }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation]);
+
+  // Reset pagination whenever filters/search/country change so users don't
+  // get stuck looking at a paginated subset of stale results.
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [searchTerm, activeFilters, activeCountry]);
 
   // ─── Pill filter toggle ───────────────────────────────────────────
   function togglePill(filter: 'mobile' | 'club') {
@@ -232,7 +273,11 @@ export default function HomeClient({ initialDjs }: Props) {
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setSortMode('nearest');
-        setNearMeStatus('found');
+        // After we have the coords, the geocode useEffect kicks off and
+        // sets nearMeStatus to 'found' once it's done. Show 'geocoding'
+        // in the meantime so the user knows something's happening.
+        setNearMeStatus('geocoding');
+        setVisibleCount(100); // reset pagination on new search
       },
       () => {
         alert('Could not get your location. Please search by zip code instead.');
@@ -293,75 +338,82 @@ export default function HomeClient({ initialDjs }: Props) {
   return (
     <>
       <div className="controls">
-        <div className="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="search"
-            id="search"
-            placeholder="Search by zip or DJ name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <div
-            className="country-indicator"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowCountryMenu((prev) => !prev);
-            }}
-          >
-            <span style={{ fontSize: '1rem' }}>{COUNTRY_FLAGS[activeCountry] || '🌍'}</span>
-            {showCountryMenu && (
-              <div className="country-menu" onClick={(e) => e.stopPropagation()}>
-                {COUNTRY_NAMES.map((c) => (
-                  <div
-                    key={c}
-                    className={`country-option ${c === activeCountry ? 'selected' : ''}`}
-                    onClick={() => {
-                      setActiveCountry(c);
-                      setShowCountryMenu(false);
-                    }}
-                  >
-                    <span>{COUNTRY_FLAGS[c]}</span>
-                    <span>{c}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* Search row: search box + country flag inside it, with Find Near Me
+            button sitting immediately to its right on the same line. The
+            previous version had Near Me on a row of its own pushed to the
+            right, which Anthony noted should be tighter. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+          <div className="search-wrap" style={{ flex: '1 1 240px' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              id="search"
+              placeholder="Search by zip or DJ name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div
+              className="country-indicator"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCountryMenu((prev) => !prev);
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>{COUNTRY_FLAGS[activeCountry] || '🌍'}</span>
+              {showCountryMenu && (
+                <div className="country-menu" onClick={(e) => e.stopPropagation()}>
+                  {COUNTRY_NAMES.map((c) => (
+                    <div
+                      key={c}
+                      className={`country-option ${c === activeCountry ? 'selected' : ''}`}
+                      onClick={() => {
+                        setActiveCountry(c);
+                        setShowCountryMenu(false);
+                      }}
+                    >
+                      <span>{COUNTRY_FLAGS[c]}</span>
+                      <span>{c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.3rem', width: '100%' }}>
           <button
             type="button"
             onClick={findNearMe}
-            disabled={nearMeStatus === 'getting'}
+            disabled={nearMeStatus === 'getting' || nearMeStatus === 'geocoding'}
             style={{
-              background: 'none',
-              border: 'none',
+              background: nearMeStatus === 'found' ? 'var(--neon-dim)' : 'transparent',
+              border: '1px solid var(--neon)',
               color: 'var(--neon)',
               fontFamily: "'Space Mono', monospace",
-              fontSize: '.65rem',
+              fontSize: '.62rem',
               letterSpacing: '.08em',
               textTransform: 'uppercase',
-              cursor: nearMeStatus === 'getting' ? 'wait' : 'pointer',
-              padding: 0,
-              opacity: 0.8,
-              transition: 'opacity .2s',
+              cursor: (nearMeStatus === 'getting' || nearMeStatus === 'geocoding') ? 'wait' : 'pointer',
+              padding: '.55rem .85rem',
+              borderRadius: '6px',
+              transition: 'all .2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '.3rem',
+              gap: '.35rem',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.8')}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
-            {nearMeStatus === 'getting' && 'Getting location...'}
+            {nearMeStatus === 'getting' && 'Getting location…'}
+            {nearMeStatus === 'geocoding' && geocodeProgress &&
+              `Loading ${geocodeProgress.done}/${geocodeProgress.total}…`}
+            {nearMeStatus === 'geocoding' && !geocodeProgress && 'Loading…'}
             {nearMeStatus === 'found' && 'Near Me ✓'}
             {(nearMeStatus === 'idle' || nearMeStatus === 'error') && 'Find DJs Near Me'}
           </button>
@@ -416,7 +468,8 @@ export default function HomeClient({ initialDjs }: Props) {
           </div>
 
           <span className="count-badge hide-mobile">
-            Showing <span>{visibleDjs.length}</span>
+            Showing <span>{Math.min(visibleCount, visibleDjs.length)}</span>
+            {visibleDjs.length > visibleCount && ` of ${visibleDjs.length}`}
           </span>
         </div>
       </div>
@@ -434,18 +487,50 @@ export default function HomeClient({ initialDjs }: Props) {
                 : 'Try different keywords or adjust the filters.'}
             </div>
           </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid">
-            {visibleDjs.map((dj, i) => (
-              <DjCard key={dj.id} dj={dj} index={i} />
-            ))}
-          </div>
         ) : (
-          <div className="dj-list">
-            {visibleDjs.map((dj) => (
-              <DjListRow key={dj.id} dj={dj} />
-            ))}
-          </div>
+          <>
+            {viewMode === 'grid' ? (
+              <div className="grid">
+                {visibleDjs.slice(0, visibleCount).map((dj, i) => (
+                  <DjCard key={dj.id} dj={dj} index={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="dj-list">
+                {visibleDjs.slice(0, visibleCount).map((dj) => (
+                  <DjListRow key={dj.id} dj={dj} />
+                ))}
+              </div>
+            )}
+
+            {/* Show More — appears when there are more results than the
+                current visibleCount allows. Each click adds 100 more. */}
+            {visibleDjs.length > visibleCount && (
+              <div style={{ textAlign: 'center', marginTop: '2.5rem', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((c) => c + 100)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--neon)',
+                    color: 'var(--neon)',
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '.7rem',
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    padding: '.85rem 1.75rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'background .2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--neon-dim)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  Show More ({visibleDjs.length - visibleCount} more)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
