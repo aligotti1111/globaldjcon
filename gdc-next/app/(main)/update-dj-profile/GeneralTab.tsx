@@ -4,14 +4,15 @@
 // Faithful port of update-dj-profile.html lines 47-304.
 //
 // Deferred to later sessions:
-//   - Avatar upload + crop modal (the avatar circle on top of the tab)
 //   - Slug availability check (live debounced check via API + fallback suggestions)
 //   - Zip → city/state lookup (Nominatim or zippopotam.us)
 //
 // Everything else is here: name, slug input (no live check yet), private
 // profile toggle, mobile event-types or club-genres (depending on dj_type),
-// country, zip, travel distance, dj start year, bio, phone.
+// country, zip, travel distance, dj start year, bio, phone. Avatar upload
+// + crop is also here (AvatarCrop modal mounts on file select).
 
+import { useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import {
   MOBILE_EVENT_TYPES,
@@ -21,6 +22,7 @@ import {
   DJ_START_YEARS,
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
+import AvatarCrop from './AvatarCrop';
 
 interface Props {
   state: GeneralFormState;
@@ -31,41 +33,122 @@ interface Props {
   // Site URL is used for the private-profile share link preview. SSR-safe
   // way is to pass it down rather than reading window.location.origin.
   siteUrl: string;
+  // Auth user ID — needed by AvatarCrop to write to `${userId}/avatar.png`
+  // in Supabase storage.
+  userId: string;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl }: Props) {
+export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId }: Props) {
   const slugDisplay = slug || 'your-url';
+
+  // ── Avatar state ─────────────────────────────────────────────────
+  // `pickedFile` is non-null while the AvatarCrop modal is open.
+  // After successful upload, parent's onChange persists the new URL into
+  // state.avatarUrl which feeds the circle preview.
+  // Errors are shown inside the AvatarCrop modal — no parent state needed.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'updated'>('idle');
+
+  // First letter of the DJ name — used for the placeholder circle when
+  // no avatar exists yet. Vanilla shows '?'; we go with the first
+  // initial which is friendlier for new accounts.
+  const initials = (state.name || '').trim().charAt(0).toUpperCase() || '?';
+
+  function onAvatarClick() {
+    fileInputRef.current?.click();
+  }
+
+  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPickedFile(file);
+    setAvatarStatus('idle');
+  }
+
+  function onCropClose() {
+    setPickedFile(null);
+    // Reset the file input so the same file can be reselected later
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function onCropSuccess(publicUrl: string) {
+    onChange('avatarUrl', publicUrl);
+    setPickedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setAvatarStatus('updated');
+    // Clear status after 3s
+    setTimeout(() => setAvatarStatus('idle'), 3000);
+  }
+
+  function onAvatarDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm('Remove profile photo?')) return;
+    // Vanilla parity: clear the form field. The image stays in storage
+    // but the users.avatar_url column will be set to null on next save.
+    onChange('avatarUrl', '');
+  }
 
   return (
     <div>
-      {/* Avatar — placeholder for now (upload+crop deferred) */}
+      {/* Avatar — click to upload, opens AvatarCrop modal */}
       <div
-        className={styles.formGroup}
-        style={{ textAlign: 'center', marginBottom: '1.5rem' }}
+        className={styles.avatarTop}
+        onClick={onAvatarClick}
+        title="Click to change photo"
       >
-        <div
-          style={{
-            width: '120px',
-            height: '120px',
-            margin: '0 auto',
-            borderRadius: '50%',
-            background: 'rgba(0,245,196,.06)',
-            border: '1px solid rgba(0,245,196,.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--muted)',
-            fontFamily: "'Space Mono', monospace",
-            fontSize: '.55rem',
-            letterSpacing: '.1em',
-            textTransform: 'uppercase',
-            lineHeight: 1.5,
-            padding: '0 .5rem',
-          }}
-        >
-          Avatar upload<br />coming soon
+        <div className={styles.avatarCircle}>
+          {state.avatarUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={state.avatarUrl}
+                alt="Profile"
+                className={styles.avatarCircleImg}
+              />
+              <button
+                type="button"
+                onClick={onAvatarDelete}
+                className={styles.avatarDeleteBtn}
+                title="Remove photo"
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <span>{initials}</span>
+          )}
         </div>
+        <div
+          className={`${styles.avatarTopInfo}${
+            avatarStatus === 'updated' ? ' ' + styles.avatarTopInfoUpdated : ''
+          }`}
+        >
+          <strong>Profile Photo</strong>
+          <span>
+            {avatarStatus === 'updated'
+              ? '✓ Photo updated'
+              : state.avatarUrl
+              ? 'Click to change'
+              : 'Click to upload & crop'}
+          </span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onFilePicked}
+          style={{ display: 'none' }}
+        />
       </div>
+
+      {/* Crop modal — mounts only when a file is picked */}
+      <AvatarCrop
+        file={pickedFile}
+        userId={userId}
+        onClose={onCropClose}
+        onSuccess={onCropSuccess}
+      />
 
       {/* Private profile toggle */}
       <div className={styles.privateRow}>

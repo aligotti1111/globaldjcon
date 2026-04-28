@@ -42,6 +42,7 @@ export interface GeneralFormState {
   mobileEvents: string[];   // for mobile DJs
   clubGenres: string[];     // for club DJs
   profilePrivate: boolean;
+  avatarUrl: string;        // current avatar URL (already uploaded to storage)
 }
 
 interface InitialProfile {
@@ -61,6 +62,7 @@ interface InitialProfile {
   event_types?: string | null;
   club_genres?: string[] | null;
   profile_private?: boolean | null;
+  avatar_url?: string | null;
 }
 
 interface Props {
@@ -95,6 +97,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       mobileEvents: defaultMobileEvents,
       clubGenres: initialProfile.club_genres || [],
       profilePrivate: !!initialProfile.profile_private,
+      avatarUrl: initialProfile.avatar_url || '',
     };
   });
 
@@ -175,6 +178,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         event_types: eventTypes,
         club_genres: clubGenres,
         profile_private: general.profilePrivate,
+        avatar_url: general.avatarUrl || null,
         booking_settings: JSON.stringify(bookingSettings),
       };
 
@@ -272,6 +276,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               email={authEmail}
               slug={general.slug || initialProfile.slug}
               siteUrl={siteUrl}
+              userId={initialProfile.id}
             />
           )}
 
