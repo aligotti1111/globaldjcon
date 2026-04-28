@@ -24,6 +24,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { resolveUserEmail } from '@/lib/supabase/admin';
 import BookingRequestsClient from './BookingRequestsClient';
 
 export const dynamic = 'force-dynamic';
@@ -65,6 +66,10 @@ interface BookingRow {
   // we do it server-side instead so the client renders synchronously.)
   dj_name?: string | null;
   requester_name?: string | null;
+  // DJ contact info — only stitched onto APPROVED outgoing rows so the booker
+  // can reach the DJ to coordinate the gig. Never sent for pending/denied.
+  dj_phone?: string | null;
+  dj_email?: string | null;
 }
 
 export default async function BookingRequestsPage() {
@@ -144,6 +149,36 @@ export default async function BookingRequestsPage() {
     const rMap = Object.fromEntries(((rRows as { id: string; name: string | null }[] | null) || []).map((r) => [r.id, r.name]));
     incoming = incoming.map((b) =>
       b.requester_name ? b : { ...b, requester_name: rMap[b.requester_id] || 'Unknown' }
+    );
+  }
+
+  // For approved outgoing bookings, fetch the DJ's phone + email so the
+  // booker can contact them to coordinate the gig. Email lives in
+  // auth.users (admin lookup); phone is on public.users.
+  // Only approved → no leakage of contact info on pending/denied requests.
+  const approvedDjIds = [
+    ...new Set(
+      outgoing.filter((b) => b.status === 'approved' && b.dj_id).map((b) => b.dj_id)
+    ),
+  ];
+  if (approvedDjIds.length > 0) {
+    const { data: phoneRows } = await supabase
+      .from('users')
+      .select('id, phone')
+      .in('id', approvedDjIds);
+    const phoneMap = Object.fromEntries(
+      ((phoneRows as { id: string; phone: string | null }[] | null) || []).map((r) => [r.id, r.phone])
+    );
+    // Email lookups go through the admin client one at a time. Parallel
+    // resolves so a slow auth call doesn't serialize the others.
+    const emailEntries = await Promise.all(
+      approvedDjIds.map(async (id) => [id, await resolveUserEmail(id)] as const)
+    );
+    const emailMap = Object.fromEntries(emailEntries);
+    outgoing = outgoing.map((b) =>
+      b.status === 'approved' && approvedDjIds.includes(b.dj_id)
+        ? { ...b, dj_phone: phoneMap[b.dj_id] || null, dj_email: emailMap[b.dj_id] || null }
+        : b
     );
   }
 

@@ -259,14 +259,30 @@ export default function MobileBookingCard({
       </SectionFrame>
 
       {/* Contact Info */}
+      {/* Contact Info — DJ sees the booker's contact (host + phone always).
+          Booker sees the DJ name always, plus DJ's email + phone only after
+          the DJ approves the booking (server stitches dj_email/dj_phone
+          onto approved outgoing rows). Message button appears for both. */}
       <SectionFrame label="Contact Info">
         <div className={styles.infoBlock}>
           <div className={styles.contactLine}>
             {isIncoming ? 'Host Name' : 'To'}: <span>{targetLabel}</span>
           </div>
-          {b.phone && (
+          {/* DJ side: always show booker's phone */}
+          {isIncoming && b.phone && (
             <div className={styles.contactLine}>
               Phone: <a href={`tel:${b.phone}`}>{b.phone}</a>
+            </div>
+          )}
+          {/* Booker side: DJ's email + phone only after approval */}
+          {!isIncoming && status === 'approved' && b.dj_email && (
+            <div className={styles.contactLine}>
+              Email: <a href={`mailto:${b.dj_email}`}>{b.dj_email}</a>
+            </div>
+          )}
+          {!isIncoming && status === 'approved' && b.dj_phone && (
+            <div className={styles.contactLine}>
+              Phone: <a href={`tel:${b.dj_phone}`}>{b.dj_phone}</a>
             </div>
           )}
         </div>
