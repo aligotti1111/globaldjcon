@@ -166,6 +166,7 @@ export default async function DjProfilePage({ params }: PageProps) {
       data={profile}
       effectiveSlug={effectiveSlug}
       isLoggedIn={isLoggedIn}
+      isOwnProfile={isOwnProfile}
     />
   );
 }

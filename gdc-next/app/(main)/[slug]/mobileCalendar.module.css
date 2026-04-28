@@ -321,3 +321,211 @@
 .miniCellPointer {
   cursor: pointer;
 }
+
+/* ─────────────────────────────────────────────────────────── */
+/* Owner controls — ✓/✗ quick-mark + ✏️ edit pencil per cell  */
+/* Faithful port of vanilla djp-mob-public.js inline styles    */
+/* ─────────────────────────────────────────────────────────── */
+
+.ownerControls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ownerQuickMark,
+.ownerEditPencil {
+  position: absolute;
+  bottom: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  pointer-events: auto;
+  z-index: 5;
+}
+.ownerQuickMark {
+  left: 4px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .3);
+}
+.ownerQuickMark:hover {
+  color: rgba(255, 255, 255, .7);
+}
+.ownerQuickMarkActive {
+  color: var(--neon);
+}
+.ownerEditPencil {
+  right: 4px;
+  font-size: .75rem;
+  color: var(--muted);
+}
+.ownerEditPencil:hover {
+  filter: brightness(1.3);
+}
+
+/* Owner day-edit modal */
+.ownerModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.ownerModalInner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.ownerModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.ownerModalDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+}
+.ownerModalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  line-height: 1;
+}
+.ownerModalClose:hover {
+  color: var(--white);
+}
+.ownerModalRadios {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.ownerModalRadio {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+}
+.ownerModalRadio input[type="radio"],
+.ownerModalRadio input[type="checkbox"] {
+  accent-color: var(--neon);
+}
+.ownerModalRadioAvail {
+  font-size: .85rem;
+  color: var(--white);
+}
+.ownerModalRadioUnavail {
+  font-size: .85rem;
+  color: var(--muted);
+}
+.ownerModalRadioBooked {
+  font-size: .85rem;
+  color: #ff5f5f;
+}
+.ownerModalField {
+  margin-bottom: .75rem;
+}
+.ownerModalLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--white);
+  display: block;
+  margin-bottom: .35rem;
+}
+.ownerModalNumberInput {
+  width: 80px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .5rem .75rem;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  text-align: center;
+}
+.ownerModalNumberInput:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.ownerModalTextInput {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .5rem .75rem;
+  color: var(--white);
+  font-size: .85rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.ownerModalTextInput:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.ownerModalTextInput:disabled {
+  opacity: .5;
+}
+.ownerModalHint {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-left: .5rem;
+}
+.ownerModalTimeRow {
+  display: flex;
+  gap: .75rem;
+}
+.ownerModalTimeRow > div {
+  flex: 1;
+}
+.ownerModalBtns {
+  display: flex;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+.ownerModalCancel,
+.ownerModalSave {
+  flex: 1;
+  padding: .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ownerModalCancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: .62rem;
+}
+.ownerModalCancel:hover {
+  color: var(--white);
+  border-color: var(--white);
+}
+.ownerModalSave {
+  background: var(--neon);
+  border: none;
+  color: var(--black);
+  font-size: .65rem;
+  font-weight: 700;
+}
+.ownerModalSave:hover {
+  opacity: .9;
+}

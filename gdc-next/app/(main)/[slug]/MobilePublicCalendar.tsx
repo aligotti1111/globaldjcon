@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 import styles from './mobileCalendar.module.css';
 import {
   type BookingSettings,
@@ -55,6 +56,10 @@ interface Props {
   // Full booking settings — needed for both the calendar AND the form (packages, deposit, etc.)
   bookingSettings: BookingSettings;
   isLoggedIn: boolean;
+  // When true, the viewer is the profile owner. Calendar cells render
+  // ✓/✗ quick-mark + ✏️ edit controls, and clicking a date opens the
+  // owner day-edit modal instead of the booker form.
+  isOwnProfile: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -100,11 +105,17 @@ export default function MobilePublicCalendar({
   djTravelDistance,
   bookingSettings,
   isLoggedIn,
+  isOwnProfile,
 }: Props) {
   // Pull values out of bookingSettings — same defaults as before
-  const bookingDays = bookingSettings.mob_booking_days || {};
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
   const defaultBookingsPerDay = bookingSettings.mob_bookings_per_day || 1;
+
+  // bookingDays is local state so owners can mutate it (quick-mark + edit).
+  // For non-owners this never changes — initialized once from props.
+  const [bookingDays, setBookingDays] = useState<MobileBookingDays>(
+    bookingSettings.mob_booking_days || {}
+  );
 
   // Auth — needed for the form (booker id + email + name)
   const { user: currentUser } = useAuth();
@@ -116,6 +127,70 @@ export default function MobilePublicCalendar({
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
   // Selected date drives the form below the calendar. null = no form shown.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Owner day-edit modal — null when closed; the dateKey when open.
+  const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
+
+  // ── Owner: persist booking_days back to users.booking_settings ───
+  // Vanilla mobPubOwnerSaveDays — fetches current booking_settings, merges
+  // the new mob_booking_days, writes it back. Avoids clobbering other
+  // settings the form may have updated since this component mounted.
+  async function persistBookingDays(nextDays: MobileBookingDays) {
+    const supabase = createClient();
+    try {
+      const { data: current } = await supabase
+        .from('users')
+        .select('booking_settings')
+        .eq('id', djId)
+        .single<{ booking_settings: string | null }>();
+      let bs: BookingSettings = {};
+      if (current?.booking_settings) {
+        try {
+          bs = typeof current.booking_settings === 'string'
+            ? JSON.parse(current.booking_settings)
+            : current.booking_settings;
+        } catch {
+          // Bad JSON in DB — start fresh
+          bs = {};
+        }
+      }
+      bs.mob_booking_days = nextDays;
+      await supabase
+        .from('users')
+        .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
+        .eq('id', djId);
+    } catch (err) {
+      console.error('persistBookingDays error:', err);
+    }
+  }
+
+  // ── Owner: quick-mark a day available <-> unavailable ───────────
+  // Vanilla mobPubQuickMark — toggles unavailable flag. If already booked,
+  // do nothing (use the edit modal to clear bookings).
+  async function quickMark(key: string) {
+    const cur = bookingDays[key];
+    if (cur && cur.booked) return;
+    const next: MobileBookingDays = { ...bookingDays };
+    if (cur && cur.unavailable) {
+      delete next[key];
+    } else {
+      next[key] = { unavailable: true };
+    }
+    setBookingDays(next);
+    await persistBookingDays(next);
+  }
+
+  // ── Owner: save day-edit modal ──────────────────────────────────
+  async function saveOwnerEdit(
+    key: string,
+    update: MobileDayData | null
+  ) {
+    const next: MobileBookingDays = { ...bookingDays };
+    if (update === null) delete next[key];
+    else next[key] = update;
+    setBookingDays(next);
+    setOwnerEditKey(null);
+    await persistBookingDays(next);
+  }
 
   // Auto-dismiss the range message after 4s, matching club calendar parity.
   useEffect(() => {
@@ -272,6 +347,9 @@ export default function MobilePublicCalendar({
           defaultBookingsPerDay={defaultBookingsPerDay}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
+          isOwnProfile={isOwnProfile}
+          onQuickMark={quickMark}
+          onOpenEdit={(key) => setOwnerEditKey(key)}
         />
       )}
 
@@ -284,6 +362,8 @@ export default function MobilePublicCalendar({
           defaultBookingsPerDay={defaultBookingsPerDay}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
+          isOwnProfile={isOwnProfile}
+          onOpenEdit={(key) => setOwnerEditKey(key)}
         />
       )}
 
@@ -303,7 +383,9 @@ export default function MobilePublicCalendar({
       {/* BOOKING FORM — appears below the calendar after a date is selected.
           We use the date-key as a React key so picking a different date
           remounts the form (clearing any in-progress input). */}
-      {selectedDate && currentUser && (
+      {/* Owner never sees the booker form — they manage dates via the
+          ✓/✗ quick-mark and ✏️ edit pencil instead. */}
+      {!isOwnProfile && selectedDate && currentUser && (
         <MobileBookingForm
           key={selectedDate}
           dateKey={selectedDate}
@@ -323,6 +405,17 @@ export default function MobilePublicCalendar({
           }}
         />
       )}
+
+      {/* Owner day-edit modal — opens when ownerEditKey is non-null. */}
+      {ownerEditKey && (
+        <OwnerDayEditModal
+          dateKey={ownerEditKey}
+          dayData={bookingDays[ownerEditKey] || {}}
+          defaultPerDay={defaultBookingsPerDay}
+          onClose={() => setOwnerEditKey(null)}
+          onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
+        />
+      )}
     </div>
   );
 }
@@ -340,6 +433,9 @@ function SingleMonthView({
   defaultBookingsPerDay,
   selectedDate,
   onBookClick,
+  isOwnProfile,
+  onQuickMark,
+  onOpenEdit,
 }: {
   year: number;
   month: number;
@@ -349,6 +445,9 @@ function SingleMonthView({
   defaultBookingsPerDay: number;
   selectedDate: string | null;
   onBookClick: (key: string, e: React.MouseEvent) => void;
+  isOwnProfile: boolean;
+  onQuickMark: (key: string) => void;
+  onOpenEdit: (key: string) => void;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -411,7 +510,41 @@ function SingleMonthView({
 
     // Inner content
     let inner: React.ReactNode = null;
-    if (isAvail) {
+    if (isOwnProfile && !isPast) {
+      // Owner gets ✓/✗ quick-mark + ✏️ edit pencil. Shown for all
+      // non-past dates — even booked ones get the pencil so the owner
+      // can edit/clear the booking. Quick-mark only shown when not booked.
+      inner = (
+        <div className={styles.ownerControls}>
+          {!isBooked && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickMark(key);
+              }}
+              className={`${styles.ownerQuickMark} ${
+                isUnavail ? styles.ownerQuickMarkActive : ''
+              }`}
+              title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+            >
+              {isUnavail ? '✓' : '✕'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenEdit(key);
+            }}
+            className={styles.ownerEditPencil}
+            title="Edit day"
+          >
+            ✏️
+          </button>
+        </div>
+      );
+    } else if (!isOwnProfile && isAvail) {
       inner = (
         <div
           className={styles.bookBadge}
@@ -422,6 +555,7 @@ function SingleMonthView({
         </div>
       );
     } else if (
+      !isOwnProfile &&
       isBooked &&
       dayData.eventName &&
       dayData.location !== 'Private'
@@ -478,6 +612,8 @@ function RollingMonthsView({
   defaultBookingsPerDay,
   selectedDate,
   onBookClick,
+  isOwnProfile,
+  onOpenEdit,
 }: {
   today: Date;
   bookingDays: MobileBookingDays;
@@ -485,6 +621,8 @@ function RollingMonthsView({
   defaultBookingsPerDay: number;
   selectedDate: string | null;
   onBookClick: (key: string, e: React.MouseEvent) => void;
+  isOwnProfile: boolean;
+  onOpenEdit: (key: string) => void;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
   // Mobile DJ rolling view shows the FULL booking window (vanilla line 648
@@ -519,20 +657,26 @@ function RollingMonthsView({
       const isAvail = !isPast && !isBooked && !isUnavail && !isFull;
       const isSelected = selectedDate === key;
 
+      // Owner click → edit modal. Booker click → only if available, opens form.
+      const onCellClick = isOwnProfile
+        ? (!isPast ? (() => onOpenEdit(key)) : undefined)
+        : (isAvail ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
+      const isClickable = !!onCellClick;
+
       const cellClasses = [styles.miniCell];
-      if (isSelected) cellClasses.push(styles.miniCellAvail); // amber treatment skipped — vanilla doesn't highlight selected in mini
+      if (isSelected) cellClasses.push(styles.miniCellAvail);
       else if (isBooked) cellClasses.push(styles.miniCellBooked);
       else if (isUnavail || isFull) cellClasses.push(styles.miniCellUnavail);
       else if (isAvail) cellClasses.push(styles.miniCellAvail);
       else if (isPast) cellClasses.push(styles.miniCellPast);
       if (isToday) cellClasses.push(styles.miniCellToday);
-      if (isAvail) cellClasses.push(styles.miniCellPointer);
+      if (isClickable) cellClasses.push(styles.miniCellPointer);
 
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
-          onClick={isAvail ? (e) => onBookClick(key, e) : undefined}
+          onClick={onCellClick}
         >
           {d}
         </div>
@@ -556,4 +700,225 @@ function RollingMonthsView({
   }
 
   return <div className={styles.monthsGrid}>{months}</div>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OwnerDayEditModal — opens when the profile owner clicks the ✏️ pencil
+// on a calendar cell. Lets them set the day's status (Available / Unavailable /
+// Booked) and configure capacity (avail) or event details (booked).
+//
+// Faithful port of vanilla djp-mob-public.js mobPubOwnerEdit + mobPubOwnerSaveDay.
+// ─────────────────────────────────────────────────────────────────────────
+
+type DayStatus = 'available' | 'unavailable' | 'booked';
+
+function OwnerDayEditModal({
+  dateKey,
+  dayData,
+  defaultPerDay,
+  onClose,
+  onSave,
+}: {
+  dateKey: string;
+  dayData: MobileDayData;
+  defaultPerDay: number;
+  onClose: () => void;
+  // Pass null to delete this day's override (default capacity), otherwise
+  // the new MobileDayData to write.
+  onSave: (update: MobileDayData | null) => void;
+}) {
+  // Initial status derived from current dayData
+  const initialStatus: DayStatus = dayData.booked
+    ? 'booked'
+    : dayData.unavailable
+    ? 'unavailable'
+    : 'available';
+  const [status, setStatus] = useState<DayStatus>(initialStatus);
+
+  // Available-day fields
+  const [perDay, setPerDay] = useState<number>(
+    dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay
+  );
+
+  // Booked-day fields
+  const [eventName, setEventName] = useState(dayData.eventName || '');
+  const [isPrivate, setIsPrivate] = useState(dayData.location === 'Private');
+  const [location, setLocation] = useState(
+    dayData.location && dayData.location !== 'Private' ? dayData.location : ''
+  );
+  const [startTime, setStartTime] = useState(dayData.startTime || '');
+  const [endTime, setEndTime] = useState(dayData.endTime || '');
+
+  // Format the date label e.g. "Friday, April 24, 2026"
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  function handleSave() {
+    if (status === 'unavailable') {
+      onSave({ unavailable: true });
+    } else if (status === 'booked') {
+      onSave({
+        booked: true,
+        eventName: eventName.trim(),
+        location: isPrivate ? 'Private' : location.trim(),
+        startTime,
+        endTime,
+      });
+    } else {
+      // Available — only persist a per-day override if it differs from default.
+      // Setting per-day to 0 collapses to "unavailable" (vanilla parity).
+      if (perDay <= 0) {
+        onSave({ unavailable: true });
+      } else if (perDay !== defaultPerDay) {
+        onSave({ bookings_available: perDay });
+      } else {
+        onSave(null); // delete override
+      }
+    }
+  }
+
+  return (
+    <div className={styles.ownerModalBackdrop} onClick={onClose}>
+      <div
+        className={styles.ownerModalInner}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.ownerModalHeader}>
+          <div className={styles.ownerModalDate}>{dateLabel}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.ownerModalClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.ownerModalRadios}>
+          <label className={styles.ownerModalRadio}>
+            <input
+              type="radio"
+              name="ownerEditStatus"
+              checked={status === 'available'}
+              onChange={() => setStatus('available')}
+            />
+            <span className={styles.ownerModalRadioAvail}>Available</span>
+          </label>
+          <label className={styles.ownerModalRadio}>
+            <input
+              type="radio"
+              name="ownerEditStatus"
+              checked={status === 'unavailable'}
+              onChange={() => setStatus('unavailable')}
+            />
+            <span className={styles.ownerModalRadioUnavail}>Unavailable</span>
+          </label>
+          <label className={styles.ownerModalRadio}>
+            <input
+              type="radio"
+              name="ownerEditStatus"
+              checked={status === 'booked'}
+              onChange={() => setStatus('booked')}
+            />
+            <span className={styles.ownerModalRadioBooked}>Booked</span>
+          </label>
+        </div>
+
+        {status === 'available' && (
+          <div className={styles.ownerModalField}>
+            <label className={styles.ownerModalLabel}>
+              Bookings available this day
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={perDay}
+              onChange={(e) => setPerDay(parseInt(e.target.value || '0', 10))}
+              className={styles.ownerModalNumberInput}
+            />
+            <span className={styles.ownerModalHint}>Set to 0 to block day</span>
+          </div>
+        )}
+
+        {status === 'booked' && (
+          <>
+            <div className={styles.ownerModalField}>
+              <label className={styles.ownerModalLabel}>Event Name</label>
+              <input
+                type="text"
+                placeholder="Wedding Reception..."
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                className={styles.ownerModalTextInput}
+              />
+            </div>
+            <div className={styles.ownerModalField}>
+              <label className={styles.ownerModalRadio} style={{ marginBottom: '.35rem' }}>
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                />
+                <span className={styles.ownerModalLabel} style={{ margin: 0 }}>
+                  Private Location
+                </span>
+              </label>
+              <input
+                type="text"
+                placeholder="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                disabled={isPrivate}
+                className={styles.ownerModalTextInput}
+              />
+            </div>
+            <div className={styles.ownerModalTimeRow}>
+              <div>
+                <label className={styles.ownerModalLabel}>Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className={styles.ownerModalTextInput}
+                />
+              </div>
+              <div>
+                <label className={styles.ownerModalLabel}>End Time</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className={styles.ownerModalTextInput}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className={styles.ownerModalBtns}>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.ownerModalCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className={styles.ownerModalSave}
+          >
+            Save Day
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -80,9 +80,10 @@ interface Props {
   data: DjProfileData;
   effectiveSlug: string;
   isLoggedIn: boolean;
+  isOwnProfile: boolean;
 }
 
-export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) {
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile }: Props) {
   // ── Booking settings parsing & "show booking tab" decision ──────────
   // Vanilla shows a booking tab (and makes it the default) when the DJ has
   // booking_enabled — but the WIDGET inside that tab differs by DJ type:
@@ -360,6 +361,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
                 djTravelDistance={data.travel_distance}
                 bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
+                isOwnProfile={isOwnProfile}
               />
             </div>
           )}
