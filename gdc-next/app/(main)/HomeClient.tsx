@@ -325,6 +325,8 @@ export default function HomeClient({ initialDjs }: Props) {
   }
 
   // ─── Find Near Me — geolocation API ───────────────────────────────
+  // Match vanilla exactly: no options, no timeout. Vanilla works fine on
+  // your Mac without any options, so don't pass any.
   function findNearMe() {
     if (!('geolocation' in navigator)) {
       alert('Geolocation not supported by your browser');
@@ -335,33 +337,12 @@ export default function HomeClient({ initialDjs }: Props) {
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setSortMode('nearest');
-        // After we have the coords, the geocode useEffect kicks off and
-        // sets nearMeStatus to 'found' once it's done. Show 'geocoding'
-        // in the meantime so the user knows something's happening.
         setNearMeStatus('geocoding');
-        setVisibleCount(100); // reset pagination on new search
+        setVisibleCount(100);
       },
-      (err) => {
-        // Specific error messages so the user knows whether it's a
-        // permission issue, a timeout, or the OS being unavailable.
-        let msg = 'Could not get your location. Please search by zip code instead.';
-        if (err.code === 1) {
-          msg = 'Location access denied. To fix: Chrome → Settings → Privacy → Site Settings → Location → allow this site. Then click Find Near Me again.';
-        } else if (err.code === 2) {
-          msg = 'Your device couldn\'t determine its location. Make sure macOS Location Services are on for Chrome (System Settings → Privacy & Security → Location Services).';
-        } else if (err.code === 3) {
-          msg = 'Location request timed out. Try again or search by zip code.';
-        }
-        alert(msg);
+      () => {
+        alert('Could not get your location. Please search by zip code instead.');
         setNearMeStatus('error');
-      },
-      {
-        // Hard cap — without this the call can hang forever waiting for
-        // the OS layer.
-        timeout: 10000,
-        // Cached position up to 5 minutes old is fine — we don't need GPS-
-        // accurate location for sorting DJs by distance.
-        maximumAge: 5 * 60 * 1000,
       }
     );
   }
