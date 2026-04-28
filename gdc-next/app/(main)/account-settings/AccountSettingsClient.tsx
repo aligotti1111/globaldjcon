@@ -1,0 +1,595 @@
+'use client';
+
+// AccountSettingsClient — owns all forms + saves on /account-settings.
+// Faithful port of vanilla account-settings.html JS section.
+//
+// Cards (top → bottom):
+//   1. Venue Profile (venue role only) — name, owner name, slug, address, country
+//   2. Profile Information — name + country (all roles)
+//   3. Email Address — change email (re-auth + Supabase email update)
+//   4. Change Password — current + new + confirm
+//   5. Blocked Users — list with unblock buttons
+//
+// All saves write directly via the Supabase client SDK using the user's
+// own session — no server actions needed because each user can only
+// modify their own row by RLS.
+
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import styles from './accountSettings.module.css';
+import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
+
+interface ProfileInit {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+  country: string;
+  city: string;
+  state: string;
+  zip: string;
+  address: string;
+  venueName: string;
+}
+
+interface BlockedUser {
+  id: string;
+  name: string;
+}
+
+interface Props {
+  initialProfile: ProfileInit;
+  currentEmail: string;
+  initialBlocked: BlockedUser[];
+}
+
+// Status object that drives the alert text under each save button.
+type Alert = { type: 'success' | 'error'; msg: string } | null;
+
+export default function AccountSettingsClient({
+  initialProfile, currentEmail, initialBlocked,
+}: Props) {
+  const isVenue = initialProfile.role === 'venue';
+
+  // ── Profile (name + country) ─────────────────────────────────────
+  const [name, setName] = useState(initialProfile.name);
+  const [country, setCountry] = useState(initialProfile.country);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileAlert, setProfileAlert] = useState<Alert>(null);
+
+  // ── Email ────────────────────────────────────────────────────────
+  const [newEmail, setNewEmail] = useState('');
+  const [confirmPwForEmail, setConfirmPwForEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailAlert, setEmailAlert] = useState<Alert>(null);
+
+  // ── Password ─────────────────────────────────────────────────────
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwAlert, setPwAlert] = useState<Alert>(null);
+
+  // ── Venue (only used when isVenue) ────────────────────────────────
+  const [venueName, setVenueName] = useState(initialProfile.venueName);
+  const [ownerName, setOwnerName] = useState(initialProfile.name); // doubles as page owner for venues
+  const [slug, setSlug] = useState(initialProfile.slug);
+  const [venueCountry, setVenueCountry] = useState(initialProfile.country);
+  const [addressInput, setAddressInput] = useState(
+    // Combine street + city/state/zip into a single human-friendly value for the input.
+    [
+      initialProfile.address,
+      initialProfile.city,
+      [initialProfile.state, initialProfile.zip].filter(Boolean).join(' '),
+    ].filter(Boolean).join(', ')
+  );
+  // Hidden values populated by the autocomplete pick — saved separately
+  // from the visible string. If the user types freehand, these stay as
+  // last-selected (matches vanilla parity).
+  const [addrCity, setAddrCity] = useState(initialProfile.city);
+  const [addrState, setAddrState] = useState(initialProfile.state);
+  const [addrZip, setAddrZip] = useState(initialProfile.zip);
+  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
+  const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [venueSaving, setVenueSaving] = useState(false);
+  const [venueAlert, setVenueAlert] = useState<Alert>(null);
+
+  // ── Blocked users — local state so unblock removes from list ─────
+  const [blocked, setBlocked] = useState<BlockedUser[]>(initialBlocked);
+
+  // ─────────────────────────────────────────────────────────────────
+  // SAVE HANDLERS
+  // ─────────────────────────────────────────────────────────────────
+
+  async function saveProfile() {
+    setProfileAlert(null);
+    if (!name.trim()) {
+      setProfileAlert({ type: 'error', msg: 'Please enter a name.' });
+      return;
+    }
+    if (!country) {
+      setProfileAlert({ type: 'error', msg: 'Please select a country.' });
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({ name: name.trim(), country } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+      setProfileAlert({ type: 'success', msg: '✓ Profile updated.' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setProfileAlert({ type: 'error', msg });
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function saveEmail() {
+    setEmailAlert(null);
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed || !confirmPwForEmail) {
+      setEmailAlert({ type: 'error', msg: 'Please fill in all fields.' });
+      return;
+    }
+    setEmailSaving(true);
+    try {
+      const supabase = createClient();
+      // Re-auth with current password to confirm the change. Supabase will
+      // refresh the session on success.
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: currentEmail,
+        password: confirmPwForEmail,
+      });
+      if (authErr) throw new Error('Current password is incorrect.');
+
+      // Update email — Supabase Auth sends a confirmation link to the new
+      // address. Email isn't actually changed until they click it.
+      const { error } = await supabase.auth.updateUser({ email: trimmed });
+      if (error) throw error;
+
+      setEmailAlert({
+        type: 'success',
+        msg: `✓ Confirmation email sent to ${trimmed}. Click the link to complete the change.`,
+      });
+      setConfirmPwForEmail('');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setEmailAlert({ type: 'error', msg });
+    } finally {
+      setEmailSaving(false);
+    }
+  }
+
+  async function savePassword() {
+    setPwAlert(null);
+    if (!currentPw || !newPw || !confirmPw) {
+      setPwAlert({ type: 'error', msg: 'Please fill in all fields.' });
+      return;
+    }
+    if (newPw.length < 8) {
+      setPwAlert({ type: 'error', msg: 'New password must be at least 8 characters.' });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwAlert({ type: 'error', msg: 'New passwords do not match.' });
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: currentEmail,
+        password: currentPw,
+      });
+      if (authErr) throw new Error('Current password is incorrect.');
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+      setPwAlert({ type: 'success', msg: '✓ Password updated.' });
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setPwAlert({ type: 'error', msg });
+    } finally {
+      setPwSaving(false);
+    }
+  }
+
+  async function saveVenue() {
+    setVenueAlert(null);
+    if (!venueName.trim()) {
+      setVenueAlert({ type: 'error', msg: 'Venue name is required.' });
+      return;
+    }
+    const finalSlug = makeSlug(slug);
+    if (!finalSlug) {
+      setVenueAlert({ type: 'error', msg: 'Profile URL is required.' });
+      return;
+    }
+
+    // Extract street from the combined address input. If the visible string
+    // contains the city, split there; otherwise take everything before the
+    // first comma. Matches vanilla saveVenueAll.
+    const fullAddress = addressInput.trim();
+    let address = fullAddress;
+    if (addrCity && fullAddress.includes(', ' + addrCity)) {
+      address = fullAddress.split(', ' + addrCity)[0].trim();
+    } else if (fullAddress.includes(',')) {
+      address = fullAddress.split(',')[0].trim();
+    }
+
+    setVenueSaving(true);
+    try {
+      const supabase = createClient();
+      // Slug uniqueness — only check if it changed
+      if (finalSlug !== initialProfile.slug) {
+        const { data: existing } = await supabase
+          .from('users')
+          .select('id')
+          .eq('slug', finalSlug)
+          .neq('id', initialProfile.id)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          throw new Error('That profile URL is already taken.');
+        }
+      }
+
+      const finalOwnerName = ownerName.trim() || venueName.trim();
+      const { error } = await supabase
+        .from('users')
+        .update({
+          venue_name: venueName.trim(),
+          name: finalOwnerName,
+          slug: finalSlug,
+          address,
+          city: addrCity,
+          state: addrState,
+          zip: addrZip,
+          country: venueCountry,
+        } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+
+      setVenueAlert({ type: 'success', msg: '✓ Venue profile saved.' });
+      // Sync the slug into local state so a re-edit doesn't think it's
+      // still the "old" slug
+      setSlug(finalSlug);
+      // Also sync the parallel "Profile Info" name field — vanilla writes
+      // both name + venue_name together, so the Profile Info name should
+      // reflect the same value.
+      setName(finalOwnerName);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setVenueAlert({ type: 'error', msg });
+    } finally {
+      setVenueSaving(false);
+    }
+  }
+
+  async function unblock(userId: string) {
+    if (!confirm('Unblock this user?')) return;
+    try {
+      const supabase = createClient();
+      const updated = blocked.filter((b) => b.id !== userId).map((b) => b.id);
+      const { error } = await supabase
+        .from('users')
+        .update({ blocked_users: updated } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+      setBlocked((prev) => prev.filter((b) => b.id !== userId));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert('Error: ' + msg);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // ADDRESS AUTOCOMPLETE
+  // ─────────────────────────────────────────────────────────────────
+
+  function onAddressChange(val: string) {
+    setAddressInput(val);
+    if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+    if (val.trim().length < 5) {
+      setAddrSuggestions([]);
+      setShowAddrSuggestions(false);
+      return;
+    }
+    addrTimerRef.current = setTimeout(async () => {
+      const results = await searchAddresses(val.trim(), venueCountry);
+      setAddrSuggestions(results);
+      setShowAddrSuggestions(results.length > 0);
+    }, 600);
+  }
+
+  function onAddressPick(s: AddressSuggestion) {
+    // Build a single human-friendly address for the visible field
+    const stateZip = [s.state, s.zip].filter(Boolean).join(' ');
+    const fullAddr = [s.street, s.city, stateZip].filter(Boolean).join(', ');
+    setAddressInput(fullAddr);
+    setAddrCity(s.city);
+    setAddrState(s.state);
+    setAddrZip(s.zip);
+    setShowAddrSuggestions(false);
+  }
+
+  // Cleanup the debounce timer on unmount
+  useEffect(() => () => {
+    if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className={styles.pageWrap}>
+      <div className={styles.pageHeader}>
+        <h1>Account Settings</h1>
+        <p>Manage your account, profile, and security.</p>
+      </div>
+
+      {/* Venue card — only for venue role */}
+      {isVenue && (
+        <div className={styles.card}>
+          <h2>Venue Profile</h2>
+          {venueAlert && <AlertBlock alert={venueAlert} />}
+
+          <div className={styles.formGroup}>
+            <label>Venue Name</label>
+            <input
+              type="text"
+              placeholder="The Grand Ballroom"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Venue Page Owner</label>
+            <input
+              type="text"
+              placeholder="Your full name"
+              value={ownerName}
+              onChange={(e) => setOwnerName(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Profile URL</label>
+            <div className={styles.slugRow}>
+              <span className={styles.slugPrefix}>globaldjconnect.com/</span>
+              <input
+                type="text"
+                placeholder="the-grand-ballroom"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+            <div className={styles.hint}>
+              Live availability check coming soon — for now, taken URLs
+              are detected at save time.
+            </div>
+          </div>
+
+          <div className={styles.formGroup} style={{ position: 'relative' }}>
+            <label>Address</label>
+            <input
+              type="text"
+              placeholder="123 Main St, City, State ZIP"
+              value={addressInput}
+              onChange={(e) => onAddressChange(e.target.value)}
+              onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
+              onFocus={() => {
+                if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
+              }}
+              autoComplete="off"
+            />
+            {showAddrSuggestions && addrSuggestions.length > 0 && (
+              <div className={styles.addrSuggestions}>
+                {addrSuggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className={styles.addrSuggestion}
+                    // onMouseDown fires before input.onBlur, so we reliably
+                    // capture the click before the dropdown is dismissed.
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onAddressPick(s);
+                    }}
+                  >
+                    {s.display.length > 60
+                      ? s.display.substring(0, 60) + '…'
+                      : s.display}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Country</label>
+            <select
+              value={venueCountry}
+              onChange={(e) => setVenueCountry(e.target.value)}
+            >
+              <option value="">Select country...</option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className={styles.saveBtn}
+            disabled={venueSaving}
+            onClick={saveVenue}
+          >
+            {venueSaving ? 'Saving…' : 'Save Venue Profile'}
+          </button>
+        </div>
+      )}
+
+      {/* Profile Information */}
+      <div className={styles.card}>
+        <h2>Profile Information</h2>
+        {profileAlert && <AlertBlock alert={profileAlert} />}
+
+        <div className={styles.formGroup}>
+          <label>Full Name</label>
+          <input
+            type="text"
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Country</label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">Select country...</option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          className={styles.saveBtn}
+          disabled={profileSaving}
+          onClick={saveProfile}
+        >
+          {profileSaving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Email */}
+      <div className={styles.card}>
+        <h2>Email Address</h2>
+        {emailAlert && <AlertBlock alert={emailAlert} />}
+
+        <div className={styles.formGroup}>
+          <label>Current Email</label>
+          <input type="email" value={currentEmail} disabled />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>New Email</label>
+          <input
+            type="email"
+            placeholder="your@email.com"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Current Password (to confirm)</label>
+          <input
+            type="password"
+            placeholder="Enter your current password"
+            value={confirmPwForEmail}
+            onChange={(e) => setConfirmPwForEmail(e.target.value)}
+          />
+        </div>
+
+        <button
+          type="button"
+          className={styles.saveBtn}
+          disabled={emailSaving}
+          onClick={saveEmail}
+        >
+          {emailSaving ? 'Updating…' : 'Update Email'}
+        </button>
+      </div>
+
+      {/* Password */}
+      <div className={styles.card}>
+        <h2>Change Password</h2>
+        {pwAlert && <AlertBlock alert={pwAlert} />}
+
+        <div className={styles.formGroup}>
+          <label>Current Password</label>
+          <input
+            type="password"
+            placeholder="Current password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>New Password</label>
+          <input
+            type="password"
+            placeholder="Minimum 8 characters"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Confirm New Password</label>
+          <input
+            type="password"
+            placeholder="Repeat new password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+          />
+        </div>
+
+        <button
+          type="button"
+          className={styles.saveBtn}
+          disabled={pwSaving}
+          onClick={savePassword}
+        >
+          {pwSaving ? 'Updating…' : 'Update Password'}
+        </button>
+      </div>
+
+      {/* Blocked Users — only shown if there are any */}
+      {blocked.length > 0 && (
+        <div className={styles.blockedSection}>
+          <div className={styles.blockedHeader}>Blocked Users</div>
+          <div>
+            {blocked.map((u) => (
+              <div key={u.id} className={styles.blockedRow}>
+                <span>{u.name}</span>
+                <button
+                  type="button"
+                  onClick={() => unblock(u.id)}
+                  className={styles.unblockBtn}
+                >
+                  Unblock
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlertBlock({ alert }: { alert: NonNullable<Alert> }) {
+  return (
+    <div
+      className={`${styles.alert} ${
+        alert.type === 'success' ? styles.alertSuccess : styles.alertError
+      }`}
+    >
+      {alert.msg}
+    </div>
+  );
+}

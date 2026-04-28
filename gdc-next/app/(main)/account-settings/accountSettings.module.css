@@ -1,0 +1,213 @@
+/* /account-settings — page styles. Faithful port of vanilla
+   account-settings.html inline styles. */
+
+.pageWrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+.pageHeader {
+  margin-bottom: 2.5rem;
+}
+.pageHeader h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem;
+  letter-spacing: .03em;
+  background: linear-gradient(135deg, var(--white), var(--neon));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.pageHeader p {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-top: .3rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+.card h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+.formGroup label {
+  display: block;
+  font-size: .78rem;
+  color: var(--muted);
+  margin-bottom: .4rem;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.formGroup input,
+.formGroup select {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  color: var(--white);
+  font-size: .92rem;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color .2s;
+}
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.formGroup input::placeholder {
+  color: var(--muted);
+}
+.formGroup input:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.slugRow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.slugPrefix {
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hint {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-top: .4rem;
+  font-style: italic;
+}
+
+.saveBtn {
+  width: 100%;
+  padding: .9rem;
+  background: rgba(0, 245, 196, .12);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: .5rem;
+}
+.saveBtn:hover:not(:disabled) {
+  background: rgba(0, 245, 196, .22);
+}
+.saveBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: .85rem 1rem;
+  border-radius: 6px;
+  font-size: .85rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid;
+}
+.alertSuccess {
+  background: rgba(61, 220, 132, .08);
+  border-color: rgba(61, 220, 132, .3);
+  color: #3ddc84;
+}
+.alertError {
+  background: rgba(255, 95, 95, .08);
+  border-color: rgba(255, 95, 95, .3);
+  color: var(--error);
+}
+
+/* Address autocomplete dropdown */
+.addrSuggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: .25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  z-index: 50;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+}
+.addrSuggestion {
+  padding: .65rem 1rem;
+  font-size: .85rem;
+  cursor: pointer;
+  color: var(--white);
+  transition: background .15s;
+}
+.addrSuggestion:hover {
+  background: rgba(0, 245, 196, .12);
+  color: var(--neon);
+}
+
+/* Blocked users section — sits below the cards */
+.blockedSection {
+  max-width: 520px;
+  margin: 2rem auto 0;
+  padding: 0 1rem 4rem;
+}
+.blockedHeader {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--error);
+  margin-bottom: .75rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid rgba(255, 95, 95, .2);
+}
+.blockedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .6rem .85rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+}
+.blockedRow span {
+  font-size: .88rem;
+  color: var(--white);
+}
+.unblockBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: .3rem .65rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.unblockBtn:hover {
+  border-color: var(--neon);
+  color: var(--neon);
+}
