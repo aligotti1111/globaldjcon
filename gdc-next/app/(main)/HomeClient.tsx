@@ -167,6 +167,12 @@ export default function HomeClient({ initialDjs }: Props) {
   );
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  // Track the SOURCE of userLocation so the search-debounce useEffect
+  // doesn't clobber a Near-Me location when the search box happens to
+  // be empty. Without this, clicking Near Me sets userLocation, then
+  // the search useEffect sees q='' && sortMode==='nearest' and resets
+  // it — undoing the Near Me click entirely.
+  const [locationSource, setLocationSource] = useState<'search' | 'near-me' | null>(null);
   const [sortMode, setSortMode] = useState<'name' | 'nearest'>('name');
   const [activeCountry, setActiveCountry] = useState('United States');
   const [showCountryMenu, setShowCountryMenu] = useState(false);
@@ -192,9 +198,12 @@ export default function HomeClient({ initialDjs }: Props) {
 
     if (q.length < 3) {
       // Reset location if it was set by an earlier zip search and they
-      // now have an empty/short search
-      if (q.length === 0 && userLocation && sortMode === 'nearest') {
+      // now have an empty/short search. CRITICAL: only clear if the
+      // location came from a search — never clear a Near-Me location
+      // just because the search box is empty.
+      if (q.length === 0 && userLocation && locationSource === 'search') {
         setUserLocation(null);
+        setLocationSource(null);
         setSortMode('name');
       }
       return;
@@ -202,9 +211,15 @@ export default function HomeClient({ initialDjs }: Props) {
 
     const looksLikeLocation = /\d/.test(q);
     if (!looksLikeLocation) {
-      // Plain name/text search — clear distance, sort by name
-      if (userLocation) setUserLocation(null);
-      if (sortMode === 'nearest') setSortMode('name');
+      // Plain name/text search — clear distance, sort by name.
+      // Same rule: only clear if it was a search-driven location.
+      if (userLocation && locationSource === 'search') {
+        setUserLocation(null);
+        setLocationSource(null);
+      }
+      if (sortMode === 'nearest' && locationSource !== 'near-me') {
+        setSortMode('name');
+      }
       return;
     }
 
@@ -214,6 +229,7 @@ export default function HomeClient({ initialDjs }: Props) {
       const coords = await geocodeQuery(q, cc);
       if (coords) {
         setUserLocation(coords);
+        setLocationSource('search');
         setSortMode('nearest');
       }
     }, 600);
@@ -221,7 +237,7 @@ export default function HomeClient({ initialDjs }: Props) {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [searchTerm, activeCountry, userLocation, sortMode]);
+  }, [searchTerm, activeCountry, userLocation, sortMode, locationSource]);
 
   // ─── When userLocation changes, geocode each DJ's zip/city for distance.
   // Fire-and-forget per DJ; bump distanceVersion when each batch lands so
@@ -336,6 +352,7 @@ export default function HomeClient({ initialDjs }: Props) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationSource('near-me');
         setSortMode('nearest');
         setNearMeStatus('geocoding');
         setVisibleCount(100);
