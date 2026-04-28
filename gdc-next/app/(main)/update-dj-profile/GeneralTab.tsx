@@ -502,6 +502,15 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
             placeholder="New email address"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => {
+              // Trap Enter so it triggers the inline save instead of the
+              // outer <form>'s submit (which would save the whole profile).
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                save();
+              }
+            }}
             className={styles.input}
             autoComplete="email"
           />
@@ -510,6 +519,13 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
             placeholder="Current password (to confirm)"
             value={pw}
             onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                save();
+              }
+            }}
             className={styles.input}
             autoComplete="current-password"
           />
@@ -677,6 +693,13 @@ function PasswordChangeBlock() {
             placeholder="Current password"
             value={currentPw}
             onChange={(e) => setCurrentPw(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                save();
+              }
+            }}
             className={styles.input}
             autoComplete="current-password"
           />
@@ -685,6 +708,13 @@ function PasswordChangeBlock() {
             placeholder="New password (min 8 chars)"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                save();
+              }
+            }}
             className={styles.input}
             autoComplete="new-password"
           />
@@ -693,6 +723,13 @@ function PasswordChangeBlock() {
             placeholder="Confirm new password"
             value={confirmPw}
             onChange={(e) => setConfirmPw(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                save();
+              }
+            }}
             className={styles.input}
             autoComplete="new-password"
           />
