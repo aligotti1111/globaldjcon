@@ -83,17 +83,58 @@ function calcDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// localStorage cache for geocoding results.
+// Nominatim rate-limits ~1 req/sec for unauthenticated requests; without
+// a cache, every page load re-geocodes every DJ. Cache key includes the
+// country code so the same zip can resolve differently per country.
+function getCachedCoords(query: string, cc: string): { lat: number; lng: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`gdc-geo:${cc}:${query.toLowerCase().trim()}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.lat === 'number' && typeof parsed?.lng === 'number') {
+      return parsed;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
+
+function setCachedCoords(query: string, cc: string, coords: { lat: number; lng: number }) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`gdc-geo:${cc}:${query.toLowerCase().trim()}`, JSON.stringify(coords));
+  } catch {
+    // localStorage might be full or disabled — fail silently
+  }
+}
+
 async function geocodeQuery(query: string, countryCode: string): Promise<{ lat: number; lng: number } | null> {
   if (!query) return null;
-  const isZip = /^\d{4,10}$/.test(query.trim());
   const cc = countryCode || '';
+  // Check cache first — skips the network entirely on repeat lookups.
+  const cached = getCachedCoords(query, cc);
+  if (cached) return cached;
+
+  const isZip = /^\d{4,10}$/.test(query.trim());
   const url = isZip
     ? `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(query)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=1`
     : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=1`;
   try {
-    const res = await fetch(url);
+    // Hard timeout so a hanging request doesn't stall the batch loop.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
     const data = await res.json();
-    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    if (data && data[0]) {
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      setCachedCoords(query, cc, coords);
+      return coords;
+    }
   } catch (e) {
     console.error('Geocode error:', e);
   }
@@ -193,27 +234,42 @@ export default function HomeClient({ initialDjs }: Props) {
     }
     let cancelled = false;
     (async () => {
+      // Step 1: hydrate any cached coords from localStorage. This avoids
+      // re-geocoding DJs we've already looked up on a previous visit.
+      djsRef.current.forEach((dj) => {
+        if (!dj._coords && (dj.zip || dj.city)) {
+          const target = dj.zip || dj.city || '';
+          const cc = COUNTRY_CODES[dj.country || ''] || '';
+          const cached = getCachedCoords(target, cc);
+          if (cached) dj._coords = cached;
+        }
+      });
+      // Compute distances for everything we can right now (cached + fresh
+      // geolocation), so the user sees results immediately.
+      djsRef.current.forEach((dj) => {
+        if (dj._coords) {
+          dj._distance = calcDistance(userLocation.lat, userLocation.lng, dj._coords.lat, dj._coords.lng);
+        }
+      });
+      setDistanceVersion((v) => v + 1);
+
+      // Step 2: figure out which DJs still need geocoding
       const todo = djsRef.current.filter((dj) => !dj._coords && (dj.zip || dj.city));
       const total = todo.length;
-      // If all DJs already have coords cached, we can compute distances
-      // immediately without any network calls.
+      // If all DJs already had coords cached, we're done.
       if (total === 0) {
-        djsRef.current.forEach((dj) => {
-          if (dj._coords) {
-            dj._distance = calcDistance(userLocation.lat, userLocation.lng, dj._coords.lat, dj._coords.lng);
-          }
-        });
-        setDistanceVersion((v) => v + 1);
         setGeocodeProgress(null);
         if (nearMeStatus === 'geocoding') setNearMeStatus('found');
         return;
       }
       setGeocodeProgress({ done: 0, total });
       let done = 0;
-      // Batch: 5 at a time so we don't spam Nominatim
-      for (let i = 0; i < todo.length; i += 5) {
+      // Batch: 2 at a time + 200ms gap between batches. Nominatim asks for
+      // ~1 req/sec on its public endpoint; we go a touch faster but stay
+      // polite. With caching, repeat visits won't hit the network at all.
+      for (let i = 0; i < todo.length; i += 2) {
         if (cancelled) return;
-        const batch = todo.slice(i, i + 5);
+        const batch = todo.slice(i, i + 2);
         await Promise.all(batch.map(async (dj) => {
           const target = dj.zip || dj.city || '';
           const cc = COUNTRY_CODES[dj.country || ''] || '';
@@ -222,7 +278,9 @@ export default function HomeClient({ initialDjs }: Props) {
         }));
         if (!cancelled) {
           // Compute distances + bump version after each batch so cards
-          // show up progressively
+          // show up progressively. Increment progress by batch size whether
+          // or not each lookup succeeded — failed lookups still count as
+          // "done" so the progress meter completes.
           djsRef.current.forEach((dj) => {
             if (dj._coords) {
               dj._distance = calcDistance(userLocation.lat, userLocation.lng, dj._coords.lat, dj._coords.lng);
@@ -231,6 +289,10 @@ export default function HomeClient({ initialDjs }: Props) {
           done += batch.length;
           setGeocodeProgress({ done, total });
           setDistanceVersion((v) => v + 1);
+        }
+        // Throttle between batches
+        if (i + 2 < todo.length) {
+          await new Promise((r) => setTimeout(r, 200));
         }
       }
       if (!cancelled) {
