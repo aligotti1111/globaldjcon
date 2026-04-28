@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './accountSettings.module.css';
 import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
+import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 
 interface ProfileInit {
   id: string;
@@ -138,25 +139,25 @@ export default function AccountSettingsClient({
     }
     setEmailSaving(true);
     try {
-      const supabase = createClient();
-      // Re-auth with current password to confirm the change. Supabase will
-      // refresh the session on success.
-      const { error: authErr } = await supabase.auth.signInWithPassword({
-        email: currentEmail,
-        password: confirmPwForEmail,
+      // Server action handles re-auth + admin-side email update with
+      // email_confirm: true. No verification email is sent — change is
+      // immediate.
+      const result = await updateMyEmailAction({
+        newEmail: trimmed,
+        currentPassword: confirmPwForEmail,
       });
-      if (authErr) throw new Error('Current password is incorrect.');
-
-      // Update email — Supabase Auth sends a confirmation link to the new
-      // address. Email isn't actually changed until they click it.
-      const { error } = await supabase.auth.updateUser({ email: trimmed });
-      if (error) throw error;
-
+      if (!result.success) {
+        throw new Error(result.error || 'Email update failed');
+      }
       setEmailAlert({
         type: 'success',
-        msg: `✓ Confirmation email sent to ${trimmed}. Click the link to complete the change.`,
+        msg: `✓ Email changed to ${trimmed}.`,
       });
       setConfirmPwForEmail('');
+      setNewEmail('');
+      // Refresh so the "Current Email" field shows the new address.
+      // Use a short delay so the success message is readable first.
+      setTimeout(() => window.location.reload(), 1200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setEmailAlert({ type: 'error', msg });
