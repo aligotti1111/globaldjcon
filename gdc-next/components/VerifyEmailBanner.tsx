@@ -15,8 +15,12 @@ export default function VerifyEmailBanner() {
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [resendMsg, setResendMsg] = useState('');
 
-  // Hide while loading OR if not logged in OR if already verified
-  if (loading || !user || user.email_verified) return null;
+  // Hide while loading OR if not logged in OR if already verified.
+  // Also hide for the admin user — the platform owner doesn't need to be
+  // nagged about verifying their seed account, even if email_verified is
+  // somehow false on their public.users row.
+  const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
+  if (loading || !user || user.email_verified || isAdmin) return null;
 
   async function handleResend() {
     if (!user) return;

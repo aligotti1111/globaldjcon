@@ -36,10 +36,16 @@ export default function Header() {
   };
 
   const isDj = user?.role === 'dj';
+  // Admin is identified by email (single-admin model — see admin-auth.ts).
+  // We swap the entire right-side toolbar for admin so they don't see the
+  // host/DJ-oriented Booking + Inbox + Settings buttons that don't apply
+  // to the platform owner.
+  const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
   // When the DJ is already on their own profile page, hide the "View My
   // Profile" button — it would just link to where they already are.
   const onOwnProfile = isDj && user?.slug && pathname === `/${user.slug}`;
   const onUpdateProfile = pathname === '/update-dj-profile';
+  const onAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
 
   return (
     <header>
@@ -63,71 +69,85 @@ export default function Header() {
         <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center' }}>
           {loading ? null : user ? (
             <>
-              {/* DJ-only: View My Profile + Update Profile (NO settings gear).
-                  View My Profile is hidden when the DJ is already on their
-                  own slug page — would be a self-link otherwise. */}
-              {isDj && user.slug && !onOwnProfile && (
-                <Link
-                  href={`/${user.slug}`}
-                  className="btn btn-outline"
-                  style={{ textDecoration: 'none', padding: '.7rem 1.1rem' }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  <span className="btn-text">View My Profile</span>
-                </Link>
-              )}
-              {isDj && !onUpdateProfile && (
-                <Link
-                  href="/update-dj-profile"
-                  className="btn btn-primary"
-                  style={{ textDecoration: 'none' }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z" strokeLinejoin="round" strokeLinecap="round" />
-                  </svg>
-                  <span className="btn-text">Update Profile</span>
-                </Link>
+              {isAdmin ? (
+                /* Admin toolbar: just one button to jump back to the panel.
+                   Hidden when already on /admin to match the same pattern
+                   used for View My Profile / Update Profile. Admin can still
+                   browse the front-end normally — the platform looks the
+                   same to them, minus the host/DJ-specific buttons. */
+                <>
+                  {!onAdmin && (
+                    <Link
+                      href="/admin"
+                      className="btn btn-primary"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                      </svg>
+                      <span className="btn-text">Admin Panel</span>
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* DJ-only: View My Profile + Update Profile (NO settings gear).
+                      View My Profile is hidden when the DJ is already on their
+                      own slug page — would be a self-link otherwise. */}
+                  {isDj && user.slug && !onOwnProfile && (
+                    <Link
+                      href={`/${user.slug}`}
+                      className="btn btn-outline"
+                      style={{ textDecoration: 'none', padding: '.7rem 1.1rem' }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <span className="btn-text">View My Profile</span>
+                    </Link>
+                  )}
+                  {isDj && !onUpdateProfile && (
+                    <Link
+                      href="/update-dj-profile"
+                      className="btn btn-primary"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z" strokeLinejoin="round" strokeLinecap="round" />
+                      </svg>
+                      <span className="btn-text">Update Profile</span>
+                    </Link>
+                  )}
+
+                  {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
+                  <Link href="/booking-requests" className="inbox-nav-btn" title="Booking Requests" style={{ textDecoration: 'none' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
+                      <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
+                    </svg>
+                  </Link>
+                  <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                  </Link>
+
+                  {/* Non-DJ users get the settings gear; DJs already have Update Profile above */}
+                  {!isDj && (
+                    <Link href="/account-settings" className="inbox-nav-btn" title="Account Settings" style={{ textDecoration: 'none' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                      </svg>
+                    </Link>
+                  )}
+                </>
               )}
 
-              {/* Shared by all logged-in users: Bookings + Inbox icons */}
-              <Link href="/booking-requests" className="inbox-nav-btn" title="Booking Requests" style={{ textDecoration: 'none' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
-                  <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
-                </svg>
-              </Link>
-              <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-              </Link>
-
-              {/* Non-DJ users get the settings gear; DJs already have Update Profile above */}
-              {!isDj && (
-                <Link href="/account-settings" className="inbox-nav-btn" title="Account Settings" style={{ textDecoration: 'none' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-                  </svg>
-                </Link>
-              )}
-
-              {user.role === 'admin' && (
-                <Link
-                  href="/admin"
-                  className="btn btn-admin"
-                  style={{ textDecoration: 'none' }}
-                >
-                  <span className="btn-text">Admin</span>
-                </Link>
-              )}
-
-              {/* Log Out — full page reload after sign-out so server-rendered
-                  pages see the new auth state (no stale data) */}
+              {/* Log Out — shown for both admin and non-admin */}
               <button onClick={handleSignOut} className="btn btn-outline" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />

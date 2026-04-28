@@ -49,26 +49,38 @@ export default function MobileMenu() {
 
         {user ? (
           <>
-            {user.role === 'dj' && user.slug && (
-              <Link href={`/${user.slug}`} onClick={close} className="mobile-menu-item primary">
-                My Profile
-              </Link>
-            )}
-            {user.role === 'dj' && (
-              <Link href="/update-dj-profile" onClick={close} className="mobile-menu-item">
-                Update Profile
-              </Link>
-            )}
-            <Link href="/booking-requests" onClick={close} className="mobile-menu-item">Bookings</Link>
-            <Link href="/inbox" onClick={close} className="mobile-menu-item">Inbox</Link>
-            {user.role !== 'dj' && (
-              <Link href="/account-settings" onClick={close} className="mobile-menu-item">
-                Account Settings
-              </Link>
-            )}
-            {user.role === 'admin' && (
-              <Link href="/admin" onClick={close} className="mobile-menu-item">Admin</Link>
-            )}
+            {(() => {
+              // Admin gets just the Admin Panel link — no profile/booking/inbox.
+              const isAdmin = user.email?.toLowerCase() === 'admin@globaldjconnect.com';
+              if (isAdmin) {
+                return (
+                  <Link href="/admin" onClick={close} className="mobile-menu-item primary">
+                    Admin Panel
+                  </Link>
+                );
+              }
+              return (
+                <>
+                  {user.role === 'dj' && user.slug && (
+                    <Link href={`/${user.slug}`} onClick={close} className="mobile-menu-item primary">
+                      My Profile
+                    </Link>
+                  )}
+                  {user.role === 'dj' && (
+                    <Link href="/update-dj-profile" onClick={close} className="mobile-menu-item">
+                      Update Profile
+                    </Link>
+                  )}
+                  <Link href="/booking-requests" onClick={close} className="mobile-menu-item">Bookings</Link>
+                  <Link href="/inbox" onClick={close} className="mobile-menu-item">Inbox</Link>
+                  {user.role !== 'dj' && (
+                    <Link href="/account-settings" onClick={close} className="mobile-menu-item">
+                      Account Settings
+                    </Link>
+                  )}
+                </>
+              );
+            })()}
             <hr className="mobile-menu-divider" />
             <button onClick={handleSignOut} className="mobile-menu-item danger">
               Sign Out
