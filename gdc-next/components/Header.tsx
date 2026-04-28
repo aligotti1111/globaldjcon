@@ -9,11 +9,13 @@
 //   Admin:   Admin button (in addition to above based on role)
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
 
   const openMenu = () => {
     // Dispatch a custom event the MobileMenu component listens for.
@@ -34,6 +36,10 @@ export default function Header() {
   };
 
   const isDj = user?.role === 'dj';
+  // When the DJ is already on their own profile page, hide the "View My
+  // Profile" button — it would just link to where they already are.
+  const onOwnProfile = isDj && user?.slug && pathname === `/${user.slug}`;
+  const onUpdateProfile = pathname === '/update-dj-profile';
 
   return (
     <header>
@@ -57,8 +63,10 @@ export default function Header() {
         <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center' }}>
           {loading ? null : user ? (
             <>
-              {/* DJ-only: View My Profile + Update Profile (NO settings gear) */}
-              {isDj && user.slug && (
+              {/* DJ-only: View My Profile + Update Profile (NO settings gear).
+                  View My Profile is hidden when the DJ is already on their
+                  own slug page — would be a self-link otherwise. */}
+              {isDj && user.slug && !onOwnProfile && (
                 <Link
                   href={`/${user.slug}`}
                   className="btn btn-outline"
@@ -71,7 +79,7 @@ export default function Header() {
                   <span className="btn-text">View My Profile</span>
                 </Link>
               )}
-              {isDj && (
+              {isDj && !onUpdateProfile && (
                 <Link
                   href="/update-dj-profile"
                   className="btn btn-primary"
