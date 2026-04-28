@@ -152,10 +152,30 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           <div className={styles.specBox}>
             <div className={styles.checkboxGrid}>
               {MOBILE_EVENT_TYPES.map((t) => (
-                <label key={t.val} className={styles.checkboxLabel}>
+                <label
+                  key={t.val}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '.45rem .7rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(30, 30, 48, .5)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: '.8rem',
+                    color: 'var(--white)',
+                  }}
+                >
                   <input
                     type="checkbox"
-                    className={styles.checkboxInput}
+                    style={{
+                      width: 15,
+                      height: 15,
+                      marginRight: 10,
+                      flexShrink: 0,
+                      accentColor: 'var(--neon)',
+                      cursor: 'pointer',
+                    }}
                     checked={state.mobileEvents.includes(t.val)}
                     onChange={(e) => {
                       const next = e.target.checked
@@ -179,10 +199,30 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           <div className={styles.specBox}>
             <div className={styles.checkboxGrid}>
               {CLUB_GENRES.map((g) => (
-                <label key={g.val} className={styles.checkboxLabel}>
+                <label
+                  key={g.val}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '.45rem .7rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(30, 30, 48, .5)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: '.8rem',
+                    color: 'var(--white)',
+                  }}
+                >
                   <input
                     type="checkbox"
-                    className={styles.checkboxInput}
+                    style={{
+                      width: 15,
+                      height: 15,
+                      marginRight: 10,
+                      flexShrink: 0,
+                      accentColor: 'var(--neon)',
+                      cursor: 'pointer',
+                    }}
                     checked={state.clubGenres.includes(g.val)}
                     onChange={(e) => {
                       const next = e.target.checked
