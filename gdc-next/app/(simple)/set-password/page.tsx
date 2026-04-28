@@ -17,12 +17,20 @@
 //      - 410: expired/used — full error state
 //      - 500: server-side fail — re-enabled, show msg
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './setPassword.module.css';
 
 export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <SetPasswordPageInner />
+    </Suspense>
+  );
+}
+
+function SetPasswordPageInner() {
   const searchParams = useSearchParams();
   const [token, setToken] = useState<string | null>(null);
 
