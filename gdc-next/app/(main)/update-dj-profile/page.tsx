@@ -67,6 +67,17 @@ export default async function UpdateDjProfilePage() {
         event_types?: string | null;
         club_genres?: string[] | null;
         profile_private?: boolean | null;
+        mix_url_1?: string | null;
+        mix_url_2?: string | null;
+        mix_url_3?: string | null;
+        gallery_img_1?: string | null;
+        gallery_img_2?: string | null;
+        gallery_img_3?: string | null;
+        gallery_img_4?: string | null;
+        video_url_1?: string | null;
+        video_url_2?: string | null;
+        video_url_3?: string | null;
+        testimonials?: string | null;
       }}
       authEmail={authUser.email || ''}
     />

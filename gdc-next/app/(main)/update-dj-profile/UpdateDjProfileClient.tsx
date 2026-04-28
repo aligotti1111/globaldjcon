@@ -22,6 +22,11 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 import BookingTab from './BookingTab';
+import SocialsTab from './SocialsTab';
+import MixesTab from './MixesTab';
+import PhotosTab from './PhotosTab';
+import VideoTab from './VideoTab';
+import TestimonialsTab from './TestimonialsTab';
 import {
   type BookingSettings,
   parseBookingSettings,
@@ -30,7 +35,11 @@ import {
 type TabKey = 'general' | 'social' | 'mixes' | 'photos' | 'video' | 'testimonials' | 'booking';
 
 // All fields the General tab edits. Stored as state so each input is controlled.
+// All non-booking fields tracked by the form. Despite the name (kept for
+// backwards compat with existing imports), this includes Socials, Mixes,
+// Photos, Video, and Testimonials state — not just the General tab fields.
 export interface GeneralFormState {
+  // General tab
   name: string;
   slug: string;
   bio: string;
@@ -42,7 +51,35 @@ export interface GeneralFormState {
   mobileEvents: string[];   // for mobile DJs
   clubGenres: string[];     // for club DJs
   profilePrivate: boolean;
-  avatarUrl: string;        // current avatar URL (already uploaded to storage)
+  avatarUrl: string;
+  // Socials tab
+  website: string;
+  soundcloud: string;
+  instagram: string;
+  tiktok: string;
+  facebook: string;
+  twitch: string;
+  // Mixes tab — 3 fixed slots
+  mixUrl1: string;
+  mixUrl2: string;
+  mixUrl3: string;
+  // Photos tab — 4 fixed slots, public URLs to Supabase storage
+  galleryImg1: string;
+  galleryImg2: string;
+  galleryImg3: string;
+  galleryImg4: string;
+  // Video tab — 3 fixed slots
+  videoUrl1: string;
+  videoUrl2: string;
+  videoUrl3: string;
+  // Testimonials — array of {name, date, blurb}, max 5
+  testimonials: TestimonialItem[];
+}
+
+export interface TestimonialItem {
+  name: string;
+  date: string;
+  blurb: string;
 }
 
 interface InitialProfile {
@@ -63,6 +100,28 @@ interface InitialProfile {
   club_genres?: string[] | null;
   profile_private?: boolean | null;
   avatar_url?: string | null;
+  // Socials
+  website?: string | null;
+  soundcloud?: string | null;
+  instagram?: string | null;
+  tiktok?: string | null;
+  facebook?: string | null;
+  twitch?: string | null;
+  // Mixes
+  mix_url_1?: string | null;
+  mix_url_2?: string | null;
+  mix_url_3?: string | null;
+  // Photos
+  gallery_img_1?: string | null;
+  gallery_img_2?: string | null;
+  gallery_img_3?: string | null;
+  gallery_img_4?: string | null;
+  // Videos
+  video_url_1?: string | null;
+  video_url_2?: string | null;
+  video_url_3?: string | null;
+  // Testimonials — JSON-stringified array
+  testimonials?: string | null;
 }
 
 interface Props {
@@ -85,6 +144,26 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','mitzvah','reunion','holiday','school','community','other']
           : []);
 
+    // Parse testimonials JSON (stored as a stringified array on users.testimonials).
+    // Bad JSON or missing field → empty array.
+    let initialTestimonials: TestimonialItem[] = [];
+    if (initialProfile.testimonials) {
+      try {
+        const parsed = JSON.parse(initialProfile.testimonials);
+        if (Array.isArray(parsed)) {
+          initialTestimonials = parsed
+            .filter((t) => t && typeof t === 'object')
+            .map((t) => ({
+              name: String((t as { name?: unknown }).name || ''),
+              date: String((t as { date?: unknown }).date || ''),
+              blurb: String((t as { blurb?: unknown }).blurb || ''),
+            }));
+        }
+      } catch {
+        // Bad JSON — leave as empty array
+      }
+    }
+
     return {
       name: initialProfile.name || '',
       slug: initialProfile.slug || '',
@@ -98,6 +177,23 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       clubGenres: initialProfile.club_genres || [],
       profilePrivate: !!initialProfile.profile_private,
       avatarUrl: initialProfile.avatar_url || '',
+      website: initialProfile.website || '',
+      soundcloud: initialProfile.soundcloud || '',
+      instagram: initialProfile.instagram || '',
+      tiktok: initialProfile.tiktok || '',
+      facebook: initialProfile.facebook || '',
+      twitch: initialProfile.twitch || '',
+      mixUrl1: initialProfile.mix_url_1 || '',
+      mixUrl2: initialProfile.mix_url_2 || '',
+      mixUrl3: initialProfile.mix_url_3 || '',
+      galleryImg1: initialProfile.gallery_img_1 || '',
+      galleryImg2: initialProfile.gallery_img_2 || '',
+      galleryImg3: initialProfile.gallery_img_3 || '',
+      galleryImg4: initialProfile.gallery_img_4 || '',
+      videoUrl1: initialProfile.video_url_1 || '',
+      videoUrl2: initialProfile.video_url_2 || '',
+      videoUrl3: initialProfile.video_url_3 || '',
+      testimonials: initialTestimonials,
     };
   });
 
@@ -166,6 +262,15 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         : null;
       const clubGenres = general.clubGenres.length > 0 ? general.clubGenres : null;
 
+      // Testimonials: filter out empty entries, then stringify. Vanilla
+      // collectTestimonials() drops cards with no name AND no blurb.
+      const filledTestimonials = general.testimonials.filter(
+        (t) => t.name.trim() || t.blurb.trim()
+      );
+      const testimonialsJson = filledTestimonials.length > 0
+        ? JSON.stringify(filledTestimonials)
+        : null;
+
       const payload = {
         name: general.name.trim(),
         slug: finalSlug,
@@ -179,6 +284,29 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         club_genres: clubGenres,
         profile_private: general.profilePrivate,
         avatar_url: general.avatarUrl || null,
+        // Socials
+        website: general.website.trim() || null,
+        soundcloud: general.soundcloud.trim() || null,
+        instagram: general.instagram.trim() || null,
+        tiktok: general.tiktok.trim() || null,
+        facebook: general.facebook.trim() || null,
+        twitch: general.twitch.trim() || null,
+        // Mixes
+        mix_url_1: general.mixUrl1.trim() || null,
+        mix_url_2: general.mixUrl2.trim() || null,
+        mix_url_3: general.mixUrl3.trim() || null,
+        // Photos
+        gallery_img_1: general.galleryImg1 || null,
+        gallery_img_2: general.galleryImg2 || null,
+        gallery_img_3: general.galleryImg3 || null,
+        gallery_img_4: general.galleryImg4 || null,
+        // Videos
+        video_url_1: general.videoUrl1.trim() || null,
+        video_url_2: general.videoUrl2.trim() || null,
+        video_url_3: general.videoUrl3.trim() || null,
+        // Testimonials
+        testimonials: testimonialsJson,
+        // Booking
         booking_settings: JSON.stringify(bookingSettings),
       };
 
@@ -263,7 +391,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             <button type="button" className={tabClass('mixes')} onClick={() => setActiveTab('mixes')}>Mixes</button>
             <button type="button" className={tabClass('photos')} onClick={() => setActiveTab('photos')}>Photos</button>
             <button type="button" className={tabClass('video')} onClick={() => setActiveTab('video')}>Video</button>
-            <button type="button" className={tabClass('testimonials')} onClick={() => setActiveTab('testimonials')}>Testimonials</button>
+            {/* Testimonials only for Mobile DJs — vanilla hides this tab for clubs */}
+            {initialProfile.dj_type === 'mobile' && (
+              <button type="button" className={tabClass('testimonials')} onClick={() => setActiveTab('testimonials')}>Testimonials</button>
+            )}
             <button type="button" className={tabClass('booking')} onClick={() => setActiveTab('booking')}>Booking</button>
           </div>
 
@@ -291,28 +422,35 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             />
           )}
 
-          {/* Placeholders for tabs not yet ported */}
-          {activeTab === 'social' && <DeferredPlaceholder name="Socials" />}
-          {activeTab === 'mixes' && <DeferredPlaceholder name="Mixes" />}
-          {activeTab === 'photos' && <DeferredPlaceholder name="Photos" />}
-          {activeTab === 'video' && <DeferredPlaceholder name="Video" />}
-          {activeTab === 'testimonials' && <DeferredPlaceholder name="Testimonials" />}
+          {activeTab === 'social' && (
+            <SocialsTab state={general} onChange={updateGeneral} />
+          )}
+          {activeTab === 'mixes' && (
+            <MixesTab state={general} onChange={updateGeneral} />
+          )}
+          {activeTab === 'photos' && (
+            <PhotosTab
+              state={general}
+              onChange={updateGeneral}
+              userId={initialProfile.id}
+            />
+          )}
+          {activeTab === 'video' && (
+            <VideoTab state={general} onChange={updateGeneral} />
+          )}
+          {/* Testimonials tab only visible / accessible for Mobile DJs (vanilla parity).
+              Tab button is also hidden in the tabsBar above for non-mobile DJs.
+              The pane render is gated here too, defensively, in case a non-mobile
+              DJ somehow lands on activeTab === 'testimonials'. */}
+          {activeTab === 'testimonials' && initialProfile.dj_type === 'mobile' && (
+            <TestimonialsTab state={general} onChange={updateGeneral} />
+          )}
 
           <button type="submit" disabled={saving} className={styles.submitBtn}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </form>
       </div>
-    </div>
-  );
-}
-
-function DeferredPlaceholder({ name }: { name: string }) {
-  return (
-    <div className={styles.placeholderPane}>
-      <div className={styles.placeholderTitle}>{name} tab coming soon</div>
-      This tab will be ported in a later session. The vanilla site
-      (globaldjconnect.com) still has full functionality for this section.
     </div>
   );
 }
