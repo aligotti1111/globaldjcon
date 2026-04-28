@@ -394,8 +394,13 @@ export default function HomeClient({ initialDjs }: Props) {
       });
     }
 
-    // Sort
-    if (sortMode === 'nearest' && userLocation) {
+    // Sort.
+    // Rule: when we have a userLocation (from search OR Near Me), always
+    // sort by distance ascending. The earlier sortMode-based branching
+    // had a race where sortMode could still be 'name' on first render
+    // even though userLocation was set. Tying sort directly to
+    // userLocation eliminates the race.
+    if (userLocation) {
       list.sort((a, b) => (a._distance ?? 9999) - (b._distance ?? 9999));
     } else {
       list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
