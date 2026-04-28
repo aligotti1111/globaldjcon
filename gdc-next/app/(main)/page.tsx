@@ -21,6 +21,7 @@ export default async function HomePage() {
     .select(`
       id, name, slug, dj_type,
       city, state, country, zip,
+      home_lat, home_lon,
       avatar_url, rate, travel_distance,
       booking_settings, profile_private
     `)
