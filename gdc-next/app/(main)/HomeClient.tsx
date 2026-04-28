@@ -341,9 +341,27 @@ export default function HomeClient({ initialDjs }: Props) {
         setNearMeStatus('geocoding');
         setVisibleCount(100); // reset pagination on new search
       },
-      () => {
-        alert('Could not get your location. Please search by zip code instead.');
+      (err) => {
+        // Specific error messages so the user knows whether it's a
+        // permission issue, a timeout, or the OS being unavailable.
+        let msg = 'Could not get your location. Please search by zip code instead.';
+        if (err.code === 1) {
+          msg = 'Location access denied. To fix: Chrome → Settings → Privacy → Site Settings → Location → allow this site. Then click Find Near Me again.';
+        } else if (err.code === 2) {
+          msg = 'Your device couldn\'t determine its location. Make sure macOS Location Services are on for Chrome (System Settings → Privacy & Security → Location Services).';
+        } else if (err.code === 3) {
+          msg = 'Location request timed out. Try again or search by zip code.';
+        }
+        alert(msg);
         setNearMeStatus('error');
+      },
+      {
+        // Hard cap — without this the call can hang forever waiting for
+        // the OS layer.
+        timeout: 10000,
+        // Cached position up to 5 minutes old is fine — we don't need GPS-
+        // accurate location for sorting DJs by distance.
+        maximumAge: 5 * 60 * 1000,
       }
     );
   }
