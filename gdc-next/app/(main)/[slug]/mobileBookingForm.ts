@@ -168,3 +168,83 @@ export function formatLongDate(dateKey: string): string {
     year: 'numeric',
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Address autocomplete + distance check (added in follow-up session)
+// ─────────────────────────────────────────────────────────────────────────
+
+// Haversine distance in miles. Vanilla djp-mob-public.js line 18.
+export function haversineMiles(
+  lat1: number, lon1: number, lat2: number, lon2: number
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 3958.8; // miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// One-shot Nominatim postal-code lookup → {lat, lon} | null. Used to find
+// the DJ's home base for the distance check.
+export async function lookupZipCoords(
+  zip: string
+): Promise<{ lat: number; lon: number } | null> {
+  if (!zip) return null;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&limit=1`
+    );
+    const data = await res.json();
+    if (data && data[0]) {
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    }
+  } catch {
+    // Network or parse fail — silently skip the warning. Submission will
+    // proceed without the distance check, matching vanilla behavior.
+  }
+  return null;
+}
+
+// Free-text address search → up to 5 suggestions. Each suggestion includes
+// a cleaned display name (county-level admin parts stripped per Anthony's
+// preference) and lat/lon for the distance check.
+export interface AddressSuggestion {
+  display: string;
+  lat: number | null;
+  lon: number | null;
+}
+
+export async function searchAddresses(
+  query: string
+): Promise<AddressSuggestion[]> {
+  if (query.length < 3) return [];
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+    );
+    const results = await res.json();
+    if (!Array.isArray(results)) return [];
+    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
+      const parts = (r.display_name || '').split(',');
+      // Strip county-level admin divisions per Anthony's signup preference
+      const clean = parts.filter((p) => !/county/i.test(p)).join(',').trim();
+      return {
+        display: clean,
+        lat: r.lat ? parseFloat(r.lat) : null,
+        lon: r.lon ? parseFloat(r.lon) : null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Decide if a DJ has a finite (non-worldwide) travel limit we can compare against.
+export function hasFiniteTravelLimit(travelDistance: string | null): boolean {
+  if (!travelDistance) return false;
+  const v = String(travelDistance).trim().toLowerCase();
+  if (v === '' || v === 'worldwide') return false;
+  return !isNaN(Number(v));
+}

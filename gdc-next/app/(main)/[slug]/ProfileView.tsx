@@ -31,11 +31,13 @@ export interface DjProfileData {
   city: string | null;
   state: string | null;
   country: string | null;
+  zip: string | null;
   dj_type: 'mobile' | 'club' | null;
   bio: string | null;
   avatar_url: string | null;
   avatar_position: string | null;
   rate: string | null;
+  travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
   instagram: string | null;
   facebook: string | null;
@@ -354,6 +356,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn }: Props) 
                 djName={data.name || ''}
                 djSlug={effectiveSlug}
                 djEventTypes={data.event_types}
+                djZip={data.zip}
+                djTravelDistance={data.travel_distance}
                 bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
               />

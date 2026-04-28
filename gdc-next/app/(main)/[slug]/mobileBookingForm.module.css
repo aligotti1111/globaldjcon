@@ -499,3 +499,103 @@
   color: var(--muted);
   line-height: 1.6;
 }
+
+/* ─────────────────────────────────────────────────────────── */
+/* Address autocomplete dropdown                               */
+/* ─────────────────────────────────────────────────────────── */
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+.addrSuggestion {
+  padding: .6rem .85rem;
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--white);
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child {
+  border-bottom: none;
+}
+.addrSuggestion:hover {
+  background: rgba(0, 245, 196, .08);
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/* Distance-warning modal                                      */
+/* ─────────────────────────────────────────────────────────── */
+.distWarnBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .7);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.distWarnInner {
+  background: var(--card);
+  border: 1px solid rgba(255, 200, 0, .45);
+  border-radius: 12px;
+  max-width: 440px;
+  width: 100%;
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .5);
+}
+.distWarnTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: .06em;
+  color: #ffc800;
+  margin-bottom: .85rem;
+}
+.distWarnBody {
+  font-size: .9rem;
+  color: var(--white);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+.distWarnBtns {
+  display: flex;
+  gap: .6rem;
+}
+.distWarnCancel,
+.distWarnConfirm {
+  flex: 1;
+  padding: .75rem;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.distWarnCancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-weight: 400;
+}
+.distWarnCancel:hover {
+  border-color: var(--white);
+}
+.distWarnConfirm {
+  background: #ffc800;
+  border: none;
+  color: #000;
+  font-weight: 700;
+}
+.distWarnConfirm:hover {
+  opacity: .9;
+}

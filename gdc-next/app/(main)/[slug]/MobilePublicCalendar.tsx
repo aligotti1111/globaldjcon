@@ -50,6 +50,8 @@ interface Props {
   djName: string;
   djSlug: string;
   djEventTypes: string | null;     // comma-separated, used to filter event-type select
+  djZip: string | null;            // DJ's home zip — used for distance check at submit
+  djTravelDistance: string | null; // 'worldwide' or numeric miles — distance limit
   // Full booking settings — needed for both the calendar AND the form (packages, deposit, etc.)
   bookingSettings: BookingSettings;
   isLoggedIn: boolean;
@@ -94,6 +96,8 @@ export default function MobilePublicCalendar({
   djName,
   djSlug,
   djEventTypes,
+  djZip,
+  djTravelDistance,
   bookingSettings,
   isLoggedIn,
 }: Props) {
@@ -308,6 +312,8 @@ export default function MobilePublicCalendar({
             name: djName,
             slug: djSlug,
             event_types: djEventTypes,
+            zip: djZip,
+            travel_distance: djTravelDistance,
           }}
           bookingSettings={bookingSettings}
           currentUser={{

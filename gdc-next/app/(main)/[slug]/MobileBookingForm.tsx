@@ -6,11 +6,10 @@
 //
 // Shown directly below the calendar when the user clicks Book on an
 // available date. All form fields, package selection, and live price
-// calculation match vanilla.
+// calculation match vanilla. Includes Nominatim address autocomplete +
+// Haversine distance check + travel-warning modal.
 //
-// DEFERRED to a follow-up session (per scope agreement):
-//   - Nominatim address autocomplete suggestions
-//   - Distance-check + travel-warning modal
+// DEFERRED:
 //   - International phone formats (this session is US-only)
 //   - mob_booking_request / mob_booking_confirm email types — these aren't
 //     even in vanilla send-email.js (calls fail silently in prod). When the
@@ -32,6 +31,11 @@ import {
   getPackageCategory,
   calcPrice,
   formatLongDate,
+  haversineMiles,
+  lookupZipCoords,
+  searchAddresses,
+  hasFiniteTravelLimit,
+  type AddressSuggestion,
 } from './mobileBookingForm';
 
 interface DjLite {
@@ -39,6 +43,8 @@ interface DjLite {
   name: string | null;
   slug: string | null;
   event_types: string | null;  // comma-separated
+  zip: string | null;          // for distance check
+  travel_distance: string | null; // 'worldwide' or numeric miles
 }
 
 interface CurrentUser {
@@ -87,6 +93,23 @@ export default function MobileBookingForm({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successState, setSuccessState] = useState<{ isQuote: boolean } | null>(null);
+
+  // ── Address autocomplete ─────────────────────────────────────────
+  // Dropdown of Nominatim suggestions; coords stick to whichever one the
+  // user picks (cleared if they type more after picking).
+  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
+  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+  const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Distance-warning modal ───────────────────────────────────────
+  // When set, blocks submission until host confirms or cancels. The
+  // "resolve" callback is the Promise resolver returned by the modal,
+  // so submit can await the user's choice.
+  const [distWarning, setDistWarning] = useState<
+    | { miles: number; limit: number; djName: string; resolve: (proceed: boolean) => void }
+    | null
+  >(null);
 
   // Scroll the form into view on mount
   const rootRef = useRef<HTMLDivElement>(null);
@@ -177,6 +200,41 @@ export default function MobileBookingForm({
 
     // Compute final price (re-run; UI value may be stale)
     const finalPrice = calcPrice(selectedPkg, startTime, endTime, depositPct);
+
+    // ── Distance check ──────────────────────────────────────────
+    // If the DJ has a finite travel limit + a home zip + the host picked an
+    // address from the autocomplete dropdown (so we have venue coords),
+    // compute distance and warn if it exceeds the limit. Skip silently if
+    // any of those preconditions aren't met (matches vanilla).
+    if (
+      hasFiniteTravelLimit(dj.travel_distance) &&
+      dj.zip &&
+      venueCoordsRef.current
+    ) {
+      const djCoords = await lookupZipCoords(dj.zip);
+      if (djCoords) {
+        const miles = haversineMiles(
+          djCoords.lat, djCoords.lon,
+          venueCoordsRef.current.lat, venueCoordsRef.current.lon
+        );
+        const limit = Number(dj.travel_distance);
+        if (miles > limit) {
+          // Open the warning modal and await the host's choice. If they
+          // cancel, abort submission. If they confirm, fall through.
+          const proceed = await new Promise<boolean>((resolve) => {
+            setDistWarning({
+              miles: Math.round(miles),
+              limit,
+              djName: dj.name || 'this DJ',
+              resolve,
+            });
+          });
+          setDistWarning(null);
+          if (!proceed) return;
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────
 
     setSubmitting(true);
 
@@ -368,18 +426,68 @@ export default function MobileBookingForm({
           />
         </div>
 
-        {/* Venue Address — autocomplete deferred to next session */}
+        {/* Venue Address — Nominatim autocomplete dropdown */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-venue-address">Venue Address</label>
-          <input
-            id="mpf-venue-address"
-            type="text"
-            placeholder="123 Main St, City, State"
-            value={venueAddress}
-            onChange={(e) => setVenueAddress(e.target.value)}
-            className={styles.input}
-            autoComplete="off"
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              id="mpf-venue-address"
+              type="text"
+              placeholder="123 Main St, City, State"
+              value={venueAddress}
+              onChange={(e) => {
+                const val = e.target.value;
+                setVenueAddress(val);
+                // User started typing again — invalidate previously picked coords
+                venueCoordsRef.current = null;
+                // Debounce the Nominatim fetch; vanilla uses 350ms
+                if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                if (val.trim().length < 3) {
+                  setAddrSuggestions([]);
+                  setShowAddrSuggestions(false);
+                  return;
+                }
+                addrTimerRef.current = setTimeout(async () => {
+                  const results = await searchAddresses(val.trim());
+                  setAddrSuggestions(results);
+                  setShowAddrSuggestions(results.length > 0);
+                }, 350);
+              }}
+              onBlur={() => {
+                // Delay so click on a suggestion can fire before we hide
+                setTimeout(() => setShowAddrSuggestions(false), 150);
+              }}
+              onFocus={() => {
+                if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
+              }}
+              className={styles.input}
+              autoComplete="off"
+            />
+            {showAddrSuggestions && addrSuggestions.length > 0 && (
+              <div className={styles.addrSuggestions}>
+                {addrSuggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className={styles.addrSuggestion}
+                    // Use onMouseDown not onClick — fires before the input's
+                    // onBlur, so the suggestion list isn't dismissed first.
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setVenueAddress(s.display);
+                      if (s.lat != null && s.lon != null) {
+                        venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                      } else {
+                        venueCoordsRef.current = null;
+                      }
+                      setShowAddrSuggestions(false);
+                    }}
+                  >
+                    {s.display}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Room Details */}
@@ -603,6 +711,47 @@ export default function MobileBookingForm({
           {submitting ? 'Submitting...' : submitLabel}
         </button>
       </div>
+
+      {/* Distance-warning modal — opens when submit detects venue is
+          beyond DJ's travel limit. Awaits the host's choice via the
+          resolve callback stored on `distWarning`. */}
+      {distWarning && (
+        <div
+          className={styles.distWarnBackdrop}
+          onClick={() => distWarning.resolve(false)}
+        >
+          <div
+            className={styles.distWarnInner}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.distWarnTitle}>⚠ Outside Travel Range</div>
+            <div className={styles.distWarnBody}>
+              This event is approximately <strong>{distWarning.miles} miles</strong>
+              {' '}from {distWarning.djName}&apos;s home base. Their listed travel range
+              is <strong>{distWarning.limit} miles</strong>.
+              <br /><br />
+              You can still send the request, but the DJ may decline or charge
+              an additional travel fee.
+            </div>
+            <div className={styles.distWarnBtns}>
+              <button
+                type="button"
+                onClick={() => distWarning.resolve(false)}
+                className={styles.distWarnCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => distWarning.resolve(true)}
+                className={styles.distWarnConfirm}
+              >
+                Send Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Photo lightbox for package thumbnails */}
       {photoLightboxUrl && (
