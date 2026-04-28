@@ -320,7 +320,9 @@ export default function MobileBookingCard({
               )}
             </div>
           ) : isQuote ? (
-            <div className={styles.awaitingQuote}>Awaiting price from DJ</div>
+            <div className={styles.awaitingQuote}>
+              Awaiting price from {b.dj_name || 'DJ'}
+            </div>
           ) : null}
           {b.package_title && (
             <div className={styles.packageBlock}>
