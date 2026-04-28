@@ -77,6 +77,16 @@
   cursor: not-allowed;
 }
 
+.readOnlyInput {
+  /* Visually muted but no "blocked" cursor — just a normal-looking
+     display-only field. */
+  opacity: .7;
+  cursor: default !important;
+}
+.readOnlyInput:focus {
+  border-color: var(--border) !important;
+}
+
 .slugRow {
   display: flex;
   align-items: center;

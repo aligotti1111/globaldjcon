@@ -480,7 +480,12 @@ export default function AccountSettingsClient({
 
         <div className={styles.formGroup}>
           <label>Current Email</label>
-          <input type="email" value={currentEmail} disabled />
+          <input
+            type="email"
+            value={currentEmail}
+            readOnly
+            className={styles.readOnlyInput}
+          />
         </div>
 
         <div className={styles.formGroup}>
