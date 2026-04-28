@@ -14,6 +14,8 @@
 
 import { useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
+import { createClient } from '@/lib/supabase/client';
+import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import {
   MOBILE_EVENT_TYPES,
   CLUB_GENRES,
@@ -171,31 +173,13 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </div>
       </div>
 
-      {/* Email (readonly) */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-email">Email Address</label>
-        <input
-          type="email"
-          id="ud-email"
-          value={email}
-          readOnly
-          className={styles.input}
-        />
-        <p className={styles.fieldHint}>Email cannot be changed</p>
-      </div>
+      {/* Email — inline edit form. Click "Change" to reveal new-email +
+          current-password fields. Server action does the swap with
+          email_confirm: true so no verification email is sent. */}
+      <EmailChangeBlock currentEmail={email} />
 
-      {/* Password — change deferred (separate flow) */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-password">Password</label>
-        <input
-          type="password"
-          id="ud-password"
-          placeholder="Password change coming soon"
-          disabled
-          className={styles.input}
-          style={{ opacity: 0.4 }}
-        />
-      </div>
+      {/* Password — inline edit form. Same pattern as email. */}
+      <PasswordChangeBlock />
 
       {/* Name */}
       <div className={styles.formGroup}>
@@ -411,6 +395,349 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           className={styles.input}
         />
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EmailChangeBlock — inline form to change the account's email address.
+// Click "Change" to expand the form. Server action does the actual swap
+// with email_confirm: true (no verification email sent).
+// ─────────────────────────────────────────────────────────────────────────
+function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
+  const [open, setOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [shownEmail, setShownEmail] = useState(currentEmail);
+
+  async function save() {
+    setFeedback(null);
+    if (!newEmail.trim() || !pw) {
+      setFeedback({ msg: 'Please fill in both fields.', ok: false });
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await updateMyEmailAction({
+        newEmail: newEmail.trim(),
+        currentPassword: pw,
+      });
+      if (!result.success) {
+        setFeedback({ msg: result.error || 'Failed', ok: false });
+      } else {
+        setFeedback({ msg: '✓ Email changed.', ok: true });
+        setShownEmail(result.newEmail || newEmail.trim());
+        setNewEmail('');
+        setPw('');
+        // Collapse the form after a moment so the success state is visible.
+        setTimeout(() => {
+          setOpen(false);
+          setFeedback(null);
+        }, 1500);
+      }
+    } catch (e) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Failed', ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={styles.formGroup}>
+      <label>Email Address</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <input
+          type="email"
+          value={shownEmail}
+          readOnly
+          className={styles.input}
+          style={{ flex: 1, opacity: 0.7 }}
+        />
+        {!open && (
+          <button
+            type="button"
+            onClick={() => { setOpen(true); setFeedback(null); }}
+            style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.62rem',
+              letterSpacing: '.07em',
+              textTransform: 'uppercase',
+              padding: '.6rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'var(--muted)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div style={{
+          marginTop: '.75rem',
+          padding: '1rem',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '.65rem',
+        }}>
+          <input
+            type="email"
+            placeholder="New email address"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className={styles.input}
+            autoComplete="email"
+          />
+          <input
+            type="password"
+            placeholder="Current password (to confirm)"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            className={styles.input}
+            autoComplete="current-password"
+          />
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.55rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid var(--neon)',
+                background: 'var(--neon-dim)',
+                color: 'var(--neon)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+              }}
+            >
+              {busy ? 'Saving…' : 'Update Email'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setNewEmail(''); setPw(''); setFeedback(null); }}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.55rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'transparent',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            {feedback && (
+              <span style={{
+                fontSize: '.78rem',
+                color: feedback.ok ? 'var(--success)' : 'var(--error)',
+              }}>
+                {feedback.msg}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PasswordChangeBlock — inline form to change the account's password.
+// Uses Supabase auth.updateUser directly after re-authenticating with
+// the current password. No server action needed since password updates
+// don't have the verification-email problem that email changes do.
+// ─────────────────────────────────────────────────────────────────────────
+function PasswordChangeBlock() {
+  const [open, setOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  async function save() {
+    setFeedback(null);
+    if (!currentPw || !newPw || !confirmPw) {
+      setFeedback({ msg: 'Please fill in all fields.', ok: false });
+      return;
+    }
+    if (newPw.length < 8) {
+      setFeedback({ msg: 'New password must be at least 8 characters.', ok: false });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setFeedback({ msg: 'New passwords do not match.', ok: false });
+      return;
+    }
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      // Re-auth with current password first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) throw new Error('Not signed in.');
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPw,
+      });
+      if (authErr) throw new Error('Current password is incorrect.');
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+      setFeedback({ msg: '✓ Password updated.', ok: true });
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+      setTimeout(() => {
+        setOpen(false);
+        setFeedback(null);
+      }, 1500);
+    } catch (e) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Failed', ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={styles.formGroup}>
+      <label>Password</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <input
+          type="password"
+          value="••••••••••"
+          readOnly
+          className={styles.input}
+          style={{ flex: 1, opacity: 0.7 }}
+        />
+        {!open && (
+          <button
+            type="button"
+            onClick={() => { setOpen(true); setFeedback(null); }}
+            style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.62rem',
+              letterSpacing: '.07em',
+              textTransform: 'uppercase',
+              padding: '.6rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'var(--muted)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div style={{
+          marginTop: '.75rem',
+          padding: '1rem',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '.65rem',
+        }}>
+          <input
+            type="password"
+            placeholder="Current password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            className={styles.input}
+            autoComplete="current-password"
+          />
+          <input
+            type="password"
+            placeholder="New password (min 8 chars)"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className={styles.input}
+            autoComplete="new-password"
+          />
+          <input
+            type="password"
+            placeholder="Confirm new password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className={styles.input}
+            autoComplete="new-password"
+          />
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.55rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid var(--neon)',
+                background: 'var(--neon-dim)',
+                color: 'var(--neon)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+              }}
+            >
+              {busy ? 'Saving…' : 'Update Password'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setCurrentPw(''); setNewPw(''); setConfirmPw('');
+                setFeedback(null);
+              }}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.55rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'transparent',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            {feedback && (
+              <span style={{
+                fontSize: '.78rem',
+                color: feedback.ok ? 'var(--success)' : 'var(--error)',
+              }}>
+                {feedback.msg}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
