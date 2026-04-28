@@ -128,6 +128,15 @@ export default function MobileBookingForm({
   const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
   const generalPkgs: MobilePackage[] = packagesAll.general || [];
 
+  // Has the DJ defined ANY usable package across ANY category? When false,
+  // we treat the whole booking as a "request a quote" — no package selection,
+  // no price, just the booker's event details + a message. The DJ will
+  // respond with a price via their booking-requests page (eventually via
+  // the Send Quote button — currently a placeholder).
+  const hasAnyPackages = Object.values(packagesAll).some((arr) =>
+    Array.isArray(arr) && arr.some((p) => p && p.title && p.title.trim())
+  );
+
   // "Form is ready for package preview" — vanilla mobPubFormReady gate.
   // Note: this is what vanilla checks before showing packages, NOT what's
   // required for submit. Submit has its own validation below.
@@ -190,11 +199,19 @@ export default function MobileBookingForm({
       setErrorMsg('Cocktail hour start time must be before the reception start time.');
       return;
     }
-    if (selectedPkgIdx == null) { setErrorMsg('Please select a package.'); return; }
-    if (!selectedPkg) { setErrorMsg('Invalid package selected.'); return; }
+    // Package validation only applies when the DJ has packages defined.
+    // No-packages mode → fall through and submit as a quote-style request.
+    if (hasAnyPackages) {
+      if (selectedPkgIdx == null) { setErrorMsg('Please select a package.'); return; }
+      if (!selectedPkg) { setErrorMsg('Invalid package selected.'); return; }
+    }
 
-    // Compute final price (re-run; UI value may be stale)
-    const finalPrice = calcPrice(selectedPkg, startTime, endTime, depositPct);
+    // Compute final price. In no-packages mode there's nothing to price —
+    // the booking is a pure quote request, same shape vanilla uses for
+    // is_quote bookings (price null, deposit null, package_title null).
+    const finalPrice = hasAnyPackages && selectedPkg
+      ? calcPrice(selectedPkg, startTime, endTime, depositPct)
+      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null };
 
     setSubmitting(true);
 
@@ -222,7 +239,7 @@ export default function MobileBookingForm({
         cocktail_needed: isWedding ? !!cocktailNeeded : null,
         cocktail_start_time: isWedding && cocktailNeeded ? cocktailStart : null,
         cocktail_same_room: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
-        package_title: selectedPkg.title || null,
+        package_title: selectedPkg?.title || null,
         package_category: cat,
         package_index: selectedPkgIdx,
         quoted_rate: finalPrice.price,
@@ -323,7 +340,14 @@ export default function MobileBookingForm({
   }
 
   // ── Form render ──────────────────────────────────────────────────
-  const submitLabel = priceResult?.isQuote ? 'Request Quote' : 'Request Booking';
+  // Submit label: in no-packages mode, the booking is implicitly a quote
+  // request (the DJ has nothing priced and will respond with a price).
+  // When packages exist, fall back to the priceResult check.
+  const submitLabel = !hasAnyPackages
+    ? 'Request Quote'
+    : priceResult?.isQuote
+    ? 'Request Quote'
+    : 'Request Booking';
 
   return (
     <>
@@ -609,17 +633,30 @@ export default function MobileBookingForm({
         )}
 
         {/* Packages */}
-        <div className={styles.formRow}>
-          <PackagesSection
-            formReady={formReadyForPackages}
-            eventType={eventType}
-            categoryPkgs={categoryPkgs}
-            generalPkgs={generalPkgs}
-            selectedPkgIdx={selectedPkgIdx}
-            onSelect={(idx) => setSelectedPkgIdx(idx)}
-            onPhotoClick={(url) => setPhotoLightboxUrl(url)}
-          />
-        </div>
+        {hasAnyPackages ? (
+          <div className={styles.formRow}>
+            <PackagesSection
+              formReady={formReadyForPackages}
+              eventType={eventType}
+              categoryPkgs={categoryPkgs}
+              generalPkgs={generalPkgs}
+              selectedPkgIdx={selectedPkgIdx}
+              onSelect={(idx) => setSelectedPkgIdx(idx)}
+              onPhotoClick={(url) => setPhotoLightboxUrl(url)}
+            />
+          </div>
+        ) : (
+          // No packages defined → quote-style notice. The DJ will respond
+          // with a price via their booking-requests page.
+          formReadyForPackages && (
+            <div className={styles.formRow}>
+              <div className={styles.noPackagesMsg}>
+                This DJ accepts custom requests. Submit your details and they&apos;ll
+                respond with a quote.
+              </div>
+            </div>
+          )
+        )}
 
         {/* Price display */}
         {priceResult && selectedPkgIdx != null && (
