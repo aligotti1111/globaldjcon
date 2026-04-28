@@ -412,7 +412,15 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [shownEmail, setShownEmail] = useState(currentEmail);
 
-  async function save() {
+  async function save(e?: React.MouseEvent) {
+    // Stop the click from bubbling up to the surrounding <form> in
+    // UpdateDjProfileClient. Without this, certain browsers/autofill
+    // managers can swallow the first click as a focus shift, requiring
+    // a second click to actually trigger the save.
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setFeedback(null);
     if (!newEmail.trim() || !pw) {
       setFeedback({ msg: 'Please fill in both fields.', ok: false });
@@ -508,7 +516,7 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
           <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={save}
+              onClick={(e) => save(e)}
               disabled={busy}
               style={{
                 fontFamily: "'Space Mono', monospace",
@@ -573,7 +581,11 @@ function PasswordChangeBlock() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
 
-  async function save() {
+  async function save(e?: React.MouseEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setFeedback(null);
     if (!currentPw || !newPw || !confirmPw) {
       setFeedback({ msg: 'Please fill in all fields.', ok: false });
@@ -687,7 +699,7 @@ function PasswordChangeBlock() {
           <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={save}
+              onClick={(e) => save(e)}
               disabled={busy}
               style={{
                 fontFamily: "'Space Mono', monospace",
