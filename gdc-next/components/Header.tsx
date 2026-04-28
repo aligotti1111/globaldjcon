@@ -16,8 +16,11 @@ export default function Header() {
   const { user, loading } = useAuth();
 
   const openMenu = () => {
-    const menu = document.getElementById('mobile-menu');
-    if (menu) menu.style.display = 'flex';
+    // Dispatch a custom event the MobileMenu component listens for.
+    // We use an event (rather than shared state) to keep Header and
+    // MobileMenu decoupled — they're rendered as siblings under
+    // (main)/layout.tsx and don't share a parent state container.
+    window.dispatchEvent(new CustomEvent('gdc:open-mobile-menu'));
   };
 
   // Sign out and do a FULL page reload so server components re-render
