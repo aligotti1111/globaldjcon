@@ -271,12 +271,50 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         ? JSON.stringify(filledTestimonials)
         : null;
 
+      // ── Geocode the zip when it changes ─────────────────────────────
+      // We store the resolved lat/lon on the profile row so the homepage's
+      // "Find DJs Near Me" can sort by distance instantly without per-DJ
+      // Nominatim calls. Only re-geocode when zip actually changed since
+      // the last save — saves a network call on every other field edit.
+      const zipTrimmed = general.zip.trim();
+      const zipChanged = zipTrimmed !== (initialProfile.zip || '');
+      let homeLat: number | null = null;
+      let homeLon: number | null = null;
+      let updateHomeCoords = false;
+      if (zipChanged) {
+        updateHomeCoords = true;
+        if (zipTrimmed) {
+          // Country-code biased Nominatim postcode lookup. Falls back to
+          // null when the lookup fails — we don't block save on this.
+          const COUNTRY_CC: Record<string, string> = {
+            'United States': 'us', 'United Kingdom': 'gb', 'Canada': 'ca',
+            'Australia': 'au', 'Germany': 'de', 'France': 'fr', 'Netherlands': 'nl',
+            'Spain': 'es', 'Italy': 'it', 'Brazil': 'br', 'Mexico': 'mx',
+            'Japan': 'jp', 'South Africa': 'za', 'New Zealand': 'nz',
+            'Ireland': 'ie', 'Sweden': 'se', 'Norway': 'no', 'Denmark': 'dk',
+            'Belgium': 'be', 'Switzerland': 'ch', 'Portugal': 'pt',
+          };
+          const cc = COUNTRY_CC[general.country || ''] || '';
+          try {
+            const url = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zipTrimmed)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=1`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && data[0]) {
+              homeLat = parseFloat(data[0].lat);
+              homeLon = parseFloat(data[0].lon);
+            }
+          } catch {
+            // Non-fatal — leave home_lat/home_lon null and save anyway.
+          }
+        }
+      }
+
       const payload = {
         name: general.name.trim(),
         slug: finalSlug,
         bio: general.bio.trim() || null,
         phone: general.phone.trim() || null,
-        zip: general.zip.trim() || null,
+        zip: zipTrimmed || null,
         country: general.country || null,
         travel_distance: general.travelDistance || null,
         dj_start_year: general.djStartYear || null,
@@ -308,6 +346,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         testimonials: testimonialsJson,
         // Booking
         booking_settings: JSON.stringify(bookingSettings),
+        // Pre-resolved home coordinates — only included when zip changed.
+        // When zip is cleared, both go to null. When unchanged, we don't
+        // touch them (existing values preserved).
+        ...(updateHomeCoords ? { home_lat: homeLat, home_lon: homeLon } : {}),
       };
 
       const { error } = await supabase
