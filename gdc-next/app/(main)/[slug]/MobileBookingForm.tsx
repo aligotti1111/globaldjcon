@@ -6,8 +6,13 @@
 //
 // Shown directly below the calendar when the user clicks Book on an
 // available date. All form fields, package selection, and live price
-// calculation match vanilla. Includes Nominatim address autocomplete +
-// Haversine distance check + travel-warning modal.
+// calculation match vanilla. Includes Nominatim address autocomplete.
+//
+// On submit, if the booker picked a Nominatim suggestion we capture the
+// venue lat/lon and store them on the booking row. The DJ's booking-
+// requests page (built in a later session) uses those coords + the DJ's
+// own zip to flag out-of-range events. The booker is never warned —
+// per Anthony's UX direction the warning is for the DJ only.
 //
 // DEFERRED:
 //   - International phone formats (this session is US-only)
@@ -31,10 +36,7 @@ import {
   getPackageCategory,
   calcPrice,
   formatLongDate,
-  haversineMiles,
-  lookupZipCoords,
   searchAddresses,
-  hasFiniteTravelLimit,
   type AddressSuggestion,
 } from './mobileBookingForm';
 
@@ -96,20 +98,13 @@ export default function MobileBookingForm({
 
   // ── Address autocomplete ─────────────────────────────────────────
   // Dropdown of Nominatim suggestions; coords stick to whichever one the
-  // user picks (cleared if they type more after picking).
+  // user picks (cleared if they type more after picking). Coords are
+  // stored on the booking row so the DJ's booking-requests page can flag
+  // out-of-range events — booker is never warned.
   const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Distance-warning modal ───────────────────────────────────────
-  // When set, blocks submission until host confirms or cancels. The
-  // "resolve" callback is the Promise resolver returned by the modal,
-  // so submit can await the user's choice.
-  const [distWarning, setDistWarning] = useState<
-    | { miles: number; limit: number; djName: string; resolve: (proceed: boolean) => void }
-    | null
-  >(null);
 
   // Scroll the form into view on mount
   const rootRef = useRef<HTMLDivElement>(null);
@@ -201,41 +196,6 @@ export default function MobileBookingForm({
     // Compute final price (re-run; UI value may be stale)
     const finalPrice = calcPrice(selectedPkg, startTime, endTime, depositPct);
 
-    // ── Distance check ──────────────────────────────────────────
-    // If the DJ has a finite travel limit + a home zip + the host picked an
-    // address from the autocomplete dropdown (so we have venue coords),
-    // compute distance and warn if it exceeds the limit. Skip silently if
-    // any of those preconditions aren't met (matches vanilla).
-    if (
-      hasFiniteTravelLimit(dj.travel_distance) &&
-      dj.zip &&
-      venueCoordsRef.current
-    ) {
-      const djCoords = await lookupZipCoords(dj.zip);
-      if (djCoords) {
-        const miles = haversineMiles(
-          djCoords.lat, djCoords.lon,
-          venueCoordsRef.current.lat, venueCoordsRef.current.lon
-        );
-        const limit = Number(dj.travel_distance);
-        if (miles > limit) {
-          // Open the warning modal and await the host's choice. If they
-          // cancel, abort submission. If they confirm, fall through.
-          const proceed = await new Promise<boolean>((resolve) => {
-            setDistWarning({
-              miles: Math.round(miles),
-              limit,
-              djName: dj.name || 'this DJ',
-              resolve,
-            });
-          });
-          setDistWarning(null);
-          if (!proceed) return;
-        }
-      }
-    }
-    // ─────────────────────────────────────────────────────────────
-
     setSubmitting(true);
 
     try {
@@ -249,6 +209,11 @@ export default function MobileBookingForm({
         event_type: eventType === 'other' ? (eventTypeOther.trim() || 'other') : eventType,
         venue_name: venueName.trim(),
         venue_address: venueAddress.trim(),
+        // Coords from the Nominatim autocomplete pick (null if user typed
+        // freehand). Used by the DJ's booking-requests page to show a
+        // distance warning when the venue is outside their travel range.
+        venue_lat: venueCoordsRef.current?.lat ?? null,
+        venue_lon: venueCoordsRef.current?.lon ?? null,
         room_details: room.trim() || null,
         guest_count: guests ? parseInt(guests, 10) : null,
         start_time: startTime,
@@ -711,47 +676,6 @@ export default function MobileBookingForm({
           {submitting ? 'Submitting...' : submitLabel}
         </button>
       </div>
-
-      {/* Distance-warning modal — opens when submit detects venue is
-          beyond DJ's travel limit. Awaits the host's choice via the
-          resolve callback stored on `distWarning`. */}
-      {distWarning && (
-        <div
-          className={styles.distWarnBackdrop}
-          onClick={() => distWarning.resolve(false)}
-        >
-          <div
-            className={styles.distWarnInner}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.distWarnTitle}>⚠ Outside Travel Range</div>
-            <div className={styles.distWarnBody}>
-              This event is approximately <strong>{distWarning.miles} miles</strong>
-              {' '}from {distWarning.djName}&apos;s home base. Their listed travel range
-              is <strong>{distWarning.limit} miles</strong>.
-              <br /><br />
-              You can still send the request, but the DJ may decline or charge
-              an additional travel fee.
-            </div>
-            <div className={styles.distWarnBtns}>
-              <button
-                type="button"
-                onClick={() => distWarning.resolve(false)}
-                className={styles.distWarnCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => distWarning.resolve(true)}
-                className={styles.distWarnConfirm}
-              >
-                Send Anyway
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Photo lightbox for package thumbnails */}
       {photoLightboxUrl && (
