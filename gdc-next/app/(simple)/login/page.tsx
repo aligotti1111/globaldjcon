@@ -22,7 +22,6 @@ import styles from './login.module.css';
 // NOTE: matched 1:1 with the vanilla site as agreed. The maintenance dev
 // should migrate this to Supabase Auth (with admin role) post-launch.
 const ADMIN_EMAIL = 'admin@globaldjconnect.com';
-const ADMIN_PASSWORD = 'spinlist2025';
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -45,6 +44,9 @@ function LoginForm() {
   // If the user is already logged in, redirect them to the destination —
   // UNLESS we just came here from email verification (we want them to see
   // the confirmation banner first, then redirect after a short delay).
+  // EXCEPTION: don't auto-redirect to /admin unless the user IS the admin.
+  // Otherwise we'd send a non-admin DJ/host to /admin → /admin server check
+  // bounces back to /login → loop forever.
   useEffect(() => {
     if (authLoading) return;
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -52,7 +54,12 @@ function LoginForm() {
     const isConfirmed = searchParams.get('confirmed') === '1';
     const isEmailVerified = searchParams.get('emailverified') === '1';
     if (user && !hasAccessToken && !isConfirmed && !isEmailVerified) {
-      window.location.replace(destination);
+      // Avoid the redirect loop: if the destination is /admin but the user
+      // isn't the admin, send them to / instead.
+      const isAdminDest = destination === '/admin' || destination.startsWith('/admin?') || destination.startsWith('/admin/');
+      const userIsAdmin = (user.email || '').toLowerCase() === 'admin@globaldjconnect.com';
+      const safeDest = (isAdminDest && !userIsAdmin) ? '/' : destination;
+      window.location.replace(safeDest);
     }
   }, [user, authLoading, searchParams, destination]);
 
@@ -101,13 +108,10 @@ function LoginForm() {
     const trimmedEmail = email.toLowerCase().trim();
 
     try {
-      // Hardcoded admin path — same as vanilla
-      if (trimmedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        sessionStorage.setItem('adminUser', '1');
-        window.location.href = '/admin';
-        return;
-      }
-
+      // NOTE: vanilla had a hardcoded admin-email + password check here that
+      // set sessionStorage. The new admin panel uses real Supabase auth — the
+      // admin user is `admin@globaldjconnect.com` with their own password
+      // stored in Supabase auth.users like any other user. No special path.
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: trimmedEmail,
         password,
@@ -123,9 +127,14 @@ function LoginForm() {
         throw new Error('Login failed. Please try again.');
       }
 
-      // Full page navigation so the AuthProvider re-reads cookies and any
-      // server-rendered pages get the new session immediately.
-      window.location.href = destination;
+      // Where to go after login: respect ?redirect, fall back to home for
+      // regular users, send the admin to /admin specifically.
+      const isAdminUser = trimmedEmail === ADMIN_EMAIL;
+      // Honor an explicit ?redirect= unless it's empty/'/'; otherwise pick
+      // /admin for admin user, '/' for everyone else.
+      const explicitDest = (destination && destination !== '/') ? destination : null;
+      const finalDest = explicitDest || (isAdminUser ? '/admin' : '/');
+      window.location.href = finalDest;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       setError(msg);
