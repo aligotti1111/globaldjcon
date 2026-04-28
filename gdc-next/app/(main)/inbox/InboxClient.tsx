@@ -129,16 +129,14 @@ export default function InboxClient({
   }
 
   // ── Send a reply ───────────────────────────────────────────────
+  // Optimistic: drop the bubble into the thread + clear the textarea
+  // before we even hit the network. The DB write happens in the background.
+  // If it fails we surface an error and remove the optimistic bubble.
   async function sendReply(parentMsg: InboxMessage) {
     const text = (replyDrafts[parentMsg.id] || '').trim();
     if (!text) return;
 
-    setSending((prev) => ({ ...prev, [parentMsg.id]: true }));
-    setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: '', ok: false } }));
-
-    // Determine recipient: if I sent the original, reply to the most recent
-    // reply's sender (the "other side"). If I received the original, reply
-    // back to its sender.
+    // Determine recipient first (same logic as before).
     let toUserId: string | null = null;
     let toName = '';
     let toEmail = '';
@@ -162,6 +160,31 @@ export default function InboxClient({
       ? parentMsg.subject
       : 'Re: ' + (parentMsg.subject || '');
 
+    // Build the optimistic reply with a temp id we can swap out later.
+    // tempId prefix lets us identify+replace it when the real row comes back.
+    const tempId = 'temp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+    const optimistic: InboxMessage = {
+      id: tempId,
+      parent_id: parentMsg.id,
+      from_user_id: currentUser.id,
+      from_name: currentUser.name,
+      from_email: null,
+      to_user_id: toUserId,
+      to_dj_slug: null,
+      subject,
+      message: text,
+      read: false,
+      created_at: new Date().toISOString(),
+    };
+
+    // Step 1: Update UI immediately so the user sees the bubble appear and
+    // the textarea clear. No await — these are synchronous setState calls.
+    setReplies((prev) => [...prev, optimistic]);
+    setReplyDrafts((prev) => ({ ...prev, [parentMsg.id]: '' }));
+    setSending((prev) => ({ ...prev, [parentMsg.id]: true }));
+    setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: '', ok: false } }));
+
+    // Step 2: Fire the actual insert in the background.
     const supabase = createClient();
     try {
       const { data: inserted, error } = await supabase
@@ -181,10 +204,10 @@ export default function InboxClient({
       if (error) throw error;
       const newReply = inserted as InboxMessage;
 
-      setReplies((prev) => [...prev, newReply]);
-      setReplyDrafts((prev) => ({ ...prev, [parentMsg.id]: '' }));
+      // Step 3: Swap the optimistic bubble for the real row (gets a real
+      // id + timestamp from the DB).
+      setReplies((prev) => prev.map((r) => (r.id === tempId ? newReply : r)));
       setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: '✓ Sent', ok: true } }));
-      // Clear the success message after a moment
       setTimeout(() => {
         setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: '', ok: false } }));
       }, 2000);
@@ -192,6 +215,10 @@ export default function InboxClient({
       // Email notification — DEFERRED. Vanilla calls /.netlify/functions/send-email
       // here. Once we port that route, wire it up.
     } catch (err) {
+      // Rollback: remove the optimistic bubble + restore the textarea
+      // contents so the user can retry without retyping.
+      setReplies((prev) => prev.filter((r) => r.id !== tempId));
+      setReplyDrafts((prev) => ({ ...prev, [parentMsg.id]: text }));
       const msg = err instanceof Error ? err.message : 'Send failed';
       setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: 'Failed: ' + msg, ok: false } }));
     } finally {
