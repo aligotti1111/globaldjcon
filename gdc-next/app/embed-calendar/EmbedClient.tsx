@@ -113,7 +113,7 @@ export default function EmbedClient({
   }
 
   return (
-    <div className={`${styles.wrap} ${theme === 'light' ? styles.wrapLight : ''}`}>
+    <div className={`${styles.wrap} ${theme === 'light' ? styles.wrapLight : ''} ${months === 3 ? styles.threeUpWide : ''}`}>
       <div className={styles.headerRow}>
         <div className={styles.djName}>{djName || 'DJ Calendar'}</div>
         <div className={styles.navBtns}>

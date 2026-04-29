@@ -6,8 +6,17 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  max-width: 100%;
+  /* Sane max-width when the page is viewed directly in a browser at full
+     viewport width (rather than inside an iframe at the host site's chosen
+     size). Without this, the aspect-ratio: 1 cells stretch to gigantic
+     squares since they fill 1/7th of the screen each. */
+  max-width: 720px;
+  margin: 0 auto;
   color: var(--white);
+}
+.wrap.threeUpWide {
+  /* When 3 months render side-by-side, give them room. */
+  max-width: 1100px;
 }
 
 /* Light theme — only neutralizes our dark colors. The bright neon cyan
