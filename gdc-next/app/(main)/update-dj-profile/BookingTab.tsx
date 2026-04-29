@@ -71,12 +71,9 @@ export default function BookingTab({
     onChange({ ...bookingSettings, ...p });
   }
 
-  function setEnabled(v: boolean) { patch({ booking_enabled: v }); }
-  function setWindow(v: number) { patch({ mob_booking_window: v }); }
-  function setPerDay(v: number) { patch({ mob_bookings_per_day: v }); }
-  function setDeposit(v: number) { patch({ mob_deposit_pct: v }); }
-  function setPackages(next: Record<string, MobilePackage[]>) { patch({ mob_packages: next }); }
-  function setBookingDays(next: MobileBookingDays) { patch({ mob_booking_days: next }); }
+  // Note: actual setters (setEnabled, setWindow etc.) live below in the
+  // "Inline saved hint tracking" block — they each tag lastChangedField
+  // before patching so the hint shows next to the right field.
 
   // ── Package mutation helpers ─────────────────────────────────────
   // Vanilla keeps all active categories at the same package count by
@@ -89,7 +86,7 @@ export default function BookingTab({
       arr.push(newMobPackage());
       next[c] = arr;
     });
-    setPackages(next);
+    setPackagesAll(next);
   }
 
   function removePackage(idx: number) {
@@ -101,7 +98,7 @@ export default function BookingTab({
         next[c] = arr;
       }
     });
-    setPackages(next);
+    setPackagesAll(next);
   }
 
   function updatePackage(c: PkgCategory, idx: number, p: MobilePackage) {
@@ -110,7 +107,7 @@ export default function BookingTab({
     while (arr.length <= idx) arr.push(newMobPackage());
     arr[idx] = p;
     next[c] = arr;
-    setPackages(next);
+    setPackagesForIdx(idx, next);
   }
 
   // Render only when DJ type is mobile. Club section deferred.
@@ -128,71 +125,39 @@ export default function BookingTab({
   const generalPkgs = packages.general || [];
   const renderedCount = generalPkgs.length || 1;
 
+  // ── Inline saved hint tracking ───────────────────────────────────
+  // We track the LAST field that changed so we can show a small "Saving…"
+  // / "✓ Saved" hint inline next to that specific field instead of a
+  // big sticky banner. Cleaner UX — the user gets contextual feedback
+  // right where they edited.
+  const [lastChangedField, setLastChangedField] = useState<string | null>(null);
+
+  // Wrap all setters: each call updates lastChangedField first so the
+  // SavedHint component can show its status next to the right field.
+  function setEnabled(v: boolean) { setLastChangedField('settings'); patch({ booking_enabled: v }); }
+  function setWindow(v: number) { setLastChangedField('settings'); patch({ mob_booking_window: v }); }
+  function setPerDay(v: number) { setLastChangedField('settings'); patch({ mob_bookings_per_day: v }); }
+  function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
+  function setBookingDays(next: MobileBookingDays) {
+    setLastChangedField('calendar');
+    patch({ mob_booking_days: next });
+  }
+
+  // Package mutations: each tags itself with a per-package key like
+  // "package-2" so the hint appears next to that specific card.
+  function setPackagesForIdx(idx: number, next: Record<string, MobilePackage[]>) {
+    setLastChangedField(`package-${idx}`);
+    patch({ mob_packages: next });
+  }
+  // Top-level wholesale rewrite (add/remove a row across all cats).
+  // Doesn't try to pin to a specific card — uses 'packages-list' instead.
+  function setPackagesAll(next: Record<string, MobilePackage[]>) {
+    setLastChangedField('packages-list');
+    patch({ mob_packages: next });
+  }
+
   return (
     <div>
-      {/* Autosave badge — sticky to the top of the viewport so it stays
-          visible while the DJ scrolls through packages further down the
-          tab. Without sticky positioning, the indicator scrolls off-screen
-          and the DJ can't see save state when editing the 3rd or 4th
-          package card. */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 8,
-          zIndex: 50,
-          minHeight: 24,
-          marginBottom: '.75rem',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          pointerEvents: 'none', // don't block clicks on stuff behind it
-        }}
-      >
-        <span
-          style={{
-            pointerEvents: 'auto', // but the badge itself is interactive (hover etc)
-            fontFamily: "'Space Mono', monospace",
-            fontSize: '.65rem',
-            letterSpacing: '.06em',
-            textTransform: 'uppercase',
-            padding: '.4rem .75rem',
-            borderRadius: '4px',
-            border: '1px solid',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            color: autosaveStatus === 'error'
-              ? '#ff5f5f'
-              : autosaveStatus === 'saved'
-              ? 'var(--neon)'
-              : autosaveStatus === 'saving'
-              ? 'var(--amber)'
-              : 'var(--muted)',
-            borderColor: autosaveStatus === 'error'
-              ? '#ff5f5f'
-              : autosaveStatus === 'saved'
-              ? 'var(--neon)'
-              : autosaveStatus === 'saving'
-              ? 'var(--amber)'
-              : 'var(--border)',
-            background: autosaveStatus === 'saved'
-              ? 'rgba(0,245,196,.15)'
-              : autosaveStatus === 'error'
-              ? 'rgba(255,95,95,.15)'
-              : autosaveStatus === 'saving'
-              ? 'rgba(255,179,71,.15)'
-              : 'rgba(19,19,30,.85)', // semi-opaque card bg so it stays readable over content
-          }}
-        >
-          {autosaveStatus === 'saving'
-            ? 'Saving…'
-            : autosaveStatus === 'saved'
-            ? '✓ Saved'
-            : autosaveStatus === 'error'
-            ? '✗ Save failed'
-            : '✓ All changes saved'}
-        </span>
-      </div>
-
       {/* Enable Booking toggle */}
       <div className={styles.bookingEnabledRow}>
         <div>
@@ -224,7 +189,14 @@ export default function BookingTab({
           {/* ── Booking Settings ────────────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Booking Settings</div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className={styles.sectionTitle}>Booking Settings</div>
+                <SavedHint
+                  fieldKey="settings"
+                  lastChangedField={lastChangedField}
+                  autosaveStatus={autosaveStatus}
+                />
+              </div>
             </div>
             <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
               {/* Window */}
@@ -290,7 +262,14 @@ export default function BookingTab({
           {/* ── Packages ──────────────────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Add Packages</div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className={styles.sectionTitle}>Add Packages</div>
+                <SavedHint
+                  fieldKey="packages-list"
+                  lastChangedField={lastChangedField}
+                  autosaveStatus={autosaveStatus}
+                />
+              </div>
             </div>
             <div className={styles.sectionBody}>
               <p className={styles.bodyHint}>
@@ -317,6 +296,8 @@ export default function BookingTab({
                   onUpdate={updatePackage}
                   onRemove={removePackage}
                   onAdd={addPackage}
+                  lastChangedField={lastChangedField}
+                  autosaveStatus={autosaveStatus}
                 />
               )}
             </div>
@@ -325,7 +306,14 @@ export default function BookingTab({
           {/* ── Availability Calendar ─────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Availability Calendar</div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className={styles.sectionTitle}>Availability Calendar</div>
+                <SavedHint
+                  fieldKey="calendar"
+                  lastChangedField={lastChangedField}
+                  autosaveStatus={autosaveStatus}
+                />
+              </div>
             </div>
             <div className={styles.sectionBody}>
               <p className={styles.bodyHint}>
@@ -361,6 +349,8 @@ function PackageList({
   onUpdate,
   onRemove,
   onAdd,
+  lastChangedField,
+  autosaveStatus,
 }: {
   activeCats: PkgCategory[];
   packages: Record<string, MobilePackage[]>;
@@ -369,6 +359,8 @@ function PackageList({
   onUpdate: (c: PkgCategory, idx: number, p: MobilePackage) => void;
   onRemove: (idx: number) => void;
   onAdd: () => void;
+  lastChangedField: string | null;
+  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
 }) {
   const cards: React.ReactNode[] = [];
   const count = Math.max(totalCount, 1);
@@ -383,6 +375,8 @@ function PackageList({
         userId={userId}
         onUpdate={onUpdate}
         onRemove={() => onRemove(idx)}
+        lastChangedField={lastChangedField}
+        autosaveStatus={autosaveStatus}
       />
     );
   }
@@ -412,6 +406,8 @@ function PackageCardWithCatTabs({
   userId,
   onUpdate,
   onRemove,
+  lastChangedField,
+  autosaveStatus,
 }: {
   idx: number;
   activeCats: PkgCategory[];
@@ -420,6 +416,8 @@ function PackageCardWithCatTabs({
   userId: string;
   onUpdate: (c: PkgCategory, idx: number, p: MobilePackage) => void;
   onRemove: () => void;
+  lastChangedField: string | null;
+  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
 }) {
   const catLabels: Record<PkgCategory, string> = {
     general: 'General',
@@ -435,7 +433,14 @@ function PackageCardWithCatTabs({
   return (
     <div className={styles.pkgCard}>
       <div className={styles.pkgHeader}>
-        <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
+          <SavedHint
+            fieldKey={`package-${idx}`}
+            lastChangedField={lastChangedField}
+            autosaveStatus={autosaveStatus}
+          />
+        </div>
         {totalCount > 1 && (
           <button
             type="button"
@@ -485,5 +490,61 @@ function PackageCardWithCatTabs({
         hideOwnHeader
       />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SavedHint — small inline indicator showing autosave state for ONE
+// specific field (or section). Renders nothing unless the parent's
+// `lastChangedField` matches our `fieldKey` AND the autosave is in
+// progress or recently completed for that change.
+//
+// Usage:
+//   <SavedHint
+//     fieldKey="package-2"
+//     lastChangedField={lastChangedField}
+//     autosaveStatus={autosaveStatus}
+//   />
+//
+// Renders next to whatever you put it after — typically a section header
+// or the title of a package card.
+// ─────────────────────────────────────────────────────────────────────────
+function SavedHint({
+  fieldKey,
+  lastChangedField,
+  autosaveStatus,
+}: {
+  fieldKey: string;
+  lastChangedField: string | null;
+  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+}) {
+  // Only show the hint if THIS field was the last one edited.
+  if (lastChangedField !== fieldKey) return null;
+  // Don't show anything when idle (after the 2s "✓ Saved" auto-clears
+  // back to idle in the parent).
+  if (autosaveStatus === 'idle') return null;
+
+  const text = autosaveStatus === 'saving' ? 'Saving…'
+    : autosaveStatus === 'saved' ? '✓ Saved'
+    : '✗ Failed';
+  const color = autosaveStatus === 'saving' ? 'var(--muted)'
+    : autosaveStatus === 'saved' ? 'var(--neon)'
+    : '#ff5f5f';
+
+  return (
+    <span
+      style={{
+        marginLeft: '.6rem',
+        fontFamily: "'Space Mono', monospace",
+        fontSize: '.6rem',
+        letterSpacing: '.05em',
+        color,
+        opacity: autosaveStatus === 'saved' ? 1 : 0.85,
+        transition: 'opacity .2s',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </span>
   );
 }
