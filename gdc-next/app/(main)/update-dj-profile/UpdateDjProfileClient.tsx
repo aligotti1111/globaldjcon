@@ -461,6 +461,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               onChange={setBookingSettings}
               userId={initialProfile.id}
               onGoToGeneral={() => setActiveTab('general')}
+              autosaveStatus={autosaveStatus}
             />
           )}
 
