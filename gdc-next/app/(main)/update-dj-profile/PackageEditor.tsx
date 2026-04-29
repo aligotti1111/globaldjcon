@@ -247,7 +247,7 @@ export default function PackageEditor({
         {/* Overtime */}
         <div className={styles.priceRow}>
           <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
-            Hourly Overtime:
+            Hourly Overtime: <span className={styles.pkgFieldRequired}>*</span>
           </span>
           <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
           <input

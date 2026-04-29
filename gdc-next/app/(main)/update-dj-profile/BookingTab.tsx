@@ -734,8 +734,8 @@ function PackageCardWithCatTabs({
           style={{
             marginTop: '.85rem',
             padding: '.75rem .9rem',
-            background: 'rgba(255,95,95,.08)',
-            border: '1px solid rgba(255,95,95,.3)',
+            background: 'transparent',
+            border: '1px solid rgba(255,95,95,.5)',
             borderRadius: '6px',
           }}
         >
