@@ -95,6 +95,9 @@ interface Props {
   // button instead of autosave so a typo can't push live before the user
   // is ready.
   autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  // Callback fired whenever ANY package card has unsaved drafts changes.
+  // Parent uses this to power the unsaved-changes warning on tab close.
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export default function BookingTab({
@@ -105,6 +108,7 @@ export default function BookingTab({
   userId,
   onGoToGeneral,
   autosaveStatus,
+  onDirtyChange,
 }: Props) {
   const enabled = !!bookingSettings.booking_enabled;
   const window = bookingSettings.mob_booking_window || 24;
@@ -186,6 +190,34 @@ export default function BookingTab({
   const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
   function triggerMasterSave() {
     setMasterSaveTrigger((n) => n + 1);
+  }
+
+  // Dirty aggregation: each PackageCardWithCatTabs reports its own dirty
+  // state via cardDirtyMap[idx] = boolean. We sum to a single boolean and
+  // hand that up to the parent via onDirtyChange.
+  const [cardDirtyMap, setCardDirtyMap] = useState<Record<number, boolean>>({});
+  const anyCardDirty = useMemo(
+    () => Object.values(cardDirtyMap).some(Boolean),
+    [cardDirtyMap]
+  );
+
+  // Stable callback ref so useEffect dep is stable
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    onDirtyChangeRef.current?.(anyCardDirty);
+  }, [anyCardDirty]);
+
+  // Per-card dirty reporter — passed down to each PackageCardWithCatTabs.
+  // Cards call this whenever their isDirty boolean flips.
+  function reportCardDirty(idx: number, dirty: boolean) {
+    setCardDirtyMap((prev) => {
+      if (!!prev[idx] === dirty) return prev; // no change
+      const next = { ...prev };
+      if (dirty) next[idx] = true;
+      else delete next[idx];
+      return next;
+    });
   }
 
   // Render only when DJ type is mobile. Club section deferred.
@@ -378,6 +410,7 @@ export default function BookingTab({
                   onRemove={removePackage}
                   onAdd={addPackage}
                   masterSaveTrigger={masterSaveTrigger}
+                  reportCardDirty={reportCardDirty}
                 />
               )}
               {/* Master Save All — saves every dirty package card at once.
@@ -473,6 +506,7 @@ function PackageList({
   onRemove,
   onAdd,
   masterSaveTrigger,
+  reportCardDirty,
 }: {
   activeCats: PkgCategory[];
   packages: Record<string, MobilePackage[]>;
@@ -482,6 +516,7 @@ function PackageList({
   onRemove: (idx: number) => void;
   onAdd: () => void;
   masterSaveTrigger: number;
+  reportCardDirty: (idx: number, dirty: boolean) => void;
 }) {
   const cards: React.ReactNode[] = [];
   const count = Math.max(totalCount, 1);
@@ -497,6 +532,7 @@ function PackageList({
         onSave={(drafts) => onSavePackage(idx, drafts)}
         onRemove={() => onRemove(idx)}
         masterSaveTrigger={masterSaveTrigger}
+        reportDirty={(dirty) => reportCardDirty(idx, dirty)}
       />
     );
   }
@@ -538,6 +574,7 @@ function PackageCardWithCatTabs({
   onSave,
   onRemove,
   masterSaveTrigger,
+  reportDirty,
 }: {
   idx: number;
   activeCats: PkgCategory[];
@@ -547,6 +584,7 @@ function PackageCardWithCatTabs({
   onSave: (drafts: Record<PkgCategory, MobilePackage>) => void;
   onRemove: () => void;
   masterSaveTrigger: number;
+  reportDirty: (dirty: boolean) => void;
 }) {
   const catLabels: Record<PkgCategory, string> = {
     general: 'General',
@@ -589,6 +627,17 @@ function PackageCardWithCatTabs({
       return JSON.stringify(saved) !== JSON.stringify(draft);
     });
   }, [activeCats, packages, drafts, idx]);
+
+  // Report dirty state to parent (BookingTab aggregates across all cards
+  // and bubbles to UpdateDjProfileClient which powers the page-leave
+  // warning). Stable callback via ref so this effect doesn't loop.
+  const reportDirtyRef = useRef(reportDirty);
+  reportDirtyRef.current = reportDirty;
+  useEffect(() => {
+    reportDirtyRef.current(isDirty);
+    // On unmount (e.g. package removed), tell parent we're no longer dirty
+    return () => { reportDirtyRef.current(false); };
+  }, [isDirty]);
 
   // Update one field in one category's draft
   function updateDraftField(cat: PkgCategory, p: MobilePackage) {

@@ -16,7 +16,7 @@
 //   - Background autosave for booking_settings when fields change. Vanilla
 //     parity: settings, packages, and the calendar all autosave silently.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
@@ -237,6 +237,42 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     };
   }, [bookingSettings, initialProfile.id]);
 
+  // ── Unsaved changes warning ─────────────────────────────────────
+  // Snapshot of `general` at mount time. When the live `general` differs
+  // from this snapshot, the General/Socials/Mixes/Photos/Video/Testimonials
+  // tabs have unsaved changes (those tabs save via the bottom Save button).
+  // After a successful submit, this snapshot updates so the dirty flag
+  // clears.
+  const initialGeneralRef = useRef<string>(JSON.stringify(general));
+
+  // BookingTab tells us when ANY of its package cards has draft edits
+  // not yet committed via per-card Save / master Save All. We don't know
+  // the count, just true/false.
+  const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
+
+  // Are general fields different from snapshot?
+  const isGeneralDirty = useMemo(
+    () => JSON.stringify(general) !== initialGeneralRef.current,
+    [general]
+  );
+
+  const isPageDirty = isGeneralDirty || hasDirtyPackages;
+
+  // Native browser warning on tab close / refresh / external nav.
+  // Custom message text is ignored by modern browsers (they show their
+  // own generic "Leave site?" prompt for security), but the prompt only
+  // appears at all if we set `event.returnValue` to a truthy string.
+  useEffect(() => {
+    if (!isPageDirty) return;
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      // Required for some browsers to actually trigger the prompt.
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isPageDirty]);
+
   // ── Generic helpers ─────────────────────────────────────────────
   function updateGeneral<K extends keyof GeneralFormState>(field: K, val: GeneralFormState[K]) {
     setGeneral(prev => ({ ...prev, [field]: val }));
@@ -365,6 +401,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       // Update the initial-booking ref so autosave doesn't immediately
       // re-trigger after a manual save.
       initialBookingRef.current = bookingSettings;
+      // Reset the general dirty snapshot so the unsaved-changes warning
+      // clears (until the user makes new edits).
+      initialGeneralRef.current = JSON.stringify(general);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Save failed';
       setAlertMsg({ kind: 'error', text: msg });
@@ -453,7 +492,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             />
           )}
 
-          {activeTab === 'booking' && (
+          {/* BookingTab is mounted ALWAYS (just hidden via display:none
+              when inactive) so per-package drafts survive tab switches.
+              Other tabs unmount because they have no local-only state —
+              everything's in `general`/`bookingSettings` already. */}
+          <div style={{ display: activeTab === 'booking' ? 'block' : 'none' }}>
             <BookingTab
               djType={initialProfile.dj_type}
               selectedEventTypes={general.mobileEvents}
@@ -462,8 +505,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               userId={initialProfile.id}
               onGoToGeneral={() => setActiveTab('general')}
               autosaveStatus={autosaveStatus}
+              onDirtyChange={setHasDirtyPackages}
             />
-          )}
+          </div>
 
           {activeTab === 'social' && (
             <SocialsTab state={general} onChange={updateGeneral} />
