@@ -25,14 +25,32 @@ interface Props {
   onChange: (next: MobileBookingDays) => void;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
+  // Optional autosave hint props. When provided, renders a small "Saving…/
+  // ✓ Saved" indicator under whichever month was most recently edited.
+  // The parent tags lastChangedField with `calendar-YYYY-MM` whenever a
+  // day is changed (we tell the parent which month via onMonthChanged).
+  lastChangedField?: string | null;
+  autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  onMonthChanged?: (monthKey: string) => void;
 }
 
 function dateKey(y: number, m: number, d: number): string {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
+// Format a month key (YYYY-MM) — used as the SavedHint fieldKey
+function monthKeyFromYM(y: number, m: number): string {
+  return `calendar-${y}-${String(m+1).padStart(2,'0')}`;
+}
+
+// Extract YYYY-MM-DD → calendar-YYYY-MM
+function monthKeyFromDateKey(dKey: string): string {
+  return `calendar-${dKey.slice(0, 7)}`;
+}
+
 export default function MobileOwnerCalendar({
   bookingDays, onChange, bookingWindowMonths, defaultBookingsPerDay,
+  lastChangedField, autosaveStatus, onMonthChanged,
 }: Props) {
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -61,6 +79,7 @@ export default function MobileOwnerCalendar({
       next[key] = { unavailable: true };
     }
     onChange(next);
+    onMonthChanged?.(monthKeyFromDateKey(key));
   }
 
   function saveDayEditor(key: string, newData: MobileDayData | null) {
@@ -71,6 +90,7 @@ export default function MobileOwnerCalendar({
       next[key] = newData;
     }
     onChange(next);
+    onMonthChanged?.(monthKeyFromDateKey(key));
     setEditorKey(null);
   }
 
@@ -157,6 +177,23 @@ export default function MobileOwnerCalendar({
           ))}
         </div>
         <div className={styles.calGrid}>{cells}</div>
+        {/* Save status hint under the month. Reserves a small fixed
+            height so the layout doesn't jump as the hint comes/goes. */}
+        <div
+          style={{
+            minHeight: 18,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            paddingTop: '.5rem',
+          }}
+        >
+          <CalSavedHint
+            fieldKey={monthKeyFromYM(y, m)}
+            lastChangedField={lastChangedField || null}
+            autosaveStatus={autosaveStatus || 'idle'}
+          />
+        </div>
       </div>
     );
   }
@@ -401,5 +438,46 @@ function DayEditorModal({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CalSavedHint — small inline indicator showing autosave state for a
+// specific month. Renders nothing unless the parent's lastChangedField
+// matches our fieldKey AND the autosave is in flight or recently
+// finished. Mirrors the SavedHint component in BookingTab so each month
+// gets its own contextual hint.
+// ─────────────────────────────────────────────────────────────────────────
+function CalSavedHint({
+  fieldKey,
+  lastChangedField,
+  autosaveStatus,
+}: {
+  fieldKey: string;
+  lastChangedField: string | null;
+  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+}) {
+  if (lastChangedField !== fieldKey) return null;
+  if (autosaveStatus === 'idle') return null;
+
+  const text = autosaveStatus === 'saving' ? 'Saving…'
+    : autosaveStatus === 'saved' ? '✓ Saved'
+    : '✗ Failed';
+  const color = autosaveStatus === 'saving' ? 'var(--muted)'
+    : autosaveStatus === 'saved' ? 'var(--neon)'
+    : '#ff5f5f';
+
+  return (
+    <span
+      style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: '.6rem',
+        letterSpacing: '.05em',
+        color,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </span>
   );
 }
