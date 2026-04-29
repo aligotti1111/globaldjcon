@@ -130,28 +130,36 @@ export default function BookingTab({
 
   return (
     <div>
-      {/* Autosave badge — always rendered (even when idle) so user can
-          see save state at a glance. The parent's indicator is at the
-          very top of the page; this one sits at the top of the tab so
-          it's in view while editing packages further down. */}
+      {/* Autosave badge — sticky to the top of the viewport so it stays
+          visible while the DJ scrolls through packages further down the
+          tab. Without sticky positioning, the indicator scrolls off-screen
+          and the DJ can't see save state when editing the 3rd or 4th
+          package card. */}
       <div
         style={{
+          position: 'sticky',
+          top: 8,
+          zIndex: 50,
           minHeight: 24,
           marginBottom: '.75rem',
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
+          pointerEvents: 'none', // don't block clicks on stuff behind it
         }}
       >
         <span
           style={{
+            pointerEvents: 'auto', // but the badge itself is interactive (hover etc)
             fontFamily: "'Space Mono', monospace",
             fontSize: '.65rem',
             letterSpacing: '.06em',
             textTransform: 'uppercase',
-            padding: '.3rem .65rem',
+            padding: '.4rem .75rem',
             borderRadius: '4px',
             border: '1px solid',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             color: autosaveStatus === 'error'
               ? '#ff5f5f'
               : autosaveStatus === 'saved'
@@ -167,12 +175,12 @@ export default function BookingTab({
               ? 'var(--amber)'
               : 'var(--border)',
             background: autosaveStatus === 'saved'
-              ? 'rgba(0,245,196,.08)'
+              ? 'rgba(0,245,196,.15)'
               : autosaveStatus === 'error'
-              ? 'rgba(255,95,95,.08)'
+              ? 'rgba(255,95,95,.15)'
               : autosaveStatus === 'saving'
-              ? 'rgba(255,179,71,.08)'
-              : 'transparent',
+              ? 'rgba(255,179,71,.15)'
+              : 'rgba(19,19,30,.85)', // semi-opaque card bg so it stays readable over content
           }}
         >
           {autosaveStatus === 'saving'
