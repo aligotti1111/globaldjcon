@@ -433,14 +433,7 @@ function PackageCardWithCatTabs({
   return (
     <div className={styles.pkgCard}>
       <div className={styles.pkgHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
-          <SavedHint
-            fieldKey={`package-${idx}`}
-            lastChangedField={lastChangedField}
-            autosaveStatus={autosaveStatus}
-          />
-        </div>
+        <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
         {totalCount > 1 && (
           <button
             type="button"
@@ -489,6 +482,27 @@ function PackageCardWithCatTabs({
         onRemove={onRemove}
         hideOwnHeader
       />
+
+      {/* Save status hint at bottom of package card. Reserves a small
+          fixed height so the layout doesn't jump when the hint appears
+          / disappears. */}
+      <div
+        style={{
+          minHeight: 20,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          paddingTop: '.6rem',
+          marginTop: '.4rem',
+          borderTop: '1px solid var(--border)',
+        }}
+      >
+        <SavedHint
+          fieldKey={`package-${idx}`}
+          lastChangedField={lastChangedField}
+          autosaveStatus={autosaveStatus}
+        />
+      </div>
     </div>
   );
 }

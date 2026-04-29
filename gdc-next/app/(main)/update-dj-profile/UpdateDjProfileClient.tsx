@@ -227,7 +227,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           .eq('id', initialProfile.id);
         if (error) throw error;
         setAutosaveStatus('saved');
-        setTimeout(() => setAutosaveStatus('idle'), 2000);
+        setTimeout(() => setAutosaveStatus('idle'), 5000);
       } catch {
         setAutosaveStatus('error');
       }
