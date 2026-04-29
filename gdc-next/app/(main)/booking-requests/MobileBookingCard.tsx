@@ -45,12 +45,18 @@ interface Props {
   onCancel: (id: string) => void;
   onBlock: (userId: string, userName: string) => void;
   onUnblock: (userId: string) => void;
+  // Modal openers (open via parent state) + counter response handlers
+  onCounter: (b: BookingRow, group: 'in' | 'out') => void;
+  onSendQuote: (b: BookingRow) => void;
+  onAcceptCounter: (id: string) => void;
+  onDeclineCounter: (id: string) => void;
 }
 
 export default function MobileBookingCard({
   booking: b, isIncoming, orderNum, isBlocked,
   djZip, djTravelDistance,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
 }: Props) {
   const isQuote = !!b.is_quote;
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
@@ -363,16 +369,31 @@ export default function MobileBookingCard({
         <div className={styles.actionsLeft}>
           {showIncomingActions && (
             <>
-              <button
-                type="button"
-                onClick={() => onApprove(b.id)}
-                className={`${styles.actBtn} ${styles.actBtnPrimary}`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                {' '}{isQuote ? 'Send Quote' : 'Approve'}
-              </button>
+              {/* Quote-mode booking with no quoted_rate yet → Send Quote opens
+                  the QuoteModal. Otherwise Approve is a direct status flip. */}
+              {isQuote && !b.quoted_rate ? (
+                <button
+                  type="button"
+                  onClick={() => onSendQuote(b)}
+                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {' '}Send Quote
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onApprove(b.id)}
+                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {' '}Approve
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onDeny(b.id)}
@@ -384,16 +405,17 @@ export default function MobileBookingCard({
                 </svg>
                 {' '}Deny
               </button>
-              {/* Counter / Send Price buttons — modals deferred. Disabled
-                  placeholders so the visual layout matches vanilla. */}
-              <button
-                type="button"
-                disabled
-                className={`${styles.actBtn} ${styles.actBtnAmber}`}
-                title="Counter offer — coming soon"
-              >
-                {isQuote ? 'Send Price' : 'Counter'}
-              </button>
+              {/* Counter — DJ proposes a different price. Hidden for quote-mode
+                  bookings without a quote yet (DJ should Send Quote first). */}
+              {!(isQuote && !b.quoted_rate) && (
+                <button
+                  type="button"
+                  onClick={() => onCounter(b, 'in')}
+                  className={`${styles.actBtn} ${styles.actBtnAmber}`}
+                >
+                  Counter
+                </button>
+              )}
             </>
           )}
           {showOutgoingCancel && (
@@ -407,10 +429,27 @@ export default function MobileBookingCard({
           )}
           {showOutgoingCounterResponse && (
             <>
-              <button type="button" disabled className={`${styles.actBtn} ${styles.actBtnPrimary}`} title="Coming soon">
-                Accept
+              {/* DJ countered our request → we (the booker) can Accept,
+                  Counter Back, or Decline. */}
+              <button
+                type="button"
+                onClick={() => onAcceptCounter(b.id)}
+                className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+              >
+                Accept Counter
               </button>
-              <button type="button" disabled className={`${styles.actBtn} ${styles.actBtnDanger}`} title="Coming soon">
+              <button
+                type="button"
+                onClick={() => onCounter(b, 'out')}
+                className={`${styles.actBtn} ${styles.actBtnAmber}`}
+              >
+                Counter Back
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeclineCounter(b.id)}
+                className={`${styles.actBtn} ${styles.actBtnDanger}`}
+              >
                 Decline
               </button>
             </>

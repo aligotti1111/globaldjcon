@@ -576,3 +576,253 @@
   border-color: var(--white);
   color: var(--white);
 }
+
+/* ─── Modals (CounterModal + QuoteModal) ───────────────────────────────── */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.modalBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: .05em;
+  color: var(--white);
+}
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.modalCloseBtn:hover { color: var(--white); }
+
+/* Event details box at top of CounterModal */
+.counterDetailsBox {
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  margin-bottom: 1rem;
+}
+.counterDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .25rem 0;
+  font-size: .82rem;
+}
+.counterDetailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.counterDetailVal {
+  color: var(--white);
+  text-align: right;
+}
+
+/* Reference: prior rate */
+.counterCurrentRate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 179, 71, .08);
+  border: 1px solid rgba(255, 179, 71, .25);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+.counterCurrentRateLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.counterCurrentRateVal {
+  color: var(--amber);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Form fields */
+.counterFormGroup {
+  margin-bottom: 1rem;
+}
+.counterFormLabel {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: .4rem;
+}
+.counterFormOpt {
+  color: var(--muted);
+  font-size: .55rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.counterAmountRow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.counterCurrencySym {
+  color: var(--muted);
+  font-size: 1rem;
+}
+.counterCurrencyCode {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.counterAmountInput {
+  flex: 1;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .6rem .85rem;
+  color: var(--white);
+  font-size: 1rem;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color .2s;
+}
+.counterAmountInput:focus { border-color: var(--neon); }
+.counterMsgInput {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .6rem .85rem;
+  color: var(--white);
+  font-size: .88rem;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  resize: vertical;
+  transition: border-color .2s;
+}
+.counterMsgInput:focus { border-color: var(--neon); }
+
+/* Error message */
+.counterErr {
+  color: var(--error);
+  font-size: .8rem;
+  margin-bottom: .75rem;
+  padding: .5rem .75rem;
+  background: rgba(255, 95, 95, .1);
+  border: 1px solid rgba(255, 95, 95, .25);
+  border-radius: 5px;
+}
+
+/* Action buttons row */
+.counterActions {
+  display: flex;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+.counterCancelBtn {
+  flex: 1;
+  padding: .75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+.counterCancelBtn:hover { color: var(--white); border-color: var(--white); }
+.counterSubmitBtn {
+  flex: 1;
+  padding: .75rem;
+  background: var(--neon);
+  border: none;
+  border-radius: 6px;
+  color: var(--black);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.counterSubmitBtn:hover:not(:disabled) { opacity: .85; }
+.counterSubmitBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Quote-specific */
+.quotePkgLine {
+  font-size: .82rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.quotePkgLine strong {
+  color: var(--white);
+}
+.depositPreview {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: .4rem;
+}
+
+/* Cocktail pricing block */
+.cocktailBox {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(0, 245, 196, .04);
+  border: 1px solid rgba(0, 245, 196, .18);
+  border-radius: 8px;
+}
+.cocktailHeader {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: .75rem;
+}
+.cocktailCheckLabel {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--white);
+}

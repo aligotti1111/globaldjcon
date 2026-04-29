@@ -55,8 +55,21 @@ interface BookingRow {
   package_details: string | null;
   quoted_rate: number | null;
   counter_rate: number | null;
+  // Optional message attached to a counter offer or quote response
+  counter_message: string | null;
+  // Negotiation log: append-only array of { from, amount, message, created_at }
+  // Stored as JSON. Populated when DJ or booker counters; vanilla schema is jsonb.
+  negotiation_log: Array<{
+    from: 'dj' | 'booker';
+    amount: number;
+    message: string;
+    created_at: string;
+  }> | null;
   deposit_pct: number | null;
   deposit_amount: number | null;
+  // Cocktail pricing — only for mobile DJ wedding bookings
+  cocktail_price: number | null;
+  cocktail_included: boolean | null;
   is_quote: boolean | null;
   notes: string | null;
   status: string | null;
@@ -78,10 +91,11 @@ export default async function BookingRequestsPage() {
   if (!authUser) redirect('/login?redirect=/booking-requests');
 
   // Fetch the current user's profile — we need role + dj_type + zip + travel +
-  // blocked_users for filtering and distance / warning logic.
+  // blocked_users for filtering and distance / warning logic. Also pull
+  // booking_settings so we can extract depositPct for the Quote modal.
   const { data: me } = await supabase
     .from('users')
-    .select('id, name, role, dj_type, zip, travel_distance, blocked_users')
+    .select('id, name, role, dj_type, zip, travel_distance, blocked_users, booking_settings')
     .eq('id', authUser.id)
     .single<{
       id: string;
@@ -91,6 +105,7 @@ export default async function BookingRequestsPage() {
       zip: string | null;
       travel_distance: string | null;
       blocked_users: string[] | null;
+      booking_settings: string | null;
     }>();
 
   if (!me) redirect('/login?redirect=/booking-requests');
@@ -182,6 +197,20 @@ export default async function BookingRequestsPage() {
     );
   }
 
+  // Extract DJ's depositPct from booking_settings — used by the Quote
+  // modal to show a live deposit preview as the DJ types.
+  let depositPct = 0;
+  if (me.booking_settings) {
+    try {
+      const bs = typeof me.booking_settings === 'string'
+        ? JSON.parse(me.booking_settings)
+        : me.booking_settings;
+      depositPct = Number(bs?.depositPct) || 0;
+    } catch {
+      // non-fatal — default to 0
+    }
+  }
+
   return (
     <BookingRequestsClient
       currentUser={{
@@ -191,6 +220,7 @@ export default async function BookingRequestsPage() {
         djType: me.dj_type,
         zip: me.zip,
         travelDistance: me.travel_distance,
+        depositPct,
       }}
       initialIncoming={incoming}
       initialOutgoing={outgoing}

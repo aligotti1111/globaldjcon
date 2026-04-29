@@ -13,6 +13,8 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
+import CounterModal from './CounterModal';
+import QuoteModal from './QuoteModal';
 import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
 import type { BookingRow } from './page';
 
@@ -23,6 +25,9 @@ interface CurrentUser {
   djType: 'mobile' | 'club' | null;
   zip: string | null;
   travelDistance: string | null;
+  // Deposit percentage from DJ's booking_settings (0-100). Used for the
+  // Quote modal's live deposit preview. 0 means DJ doesn't take a deposit.
+  depositPct: number;
 }
 
 interface Props {
@@ -46,6 +51,16 @@ export default function BookingRequestsClient({
   const [blocked, setBlocked] = useState<string[]>(initialBlocked);
   const [incomingTab, setIncomingTab] = useState<IncomingFilter>('pending');
   const [outgoingTab, setOutgoingTab] = useState<OutgoingFilter>('pending');
+
+  // Modal state — only one is ever open at a time.
+  // counterModal: which booking we're countering, and from which side
+  //   ('in' = DJ countering an incoming, 'out' = booker re-countering)
+  // quoteModal: which booking the DJ is sending a price for
+  const [counterModal, setCounterModal] = useState<{
+    booking: BookingRow;
+    group: 'in' | 'out';
+  } | null>(null);
+  const [quoteModal, setQuoteModal] = useState<{ booking: BookingRow } | null>(null);
 
   // ── Section visibility — vanilla br-core.js + br-load-render.js ─
   const isDj = currentUser.role === 'dj';
@@ -177,6 +192,66 @@ export default function BookingRequestsClient({
     }
   }
 
+  // ── Counter response (booker side) ─────────────────────────────────
+  // Booker accepts the DJ's counter offer → status becomes 'approved'
+  // with the counter rate locked in. Same calendar-decrement effect as
+  // a normal approve.
+  async function acceptCounter(bookingId: string) {
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
+        .eq('id', bookingId)
+        .eq('requester_id', currentUser.id);
+      if (error) throw error;
+      setOutgoing((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'approved' } : b))
+      );
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
+    }
+  }
+
+  // Booker declines the DJ's counter → status='denied'.
+  // Vanilla also lets the booker counter back instead — for that they'd
+  // open the CounterModal with group='out' (handled by openCounter('out')).
+  async function declineCounter(bookingId: string) {
+    if (!confirm('Decline this counter offer?')) return;
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'denied', updated_at: new Date().toISOString() } as unknown as never)
+        .eq('id', bookingId)
+        .eq('requester_id', currentUser.id);
+      if (error) throw error;
+      setOutgoing((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'denied' } : b))
+      );
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
+    }
+  }
+
+  // ── Modal open helpers ─────────────────────────────────────────────
+  function openCounterModal(booking: BookingRow, group: 'in' | 'out') {
+    setCounterModal({ booking, group });
+  }
+  function openQuoteModal(booking: BookingRow) {
+    setQuoteModal({ booking });
+  }
+
+  // After a modal saves, patch the relevant local list with the updated row.
+  function applyBookingUpdate(updated: BookingRow) {
+    if (incoming.find((b) => b.id === updated.id)) {
+      setIncoming((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    }
+    if (outgoing.find((b) => b.id === updated.id)) {
+      setOutgoing((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    }
+  }
+
   // Block — DJ side. Adds requester to blocked_users array; auto-denies
   // any pending bookings from them; removes them from the visible list.
   async function blockUser(userId: string, userName: string) {
@@ -265,6 +340,10 @@ export default function BookingRequestsClient({
                 onCancel={cancelOutgoing}
                 onBlock={blockUser}
                 onUnblock={unblockUser}
+                onCounter={openCounterModal}
+                onSendQuote={openQuoteModal}
+                onAcceptCounter={acceptCounter}
+                onDeclineCounter={declineCounter}
               />
             ) : (
               <FlatList
@@ -277,6 +356,10 @@ export default function BookingRequestsClient({
                 onCancel={cancelOutgoing}
                 onBlock={blockUser}
                 onUnblock={unblockUser}
+                onCounter={openCounterModal}
+                onSendQuote={openQuoteModal}
+                onAcceptCounter={acceptCounter}
+                onDeclineCounter={declineCounter}
               />
             )}
             {filteredIncoming.length === 0 && (
@@ -318,6 +401,10 @@ export default function BookingRequestsClient({
               onCancel={cancelOutgoing}
               onBlock={blockUser}
               onUnblock={unblockUser}
+              onCounter={openCounterModal}
+              onSendQuote={openQuoteModal}
+              onAcceptCounter={acceptCounter}
+              onDeclineCounter={declineCounter}
             />
             {filteredOutgoing.length === 0 && (
               <EmptyState>No {outgoingTab} bookings.</EmptyState>
@@ -329,6 +416,24 @@ export default function BookingRequestsClient({
       {/* Edge case: no sections visible at all */}
       {!showIncoming && !showOutgoing && (
         <EmptyState>You don&apos;t have any booking requests yet.</EmptyState>
+      )}
+
+      {/* Modals — only one open at a time */}
+      {counterModal && (
+        <CounterModal
+          booking={counterModal.booking}
+          group={counterModal.group}
+          onClose={() => setCounterModal(null)}
+          onSaved={(updated) => applyBookingUpdate(updated)}
+        />
+      )}
+      {quoteModal && (
+        <QuoteModal
+          booking={quoteModal.booking}
+          depositPct={currentUser.depositPct}
+          onClose={() => setQuoteModal(null)}
+          onSaved={(updated) => applyBookingUpdate(updated)}
+        />
       )}
     </div>
   );
@@ -372,11 +477,17 @@ interface ListProps {
   onCancel: (id: string) => void;
   onBlock: (userId: string, userName: string) => void;
   onUnblock: (userId: string) => void;
+  // Counter / Quote / counter-response handlers
+  onCounter: (b: BookingRow, group: 'in' | 'out') => void;
+  onSendQuote: (b: BookingRow) => void;
+  onAcceptCounter: (id: string) => void;
+  onDeclineCounter: (id: string) => void;
 }
 
 function FlatList({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
 }: ListProps) {
   return (
     <>
@@ -394,6 +505,10 @@ function FlatList({
           onCancel={onCancel}
           onBlock={onBlock}
           onUnblock={onUnblock}
+          onCounter={onCounter}
+          onSendQuote={onSendQuote}
+          onAcceptCounter={onAcceptCounter}
+          onDeclineCounter={onDeclineCounter}
         />
       ))}
     </>
@@ -407,6 +522,7 @@ function FlatList({
 function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
 }: ListProps) {
   // Group by event_date. Sort within group by created_at (oldest first
   // = first-come-first-served visual order).
@@ -473,6 +589,10 @@ function SameDayGrouped({
             onCancel={onCancel}
             onBlock={onBlock}
             onUnblock={onUnblock}
+            onCounter={onCounter}
+            onSendQuote={onSendQuote}
+            onAcceptCounter={onAcceptCounter}
+            onDeclineCounter={onDeclineCounter}
           />
         ));
 

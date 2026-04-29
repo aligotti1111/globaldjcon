@@ -1,0 +1,268 @@
+'use client';
+
+// CounterModal — counter-offer dialog used by both sides of a booking.
+//
+// DJ side (group='in'): on an INCOMING pending booking, DJ proposes a
+// different rate. status flips to 'counter', counter_rate + counter_message
+// stored, negotiation_log appended with from='dj'.
+//
+// Booker side (group='out'): on an OUTGOING booking that's now in 'counter'
+// status (DJ countered), booker can counter back. status flips back to
+// 'pending', counter_rate + counter_message updated, negotiation_log
+// appended with from='booker'.
+//
+// Faithful port of vanilla openCounter + submitCounter in br-club-flow.js,
+// minus the package-edit feature for mobile bookings (deferred — that's a
+// significant inline editor by itself).
+
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import styles from './bookingRequests.module.css';
+import type { BookingRow } from './page';
+
+interface Props {
+  booking: BookingRow;
+  group: 'in' | 'out';            // 'in' = DJ countering, 'out' = booker re-countering
+  onClose: () => void;
+  // Called after a successful save so the parent can refresh its local
+  // state. We pass the updated row so the parent can replace it in place.
+  onSaved: (updated: BookingRow) => void;
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', CAD: 'C$', AUD: 'A$', JPY: '¥', BRL: 'R$',
+};
+
+function formatTime(t: string | null): string {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const hour12 = h % 12 || 12;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+function eventDuration(start: string | null, end: string | null): string {
+  if (!start || !end) return '—';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins < 0) mins += 24 * 60;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return hrs > 0 ? `${hrs}hr${hrs > 1 ? 's' : ''}${rem > 0 ? ` ${rem}m` : ''}` : `${rem}m`;
+}
+
+export default function CounterModal({ booking, group, onClose, onSaved }: Props) {
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Currency — vanilla pulls from booking.currency; we don't have that
+  // field on the type yet so default to USD.
+  const currency = 'USD';
+  const sym = CURRENCY_SYMBOLS[currency] || '$';
+
+  // Show the most recent rate exchanged so the DJ/booker has context for
+  // their counter. Only shown when there's been at least one prior offer.
+  const currentRate = booking.counter_rate || booking.quoted_rate;
+  const currentRateLabel = booking.counter_rate ? 'Last Counter' : 'Their Offer';
+
+  // Event details — show date/time/duration. The mobile booking adds an
+  // event-type label; club bookings just show date/time.
+  const dateStr = booking.event_date
+    ? new Date(booking.event_date + 'T12:00:00').toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '—';
+  const timeStr = booking.start_time && booking.end_time
+    ? `${formatTime(booking.start_time)} – ${formatTime(booking.end_time)}`
+    : booking.start_time
+    ? formatTime(booking.start_time)
+    : '—';
+  const durStr = eventDuration(booking.start_time, booking.end_time);
+
+  async function submit() {
+    setError(null);
+    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+      setError('Enter a valid counter amount.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not signed in.');
+
+      // Append to negotiation log (jsonb array). Pull current value first
+      // so we don't clobber concurrent updates.
+      const { data: current } = await supabase
+        .from('bookings')
+        .select('negotiation_log')
+        .eq('id', booking.id)
+        .single<{ negotiation_log: BookingRow['negotiation_log'] }>();
+      const log = current?.negotiation_log || [];
+      log.push({
+        from: group === 'in' ? 'dj' : 'booker',
+        amount: Number(amount),
+        message: message.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      // Status differs by side:
+      //   DJ countering    → status='counter' (waiting on booker)
+      //   Booker re-counter → status='pending' (back in DJ's court)
+      const newStatus = group === 'in' ? 'counter' : 'pending';
+      const updatePayload = {
+        status: newStatus,
+        counter_rate: Number(amount),
+        counter_message: message.trim() || null,
+        negotiation_log: log,
+        updated_at: new Date().toISOString(),
+      };
+
+      // RLS: DJ side updates bookings WHERE dj_id = me;
+      // booker side updates WHERE requester_id = me. Either side update
+      // succeeds because the user owns one of those columns.
+      const updateQuery = supabase
+        .from('bookings')
+        .update(updatePayload as unknown as never)
+        .eq('id', booking.id);
+      const finalQuery = group === 'in'
+        ? updateQuery.eq('dj_id', user.id)
+        : updateQuery.eq('requester_id', user.id);
+
+      const { error: updErr } = await finalQuery;
+      if (updErr) throw updErr;
+
+      // Build the updated row to hand back to the parent so it can patch
+      // local state without a full re-fetch.
+      onSaved({
+        ...booking,
+        status: newStatus,
+        counter_rate: Number(amount),
+        counter_message: message.trim() || null,
+        negotiation_log: log,
+        updated_at: new Date().toISOString(),
+      });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <div className={styles.modalTitle}>
+            {group === 'in' ? 'Send Counter Offer' : 'Counter Back'}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.modalCloseBtn}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Event details — same for both sides */}
+        <div className={styles.counterDetailsBox}>
+          <div className={styles.counterDetailRow}>
+            <span className={styles.counterDetailLabel}>Date</span>
+            <span className={styles.counterDetailVal}>{dateStr}</span>
+          </div>
+          <div className={styles.counterDetailRow}>
+            <span className={styles.counterDetailLabel}>Time</span>
+            <span className={styles.counterDetailVal}>{timeStr}</span>
+          </div>
+          <div className={styles.counterDetailRow}>
+            <span className={styles.counterDetailLabel}>Duration</span>
+            <span className={styles.counterDetailVal}>{durStr}</span>
+          </div>
+          {booking.venue_name && (
+            <div className={styles.counterDetailRow}>
+              <span className={styles.counterDetailLabel}>Venue</span>
+              <span className={styles.counterDetailVal}>{booking.venue_name}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Reference: prior rate */}
+        {currentRate && (
+          <div className={styles.counterCurrentRate}>
+            <span className={styles.counterCurrentRateLabel}>{currentRateLabel}</span>
+            <span className={styles.counterCurrentRateVal}>
+              {sym}{Number(currentRate).toLocaleString()} {currency}
+            </span>
+          </div>
+        )}
+
+        {/* Counter amount input */}
+        <div className={styles.counterFormGroup}>
+          <label className={styles.counterFormLabel}>Your Counter Offer</label>
+          <div className={styles.counterAmountRow}>
+            <span className={styles.counterCurrencySym}>{sym}</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              className={styles.counterAmountInput}
+            />
+            <span className={styles.counterCurrencyCode}>{currency}</span>
+          </div>
+        </div>
+
+        {/* Optional message */}
+        <div className={styles.counterFormGroup}>
+          <label className={styles.counterFormLabel}>
+            Message <span className={styles.counterFormOpt}>(optional)</span>
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Add context for your counter..."
+            rows={3}
+            className={styles.counterMsgInput}
+          />
+        </div>
+
+        {error && <div className={styles.counterErr}>{error}</div>}
+
+        <div className={styles.counterActions}>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.counterCancelBtn}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting}
+            className={styles.counterSubmitBtn}
+          >
+            {submitting ? 'Sending…' : 'Send Counter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
