@@ -130,11 +130,10 @@ export default function BookingTab({
 
   return (
     <div>
-      {/* Autosave badge — visible while editing so the DJ can see their
-          changes are being persisted. The parent's indicator is at the
+      {/* Autosave badge — always rendered (even when idle) so user can
+          see save state at a glance. The parent's indicator is at the
           very top of the page; this one sits at the top of the tab so
-          it's in view while editing packages further down. Reserves
-          space when idle so the layout doesn't jump. */}
+          it's in view while editing packages further down. */}
       <div
         style={{
           minHeight: 24,
@@ -144,40 +143,46 @@ export default function BookingTab({
           alignItems: 'center',
         }}
       >
-        {autosaveStatus !== 'idle' && (
-          <span
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.65rem',
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              padding: '.3rem .65rem',
-              borderRadius: '4px',
-              border: '1px solid',
-              color: autosaveStatus === 'error'
-                ? '#ff5f5f'
-                : autosaveStatus === 'saved'
-                ? 'var(--neon)'
-                : 'var(--muted)',
-              borderColor: autosaveStatus === 'error'
-                ? '#ff5f5f'
-                : autosaveStatus === 'saved'
-                ? 'var(--neon)'
-                : 'var(--border)',
-              background: autosaveStatus === 'saved'
-                ? 'rgba(0,245,196,.08)'
-                : autosaveStatus === 'error'
-                ? 'rgba(255,95,95,.08)'
-                : 'transparent',
-            }}
-          >
-            {autosaveStatus === 'saving'
-              ? 'Saving…'
+        <span
+          style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.06em',
+            textTransform: 'uppercase',
+            padding: '.3rem .65rem',
+            borderRadius: '4px',
+            border: '1px solid',
+            color: autosaveStatus === 'error'
+              ? '#ff5f5f'
               : autosaveStatus === 'saved'
-              ? '✓ Saved'
-              : '✗ Save failed'}
-          </span>
-        )}
+              ? 'var(--neon)'
+              : autosaveStatus === 'saving'
+              ? 'var(--amber)'
+              : 'var(--muted)',
+            borderColor: autosaveStatus === 'error'
+              ? '#ff5f5f'
+              : autosaveStatus === 'saved'
+              ? 'var(--neon)'
+              : autosaveStatus === 'saving'
+              ? 'var(--amber)'
+              : 'var(--border)',
+            background: autosaveStatus === 'saved'
+              ? 'rgba(0,245,196,.08)'
+              : autosaveStatus === 'error'
+              ? 'rgba(255,95,95,.08)'
+              : autosaveStatus === 'saving'
+              ? 'rgba(255,179,71,.08)'
+              : 'transparent',
+          }}
+        >
+          {autosaveStatus === 'saving'
+            ? 'Saving…'
+            : autosaveStatus === 'saved'
+            ? '✓ Saved'
+            : autosaveStatus === 'error'
+            ? '✗ Save failed'
+            : '✓ All changes saved'}
+        </span>
       </div>
 
       {/* Enable Booking toggle */}
