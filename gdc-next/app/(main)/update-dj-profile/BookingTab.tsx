@@ -15,7 +15,7 @@
 // overall ALSO writes booking_settings, so users have both autosave and
 // manual save paths.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import {
   type BookingSettings,
@@ -29,6 +29,58 @@ import {
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import MobileOwnerCalendar from './MobileOwnerCalendar';
 
+// ─────────────────────────────────────────────────────────────────────────
+// Package validation
+// ─────────────────────────────────────────────────────────────────────────
+// A package category is "empty" if title, details, AND all prices are blank.
+// Empty categories are skipped on save (don't write a row for them) and don't
+// block validation.
+//
+// A category is "valid" if title, details, AND pricing pass:
+//   - reqAll=true  → no price fields needed (request-quote mode)
+//   - reqAll=false → price4 + price5 + price6 + overtime all > 0
+//
+// A category is "partial" if some fields are filled but it doesn't meet
+// either bar — that blocks save until the user either completes it or
+// clears all of its fields.
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
+function isPkgEmpty(p: MobilePackage | undefined): boolean {
+  if (!p) return true;
+  const titleEmpty = !((p.title || '').trim());
+  const detailsEmpty = !stripHtml(p.details || '');
+  const priceEmpty = !p.price4 && !p.price5 && !p.price6 && !p.overtime;
+  return titleEmpty && detailsEmpty && priceEmpty;
+}
+
+interface PkgValidationResult {
+  ok: boolean;
+  // List of per-field error messages keyed by field name
+  errors: { field: string; msg: string }[];
+}
+
+function validatePkg(p: MobilePackage | undefined): PkgValidationResult {
+  const errors: { field: string; msg: string }[] = [];
+  if (!p) return { ok: false, errors: [{ field: 'title', msg: 'Empty package' }] };
+  if (!(p.title || '').trim()) {
+    errors.push({ field: 'title', msg: 'Title is required' });
+  }
+  if (!stripHtml(p.details || '')) {
+    errors.push({ field: 'details', msg: 'Details are required' });
+  }
+  // Pricing rules differ by reqAll
+  if (!p.reqAll) {
+    if (!p.price4 || Number(p.price4) <= 0) errors.push({ field: 'price4', msg: '4hr price required' });
+    if (!p.price5 || Number(p.price5) <= 0) errors.push({ field: 'price5', msg: '5hr price required' });
+    if (!p.price6 || Number(p.price6) <= 0) errors.push({ field: 'price6', msg: '6hr price required' });
+    if (!p.overtime || Number(p.overtime) <= 0) errors.push({ field: 'overtime', msg: 'Overtime rate required' });
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 interface Props {
   djType: 'club' | 'mobile' | null;
   selectedEventTypes: string[];   // from General tab — which event types are checked
@@ -38,10 +90,10 @@ interface Props {
   // Switch to General tab, used by the "Go Select Party Types" button when
   // the DJ has no event types selected yet.
   onGoToGeneral: () => void;
-  // Autosave indicator state from parent. Passed in so we can render a
-  // visible "Saving… / ✓ Saved" badge inside this tab — the parent's
-  // indicator is at the very top of the page and easy to miss when
-  // editing packages further down.
+  // Autosave indicator state from parent. Used for the section-level hints
+  // (booking settings + calendar). Packages have their own per-card save
+  // button instead of autosave so a typo can't push live before the user
+  // is ready.
   autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
 }
 
@@ -76,6 +128,15 @@ export default function BookingTab({
   // before patching so the hint shows next to the right field.
 
   // ── Package mutation helpers ─────────────────────────────────────
+  //
+  // Packages no longer autosave. Each PackageCardWithCatTabs holds local
+  // draft state and only writes back to bookingSettings.mob_packages when
+  // the user clicks Save on that card (or hits the master Save All).
+  //
+  // addPackage / removePackage are STRUCTURAL changes (add/remove a row
+  // across all active cats) — those still write immediately because the
+  // user explicitly clicked + and there's nothing to validate.
+  //
   // Vanilla keeps all active categories at the same package count by
   // padding shorter ones when adding/removing. We do the same.
   function addPackage() {
@@ -90,6 +151,7 @@ export default function BookingTab({
   }
 
   function removePackage(idx: number) {
+    if (!confirm('Remove this package? Any unsaved changes will be lost.')) return;
     const next = { ...packages };
     activeCats.forEach((c) => {
       if (next[c] && next[c].length > idx) {
@@ -101,13 +163,29 @@ export default function BookingTab({
     setPackagesAll(next);
   }
 
-  function updatePackage(c: PkgCategory, idx: number, p: MobilePackage) {
+  // savePackage — committed write from a single card. The card hands us
+  // its `drafts` keyed by category. We splice each category's array at
+  // index `idx`. Empty categories (where the user cleared everything) get
+  // their slot replaced with a blank package so the row position stays
+  // stable across all cats.
+  function savePackage(idx: number, drafts: Record<PkgCategory, MobilePackage>) {
     const next = { ...packages };
-    const arr = [...(next[c] || [])];
-    while (arr.length <= idx) arr.push(newMobPackage());
-    arr[idx] = p;
-    next[c] = arr;
-    setPackagesForIdx(idx, next);
+    activeCats.forEach((c) => {
+      const arr = [...(next[c] || [])];
+      while (arr.length <= idx) arr.push(newMobPackage());
+      arr[idx] = drafts[c] || newMobPackage();
+      next[c] = arr;
+    });
+    setPackagesAll(next);
+  }
+
+  // Master save trigger — a counter that bumps when the user clicks the
+  // big Save All button at the bottom. Cards listen via useEffect and
+  // attempt to save themselves. Tracks saveAttemptId so cards don't
+  // re-save unnecessarily on re-render.
+  const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
+  function triggerMasterSave() {
+    setMasterSaveTrigger((n) => n + 1);
   }
 
   // Render only when DJ type is mobile. Club section deferred.
@@ -139,20 +217,17 @@ export default function BookingTab({
   function setPerDay(v: number) { setLastChangedField('settings'); patch({ mob_bookings_per_day: v }); }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
   function setBookingDays(next: MobileBookingDays) {
-    setLastChangedField('calendar');
+    // Don't tag a specific field here — MobileOwnerCalendar will fire
+    // onMonthChanged after this with the actual month key, which is more
+    // specific (e.g. 'calendar-2026-04' instead of just 'calendar').
     patch({ mob_booking_days: next });
   }
 
-  // Package mutations: each tags itself with a per-package key like
-  // "package-2" so the hint appears next to that specific card.
-  function setPackagesForIdx(idx: number, next: Record<string, MobilePackage[]>) {
-    setLastChangedField(`package-${idx}`);
-    patch({ mob_packages: next });
-  }
-  // Top-level wholesale rewrite (add/remove a row across all cats).
-  // Doesn't try to pin to a specific card — uses 'packages-list' instead.
+  // Top-level wholesale rewrite of all packages (add/remove a row, or
+  // commit a save from a single package card). No SavedHint tagging since
+  // packages don't autosave anymore — they have their own save buttons
+  // and a master Save All at the bottom.
   function setPackagesAll(next: Record<string, MobilePackage[]>) {
-    setLastChangedField('packages-list');
     patch({ mob_packages: next });
   }
 
@@ -189,14 +264,7 @@ export default function BookingTab({
           {/* ── Booking Settings ────────────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className={styles.sectionTitle}>Booking Settings</div>
-                <SavedHint
-                  fieldKey="settings"
-                  lastChangedField={lastChangedField}
-                  autosaveStatus={autosaveStatus}
-                />
-              </div>
+              <div className={styles.sectionTitle}>Booking Settings</div>
             </div>
             <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
               {/* Window */}
@@ -256,20 +324,33 @@ export default function BookingTab({
                   ))}
                 </select>
               </div>
+              {/* Save status hint at the bottom of the section box.
+                  Reserves a small fixed height so the layout doesn't
+                  jump when the hint appears/disappears. */}
+              <div
+                style={{
+                  minHeight: 18,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  paddingTop: '.6rem',
+                  marginTop: '.4rem',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <SavedHint
+                  fieldKey="settings"
+                  lastChangedField={lastChangedField}
+                  autosaveStatus={autosaveStatus}
+                />
+              </div>
             </div>
           </div>
 
           {/* ── Packages ──────────────────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className={styles.sectionTitle}>Add Packages</div>
-                <SavedHint
-                  fieldKey="packages-list"
-                  lastChangedField={lastChangedField}
-                  autosaveStatus={autosaveStatus}
-                />
-              </div>
+              <div className={styles.sectionTitle}>Add Packages</div>
             </div>
             <div className={styles.sectionBody}>
               <p className={styles.bodyHint}>
@@ -293,12 +374,58 @@ export default function BookingTab({
                   packages={packages}
                   totalCount={renderedCount}
                   userId={userId}
-                  onUpdate={updatePackage}
+                  onSavePackage={savePackage}
                   onRemove={removePackage}
                   onAdd={addPackage}
-                  lastChangedField={lastChangedField}
-                  autosaveStatus={autosaveStatus}
+                  masterSaveTrigger={masterSaveTrigger}
                 />
+              )}
+              {/* Master Save All — saves every dirty package card at once.
+                  Each card receives the trigger via masterSaveTrigger and
+                  attempts its own save (with its own validation). If a
+                  card has invalid data, IT shows the error inline. */}
+              {activeCats.length > 0 && renderedCount > 0 && (
+                <div
+                  style={{
+                    paddingTop: '1rem',
+                    marginTop: '.4rem',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '.75rem',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '.7rem',
+                      color: 'var(--muted)',
+                      fontFamily: "'Space Mono', monospace",
+                      letterSpacing: '.05em',
+                    }}
+                  >
+                    Saves every package above
+                  </span>
+                  <button
+                    type="button"
+                    onClick={triggerMasterSave}
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.7rem',
+                      letterSpacing: '.07em',
+                      textTransform: 'uppercase',
+                      padding: '.65rem 1.2rem',
+                      borderRadius: '6px',
+                      border: '1px solid var(--neon)',
+                      background: 'var(--neon-dim)',
+                      color: 'var(--neon)',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Save All Packages
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -306,14 +433,7 @@ export default function BookingTab({
           {/* ── Availability Calendar ─────────────────────────── */}
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className={styles.sectionTitle}>Availability Calendar</div>
-                <SavedHint
-                  fieldKey="calendar"
-                  lastChangedField={lastChangedField}
-                  autosaveStatus={autosaveStatus}
-                />
-              </div>
+              <div className={styles.sectionTitle}>Availability Calendar</div>
             </div>
             <div className={styles.sectionBody}>
               <p className={styles.bodyHint}>
@@ -327,6 +447,9 @@ export default function BookingTab({
                 onChange={setBookingDays}
                 bookingWindowMonths={window}
                 defaultBookingsPerDay={perDay}
+                lastChangedField={lastChangedField}
+                autosaveStatus={autosaveStatus}
+                onMonthChanged={(monthKey) => setLastChangedField(monthKey)}
               />
             </div>
           </div>
@@ -346,21 +469,19 @@ function PackageList({
   packages,
   totalCount,
   userId,
-  onUpdate,
+  onSavePackage,
   onRemove,
   onAdd,
-  lastChangedField,
-  autosaveStatus,
+  masterSaveTrigger,
 }: {
   activeCats: PkgCategory[];
   packages: Record<string, MobilePackage[]>;
   totalCount: number;
   userId: string;
-  onUpdate: (c: PkgCategory, idx: number, p: MobilePackage) => void;
+  onSavePackage: (idx: number, drafts: Record<PkgCategory, MobilePackage>) => void;
   onRemove: (idx: number) => void;
   onAdd: () => void;
-  lastChangedField: string | null;
-  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  masterSaveTrigger: number;
 }) {
   const cards: React.ReactNode[] = [];
   const count = Math.max(totalCount, 1);
@@ -373,10 +494,9 @@ function PackageList({
         packages={packages}
         totalCount={count}
         userId={userId}
-        onUpdate={onUpdate}
+        onSave={(drafts) => onSavePackage(idx, drafts)}
         onRemove={() => onRemove(idx)}
-        lastChangedField={lastChangedField}
-        autosaveStatus={autosaveStatus}
+        masterSaveTrigger={masterSaveTrigger}
       />
     );
   }
@@ -396,6 +516,17 @@ function PackageList({
 // categories. When multiple cats are active, internal tabs let the user
 // edit the same package index for each category.
 //
+// MANUAL SAVE MODEL:
+// This card holds local draft state for all active categories at this
+// idx. Editing fields ONLY updates the local draft — nothing writes
+// back to bookingSettings until the user clicks Save here, OR the
+// master Save All trigger fires (via masterSaveTrigger prop bump).
+//
+// Validation: each non-empty category must have title + details +
+// pricing fully filled (or be entirely cleared). If any cat is in a
+// partial/invalid state, save is blocked and we show which cat(s)
+// failed and why.
+//
 // We pass `hideOwnHeader` to PackageEditor so we can render our own
 // header above the cat tabs, instead of having two stacked headers.
 function PackageCardWithCatTabs({
@@ -404,20 +535,18 @@ function PackageCardWithCatTabs({
   packages,
   totalCount,
   userId,
-  onUpdate,
+  onSave,
   onRemove,
-  lastChangedField,
-  autosaveStatus,
+  masterSaveTrigger,
 }: {
   idx: number;
   activeCats: PkgCategory[];
   packages: Record<string, MobilePackage[]>;
   totalCount: number;
   userId: string;
-  onUpdate: (c: PkgCategory, idx: number, p: MobilePackage) => void;
+  onSave: (drafts: Record<PkgCategory, MobilePackage>) => void;
   onRemove: () => void;
-  lastChangedField: string | null;
-  autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  masterSaveTrigger: number;
 }) {
   const catLabels: Record<PkgCategory, string> = {
     general: 'General',
@@ -426,9 +555,109 @@ function PackageCardWithCatTabs({
   };
 
   const [selectedCat, setSelectedCat] = useState<PkgCategory>(activeCats[0]);
-
   const showInnerTabs = activeCats.length > 1;
-  const currentPkg = packages[selectedCat]?.[idx] || newMobPackage();
+
+  // Local draft state — one MobilePackage per active category. Initialized
+  // from the saved values in `packages`. Edits go here, not back up to
+  // bookingSettings, until the user clicks Save.
+  //
+  // We DON'T resync drafts when `packages` changes from outside (e.g. a
+  // sibling card's save) because that would clobber the user's in-flight
+  // typing. The drafts only resync on initial mount + when this idx's
+  // length changes (e.g. row was removed).
+  const [drafts, setDrafts] = useState<Record<PkgCategory, MobilePackage>>(() => {
+    const init: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
+    activeCats.forEach((c) => {
+      init[c] = packages[c]?.[idx] || newMobPackage();
+    });
+    return init;
+  });
+
+  // Track save status for the visual indicator
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // Per-category validation errors after the most recent save attempt.
+  // Cleared when the user makes another edit.
+  const [catErrors, setCatErrors] = useState<Record<PkgCategory, PkgValidationResult>>(
+    () => ({} as Record<PkgCategory, PkgValidationResult>)
+  );
+
+  // Did anything change since last save? Used for the dirty indicator.
+  const isDirty = useMemo(() => {
+    return activeCats.some((c) => {
+      const saved = packages[c]?.[idx] || newMobPackage();
+      const draft = drafts[c] || newMobPackage();
+      return JSON.stringify(saved) !== JSON.stringify(draft);
+    });
+  }, [activeCats, packages, drafts, idx]);
+
+  // Update one field in one category's draft
+  function updateDraftField(cat: PkgCategory, p: MobilePackage) {
+    setDrafts((prev) => ({ ...prev, [cat]: p }));
+    // Clear any previous save state — user is editing again
+    if (saveStatus === 'saved' || saveStatus === 'error') setSaveStatus('idle');
+    if (catErrors[cat]) {
+      setCatErrors((prev) => {
+        const next = { ...prev };
+        delete next[cat];
+        return next;
+      });
+    }
+  }
+
+  // Try to save. Returns true on success, false if blocked by validation.
+  // Wrapped in useCallback-like ref so the master-save effect can call
+  // an always-fresh version without re-subscribing.
+  const trySaveRef = useRef<() => boolean>(() => false);
+  trySaveRef.current = function trySave(): boolean {
+    // Validate each category: empty cats are skipped (saved as blank);
+    // non-empty cats must be fully valid.
+    const errors: Record<PkgCategory, PkgValidationResult> = {} as Record<PkgCategory, PkgValidationResult>;
+    let blocked = false;
+    activeCats.forEach((c) => {
+      const d = drafts[c];
+      if (isPkgEmpty(d)) return; // empty = OK, will save as blank
+      const v = validatePkg(d);
+      if (!v.ok) {
+        errors[c] = v;
+        blocked = true;
+      }
+    });
+    if (blocked) {
+      setCatErrors(errors);
+      setSaveStatus('error');
+      return false;
+    }
+    // All validated cats are good. Build the payload — empty cats become
+    // blank packages (slot is preserved across all cats).
+    const payload: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
+    activeCats.forEach((c) => {
+      payload[c] = isPkgEmpty(drafts[c]) ? newMobPackage() : drafts[c];
+    });
+    setCatErrors({} as Record<PkgCategory, PkgValidationResult>);
+    onSave(payload);
+    setSaveStatus('saved');
+    // Auto-clear the "saved" tag after 5s. Doesn't affect the dirty
+    // tracking — that's based on draft vs saved comparison.
+    setTimeout(() => {
+      setSaveStatus((cur) => (cur === 'saved' ? 'idle' : cur));
+    }, 5000);
+    return true;
+  };
+
+  // Subscribe to master Save All trigger — bumps on every click of the
+  // big bottom button. Skip the very first render (trigger value 0).
+  const lastTriggerRef = useRef(masterSaveTrigger);
+  useEffect(() => {
+    if (masterSaveTrigger === 0) return;
+    if (masterSaveTrigger === lastTriggerRef.current) return;
+    lastTriggerRef.current = masterSaveTrigger;
+    // Only attempt to save if there are unsaved changes — no-op for clean cards
+    if (isDirty) trySaveRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterSaveTrigger]);
+
+  const currentDraft = drafts[selectedCat] || newMobPackage();
+  const errorCats = activeCats.filter((c) => catErrors[c]);
 
   return (
     <div className={styles.pkgCard}>
@@ -450,8 +679,7 @@ function PackageCardWithCatTabs({
         <div className={styles.innerCatTabs}>
           {activeCats.map((c) => {
             const isActive = selectedCat === c;
-            const catPkgs = (packages[c] || []).filter((p) => p && p.title && p.title.trim());
-            const needsAttention = (c === 'wedding' || c === 'mitzvah') && catPkgs.length === 0;
+            const hasError = !!catErrors[c];
             return (
               <button
                 key={c}
@@ -460,48 +688,110 @@ function PackageCardWithCatTabs({
                 className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
               >
                 <span>{catLabels[c]}</span>
-                {needsAttention && <span className={styles.innerCatBadge}>!</span>}
+                {hasError && <span className={styles.innerCatBadge}>!</span>}
               </button>
             );
           })}
         </div>
       )}
 
-      {/* PackageEditor with hideOwnHeader — we already rendered the header
-          + remove button above, plus optional cat tabs. */}
+      {/* PackageEditor with hideOwnHeader. onChange writes to LOCAL draft
+          (no autosave to DB). Re-mount on cat switch so the rich-text
+          editor resets to that cat's initial HTML. */}
       <PackageEditor
-        // Re-mount when the selected cat changes so the rich-text editor
-        // resets its initial HTML to the new category's package details.
         key={selectedCat}
         cat={selectedCat}
         idx={idx}
-        pkg={currentPkg}
+        pkg={currentDraft}
         totalCount={totalCount}
         userId={userId}
-        onChange={(p) => onUpdate(selectedCat, idx, p)}
+        onChange={(p) => updateDraftField(selectedCat, p)}
         onRemove={onRemove}
         hideOwnHeader
       />
 
-      {/* Save status hint at bottom of package card. Reserves a small
-          fixed height so the layout doesn't jump when the hint appears
-          / disappears. */}
+      {/* Validation errors: list each invalid cat and what's missing */}
+      {errorCats.length > 0 && (
+        <div
+          style={{
+            marginTop: '.85rem',
+            padding: '.75rem .9rem',
+            background: 'rgba(255,95,95,.08)',
+            border: '1px solid rgba(255,95,95,.3)',
+            borderRadius: '6px',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.65rem',
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              color: '#ff5f5f',
+              marginBottom: '.4rem',
+            }}
+          >
+            ✗ Can&apos;t save — fix the following or clear all fields:
+          </div>
+          {errorCats.map((c) => (
+            <div key={c} style={{ fontSize: '.78rem', color: 'var(--white)', marginTop: '.25rem' }}>
+              <strong>{catLabels[c]}:</strong>{' '}
+              <span style={{ color: 'var(--muted)' }}>
+                {catErrors[c].errors.map((e) => e.msg).join(', ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Save row: status indicator on the left, Save button on the right */}
       <div
         style={{
-          minHeight: 20,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          paddingTop: '.6rem',
-          marginTop: '.4rem',
+          marginTop: '.85rem',
+          paddingTop: '.85rem',
           borderTop: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '.75rem',
+          flexWrap: 'wrap',
         }}
       >
-        <SavedHint
-          fieldKey={`package-${idx}`}
-          lastChangedField={lastChangedField}
-          autosaveStatus={autosaveStatus}
-        />
+        <div style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.68rem',
+          letterSpacing: '.05em',
+        }}>
+          {saveStatus === 'saved' ? (
+            <span style={{ color: 'var(--neon)' }}>✓ Saved</span>
+          ) : isDirty ? (
+            <span style={{ color: 'var(--amber)' }}>● Unsaved changes</span>
+          ) : (
+            <span style={{ color: 'var(--muted)' }}>✓ All saved</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => trySaveRef.current()}
+          disabled={!isDirty}
+          style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.68rem',
+            letterSpacing: '.07em',
+            textTransform: 'uppercase',
+            padding: '.55rem 1.1rem',
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: isDirty ? 'var(--neon)' : 'var(--border)',
+            background: isDirty ? 'var(--neon-dim)' : 'transparent',
+            color: isDirty ? 'var(--neon)' : 'var(--muted)',
+            cursor: isDirty ? 'pointer' : 'not-allowed',
+            opacity: isDirty ? 1 : 0.6,
+            fontWeight: 700,
+          }}
+        >
+          {showInnerTabs ? 'Save Package' : 'Save'}
+        </button>
       </div>
     </div>
   );
