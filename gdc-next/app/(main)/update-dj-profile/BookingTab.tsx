@@ -801,11 +801,27 @@ function PackageCardWithCatTabs({
             Not saved — fix or clear to save these:
           </div>
           {errorCats.map((c) => (
-            <div key={c} style={{ fontSize: '.78rem', color: 'var(--white)', marginTop: '.25rem' }}>
-              <strong>{catLabels[c]}:</strong>{' '}
-              <span style={{ color: 'var(--muted)' }}>
-                {catErrors[c].errors.map((e) => e.msg).join(', ')}
-              </span>
+            <div key={c} style={{ marginTop: '.6rem' }}>
+              <div style={{
+                fontSize: '.82rem',
+                color: 'var(--white)',
+                fontWeight: 600,
+                marginBottom: '.2rem',
+              }}>
+                {catLabels[c]} Package
+              </div>
+              <ul style={{
+                margin: 0,
+                paddingLeft: '1.2rem',
+                fontSize: '.78rem',
+                color: 'var(--muted)',
+                lineHeight: 1.55,
+                listStyle: 'disc',
+              }}>
+                {catErrors[c].errors.map((e, i) => (
+                  <li key={i}>{e.msg}</li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
