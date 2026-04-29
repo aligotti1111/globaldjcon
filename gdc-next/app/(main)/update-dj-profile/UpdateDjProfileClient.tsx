@@ -499,6 +499,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           <div style={{ display: activeTab === 'booking' ? 'block' : 'none' }}>
             <BookingTab
               djType={initialProfile.dj_type}
+              djSlug={general.slug}
               selectedEventTypes={general.mobileEvents}
               bookingSettings={bookingSettings}
               onChange={setBookingSettings}
