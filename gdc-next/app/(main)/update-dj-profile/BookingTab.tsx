@@ -604,40 +604,58 @@ function PackageCardWithCatTabs({
     }
   }
 
-  // Try to save. Returns true on success, false if blocked by validation.
+  // Try to save. Each category is evaluated independently:
+  //   - empty   → silently skipped (slot reset to blank, no flag)
+  //   - valid   → saved
+  //   - partial → SKIPPED (kept at its currently-saved value, with red flag explaining what's missing)
+  //
+  // Save proceeds as long as AT LEAST ONE category was actually saved
+  // (valid or empty-clear). Returns true if anything wrote, false if
+  // every active cat was partial/no-op.
+  //
   // Wrapped in useCallback-like ref so the master-save effect can call
   // an always-fresh version without re-subscribing.
   const trySaveRef = useRef<() => boolean>(() => false);
   trySaveRef.current = function trySave(): boolean {
-    // Validate each category: empty cats are skipped (saved as blank);
-    // non-empty cats must be fully valid.
     const errors: Record<PkgCategory, PkgValidationResult> = {} as Record<PkgCategory, PkgValidationResult>;
-    let blocked = false;
+    const payload: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
+    let anySaved = false;
+
     activeCats.forEach((c) => {
       const d = drafts[c];
-      if (isPkgEmpty(d)) return; // empty = OK, will save as blank
+      if (isPkgEmpty(d)) {
+        // Empty → save as blank (clears the slot if it had old data).
+        // Counts as "saved" since the user intentionally cleared it.
+        payload[c] = newMobPackage();
+        anySaved = true;
+        return;
+      }
       const v = validatePkg(d);
-      if (!v.ok) {
+      if (v.ok) {
+        // Valid → save it
+        payload[c] = d;
+        anySaved = true;
+      } else {
+        // Partial → keep whatever was last saved for this cat (don't
+        // overwrite, don't clear). Flag the problem in the UI.
+        payload[c] = packages[c]?.[idx] || newMobPackage();
         errors[c] = v;
-        blocked = true;
       }
     });
-    if (blocked) {
-      setCatErrors(errors);
+
+    setCatErrors(errors);
+
+    if (!anySaved) {
+      // Nothing valid + nothing intentionally cleared → don't write
       setSaveStatus('error');
       return false;
     }
-    // All validated cats are good. Build the payload — empty cats become
-    // blank packages (slot is preserved across all cats).
-    const payload: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
-    activeCats.forEach((c) => {
-      payload[c] = isPkgEmpty(drafts[c]) ? newMobPackage() : drafts[c];
-    });
-    setCatErrors({} as Record<PkgCategory, PkgValidationResult>);
+
     onSave(payload);
-    setSaveStatus('saved');
-    // Auto-clear the "saved" tag after 5s. Doesn't affect the dirty
-    // tracking — that's based on draft vs saved comparison.
+    // saveStatus = 'saved' if everything was clean; 'error' if some cats
+    // had partial issues but at least one saved (mixed result).
+    const hadErrors = Object.keys(errors).length > 0;
+    setSaveStatus(hadErrors ? 'error' : 'saved');
     setTimeout(() => {
       setSaveStatus((cur) => (cur === 'saved' ? 'idle' : cur));
     }, 5000);
@@ -731,7 +749,7 @@ function PackageCardWithCatTabs({
               marginBottom: '.4rem',
             }}
           >
-            ✗ Can&apos;t save — fix the following or clear all fields:
+            Not saved — fix or clear to save these:
           </div>
           {errorCats.map((c) => (
             <div key={c} style={{ fontSize: '.78rem', color: 'var(--white)', marginTop: '.25rem' }}>
