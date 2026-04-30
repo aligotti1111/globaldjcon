@@ -40,16 +40,26 @@ export interface BookingSettings {
   booking_enabled?: boolean;
   booking_days?: BookingDays;
   booking_window_months?: number; // default 12 — how far ahead visitors can navigate
-  // Booking-form fields (Session 5 work)
-  allow_offers?: boolean;
-  equip_full?: boolean;
-  equip_decks?: boolean;
-  equip_none?: boolean;
-  global_rate_type?: string;
-  rate_with_system?: number | string;
-  rate_with_decks?: number | string;
-  rate_no_equip?: number | string;
+
+  // Equipment selection — exactly ONE of these three should be true at a time.
+  // Vanilla saves them as separate booleans rather than a single enum, so we
+  // mirror that for round-trip safety with existing rows.
+  equip_full?: boolean;          // "I provide Sound System & Decks/Controller"
+  equip_full_detail?: string;    // free text describing the system
+  equip_decks?: boolean;         // "I provide Decks/Controller only"
+  equip_decks_detail?: string;   // free text describing the decks
+  equip_none?: boolean;          // "I require all equipment from venue"
+
+  // Rate config — global default for every available date unless overridden
+  // per-day in booking_days[key].rate*. Vanilla supports 3 rate types and
+  // per-equipment pricing within flat/hourly modes.
+  global_rate_type?: 'flat' | 'hourly' | 'offers' | string;
+  allow_offers?: boolean;        // mirror of global_rate_type === 'offers'
+  rate_currency?: string;        // ISO 4217 code (USD/EUR/GBP/...)
   base_rate?: number | string;
+  rate_with_system?: number | string;  // when DJ provides full system
+  rate_with_decks?: number | string;   // when DJ provides only decks
+  rate_no_equip?: number | string;     // when venue provides everything
 
   // ── Mobile DJ fields (mob_* prefix) ──────────────────────────
   // Same boolean booking_enabled controls both — vanilla checks this
