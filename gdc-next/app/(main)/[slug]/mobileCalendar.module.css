@@ -123,76 +123,110 @@
 .cellsGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-left: 1px solid var(--border);
-  border-radius: 0 0 8px 8px;
-  overflow: hidden;
+  /* Embed-style: individual rounded cells with small gaps instead of
+     a continuous grid with shared borders. */
+  gap: 4px;
 }
 
 .emptyCell {
-  border-right: 1px solid rgba(255, 255, 255, .06);
-  border-bottom: 1px solid rgba(255, 255, 255, .06);
   min-height: 70px;
-  background: rgba(255, 255, 255, .01);
+  background: transparent;
 }
 
 .cell {
   position: relative;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  /* Each cell is its own bordered+rounded box (matches /embed-calendar) */
+  border: 1px solid var(--border);
+  border-radius: 4px;
   min-height: 70px;
-  padding: .35rem .15rem .25rem;
+  padding: .4rem .15rem .3rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 3px;
   overflow: hidden;
   background: transparent;
+  transition: all 0.15s;
 }
 .cellNoBottomBorder {
-  border-bottom: none;
+  /* Legacy class — kept for compat, no longer needed since cells are
+     independent now */
 }
 .cellAvail {
-  background: rgba(0, 245, 196, .08);
+  cursor: pointer;
+}
+.cellAvail:hover {
+  background: var(--neon);
+  border-color: var(--neon);
+}
+/* Day number stays readable on the neon background */
+.cellAvail:hover .cellNum {
+  color: #050507;
+}
+/* Pill inverts its colors on hover to stay visible */
+.cellAvail:hover .bookBadge {
+  background: #050507;
+  color: var(--neon);
+  border-color: #050507;
 }
 .cellToday {
-  background: rgba(0, 245, 196, .15);
   outline: 2px solid var(--neon);
   outline-offset: -1px;
 }
 .cellBooked {
-  background: rgba(255, 60, 60, .2);
+  /* Solid red fill (matches embed) */
+  background: #ff5f5f;
+  border-color: #ff5f5f;
+  cursor: not-allowed;
 }
 .cellUnavail {
-  background: rgba(90, 90, 120, .15);
+  /* Diagonal stripe pattern (matches embed) */
+  cursor: not-allowed;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(255, 255, 255, 0.15) 4px,
+    rgba(255, 255, 255, 0.15) 5px
+  );
 }
 .cellSelected {
-  background: rgba(255, 179, 71, .2);
   outline: 2px solid var(--amber);
   outline-offset: -1px;
+  background: rgba(255, 179, 71, .15);
 }
 
 .cellNum {
   font-size: clamp(.75rem, 1.5vw, .95rem);
+  font-family: 'DM Sans', sans-serif;
   line-height: 1;
   color: var(--white);
+  transition: color 0.15s;
 }
 .cellNumPast,
-.cellNumBeyond { color: var(--muted); }
-.cellNumBooked { color: #ff5f5f; }
+.cellNumBeyond { color: var(--muted); opacity: 0.5; }
+/* Booked: white text on red */
+.cellNumBooked { color: #ffffff; }
 .cellNumFull { color: var(--muted); }
 .cellNumToday { color: var(--neon); }
 .cellNumSelected { color: var(--amber); }
 
-/* "Book" badge for available cells (mobile DJ — smaller than club's "Book Now") */
+/* "Book" pill — embed-matching style */
 .bookBadge {
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  padding: 2px 5px;
+  font-size: .55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(0, 245, 196, .18);
-  color: var(--neon);
-  border: 1px solid rgba(0, 245, 196, .2);
+  background: var(--neon);
+  color: #050507;
+  border: 1px solid var(--neon);
   cursor: pointer;
-  margin-top: 2px;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: all 0.15s;
 }
 
 /* Booked event-name display inside booked cells */
