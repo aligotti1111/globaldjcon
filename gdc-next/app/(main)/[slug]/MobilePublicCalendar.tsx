@@ -23,6 +23,7 @@
 // date currently shows an alert. Same placeholder pattern as Session 4.
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import styles from './mobileCalendar.module.css';
@@ -33,6 +34,7 @@ import {
   windowLabel,
 } from './bookingSettings';
 import MobileBookingForm from './MobileBookingForm';
+import BookingLoginGate from './BookingLoginGate';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -127,8 +129,53 @@ export default function MobilePublicCalendar({
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
   // Selected date drives the form below the calendar. null = no form shown.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Custom login gate modal — shown when a logged-out visitor tries to
+  // book. Stores the date they tried so we can pre-select it after they
+  // come back from auth.
+  const [loginGateForDate, setLoginGateForDate] = useState<string | null>(null);
   // Owner day-edit modal — null when closed; the dateKey when open.
   const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
+
+  // ── Auto-open booking flow from ?date= URL param ──────────────────
+  // Embed calendars on third-party sites point at /<slug>?date=YYYY-MM-DD
+  // when a visitor clicks an open date. We pick that up here and either:
+  //   1. Logged in   → auto-select the date so the booking form opens
+  //   2. Logged out  → show the BookingLoginGate modal explaining what
+  //      they're trying to book + offering Log In / Sign Up
+  // Owner viewing their own profile → ignore (they already manage dates
+  // through the day-edit modal).
+  // Only fire on the initial mount (we don't want to keep re-opening
+  // the modal if the user closes it; they'd need a fresh load to
+  // re-trigger).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (isOwnProfile) return;
+    const dateParam = searchParams.get('date');
+    if (!dateParam) return;
+    // Validate format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+    // Make sure the date isn't booked / unavailable / past
+    const [y, m, d] = dateParam.split('-').map(Number);
+    const cellDate = new Date(y, m - 1, d);
+    const todayMid = new Date();
+    todayMid.setHours(0, 0, 0, 0);
+    if (cellDate < todayMid) return;
+    const dayData = bookingDays[dateParam];
+    if (dayData?.booked || dayData?.unavailable) return;
+
+    if (isLoggedIn && currentUser) {
+      // Jump the visible month to that date so the form opens in context
+      setYear(y);
+      setMonth(m - 1);
+      setSelectedDate(dateParam);
+    } else {
+      setLoginGateForDate(dateParam);
+    }
+    // Run only once on mount — disabled exhaustive-deps because we don't
+    // want the effect re-firing when state changes (e.g. user closes the
+    // modal). They'd need a fresh page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Owner: persist booking_days back to users.booking_settings ───
   // Vanilla mobPubOwnerSaveDays — fetches current booking_settings, merges
@@ -255,8 +302,11 @@ export default function MobilePublicCalendar({
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
     if (!isLoggedIn || !currentUser) {
-      // Logged-out: placeholder (gate modal comes in a later session)
-      alert('Please log in to book this DJ.');
+      // Logged-out: open the custom login gate modal. It explains who
+      // they're trying to book + what date, and gives Log In / Sign Up
+      // buttons that redirect back here with ?date=key&book=1 so the
+      // booking flow continues seamlessly after auth.
+      setLoginGateForDate(key);
       return;
     }
     setSelectedDate(key);
@@ -403,6 +453,16 @@ export default function MobilePublicCalendar({
             email: currentUser.email,
             name: currentUser.name,
           }}
+        />
+      )}
+
+      {/* Logged-out booking gate modal */}
+      {loginGateForDate && (
+        <BookingLoginGate
+          djName={djName}
+          djSlug={djSlug}
+          dateKey={loginGateForDate}
+          onClose={() => setLoginGateForDate(null)}
         />
       )}
 

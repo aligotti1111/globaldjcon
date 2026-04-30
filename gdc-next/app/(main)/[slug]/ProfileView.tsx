@@ -6,6 +6,7 @@
 // Server Component (page.tsx) does the data fetch and passes everything in.
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './profile.module.css';
 import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
@@ -99,9 +100,29 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
 
+  // If the URL has ?date=YYYY-MM-DD (visitor came from the embed
+  // calendar) AND we have a booking tab, force-default to it so the
+  // auto-select logic in MobilePublicCalendar finds the right context.
+  const searchParams = useSearchParams();
+  const hasDateParam = !!searchParams.get('date');
+
   const [activeTab, setActiveTab] = useState<TabKey>(
     showBookingTab ? 'booking' : 'about'
   );
+  // If the visitor lands with ?date=, also scroll the tab area into view
+  // so they don't have to hunt for the booking calendar. Only fires once
+  // on mount.
+  useEffect(() => {
+    if (hasDateParam && showBookingTab) {
+      // Allow the tabs/calendar to render first, then scroll
+      const t = setTimeout(() => {
+        const el = document.querySelector(`[data-booking-anchor]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Set page title to the DJ's name (matches vanilla document.title)
@@ -340,7 +361,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
-            <div className={paneClass('booking')}>
+            <div className={paneClass('booking')} data-booking-anchor>
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
@@ -351,7 +372,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             </div>
           )}
           {showMobileBookingTab && (
-            <div className={paneClass('booking')}>
+            <div className={paneClass('booking')} data-booking-anchor>
               <MobilePublicCalendar
                 djId={data.id}
                 djName={data.name || ''}
