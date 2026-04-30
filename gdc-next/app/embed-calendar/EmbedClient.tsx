@@ -212,7 +212,8 @@ function MonthGrid({
         onClick={isClickable ? () => onClickDay(dKey) : undefined}
         disabled={!isClickable}
       >
-        {d}
+        <span className={styles.cellDayNum}>{d}</span>
+        {isClickable && <span className={styles.cellBookPill}>Book</span>}
       </button>
     );
   }
