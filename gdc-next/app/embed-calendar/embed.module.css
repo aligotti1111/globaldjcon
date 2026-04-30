@@ -271,3 +271,40 @@
     var(--emb-cell-disabled) 3px
   );
 }
+
+/* Jump-to month/year picker — sits between the prev/next arrows in the
+   header row. Native <select> styled minimally to match the buttons. */
+.jumpSelect {
+  background: transparent;
+  border: 1px solid var(--emb-grid-border);
+  border-radius: 4px;
+  height: 28px;
+  color: inherit;
+  padding: 0 22px 0 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  /* Use a tiny chevron instead of the native triangle so it works in
+     both light + dark themes. */
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 12px) 12px, calc(100% - 8px) 12px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.jumpSelect:hover,
+.jumpSelect:focus {
+  border-color: var(--emb-accent);
+  color: var(--emb-accent);
+  outline: none;
+}
+.jumpSelect option {
+  /* Browsers render <option> in the system dropdown — force readable
+     colors so they work on both themes. */
+  background: #050507;
+  color: #ffffff;
+}

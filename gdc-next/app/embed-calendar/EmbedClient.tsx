@@ -104,6 +104,18 @@ export default function EmbedClient({
   const canNext = (anchorYM + (months - 1)) < maxYM;
 
   // ── Click handler ──────────────────────────────────────────────────
+  // Build the list of selectable months for the jump picker. Bounded by
+  // [today, today + windowMonths - 1] inclusive.
+  const jumpOptions = useMemo(() => {
+    const opts: { ym: number; label: string }[] = [];
+    for (let ym = minYM; ym <= maxYM; ym++) {
+      const y = Math.floor(ym / 12);
+      const m = ym % 12;
+      opts.push({ ym, label: `${MONTHS[m]} ${y}` });
+    }
+    return opts;
+  }, [minYM, maxYM]);
+
   // Open the main site in a new tab with the chosen date pre-selected.
   function openDate(dKey: string | null) {
     const url = dKey
@@ -126,6 +138,21 @@ export default function EmbedClient({
           >
             ‹
           </button>
+          {/* Jump-to picker — native <select> for cross-browser
+              consistency + accessibility. Lists every selectable month
+              within the DJ's booking window. */}
+          <select
+            value={anchorYM}
+            onChange={(e) => setAnchorYM(parseInt(e.target.value, 10))}
+            className={styles.jumpSelect}
+            aria-label="Jump to month"
+          >
+            {jumpOptions.map((opt) => (
+              <option key={opt.ym} value={opt.ym}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={navNext}
