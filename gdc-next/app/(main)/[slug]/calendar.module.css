@@ -548,14 +548,11 @@
   .emptyCell {
     min-height: 56px;
   }
-  /* Hide the full "Book Now" text on mobile — keep the dot only.
-     Vanilla does this via .cal-badge-text { display:none } at <600px */
-  .bookBadgeText {
-    display: none;
-  }
+  /* Keep "Book" visible at all widths — just shrink the pill so it
+     fits inside the smaller mobile cells. */
   .bookBadge {
-    font-size: .42rem;
-    padding: 1px 2px;
-    letter-spacing: -.02em;
+    font-size: .5rem;
+    padding: 1px 4px;
+    letter-spacing: 0;
   }
 }

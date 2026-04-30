@@ -435,7 +435,7 @@ function SingleMonthView({
             onClick={(e) => onBookClick(key, e)}
             role="button"
           >
-            <span className={styles.bookBadgeText}>Book Now</span>
+            <span className={styles.bookBadgeText}>Book</span>
           </div>
         );
       }
