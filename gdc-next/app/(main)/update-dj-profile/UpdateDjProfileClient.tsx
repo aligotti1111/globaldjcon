@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 import BookingTab from './BookingTab';
+import ClubBookingTab from './ClubBookingTab';
 import SocialsTab from './SocialsTab';
 import MixesTab from './MixesTab';
 import PhotosTab from './PhotosTab';
@@ -250,13 +251,26 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // the count, just true/false.
   const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
 
+  // ClubBookingTab reports when the Rates section has unsaved drafts.
+  // (Equipment + calendar autosave; rates are manual save.)
+  const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
+
+  // Master save trigger — a counter that bumps when the user clicks the
+  // page-level Save All button at the bottom. Both BookingTab (for
+  // packages) and ClubBookingTab (for rates) listen via prop and try
+  // to save themselves.
+  const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
+  function triggerMasterSave() {
+    setMasterSaveTrigger((n) => n + 1);
+  }
+
   // Are general fields different from snapshot?
   const isGeneralDirty = useMemo(
     () => JSON.stringify(general) !== initialGeneralRef.current,
     [general]
   );
 
-  const isPageDirty = isGeneralDirty || hasDirtyPackages;
+  const isPageDirty = isGeneralDirty || hasDirtyPackages || hasDirtyClubRates;
 
   // Native browser warning on tab close / refresh / external nav.
   // Custom message text is ignored by modern browsers (they show their
@@ -497,17 +511,28 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               Other tabs unmount because they have no local-only state —
               everything's in `general`/`bookingSettings` already. */}
           <div style={{ display: activeTab === 'booking' ? 'block' : 'none' }}>
-            <BookingTab
-              djType={initialProfile.dj_type}
-              djSlug={general.slug}
-              selectedEventTypes={general.mobileEvents}
-              bookingSettings={bookingSettings}
-              onChange={setBookingSettings}
-              userId={initialProfile.id}
-              onGoToGeneral={() => setActiveTab('general')}
-              autosaveStatus={autosaveStatus}
-              onDirtyChange={setHasDirtyPackages}
-            />
+            {initialProfile.dj_type === 'club' ? (
+              <ClubBookingTab
+                bookingSettings={bookingSettings}
+                onChange={setBookingSettings}
+                autosaveStatus={autosaveStatus}
+                onDirtyChange={setHasDirtyClubRates}
+                masterSaveTrigger={masterSaveTrigger}
+              />
+            ) : (
+              <BookingTab
+                djType={initialProfile.dj_type}
+                djSlug={general.slug}
+                selectedEventTypes={general.mobileEvents}
+                bookingSettings={bookingSettings}
+                onChange={setBookingSettings}
+                userId={initialProfile.id}
+                onGoToGeneral={() => setActiveTab('general')}
+                autosaveStatus={autosaveStatus}
+                onDirtyChange={setHasDirtyPackages}
+                externalMasterSaveTrigger={masterSaveTrigger}
+              />
+            )}
           </div>
 
           {activeTab === 'social' && (
@@ -534,8 +559,28 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             <TestimonialsTab state={general} onChange={updateGeneral} />
           )}
 
-          <button type="submit" disabled={saving} className={styles.submitBtn}>
-            {saving ? 'Saving…' : 'Save Changes'}
+          {/* Page-level Save All — saves any pending edits across the
+              entire form. Disabled when nothing is dirty so the user
+              knows they're up to date. Submit type triggers the form
+              handler which saves the General fields directly; the
+              masterSaveTrigger bump fires synchronously to commit any
+              package / club-rate drafts back to bookingSettings, and the
+              autosave effect picks those up ~600ms later. */}
+          <button
+            type="submit"
+            disabled={saving || !isPageDirty}
+            onClick={() => triggerMasterSave()}
+            className={styles.submitBtn}
+            style={{
+              opacity: (saving || !isPageDirty) ? 0.55 : 1,
+              cursor: (saving || !isPageDirty) ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {saving
+              ? 'Saving…'
+              : isPageDirty
+              ? 'Save All Changes'
+              : '✓ All Changes Saved'}
           </button>
         </form>
       </div>

@@ -103,6 +103,11 @@ interface Props {
   // Callback fired whenever ANY package card has unsaved drafts changes.
   // Parent uses this to power the unsaved-changes warning on tab close.
   onDirtyChange?: (dirty: boolean) => void;
+  // External master-save trigger from the page-level Save All button.
+  // When this counter bumps, all dirty package cards attempt a save —
+  // same flow as the internal "Save All Packages" button at the bottom
+  // of the packages section.
+  externalMasterSaveTrigger?: number;
 }
 
 export default function BookingTab({
@@ -115,6 +120,7 @@ export default function BookingTab({
   onGoToGeneral,
   autosaveStatus,
   onDirtyChange,
+  externalMasterSaveTrigger = 0,
 }: Props) {
   const enabled = !!bookingSettings.booking_enabled;
   const window = bookingSettings.mob_booking_window || 24;
@@ -190,13 +196,25 @@ export default function BookingTab({
   }
 
   // Master save trigger — a counter that bumps when the user clicks the
-  // big Save All button at the bottom. Cards listen via useEffect and
-  // attempt to save themselves. Tracks saveAttemptId so cards don't
-  // re-save unnecessarily on re-render.
+  // big Save All button at the bottom of the packages section, OR when
+  // the page-level Save All button at the bottom of the page is clicked
+  // (passed in as externalMasterSaveTrigger). We unify both into one
+  // internal counter so package cards only need to listen to one signal.
   const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
   function triggerMasterSave() {
     setMasterSaveTrigger((n) => n + 1);
   }
+
+  // Bridge: when the page-level trigger bumps, also bump our internal
+  // trigger so package cards see it.
+  const lastExternalRef = useRef(externalMasterSaveTrigger);
+  useEffect(() => {
+    if (externalMasterSaveTrigger === 0) return;
+    if (externalMasterSaveTrigger === lastExternalRef.current) return;
+    lastExternalRef.current = externalMasterSaveTrigger;
+    triggerMasterSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalMasterSaveTrigger]);
 
   // Dirty aggregation: each PackageCardWithCatTabs reports its own dirty
   // state via cardDirtyMap[idx] = boolean. We sum to a single boolean and

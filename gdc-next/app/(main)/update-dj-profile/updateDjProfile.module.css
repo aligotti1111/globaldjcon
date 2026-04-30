@@ -1679,3 +1679,317 @@
 .testimonialAddBtn:hover {
   background: rgba(0, 245, 196, .1);
 }
+
+/* ── Club DJ day editor modal ─────────────────────────────────────
+   Used by ClubOwnerCalendar for the per-day status editor. Shares
+   the same look as other modals on this page (card bg + border,
+   blurred backdrop, rounded). */
+.dayEditorBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  backdrop-filter: blur(3px);
+}
+.dayEditorBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.dayEditorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.dayEditorDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+}
+.dayEditorClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: .25rem .5rem;
+}
+.dayEditorClose:hover { color: var(--white); }
+
+.dayEditorStatusRow {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.dayEditorStatusLabel {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+  font-size: .85rem;
+}
+
+.dayEditorBookedFields {
+  background: var(--deep);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.dayEditorFieldGroup {
+  margin-bottom: .75rem;
+}
+.dayEditorFieldLabel {
+  display: block;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: .25rem;
+}
+.dayEditorInput {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .5rem .75rem;
+  color: var(--white);
+  font-size: .85rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.dayEditorComingSoon {
+  margin: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .05em;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.dayEditorActions {
+  display: flex;
+  gap: .75rem;
+}
+.dayEditorCancelBtn {
+  flex: 1;
+  padding: .75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dayEditorCancelBtn:hover { color: var(--white); border-color: var(--white); }
+.dayEditorSaveBtn {
+  flex: 1;
+  padding: .75rem;
+  background: var(--neon);
+  border: none;
+  border-radius: 6px;
+  color: var(--black);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.dayEditorSaveBtn:hover { opacity: .85; }
+
+/* ── Club booking tab — Equipment section ──────────────────────── */
+.equipOptions {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-bottom: .25rem;
+}
+.equipOption {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  cursor: pointer;
+  padding: .8rem .9rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color .15s;
+}
+.equipOption:hover {
+  border-color: var(--neon-dim);
+}
+.equipOption input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--neon);
+}
+.equipOptionBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.equipOptionTitle {
+  font-size: .9rem;
+  color: var(--white);
+  line-height: 1.4;
+}
+.equipDetailInput {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .5rem .75rem;
+  color: var(--white);
+  font-size: .85rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.equipDetailInput:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+
+/* ── Club booking tab — Rates section ──────────────────────────── */
+.rateTypeRow {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+}
+.rateTypeLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--white);
+  font-weight: 700;
+}
+.rateTypePillGroup {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rateTypePill {
+  padding: .55rem 1.5rem;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.rateTypePill:last-child { border-right: none; }
+.rateTypePillActive {
+  background: var(--neon-dim);
+  color: var(--neon);
+}
+
+.rateOffersHint {
+  font-size: .8rem;
+  color: var(--white);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.rateFieldGroup {
+  margin-bottom: .85rem;
+}
+.rateFieldLabel {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .3rem;
+}
+.rateSelect {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .55rem .75rem;
+  color: var(--white);
+  font-size: .88rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.rateInputWrap {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0 .75rem;
+}
+.rateInputWrap:focus-within { border-color: var(--neon); }
+.rateSymbol {
+  color: var(--muted);
+  font-size: .9rem;
+}
+.rateInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: .55rem 0;
+  color: var(--white);
+  font-size: .88rem;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.rateSaveRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding-top: .85rem;
+  margin-top: .85rem;
+  border-top: 1px solid var(--border);
+}
+.rateSaveStatus {
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .05em;
+}
+.rateSaveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .55rem 1.1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+  font-weight: 700;
+}
+.rateSaveBtnEnabled {
+  border-color: var(--neon);
+  background: var(--neon-dim);
+  color: var(--neon);
+  cursor: pointer;
+  opacity: 1;
+}
