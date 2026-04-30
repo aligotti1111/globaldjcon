@@ -178,13 +178,13 @@
   color: var(--emb-accent);
 }
 
-/* Booked — solid accent fill, not clickable. Indicates the date is taken. */
+/* Booked — solid red fill so it's instantly readable as "taken". Distinct
+   from the neon used for available/hover state. Not clickable. */
 .cellBooked {
-  background: var(--emb-accent);
-  color: #050507;
-  border-color: var(--emb-accent);
+  background: #ff5f5f;
+  color: #ffffff;
+  border-color: #ff5f5f;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 /* Unavailable — DJ marked the date off. Strikethrough effect via diagonal
@@ -225,4 +225,49 @@
 .footer a:hover {
   color: var(--emb-accent);
   border-bottom-color: var(--emb-accent);
+}
+
+/* Status legend — small inline row of swatches + labels under the grid.
+   Wraps to two lines on narrow embeds. */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--emb-muted);
+  flex-wrap: wrap;
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.legendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--emb-grid-border);
+  display: inline-block;
+}
+.legendSwatchAvailable {
+  background: var(--emb-accent);
+  border-color: var(--emb-accent);
+}
+.legendSwatchBooked {
+  background: #ff5f5f;
+  border-color: #ff5f5f;
+}
+.legendSwatchUnavailable {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    var(--emb-cell-disabled) 2px,
+    var(--emb-cell-disabled) 3px
+  );
 }

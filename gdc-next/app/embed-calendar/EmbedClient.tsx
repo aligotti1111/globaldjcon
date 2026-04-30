@@ -151,6 +151,23 @@ export default function EmbedClient({
         ))}
       </div>
 
+      {/* Status legend — three small swatches showing what each color
+          means. Helps visitors interpret the calendar at a glance. */}
+      <div className={styles.legend}>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.legendSwatchAvailable}`} />
+          Available
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.legendSwatchBooked}`} />
+          Booked
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.legendSwatchUnavailable}`} />
+          Unavailable
+        </span>
+      </div>
+
       <div className={styles.footer}>
         Powered by{' '}
         <a
