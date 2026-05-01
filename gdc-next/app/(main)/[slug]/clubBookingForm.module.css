@@ -319,3 +319,31 @@
   max-width: 360px;
   margin: 0 auto;
 }
+
+/* ── Equipment option that the DJ can't fulfill ───────────────── */
+/* Booker can still click it, but a warning appears below + the rate
+   is hidden + submit is blocked until they pick a supported one. */
+.pillUnsupported {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.pillUnsupported:hover {
+  border-color: rgba(255, 95, 95, .6);
+}
+.pillUnsupported.pillActive {
+  background: rgba(255, 95, 95, .12);
+  border-color: #ff5f5f;
+  color: #ff5f5f;
+  opacity: 1;
+}
+.equipWarning {
+  margin-top: .65rem;
+  background: rgba(255, 179, 71, .08);
+  border: 1px solid rgba(255, 179, 71, .35);
+  border-radius: 6px;
+  padding: .65rem .85rem;
+  color: #ffb347;
+  font-size: .82rem;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.55;
+}

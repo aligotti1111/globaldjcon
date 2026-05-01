@@ -21,7 +21,7 @@
 // The form is rendered inline in the booking tab below the calendar — it
 // does NOT use a modal, matching MobileBookingForm's UX.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './clubBookingForm.module.css';
 import {
@@ -198,27 +198,39 @@ export default function ClubBookingForm({
     [bookingSettings.booking_days, dateKey]
   );
 
-  // Equipment options the DJ supports — visitor can only pick from these.
-  // Higher equipment tier = more options visible to visitor.
+  // Equipment options — ALL THREE are always shown to the booker so they
+  // see every choice. We tag each with `supported` so the UI can mark
+  // unsupported ones (the DJ doesn't bring that gear) and show an inline
+  // "DJ won't bring this — pick another" message instead of a rate.
+  //
+  // Support rules:
+  //   - sound_system  → DJ supports it if equip_full
+  //   - decks_only    → DJ supports it if equip_full OR equip_decks
+  //   - venue_provides → ALWAYS supported (DJ shows up empty-handed)
   const equipmentOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [];
-    if (bookingSettings.equip_full) {
-      opts.push({ value: 'sound_system', label: 'Full sound system & decks' });
-    }
-    if (bookingSettings.equip_full || bookingSettings.equip_decks) {
-      opts.push({ value: 'decks_only', label: 'Decks/controller only' });
-    }
-    // Venue-provides is always an option — even if DJ provides full system,
-    // the venue might want to use their own. (Vanilla allows this too.)
-    opts.push({ value: 'venue_provides', label: 'Venue provides all equipment' });
-    return opts;
+    return [
+      {
+        value: 'sound_system',
+        label: 'Full sound system & decks',
+        supported: !!bookingSettings.equip_full,
+      },
+      {
+        value: 'decks_only',
+        label: 'Decks/controller only',
+        supported: !!(bookingSettings.equip_full || bookingSettings.equip_decks),
+      },
+      {
+        value: 'venue_provides',
+        label: 'Venue provides all equipment',
+        supported: true,
+      },
+    ];
   }, [bookingSettings.equip_full, bookingSettings.equip_decks]);
 
-  // Reset equipment if it's no longer valid (e.g. DJ changed config)
-  useEffect(() => {
-    if (equipment && !equipmentOptions.some((o) => o.value === equipment)) {
-      setEquipment('');
-    }
+  // Helper — is the currently-picked equipment supported by this DJ?
+  const isEquipmentSupported = useMemo(() => {
+    const opt = equipmentOptions.find((o) => o.value === equipment);
+    return opt ? opt.supported : true;
   }, [equipment, equipmentOptions]);
 
   // Allow offers? Either the global rate type is 'offers', or this specific
@@ -257,6 +269,10 @@ export default function ClubBookingForm({
     if (!startTime) { setError('Please select a start time.'); return; }
     if (!endTime) { setError('Please select an end time.'); return; }
     if (!equipment) { setError('Please select an equipment option.'); return; }
+    if (!isEquipmentSupported) {
+      setError('This DJ isn\'t able to bring that equipment. Please pick another option.');
+      return;
+    }
     if (isOffers && !offerAmount.trim()) {
       setError('Please enter your offer amount.');
       return;
@@ -499,17 +515,35 @@ export default function ClubBookingForm({
         {/* Equipment */}
         <FormSection label="Equipment">
           <div className={styles.pillCol}>
-            {equipmentOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setEquipment(opt.value)}
-                className={`${styles.pillWide} ${equipment === opt.value ? styles.pillActive : ''}`}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {equipmentOptions.map((opt) => {
+              const isActive = equipment === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEquipment(opt.value)}
+                  className={`${styles.pillWide} ${isActive ? styles.pillActive : ''} ${
+                    !opt.supported ? styles.pillUnsupported : ''
+                  }`}
+                  // Always allow click — the warning below explains the
+                  // problem rather than silently disabling the option,
+                  // which matches the requested UX.
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Inline warning when the booker picks something the DJ can't
+              fulfill. Submitting is blocked too — see handleSubmit. */}
+          {equipment && !isEquipmentSupported && (
+            <div className={styles.equipWarning}>
+              This DJ isn&apos;t able to bring that equipment. Please pick
+              a different option below.
+            </div>
+          )}
+
           {equipment === 'venue_provides' && (
             <input
               type="text"
@@ -522,8 +556,10 @@ export default function ClubBookingForm({
           )}
         </FormSection>
 
-        {/* Rate display */}
-        {canShowRate && (
+        {/* Rate display — only when the picked equipment is something the
+            DJ actually supports. If unsupported, the warning above tells
+            the booker why no rate is shown. */}
+        {canShowRate && isEquipmentSupported && (
           <FormSection label="Rate">
             <RateDisplay
               info={rateInfo}
