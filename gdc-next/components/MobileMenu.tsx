@@ -16,10 +16,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
+import { useUnreadInboxCount } from './useUnreadInboxCount';
 
 export default function MobileMenu() {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  // Unread inbox count — shown as a small badge inside the Inbox menu item
+  // so mobile users see new messages without opening the inbox first.
+  const unreadCount = useUnreadInboxCount();
 
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -72,7 +76,38 @@ export default function MobileMenu() {
                     </Link>
                   )}
                   <Link href="/booking-requests" onClick={close} className="mobile-menu-item">Bookings</Link>
-                  <Link href="/inbox" onClick={close} className="mobile-menu-item">Inbox</Link>
+                  <Link
+                    href="/inbox"
+                    onClick={close}
+                    className="mobile-menu-item"
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <span>Inbox</span>
+                    {unreadCount > 0 && (
+                      <span
+                        // Same neon pill aesthetic as the Header badge,
+                        // sized for the wider mobile menu row.
+                        style={{
+                          background: 'var(--neon)',
+                          color: 'var(--black)',
+                          fontFamily: '"Space Mono", monospace',
+                          fontSize: '.6rem',
+                          fontWeight: 700,
+                          minWidth: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0 6px',
+                          letterSpacing: '.04em',
+                        }}
+                        aria-label={`${unreadCount} unread messages`}
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </Link>
                   {user.role !== 'dj' && (
                     <Link href="/account-settings" onClick={close} className="mobile-menu-item">
                       Account Settings

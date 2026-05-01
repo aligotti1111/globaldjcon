@@ -11,11 +11,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  // Unread inbox count (polled every 30s — see useUnreadInboxCount).
+  // Returns 0 for logged-out users so the badge simply doesn't render.
+  const unreadCount = useUnreadInboxCount();
 
   const openMenu = () => {
     // Dispatch a custom event the MobileMenu component listens for.
@@ -133,6 +137,13 @@ export default function Header() {
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
+                    {/* Unread badge — hidden when count is 0. Display "9+"
+                        for any double-digit count to keep the badge small. */}
+                    {unreadCount > 0 && (
+                      <span className="inbox-badge" aria-label={`${unreadCount} unread messages`}>
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
 
                   {/* Non-DJ users get the settings gear; DJs already have Update Profile above */}
