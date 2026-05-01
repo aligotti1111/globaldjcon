@@ -73,13 +73,18 @@ export function SlugAvailabilityCheck({
 
     const timer = setTimeout(async () => {
       const slugAtStart = value;
+      // Defensive: trim + lowercase the value before querying. The caller
+      // should already pass a normalized slug (via makeSlug), but if they
+      // forget, a mixed-case "AlexDJ" would fail to match the DB-stored
+      // "alexdj" and we'd falsely report it as available.
+      const queryValue = slugAtStart.trim().toLowerCase();
       try {
         // Look for any OTHER user with this slug (excluding the current
         // user). neq('id', userId) is the key fix vs. the signup version.
         const { data, error } = await db
           .from('users')
           .select('id')
-          .eq('slug', slugAtStart)
+          .eq('slug', queryValue)
           .neq('id', userId)
           .limit(1);
 
