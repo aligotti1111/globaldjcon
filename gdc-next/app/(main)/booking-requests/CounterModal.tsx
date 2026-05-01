@@ -139,6 +139,31 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
       const { error: updErr } = await finalQuery;
       if (updErr) throw updErr;
 
+      // Email the OTHER party (recipient) about the counter offer.
+      // DJ countered → email the booker; booker countered → email the DJ.
+      // Failures are swallowed so the DB save isn't undone by an email outage.
+      try {
+        const isFromDj = group === 'in';
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_counter',
+            recipientUserId: isFromDj ? booking.requester_id : booking.dj_id,
+            recipientName: isFromDj ? booking.requester_name : booking.dj_name,
+            senderName: isFromDj ? booking.dj_name : booking.requester_name,
+            fromRole: isFromDj ? 'dj' : 'booker',
+            counterRate: Number(amount),
+            counterMessage: message.trim() || null,
+            eventDate: booking.event_date,
+            venueName: booking.venue_name,
+            currency: (booking as BookingRow & { currency?: string }).currency || 'USD',
+          }),
+        });
+      } catch (e) {
+        console.warn('Counter email failed:', e);
+      }
+
       // Build the updated row to hand back to the parent so it can patch
       // local state without a full re-fetch.
       onSaved({

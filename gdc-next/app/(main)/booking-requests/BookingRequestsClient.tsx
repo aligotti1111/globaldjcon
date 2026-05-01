@@ -126,6 +126,31 @@ export default function BookingRequestsClient({
       const b = incoming.find((x) => x.id === bookingId);
       updateIncomingStatus(bookingId, status);
 
+      // Email the booker that their request was approved/denied.
+      // Type depends on booking_type (mob_booking_status for mobile,
+      // booking_status for club). Failures are swallowed so the DB
+      // update isn't undone by an email outage.
+      if (b) {
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: b.booking_type === 'club' ? 'booking_status' : 'mob_booking_status',
+              requesterUserId: b.requester_id,
+              requesterName: b.requester_name,
+              djName: currentUser.name,
+              status,
+              eventDate: b.event_date,
+              venueName: b.venue_name,
+              packageTitle: b.package_title,
+            }),
+          });
+        } catch (e) {
+          console.warn('Booker status email failed:', e);
+        }
+      }
+
       // Decrement bookings_available on approve. Re-read settings first so
       // we don't clobber concurrent edits — same defensive pattern as the
       // owner calendar's persistBookingDays.
