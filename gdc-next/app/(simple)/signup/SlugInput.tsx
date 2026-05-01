@@ -74,10 +74,7 @@ export function SlugInput({
 
   // Main availability check — debounced 500ms after the user stops typing
   useEffect(() => {
-    // TEMPORARY DEBUG — remove after diagnosing
-    console.log('[SlugInput] effect fired:', { value, originalSlug, excludeUserId });
     if (!value || value.length === 0) {
-      console.log('[SlugInput] empty value, status idle');
       setStatus('idle');
       setAlternatives([]);
       return;
@@ -87,12 +84,10 @@ export function SlugInput({
     // the check entirely and report it as available — otherwise their
     // own row would come back from the query and we'd flag it as taken.
     if (originalSlug !== undefined && value === originalSlug) {
-      console.log('[SlugInput] value matches originalSlug, status available (no fetch)');
       setStatus('available');
       setAlternatives([]);
       return;
     }
-    console.log('[SlugInput] will fetch in 500ms');
     setStatus('checking');
     setAlternatives([]);
     latestRequestRef.current = value;
