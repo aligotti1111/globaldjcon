@@ -15,7 +15,6 @@
 //   5. Clicking an available alternative selects it as the new slug
 
 import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { makeSlug } from './helpers';
 import styles from './signup.module.css';
 
@@ -60,7 +59,6 @@ export function SlugInput({
   excludeUserId,
   originalSlug,
 }: SlugInputProps) {
-  const supabase = createClient();
   const [status, setStatus] = useState<SlugStatus>('idle');
   const [alternatives, setAlternatives] = useState<AlternativeState[]>([]);
 
@@ -97,23 +95,30 @@ export function SlugInput({
     const timer = setTimeout(async () => {
       const slugAtStart = value;
       try {
-        // Build the uniqueness query. In editing mode (excludeUserId set)
-        // we also exclude the current user's own row so renaming to a
-        // novel slug doesn't get false-flagged when the slug happens to
-        // pass through their own normalized name in the future.
-        let query = supabase
-          .from('users')
-          .select('id')
-          .eq('slug', slugAtStart);
-        if (excludeUserId) {
-          query = query.neq('id', excludeUserId);
-        }
-        const { data } = await query.limit(1);
+        // Server-side check via /api/check-slug. Uses the admin client
+        // so RLS doesn't hide rows — critical on the editing pages where
+        // a logged-in user's view is restricted to their own row.
+        const res = await fetch('/api/check-slug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: slugAtStart,
+            excludeUserId: excludeUserId || undefined,
+          }),
+        });
+        const json: { available?: boolean } = await res.json();
 
         // Discard if a newer query started while we were waiting
         if (latestRequestRef.current !== slugAtStart) return;
 
-        if (data && data.length > 0) {
+        if (!res.ok || typeof json.available !== 'boolean') {
+          // On error, fall back to "idle" so the submit can still attempt
+          // with its own pre-flight check
+          setStatus('idle');
+          return;
+        }
+
+        if (!json.available) {
           setStatus('taken');
           // Kick off availability checks for each alternative
           checkAlternatives(slugAtStart);
@@ -141,15 +146,16 @@ export function SlugInput({
     // the state per-candidate so the UI reveals results progressively.
     await Promise.all(candidates.map(async (candidate) => {
       try {
-        let q = supabase
-          .from('users')
-          .select('id')
-          .eq('slug', candidate);
-        if (excludeUserId) {
-          q = q.neq('id', excludeUserId);
-        }
-        const { data } = await q.limit(1);
-        const isTaken = data && data.length > 0;
+        const res = await fetch('/api/check-slug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: candidate,
+            excludeUserId: excludeUserId || undefined,
+          }),
+        });
+        const json: { available?: boolean } = await res.json();
+        const isTaken = !json.available;
         setAlternatives(prev =>
           prev.map(a =>
             a.slug === candidate
