@@ -358,12 +358,11 @@ export default function ClubBookingTab({
                 </p>
               )}
 
-              {/* Per-equipment rate fields. Which fields show depends on
-                  the equipment selection above:
-                  - equip_full → can charge "with system" OR "with decks"
-                  - equip_decks → can charge "with decks" only
-                  - equip_none → only the "no-equip" rate (DJ shows up
-                                 with nothing). */}
+              {/* Per-equipment rate fields. Higher equipment tier = more
+                  rate options because the DJ COULD show up with less.
+                    - equip_full  → can charge full system / decks-only / no-equip
+                    - equip_decks → can charge decks-only / no-equip
+                    - equip_none  → only the no-equip rate (DJ has nothing) */}
               {ratesDraft.global_rate_type !== 'offers' && equipFull && (
                 <>
                   <RateInput
@@ -378,19 +377,33 @@ export default function ClubBookingTab({
                     value={ratesDraft.rate_with_decks}
                     onChange={(v) => setRateField('rate_with_decks', v)}
                   />
+                  <RateInput
+                    label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
+                    symbol={currentCurrency.symbol}
+                    value={ratesDraft.rate_no_equip}
+                    onChange={(v) => setRateField('rate_no_equip', v)}
+                  />
                 </>
               )}
               {ratesDraft.global_rate_type !== 'offers' && equipDecks && (
-                <RateInput
-                  label={`Rate${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                  symbol={currentCurrency.symbol}
-                  value={ratesDraft.rate_with_decks}
-                  onChange={(v) => setRateField('rate_with_decks', v)}
-                />
+                <>
+                  <RateInput
+                    label={`Rate with Decks/Controller only${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
+                    symbol={currentCurrency.symbol}
+                    value={ratesDraft.rate_with_decks}
+                    onChange={(v) => setRateField('rate_with_decks', v)}
+                  />
+                  <RateInput
+                    label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
+                    symbol={currentCurrency.symbol}
+                    value={ratesDraft.rate_no_equip}
+                    onChange={(v) => setRateField('rate_no_equip', v)}
+                  />
+                </>
               )}
               {ratesDraft.global_rate_type !== 'offers' && equipNone && (
                 <RateInput
-                  label={`Rate${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
+                  label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
                   symbol={currentCurrency.symbol}
                   value={ratesDraft.rate_no_equip}
                   onChange={(v) => setRateField('rate_no_equip', v)}
