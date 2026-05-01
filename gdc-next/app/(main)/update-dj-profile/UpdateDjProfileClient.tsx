@@ -516,7 +516,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               onChange={updateGeneral}
               djType={initialProfile.dj_type}
               email={authEmail}
-              slug={general.slug || initialProfile.slug}
+              slug={initialProfile.slug}
               siteUrl={siteUrl}
               userId={initialProfile.id}
             />
