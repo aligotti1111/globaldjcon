@@ -1,0 +1,188 @@
+/* ComposeMessageModal — shared styles used by every Message button entry
+   point. Mirrors the CounterModal aesthetic (CSS-module local scope so
+   nothing leaks). */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.modalBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: .05em;
+  color: var(--white);
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.modalCloseBtn:hover { color: var(--white); }
+
+/* ── Form fields ──────────────────────────────────────────────── */
+.fieldGroup {
+  margin-bottom: 1.1rem;
+}
+
+.fieldLabel {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .4rem;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, .3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem .85rem;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--neon, #00f5c4);
+}
+
+.input:disabled,
+.textarea:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.charCount {
+  text-align: right;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  color: var(--muted);
+  margin-top: .25rem;
+}
+
+/* ── Error text ───────────────────────────────────────────────── */
+.errorText {
+  color: #ff5f5f;
+  font-size: .82rem;
+  margin-top: .5rem;
+  margin-bottom: .75rem;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.actionsRow {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.cancelBtn,
+.sendBtn {
+  padding: .7rem 1.4rem;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid transparent;
+}
+
+.cancelBtn {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.cancelBtn:hover:not(:disabled) {
+  color: var(--white);
+  border-color: var(--white);
+}
+
+.sendBtn {
+  background: var(--neon, #00f5c4);
+  color: #050507;
+}
+.sendBtn:hover:not(:disabled) {
+  background: var(--neon-bright, #00ffd0);
+  filter: brightness(1.1);
+}
+
+.cancelBtn:disabled,
+.sendBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ── Sent state ───────────────────────────────────────────────── */
+.sentBox {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+
+.sentCheck {
+  font-size: 3rem;
+  color: var(--neon, #00f5c4);
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.sentText {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  color: var(--white);
+  margin-bottom: .4rem;
+}
+
+.sentSub {
+  color: var(--muted);
+  font-size: .85rem;
+  font-family: 'DM Sans', sans-serif;
+}
