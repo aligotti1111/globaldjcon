@@ -25,6 +25,8 @@ import {
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
+import { SlugAvailabilityCheck } from '@/components/SlugAvailabilityCheck';
+import { makeSlug } from '@/app/(simple)/signup/helpers';
 
 interface Props {
   state: GeneralFormState;
@@ -181,35 +183,63 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       {/* Password — inline edit form. Same pattern as email. */}
       <PasswordChangeBlock />
 
-      {/* Name */}
+      {/* Name + Custom URL — grouped together since the URL derives from
+          and lives under the name on signup. Label adapts to dj_type:
+          mobile DJs are typically a company brand ("DJ Nova Productions")
+          while club DJs go by a single stage name ("DJ Nova"). */}
       <div className={styles.formGroup}>
-        <label htmlFor="ud-name">DJ / Company Name</label>
+        <label htmlFor="ud-name">
+          {djType === 'club' ? 'DJ Name' : 'DJ / Company Name'}
+        </label>
         <input
           type="text"
           id="ud-name"
-          placeholder="e.g. DJ Nova"
+          placeholder={djType === 'club' ? 'e.g. DJ Nova' : 'e.g. DJ Nova Productions'}
           value={state.name}
           onChange={(e) => onChange('name', e.target.value)}
           className={styles.input}
         />
-      </div>
 
-      {/* Slug */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-slug">Custom Profile URL</label>
-        <input
-          type="text"
-          id="ud-slug"
-          placeholder="e.g. dj-nova"
-          autoComplete="off"
-          value={state.slug}
-          onChange={(e) => onChange('slug', e.target.value)}
-          className={styles.input}
-          style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem' }}
-        />
-        <p className={styles.fieldHint}>
-          {siteUrl}/<strong>{slugDisplay}</strong>
-        </p>
+        {/* Nested URL field — visually a sub-row inside the name group.
+            The URL is derived from the name on signup, so keeping them
+            together here mirrors that mental model. */}
+        <div style={{ marginTop: '.85rem', paddingLeft: '.85rem', borderLeft: '2px solid rgba(0, 245, 196, .2)' }}>
+          <label
+            htmlFor="ud-slug"
+            style={{
+              fontSize: '.7rem',
+              fontFamily: "'Space Mono', monospace",
+              letterSpacing: '.04em',
+              color: 'var(--muted)',
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: '.35rem',
+            }}
+          >
+            Custom Profile URL
+          </label>
+          <input
+            type="text"
+            id="ud-slug"
+            placeholder="e.g. dj-nova"
+            autoComplete="off"
+            value={state.slug}
+            onChange={(e) => onChange('slug', makeSlug(e.target.value))}
+            className={styles.input}
+            style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem' }}
+          />
+          <p className={styles.fieldHint}>
+            {siteUrl}/<strong>{slugDisplay}</strong>
+          </p>
+          {/* Live availability — debounced, hidden when slug is unchanged
+              from the value loaded from the DB. The DB-side save also
+              performs a uniqueness check as a safety net. */}
+          <SlugAvailabilityCheck
+            value={state.slug}
+            originalSlug={slug || ''}
+            userId={userId}
+          />
+        </div>
       </div>
 
       {/* Mobile event types — only for mobile DJs */}

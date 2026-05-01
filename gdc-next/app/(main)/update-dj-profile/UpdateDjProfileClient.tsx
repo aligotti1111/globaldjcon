@@ -419,7 +419,23 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       // clears (until the user makes new edits).
       initialGeneralRef.current = JSON.stringify(general);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Save failed';
+      // Detect Supabase/Postgres unique-violation on slug. The DB rejects
+      // duplicates with code '23505' (Postgres unique_violation) and the
+      // PostgREST layer surfaces it as HTTP 409. Show a slug-specific
+      // message + nudge the user back to General tab so they can fix it.
+      let msg: string;
+      const errAny = e as { code?: string; status?: number; message?: string };
+      const isSlugDup =
+        errAny?.code === '23505' ||
+        errAny?.status === 409 ||
+        (errAny?.message?.includes('users_slug') ?? false) ||
+        (errAny?.message?.toLowerCase().includes('duplicate') ?? false);
+      if (isSlugDup) {
+        msg = 'That Custom Profile URL is already taken — please pick another.';
+        setActiveTab('general');
+      } else {
+        msg = e instanceof Error ? e.message : 'Save failed';
+      }
       setAlertMsg({ kind: 'error', text: msg });
     }
     setSaving(false);
