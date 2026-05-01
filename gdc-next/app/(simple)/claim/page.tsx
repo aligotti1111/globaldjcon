@@ -96,8 +96,40 @@ function ClaimPageInner() {
 
       if (insErr) throw insErr;
 
-      // Step 3: notification email to admin + receipt email to claimant
-      // — DEFERRED until send-email API route exists.
+      // Send admin notification + claimant receipt. Both are fire-and-forget;
+      // failures don't block the success state because the claim is already
+      // saved to DB and admin can also see it in the admin panel.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'claim_request',
+            claimantName: trimmedName,
+            claimantEmail: trimmedEmail,
+            bizName: trimmedBiz,
+            slug: slug || undefined,
+            verifyMsg: verifyMsg.trim() || undefined,
+          }),
+        });
+      } catch (e) {
+        console.warn('Admin claim notification failed:', e);
+      }
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'claim_received',
+            claimantName: trimmedName,
+            claimantEmail: trimmedEmail,
+            bizName: trimmedBiz,
+            slug: slug || undefined,
+          }),
+        });
+      } catch (e) {
+        console.warn('Claimant receipt email failed:', e);
+      }
 
       setDone({ email: trimmedEmail });
     } catch (err) {
