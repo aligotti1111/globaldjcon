@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
+import ClubBookingCard from './ClubBookingCard';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
 import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
@@ -491,26 +492,31 @@ function FlatList({
 }: ListProps) {
   return (
     <>
-      {bookings.map((b) => (
-        <MobileBookingCard
-          key={b.id}
-          booking={b}
-          isIncoming={isIncoming}
-          orderNum={null}
-          isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
-          djZip={currentUser.zip}
-          djTravelDistance={currentUser.travelDistance}
-          onApprove={onApprove}
-          onDeny={onDeny}
-          onCancel={onCancel}
-          onBlock={onBlock}
-          onUnblock={onUnblock}
-          onCounter={onCounter}
-          onSendQuote={onSendQuote}
-          onAcceptCounter={onAcceptCounter}
-          onDeclineCounter={onDeclineCounter}
-        />
-      ))}
+      {bookings.map((b) => {
+        // Pick card by booking_type. Treat unknown / null as 'mobile' for
+        // legacy rows (vanilla didn't always set booking_type early on).
+        const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
+        return (
+          <Card
+            key={b.id}
+            booking={b}
+            isIncoming={isIncoming}
+            orderNum={null}
+            isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
+            djZip={currentUser.zip}
+            djTravelDistance={currentUser.travelDistance}
+            onApprove={onApprove}
+            onDeny={onDeny}
+            onCancel={onCancel}
+            onBlock={onBlock}
+            onUnblock={onUnblock}
+            onCounter={onCounter}
+            onSendQuote={onSendQuote}
+            onAcceptCounter={onAcceptCounter}
+            onDeclineCounter={onDeclineCounter}
+          />
+        );
+      })}
     </>
   );
 }
@@ -575,26 +581,29 @@ function SameDayGrouped({
           }
         }
 
-        const cards = group.map((b, idx) => (
-          <MobileBookingCard
-            key={b.id}
-            booking={b}
-            isIncoming={isIncoming}
-            orderNum={hasMultiple ? idx + 1 : null}
-            isBlocked={blocked.includes(b.requester_id)}
-            djZip={currentUser.zip}
-            djTravelDistance={currentUser.travelDistance}
-            onApprove={onApprove}
-            onDeny={onDeny}
-            onCancel={onCancel}
-            onBlock={onBlock}
-            onUnblock={onUnblock}
-            onCounter={onCounter}
-            onSendQuote={onSendQuote}
-            onAcceptCounter={onAcceptCounter}
-            onDeclineCounter={onDeclineCounter}
-          />
-        ));
+        const cards = group.map((b, idx) => {
+          const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
+          return (
+            <Card
+              key={b.id}
+              booking={b}
+              isIncoming={isIncoming}
+              orderNum={hasMultiple ? idx + 1 : null}
+              isBlocked={blocked.includes(b.requester_id)}
+              djZip={currentUser.zip}
+              djTravelDistance={currentUser.travelDistance}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              onCancel={onCancel}
+              onBlock={onBlock}
+              onUnblock={onUnblock}
+              onCounter={onCounter}
+              onSendQuote={onSendQuote}
+              onAcceptCounter={onAcceptCounter}
+              onDeclineCounter={onDeclineCounter}
+            />
+          );
+        });
 
         if (!hasMultiple) return cards;
 

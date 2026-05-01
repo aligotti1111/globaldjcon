@@ -55,6 +55,15 @@ interface BookingRow {
   package_details: string | null;
   quoted_rate: number | null;
   counter_rate: number | null;
+  // ── Club-DJ specific fields ─────────────────────────────────────
+  // Vanilla writes these on club bookings only; null for mobile.
+  venue_type: string | null;          // 'bar' | 'club'
+  set_type: string | null;            // 'opening' | 'headliner' | 'closing' | 'opening_close' | 'opening_and_closing'
+  equipment: string | null;           // 'sound_system' | 'decks_only' | 'venue_provides'
+  venue_equip_detail: string | null;  // free text when equipment = 'venue_provides'
+  offer_amount: number | null;        // when DJ accepts offers
+  country: string | null;
+  currency: string | null;
   // Optional message attached to a counter offer or quote response
   counter_message: string | null;
   // Negotiation log: append-only array of { from, amount, message, created_at }
