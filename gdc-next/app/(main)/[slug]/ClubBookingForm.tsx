@@ -211,12 +211,12 @@ export default function ClubBookingForm({
     return [
       {
         value: 'sound_system',
-        label: 'Full sound system & decks',
+        label: 'Full sound system and decks/controller must be provided by DJ',
         supported: !!bookingSettings.equip_full,
       },
       {
         value: 'decks_only',
-        label: 'Decks/controller only',
+        label: 'Decks or controller must be provided by DJ',
         supported: !!(bookingSettings.equip_full || bookingSettings.equip_decks),
       },
       {
@@ -513,7 +513,7 @@ export default function ClubBookingForm({
         </FormSection>
 
         {/* Equipment */}
-        <FormSection label="Equipment">
+        <FormSection label="Equipment for venue">
           <div className={styles.pillCol}>
             {equipmentOptions.map((opt) => {
               const isActive = equipment === opt.value;
@@ -536,11 +536,16 @@ export default function ClubBookingForm({
           </div>
 
           {/* Inline warning when the booker picks something the DJ can't
-              fulfill. Submitting is blocked too — see handleSubmit. */}
+              fulfill. Message names the DJ + the gear they can't bring,
+              so the user knows exactly what's not possible. Submitting
+              is blocked too — see handleSubmit. */}
           {equipment && !isEquipmentSupported && (
             <div className={styles.equipWarning}>
-              This DJ isn&apos;t able to bring that equipment. Please pick
-              a different option below.
+              {dj.name || 'This DJ'} is unable to provide{' '}
+              {equipment === 'sound_system'
+                ? 'a full sound system and decks'
+                : 'decks/controller'}
+              . Please pick a different option below.
             </div>
           )}
 
