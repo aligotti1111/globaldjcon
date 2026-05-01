@@ -39,6 +39,16 @@ interface SlugInputProps {
   generateAlternatives: (slug: string) => string[];
   // Placeholder text for the input
   placeholder?: string;
+  // ── Editing mode (Update DJ Profile / Account Settings) ───────────
+  // When the user already owns a profile and is just renaming it, we
+  // need to (a) skip flagging their own existing slug as "Taken" and
+  // (b) exclude their own row from the uniqueness query so a different
+  // slug they pick that no one else uses comes back as "Available".
+  excludeUserId?: string;
+  // Original slug from the DB. When value matches this, the component
+  // treats it as "their existing slug" → status forced to 'available'
+  // and no DB query fires.
+  originalSlug?: string;
 }
 
 export function SlugInput({
@@ -47,6 +57,8 @@ export function SlugInput({
   onStatusChange,
   generateAlternatives,
   placeholder = 'your-url',
+  excludeUserId,
+  originalSlug,
 }: SlugInputProps) {
   const supabase = createClient();
   const [status, setStatus] = useState<SlugStatus>('idle');
@@ -69,6 +81,15 @@ export function SlugInput({
       setAlternatives([]);
       return;
     }
+    // Editing-mode shortcut: when the user is editing their own profile
+    // and hasn't changed the slug from what's already in the DB, skip
+    // the check entirely and report it as available — otherwise their
+    // own row would come back from the query and we'd flag it as taken.
+    if (originalSlug !== undefined && value === originalSlug) {
+      setStatus('available');
+      setAlternatives([]);
+      return;
+    }
     setStatus('checking');
     setAlternatives([]);
     latestRequestRef.current = value;
@@ -76,11 +97,18 @@ export function SlugInput({
     const timer = setTimeout(async () => {
       const slugAtStart = value;
       try {
-        const { data } = await supabase
+        // Build the uniqueness query. In editing mode (excludeUserId set)
+        // we also exclude the current user's own row so renaming to a
+        // novel slug doesn't get false-flagged when the slug happens to
+        // pass through their own normalized name in the future.
+        let query = supabase
           .from('users')
           .select('id')
-          .eq('slug', slugAtStart)
-          .limit(1);
+          .eq('slug', slugAtStart);
+        if (excludeUserId) {
+          query = query.neq('id', excludeUserId);
+        }
+        const { data } = await query.limit(1);
 
         // Discard if a newer query started while we were waiting
         if (latestRequestRef.current !== slugAtStart) return;
@@ -101,7 +129,7 @@ export function SlugInput({
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, originalSlug, excludeUserId]);
 
   // Run availability checks for each alternative in parallel
   async function checkAlternatives(takenSlug: string) {
@@ -113,11 +141,14 @@ export function SlugInput({
     // the state per-candidate so the UI reveals results progressively.
     await Promise.all(candidates.map(async (candidate) => {
       try {
-        const { data } = await supabase
+        let q = supabase
           .from('users')
           .select('id')
-          .eq('slug', candidate)
-          .limit(1);
+          .eq('slug', candidate);
+        if (excludeUserId) {
+          q = q.neq('id', excludeUserId);
+        }
+        const { data } = await q.limit(1);
         const isTaken = data && data.length > 0;
         setAlternatives(prev =>
           prev.map(a =>
