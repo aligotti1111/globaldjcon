@@ -558,60 +558,41 @@
   }
 }
 
-/* ── Owner-mode controls (✓/✗ + ✏️) — absolute corners overlay ─── */
+/* ── Owner-mode controls (✓/✗ + ✏️) — match mobile calendar style ──
+   Transparent buttons, no border, no background. ✕ in white-faded that
+   turns neon when active (= unavailable). Pencil in muted gray. */
 .ownerCornerBtn {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
-  font-weight: 700;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: rgba(5, 5, 7, 0.8);
+  background: transparent;
+  border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
   line-height: 1;
-  transition: all 0.15s;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   z-index: 2;
 }
 .ownerCornerBtnBottomLeft {
-  bottom: 3px;
-  left: 3px;
+  bottom: 4px;
+  left: 4px;
+  font-size: .8rem;
+  font-weight: 700;
 }
 .ownerCornerBtnBottomRight {
-  bottom: 3px;
-  right: 3px;
+  bottom: 4px;
+  right: 4px;
+  font-size: .75rem;
+  color: var(--muted);
+}
+.ownerCornerBtnBottomRight:hover {
+  filter: brightness(1.3);
 }
 .ownerCornerBtnX {
-  color: #ff5f5f;
-  border-color: rgba(255, 95, 95, .55);
+  color: rgba(255, 255, 255, .3);
 }
 .ownerCornerBtnX:hover {
-  background: #ff5f5f;
-  color: #050507;
-  border-color: #ff5f5f;
+  color: rgba(255, 255, 255, .7);
 }
 .ownerCornerBtnCheck {
   color: var(--neon);
-  border-color: var(--neon);
-}
-.ownerCornerBtnCheck:hover {
-  background: var(--neon);
-  color: #050507;
-}
-/* Edit (pencil) button styling — neutral default, neon hover */
-.ownerCornerBtnBottomRight {
-  border-color: var(--border);
-  color: var(--white);
-}
-.ownerCornerBtnBottomRight:hover {
-  border-color: var(--neon);
-  background: var(--neon);
 }
 
 /* ── Owner-mode day-edit modal ─────────────────────────────────── */
