@@ -1,0 +1,93 @@
+/* ConfirmModal — site-uniform yes/no prompt. Same modal aesthetic as
+   ComposeMessageModal / CounterModal (CSS-module local scope). */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(0, 0, 0, .85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.modalBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  color: var(--white);
+  margin-bottom: .65rem;
+  line-height: 1.2;
+}
+
+.message {
+  color: var(--muted);
+  font-size: .88rem;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.55;
+  margin-bottom: 1.4rem;
+}
+
+/* If there's no .message we still want spacing before the buttons */
+.title:not(:has(+ .message)) {
+  margin-bottom: 1.4rem;
+}
+
+.actionsRow {
+  display: flex;
+  gap: .65rem;
+  justify-content: flex-end;
+}
+
+.cancelBtn,
+.confirmBtn,
+.confirmBtnDanger {
+  padding: .65rem 1.25rem;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid transparent;
+}
+
+.cancelBtn {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.cancelBtn:hover {
+  color: var(--white);
+  border-color: var(--white);
+}
+
+.confirmBtn {
+  background: var(--neon, #00f5c4);
+  color: #050507;
+}
+.confirmBtn:hover {
+  filter: brightness(1.1);
+}
+
+.confirmBtnDanger {
+  background: #ff5f5f;
+  color: #050507;
+}
+.confirmBtnDanger:hover {
+  filter: brightness(1.1);
+}
