@@ -454,6 +454,45 @@ export default function ClubBookingForm({
             onChange={(e) => setVenueName(e.target.value)}
             className={styles.input}
           />
+          {/* Country sits between venue name and address so picking it
+              first scopes the address autocomplete to that country. */}
+          <select
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value);
+              // Suggestions + picked coords were country-scoped, so they're
+              // stale now. Clear them so the booker re-searches under the
+              // new country before they pick a result.
+              setAddrSuggestions([]);
+              setShowAddrSuggestions(false);
+              venueCoordsRef.current = null;
+            }}
+            className={styles.input}
+            style={{ marginTop: '.5rem', cursor: 'pointer' }}
+          >
+            <option value="US">United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="CA">Canada</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="ES">Spain</option>
+            <option value="IT">Italy</option>
+            <option value="NL">Netherlands</option>
+            <option value="SE">Sweden</option>
+            <option value="NO">Norway</option>
+            <option value="DK">Denmark</option>
+            <option value="NZ">New Zealand</option>
+            <option value="SG">Singapore</option>
+            <option value="ZA">South Africa</option>
+            <option value="AE">UAE</option>
+            <option value="IN">India</option>
+            <option value="JP">Japan</option>
+            <option value="MX">Mexico</option>
+            <option value="BR">Brazil</option>
+            <option value="CH">Switzerland</option>
+            <option value="IE">Ireland</option>
+          </select>
           {/* Venue Address — Nominatim autocomplete dropdown.
               Coords from a picked suggestion are stored in the ref so
               they can be sent with the booking insert (DJ uses them
@@ -476,7 +515,7 @@ export default function ClubBookingForm({
                   return;
                 }
                 addrTimerRef.current = setTimeout(async () => {
-                  const results = await searchAddresses(val.trim());
+                  const results = await searchAddresses(val.trim(), country);
                   setAddrSuggestions(results);
                   setShowAddrSuggestions(results.length > 0);
                 }, 350);
@@ -516,35 +555,6 @@ export default function ClubBookingForm({
               </div>
             )}
           </div>
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className={styles.input}
-            style={{ marginTop: '.5rem', cursor: 'pointer' }}
-          >
-            <option value="US">United States</option>
-            <option value="GB">United Kingdom</option>
-            <option value="CA">Canada</option>
-            <option value="AU">Australia</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-            <option value="ES">Spain</option>
-            <option value="IT">Italy</option>
-            <option value="NL">Netherlands</option>
-            <option value="SE">Sweden</option>
-            <option value="NO">Norway</option>
-            <option value="DK">Denmark</option>
-            <option value="NZ">New Zealand</option>
-            <option value="SG">Singapore</option>
-            <option value="ZA">South Africa</option>
-            <option value="AE">UAE</option>
-            <option value="IN">India</option>
-            <option value="JP">Japan</option>
-            <option value="MX">Mexico</option>
-            <option value="BR">Brazil</option>
-            <option value="CH">Switzerland</option>
-            <option value="IE">Ireland</option>
-          </select>
         </FormSection>
 
         {/* Times */}

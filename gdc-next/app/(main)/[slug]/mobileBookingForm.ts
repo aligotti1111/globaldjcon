@@ -217,12 +217,19 @@ export interface AddressSuggestion {
 }
 
 export async function searchAddresses(
-  query: string
+  query: string,
+  // Optional ISO 3166-1 alpha-2 country code (e.g. "US", "GB"). When
+  // present, restricts Nominatim results to that country only. Vanilla
+  // ib_searchAddresses uses the same `countrycodes=` param when the
+  // booker has picked a country on the booking form.
+  country?: string | null,
 ): Promise<AddressSuggestion[]> {
   if (query.length < 3) return [];
   try {
+    const cc = (country || '').trim().toLowerCase();
+    const ccParam = cc ? `&countrycodes=${encodeURIComponent(cc)}` : '';
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1${ccParam}`
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
