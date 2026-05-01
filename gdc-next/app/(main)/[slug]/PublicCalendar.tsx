@@ -49,15 +49,15 @@ interface Props {
   // persists changes back to users.booking_settings on save.
   isOwnProfile: boolean;
   // Currently-selected date (YYYY-MM-DD) — driven by the booking form when
-  // it lives next to this calendar. For Session 4 always null; Session 5
-  // wires it up.
+  // it lives next to this calendar.
   selectedDate?: string | null;
-  // Called when the user clicks "Book Now" on an open cell. Provider passes
-  // the dateKey. For Session 4 we show an alert; Session 5 will replace it.
+  // Called when the user clicks "Book Now" on an open cell. Provider
+  // passes the dateKey.
   onBookDate?: (dateKey: string) => void;
-  // Called when a logged-out visitor clicks "Book Now". Session 5 will open
-  // the gate modal here.
-  onLoggedOutBookAttempt?: () => void;
+  // Called when a logged-out visitor clicks "Book Now". Provider gets
+  // the dateKey so it can open a login gate that returns the user to
+  // this date after auth.
+  onLoggedOutBookAttempt?: (dateKey: string) => void;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -278,20 +278,10 @@ export default function PublicCalendar({
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
     if (!isLoggedIn) {
-      if (onLoggedOutBookAttempt) {
-        onLoggedOutBookAttempt();
-      } else {
-        // Session 4 placeholder — Session 5 will replace
-        alert('Please log in to book this DJ.');
-      }
+      onLoggedOutBookAttempt?.(key);
       return;
     }
-    if (onBookDate) {
-      onBookDate(key);
-    } else {
-      // Session 4 placeholder
-      alert(`Booking flow coming soon. Selected: ${key}`);
-    }
+    onBookDate?.(key);
   }
 
   function handleBookedCellClick(d: DayData, key: string) {

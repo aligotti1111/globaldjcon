@@ -9,11 +9,14 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './profile.module.css';
+import { useAuth } from '@/components/AuthProvider';
 import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
 import { buildMixEmbed, buildVideoEmbed } from './embeds';
 import { parseBookingSettings } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
+import ClubBookingForm from './ClubBookingForm';
+import BookingLoginGate from './BookingLoginGate';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
@@ -109,6 +112,24 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [activeTab, setActiveTab] = useState<TabKey>(
     showBookingTab ? 'booking' : 'about'
   );
+  // Club-booking flow — selectedDate drives the form, loginGateForDate
+  // shows the login gate for unauthenticated visitors. Mirror of the
+  // pattern in MobilePublicCalendar (which holds these internally).
+  const { user: currentUser } = useAuth();
+  const [clubSelectedDate, setClubSelectedDate] = useState<string | null>(null);
+  const [clubLoginGateDate, setClubLoginGateDate] = useState<string | null>(null);
+  // If the URL has ?date= AND this is a club DJ profile AND visitor is
+  // logged in, auto-open the booking form for that date. Mirrors the
+  // MobilePublicCalendar behavior so embed-calendar links land on the
+  // form regardless of DJ type.
+  useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (!dateParam) return;
+    if (!showClubAvailabilityTab) return;
+    if (!isLoggedIn || !currentUser) return;
+    setClubSelectedDate(dateParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, showClubAvailabilityTab, isLoggedIn, currentUser?.id]);
   // If the visitor lands with ?date=, also scroll the tab area into view
   // so they don't have to hunt for the booking calendar. Only fires once
   // on mount.
@@ -370,7 +391,36 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 djName={data.name || ''}
                 isLoggedIn={isLoggedIn}
                 isOwnProfile={isOwnProfile}
+                selectedDate={clubSelectedDate}
+                onBookDate={(key) => setClubSelectedDate(key)}
+                onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
               />
+              {!isOwnProfile && clubSelectedDate && currentUser && (
+                <ClubBookingForm
+                  key={clubSelectedDate}
+                  dateKey={clubSelectedDate}
+                  dj={{
+                    id: data.id,
+                    name: data.name,
+                    slug: effectiveSlug,
+                  }}
+                  bookingSettings={bookingSettings!}
+                  currentUser={{
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    name: currentUser.name,
+                  }}
+                  onClose={() => setClubSelectedDate(null)}
+                />
+              )}
+              {clubLoginGateDate !== null && (
+                <BookingLoginGate
+                  djName={data.name || ''}
+                  djSlug={effectiveSlug}
+                  dateKey={clubLoginGateDate}
+                  onClose={() => setClubLoginGateDate(null)}
+                />
+              )}
             </div>
           )}
           {showMobileBookingTab && (
