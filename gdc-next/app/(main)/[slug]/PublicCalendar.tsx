@@ -508,42 +508,12 @@ function SingleMonthView({
     else if (isToday) numClasses.push(styles.cellNumToday);
 
     // What goes inside the cell (below the number)?
+    // PUBLIC inner content first — applies to both visitor and owner
+    // views so owners see the same booked-event names / book pill /
+    // unavailable styling as visitors. Owner controls are an OVERLAY
+    // rendered separately below.
     let inner: React.ReactNode = null;
-    if (isOwnProfile && !isPast) {
-      // Owner mode — show ✓/✗ quick-mark + ✏️ pencil edit controls.
-      // Booked dates skip the quick-mark (you can't quick-toggle a date
-      // that has an event scheduled — open the editor to clear it).
-      inner = (
-        <div className={styles.ownerControlsRow}>
-          {!isBooked && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOwnerQuickToggle(key);
-              }}
-              className={`${styles.ownerQuickBtn} ${
-                isUnavail ? styles.ownerQuickBtnCheck : styles.ownerQuickBtnX
-              }`}
-              title={isUnavail ? 'Mark available' : 'Mark unavailable'}
-            >
-              {isUnavail ? '✓' : '✕'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOwnerEdit(key);
-            }}
-            className={styles.ownerEditBtn}
-            title="Edit day"
-          >
-            ✏️
-          </button>
-        </div>
-      );
-    } else if (!isPast) {
+    if (!isPast) {
       if (isBooked) {
         // Booked: show event name + time + ticket icon (if public event)
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
@@ -573,8 +543,8 @@ function SingleMonthView({
         );
       } else if (isUnavail) {
         inner = null; // no badge for unavail
-      } else {
-        // Open cell — show "Book Now" badge
+      } else if (!isOwnProfile) {
+        // Open cell — show "Book Now" badge (owners don't book themselves)
         inner = (
           <div
             className={styles.bookBadge}
@@ -586,6 +556,41 @@ function SingleMonthView({
         );
       }
     }
+
+    // Owner control overlay — rendered as absolute-positioned buttons
+    // in the corners so they sit on top of the public cell content
+    // (event name / Book pill) without replacing it. ✕/✓ goes top-right;
+    // ✏️ goes bottom-right.
+    const ownerOverlay = isOwnProfile && !isPast ? (
+      <>
+        {!isBooked && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOwnerQuickToggle(key);
+            }}
+            className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnTopRight} ${
+              isUnavail ? styles.ownerCornerBtnCheck : styles.ownerCornerBtnX
+            }`}
+            title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+          >
+            {isUnavail ? '✓' : '✕'}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOwnerEdit(key);
+          }}
+          className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomRight}`}
+          title="Edit day"
+        >
+          ✏️
+        </button>
+      </>
+    ) : null;
 
     // Collect public booked events for the list-below — FUTURE events only.
     // (Vanilla shows past events in the list too, but the product decision
@@ -608,6 +613,7 @@ function SingleMonthView({
       >
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
+        {ownerOverlay}
       </div>
     );
   }
