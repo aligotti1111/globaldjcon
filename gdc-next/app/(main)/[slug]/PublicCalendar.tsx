@@ -20,8 +20,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import styles from './calendar.module.css';
+import { createClient } from '@/lib/supabase/client';
 import {
   type BookingDays,
+  type BookingSettings,
   type DayData,
   cleanLocation,
   formatTime12,
@@ -38,9 +40,14 @@ const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 interface Props {
   bookingDays: BookingDays;
   bookingWindowMonths: number;
+  djId: string;
   djSlug: string;
   djName: string;
   isLoggedIn: boolean;
+  // True when the logged-in user IS this DJ. Swaps the public booking
+  // pill for owner controls (✓/✗ quick-mark + ✏️ pencil-edit) and
+  // persists changes back to users.booking_settings on save.
+  isOwnProfile: boolean;
   // Currently-selected date (YYYY-MM-DD) — driven by the booking form when
   // it lives next to this calendar. For Session 4 always null; Session 5
   // wires it up.
@@ -93,16 +100,25 @@ function isInRange(y: number, m: number, windowMonths: number): boolean {
 // ──────────────────────────────────────────────────────────────────────────
 
 export default function PublicCalendar({
-  bookingDays,
+  bookingDays: initialBookingDays,
   bookingWindowMonths,
+  djId,
   djName,
   djSlug,
   isLoggedIn,
+  isOwnProfile,
   selectedDate = null,
   onBookDate,
   onLoggedOutBookAttempt,
 }: Props) {
   const today = useMemo(() => new Date(), []);
+  // For owner mode we maintain a local copy of bookingDays so quick-marks
+  // and edit-modal saves are reflected immediately while the Supabase
+  // write happens in the background. Public visitors get the prop value
+  // straight through (no edits possible).
+  const [bookingDays, setBookingDays] = useState<BookingDays>(initialBookingDays);
+  // Owner edit modal — null when closed; the dateKey when open.
+  const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-11
   const [rollingActive, setRollingActive] = useState(false);
@@ -132,6 +148,76 @@ export default function PublicCalendar({
     }
     return () => { document.body.style.overflow = ''; };
   }, [popupEvent]);
+
+  // ── Owner mode: persist + quick-toggle + save modal ─────────────
+  // When isOwnProfile is true, the cells render owner controls (✓/✗
+  // quick-mark + ✏️ pencil edit) instead of the public Book pill.
+  // Edits update local state immediately; the Supabase write happens
+  // in the background. This mirrors MobilePublicCalendar's pattern.
+
+  // Keep local state in sync if the parent re-renders with new data
+  // (e.g. fresh fetch). We only override when the prop reference
+  // actually changes — owner edits flow through setBookingDays here
+  // and would be clobbered if we mirrored the prop on every render.
+  useEffect(() => {
+    setBookingDays(initialBookingDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialBookingDays]);
+
+  async function persistBookingDays(nextDays: BookingDays) {
+    const supabase = createClient();
+    try {
+      const { data: current } = await supabase
+        .from('users')
+        .select('booking_settings')
+        .eq('id', djId)
+        .single<{ booking_settings: string | null }>();
+      let bs: BookingSettings = {};
+      if (current?.booking_settings) {
+        try {
+          bs = typeof current.booking_settings === 'string'
+            ? JSON.parse(current.booking_settings)
+            : current.booking_settings;
+        } catch {
+          bs = {};
+        }
+      }
+      bs.booking_days = nextDays;
+      await supabase
+        .from('users')
+        .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
+        .eq('id', djId);
+    } catch (err) {
+      console.error('persistBookingDays error:', err);
+    }
+  }
+
+  // Quick-toggle a date Available <-> Unavailable. Booked days can't be
+  // toggled from the cell — owner has to open the editor to clear an
+  // event. (Matches MobilePublicCalendar.)
+  function quickToggleUnavail(key: string) {
+    const cur = bookingDays[key];
+    if (cur && cur.booked) return;
+    const next: BookingDays = { ...bookingDays };
+    if (cur && cur.unavailable) {
+      delete next[key];
+    } else {
+      next[key] = { unavailable: true };
+    }
+    setBookingDays(next);
+    persistBookingDays(next);
+  }
+
+  // Save handler from the day-edit modal. update === null means "reset
+  // to default" (drop the entry entirely).
+  async function saveOwnerEdit(key: string, update: DayData | null) {
+    const next: BookingDays = { ...bookingDays };
+    if (update === null) delete next[key];
+    else next[key] = update;
+    setBookingDays(next);
+    setOwnerEditKey(null);
+    await persistBookingDays(next);
+  }
 
   // ── Navigation handlers ────────────────────────────────────────────
   function showRangeMsg() {
@@ -303,6 +389,9 @@ export default function PublicCalendar({
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           onBookedCellClick={handleBookedCellClick}
+          isOwnProfile={isOwnProfile}
+          onOwnerQuickToggle={quickToggleUnavail}
+          onOwnerEdit={setOwnerEditKey}
         />
       )}
 
@@ -325,6 +414,20 @@ export default function PublicCalendar({
           onClose={() => setPopupEvent(null)}
         />
       )}
+
+      {/* OWNER DAY-EDIT MODAL — opens when ownerEditKey is non-null.
+          Reuses ClubDayEditModal? No — that lives in update-dj-profile
+          and we don't want to import across feature boundaries. We do
+          a lightweight inline version here that supports the same
+          status + event name fields. */}
+      {isOwnProfile && ownerEditKey && (
+        <OwnerDayEditPopup
+          dateKey={ownerEditKey}
+          dayData={bookingDays[ownerEditKey] || {}}
+          onClose={() => setOwnerEditKey(null)}
+          onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
+        />
+      )}
     </div>
   );
 }
@@ -341,6 +444,9 @@ function SingleMonthView({
   selectedDate,
   onBookClick,
   onBookedCellClick,
+  isOwnProfile,
+  onOwnerQuickToggle,
+  onOwnerEdit,
 }: {
   year: number;
   month: number;
@@ -349,6 +455,12 @@ function SingleMonthView({
   selectedDate: string | null;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   onBookedCellClick: (d: DayData, key: string) => void;
+  // Owner-mode controls — when isOwnProfile is true, cells render
+  // ✓/✗ + ✏️ buttons that call these handlers instead of the public
+  // Book pill / booked-event popup.
+  isOwnProfile: boolean;
+  onOwnerQuickToggle: (key: string) => void;
+  onOwnerEdit: (key: string) => void;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -397,7 +509,41 @@ function SingleMonthView({
 
     // What goes inside the cell (below the number)?
     let inner: React.ReactNode = null;
-    if (!isPast) {
+    if (isOwnProfile && !isPast) {
+      // Owner mode — show ✓/✗ quick-mark + ✏️ pencil edit controls.
+      // Booked dates skip the quick-mark (you can't quick-toggle a date
+      // that has an event scheduled — open the editor to clear it).
+      inner = (
+        <div className={styles.ownerControlsRow}>
+          {!isBooked && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOwnerQuickToggle(key);
+              }}
+              className={`${styles.ownerQuickBtn} ${
+                isUnavail ? styles.ownerQuickBtnCheck : styles.ownerQuickBtnX
+              }`}
+              title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+            >
+              {isUnavail ? '✓' : '✕'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOwnerEdit(key);
+            }}
+            className={styles.ownerEditBtn}
+            title="Edit day"
+          >
+            ✏️
+          </button>
+        </div>
+      );
+    } else if (!isPast) {
       if (isBooked) {
         // Booked: show event name + time + ticket icon (if public event)
         const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
@@ -448,7 +594,9 @@ function SingleMonthView({
       monthEvents.push({ day: d, key, data: dayData });
     }
 
-    const cellClickHandler = isBooked && !isPrivate && dayData.eventName
+    // In owner mode the booked-event popup is suppressed — owner uses
+    // the pencil edit button to manage the day, not the public popup.
+    const cellClickHandler = !isOwnProfile && isBooked && !isPrivate && dayData.eventName
       ? () => onBookedCellClick(dayData, key)
       : undefined;
 
@@ -711,6 +859,136 @@ function BookedEventPopup({
         <div className={styles.bookedPopupName}>{event.eventName}</div>
         {timeStr && <div className={styles.bookedPopupTime}>{timeStr}</div>}
         {cleanLoc && <div className={styles.bookedPopupLoc}>{cleanLoc}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// OwnerDayEditPopup — owner-mode day editor modal (status-only first cut).
+// Mirror of ClubDayEditModal in update-dj-profile/, but lives here so the
+// public profile doesn't need to import across feature boundaries.
+//
+// Future: per-day rate overrides + address autocomplete + time pickers
+// (deferred to follow-up session — same as the update-dj-profile editor).
+// ──────────────────────────────────────────────────────────────────────────
+
+function OwnerDayEditPopup({
+  dateKey,
+  dayData,
+  onClose,
+  onSave,
+}: {
+  dateKey: string;
+  dayData: DayData;
+  onClose: () => void;
+  onSave: (update: DayData | null) => void;
+}) {
+  const [status, setStatus] = useState<'available' | 'unavailable' | 'booked'>(
+    dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available'
+  );
+  const [eventName, setEventName] = useState<string>(dayData.eventName || '');
+
+  // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
+  const formatted = useMemo(() => {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    if (!y || !m || !d) return dateKey;
+    const dt = new Date(y, m - 1, d, 12, 0, 0);
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    });
+  }, [dateKey]);
+
+  // Lock body scroll
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = orig; };
+  }, []);
+
+  function handleSave() {
+    if (status === 'available') {
+      onSave(null);
+      return;
+    }
+    if (status === 'unavailable') {
+      onSave({ unavailable: true });
+      return;
+    }
+    onSave({
+      booked: true,
+      eventName: eventName.trim() || undefined,
+    });
+  }
+
+  return (
+    <div className={styles.ownerEditBackdrop} onClick={onClose}>
+      <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.ownerEditHeader}>
+          <div className={styles.ownerEditDate}>{formatted}</div>
+          <button type="button" onClick={onClose} className={styles.ownerEditClose}>✕</button>
+        </div>
+
+        <div className={styles.ownerEditStatusRow}>
+          <label className={styles.ownerEditStatusLabel}>
+            <input
+              type="radio"
+              name="day-status"
+              checked={status === 'available'}
+              onChange={() => setStatus('available')}
+              style={{ accentColor: 'var(--neon)' }}
+            />
+            <span style={{ color: 'var(--white)' }}>Available</span>
+          </label>
+          <label className={styles.ownerEditStatusLabel}>
+            <input
+              type="radio"
+              name="day-status"
+              checked={status === 'unavailable'}
+              onChange={() => setStatus('unavailable')}
+              style={{ accentColor: 'var(--muted)' }}
+            />
+            <span style={{ color: 'var(--muted)' }}>Unavailable</span>
+          </label>
+          <label className={styles.ownerEditStatusLabel}>
+            <input
+              type="radio"
+              name="day-status"
+              checked={status === 'booked'}
+              onChange={() => setStatus('booked')}
+              style={{ accentColor: '#ff5f5f' }}
+            />
+            <span style={{ color: '#ff5f5f' }}>Booked (has event)</span>
+          </label>
+        </div>
+
+        {status === 'booked' && (
+          <div className={styles.ownerEditBookedFields}>
+            <div className={styles.ownerEditFieldGroup}>
+              <label className={styles.ownerEditFieldLabel}>Event / Venue Name</label>
+              <input
+                type="text"
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="e.g. Saturday Night Live"
+                className={styles.ownerEditInput}
+              />
+            </div>
+            <p className={styles.ownerEditComingSoon}>
+              Address, times, ticket URL, and per-day rate overrides
+              coming in a future update.
+            </p>
+          </div>
+        )}
+
+        <div className={styles.ownerEditActions}>
+          <button type="button" onClick={onClose} className={styles.ownerEditCancelBtn}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );

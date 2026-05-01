@@ -556,3 +556,188 @@
     letter-spacing: 0;
   }
 }
+
+/* ── Owner-mode controls (✓/✗ + ✏️) inside cells ─────────────── */
+.ownerControlsRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+.ownerQuickBtn {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+.ownerQuickBtnX {
+  color: rgba(255, 95, 95, .7);
+  border-color: rgba(255, 95, 95, .35);
+}
+.ownerQuickBtnX:hover {
+  background: rgba(255, 95, 95, .15);
+  color: #ff5f5f;
+  border-color: #ff5f5f;
+}
+.ownerQuickBtnCheck {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.ownerQuickBtnCheck:hover {
+  background: var(--neon);
+  color: var(--black);
+}
+.ownerEditBtn {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+.ownerEditBtn:hover {
+  border-color: var(--neon);
+  background: rgba(0, 245, 196, .1);
+}
+
+/* ── Owner-mode day-edit modal ─────────────────────────────────── */
+.ownerEditBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  backdrop-filter: blur(3px);
+}
+.ownerEditBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.ownerEditHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.ownerEditDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+}
+.ownerEditClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: .25rem .5rem;
+}
+.ownerEditClose:hover { color: var(--white); }
+
+.ownerEditStatusRow {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.ownerEditStatusLabel {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+  font-size: .85rem;
+}
+
+.ownerEditBookedFields {
+  background: var(--deep);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.ownerEditFieldGroup {
+  margin-bottom: .75rem;
+}
+.ownerEditFieldLabel {
+  display: block;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: .25rem;
+}
+.ownerEditInput {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .5rem .75rem;
+  color: var(--white);
+  font-size: .85rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.ownerEditComingSoon {
+  margin: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .05em;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.ownerEditActions {
+  display: flex;
+  gap: .75rem;
+}
+.ownerEditCancelBtn {
+  flex: 1;
+  padding: .75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ownerEditCancelBtn:hover { color: var(--white); border-color: var(--white); }
+.ownerEditSaveBtn {
+  flex: 1;
+  padding: .75rem;
+  background: var(--neon);
+  border: none;
+  border-radius: 6px;
+  color: var(--black);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.ownerEditSaveBtn:hover { opacity: .85; }

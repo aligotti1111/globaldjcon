@@ -365,9 +365,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
+                djId={data.id}
                 djSlug={effectiveSlug}
                 djName={data.name || ''}
                 isLoggedIn={isLoggedIn}
+                isOwnProfile={isOwnProfile}
               />
             </div>
           )}
