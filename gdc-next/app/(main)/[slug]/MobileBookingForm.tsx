@@ -260,60 +260,28 @@ export default function MobileBookingForm({
 
       if (insertError) throw insertError;
 
-      // EMAIL SENDING — skipped in this session.
-      //
-      // Vanilla calls /.netlify/functions/send-email with type
-      // 'mob_booking_request' (to DJ) and 'mob_booking_confirm' (to booker)
-      // here, but those types aren't actually implemented in vanilla's
-      // send-email.js (calls return 400 and fail silently due to try/catch).
-      // We have the same behavior — booking is saved to DB, no emails sent.
-      //
-      // When the email types are added in a future session, restore these:
-      //
-      // try {
-      //   await fetch('/api/send-email', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({
-      //       type: 'mob_booking_request',
-      //       djUserId: dj.id, djName: dj.name,
-      //       requesterName: currentUser.name,
-      //       eventDate: dateKey,
-      //       eventType: MOB_EVENT_TYPE_LABELS[eventType] || eventTypeOther || eventType,
-      //       venueName: venueName.trim(), venueAddress: venueAddress.trim(),
-      //       roomDetails: room.trim(), guestCount: guests || null,
-      //       packageTitle: selectedPkg.title, packageCategory: cat,
-      //       startTime, endTime,
-      //       cocktailNeeded: isWedding && cocktailNeeded,
-      //       cocktailStartTime: cocktailStart,
-      //       cocktailSameRoom: !!cocktailSameRoom,
-      //       totalPrice: finalPrice.price,
-      //       depositAmount: finalPrice.depositAmount,
-      //       depositPct,
-      //       notes: message.trim(),
-      //       isQuote: finalPrice.isQuote,
-      //     }),
-      //   });
-      // } catch (e) { console.warn('DJ email failed:', e); }
-      //
-      // try {
-      //   if (currentUser.email) {
-      //     await fetch('/api/send-email', {
-      //       method: 'POST',
-      //       headers: { 'Content-Type': 'application/json' },
-      //       body: JSON.stringify({
-      //         type: 'mob_booking_confirm',
-      //         requesterName: currentUser.name, requesterEmail: currentUser.email,
-      //         djName: dj.name, eventDate: dateKey,
-      //         packageTitle: selectedPkg.title,
-      //         totalPrice: finalPrice.price,
-      //         depositAmount: finalPrice.depositAmount,
-      //         depositPct,
-      //         isQuote: finalPrice.isQuote,
-      //       }),
-      //     });
-      //   }
-      // } catch (e) { console.warn('Booker confirm email failed:', e); }
+      // Email the DJ that a new booking request came in. The send-email
+      // route accepts djUserId and resolves the email server-side via the
+      // admin API (fixes the post-Auth-migration djData.email null bug).
+      // Failures are swallowed so a DB success isn't undone by an email
+      // outage — the booking still appears in the DJ's Booking Requests.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_request',
+            djUserId: dj.id,
+            djName: dj.name,
+            requesterName: currentUser.name,
+            eventDate: dateKey,
+            venueName: venueName.trim(),
+            venueAddress: venueAddress.trim(),
+          }),
+        });
+      } catch (e) {
+        console.warn('DJ email failed:', e);
+      }
 
       setSuccessState({ isQuote: finalPrice.isQuote });
     } catch (e) {
