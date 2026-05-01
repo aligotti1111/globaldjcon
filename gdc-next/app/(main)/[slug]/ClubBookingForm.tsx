@@ -470,7 +470,7 @@ export default function ClubBookingForm({
               >
                 <option value="">Select…</option>
                 {MOB_TIME_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <option key={t.val} value={t.val}>{t.label}</option>
                 ))}
               </select>
             </div>
@@ -483,7 +483,7 @@ export default function ClubBookingForm({
               >
                 <option value="">Select…</option>
                 {MOB_TIME_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <option key={t.val} value={t.val}>{t.label}</option>
                 ))}
               </select>
             </div>
