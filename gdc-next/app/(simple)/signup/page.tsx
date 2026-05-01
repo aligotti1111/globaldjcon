@@ -233,7 +233,10 @@ function DjForm({ onBack, onSuccess }: {
   function handleNameChange(newName: string) {
     setName(newName);
     if (!slugManuallyEdited) {
-      setSlug(makeSlug(newName));
+      const derived = makeSlug(newName);
+      // eslint-disable-next-line no-console
+      console.log('[signup] handleNameChange', { newName, derived, slugManuallyEdited });
+      setSlug(derived);
     }
   }
   function handleSlugChange(newSlug: string) {
@@ -429,15 +432,16 @@ function DjForm({ onBack, onSuccess }: {
           onChange={(e) => handleNameChange(e.target.value)}
           required
         />
-        {slug && (
-          <SlugInput
-            value={slug}
-            onChange={handleSlugChange}
-            onStatusChange={setSlugStatus}
-            generateAlternatives={generateDjAlternatives}
-            placeholder="your-url"
-          />
-        )}
+        {/* SlugInput is now always rendered so it's obvious when the
+            field is empty (was: gated on `slug` truthy, which hid the
+            field entirely if derivation produced an empty result). */}
+        <SlugInput
+          value={slug}
+          onChange={handleSlugChange}
+          onStatusChange={setSlugStatus}
+          generateAlternatives={generateDjAlternatives}
+          placeholder="your-url"
+        />
       </div>
 
       <div className={styles.formGroup}>
