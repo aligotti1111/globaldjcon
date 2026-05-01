@@ -310,8 +310,10 @@ export default function BookingTab({
       </div>
 
       {!enabled && (
-        <div className={styles.placeholderPane}>
-          <div className={styles.placeholderTitle}>Booking is currently disabled</div>
+        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '.85rem', lineHeight: 1.6 }}>
+          <div style={{ color: 'var(--white)', fontSize: '.95rem', marginBottom: '.5rem' }}>
+            Booking is currently disabled
+          </div>
           Enable it above to configure booking settings, packages, and your availability calendar.
         </div>
       )}
