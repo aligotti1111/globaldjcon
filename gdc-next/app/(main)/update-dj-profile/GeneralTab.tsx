@@ -25,8 +25,8 @@ import {
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
-import { SlugAvailabilityCheck } from '@/components/SlugAvailabilityCheck';
-import { makeSlug } from '@/app/(simple)/signup/helpers';
+import { SlugInput } from '@/app/(simple)/signup/SlugInput';
+import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
 
 interface Props {
   state: GeneralFormState;
@@ -202,42 +202,20 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
 
         {/* Nested URL field — visually a sub-row inside the name group.
             The URL is derived from the name on signup, so keeping them
-            together here mirrors that mental model. */}
+            together here mirrors that mental model.
+            We use the same SlugInput component as signup for full visual
+            consistency (red border + alternatives when taken). The
+            excludeUserId + originalSlug props make it skip the user's
+            own row when checking availability. */}
         <div style={{ marginTop: '.85rem', paddingLeft: '.85rem', borderLeft: '2px solid rgba(0, 245, 196, .2)' }}>
-          <label
-            htmlFor="ud-slug"
-            style={{
-              fontSize: '.7rem',
-              fontFamily: "'Space Mono', monospace",
-              letterSpacing: '.04em',
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              display: 'block',
-              marginBottom: '.35rem',
-            }}
-          >
-            Custom Profile URL
-          </label>
-          <input
-            type="text"
-            id="ud-slug"
+          <SlugInput
+            value={state.slug}
+            onChange={(s) => onChange('slug', s)}
+            onStatusChange={() => { /* parent's save handler will catch any DB-side conflict */ }}
+            generateAlternatives={generateDjAlternatives}
             placeholder="e.g. dj-nova"
-            autoComplete="off"
-            value={state.slug}
-            onChange={(e) => onChange('slug', makeSlug(e.target.value))}
-            className={styles.input}
-            style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem' }}
-          />
-          <p className={styles.fieldHint}>
-            {siteUrl}/<strong>{slugDisplay}</strong>
-          </p>
-          {/* Live availability — debounced, hidden when slug is unchanged
-              from the value loaded from the DB. The DB-side save also
-              performs a uniqueness check as a safety net. */}
-          <SlugAvailabilityCheck
-            value={state.slug}
+            excludeUserId={userId}
             originalSlug={slug || ''}
-            userId={userId}
           />
         </div>
       </div>
