@@ -114,7 +114,7 @@
   font-size: .58rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--white);
 }
 .dayHeader:first-child { border-radius: 8px 0 0 0; }
 .dayHeader:last-child { border-radius: 0 8px 0 0; }
@@ -413,7 +413,7 @@
   font-family: 'Space Mono', monospace;
   font-size: .42rem;
   text-align: center;
-  color: var(--muted);
+  color: var(--white);
 }
 .miniGrid {
   display: grid;
