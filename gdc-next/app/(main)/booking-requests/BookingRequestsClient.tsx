@@ -17,6 +17,7 @@ import ClubBookingCard from './ClubBookingCard';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
+import { useConfirm } from '@/components/ConfirmModal';
 import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
 import type { BookingRow } from './page';
 
@@ -82,6 +83,11 @@ export default function BookingRequestsClient({
     setComposeModal({ recipientUserId, recipientName, defaultSubject });
   };
 
+  // Site-uniform confirm dialog — replaces window.confirm() for Approve /
+  // Deny / Cancel / Decline counter / Block actions. Hook returns the
+  // imperative async helper + a JSX element to render at top level.
+  const { confirm, confirmDialog } = useConfirm();
+
   // ── Section visibility — vanilla br-core.js + br-load-render.js ─
   const isDj = currentUser.role === 'dj';
   // Incoming section: DJs only. Vanilla restricts further to club DJs but
@@ -131,8 +137,16 @@ export default function BookingRequestsClient({
   // Approve / Deny — DJ side. On approve, decrement bookings_available
   // for that date so the calendar reflects the spent slot.
   async function djUpdateStatus(bookingId: string, status: 'approved' | 'denied') {
-    const verb = status === 'approved' ? 'Approve' : 'Deny';
-    if (!confirm(`${verb} this booking?`)) return;
+    const isApprove = status === 'approved';
+    const ok = await confirm({
+      title: isApprove ? 'Approve this booking?' : 'Deny this booking?',
+      message: isApprove
+        ? 'The booker will be notified by email and the date will be marked as booked on your calendar.'
+        : 'The booker will be notified by email that you cannot accept this booking.',
+      confirmLabel: isApprove ? 'Approve' : 'Deny',
+      variant: isApprove ? 'primary' : 'danger',
+    });
+    if (!ok) return;
     const supabase = createClient();
     try {
       const { error } = await supabase
@@ -221,7 +235,13 @@ export default function BookingRequestsClient({
 
   // Cancel outgoing — booker side
   async function cancelOutgoing(bookingId: string) {
-    if (!confirm('Cancel this booking request? The DJ will be notified.')) return;
+    if (!(await confirm({
+      title: 'Cancel this booking request?',
+      message: 'The DJ will be notified that you no longer need them for this event.',
+      confirmLabel: 'Cancel Booking',
+      cancelLabel: 'Keep It',
+      variant: 'danger',
+    }))) return;
     const supabase = createClient();
     try {
       const { error } = await supabase
@@ -262,7 +282,12 @@ export default function BookingRequestsClient({
   // Vanilla also lets the booker counter back instead — for that they'd
   // open the CounterModal with group='out' (handled by openCounter('out')).
   async function declineCounter(bookingId: string) {
-    if (!confirm('Decline this counter offer?')) return;
+    if (!(await confirm({
+      title: 'Decline this counter offer?',
+      message: 'The booking will be marked as denied. You can always start a new booking later.',
+      confirmLabel: 'Decline',
+      variant: 'danger',
+    }))) return;
     const supabase = createClient();
     try {
       const { error } = await supabase
@@ -300,7 +325,12 @@ export default function BookingRequestsClient({
   // Block — DJ side. Adds requester to blocked_users array; auto-denies
   // any pending bookings from them; removes them from the visible list.
   async function blockUser(userId: string, userName: string) {
-    if (!confirm(`Block ${userName}? They will no longer be able to send you booking requests or messages.`)) return;
+    if (!(await confirm({
+      title: `Block ${userName}?`,
+      message: 'They will no longer be able to send you booking requests or messages.',
+      confirmLabel: 'Block',
+      variant: 'danger',
+    }))) return;
     const supabase = createClient();
     try {
       const updated = [...new Set([...blocked, userId])];
@@ -496,6 +526,9 @@ export default function BookingRequestsClient({
           onClose={() => setComposeModal(null)}
         />
       )}
+      {/* Site-uniform confirm dialog (replaces window.confirm). Rendered
+          at the top level so it sits above all card content. */}
+      {confirmDialog}
     </div>
   );
 }
