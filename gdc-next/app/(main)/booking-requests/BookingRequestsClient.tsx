@@ -16,12 +16,16 @@ import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
+import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
 import type { BookingRow } from './page';
 
 interface CurrentUser {
   id: string;
   name: string;
+  // Email is from auth.users (passed in by the page). Used as the From:
+  // when this user sends a message via the compose modal.
+  email: string | null;
   role: string;
   djType: 'mobile' | 'club' | null;
   zip: string | null;
@@ -62,6 +66,21 @@ export default function BookingRequestsClient({
     group: 'in' | 'out';
   } | null>(null);
   const [quoteModal, setQuoteModal] = useState<{ booking: BookingRow } | null>(null);
+  // Compose-message modal — opened by Message button on each booking card.
+  // The card gives us the recipient + a pre-filled subject describing
+  // which booking the message is about ("Re: Booking on Aug 12, 2026").
+  const [composeModal, setComposeModal] = useState<{
+    recipientUserId: string;
+    recipientName: string;
+    defaultSubject: string;
+  } | null>(null);
+  const openComposeModal = (
+    recipientUserId: string,
+    recipientName: string,
+    defaultSubject: string,
+  ) => {
+    setComposeModal({ recipientUserId, recipientName, defaultSubject });
+  };
 
   // ── Section visibility — vanilla br-core.js + br-load-render.js ─
   const isDj = currentUser.role === 'dj';
@@ -370,6 +389,7 @@ export default function BookingRequestsClient({
                 onSendQuote={openQuoteModal}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
+                onMessage={openComposeModal}
               />
             ) : (
               <FlatList
@@ -386,6 +406,7 @@ export default function BookingRequestsClient({
                 onSendQuote={openQuoteModal}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
+                onMessage={openComposeModal}
               />
             )}
             {filteredIncoming.length === 0 && (
@@ -431,6 +452,7 @@ export default function BookingRequestsClient({
               onSendQuote={openQuoteModal}
               onAcceptCounter={acceptCounter}
               onDeclineCounter={declineCounter}
+              onMessage={openComposeModal}
             />
             {filteredOutgoing.length === 0 && (
               <EmptyState>No {outgoingTab} bookings.</EmptyState>
@@ -459,6 +481,19 @@ export default function BookingRequestsClient({
           depositPct={currentUser.depositPct}
           onClose={() => setQuoteModal(null)}
           onSaved={(updated) => applyBookingUpdate(updated)}
+        />
+      )}
+      {composeModal && (
+        <ComposeMessageModal
+          sender={{
+            id: currentUser.id,
+            name: currentUser.name || 'A user',
+            email: currentUser.email || null,
+          }}
+          recipientUserId={composeModal.recipientUserId}
+          recipientName={composeModal.recipientName}
+          defaultSubject={composeModal.defaultSubject}
+          onClose={() => setComposeModal(null)}
         />
       )}
     </div>
@@ -508,12 +543,14 @@ interface ListProps {
   onSendQuote: (b: BookingRow) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
+  onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
 }
 
 function FlatList({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
   onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onMessage,
 }: ListProps) {
   return (
     <>
@@ -539,6 +576,7 @@ function FlatList({
             onSendQuote={onSendQuote}
             onAcceptCounter={onAcceptCounter}
             onDeclineCounter={onDeclineCounter}
+            onMessage={onMessage}
           />
         );
       })}
@@ -554,6 +592,7 @@ function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
   onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onMessage,
 }: ListProps) {
   // Group by event_date. Sort within group by created_at (oldest first
   // = first-come-first-served visual order).
@@ -626,6 +665,7 @@ function SameDayGrouped({
               onSendQuote={onSendQuote}
               onAcceptCounter={onAcceptCounter}
               onDeclineCounter={onDeclineCounter}
+              onMessage={onMessage}
             />
           );
         });

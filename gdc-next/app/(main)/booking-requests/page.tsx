@@ -225,6 +225,7 @@ export default async function BookingRequestsPage() {
       currentUser={{
         id: me.id,
         name: me.name || '',
+        email: authUser.email || null,
         role: me.role,
         djType: me.dj_type,
         zip: me.zip,

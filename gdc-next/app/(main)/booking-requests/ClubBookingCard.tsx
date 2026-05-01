@@ -56,6 +56,8 @@ interface Props {
   onSendQuote: (b: BookingRow) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
+  // Compose-message modal opener (parent owns the modal state)
+  onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
 }
 
 export default function ClubBookingCard({
@@ -63,6 +65,7 @@ export default function ClubBookingCard({
   djZip, djTravelDistance,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
   onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onMessage,
 }: Props) {
   const isQuote = !!b.is_quote;
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
@@ -290,9 +293,24 @@ export default function ClubBookingCard({
             </div>
           )}
         </div>
-        {/* Message button — modal deferred to a later session.
-            Placeholder shows what it WILL be without breaking layout. */}
-        <button type="button" className={styles.messageBtn} disabled title="Coming soon">
+        {/* Message button — opens the compose modal (parent owns it).
+            Subject is pre-filled with the event date so the recipient
+            can see at a glance which booking the message is about. */}
+        <button
+          type="button"
+          className={styles.messageBtn}
+          onClick={() => {
+            const dateStr = b.event_date
+              ? new Date(b.event_date + 'T12:00:00').toLocaleDateString('en-US', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                })
+              : '';
+            const subj = dateStr
+              ? `Re: Booking on ${dateStr}`
+              : 'Re: Your booking';
+            onMessage(targetId, targetName, subj);
+          }}
+        >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
           </svg>
