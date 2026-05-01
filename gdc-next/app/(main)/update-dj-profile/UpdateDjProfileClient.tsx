@@ -516,6 +516,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
                 bookingSettings={bookingSettings}
                 onChange={setBookingSettings}
                 autosaveStatus={autosaveStatus}
+                djSlug={general.slug}
                 onDirtyChange={setHasDirtyClubRates}
                 masterSaveTrigger={masterSaveTrigger}
               />

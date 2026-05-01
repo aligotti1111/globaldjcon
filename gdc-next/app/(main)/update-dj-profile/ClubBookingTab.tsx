@@ -23,6 +23,7 @@ import {
   type BookingDays,
 } from '@/app/(main)/[slug]/bookingSettings';
 import ClubOwnerCalendar from './ClubOwnerCalendar';
+import EmbedCodeSection from './EmbedCodeSection';
 
 // Currency options matching vanilla's <select> dropdown
 const CURRENCIES: { code: string; symbol: string; label: string }[] = [
@@ -43,6 +44,10 @@ interface Props {
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
   autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  // DJ's URL slug — needed for the EmbedCodeSection so the iframe URL
+  // points at this profile. Read live from general.slug in the parent
+  // so the embed snippet updates as the user edits the slug.
+  djSlug: string;
   // Aggregate dirty signal — true whenever the manual-save Rates section
   // has unsaved drafts. Bubbles up to UpdateDjProfileClient which combines
   // it with general-fields-dirty + mobile-package-drafts-dirty for the
@@ -54,7 +59,7 @@ interface Props {
 }
 
 export default function ClubBookingTab({
-  bookingSettings, onChange, autosaveStatus, onDirtyChange, masterSaveTrigger,
+  bookingSettings, onChange, autosaveStatus, djSlug, onDirtyChange, masterSaveTrigger,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
   function patch(p: Partial<BookingSettings>) {
@@ -285,8 +290,36 @@ export default function ClubBookingTab({
 
       {/* ── Rates section (MANUAL save) ───────────────────────────── */}
       <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>
+        <div className={styles.sectionHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
           <div className={styles.sectionTitle}>Rates</div>
+          {/* Currency picker — top-right of section header. Hidden for
+              the Offers rate type since offers don't have a fixed price.
+              Hidden until equipment is selected (rates are gated on it). */}
+          {hasEquipSelected && ratesDraft.global_rate_type !== 'offers' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem' }}>
+              <label
+                style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.6rem',
+                  letterSpacing: '.07em',
+                  textTransform: 'uppercase',
+                  color: 'var(--muted)',
+                }}
+              >
+                Currency
+              </label>
+              <select
+                value={ratesDraft.rate_currency}
+                onChange={(e) => setRateField('rate_currency', e.target.value)}
+                className={styles.rateSelect}
+                style={{ width: 'auto', minWidth: 110 }}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className={styles.sectionBody}>
           {!hasEquipSelected ? (
@@ -323,22 +356,6 @@ export default function ClubBookingTab({
                 <p className={styles.rateOffersHint}>
                   Offers can be countered and negotiated through the platform.
                 </p>
-              )}
-
-              {/* Currency picker */}
-              {ratesDraft.global_rate_type !== 'offers' && (
-                <div className={styles.rateFieldGroup}>
-                  <label className={styles.rateFieldLabel}>Currency</label>
-                  <select
-                    value={ratesDraft.rate_currency}
-                    onChange={(e) => setRateField('rate_currency', e.target.value)}
-                    className={styles.rateSelect}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
               )}
 
               {/* Per-equipment rate fields. Which fields show depends on
@@ -445,6 +462,9 @@ export default function ClubBookingTab({
           />
         </div>
       </div>
+
+      {/* ── Embed Code ──────────────────────────────────────── */}
+      <EmbedCodeSection slug={djSlug} />
     </div>
   );
 }
