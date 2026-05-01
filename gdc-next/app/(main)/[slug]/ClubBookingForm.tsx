@@ -21,7 +21,7 @@
 // The form is rendered inline in the booking tab below the calendar — it
 // does NOT use a modal, matching MobileBookingForm's UX.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './clubBookingForm.module.css';
 import {
@@ -29,7 +29,12 @@ import {
   type DayData,
   formatTime12,
 } from './bookingSettings';
-import { MOB_TIME_OPTIONS, formatLongDate } from './mobileBookingForm';
+import {
+  MOB_TIME_OPTIONS,
+  formatLongDate,
+  searchAddresses,
+  type AddressSuggestion,
+} from './mobileBookingForm';
 
 // Currency code → symbol. Mirror of the list in update-dj-profile/ClubBookingTab.
 // Kept inline here (small + rarely changing) rather than extracted to a shared
@@ -187,6 +192,15 @@ export default function ClubBookingForm({
   const [offerAmount, setOfferAmount] = useState('');
   const [notes, setNotes] = useState('');
 
+  // ── Address autocomplete (Nominatim) ─────────────────────────────
+  // Suggestions are fetched debounced (350ms) when the user has typed
+  // 3+ chars. Coords from a picked suggestion stick on a ref so we can
+  // include them in the booking insert (DJ uses them for distance check).
+  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
+  const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -294,6 +308,11 @@ export default function ClubBookingForm({
         set_type: setType,
         venue_name: venueName.trim(),
         venue_address: venueAddress.trim(),
+        // Coords from a Nominatim suggestion the booker picked. Null when
+        // they typed freehand or the search returned nothing. The
+        // booking-requests card uses these for the venue distance check.
+        venue_lat: venueCoordsRef.current?.lat ?? null,
+        venue_lon: venueCoordsRef.current?.lon ?? null,
         start_time: startTime,
         end_time: endTime,
         equipment,
@@ -435,14 +454,68 @@ export default function ClubBookingForm({
             onChange={(e) => setVenueName(e.target.value)}
             className={styles.input}
           />
-          <input
-            type="text"
-            placeholder="Venue address"
-            value={venueAddress}
-            onChange={(e) => setVenueAddress(e.target.value)}
-            className={styles.input}
-            style={{ marginTop: '.5rem' }}
-          />
+          {/* Venue Address — Nominatim autocomplete dropdown.
+              Coords from a picked suggestion are stored in the ref so
+              they can be sent with the booking insert (DJ uses them
+              for distance check on the booking-requests card). */}
+          <div style={{ position: 'relative', marginTop: '.5rem' }}>
+            <input
+              type="text"
+              placeholder="Venue address"
+              value={venueAddress}
+              onChange={(e) => {
+                const val = e.target.value;
+                setVenueAddress(val);
+                // User edited again — invalidate previously picked coords
+                venueCoordsRef.current = null;
+                // Debounce the Nominatim fetch (matches MobileBookingForm)
+                if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                if (val.trim().length < 3) {
+                  setAddrSuggestions([]);
+                  setShowAddrSuggestions(false);
+                  return;
+                }
+                addrTimerRef.current = setTimeout(async () => {
+                  const results = await searchAddresses(val.trim());
+                  setAddrSuggestions(results);
+                  setShowAddrSuggestions(results.length > 0);
+                }, 350);
+              }}
+              onBlur={() => {
+                // Delay so a click on a suggestion fires before we hide
+                setTimeout(() => setShowAddrSuggestions(false), 150);
+              }}
+              onFocus={() => {
+                if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
+              }}
+              className={styles.input}
+              autoComplete="off"
+            />
+            {showAddrSuggestions && addrSuggestions.length > 0 && (
+              <div className={styles.addrSuggestions}>
+                {addrSuggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className={styles.addrSuggestion}
+                    // onMouseDown not onClick — fires before the input's
+                    // onBlur, so the dropdown isn't dismissed first.
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setVenueAddress(s.display);
+                      if (s.lat != null && s.lon != null) {
+                        venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                      } else {
+                        venueCoordsRef.current = null;
+                      }
+                      setShowAddrSuggestions(false);
+                    }}
+                  >
+                    {s.display}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
