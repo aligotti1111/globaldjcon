@@ -570,7 +570,7 @@ function SingleMonthView({
               e.stopPropagation();
               onOwnerQuickToggle(key);
             }}
-            className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnTopRight} ${
+            className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomLeft} ${
               isUnavail ? styles.ownerCornerBtnCheck : styles.ownerCornerBtnX
             }`}
             title={isUnavail ? 'Mark available' : 'Mark unavailable'}

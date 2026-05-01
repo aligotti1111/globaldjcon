@@ -579,9 +579,9 @@
   -webkit-backdrop-filter: blur(2px);
   z-index: 2;
 }
-.ownerCornerBtnTopRight {
-  top: 3px;
-  right: 3px;
+.ownerCornerBtnBottomLeft {
+  bottom: 3px;
+  left: 3px;
 }
 .ownerCornerBtnBottomRight {
   bottom: 3px;
