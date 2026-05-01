@@ -109,7 +109,7 @@ export default async function InboxPage() {
 
   return (
     <InboxClient
-      currentUser={{ id: profile.id, name: profile.name || 'You' }}
+      currentUser={{ id: profile.id, name: profile.name || 'You', email: authUser.email || null }}
       initialMessages={messages}
       initialReplies={replies}
     />

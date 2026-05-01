@@ -29,6 +29,7 @@ import type { InboxMessage } from './page';
 interface CurrentUser {
   id: string;
   name: string;
+  email: string | null;
 }
 
 interface Props {
@@ -153,9 +154,6 @@ export default function InboxClient({
       toEmail = parentMsg.from_email || '';
     }
 
-    void toName;
-    void toEmail;
-
     const subject = (parentMsg.subject || '').startsWith('Re:')
       ? parentMsg.subject
       : 'Re: ' + (parentMsg.subject || '');
@@ -212,8 +210,29 @@ export default function InboxClient({
         setReplyStatus((prev) => ({ ...prev, [parentMsg.id]: { text: '', ok: false } }));
       }, 2000);
 
-      // Email notification — DEFERRED. Vanilla calls /.netlify/functions/send-email
-      // here. Once we port that route, wire it up.
+      // Email the recipient that they have a new reply. Resolves their
+      // email server-side via admin API (we have toUserId from above; the
+      // toEmail captured from the parent row may be null after Auth migration).
+      // Failures are swallowed so a successful DB insert isn't undone by
+      // an email outage.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'inbox_notification',
+            recipientUserId: toUserId,
+            recipientEmail: toEmail || undefined,
+            recipientName: toName,
+            senderName: currentUser.name,
+            senderEmail: currentUser.email || undefined,
+            subject,
+            message: text,
+          }),
+        });
+      } catch (e) {
+        console.warn('Inbox notification email failed:', e);
+      }
     } catch (err) {
       // Rollback: remove the optimistic bubble + restore the textarea
       // contents so the user can retry without retyping.
