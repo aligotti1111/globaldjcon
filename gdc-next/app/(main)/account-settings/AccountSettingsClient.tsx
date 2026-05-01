@@ -19,6 +19,8 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './accountSettings.module.css';
 import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
+import { SlugInput } from '@/app/(simple)/signup/SlugInput';
+import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
 interface ProfileInit {
   id: string;
@@ -75,6 +77,9 @@ export default function AccountSettingsClient({
   const [venueName, setVenueName] = useState(initialProfile.venueName);
   const [ownerName, setOwnerName] = useState(initialProfile.name); // doubles as page owner for venues
   const [slug, setSlug] = useState(initialProfile.slug);
+  // Live availability status — used to disable Save when slug is taken
+  // and to show the colored indicator next to the field.
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [venueCountry, setVenueCountry] = useState(initialProfile.country);
   const [addressInput, setAddressInput] = useState(
     // Combine street + city/state/zip into a single human-friendly value for the input.
@@ -211,6 +216,12 @@ export default function AccountSettingsClient({
     const finalSlug = makeSlug(slug);
     if (!finalSlug) {
       setVenueAlert({ type: 'error', msg: 'Profile URL is required.' });
+      return;
+    }
+    // Block save if the live check came back "taken" — saves the user a
+    // failed save round-trip + a more confusing DB-conflict error.
+    if (slugStatus === 'taken') {
+      setVenueAlert({ type: 'error', msg: 'That profile URL is already taken — please pick another.' });
       return;
     }
 
@@ -363,21 +374,18 @@ export default function AccountSettingsClient({
           </div>
 
           <div className={styles.formGroup}>
-            <label>Profile URL</label>
-            <div className={styles.slugRow}>
-              <span className={styles.slugPrefix}>globaldjconnect.com/</span>
-              <input
-                type="text"
-                placeholder="the-grand-ballroom"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </div>
-            <div className={styles.hint}>
-              Live availability check coming soon — for now, taken URLs
-              are detected at save time.
-            </div>
+            {/* Profile URL — uses the same SlugInput component as signup
+                so the styling (red border + alternatives when taken) is
+                identical to what users saw when signing up. */}
+            <SlugInput
+              value={slug}
+              onChange={setSlug}
+              onStatusChange={setSlugStatus}
+              generateAlternatives={generateVenueAlternatives}
+              placeholder="the-grand-ballroom"
+              excludeUserId={initialProfile.id}
+              originalSlug={initialProfile.slug}
+            />
           </div>
 
           <div className={styles.formGroup} style={{ position: 'relative' }}>
