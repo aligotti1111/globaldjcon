@@ -17,6 +17,7 @@ import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
 import ClubBookingForm from './ClubBookingForm';
 import BookingLoginGate from './BookingLoginGate';
+import ComposeMessageModal from '@/components/ComposeMessageModal';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
@@ -118,6 +119,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const { user: currentUser } = useAuth();
   const [clubSelectedDate, setClubSelectedDate] = useState<string | null>(null);
   const [clubLoginGateDate, setClubLoginGateDate] = useState<string | null>(null);
+  // Compose-message modal — opened by the "Message" button in HeroActions.
+  // For logged-out visitors we route them to /login first.
+  const [composeOpen, setComposeOpen] = useState(false);
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -340,7 +344,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             )}
 
             {/* Hero action buttons — socials, contact, copy link */}
-            <HeroActions data={data} effectiveSlug={effectiveSlug} isLoggedIn={isLoggedIn} />
+            <HeroActions
+              data={data}
+              effectiveSlug={effectiveSlug}
+              isLoggedIn={isLoggedIn}
+              isOwnProfile={isOwnProfile}
+              onClickMessage={() => {
+                // Owner can't message themselves; logged-out visitors are
+                // sent to /login first, returning to the same profile.
+                if (isOwnProfile) return;
+                if (!isLoggedIn) {
+                  window.location.href =
+                    `/login?redirect=${encodeURIComponent(`/${effectiveSlug}`)}`;
+                  return;
+                }
+                setComposeOpen(true);
+              }}
+            />
           </div>
         </div>
 
@@ -563,6 +583,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <img src={lightboxSrc} alt="" onClick={(e) => e.stopPropagation()} />
         )}
       </div>
+
+      {/* Compose-message modal — opened by the Message button in HeroActions.
+          Only renders for logged-in non-owner visitors (see onClickMessage). */}
+      {composeOpen && currentUser && !isOwnProfile && (
+        <ComposeMessageModal
+          sender={{
+            id: currentUser.id,
+            name: currentUser.name || 'A user',
+            email: currentUser.email || null,
+          }}
+          recipientUserId={data.id}
+          recipientName={data.name || 'this DJ'}
+          onClose={() => setComposeOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -637,10 +672,14 @@ function HeroActions({
   data,
   effectiveSlug,
   isLoggedIn,
+  isOwnProfile,
+  onClickMessage,
 }: {
   data: DjProfileData;
   effectiveSlug: string;
   isLoggedIn: boolean;
+  isOwnProfile: boolean;
+  onClickMessage: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -788,14 +827,25 @@ function HeroActions({
         <CopyIcon />
       </button>
 
-      {/* Note: Message Me + Book Now buttons would go here in vanilla.
-          Both depend on systems we haven't built yet (contact modal,
-          booking calendar) — adding them in Sessions 2 + 3.
-          The CalendarIcon / MessageIcon imports stay so we can add them
-          back without re-importing. */}
+      {/* Message button — opens ComposeMessageModal. Hidden on the owner's
+          own profile (you can't message yourself). For logged-out visitors,
+          the parent's onClickMessage handler routes them to /login first. */}
+      {!isOwnProfile && (
+        <button
+          type="button"
+          className={styles.actionBtn}
+          onClick={onClickMessage}
+          title={`Message ${data.name || 'this DJ'}`}
+        >
+          <MessageIcon />
+        </button>
+      )}
+
+      {/* Calendar icon kept hidden for now — the booking calendar lives in
+          the tabs below, not in the hero. Keeping the import wired so we
+          can add it back later without re-importing. */}
       <span style={{ display: 'none' }}>
         <CalendarIcon />
-        <MessageIcon />
       </span>
     </div>
   );
