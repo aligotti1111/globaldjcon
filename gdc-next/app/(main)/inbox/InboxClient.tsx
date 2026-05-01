@@ -24,6 +24,7 @@ import { useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './inbox.module.css';
 import MessageThread from './MessageThread';
+import { useConfirm } from '@/components/ConfirmModal';
 import type { InboxMessage } from './page';
 
 interface CurrentUser {
@@ -50,6 +51,8 @@ export default function InboxClient({
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyStatus, setReplyStatus] = useState<Record<string, { text: string; ok: boolean }>>({});
   const [sending, setSending] = useState<Record<string, boolean>>({});
+  // Site-uniform confirm dialog (replaces native window.confirm)
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── Helpers ────────────────────────────────────────────────────
   // A thread is "unread" if the parent is unread to current user OR any
@@ -101,7 +104,11 @@ export default function InboxClient({
         .from('messages')
         .update({ read: true } as unknown as never)
         .eq('id', msg.id)
-        .then(() => {});
+        .then(() => {
+          // Tell the header badge to re-fetch its count (custom event,
+          // listened to by useUnreadInboxCount).
+          window.dispatchEvent(new CustomEvent('gdc:refresh-inbox-count'));
+        });
     }
 
     // Mark all unread replies in this thread as read (only ones addressed
@@ -125,7 +132,9 @@ export default function InboxClient({
         .update({ read: true } as unknown as never)
         .eq('parent_id', msg.id)
         .eq('to_user_id', currentUser.id)
-        .then(() => {});
+        .then(() => {
+          window.dispatchEvent(new CustomEvent('gdc:refresh-inbox-count'));
+        });
     }
   }
 
@@ -247,7 +256,12 @@ export default function InboxClient({
 
   // ── Delete a thread ────────────────────────────────────────────
   async function deleteThread(parentId: string) {
-    if (!confirm('Delete this conversation?')) return;
+    if (!(await confirm({
+      title: 'Delete this conversation?',
+      message: 'The messages will be removed permanently for both you and the other party.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    }))) return;
     const supabase = createClient();
     try {
       // Delete the parent. RLS allows deletion; we then also cascade-delete
@@ -381,6 +395,8 @@ export default function InboxClient({
           })}
         </div>
       )}
+      {/* Site-uniform confirm dialog (replaces window.confirm) */}
+      {confirmDialog}
     </div>
   );
 }
