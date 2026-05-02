@@ -78,11 +78,12 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
 
   // Step 1: look up the token row
-  let tokenRow: {
+  type TokenRow = {
     user_id: string;
     used_at: string | null;
     expires_at: string;
-  } | null = null;
+  };
+  let tokenRow: TokenRow | null = null;
   try {
     const { data, error } = await admin
       .from('email_verification_tokens')
@@ -91,7 +92,9 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    tokenRow = data;
+    // Cast: the generated Supabase types don't include this table, so
+    // .maybeSingle() returns `never`. We know the shape from the .select().
+    tokenRow = data as TokenRow | null;
   } catch (e) {
     console.error('[verify-email] token lookup failed', e);
     return htmlErrorResponse(
