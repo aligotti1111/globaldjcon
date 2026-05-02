@@ -2,8 +2,15 @@
 // Ports /netlify/functions/verify-email.js to a Next.js route.
 //
 // Validates the verification token, marks public.users.email_verified = true,
-// marks the token as used, and either redirects the user to the account
-// settings page (success) or returns an HTML error page (invalid/expired).
+// marks the token as used, and either redirects the user to a role-appropriate
+// destination page (success) or returns an HTML error page (invalid/expired).
+//
+// Destinations after successful verification:
+//   - DJ    → /update-dj-profile?emailverified=1
+//   - venue → /account-settings?emailverified=1
+//   - host  → /?emailverified=1
+// Each destination renders the EmailVerifiedBanner (mounted in (main)/layout)
+// which shows a green "Email confirmed — all features enabled" notice.
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -28,6 +35,21 @@ function htmlErrorResponse(title: string, message: string, status: number, origi
     status,
     headers: { 'Content-Type': 'text/html' },
   });
+}
+
+// Decide where to send the user post-verification based on their role.
+// If role is missing or unknown, fall back to homepage.
+function destinationForRole(role: string | null | undefined, origin: string): string {
+  switch ((role || '').toLowerCase()) {
+    case 'dj':
+      return `${origin}/update-dj-profile?emailverified=1`;
+    case 'venue':
+      return `${origin}/account-settings?emailverified=1`;
+    case 'host':
+      return `${origin}/?emailverified=1`;
+    default:
+      return `${origin}/?emailverified=1`;
+  }
 }
 
 export async function GET(request: Request) {
@@ -89,9 +111,28 @@ export async function GET(request: Request) {
     );
   }
 
+  // Helper: look up a user's role so we can pick the right destination.
+  // Wrapped in try/catch so a lookup failure still lets the user land
+  // somewhere (the homepage) rather than seeing an error.
+  async function lookupRole(userId: string): Promise<string | null> {
+    try {
+      const { data } = await admin
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle<{ role: string | null }>();
+      return data?.role ?? null;
+    } catch (e) {
+      console.warn('[verify-email] role lookup failed (non-fatal)', e);
+      return null;
+    }
+  }
+
   // Already used? Treat as success — user may have clicked twice.
+  // Still route by role so they land somewhere useful.
   if (tokenRow.used_at) {
-    return NextResponse.redirect(`${origin}/login?emailverified=1`, 302);
+    const role = await lookupRole(tokenRow.user_id);
+    return NextResponse.redirect(destinationForRole(role, origin), 302);
   }
 
   if (new Date(tokenRow.expires_at) < new Date()) {
@@ -130,9 +171,10 @@ export async function GET(request: Request) {
     console.warn('[verify-email] mark-used failed (non-fatal)', e);
   }
 
-  // Step 4: redirect to login page with the verified flag set. The login page
-  // shows a green banner when ?emailverified=1 is present. If the user already
-  // has a session in this browser, the login page will detect it and bounce
-  // them to the homepage — but the banner shows briefly first.
-  return NextResponse.redirect(`${origin}/login?emailverified=1`, 302);
+  // Step 4: role-based redirect to the destination page. The destination
+  // page renders <EmailVerifiedBanner /> (from (main)/layout) which shows
+  // a green "Email confirmed — all features enabled" notice. No more
+  // bouncing through /login.
+  const role = await lookupRole(tokenRow.user_id);
+  return NextResponse.redirect(destinationForRole(role, origin), 302);
 }
