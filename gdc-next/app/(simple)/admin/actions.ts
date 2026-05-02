@@ -116,7 +116,8 @@ export async function createUserAction(input: CreateUserInput): Promise<CreateUs
       .select('id')
       .eq('slug', input.slug)
       .limit(1);
-    if (existing && existing.length > 0) {
+    const existingRows = (existing || []) as Array<{ id: string }>;
+    if (existingRows.length > 0) {
       return { success: false, error: 'That slug is already taken.' };
     }
   }
@@ -265,7 +266,8 @@ export async function updateUserAction(input: UpdateUserInput): Promise<UpdateUs
       .select('id')
       .eq('slug', patch.slug)
       .limit(1);
-    if (existing && existing[0] && existing[0].id !== input.user_id) {
+    const existingRows = (existing || []) as Array<{ id: string }>;
+    if (existingRows[0] && existingRows[0].id !== input.user_id) {
       return { success: false, error: 'That slug is already taken by another user' };
     }
   }
@@ -277,12 +279,13 @@ export async function updateUserAction(input: UpdateUserInput): Promise<UpdateUs
     .select('*');
 
   if (error) return { success: false, error: 'Update failed: ' + error.message };
-  if (!data || data.length === 0) return { success: false, error: 'User not found' };
+  const rows = (data || []) as Array<Record<string, unknown>>;
+  if (rows.length === 0) return { success: false, error: 'User not found' };
 
   revalidatePath('/admin');
   return {
     success: true,
-    user: data[0],
+    user: rows[0],
     email_updated: emailUpdated,
     email: emailRaw,
   };
