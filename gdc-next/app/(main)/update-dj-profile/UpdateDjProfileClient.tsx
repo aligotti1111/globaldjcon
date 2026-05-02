@@ -224,7 +224,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       try {
         const { error } = await supabaseRef.current
           .from('users')
-          .update({ booking_settings: JSON.stringify(bookingSettings) })
+          // Cast as never — same situation as the manual save below: the
+          // UserProfile type in db.ts doesn't list every column on the
+          // actual users table, so the type system needs the escape hatch.
+          .update({ booking_settings: JSON.stringify(bookingSettings) } as unknown as never)
           .eq('id', initialProfile.id);
         if (error) throw error;
         setAutosaveStatus('saved');
