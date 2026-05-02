@@ -176,7 +176,7 @@ export async function createUserAction(input: CreateUserInput): Promise<CreateUs
 
   const { error: profErr } = await admin
     .from('users')
-    .update(updates)
+    .update(updates as unknown as never)
     .eq('id', userId);
 
   if (profErr) {
@@ -272,7 +272,7 @@ export async function updateUserAction(input: UpdateUserInput): Promise<UpdateUs
 
   const { data, error } = await admin
     .from('users')
-    .update(patch)
+    .update(patch as unknown as never)
     .eq('id', input.user_id)
     .select('*');
 
@@ -430,7 +430,7 @@ export async function approveClaimAction(
   }
 
   // Mark user claimed
-  await admin.from('users').update({ claimed: true }).eq('id', claim.target_user_id);
+  await admin.from('users').update({ claimed: true } as unknown as never).eq('id', claim.target_user_id);
 
   // Mark claim approved
   await admin
@@ -439,7 +439,7 @@ export async function approveClaimAction(
       status: 'approved',
       reviewed_at: new Date().toISOString(),
       reviewed_notes: reviewedNotes || null,
-    })
+    } as unknown as never)
     .eq('id', claim.id);
 
   // Fetch target profile for the email
@@ -513,7 +513,7 @@ export async function rejectClaimAction(
       status: 'rejected',
       reviewed_at: new Date().toISOString(),
       reviewed_notes: reviewedNotes,
-    })
+    } as unknown as never)
     .eq('id', claimId)
     .eq('status', 'pending');
 
