@@ -331,7 +331,7 @@ function DjForm({ onBack, onSuccess }: {
           travel_distance: travelVal,
           zip,
           email_verified: false,
-        }, { onConflict: 'id' });
+        } as unknown as never, { onConflict: 'id' });
 
         // Fire-and-forget the verification email — we don't block the
         // success screen on this so the user gets immediate feedback.
@@ -545,7 +545,7 @@ function HostForm({ onBack, onSuccess }: {
           name,
           country,
           email_verified: false,
-        }, { onConflict: 'id' });
+        } as unknown as never, { onConflict: 'id' });
 
         triggerSignupVerification(signUpData.user.id, emailLower, 'host', null);
       }
@@ -730,7 +730,7 @@ function VenueForm({ onBack, onSuccess }: {
           state: stateRegion,
           zip,
           email_verified: false,
-        }, { onConflict: 'id' });
+        } as unknown as never, { onConflict: 'id' });
 
         triggerSignupVerification(signUpData.user.id, emailLower, 'venue', slug);
       }
