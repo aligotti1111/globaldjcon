@@ -17,28 +17,13 @@ import {
   lookupZipCoords,
 } from './helpers';
 import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
+import {
+  CLUB_SET_TYPE_LABELS,
+  CLUB_EQUIPMENT_LABELS,
+  CLUB_VENUE_TYPE_LABELS,
+  currencySymbol,
+} from '@/lib/constants';
 import type { BookingRow } from './page';
-
-// Club-side label maps (mirror of vanilla br-club-flow.js)
-const CLUB_SET_TYPE_LABELS: Record<string, string> = {
-  opening: 'Opening Set',
-  headliner: 'Headliner',
-  closing: 'Closing Set',
-  opening_close: 'Opening – Close',
-  opening_and_closing: 'Opening & Closing',
-};
-
-const CLUB_EQUIPMENT_LABELS: Record<string, string> = {
-  sound_system: 'DJ provides Sound System & Decks',
-  decks_only: 'DJ provides Decks/Controller only',
-  venue_provides: 'Venue provides all equipment',
-};
-
-// Currency code → symbol (subset matching the rate picker on the DJ form).
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$',
-  JPY: '¥', KRW: '₩', CNY: '¥', INR: '₹', BRL: 'R$', MXN: '$',
-};
 
 type Props = Omit<BookingCardShellProps, 'eventLabel' | 'detailsSlot' | 'pricingSlot'> & {
   djZip: string | null;
@@ -54,9 +39,7 @@ export default function ClubBookingCard(props: Props) {
   const isQuote = !!b.is_quote;
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
   // Title shows venue type + set type (e.g. "Club · Headliner")
-  const venueTypeLabel = b.venue_type === 'bar' ? 'Bar'
-    : b.venue_type === 'club' ? 'Club'
-    : (b.venue_type || '—');
+  const venueTypeLabel = CLUB_VENUE_TYPE_LABELS[b.venue_type || ''] || b.venue_type || '—';
   const setTypeLabel = CLUB_SET_TYPE_LABELS[b.set_type || ''] || b.set_type || null;
   const eventLabel = setTypeLabel
     ? `${venueTypeLabel} · ${setTypeLabel}`
@@ -192,7 +175,7 @@ export default function ClubBookingCard(props: Props) {
   const pricingSlot = (hasPrice || b.offer_amount != null || isQuote) ? (
     <SectionFrame label="Rate">
       {(() => {
-        const sym = CURRENCY_SYMBOLS[b.currency || 'USD'] || '$';
+        const sym = currencySymbol(b.currency);
         const cur = b.currency || 'USD';
         if (hasCounter) {
           return (

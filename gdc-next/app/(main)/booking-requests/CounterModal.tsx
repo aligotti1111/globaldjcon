@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
+import { currencySymbol } from '@/lib/constants';
 import type { BookingRow } from './page';
 
 interface Props {
@@ -28,10 +29,6 @@ interface Props {
   // state. We pass the updated row so the parent can replace it in place.
   onSaved: (updated: BookingRow) => void;
 }
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', CAD: 'C$', AUD: 'A$', JPY: '¥', BRL: 'R$',
-};
 
 function formatTime(t: string | null): string {
   if (!t) return '';
@@ -61,7 +58,7 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
   // Currency — vanilla pulls from booking.currency; we don't have that
   // field on the type yet so default to USD.
   const currency = 'USD';
-  const sym = CURRENCY_SYMBOLS[currency] || '$';
+  const sym = currencySymbol(currency);
 
   // Show the most recent rate exchanged so the DJ/booker has context for
   // their counter. Only shown when there's been at least one prior offer.

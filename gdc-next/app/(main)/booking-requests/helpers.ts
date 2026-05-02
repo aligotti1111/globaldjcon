@@ -1,20 +1,10 @@
 // Booking-requests helpers — pure functions used by the card components.
 // Faithful ports of vanilla br-core.js + br-load-render.js helpers.
 
-export const MOB_EVENT_LABELS: Record<string, string> = {
-  weddings: 'Wedding',
-  bar_bat_mitzvahs: 'Bar/Bat Mitzvah',
-  birthdays: 'Birthday Party',
-  corporate: 'Corporate Event',
-  graduations: 'Graduation',
-  prom_homecoming: 'Prom/Homecoming',
-  anniversaries: 'Anniversary',
-  baby_showers: 'Baby Shower',
-  bridal_showers: 'Bridal Shower',
-  engagement: 'Engagement Party',
-  holiday: 'Holiday Party',
-  other: 'Other',
-};
+// Re-export MOB_EVENT_LABELS from the centralized constants module so
+// existing imports of `MOB_EVENT_LABELS` from this file keep working.
+// Going forward, new code should import directly from '@/lib/constants'.
+export { MOB_EVENT_LABELS } from '@/lib/constants';
 
 // "2026-04-28" → "Tue, Apr 28, 2026"
 export function formatShortDate(d: string | null): string {
