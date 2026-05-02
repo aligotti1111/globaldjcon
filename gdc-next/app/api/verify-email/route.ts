@@ -148,7 +148,7 @@ export async function GET(request: Request) {
   try {
     const { error } = await admin
       .from('users')
-      .update({ email_verified: true })
+      .update({ email_verified: true } as unknown as never)
       .eq('id', tokenRow.user_id);
     if (error) throw error;
   } catch (e) {
@@ -165,7 +165,7 @@ export async function GET(request: Request) {
   try {
     await admin
       .from('email_verification_tokens')
-      .update({ used_at: new Date().toISOString() })
+      .update({ used_at: new Date().toISOString() } as unknown as never)
       .eq('token', token);
   } catch (e) {
     console.warn('[verify-email] mark-used failed (non-fatal)', e);
