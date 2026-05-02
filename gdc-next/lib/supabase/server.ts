@@ -1,13 +1,17 @@
 // Server-side Supabase client.
 // Use this in Server Components, Server Actions, and Route Handlers.
 // Reads the user session from cookies (set by middleware).
+//
+// Now typed via the Database generic — every query is checked at compile
+// time. See types/supabase.ts for the schema definition.
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { Database } from '@/types/supabase';
 
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

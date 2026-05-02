@@ -2,10 +2,15 @@
 // SERVER-ONLY. Never import this in a Client Component.
 // Use for: looking up auth.users emails (the bug we hit before),
 // admin actions like create-user/delete-user/approve-claim.
+//
+// Now typed via the Database generic. Auth admin methods (auth.admin.*)
+// are NOT in the Database type — they live on the client itself and
+// remain typed by @supabase/supabase-js.
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 export function createAdminClient() {
-  return createSupabaseClient(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {

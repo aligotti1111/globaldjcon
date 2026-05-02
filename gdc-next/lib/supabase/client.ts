@@ -1,11 +1,14 @@
 // Browser-side Supabase client.
 // Use this in Client Components ('use client').
-// Replaces the old `const db = window.supabase.createClient(...)` pattern —
-// no more Cloudflare/Netlify variable name collision.
+//
+// Now typed via the Database generic — every .from(), .select(), .insert(),
+// .update() call gets full IntelliSense + compile-time column checking.
+// See types/supabase.ts for the schema definition.
 import { createBrowserClient } from '@supabase/ssr';
+import type { Database } from '@/types/supabase';
 
 export function createClient() {
-  return createBrowserClient(
+  return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
