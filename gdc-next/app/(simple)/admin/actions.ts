@@ -463,7 +463,7 @@ export async function approveClaimAction(
       user_id: claim.target_user_id,
       email: newEmail,
       expires_at: expiresAt,
-    });
+    } as unknown as never);
 
   let emailSent = false;
   if (!tokenErr) {
