@@ -29,11 +29,17 @@ export default async function UpdateDjProfilePage() {
   // Fetch the user row so the client form hydrates with current values.
   // We pull *all* fields the form will ever touch — even ones the deferred
   // tabs use — so they're visible when those tabs come online later.
-  const { data: profile, error } = await supabase
+  //
+  // Cast to UserProfile so .role and other field accesses type-check below.
+  // The Supabase client returns `never` for select('*') here because the
+  // generated DB types are incomplete (same root cause as the
+  // `as unknown as never` casts on .update() calls elsewhere in this file).
+  const { data: profileData, error } = await supabase
     .from('users')
     .select('*')
     .eq('id', authUser.id)
     .single();
+  const profile = profileData as UserProfile | null;
 
   if (error || !profile) {
     // Should be impossible — every authenticated user has a row — but
