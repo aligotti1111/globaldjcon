@@ -36,26 +36,11 @@ import {
   type AddressSuggestion,
 } from './mobileBookingForm';
 
-// Currency code → symbol. Mirror of the list in update-dj-profile/ClubBookingTab.
-// Kept inline here (small + rarely changing) rather than extracted to a shared
-// module since the two files have different contexts.
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$',
-  JPY: '¥', KRW: '₩', CNY: '¥', INR: '₹', BRL: 'R$', MXN: '$',
-};
-
-const VENUE_TYPE_LABELS: Record<string, string> = {
-  bar: 'Bar',
-  club: 'Club',
-};
-
-const SET_TYPE_LABELS: Record<string, string> = {
-  opening: 'Opening Set',
-  headliner: 'Headliner',
-  closing: 'Closing Set',
-  opening_close: 'Opening – Close',
-  opening_and_closing: 'Opening & Closing',
-};
+import {
+  CLUB_VENUE_TYPE_LABELS,
+  CLUB_SET_TYPE_LABELS,
+  currencySymbol,
+} from '@/lib/constants';
 
 interface DjLite {
   id: string;
@@ -110,7 +95,7 @@ function computeRate(
   endTime: string,
 ): RateInfo {
   const currency = bs.rate_currency || 'USD';
-  const symbol = CURRENCY_SYMBOLS[currency] || '$';
+  const symbol = currencySymbol(currency);
 
   // Effective rate type — per-day rateType wins, else global
   // Note: DayData.rateType isn't in the type yet (deferred from day-editor
@@ -421,7 +406,7 @@ export default function ClubBookingForm({
                 onClick={() => setVenueType(v)}
                 className={`${styles.pill} ${venueType === v ? styles.pillActive : ''}`}
               >
-                {VENUE_TYPE_LABELS[v]}
+                {CLUB_VENUE_TYPE_LABELS[v]}
               </button>
             ))}
           </div>
@@ -431,7 +416,7 @@ export default function ClubBookingForm({
         {venueType && (
           <FormSection label="Set Type">
             <div className={styles.pillCol}>
-              {Object.entries(SET_TYPE_LABELS).map(([val, lbl]) => (
+              {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
                 <button
                   key={val}
                   type="button"
