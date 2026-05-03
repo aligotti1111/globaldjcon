@@ -1,46 +1,49 @@
 'use client';
 
-// Banner shown briefly after a successful email verification.
-// Triggered by ?emailverified=1 in the URL — the /api/verify-email route
-// redirects users here with that query param after flipping their
-// email_verified flag to true.
+// Banner shown right after a successful email verification.
+//
+// Trigger: AuthProvider exposes a `justVerified` flag that's true when the
+// user's email_verified_at timestamp is within the last 60 seconds AND the
+// banner hasn't already been acknowledged for this verification event.
+//
+// This is more robust than reading a URL query param, which can get
+// stripped during the auto-login redirect chain (Supabase magic-link →
+// auth callback → final destination). The timestamp on the user record
+// survives any number of redirects.
 //
 // Behavior:
-//   - Reads ?emailverified=1 from the URL on mount
-//   - If present, shows a green confirmation banner
-//   - User can dismiss with the × button
-//   - Auto-dismisses after 8 seconds so it doesn't linger forever
-//   - Strips the query param from the URL so a refresh doesn't re-show it
+//   - Reads `justVerified` from useAuth()
+//   - When true, shows a green confirmation banner
+//   - User can dismiss with the × button (calls acknowledgeVerification)
+//   - Auto-dismisses after 8 seconds (also calls acknowledgeVerification)
+//   - Once acknowledged, won't re-show on refresh/navigation
 //
-// Mounted in (main)/layout.tsx alongside <VerifyEmailBanner /> so it
-// appears on every destination page (DJ → /update-dj-profile,
-// venue → /account-settings, host → /).
+// Mounted in (main)/layout.tsx so it appears on every destination page
+// (DJ → /update-dj-profile, venue → /account-settings, host → /).
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useAuth } from './AuthProvider';
 
-function BannerInner() {
-  const searchParams = useSearchParams();
-  const [visible, setVisible] = useState(false);
+export default function EmailVerifiedBanner() {
+  const { justVerified, acknowledgeVerification } = useAuth();
+  const [dismissed, setDismissed] = useState(false);
 
+  // Auto-dismiss after 8 seconds when the banner becomes visible.
   useEffect(() => {
-    if (searchParams.get('emailverified') !== '1') return;
-
-    setVisible(true);
-
-    // Strip the query param so a page refresh doesn't re-trigger the banner.
-    if (typeof window !== 'undefined' && window.history.replaceState) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('emailverified');
-      window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
-    }
-
-    // Auto-dismiss after 8 seconds.
-    const timer = setTimeout(() => setVisible(false), 8000);
+    if (!justVerified || dismissed) return;
+    const timer = setTimeout(() => {
+      setDismissed(true);
+      acknowledgeVerification();
+    }, 8000);
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [justVerified, dismissed, acknowledgeVerification]);
 
-  if (!visible) return null;
+  function handleDismiss() {
+    setDismissed(true);
+    acknowledgeVerification();
+  }
+
+  if (!justVerified || dismissed) return null;
 
   return (
     <div
@@ -69,7 +72,7 @@ function BannerInner() {
       </span>
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={handleDismiss}
         aria-label="Dismiss"
         style={{
           background: 'transparent',
@@ -88,15 +91,5 @@ function BannerInner() {
         ×
       </button>
     </div>
-  );
-}
-
-export default function EmailVerifiedBanner() {
-  // Suspense wrapper required for useSearchParams() in client components
-  // under Next.js 15 App Router.
-  return (
-    <Suspense fallback={null}>
-      <BannerInner />
-    </Suspense>
   );
 }
