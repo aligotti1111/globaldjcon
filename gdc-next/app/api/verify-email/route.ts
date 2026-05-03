@@ -1,13 +1,17 @@
 // API route: GET /api/verify-email?token=<hex>
 //
 // Validates the verification token, marks the user's email as verified
-// (sets BOTH email_verified=true AND email_verified_at=now()), then
-// auto-logs them in via a Supabase magic link and redirects to a
-// role-appropriate destination page.
+// (sets BOTH email_verified=true AND email_verified_at=now()), fires a
+// fire-and-forget welcome email, then auto-logs them in via a Supabase
+// magic link and redirects to a role-appropriate destination page.
 //
 // The destination page renders <EmailVerifiedBanner /> which detects the
 // fresh email_verified_at timestamp (within last 60s) on the user record
 // and shows a green "Email confirmed" notice.
+//
+// Welcome email: sent ONLY on the first successful verification (NOT on
+// duplicate clicks of the verify link). Fire-and-forget — a failed send
+// is logged but does not block the redirect or fail the verification.
 //
 // Destinations after successful verification:
 //   - DJ    → /update-dj-profile
@@ -128,25 +132,36 @@ export async function GET(request: Request) {
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
-  // Look up a user's role + email so we can pick the right destination AND
-  // generate a magic link (which needs the email).
+  // Look up a user's role + email + name + slug. Role drives destination,
+  // email is needed for the magic link, name + slug feed the welcome email.
   async function lookupUserDetails(userId: string): Promise<{
     role: string | null;
     email: string | null;
+    name: string | null;
+    slug: string | null;
   }> {
-    const result: { role: string | null; email: string | null } = {
+    const result: {
+      role: string | null;
+      email: string | null;
+      name: string | null;
+      slug: string | null;
+    } = {
       role: null,
       email: null,
+      name: null,
+      slug: null,
     };
     try {
       const { data } = await admin
         .from('users')
-        .select('role')
+        .select('role, name, slug')
         .eq('id', userId)
-        .maybeSingle<{ role: string | null }>();
+        .maybeSingle<{ role: string | null; name: string | null; slug: string | null }>();
       result.role = data?.role ?? null;
+      result.name = data?.name ?? null;
+      result.slug = data?.slug ?? null;
     } catch (e) {
-      console.warn('[verify-email] role lookup failed (non-fatal)', e);
+      console.warn('[verify-email] profile lookup failed (non-fatal)', e);
     }
     try {
       const { data } = await admin.auth.admin.getUserById(userId);
@@ -193,6 +208,41 @@ export async function GET(request: Request) {
       if (magicUrl) return magicUrl;
     }
     return `${origin}${destinationPath}`;
+  }
+
+  // Fire-and-forget welcome email. Called only on the FIRST successful
+  // verification (not on duplicate clicks). Uses the existing send-email
+  // route which already has a 'welcome' template branch. Does not throw —
+  // a failed send is logged but never blocks the verification flow.
+  async function sendWelcomeEmail(
+    email: string | null,
+    name: string | null,
+    role: string | null,
+    slug: string | null
+  ): Promise<void> {
+    if (!email || !name || !role) {
+      console.warn('[verify-email] skipping welcome email: missing email/name/role');
+      return;
+    }
+    try {
+      const res = await fetch(`${origin}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'welcome',
+          name,
+          email,
+          role,
+          slug: slug || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.warn('[verify-email] welcome email non-OK response', res.status, body);
+      }
+    } catch (e) {
+      console.warn('[verify-email] welcome email send threw (non-fatal)', e);
+    }
   }
 
   // ── Already-used token: treat as success but DON'T re-stamp verified_at ─
@@ -244,9 +294,26 @@ export async function GET(request: Request) {
     console.warn('[verify-email] mark-used failed (non-fatal)', e);
   }
 
-  // Step 4: redirect via auto-login magic link to the role-appropriate
+  // Step 4: send welcome email (fire-and-forget, first-verify only).
+  // We're past the tokenRow.used_at check above, so this branch runs only
+  // on the very first successful verification — no risk of double-sends.
+  // Look up user details once and reuse for both welcome + redirect.
+  const userDetails = await lookupUserDetails(tokenRow.user_id);
+  await sendWelcomeEmail(
+    userDetails.email,
+    userDetails.name,
+    userDetails.role,
+    userDetails.slug
+  );
+
+  // Step 5: redirect via auto-login magic link to the role-appropriate
   // destination. The banner will detect the fresh email_verified_at
   // timestamp on the user record and show itself.
-  const finalUrl = await buildFinalRedirect(tokenRow.user_id);
+  const destinationPath = destinationPathForRole(userDetails.role);
+  let finalUrl = `${origin}${destinationPath}`;
+  if (userDetails.email) {
+    const magicUrl = await generateAutoLoginUrl(userDetails.email, destinationPath);
+    if (magicUrl) finalUrl = magicUrl;
+  }
   return NextResponse.redirect(finalUrl, 302);
 }
