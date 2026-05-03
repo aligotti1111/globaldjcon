@@ -27,6 +27,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 // ─── Types ────────────────────────────────────────────────────────
 export interface HomeDj {
@@ -649,10 +650,15 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
       <div className="card-top">
         <div className="avatar" style={{ background: avatarGradient(dj.dj_type) }}>
           {dj.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            // next/image auto-resizes the source PNG/JPG down to ~88px and
+            // serves WebP to browsers that support it. The source file at
+            // Supabase is often 400x400 PNG; this drops the actual download
+            // from ~200KB to ~5-10KB per avatar.
+            <Image
               src={dj.avatar_url}
               alt={dj.name || 'DJ avatar'}
+              width={88}
+              height={88}
               style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }}
             />
           ) : (
@@ -709,10 +715,13 @@ function DjListRow({ dj }: { dj: HomeDj }) {
     >
       <div className="dll-avatar" style={{ background: avatarGradient(dj.dj_type) }}>
         {dj.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          // List rows display avatars at ~36px — same optimization story as
+          // the card view above.
+          <Image
             src={dj.avatar_url}
             alt={dj.name || ''}
+            width={36}
+            height={36}
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }}
           />
         ) : (
