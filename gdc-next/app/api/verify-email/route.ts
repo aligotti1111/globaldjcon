@@ -1,26 +1,26 @@
 // API route: GET /api/verify-email?token=<hex>
 //
-// Validates the verification token, marks public.users.email_verified = true,
-// marks the token as used, and then AUTO-LOGS THE USER IN by generating a
-// one-time magic link via the Supabase admin API and redirecting the browser
-// to it. Supabase's auth callback consumes the magic link, sets the session
-// cookie, and sends the user on to their role-appropriate destination —
-// already signed in, with the green EmailVerifiedBanner showing.
+// Validates the verification token, marks the user's email as verified
+// (sets BOTH email_verified=true AND email_verified_at=now()), then
+// auto-logs them in via a Supabase magic link and redirects to a
+// role-appropriate destination page.
 //
-// Destinations after successful verification + auto-login:
-//   - DJ    → /update-dj-profile?emailverified=1
-//   - venue → /account-settings?emailverified=1
-//   - host  → /?emailverified=1
+// The destination page renders <EmailVerifiedBanner /> which detects the
+// fresh email_verified_at timestamp (within last 60s) on the user record
+// and shows a green "Email confirmed" notice.
+//
+// Destinations after successful verification:
+//   - DJ    → /update-dj-profile
+//   - venue → /account-settings
+//   - host  → /
 //
 // Security note: the magic link in the redirect URL grants a session to
 // whoever follows it. The link is one-time-use (consumed on first follow)
-// and short-lived. Anyone with access to the verification email could
-// theoretically intercept and use it — but the same is true of any
-// password-reset link, so this is the standard tradeoff.
+// and short-lived. Standard tradeoff (same as password reset emails).
 //
-// Fallback: if the magic-link generation fails for any reason, we fall back
-// to the previous behavior (redirect without auto-login). The user will be
-// bounced to /login by middleware, but their email is still verified.
+// Fallback: if magic-link generation fails for any reason, falls back to
+// a plain redirect. The user will be bounced to /login by middleware, but
+// their email is still marked verified.
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -49,16 +49,18 @@ function htmlErrorResponse(title: string, message: string, status: number, origi
 
 // Decide where to send the user post-verification based on their role.
 // Returns a path (no origin) — the caller composes the full URL.
+// No more ?emailverified=1 query param needed; the banner detects the
+// fresh email_verified_at timestamp on the user record.
 function destinationPathForRole(role: string | null | undefined): string {
   switch ((role || '').toLowerCase()) {
     case 'dj':
-      return '/update-dj-profile?emailverified=1';
+      return '/update-dj-profile';
     case 'venue':
-      return '/account-settings?emailverified=1';
+      return '/account-settings';
     case 'host':
-      return '/?emailverified=1';
+      return '/';
     default:
-      return '/?emailverified=1';
+      return '/';
   }
 }
 
@@ -136,7 +138,6 @@ export async function GET(request: Request) {
       role: null,
       email: null,
     };
-    // Role from public.users
     try {
       const { data } = await admin
         .from('users')
@@ -147,7 +148,6 @@ export async function GET(request: Request) {
     } catch (e) {
       console.warn('[verify-email] role lookup failed (non-fatal)', e);
     }
-    // Email from auth.users (the source of truth for email)
     try {
       const { data } = await admin.auth.admin.getUserById(userId);
       result.email = data?.user?.email ?? null;
@@ -159,9 +159,7 @@ export async function GET(request: Request) {
 
   // Generate a one-time magic-link URL that, when followed, establishes a
   // session for the user and then redirects to `destinationPath`. Returns
-  // null if the magic link can't be generated for any reason — the caller
-  // should fall back to a plain redirect (user will hit /login but email
-  // is still verified).
+  // null if the magic link can't be generated for any reason.
   async function generateAutoLoginUrl(
     email: string,
     destinationPath: string
@@ -186,8 +184,7 @@ export async function GET(request: Request) {
   }
 
   // Compose the final redirect: prefer auto-login magic link; fall back to
-  // a plain redirect to the destination path (which will go through /login
-  // due to middleware protection).
+  // a plain redirect to the destination path.
   async function buildFinalRedirect(userId: string): Promise<string> {
     const { role, email } = await lookupUserDetails(userId);
     const destinationPath = destinationPathForRole(role);
@@ -195,13 +192,12 @@ export async function GET(request: Request) {
       const magicUrl = await generateAutoLoginUrl(email, destinationPath);
       if (magicUrl) return magicUrl;
     }
-    // Fallback: plain redirect (no auto-login).
     return `${origin}${destinationPath}`;
   }
 
-  // ── Already-used token: treat as success but still try to auto-login ─
-  // User may have clicked the email link twice. Their email is already
-  // verified, so just send them on through the normal flow.
+  // ── Already-used token: treat as success but DON'T re-stamp verified_at ─
+  // User clicked the link twice. Email is already verified — don't refresh
+  // the timestamp (would re-trigger the banner unexpectedly).
   if (tokenRow.used_at) {
     const finalUrl = await buildFinalRedirect(tokenRow.user_id);
     return NextResponse.redirect(finalUrl, 302);
@@ -216,11 +212,16 @@ export async function GET(request: Request) {
     );
   }
 
-  // Step 2: flip email_verified = true
+  // Step 2: flip email_verified = true AND set email_verified_at = now().
+  // The timestamp is what EmailVerifiedBanner uses to decide whether to
+  // show — if it's within the last 60 seconds, the banner appears.
   try {
     const { error } = await admin
       .from('users')
-      .update({ email_verified: true } as unknown as never)
+      .update({
+        email_verified: true,
+        email_verified_at: new Date().toISOString(),
+      } as unknown as never)
       .eq('id', tokenRow.user_id);
     if (error) throw error;
   } catch (e) {
@@ -244,8 +245,8 @@ export async function GET(request: Request) {
   }
 
   // Step 4: redirect via auto-login magic link to the role-appropriate
-  // destination. If the magic-link generation fails, falls back to a
-  // plain redirect (user goes through /login but is still verified).
+  // destination. The banner will detect the fresh email_verified_at
+  // timestamp on the user record and show itself.
   const finalUrl = await buildFinalRedirect(tokenRow.user_id);
   return NextResponse.redirect(finalUrl, 302);
 }
