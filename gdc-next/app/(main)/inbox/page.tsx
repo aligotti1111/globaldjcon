@@ -90,11 +90,37 @@ export default async function InboxPage() {
   const received = (receivedRes.data as InboxMessage[]) || [];
   const sent = (sentRes.data as InboxMessage[]) || [];
 
-  // Merge + dedupe by id (a user can't message themselves but defensive
-  // dedupe is cheap), then sort newest-first.
+  // ── Orphan-reply promotion (Gmail-style "fresh thread" behavior) ─
+  // If I previously soft-deleted a thread but the other party then
+  // replied, those new replies are NOT in my visible top-level set
+  // (because their parent IS soft-deleted from my view). To match
+  // Gmail behavior — where a new reply to a deleted thread shows up
+  // as a NEW fresh message in the inbox without resurrecting the old
+  // history — we find those orphan replies and treat each one as if
+  // it were a top-level message.
+  const visibleParentIds = new Set([...received, ...sent].map((m) => m.id));
+  const { data: orphanRows } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('to_user_id', authUser.id)
+    .eq('deleted_by_recipient', false)
+    .neq('from_user_id', authUser.id) // don't promote my own replies
+    .not('parent_id', 'is', null)
+    .order('created_at', { ascending: false });
+  const orphanReplies = ((orphanRows as InboxMessage[]) || []).filter(
+    (r) => r.parent_id !== null && !visibleParentIds.has(r.parent_id)
+  );
+  // Treat each orphan as a fresh top-level message by clearing parent_id
+  // for display. The DB row is unchanged — this is a view-only adjustment.
+  const promotedOrphans: InboxMessage[] = orphanReplies.map((r) => ({
+    ...r,
+    parent_id: null,
+  }));
+
+  // Merge + dedupe by id, then sort newest-first.
   const seen = new Set<string>();
   const messages: InboxMessage[] = [];
-  for (const m of [...received, ...sent]) {
+  for (const m of [...received, ...sent, ...promotedOrphans]) {
     if (seen.has(m.id)) continue;
     seen.add(m.id);
     messages.push(m);
@@ -109,18 +135,30 @@ export default async function InboxPage() {
   // replies sent to me → check deleted_by_recipient. The .or() expresses
   // "show this row if it's mine and I haven't deleted as sender, OR it's
   // addressed to me and I haven't deleted as recipient."
+  //
+  // IMPORTANT: We exclude the orphan-reply IDs from this query because
+  // they're now displayed as standalone top-level messages, not as replies
+  // to anything. (They'd otherwise show up twice — once as a top-level
+  // and once as a reply to the hidden parent.)
+  const orphanIds = new Set(promotedOrphans.map((r) => r.id));
   let replies: InboxMessage[] = [];
   if (messages.length > 0) {
-    const parentIds = messages.map((m) => m.id);
-    const { data: replyRows } = await supabase
-      .from('messages')
-      .select('*')
-      .in('parent_id', parentIds)
-      .or(
-        `and(from_user_id.eq.${authUser.id},deleted_by_sender.eq.false),and(to_user_id.eq.${authUser.id},deleted_by_recipient.eq.false)`
-      )
-      .order('created_at', { ascending: true });
-    replies = (replyRows as InboxMessage[]) || [];
+    // Only ask for replies to ACTUAL parent threads (skip the promoted
+    // orphans whose parent_id was nulled for display).
+    const realParentIds = messages
+      .filter((m) => !orphanIds.has(m.id))
+      .map((m) => m.id);
+    if (realParentIds.length > 0) {
+      const { data: replyRows } = await supabase
+        .from('messages')
+        .select('*')
+        .in('parent_id', realParentIds)
+        .or(
+          `and(from_user_id.eq.${authUser.id},deleted_by_sender.eq.false),and(to_user_id.eq.${authUser.id},deleted_by_recipient.eq.false)`
+        )
+        .order('created_at', { ascending: true });
+      replies = (replyRows as InboxMessage[]) || [];
+    }
   }
 
   return (
