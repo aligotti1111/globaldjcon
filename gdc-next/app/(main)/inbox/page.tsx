@@ -34,6 +34,12 @@ import { createClient } from '@/lib/supabase/server';
 import InboxClient from './InboxClient';
 
 export const dynamic = 'force-dynamic';
+// Disable all caching on this page. Even with `dynamic = 'force-dynamic'`,
+// individual fetch results inside a server component can be cached by
+// Next.js's fetch layer. `revalidate = 0` is belt-and-suspenders that
+// guarantees every visit produces a fresh DB query — critical for an
+// inbox where stale data would show ghost messages or hide new ones.
+export const revalidate = 0;
 
 export interface InboxMessage {
   id: string;
