@@ -264,6 +264,12 @@ export default function InboxClient({
   //   - If I sent it    → set deleted_by_sender = true
   //   - If I received it → set deleted_by_recipient = true
   //
+  // CRITICAL: we query the DB directly for ALL rows in the thread instead
+  // of relying on local state. Local state may be stale (replies that
+  // arrived after page load aren't in `replies` until refresh), and a
+  // missed row means the thread can resurrect itself when those rows
+  // contain unread messages later.
+  //
   // When BOTH flags are eventually true on a row, a future cleanup job
   // can hard-delete it for real.
   async function deleteThread(parentId: string) {
@@ -275,43 +281,27 @@ export default function InboxClient({
     }))) return;
     const supabase = createClient();
     try {
-      const parentMsg = messages.find((m) => m.id === parentId);
-      if (!parentMsg) throw new Error('Thread not found');
+      // Set deleted_by_sender = true on every row in the thread that I sent.
+      // This covers the parent (if I sent it) AND any replies I sent.
+      // Using a compound .or() so a single update hits all of:
+      //   - the parent row itself (id = parentId AND from_user_id = me)
+      //   - all reply rows under it (parent_id = parentId AND from_user_id = me)
+      await supabase
+        .from('messages')
+        .update({ deleted_by_sender: true } as unknown as never)
+        .eq('from_user_id', currentUser.id)
+        .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
 
-      // Build the list of all messages in this thread (parent + replies)
-      // we want to soft-delete from the current user's view.
-      const threadMessages: InboxMessage[] = [
-        parentMsg,
-        ...replies.filter((r) => r.parent_id === parentId),
-      ];
-
-      // Split into "messages I sent" vs "messages I received". Each list
-      // gets a single bulk update with the appropriate flag.
-      const sentByMe = threadMessages
-        .filter((m) => m.from_user_id === currentUser.id)
-        .map((m) => m.id);
-      const sentToMe = threadMessages
-        .filter((m) => m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id)
-        .map((m) => m.id);
-
-      // Run the two updates sequentially. They could be parallelized but
-      // Supabase query builders aren't typed as Promises until awaited, so
-      // the TypeScript-cleanest path is just two awaits.
-      if (sentByMe.length > 0) {
-        await supabase
-          .from('messages')
-          .update({ deleted_by_sender: true } as unknown as never)
-          .in('id', sentByMe);
-      }
-      if (sentToMe.length > 0) {
-        await supabase
-          .from('messages')
-          .update({ deleted_by_recipient: true } as unknown as never)
-          .in('id', sentToMe);
-      }
+      // Same approach for messages I received in the thread.
+      await supabase
+        .from('messages')
+        .update({ deleted_by_recipient: true } as unknown as never)
+        .eq('to_user_id', currentUser.id)
+        .neq('from_user_id', currentUser.id) // belt-and-suspenders: don't update my own sends
+        .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
 
       // Optimistic UI: drop the thread + its replies from local state
-      // immediately, regardless of which flag(s) were set.
+      // immediately.
       setMessages((prev) => prev.filter((m) => m.id !== parentId));
       setReplies((prev) => prev.filter((r) => r.parent_id !== parentId));
       if (openId === parentId) setOpenId(null);
