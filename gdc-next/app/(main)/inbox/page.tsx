@@ -98,12 +98,14 @@ export default async function InboxPage() {
 
   // ── Orphan-reply promotion (Gmail-style "fresh thread" behavior) ─
   // If I previously soft-deleted a thread but the other party then
-  // replied, those new replies are NOT in my visible top-level set
+  // replied, those new replies are NOT attached to a visible parent
   // (because their parent IS soft-deleted from my view). To match
-  // Gmail behavior — where a new reply to a deleted thread shows up
-  // as a NEW fresh message in the inbox without resurrecting the old
-  // history — we find those orphan replies and treat each one as if
-  // it were a top-level message.
+  // Gmail behavior — where new replies to a deleted thread show up
+  // as a fresh new conversation in the inbox without resurrecting
+  // the old history — we promote the OLDEST orphan reply per parent
+  // to act as a top-level message, and keep the rest as its replies.
+  // This way 5 replies to a deleted thread appear as 1 new card with
+  // 4 nested replies, NOT 5 separate cards.
   const visibleParentIds = new Set([...received, ...sent].map((m) => m.id));
   const { data: orphanRows } = await supabase
     .from('messages')
@@ -112,16 +114,35 @@ export default async function InboxPage() {
     .eq('deleted_by_recipient', false)
     .neq('from_user_id', authUser.id) // don't promote my own replies
     .not('parent_id', 'is', null)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
   const orphanReplies = ((orphanRows as InboxMessage[]) || []).filter(
     (r) => r.parent_id !== null && !visibleParentIds.has(r.parent_id)
   );
-  // Treat each orphan as a fresh top-level message by clearing parent_id
-  // for display. The DB row is unchanged — this is a view-only adjustment.
-  const promotedOrphans: InboxMessage[] = orphanReplies.map((r) => ({
-    ...r,
-    parent_id: null,
-  }));
+
+  // Group orphan replies by their (now-hidden) parent_id, then for each
+  // group: pick the oldest one to be the new top-level "thread starter",
+  // and the rest become its nested replies.
+  const orphanGroups = new Map<string, InboxMessage[]>();
+  for (const r of orphanReplies) {
+    if (!r.parent_id) continue;
+    const group = orphanGroups.get(r.parent_id) || [];
+    group.push(r);
+    orphanGroups.set(r.parent_id, group);
+  }
+  // Promoted "head" message per group — its parent_id is nulled for display
+  // so the inbox treats it like a top-level thread.
+  const promotedOrphans: InboxMessage[] = [];
+  // Replies under each promoted head — re-parented from the old (hidden)
+  // parent_id to point at the head's id.
+  const promotedOrphanReplies: InboxMessage[] = [];
+  for (const [, group] of orphanGroups) {
+    if (group.length === 0) continue;
+    const [head, ...rest] = group; // oldest first because we sorted ASC
+    promotedOrphans.push({ ...head, parent_id: null });
+    for (const r of rest) {
+      promotedOrphanReplies.push({ ...r, parent_id: head.id });
+    }
+  }
 
   // Merge + dedupe by id, then sort newest-first.
   const seen = new Set<string>();
@@ -165,6 +186,14 @@ export default async function InboxPage() {
         .order('created_at', { ascending: true });
       replies = (replyRows as InboxMessage[]) || [];
     }
+  }
+  // Append the re-parented orphan replies (everything in an orphan group
+  // beyond the head) so they appear nested under the promoted head card
+  // instead of as separate top-level cards.
+  if (promotedOrphanReplies.length > 0) {
+    replies = [...replies, ...promotedOrphanReplies].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
   }
 
   return (
