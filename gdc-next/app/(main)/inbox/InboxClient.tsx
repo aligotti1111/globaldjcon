@@ -384,7 +384,12 @@ export default function InboxClient({
                 </div>
                 <div className={styles.msgSubject}>{msg.subject}</div>
                 <div className={styles.msgMidRow}>
-                  <div className={styles.msgPreview}>{msg.message}</div>
+                  {/* Preview shows the LATEST message in the thread (could be
+                      the parent itself if no replies yet, or whichever reply
+                      is most recent). Matches user expectation that the inbox
+                      preview reflects the current state of the conversation,
+                      not its starting point. */}
+                  <div className={styles.msgPreview}>{lastMsg.message}</div>
                   <div className={styles.sentLabel}>
                     {lastWasMe ? (
                       <span className={styles.sentLabelMe}>↑ Sent</span>
