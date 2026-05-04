@@ -167,19 +167,18 @@ export default async function InboxPage() {
   // they're now displayed as standalone top-level messages, not as replies
   // to anything. (They'd otherwise show up twice — once as a top-level
   // and once as a reply to the hidden parent.)
-  const orphanIds = new Set(promotedOrphans.map((r) => r.id));
   let replies: InboxMessage[] = [];
   if (messages.length > 0) {
-    // Only ask for replies to ACTUAL parent threads (skip the promoted
-    // orphans whose parent_id was nulled for display).
-    const realParentIds = messages
-      .filter((m) => !orphanIds.has(m.id))
-      .map((m) => m.id);
-    if (realParentIds.length > 0) {
+    // Look for replies to EVERY message in the inbox view — including
+    // orphan-promoted heads. Previously we excluded orphan heads here,
+    // which meant any continuation replies to a promoted thread were
+    // missed and the conversation looked like new threads on each reply.
+    const allParentIds = messages.map((m) => m.id);
+    if (allParentIds.length > 0) {
       const { data: replyRows } = await supabase
         .from('messages')
         .select('*')
-        .in('parent_id', realParentIds)
+        .in('parent_id', allParentIds)
         .or(
           `and(from_user_id.eq.${authUser.id},deleted_by_sender.eq.false),and(to_user_id.eq.${authUser.id},deleted_by_recipient.eq.false)`
         )
@@ -187,11 +186,20 @@ export default async function InboxPage() {
       replies = (replyRows as InboxMessage[]) || [];
     }
   }
-  // Append the re-parented orphan replies (everything in an orphan group
-  // beyond the head) so they appear nested under the promoted head card
-  // instead of as separate top-level cards.
+  // Append the re-parented orphan replies (siblings of the orphan head from
+  // the same originally-deleted thread). They need their parent_id rewritten
+  // so the React rendering attaches them to the promoted head, not to the
+  // hidden original parent.
   if (promotedOrphanReplies.length > 0) {
-    replies = [...replies, ...promotedOrphanReplies].sort(
+    // Avoid duplicates — promotedOrphanReplies share IDs with rows we
+    // might have just fetched in `replies` (if their parent_id pointed
+    // somewhere we now consider visible). Dedupe by id and prefer the
+    // re-parented version since it has the correct parent_id for display.
+    const promotedIds = new Set(promotedOrphanReplies.map((r) => r.id));
+    replies = [
+      ...replies.filter((r) => !promotedIds.has(r.id)),
+      ...promotedOrphanReplies,
+    ].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }
