@@ -254,23 +254,73 @@ export default function InboxClient({
     }
   }
 
-  // ── Delete a thread ────────────────────────────────────────────
+  // ── Delete a thread (soft-delete) ──────────────────────────────
+  // We don't actually remove the rows. We set a per-user flag so the
+  // thread disappears from MY inbox while the other party still sees
+  // their copy. This matches how Gmail / iMessage / etc. handle deletion.
+  //
+  // For each message in the thread (parent + every reply), the flag we
+  // set depends on which side I'm on:
+  //   - If I sent it    → set deleted_by_sender = true
+  //   - If I received it → set deleted_by_recipient = true
+  //
+  // When BOTH flags are eventually true on a row, a future cleanup job
+  // can hard-delete it for real.
   async function deleteThread(parentId: string) {
     if (!(await confirm({
       title: 'Delete this conversation?',
-      message: 'The messages will be removed permanently for both you and the other party.',
+      message: 'The conversation will be removed from your inbox. The other person will still have their copy.',
       confirmLabel: 'Delete',
       variant: 'danger',
     }))) return;
     const supabase = createClient();
     try {
-      // Delete the parent. RLS allows deletion; we then also cascade-delete
-      // the replies in a second call (parent_id matches).
-      await supabase.from('messages').delete().eq('id', parentId);
-      await supabase.from('messages').delete().eq('parent_id', parentId);
+      const parentMsg = messages.find((m) => m.id === parentId);
+      if (!parentMsg) throw new Error('Thread not found');
+
+      // Build the list of all messages in this thread (parent + replies)
+      // we want to soft-delete from the current user's view.
+      const threadMessages: InboxMessage[] = [
+        parentMsg,
+        ...replies.filter((r) => r.parent_id === parentId),
+      ];
+
+      // Split into "messages I sent" vs "messages I received". Each list
+      // gets a single bulk update with the appropriate flag.
+      const sentByMe = threadMessages
+        .filter((m) => m.from_user_id === currentUser.id)
+        .map((m) => m.id);
+      const sentToMe = threadMessages
+        .filter((m) => m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id)
+        .map((m) => m.id);
+
+      const updates: Promise<unknown>[] = [];
+      if (sentByMe.length > 0) {
+        updates.push(
+          supabase
+            .from('messages')
+            .update({ deleted_by_sender: true } as unknown as never)
+            .in('id', sentByMe)
+        );
+      }
+      if (sentToMe.length > 0) {
+        updates.push(
+          supabase
+            .from('messages')
+            .update({ deleted_by_recipient: true } as unknown as never)
+            .in('id', sentToMe)
+        );
+      }
+      await Promise.all(updates);
+
+      // Optimistic UI: drop the thread + its replies from local state
+      // immediately, regardless of which flag(s) were set.
       setMessages((prev) => prev.filter((m) => m.id !== parentId));
       setReplies((prev) => prev.filter((r) => r.parent_id !== parentId));
       if (openId === parentId) setOpenId(null);
+      // Refresh the header inbox badge — deleting a thread can change
+      // the unread count.
+      window.dispatchEvent(new CustomEvent('gdc:refresh-inbox-count'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Delete failed';
       alert('Error: ' + msg);
