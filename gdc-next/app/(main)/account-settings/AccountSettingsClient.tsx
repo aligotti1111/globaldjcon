@@ -61,10 +61,17 @@ export default function AccountSettingsClient({
   const [profileAlert, setProfileAlert] = useState<Alert>(null);
 
   // ── Email ────────────────────────────────────────────────────────
-  const [newEmail, setNewEmail] = useState('');
+  // Single editable field pre-populated with the current address. The
+  // user edits it in place; the password gate below is what protects
+  // against accidental changes (no save without re-authentication).
+  const [newEmail, setNewEmail] = useState(currentEmail);
   const [confirmPwForEmail, setConfirmPwForEmail] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailAlert, setEmailAlert] = useState<Alert>(null);
+  // Has the user actually changed the email value? Used to disable the
+  // Save button until there's something to save.
+  const emailChanged =
+    newEmail.trim().toLowerCase() !== currentEmail.trim().toLowerCase();
 
   // ── Password ─────────────────────────────────────────────────────
   const [currentPw, setCurrentPw] = useState('');
@@ -142,6 +149,13 @@ export default function AccountSettingsClient({
       setEmailAlert({ type: 'error', msg: 'Please fill in all fields.' });
       return;
     }
+    // Guard: nothing to do if the value matches the current address.
+    // Should be prevented by the disabled Save button too, but defense in
+    // depth — never hit the server with a no-op.
+    if (trimmed === currentEmail.trim().toLowerCase()) {
+      setEmailAlert({ type: 'error', msg: 'New email is the same as your current one.' });
+      return;
+    }
     setEmailSaving(true);
     try {
       // Server action handles re-auth + admin-side email update with
@@ -159,9 +173,9 @@ export default function AccountSettingsClient({
         msg: `✓ Email changed to ${trimmed}.`,
       });
       setConfirmPwForEmail('');
-      setNewEmail('');
-      // Refresh so the "Current Email" field shows the new address.
-      // Use a short delay so the success message is readable first.
+      // Don't blank the email field — leave the new value visible until
+      // the page reload below shows it as the persisted value.
+      // Refresh so the input pre-populates with the new address.
       setTimeout(() => window.location.reload(), 1200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -487,21 +501,13 @@ export default function AccountSettingsClient({
         <h2>Email Address</h2>
         {emailAlert && <AlertBlock alert={emailAlert} />}
 
+        {/* Single editable field. Pre-populated with the current address;
+            the user edits it in place. The password field below is what
+            actually authorizes the change — no save without re-auth. */}
         <div className={styles.formGroup}>
-          <label>Current Email</label>
+          <label>Email</label>
           <input
             type="email"
-            value={currentEmail}
-            readOnly
-            className={styles.readOnlyInput}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label>New Email</label>
-          <input
-            type="email"
-            placeholder="your@email.com"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
           />
@@ -520,7 +526,7 @@ export default function AccountSettingsClient({
         <button
           type="button"
           className={styles.saveBtn}
-          disabled={emailSaving}
+          disabled={emailSaving || !emailChanged}
           onClick={saveEmail}
         >
           {emailSaving ? 'Updating…' : 'Update Email'}
