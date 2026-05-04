@@ -64,17 +64,25 @@ export default async function InboxPage() {
 
   // Fetch top-level messages: received OR sent by current user.
   // parent_id is null = top of thread. Replies live under those parents.
+  //
+  // Soft-delete filters:
+  //   - For RECEIVED: skip messages where I (the recipient) marked it deleted
+  //   - For SENT: skip messages where I (the sender) marked it deleted
+  // The other party still sees their copy. When BOTH flags are true, a
+  // future cleanup job can hard-delete the row.
   const [receivedRes, sentRes] = await Promise.all([
     supabase
       .from('messages')
       .select('*')
       .eq('to_user_id', authUser.id)
+      .eq('deleted_by_recipient', false)
       .is('parent_id', null)
       .order('created_at', { ascending: false }),
     supabase
       .from('messages')
       .select('*')
       .eq('from_user_id', authUser.id)
+      .eq('deleted_by_sender', false)
       .is('parent_id', null)
       .order('created_at', { ascending: false }),
   ]);
@@ -95,7 +103,12 @@ export default async function InboxPage() {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  // Fetch all replies for these threads in one query
+  // Fetch all replies for these threads in one query.
+  // Soft-delete filter: a reply is hidden from me if I marked it deleted on
+  // whichever side I'm on. Replies I sent → check deleted_by_sender;
+  // replies sent to me → check deleted_by_recipient. The .or() expresses
+  // "show this row if it's mine and I haven't deleted as sender, OR it's
+  // addressed to me and I haven't deleted as recipient."
   let replies: InboxMessage[] = [];
   if (messages.length > 0) {
     const parentIds = messages.map((m) => m.id);
@@ -103,6 +116,9 @@ export default async function InboxPage() {
       .from('messages')
       .select('*')
       .in('parent_id', parentIds)
+      .or(
+        `and(from_user_id.eq.${authUser.id},deleted_by_sender.eq.false),and(to_user_id.eq.${authUser.id},deleted_by_recipient.eq.false)`
+      )
       .order('created_at', { ascending: true });
     replies = (replyRows as InboxMessage[]) || [];
   }
