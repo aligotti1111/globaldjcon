@@ -137,21 +137,44 @@ export default async function InboxPage() {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  // Fetch all replies for these threads. Filter out replies I soft-deleted
-  // on my side, but keep replies from the resurrection case (the new reply
-  // that brought the thread back is, by definition, not deleted by me).
+  // Fetch replies. Two different rules:
+  //   - For NORMAL threads (parent in received/sent): filter out replies
+  //     I soft-deleted on my side.
+  //   - For RESURRECTED threads (parent only came back because of a new
+  //     reply): fetch ALL replies in the thread, ignoring my prior
+  //     soft-delete flags. The user explicitly asked: when a thread
+  //     comes back via a new reply, show the whole conversation history,
+  //     not just the new reply.
+  const resurrectedSet = new Set(resurrectedParents.map((p) => p.id));
+  const normalParentIds = messages
+    .filter((m) => !resurrectedSet.has(m.id))
+    .map((m) => m.id);
+  const resurrectedParentIds = messages
+    .filter((m) => resurrectedSet.has(m.id))
+    .map((m) => m.id);
+
   let replies: InboxMessage[] = [];
-  if (messages.length > 0) {
-    const parentIds = messages.map((m) => m.id);
-    const { data: replyRows } = await supabase
+  if (normalParentIds.length > 0) {
+    const { data: rows } = await supabase
       .from('messages')
       .select('*')
-      .in('parent_id', parentIds)
+      .in('parent_id', normalParentIds)
       .or(
         `and(from_user_id.eq.${authUser.id},deleted_by_sender.eq.false),and(to_user_id.eq.${authUser.id},deleted_by_recipient.eq.false)`
       )
       .order('created_at', { ascending: true });
-    replies = (replyRows as InboxMessage[]) || [];
+    replies = (rows as InboxMessage[]) || [];
+  }
+  if (resurrectedParentIds.length > 0) {
+    const { data: rows } = await supabase
+      .from('messages')
+      .select('*')
+      .in('parent_id', resurrectedParentIds)
+      .order('created_at', { ascending: true });
+    const resurrectedReplies = (rows as InboxMessage[]) || [];
+    replies = [...replies, ...resurrectedReplies].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
   }
 
   return (
