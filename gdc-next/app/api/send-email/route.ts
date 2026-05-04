@@ -177,8 +177,8 @@ export async function POST(request: Request) {
       // Include sender name in subject so the inbox preview is useful at a
       // glance. Falls back to a generic subject if name is missing.
       subject: senderName
-        ? `New message from ${senderName} on Global DJ Connect`
-        : `New message on Global DJ Connect: ${subject}`,
+        ? `New message from ${senderName}`
+        : `New message: ${subject}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Message</h2>
         <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong style="color:#1a1a2e;">${escHtml(senderName)}</strong>.</p>
