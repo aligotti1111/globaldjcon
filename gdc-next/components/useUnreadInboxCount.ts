@@ -55,7 +55,8 @@ export function useUnreadInboxCount(): number {
       if (typeof document !== 'undefined' && document.hidden) return;
       try {
         // Pull just the id + parent_id of every unread message that's
-        // addressed to me and NOT from me. The dataset is small (only
+        // addressed to me, NOT from me, and that I haven't soft-deleted
+        // (deleted_by_recipient = false). The dataset is small (only
         // unread items for this user), so doing the thread collapse in
         // JS is cheap and avoids a Postgres-specific DISTINCT/RPC trick.
         const { data, error } = await db
@@ -63,6 +64,7 @@ export function useUnreadInboxCount(): number {
           .select('id, parent_id')
           .eq('to_user_id', user!.id)
           .eq('read', false)
+          .eq('deleted_by_recipient', false)
           .neq('from_user_id', user!.id);
         if (cancelled) return;
         if (error) {
