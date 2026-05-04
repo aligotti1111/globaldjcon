@@ -281,24 +281,37 @@ export default function InboxClient({
     }))) return;
     const supabase = createClient();
     try {
-      // Set deleted_by_sender = true on every row in the thread that I sent.
-      // This covers the parent (if I sent it) AND any replies I sent.
-      // Using a compound .or() so a single update hits all of:
-      //   - the parent row itself (id = parentId AND from_user_id = me)
-      //   - all reply rows under it (parent_id = parentId AND from_user_id = me)
+      // Simpler, more reliable approach: do 4 small updates instead of 2 with
+      // .or() filters. This ensures we hit each combination unambiguously and
+      // sidesteps any Postgrest filter-combining quirks.
+      //
+      // (1) Parent row, if I sent it → deleted_by_sender = true
       await supabase
         .from('messages')
         .update({ deleted_by_sender: true } as unknown as never)
-        .eq('from_user_id', currentUser.id)
-        .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
+        .eq('id', parentId)
+        .eq('from_user_id', currentUser.id);
 
-      // Same approach for messages I received in the thread.
+      // (2) Parent row, if I received it → deleted_by_recipient = true
       await supabase
         .from('messages')
         .update({ deleted_by_recipient: true } as unknown as never)
-        .eq('to_user_id', currentUser.id)
-        .neq('from_user_id', currentUser.id) // belt-and-suspenders: don't update my own sends
-        .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
+        .eq('id', parentId)
+        .eq('to_user_id', currentUser.id);
+
+      // (3) Reply rows under the parent that I sent → deleted_by_sender = true
+      await supabase
+        .from('messages')
+        .update({ deleted_by_sender: true } as unknown as never)
+        .eq('parent_id', parentId)
+        .eq('from_user_id', currentUser.id);
+
+      // (4) Reply rows under the parent that I received → deleted_by_recipient = true
+      await supabase
+        .from('messages')
+        .update({ deleted_by_recipient: true } as unknown as never)
+        .eq('parent_id', parentId)
+        .eq('to_user_id', currentUser.id);
 
       // Optimistic UI: drop the thread + its replies from local state
       // immediately.
