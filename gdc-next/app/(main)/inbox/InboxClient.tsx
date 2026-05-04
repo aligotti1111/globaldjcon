@@ -294,24 +294,21 @@ export default function InboxClient({
         .filter((m) => m.to_user_id === currentUser.id && m.from_user_id !== currentUser.id)
         .map((m) => m.id);
 
-      const updates: Promise<unknown>[] = [];
+      // Run the two updates sequentially. They could be parallelized but
+      // Supabase query builders aren't typed as Promises until awaited, so
+      // the TypeScript-cleanest path is just two awaits.
       if (sentByMe.length > 0) {
-        updates.push(
-          supabase
-            .from('messages')
-            .update({ deleted_by_sender: true } as unknown as never)
-            .in('id', sentByMe)
-        );
+        await supabase
+          .from('messages')
+          .update({ deleted_by_sender: true } as unknown as never)
+          .in('id', sentByMe);
       }
       if (sentToMe.length > 0) {
-        updates.push(
-          supabase
-            .from('messages')
-            .update({ deleted_by_recipient: true } as unknown as never)
-            .in('id', sentToMe)
-        );
+        await supabase
+          .from('messages')
+          .update({ deleted_by_recipient: true } as unknown as never)
+          .in('id', sentToMe);
       }
-      await Promise.all(updates);
 
       // Optimistic UI: drop the thread + its replies from local state
       // immediately, regardless of which flag(s) were set.
