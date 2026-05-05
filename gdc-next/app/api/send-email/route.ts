@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     const recipientName = body.name as string | undefined;
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: 'Welcome to Global DJ Connect 🎧',
       html: emailTemplate(`
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
     const message = (body.message as string | undefined) || '';
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [recipientEmail],
       // Include sender name in subject so the inbox preview is useful at a
       // glance. Falls back to a generic subject if name is missing.
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     const message = (body.message as string | undefined) || '';
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [ADMIN_EMAIL],
       subject: `New profile claim: ${profileName || profileSlug}`,
       html: emailTemplate(`
@@ -253,7 +253,7 @@ export async function POST(req: Request) {
     const profileName = body.profileName as string | undefined;
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: 'We received your profile claim',
       html: emailTemplate(`
@@ -296,7 +296,7 @@ export async function POST(req: Request) {
 
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [djEmail],
       subject: `New Booking Request from ${requesterName || 'a booker'} – ${dateStr}`,
       html: emailTemplate(`
@@ -335,7 +335,7 @@ export async function POST(req: Request) {
     const dateStr = fmtDate(eventDate);
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [requesterEmail],
       subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
       html: emailTemplate(`
@@ -369,7 +369,7 @@ export async function POST(req: Request) {
     const dateStr = fmtDate(eventDate);
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [requesterEmail],
       subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
       html: emailTemplate(`
@@ -407,7 +407,7 @@ export async function POST(req: Request) {
     const sym = currencySymbol(currency);
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Counter offer from ${senderName || 'the ' + (fromRole || 'other party')}`,
       html: emailTemplate(`
@@ -431,7 +431,7 @@ export async function POST(req: Request) {
     const message = (body.message as string | undefined) || '';
     emailPayload = {
       from: FROM,
-      reply_to: senderEmail || REPLY_TO,
+      replyTo: senderEmail || REPLY_TO,
       to: [ADMIN_EMAIL],
       subject: `Contact form: ${subject}`,
       html: emailTemplate(`
@@ -461,7 +461,7 @@ export async function POST(req: Request) {
     const profileSlug = body.profileSlug as string | undefined;
     emailPayload = {
       from: FROM,
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Your profile claim was approved`,
       html: emailTemplate(`
