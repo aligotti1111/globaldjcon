@@ -58,6 +58,48 @@ function fmtDate(eventDate: string | null | undefined): string {
   });
 }
 
+// Format a "HH:MM" 24h time as "h:mm AM/PM". Returns empty string for
+// missing values so the caller can decide how to render absence.
+function fmtTime(t: string | null | undefined): string {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return '';
+  const hour12 = h % 12 || 12;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// Render a start/end time pair as a single human label.
+//   start + end → "8:00 PM – 11:00 PM"
+//   start only  → "8:00 PM"
+//   neither     → "—"
+function fmtTimeRange(start: string | null | undefined, end: string | null | undefined): string {
+  const s = fmtTime(start);
+  const e = fmtTime(end);
+  if (s && e) return `${s} – ${e}`;
+  if (s) return s;
+  return '—';
+}
+
+// Map mobile event_type slugs to display labels. Falls back to the slug
+// itself with the first letter capitalized — handles "other" + custom
+// labels gracefully.
+function eventTypeLabel(t: string | null | undefined): string {
+  if (!t) return '';
+  const map: Record<string, string> = {
+    wedding: 'Wedding',
+    mitzvah: 'Bar/Bat Mitzvah',
+    corporate: 'Corporate Event',
+    birthday: 'Birthday Party',
+    anniversary: 'Anniversary',
+    'house-party': 'House Party',
+    school: 'School Event',
+    other: 'Other Event',
+  };
+  if (map[t]) return map[t];
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 function statusColor(status: string): string {
   if (status === 'approved') return '#3ddc84';
   if (status === 'denied') return '#ff5f5f';
@@ -74,102 +116,87 @@ function currencySymbol(code: string | null | undefined): string {
 
 // Shared HTML wrapper — neon header bar + footer. Vanilla parity.
 function emailTemplate(content: string): string {
-  return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;"><tr><td align="center" style="padding:40px 20px;">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;">
-<tr><td bgcolor="#050507" style="padding:24px 32px;border-bottom:3px solid #00f5c4;">
+  return `
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<tr><td style="background:linear-gradient(135deg,#0a6f61 0%,#1a1a2e 100%);padding:24px 32px;text-align:center;">
 <img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;" /></td></tr>
-<tr><td style="padding:32px;color:#1a1a2e;">${content}</td></tr>
-<tr><td style="padding:24px 32px;background:#f8f8f8;border-top:1px solid #e0e0e0;">
+<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
 <p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
-</td></tr></table></td></tr></table></body></html>`;
+</td></tr></table>
+</td></tr></table>`;
 }
 
-// Standard CTA button (neon)
 function ctaButton(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">${escHtml(label)}</a>`;
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">${label}</a></td></tr></table>`;
 }
 
-// ── Handler ────────────────────────────────────────────────────────────
+// ── POST handler ───────────────────────────────────────────────────────
 
-interface BasePayload { type?: EmailType }
+export async function POST(req: Request) {
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+  }
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(request: Request) {
-  let body: BasePayload & Record<string, unknown>;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { type } = body;
+  const type = body.type as EmailType | undefined;
   if (!type) {
-    return NextResponse.json({ error: 'Missing email type' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing type' }, { status: 400 });
   }
 
-  let emailPayload: {
-    from: string;
-    reply_to: string | string[];
-    to: string[];
-    subject: string;
-    html: string;
-  };
+  let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
 
-  // ── 1. WELCOME ────────────────────────────────────────────────────
+  // ── 1. WELCOME ─────────────────────────────────────────────────────
   if (type === 'welcome') {
-    const name = body.name as string | undefined;
-    const email = body.email as string | undefined;
-    const role = body.role as string | undefined;
-    const slug = body.slug as string | undefined;
-    if (!name || !email || !role) {
-      return NextResponse.json({ error: 'Missing fields for welcome' }, { status: 400 });
+    const recipientEmail = await pickEmail(
+      body.email as string | undefined,
+      body.userId as string | undefined,
+    );
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve recipient email for welcome' },
+        { status: 400 }
+      );
     }
-
-    let roleMsg = '';
-    let profileBtn = '';
-    if (role === 'dj' && slug) {
-      roleMsg = 'Your DJ profile is live and ready for bookings.';
-      profileBtn = `<a href="${SITE_URL}/${slug}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-right:12px;">View My Profile</a>`;
-    } else if (role === 'host') {
-      roleMsg = 'You can now search for DJs and send booking inquiries.';
-    } else if (role === 'venue') {
-      roleMsg = 'Your venue account is ready. Find the perfect DJ for your events.';
-    }
-
+    const recipientName = body.name as string | undefined;
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
-      to: [email],
+      to: [recipientEmail],
       subject: 'Welcome to Global DJ Connect 🎧',
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Welcome, ${escHtml(name)}!</h2>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
         <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
-        <p style="color:#666666;margin-bottom:28px;">${roleMsg}</p>
-        ${profileBtn}
-        <a href="${SITE_URL}/login" style="display:inline-block;background:transparent;color:#00f5c4;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;border:1px solid #00f5c4;">Log In</a>
-        <p style="color:#666666;font-size:12px;margin-top:28px;">Questions? Reply to this email and we'll help you out.</p>
+        <p style="color:#666666;margin-bottom:24px;">Browse DJs, send booking requests, manage gigs — everything you need is in your dashboard.</p>
+        ${ctaButton(`${SITE_URL}`, 'Open Dashboard')}
       `),
     };
 
-  // ── 2. INBOX NOTIFICATION ─────────────────────────────────────────
+  // ── 2. INBOX NOTIFICATION (new message arrived in user's inbox) ────
   } else if (type === 'inbox_notification') {
-    const recipientName = body.recipientName as string | undefined;
     const recipientEmail = await pickEmail(
       body.recipientEmail as string | undefined,
       body.recipientUserId as string | undefined,
     );
-    const senderName = body.senderName as string | undefined;
-    const senderEmail = body.senderEmail as string | undefined;
-    const subject = body.subject as string | undefined;
-    const message = body.message as string | undefined;
-    if (!recipientEmail || !senderName || !subject || !message) {
+    if (!recipientEmail) {
       return NextResponse.json(
         { error: 'Missing fields for inbox_notification' },
         { status: 400 }
       );
     }
+    const recipientName = body.recipientName as string | undefined;
+    const senderName = body.senderName as string | undefined;
+    const subject = (body.subject as string | undefined) || '(no subject)';
+    const message = (body.message as string | undefined) || '';
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
@@ -181,147 +208,57 @@ export async function POST(request: Request) {
         : `New message: ${subject}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Message</h2>
-        <p style="color:#666666;margin-bottom:24px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong style="color:#1a1a2e;">${escHtml(senderName)}</strong>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <p style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;font-family:monospace;">Subject</p>
-          <p style="color:#1a1a2e;font-weight:600;margin-bottom:16px;">${escHtml(subject)}</p>
-          <p style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;font-family:monospace;">Message</p>
-          <p style="color:#333333;line-height:1.65;">${escHtml(message).replace(/\n/g, '<br>')}</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong>${escHtml(senderName || 'a Global DJ Connect user')}</strong>.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
+          <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
         </div>
-        ${senderEmail ? `<p style="color:#666666;font-size:12px;margin-bottom:20px;">Reply directly to: <a href="mailto:${senderEmail}?subject=Re: ${encodeURIComponent(subject)}" style="color:#00f5c4;">${escHtml(senderEmail)}</a></p>` : ''}
-        ${ctaButton(`${SITE_URL}/inbox`, 'View in Inbox')}
+        ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
       `),
     };
 
-  // ── 3. CLAIM REQUEST (admin notification) ─────────────────────────
+  // ── 3. CLAIM REQUEST (admin notified of new claim) ─────────────────
   } else if (type === 'claim_request') {
-    const claimantName = body.claimantName as string | undefined;
-    const claimantEmail = body.claimantEmail as string | undefined;
-    const bizName = body.bizName as string | undefined;
-    const slug = body.slug as string | undefined;
-    const verifyMsg = body.verifyMsg as string | undefined;
-    if (!claimantName || !claimantEmail || !bizName) {
-      return NextResponse.json({ error: 'Missing fields for claim_request' }, { status: 400 });
-    }
-    const profileUrl = slug ? `${SITE_URL}/${slug}` : 'N/A';
+    const claimerName = body.claimerName as string | undefined;
+    const claimerEmail = body.claimerEmail as string | undefined;
+    const profileSlug = body.profileSlug as string | undefined;
+    const profileName = body.profileName as string | undefined;
+    const message = (body.message as string | undefined) || '';
     emailPayload = {
       from: FROM,
-      reply_to: [claimantEmail],
+      reply_to: REPLY_TO,
       to: [ADMIN_EMAIL],
-      subject: `Profile Claim Request: ${bizName}`,
+      subject: `New profile claim: ${profileName || profileSlug}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Claim Request</h2>
-        <p style="color:#666666;margin-bottom:24px;">Someone wants to claim a profile on Global DJ Connect.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Name</td></tr>
-            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(claimantName)}</td></tr>
-            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Email</td></tr>
-            <tr><td style="color:#00f5c4;padding-bottom:14px;"><a href="mailto:${claimantEmail}" style="color:#00f5c4;">${escHtml(claimantEmail)}</a></td></tr>
-            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Business / DJ Name</td></tr>
-            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(bizName)}</td></tr>
-            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Profile URL</td></tr>
-            <tr><td style="padding-bottom:14px;"><a href="${profileUrl}" style="color:#00f5c4;">${profileUrl}</a></td></tr>
-            <tr><td style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Verification Info</td></tr>
-            <tr><td style="color:#333333;line-height:1.65;">${escHtml(verifyMsg || 'None provided').replace(/\n/g, '<br>')}</td></tr>
-          </table>
-        </div>
-        <a href="mailto:${claimantEmail}?subject=Re: Your Profile Claim for ${encodeURIComponent(bizName)}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to Claimant</a>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Profile Claim</h2>
+        <p style="color:#666;margin-bottom:16px;"><strong>${escHtml(claimerName || 'Someone')}</strong> (${escHtml(claimerEmail || 'no email')}) has claimed the profile <strong>${escHtml(profileName || profileSlug || '?')}</strong>.</p>
+        ${message ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p></div>` : ''}
+        ${ctaButton(`${SITE_URL}/admin`, 'Review in Admin Panel')}
       `),
     };
 
-  // ── 3a. CLAIM RECEIVED (receipt to claimant) ──────────────────────
+  // ── 4. CLAIM RECEIVED (auto-confirmation to the claimer) ───────────
   } else if (type === 'claim_received') {
-    const claimantName = body.claimantName as string | undefined;
-    const claimantEmail = body.claimantEmail as string | undefined;
-    const bizName = body.bizName as string | undefined;
-    const slug = body.slug as string | undefined;
-    if (!claimantEmail || !bizName) {
-      return NextResponse.json({ error: 'Missing fields for claim_received' }, { status: 400 });
+    const recipientEmail = await pickEmail(
+      body.email as string | undefined,
+      body.userId as string | undefined,
+    );
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve recipient email for claim_received' },
+        { status: 400 }
+      );
     }
-    const profileUrl = slug ? `${SITE_URL}/${slug}` : SITE_URL;
-    const greet = claimantName ? escHtml(claimantName) : 'there';
+    const claimerName = body.claimerName as string | undefined;
+    const profileName = body.profileName as string | undefined;
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
-      to: [claimantEmail],
-      subject: `We received your claim request for "${bizName}"`,
+      to: [recipientEmail],
+      subject: 'We received your profile claim',
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Claim Request Received</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${greet},</p>
-        <p style="color:#666666;margin-bottom:16px;">We got your request to claim <strong style="color:#1a1a2e;">${escHtml(bizName)}</strong> on Global DJ Connect.</p>
-        <p style="color:#666666;margin-bottom:24px;">Our team will review your request and reach back out within 1–2 business days. Once approved, you'll receive a separate email with a link to set your password and take over the profile.</p>
-        ${slug ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <div style="color:#666666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;margin-bottom:6px;">Profile Being Claimed</div>
-          <a href="${profileUrl}" style="color:#00b89a;word-break:break-all;">${profileUrl}</a>
-        </div>` : ''}
-        <p style="color:#666666;font-size:12px;margin-top:24px;">Questions in the meantime? Just reply to this email.</p>
-      `),
-    };
-
-  // ── 3b. PROFILE CLAIMED (approval + set-password link) ────────────
-  } else if (type === 'profile_claimed') {
-    const name = body.name as string | undefined;
-    const email = body.email as string | undefined;
-    const bizName = body.bizName as string | undefined;
-    const slug = body.slug as string | undefined;
-    const setPasswordLink = body.setPasswordLink as string | undefined;
-    if (!email || !setPasswordLink) {
-      return NextResponse.json({ error: 'Missing fields for profile_claimed' }, { status: 400 });
-    }
-    const profileUrl = slug ? `${SITE_URL}/${slug}` : SITE_URL;
-    const greet = name ? escHtml(name) : 'there';
-    const biz = bizName ? escHtml(bizName) : 'your profile';
-    emailPayload = {
-      from: FROM,
-      reply_to: REPLY_TO,
-      to: [email],
-      subject: `Your profile "${bizName || 'listing'}" on Global DJ Connect has been claimed`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#1a1a2e;margin-bottom:8px;">Profile Claimed — Welcome!</h2>
-        <p style="color:#666666;margin-bottom:16px;">Hi ${greet},</p>
-        <p style="color:#666666;margin-bottom:16px;">Your claim for <strong style="color:#1a1a2e;">${biz}</strong> on Global DJ Connect has been approved. The profile is now yours to manage.</p>
-        <p style="color:#666666;margin-bottom:24px;">To finish activating your account, set your password using the button below. This link expires in 24 hours.</p>
-        ${ctaButton(setPasswordLink, 'Set My Password')}
-        ${slug ? `<p style="color:#666666;font-size:13px;margin-top:24px;">Once you're in, you can view and edit your profile at:</p>
-        <p style="margin-bottom:20px;"><a href="${profileUrl}" style="color:#00b89a;word-break:break-all;">${profileUrl}</a></p>` : ''}
-        <p style="color:#666666;font-size:12px;margin-top:24px;">If you didn't request this claim, please reply to this email and we'll look into it.</p>
-      `),
-    };
-
-  // ── 4. CONTACT US ─────────────────────────────────────────────────
-  } else if (type === 'contact_us') {
-    const name = (body.name as string | undefined)?.trim();
-    const email = (body.email as string | undefined)?.toLowerCase().trim();
-    const subject = (body.subject as string | undefined)?.trim();
-    const message = (body.message as string | undefined)?.trim();
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json({ error: 'Missing fields for contact_us' }, { status: 400 });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
-    }
-    emailPayload = {
-      from: FROM,
-      reply_to: [email],
-      to: [ADMIN_EMAIL],
-      subject: `Contact Form: ${subject}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Contact Message</h2>
-        <p style="color:#666;margin-bottom:24px;">Someone submitted the contact form on Global DJ Connect.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Name</td></tr>
-            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(name)}</td></tr>
-            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Email</td></tr>
-            <tr><td style="color:#00f5c4;padding-bottom:14px;"><a href="mailto:${email}" style="color:#00f5c4;">${escHtml(email)}</a></td></tr>
-            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Subject</td></tr>
-            <tr><td style="color:#1a1a2e;padding-bottom:14px;">${escHtml(subject)}</td></tr>
-            <tr><td style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;padding:6px 0 2px;">Message</td></tr>
-            <tr><td style="color:#333;line-height:1.65;">${escHtml(message).replace(/\n/g, '<br>')}</td></tr>
-          </table>
-        </div>
-        <a href="mailto:${email}?subject=Re: ${encodeURIComponent(subject)}" style="display:inline-block;background:#00f5c4;color:#050507;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;font-family:monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">Reply to ${escHtml(name)}</a>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Claim Received</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(claimerName || 'there')}, we got your claim for <strong>${escHtml(profileName || 'your profile')}</strong>. We'll review it and get back to you shortly.</p>
       `),
     };
 
@@ -342,7 +279,21 @@ export async function POST(request: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const venueAddress = body.venueAddress as string | undefined;
+    // Optional context fields — present for mobile bookings, partially
+    // present for club bookings, may be missing for legacy paths. Each
+    // is rendered conditionally so missing fields just don't show up.
+    const startTime = body.startTime as string | undefined;
+    const endTime = body.endTime as string | undefined;
+    const eventType = body.eventType as string | undefined;
+    const packageTitle = body.packageTitle as string | undefined;
+    // Club-specific fields (kept for backward compat with that flow).
+    const setType = body.setType as string | undefined;
+    const venueType = body.venueType as string | undefined;
+
     const dateStr = fmtDate(eventDate);
+    const timeStr = fmtTimeRange(startTime, endTime);
+    const typeLabel = eventTypeLabel(eventType) || (setType ? setType : '');
+
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
@@ -352,7 +303,11 @@ export async function POST(request: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          ${typeLabel ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(typeLabel)}</p>` : ''}
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
+          ${timeStr !== '—' ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(timeStr)}</p>` : ''}
+          ${packageTitle ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p>` : ''}
+          ${venueType ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(venueType)}</p>` : ''}
           ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
           ${venueAddress ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(venueAddress)}</p>` : ''}
         </div>
@@ -378,21 +333,23 @@ export async function POST(request: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
-    const sCap = status.charAt(0).toUpperCase() + status.slice(1);
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
       to: [requesterEmail],
-      subject: `Booking ${sCap} – ${djName || 'DJ'}`,
+      subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${sCap}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request to <strong>${escHtml(djName || 'the DJ')}</strong>${venueName ? ` for <strong>${escHtml(venueName)}</strong>` : ''} on ${dateStr} has been <span style="color:${statusColor(status)};font-weight:700;">${status}</span>.</p>
-        ${status === 'approved' ? `<p style="color:#666;margin-bottom:24px;">The DJ will be in touch with further details.</p>` : ''}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View My Bookings')}
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(status)}</span>.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
+          ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
+        </div>
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
 
-  // ── 7. MOBILE BOOKING STATUS (DJ approved/denied a MOBILE booking) ─
+  // ── 7. MOB BOOKING STATUS (DJ approved/denied a MOBILE booking) ───
   } else if (type === 'mob_booking_status') {
     const requesterEmail = await pickEmail(
       body.requesterEmail as string | undefined,
@@ -408,27 +365,25 @@ export async function POST(request: Request) {
     const djName = body.djName as string | undefined;
     const status = (body.status as string | undefined) || 'updated';
     const eventDate = body.eventDate as string | undefined;
-    const packageTitle = body.packageTitle as string | undefined;
+    const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
-    const sCap = status.charAt(0).toUpperCase() + status.slice(1);
-    const pkgLine = packageTitle
-      ? `<p style="color:#666;margin-bottom:16px;">Package: <strong style="color:#1a1a2e;">${escHtml(packageTitle)}</strong></p>`
-      : '';
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
       to: [requesterEmail],
-      subject: `Booking ${sCap} – ${djName || 'DJ'}`,
+      subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${sCap}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request to <strong>${escHtml(djName || 'the DJ')}</strong> for ${dateStr} has been <span style="color:${statusColor(status)};font-weight:700;">${status}</span>.</p>
-        ${pkgLine}
-        ${status === 'approved' ? `<p style="color:#666;margin-bottom:24px;">The DJ will be in touch with further details about your event.</p>` : ''}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View My Bookings')}
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(status)}</span>.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
+          ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
+        </div>
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
 
-  // ── 8. BOOKING COUNTER OFFER (alert other party of a counter-offer) ─
+  // ── 8. BOOKING COUNTER (one side counter-offered the other) ───────
   } else if (type === 'booking_counter') {
     const recipientEmail = await pickEmail(
       body.recipientEmail as string | undefined,
@@ -443,60 +398,97 @@ export async function POST(request: Request) {
     const recipientName = body.recipientName as string | undefined;
     const senderName = body.senderName as string | undefined;
     const fromRole = body.fromRole as string | undefined;
-    const counterRate = body.counterRate as number | string | undefined;
+    const counterRate = body.counterRate as number | undefined;
     const counterMessage = body.counterMessage as string | undefined;
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const currency = (body.currency as string | undefined) || 'USD';
-    const sym = currencySymbol(currency);
     const dateStr = fmtDate(eventDate);
-    const senderLabel = fromRole === 'dj' ? 'DJ' : 'booker';
-    const counterStr = counterRate != null
-      ? `${sym}${Number(counterRate).toLocaleString()}`
-      : '—';
+    const sym = currencySymbol(currency);
     emailPayload = {
       from: FROM,
       reply_to: REPLY_TO,
       to: [recipientEmail],
-      subject: `Counter Offer from ${senderName || senderLabel}`,
+      subject: `Counter offer from ${senderName || 'the ' + (fromRole || 'other party')}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Counter Offer</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || senderLabel)}</strong> has sent a counter offer for your booking${venueName ? ` at <strong>${escHtml(venueName)}</strong>` : ''} on ${dateStr}.</p>
-        <div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:monospace;color:#888;margin-bottom:4px;">Counter Rate</div>
-          <div style="font-size:2em;font-weight:700;color:#00b89a;">${counterStr} <span style="font-size:.6em;color:#888;">${currency}</span></div>
-          ${counterMessage ? `<div style="margin-top:12px;color:#333;line-height:1.6;">"${escHtml(counterMessage)}"</div>` : ''}
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          ${counterRate ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Counter Offer:</strong> ${sym}${Number(counterRate).toLocaleString()} ${escHtml(currency)}</p>` : ''}
+          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
+          ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
+          ${counterMessage ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(counterMessage)}</p>` : ''}
         </div>
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
+      `),
+    };
+
+  // ── 9. CONTACT US (admin gets a contact form submission) ──────────
+  } else if (type === 'contact_us') {
+    const senderName = body.name as string | undefined;
+    const senderEmail = body.email as string | undefined;
+    const subject = (body.subject as string | undefined) || '(no subject)';
+    const message = (body.message as string | undefined) || '';
+    emailPayload = {
+      from: FROM,
+      reply_to: senderEmail || REPLY_TO,
+      to: [ADMIN_EMAIL],
+      subject: `Contact form: ${subject}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contact Form Submission</h2>
+        <p style="color:#666;margin-bottom:16px;"><strong>${escHtml(senderName || 'Someone')}</strong> (${escHtml(senderEmail || 'no email')}) sent a message.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
+          <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
+        </div>
+      `),
+    };
+
+  // ── 10. PROFILE CLAIMED (admin approved the claim) ────────────────
+  } else if (type === 'profile_claimed') {
+    const recipientEmail = await pickEmail(
+      body.email as string | undefined,
+      body.userId as string | undefined,
+    );
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve recipient email for profile_claimed' },
+        { status: 400 }
+      );
+    }
+    const claimerName = body.claimerName as string | undefined;
+    const profileName = body.profileName as string | undefined;
+    const profileSlug = body.profileSlug as string | undefined;
+    emailPayload = {
+      from: FROM,
+      reply_to: REPLY_TO,
+      to: [recipientEmail],
+      subject: `Your profile claim was approved`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Profile Approved</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(claimerName || 'there')}, your claim on <strong>${escHtml(profileName || 'your profile')}</strong> has been approved. You can now sign in and edit your profile.</p>
+        ${ctaButton(`${SITE_URL}/${profileSlug || ''}`, 'View Profile')}
       `),
     };
 
   } else {
-    return NextResponse.json(
-      { error: `Unknown email type: ${type}` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Unsupported email type: ${type}` }, { status: 400 });
   }
 
-  // ── Send via Resend ──
+  if (!emailPayload) {
+    return NextResponse.json({ error: 'Email payload not constructed' }, { status: 500 });
+  }
+
   try {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.error('RESEND_API_KEY not set');
-      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
+    const { data, error } = await resend.emails.send(emailPayload);
+    if (error) {
+      console.error('Resend error:', error);
+      return NextResponse.json({ error: error.message || 'Resend failed' }, { status: 500 });
     }
-    const resend = new Resend(apiKey);
-    const result = await resend.emails.send(emailPayload);
-    if (result.error) {
-      console.error('Resend error:', result.error);
-      return NextResponse.json({ error: result.error.message }, { status: 500 });
-    }
-    return NextResponse.json({ success: true, id: result.data?.id });
-  } catch (err) {
-    console.error('Email send error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true, id: data?.id });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    console.error('send-email failed:', e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
