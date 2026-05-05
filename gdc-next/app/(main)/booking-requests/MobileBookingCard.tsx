@@ -19,6 +19,7 @@ import {
 } from './helpers';
 import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
 import type { BookingRow } from './page';
+import { isPackageEdited } from './packageDiff';
 
 // Same prop shape as BookingCardShell except eventLabel/detailsSlot/
 // pricingSlot are derived inside this component.
@@ -225,16 +226,58 @@ export default function MobileBookingCard(props: Props) {
       ) : null}
       {b.package_title && (
         <div className={styles.packageBlock}>
-          <div className={styles.tinyLabel}>Package</div>
+          <div className={styles.tinyLabel}>
+            Package
+            {isPackageEdited(b.package_details) && (
+              <span
+                style={{
+                  marginLeft: 8,
+                  padding: '2px 6px',
+                  fontSize: 10,
+                  background: 'rgba(245,158,11,0.15)',
+                  color: '#f59e0b',
+                  borderRadius: 3,
+                  letterSpacing: 0.04,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+                title="The DJ edited this package as part of their counter offer"
+              >
+                ✏ Edited by DJ
+              </span>
+            )}
+          </div>
           <div className={styles.packageTitle}>{b.package_title}</div>
           {b.package_details && (
-            <div
-              className={styles.packageDetails}
-              // package_details is admin/DJ-controlled HTML stored as a
-              // pre-sanitized fragment from the package editor. Same
-              // rendering pattern as vanilla br-mob-flow.js.
-              dangerouslySetInnerHTML={{ __html: stripPkgMarkers(b.package_details) }}
-            />
+            <>
+              <div
+                className={styles.packageDetails}
+                // package_details is admin/DJ-controlled HTML stored as a
+                // pre-sanitized fragment from the package editor. When it
+                // contains the GDJ_EDITED marker (DJ counter-edited the
+                // package), the inline <s>/<ins> tags get rendered with
+                // diff styling so the host sees what changed at a glance.
+                dangerouslySetInnerHTML={{ __html: stripPkgMarkers(b.package_details) }}
+              />
+              {/* Diff styling — scoped to the package block so it doesn't
+                  bleed into other parts of the card. Matches the styles
+                  used inside CounterPackageEditor's preview. */}
+              {isPackageEdited(b.package_details) && (
+                <style>{`
+                  .${styles.packageBlock} ins.gdj-diff-add {
+                    background: rgba(16,185,129,0.2);
+                    color: #6ee7b7;
+                    text-decoration: none;
+                    padding: 0 2px;
+                    border-radius: 2px;
+                  }
+                  .${styles.packageBlock} s.gdj-diff-remove {
+                    color: #f87171;
+                    opacity: 0.8;
+                  }
+                `}</style>
+              )}
+            </>
           )}
         </div>
       )}
@@ -253,10 +296,19 @@ export default function MobileBookingCard(props: Props) {
   );
 }
 
-// Strip the GDJ_EDITED + GDJ_REMOVED markers from package_details so the card
-// renders cleanly. The package edit modal (deferred) uses these markers to
-// preserve which items the DJ struck through. For the read-only render here
-// we just drop everything after GDJ_REMOVED + the marker comment itself.
+// Strip the GDJ marker comments from package_details so the card renders
+// cleanly. There are TWO formats this function has to handle:
+//
+// 1. Legacy: original content + <!--GDJ_REMOVED--> + struck-through
+//    content. Everything after the marker was visually footer'd.
+//    We continue to support this by truncating at the marker boundary.
+//
+// 2. Current: inline diff using <s class="gdj-diff-remove"> and
+//    <ins class="gdj-diff-add"> tags scattered through the content,
+//    prefixed with the <!--GDJ_EDITED--> marker. We strip ONLY the
+//    marker comment — the <s>/<ins> tags themselves stay so the host
+//    sees the diff inline (with CSS giving them strikethrough/highlight
+//    styling).
 function stripPkgMarkers(html: string): string {
   let h = html;
   h = h.replace('<!--GDJ_EDITED-->', '');
