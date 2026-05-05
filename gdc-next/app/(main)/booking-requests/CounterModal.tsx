@@ -11,15 +11,21 @@
 // 'pending', counter_rate + counter_message updated, negotiation_log
 // appended with from='booker'.
 //
-// Faithful port of vanilla openCounter + submitCounter in br-club-flow.js,
-// minus the package-edit feature for mobile bookings (deferred — that's a
-// significant inline editor by itself).
+// PACKAGE EDITING (DJ side only, mobile bookings only):
+// When the booking has a package attached, the DJ can also edit the
+// package contents as part of their counter. We open a rich-text editor
+// pre-filled with the original package_details HTML; on save we diff the
+// edited content against the original and persist the diffed HTML (with
+// inline <s>/<ins> markers so the host sees what changed).
+// The booker side has no package editor — only the DJ owns the package.
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import { currencySymbol } from '@/lib/constants';
 import type { BookingRow } from './page';
+import CounterPackageEditor from './CounterPackageEditor';
+import { acceptDiff, isPackageEdited } from './packageDiff';
 
 interface Props {
   booking: BookingRow;
@@ -54,6 +60,29 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Package edit — only relevant when:
+  //   1. The booking has a package_details HTML to edit, AND
+  //   2. We're on the DJ side (group='in'). The booker doesn't own the
+  //      package and shouldn't be modifying it.
+  // When package_details already contains a prior diff (from an earlier
+  // counter the DJ may have sent), we accept that diff first to get the
+  // "current" state, then let the DJ edit from there. This way successive
+  // counters build on the latest accepted version, not pile diffs onto
+  // diffs.
+  const canEditPackage = group === 'in' && !!booking.package_details;
+  const baselinePackageHtml = canEditPackage
+    ? (isPackageEdited(booking.package_details)
+        ? acceptDiff(booking.package_details || '')
+        : (booking.package_details || ''))
+    : '';
+  // packageDetailsHtml holds the FINAL value to save — already diffed
+  // against the baseline. Initialized to the baseline (no edits yet).
+  const [packageDetailsHtml, setPackageDetailsHtml] = useState<string>(baselinePackageHtml);
+  // Whether the package editor is open. Default closed; DJ clicks
+  // "Edit package" to expand it. Keeps the modal compact for DJs who
+  // only want to counter the price.
+  const [packageEditorOpen, setPackageEditorOpen] = useState(false);
 
   // Currency — vanilla pulls from booking.currency; we don't have that
   // field on the type yet so default to USD.
@@ -114,13 +143,24 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
       //   DJ countering    → status='counter' (waiting on booker)
       //   Booker re-counter → status='pending' (back in DJ's court)
       const newStatus = group === 'in' ? 'counter' : 'pending';
-      const updatePayload = {
+
+      // Package edit: only include package_details in the update when
+      // the DJ actually changed something. Otherwise leave the column
+      // alone — overwriting it unconditionally would clobber prior
+      // edits or wipe a valid existing package.
+      const packageChanged =
+        canEditPackage && packageDetailsHtml !== baselinePackageHtml;
+
+      const updatePayload: Record<string, unknown> = {
         status: newStatus,
         counter_rate: Number(amount),
         counter_message: message.trim() || null,
         negotiation_log: log,
         updated_at: new Date().toISOString(),
       };
+      if (packageChanged) {
+        updatePayload.package_details = packageDetailsHtml;
+      }
 
       // RLS: DJ side updates bookings WHERE dj_id = me;
       // booker side updates WHERE requester_id = me. Either side update
@@ -162,7 +202,8 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
       }
 
       // Build the updated row to hand back to the parent so it can patch
-      // local state without a full re-fetch.
+      // local state without a full re-fetch. Only include package_details
+      // if it changed, mirroring what we sent to the DB.
       onSaved({
         ...booking,
         status: newStatus,
@@ -170,6 +211,7 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
         counter_message: message.trim() || null,
         negotiation_log: log,
         updated_at: new Date().toISOString(),
+        ...(packageChanged ? { package_details: packageDetailsHtml } : {}),
       });
       onClose();
     } catch (e) {
@@ -264,6 +306,53 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
             className={styles.counterMsgInput}
           />
         </div>
+
+        {/* Package edit (DJ side, mobile bookings only). Collapsed by
+            default — DJs who only want to counter price keep a compact
+            modal. Click to expand the rich-text editor. */}
+        {canEditPackage && (
+          <div className={styles.counterFormGroup}>
+            <button
+              type="button"
+              onClick={() => setPackageEditorOpen((v) => !v)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: '#ddd',
+                padding: '10px 12px',
+                borderRadius: 8,
+                fontSize: 13,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+              aria-expanded={packageEditorOpen}
+            >
+              <span>
+                {packageEditorOpen ? '▾' : '▸'} Edit package contents
+                {packageDetailsHtml !== baselinePackageHtml && (
+                  <span style={{ marginLeft: 8, color: '#6ee7b7', fontSize: 11 }}>
+                    • edited
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: 11, color: '#888' }}>
+                {booking.package_title || 'Package'}
+              </span>
+            </button>
+            {packageEditorOpen && (
+              <div style={{ marginTop: 8 }}>
+                <CounterPackageEditor
+                  originalHtml={baselinePackageHtml}
+                  onChange={setPackageDetailsHtml}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {error && <div className={styles.counterErr}>{error}</div>}
 
