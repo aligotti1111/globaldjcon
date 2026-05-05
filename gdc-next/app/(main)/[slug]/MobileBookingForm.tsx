@@ -275,6 +275,21 @@ export default function MobileBookingForm({
             djName: dj.name,
             requesterName: currentUser.name,
             eventDate: dateKey,
+            // Event type — already saved to the DB above. We pass either
+            // the canonical type ('wedding', 'mitzvah', etc.) or the
+            // user-entered "other" label so the email reflects what the
+            // booker actually picked.
+            eventType: eventType === 'other'
+              ? (eventTypeOther.trim() || 'other')
+              : eventType,
+            // Times — DJ wants to know start/end at a glance from the
+            // email so they can decide quickly whether they're available.
+            startTime,
+            endTime: endTime || null,
+            // Package title — gives the DJ context on what tier was
+            // selected without opening the booking. Null for is_quote
+            // bookings where no package is involved.
+            packageTitle: selectedPkg?.title || null,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
           }),
