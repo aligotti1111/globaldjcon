@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
+import { useUnreadBookingCount } from './useUnreadBookingCount';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
@@ -20,6 +21,9 @@ export default function Header() {
   // Unread inbox count (polled every 30s — see useUnreadInboxCount).
   // Returns 0 for logged-out users so the badge simply doesn't render.
   const unreadCount = useUnreadInboxCount();
+  // Pending bookings count — pending requests where I'm the DJ, plus
+  // counters where I'm the booker. See useUnreadBookingCount.
+  const bookingCount = useUnreadBookingCount();
 
   const openMenu = () => {
     // Dispatch a custom event the MobileMenu component listens for.
@@ -131,6 +135,13 @@ export default function Header() {
                       <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
                       <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
                     </svg>
+                    {/* Badge: pending bookings needing my attention. Same
+                        styling as the inbox badge — visually consistent. */}
+                    {bookingCount > 0 && (
+                      <span className="inbox-badge" aria-label={`${bookingCount} bookings need attention`}>
+                        {bookingCount > 9 ? '9+' : bookingCount}
+                      </span>
+                    )}
                   </Link>
                   <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
