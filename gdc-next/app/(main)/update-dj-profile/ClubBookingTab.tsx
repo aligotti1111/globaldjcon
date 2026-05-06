@@ -24,6 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import ClubOwnerCalendar from './ClubOwnerCalendar';
 import EmbedCodeSection from './EmbedCodeSection';
+import { useConfirm } from '@/components/ConfirmModal';
 
 // Currency options matching vanilla's <select> dropdown
 const CURRENCIES: { code: string; symbol: string; label: string }[] = [
@@ -75,9 +76,28 @@ export default function ClubBookingTab({
   // ── Per-section last-changed tracking (for inline saved hints) ──
   const [lastChangedField, setLastChangedField] = useState<string | null>(null);
 
+  // Confirm modal — used to require explicit acknowledgement before
+  // disabling booking. The Confirm hook returns the confirm() async fn
+  // plus a JSX element to render once at the top of the component tree.
+  const { confirm, confirmDialog } = useConfirm();
+
   // ── Enable Booking toggle (autosave) ─────────────────────────────
   const enabled = !!bookingSettings.booking_enabled;
-  function setEnabled(v: boolean) {
+  async function setEnabled(v: boolean) {
+    // Turning OFF — require confirmation. Equipment, rates, calendar,
+    // and packages are NOT cleared — they stay in booking_settings so
+    // re-enabling restores everything to where it was.
+    if (!v && enabled) {
+      const ok = await confirm({
+        title: 'Disable booking?',
+        message:
+          'Visitors will no longer see a Book button on your profile, and your Availability tab will be hidden. Your equipment, rates, and calendar will be saved — re-enable any time to bring them back exactly as they are.',
+        confirmLabel: 'Disable Booking',
+        cancelLabel: 'Keep Enabled',
+        variant: 'danger',
+      });
+      if (!ok) return;
+    }
     setLastChangedField('settings');
     patch({ booking_enabled: v });
   }
@@ -230,6 +250,7 @@ export default function ClubBookingTab({
 
   return (
     <div>
+      {confirmDialog}
       {/* Enable Booking toggle — same pattern as mobile BookingTab.
           When OFF, none of the booking config sections render. When ON
           but no equipment is selected, the public profile still won't
@@ -370,13 +391,16 @@ export default function ClubBookingTab({
 
       {/* ── Rates section (MANUAL save) ───────────────────────────── */}
       <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
+        {/* Header uses default centered title (same as Equipment) with the
+            currency picker positioned absolutely on the right so it doesn't
+            pull the title off-center. */}
+        <div className={styles.sectionHeader} style={{ position: 'relative' }}>
           <div className={styles.sectionTitle}>Rates</div>
           {/* Currency picker — top-right of section header. Hidden for
               the Offers rate type since offers don't have a fixed price.
               Hidden until equipment is selected (rates are gated on it). */}
           {hasEquipSelected && ratesDraft.global_rate_type !== 'offers' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem' }}>
+            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '.45rem' }}>
               <label
                 style={{
                   fontFamily: "'Space Mono', monospace",
