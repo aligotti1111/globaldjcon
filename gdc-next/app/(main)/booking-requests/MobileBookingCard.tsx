@@ -102,7 +102,11 @@ export default function MobileBookingCard(props: Props) {
           section entirely if there's nothing meaningful to show. */}
       {eventLabel && eventLabel !== '—' && (
         <SectionFrame label="Event Type">
-          <div className={styles.bigTitle}>{eventLabel}</div>
+          {/* Use infoValueBold (same style as other field values) instead of
+              bigTitle — keeps the box proportions consistent with Date &
+              Time / Event Info / Contact Info frames. bigTitle was making
+              this section noticeably taller than its neighbors. */}
+          <div className={styles.infoValueBold}>{eventLabel}</div>
         </SectionFrame>
       )}
 
@@ -205,9 +209,29 @@ export default function MobileBookingCard(props: Props) {
     </div>
   );
 
+  // Status badge color — keys mirror the .statusPending/.statusApproved
+  // CSS module classes that BookingCardShell used to render via the
+  // floating top-right pill. Now rendered inline at the top of the
+  // Package & Price section instead.
+  const statusBadgeClass = {
+    pending: styles.statusPending,
+    approved: styles.statusApproved,
+    denied: styles.statusDenied,
+    counter: styles.statusCounter,
+    cancelled: styles.statusCancelled,
+  }[status];
+  const statusLabel = isQuote && status === 'pending' ? 'Quote Requested' : status;
+
   // ── Package & Price slot ───────────────────────────────────────
   const pricingSlot = (hasPrice || b.package_title || isQuote) ? (
     <SectionFrame label="Package & Price">
+      {/* Status badge — moved here from the floating top-right of the
+          card. Sits above the price/package content so the booking's
+          state is visually anchored next to the money line where it
+          matters most. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
+        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>{statusLabel}</span>
+      </div>
       {hasPrice ? (
         <div className={styles.priceRow}>
           <div className={styles.priceCol}>
