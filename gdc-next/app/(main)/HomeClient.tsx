@@ -695,13 +695,17 @@ function DjListRow({ dj }: { dj: HomeDj }) {
   const slug = dj.slug || '';
 
   // Booking enabled: only club DJs with booking_settings.booking_enabled = true
+  // AND an equipment option picked. The DJ-side ClubBookingTab warns when
+  // the toggle is on but equipment is missing — until both are set, the
+  // booking flow isn't actually live, so the directory badge stays off.
   let bookingEnabled = false;
   if (dj.dj_type === 'club' && dj.booking_settings) {
     try {
       const bs = typeof dj.booking_settings === 'string'
         ? JSON.parse(dj.booking_settings)
         : dj.booking_settings;
-      bookingEnabled = !!(bs && bs.booking_enabled);
+      const equipPicked = !!(bs && (bs.equip_full || bs.equip_decks || bs.equip_none));
+      bookingEnabled = !!(bs && bs.booking_enabled) && equipPicked;
     } catch {
       // ignore parse errors
     }
