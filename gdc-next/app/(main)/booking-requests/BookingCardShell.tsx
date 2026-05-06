@@ -90,14 +90,11 @@ export default function BookingCardShell({
 
   return (
     <div className={`${styles.card} ${styles[`card_${status}`]}`}>
-      <div className={statusAccentClass} />
-
-      {/* Status badge used to float here as an absolute-positioned pill in
-          the top-right corner. It's now rendered INSIDE the Package & Price
-          section by MobileBookingCard / ClubBookingCard so it has clear
-          contextual placement instead of floating in the void above the
-          first SectionFrame. statusLabel/statusBadgeClass are still
-          exported below for the variant cards to consume. */}
+      {/* The colored status accent strip used to render here at the top
+          of the card. Removed — status is now communicated by the badge
+          inside the Package & Price section, so the strip became
+          redundant visual noise. statusAccentClass is kept above in case
+          we want to reintroduce a subtle treatment later. */}
 
       {/* Header — order# only when present (grouped views).
           The event type is no longer rendered here as a big title. It now
