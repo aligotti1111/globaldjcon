@@ -96,18 +96,18 @@ export default function BookingCardShell({
         <span className={`${styles.statusBadge} ${statusBadgeClass}`}>{statusLabel}</span>
       </div>
 
-      {/* Header — order# (when grouped) + event label */}
-      <div className={styles.cardSection}>
-        {orderNum != null && (
+      {/* Header — order# only when present (grouped views).
+          The event type is no longer rendered here as a big title. It now
+          lives inside the detailsSlot in its own bracketed Section Frame
+          ("EVENT TYPE" label) so all the event metadata is visually
+          grouped consistently with Date & Time, Venue, etc. */}
+      {orderNum != null && (
+        <div className={styles.cardSection}>
           <div className={styles.orderBadgeWrap}>
             <span className={styles.orderBadge}>#{orderNum}</span>
           </div>
-        )}
-        <div>
-          <div className={styles.eyebrow}>Event</div>
-          <div className={styles.bigTitle}>{eventLabel}</div>
         </div>
-      </div>
+      )}
 
       {/* Variant-specific middle: Date+Time, Venue, Equipment, etc.
           MobileBookingCard renders cocktail logic here too; ClubBookingCard
