@@ -304,9 +304,15 @@ export default function BookingCardShell({
 // SectionFrame — bordered container with the floating uppercase label badge.
 // Exported so MobileBookingCard / ClubBookingCard can use the same wrapper
 // inside their detailsSlot / pricingSlot props.
+//
+// IMPORTANT: uses styles.sectionFrame (which has `position: relative` +
+// the white border + padding for the floating label). An earlier version
+// used styles.sectionWrap by mistake — that class has no border and no
+// `position: relative`, which caused the absolute-positioned label to
+// escape its container and float to the top of the page.
 export function SectionFrame({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className={styles.sectionWrap}>
+    <div className={styles.sectionFrame}>
       <span className={styles.sectionLabel}>{label}</span>
       {children}
     </div>
