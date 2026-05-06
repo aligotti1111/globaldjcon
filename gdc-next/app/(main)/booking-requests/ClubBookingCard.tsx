@@ -89,7 +89,18 @@ export default function ClubBookingCard(props: Props) {
 
   // ── Date + Venue + Equipment slot ──────────────────────────────
   const detailsSlot = (
-    <>
+    <div style={{ marginTop: '0.8rem' }}>
+      {/* Event Type — shown in its own bracketed section so it reads as
+          a labeled field consistent with Date & Time, Venue, Equipment.
+          eventLabel combines the venue type (Bar/Club) and set type
+          (Headliner/Opener/etc.) — both pieces of context the DJ needs.
+          Skip the section if eventLabel is empty/dash. */}
+      {eventLabel && eventLabel !== '—' && (
+        <SectionFrame label="Event Type">
+          <div className={styles.infoValueBold}>{eventLabel}</div>
+        </SectionFrame>
+      )}
+
       <SectionFrame label="Date & Time">
         <div className={styles.dateRow}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
@@ -168,7 +179,7 @@ export default function ClubBookingCard(props: Props) {
           )}
         </SectionFrame>
       )}
-    </>
+    </div>
   );
 
   // ── Rate / Offer slot ──────────────────────────────────────────
