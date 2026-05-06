@@ -109,16 +109,22 @@ export default function BookingCardShell({
         </div>
       )}
 
-      {/* Variant-specific middle: Date+Time, Venue, Equipment, etc.
-          MobileBookingCard renders cocktail logic here too; ClubBookingCard
-          renders venue+equipment. The shell stays agnostic. */}
-      {detailsSlot}
+      {/* All SectionFrames live inside one padded container so their
+          horizontal alignment matches and the FIRST section's floating
+          label badge has top clearance from the amber status accent
+          strip. Container is the single source of truth for the section
+          gutter — sections just stack inside with their own borders. */}
+      <div style={{ padding: '1.5rem 1.1rem 0' }}>
+        {/* Variant-specific middle: Date+Time, Venue, Equipment, etc.
+            MobileBookingCard renders cocktail logic here too; ClubBookingCard
+            renders venue+equipment. The shell stays agnostic. */}
+        {detailsSlot}
 
-      {/* Contact Info — DJ sees the booker's contact (host + phone always).
-          Booker sees the DJ name always, plus DJ's email + phone only after
-          the DJ approves the booking (server stitches dj_email/dj_phone
-          onto approved outgoing rows). Message button appears for both. */}
-      <SectionFrame label="Contact Info">
+        {/* Contact Info — DJ sees the booker's contact (host + phone always).
+            Booker sees the DJ name always, plus DJ's email + phone only after
+            the DJ approves the booking (server stitches dj_email/dj_phone
+            onto approved outgoing rows). Message button appears for both. */}
+        <SectionFrame label="Contact Info">
         <div className={styles.infoBlock}>
           <div className={styles.contactLine}>
             {isIncoming ? 'Host Name' : 'To'}: <span>{targetLabel}</span>
@@ -178,6 +184,7 @@ export default function BookingCardShell({
       {/* Variant-specific pricing block (Package & Price for mobile, Rate
           for club). Falls in here so the actions row stays at the bottom. */}
       {pricingSlot}
+      </div>
 
       {/* Actions row — Approve/Deny/Counter (incoming pending) OR Cancel
           (outgoing pending/counter) OR Accept/Counter Back/Decline (when
