@@ -56,10 +56,16 @@ interface Props {
   // Trigger from the master Save All button — bumps when user clicks it.
   // The Rates section listens via useEffect and saves itself if dirty.
   masterSaveTrigger: number;
+  // Reports the "booking is toggled on but no equipment selected" state
+  // up to the parent so it can include it in the leave-page warning.
+  // When this is true, the toggle is on but booking won't actually go
+  // live publicly until the DJ picks an equipment option.
+  onActivationIncompleteChange?: (incomplete: boolean) => void;
 }
 
 export default function ClubBookingTab({
   bookingSettings, onChange, autosaveStatus, djSlug, onDirtyChange, masterSaveTrigger,
+  onActivationIncompleteChange,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
   function patch(p: Partial<BookingSettings>) {
@@ -68,6 +74,13 @@ export default function ClubBookingTab({
 
   // ── Per-section last-changed tracking (for inline saved hints) ──
   const [lastChangedField, setLastChangedField] = useState<string | null>(null);
+
+  // ── Enable Booking toggle (autosave) ─────────────────────────────
+  const enabled = !!bookingSettings.booking_enabled;
+  function setEnabled(v: boolean) {
+    setLastChangedField('settings');
+    patch({ booking_enabled: v });
+  }
 
   // ── Equipment section (autosave) ──────────────────────────────────
   const equipFull = !!bookingSettings.equip_full;
@@ -152,6 +165,16 @@ export default function ClubBookingTab({
     onDirtyChangeRef.current?.(ratesDirty);
   }, [ratesDirty]);
 
+  // Bubble activation-incomplete state up. True when the booking toggle
+  // is on but no equipment option has been picked — booking won't actually
+  // be live on the public profile until equipment is set.
+  const activationIncomplete = enabled && !hasEquipSelected;
+  const onActivationIncompleteRef = useRef(onActivationIncompleteChange);
+  onActivationIncompleteRef.current = onActivationIncompleteChange;
+  useEffect(() => {
+    onActivationIncompleteRef.current?.(activationIncomplete);
+  }, [activationIncomplete]);
+
   function commitRates() {
     setLastChangedField('rates');
     patch({
@@ -207,7 +230,64 @@ export default function ClubBookingTab({
 
   return (
     <div>
-      {/* ── Equipment section ─────────────────────────────────────── */}
+      {/* Enable Booking toggle — same pattern as mobile BookingTab.
+          When OFF, none of the booking config sections render. When ON
+          but no equipment is selected, the public profile still won't
+          show the Book button — the activation banner below makes this
+          explicit to the DJ. */}
+      <div className={styles.bookingEnabledRow}>
+        <div>
+          <div className={styles.bookingEnabledLabel}>Enable Booking</div>
+          <div className={styles.bookingEnabledHint}>
+            Allow guests and venues to request bookings directly from your profile.
+          </div>
+        </div>
+        <label className={styles.toggleSwitch}>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
+          <span className={styles.toggleTrack} />
+          <span className={styles.toggleThumb} />
+        </label>
+      </div>
+
+      {!enabled && (
+        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '.85rem', lineHeight: 1.6 }}>
+          <div style={{ color: 'var(--white)', fontSize: '.95rem', marginBottom: '.5rem' }}>
+            Booking is currently disabled
+          </div>
+          Enable it above to configure your equipment, rates, and availability calendar.
+        </div>
+      )}
+
+      {enabled && (
+        <>
+          {/* Activation-incomplete banner — shown whenever the toggle is
+              on but no equipment option is selected. Booking won't go
+              live publicly until the DJ picks one. */}
+          {activationIncomplete && (
+            <div
+              style={{
+                margin: '0 0 1rem 0',
+                padding: '.75rem 1rem',
+                background: 'rgba(255, 176, 32, 0.08)',
+                border: '1px solid rgba(255, 176, 32, 0.35)',
+                borderRadius: '8px',
+                color: 'var(--amber)',
+                fontSize: '.82rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>⚠ Pick an equipment option below to make booking live on your profile.</strong>
+              <span style={{ display: 'block', marginTop: '.25rem', color: 'rgba(255,255,255,.7)', fontSize: '.78rem' }}>
+                Booking is enabled, but visitors won't see a Book button until you choose how you handle equipment.
+              </span>
+            </div>
+          )}
+
+          {/* ── Equipment section ─────────────────────────────────────── */}
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Equipment</div>
@@ -478,6 +558,8 @@ export default function ClubBookingTab({
 
       {/* ── Embed Code ──────────────────────────────────────── */}
       <EmbedCodeSection slug={djSlug} />
+        </>
+      )}
     </div>
   );
 }
