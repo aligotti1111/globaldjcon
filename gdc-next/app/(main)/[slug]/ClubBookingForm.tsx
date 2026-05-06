@@ -248,6 +248,15 @@ export default function ClubBookingForm({
   const isOffers = rateInfo.rateType === 'offers';
   const isHourly = rateInfo.rateType === 'hourly';
 
+  // Quote mode — DJ has booking enabled and equipment picked, but no
+  // rate configured for the picked equipment option (and they're not in
+  // offers mode). The form stays open as a normal booking flow but
+  // skips the rate display and flags the booking with is_quote=true so
+  // the DJ can respond with a custom rate via the existing counter flow.
+  // Triggered when: not offers mode AND equipment is supported AND no
+  // matching rate field has a value > 0.
+  const isQuoteMode = !isOffers && isEquipmentSupported && rateInfo.rate == null;
+
   // Show rate area only when we have enough info — equipment picked AND
   // both times set (vanilla parity). For offers, equipment + offerAmount
   // is enough; times are still required for the booking but rate display
@@ -309,6 +318,10 @@ export default function ClubBookingForm({
         quoted_rate: !isOffers && rateInfo.rate ? rateInfo.rate : null,
         currency: rateInfo.currency,
         notes: notes.trim() || null,
+        // is_quote=true when DJ has booking enabled but hasn't set rates
+        // for this equipment option. The DJ will respond with a custom
+        // rate via the existing counter flow on the booking-requests page.
+        is_quote: isQuoteMode,
         status: 'pending',
       };
 
@@ -631,8 +644,12 @@ export default function ClubBookingForm({
 
         {/* Rate display — only when the picked equipment is something the
             DJ actually supports. If unsupported, the warning above tells
-            the booker why no rate is shown. */}
-        {canShowRate && isEquipmentSupported && (
+            the booker why no rate is shown. In quote mode (DJ has no rate
+            configured for the picked equipment), the entire section is
+            skipped per spec — booker sees the same form layout with no
+            price shown, and the booking is flagged is_quote=true on submit
+            so the DJ supplies the rate via the existing counter flow. */}
+        {canShowRate && isEquipmentSupported && !isQuoteMode && (
           <FormSection label="Rate">
             <RateDisplay
               info={rateInfo}
