@@ -99,7 +99,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const bookingSettings = parseBookingSettings(data.booking_settings);
   const isClubDJ = data.dj_type === 'club';
   const isMobileDJBooking = data.dj_type === 'mobile';
-  const bookingEnabled = !!(bookingSettings && bookingSettings.booking_enabled);
+  // Club DJ booking goes live publicly only when:
+  //   1. booking_enabled is true (the toggle is on), AND
+  //   2. an equipment option (full / decks / none) has been picked.
+  // The DJ-side ClubBookingTab shows a banner when (1) is true but (2)
+  // isn't, reminding them to complete activation. Until both are true,
+  // the public profile hides the Book button / Availability tab entirely.
+  const clubEquipPicked = !!(
+    bookingSettings &&
+    (bookingSettings.equip_full || bookingSettings.equip_decks || bookingSettings.equip_none)
+  );
+  const clubBookingLive = !!(bookingSettings && bookingSettings.booking_enabled) && clubEquipPicked;
+  const mobileBookingLive = !!(bookingSettings && bookingSettings.booking_enabled);
+  const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
   const showClubAvailabilityTab = isClubDJ && bookingEnabled;
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
