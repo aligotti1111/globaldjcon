@@ -92,9 +92,12 @@ export default function BookingCardShell({
     <div className={`${styles.card} ${styles[`card_${status}`]}`}>
       <div className={statusAccentClass} />
 
-      <div className={styles.statusBadgeWrap}>
-        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>{statusLabel}</span>
-      </div>
+      {/* Status badge used to float here as an absolute-positioned pill in
+          the top-right corner. It's now rendered INSIDE the Package & Price
+          section by MobileBookingCard / ClubBookingCard so it has clear
+          contextual placement instead of floating in the void above the
+          first SectionFrame. statusLabel/statusBadgeClass are still
+          exported below for the variant cards to consume. */}
 
       {/* Header — order# only when present (grouped views).
           The event type is no longer rendered here as a big title. It now
@@ -109,22 +112,16 @@ export default function BookingCardShell({
         </div>
       )}
 
-      {/* All SectionFrames live inside one padded container so their
-          horizontal alignment matches and the FIRST section's floating
-          label badge has top clearance from the amber status accent
-          strip. Container is the single source of truth for the section
-          gutter — sections just stack inside with their own borders. */}
-      <div style={{ padding: '1.5rem 1.1rem 0' }}>
-        {/* Variant-specific middle: Date+Time, Venue, Equipment, etc.
-            MobileBookingCard renders cocktail logic here too; ClubBookingCard
-            renders venue+equipment. The shell stays agnostic. */}
-        {detailsSlot}
+      {/* Variant-specific middle: Date+Time, Venue, Equipment, etc.
+          MobileBookingCard renders cocktail logic here too; ClubBookingCard
+          renders venue+equipment. The shell stays agnostic. */}
+      {detailsSlot}
 
-        {/* Contact Info — DJ sees the booker's contact (host + phone always).
-            Booker sees the DJ name always, plus DJ's email + phone only after
-            the DJ approves the booking (server stitches dj_email/dj_phone
-            onto approved outgoing rows). Message button appears for both. */}
-        <SectionFrame label="Contact Info">
+      {/* Contact Info — DJ sees the booker's contact (host + phone always).
+          Booker sees the DJ name always, plus DJ's email + phone only after
+          the DJ approves the booking (server stitches dj_email/dj_phone
+          onto approved outgoing rows). Message button appears for both. */}
+      <SectionFrame label="Contact Info">
         <div className={styles.infoBlock}>
           <div className={styles.contactLine}>
             {isIncoming ? 'Host Name' : 'To'}: <span>{targetLabel}</span>
@@ -184,7 +181,6 @@ export default function BookingCardShell({
       {/* Variant-specific pricing block (Package & Price for mobile, Rate
           for club). Falls in here so the actions row stays at the bottom. */}
       {pricingSlot}
-      </div>
 
       {/* Actions row — Approve/Deny/Counter (incoming pending) OR Cancel
           (outgoing pending/counter) OR Accept/Counter Back/Decline (when
@@ -312,9 +308,9 @@ export default function BookingCardShell({
 // Exported so MobileBookingCard / ClubBookingCard can use the same wrapper
 // inside their detailsSlot / pricingSlot props.
 //
-// IMPORTANT: uses styles.sectionFrame (which has `position: relative` +
-// the white border + padding for the floating label). An earlier version
-// used styles.sectionWrap by mistake — that class has no border and no
+// Uses styles.sectionFrame (which has `position: relative` + the white
+// border + padding for the floating label). An earlier version used
+// styles.sectionWrap by mistake — that class has no border and no
 // `position: relative`, which caused the absolute-positioned label to
 // escape its container and float to the top of the page.
 export function SectionFrame({ label, children }: { label: string; children: React.ReactNode }) {
