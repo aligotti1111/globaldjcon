@@ -88,8 +88,12 @@ export default function MobileBookingCard(props: Props) {
   const bigPriceVal = hasCounter ? b.counter_rate! : b.quoted_rate;
 
   // ── Date + Time + Event Info slot ───────────────────────────────
+  // Wrapping div adds top margin only — gives the first SectionFrame's
+  // floating label badge clearance from the amber status accent strip.
+  // No horizontal padding so SectionFrames keep their natural width
+  // matching ContactInfo/PackagePrice frames rendered by the shell.
   const detailsSlot = (
-    <>
+    <div style={{ marginTop: '0.8rem' }}>
       {/* Event Type — shown in its own bracketed section so it reads as
           a labeled field consistent with Date & Time, Event Info, etc.
           eventLabel is the display label resolved from MOB_EVENT_LABELS
@@ -198,7 +202,7 @@ export default function MobileBookingCard(props: Props) {
           </div>
         )}
       </SectionFrame>
-    </>
+    </div>
   );
 
   // ── Package & Price slot ───────────────────────────────────────
