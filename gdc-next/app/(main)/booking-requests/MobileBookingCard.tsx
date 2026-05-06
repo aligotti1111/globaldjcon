@@ -90,6 +90,18 @@ export default function MobileBookingCard(props: Props) {
   // ── Date + Time + Event Info slot ───────────────────────────────
   const detailsSlot = (
     <>
+      {/* Event Type — shown in its own bracketed section so it reads as
+          a labeled field consistent with Date & Time, Event Info, etc.
+          eventLabel is the display label resolved from MOB_EVENT_LABELS
+          (e.g. "Corporate Event", "Wedding"). Falls back to the raw
+          event_type string if no canonical label exists, and we skip the
+          section entirely if there's nothing meaningful to show. */}
+      {eventLabel && eventLabel !== '—' && (
+        <SectionFrame label="Event Type">
+          <div className={styles.bigTitle}>{eventLabel}</div>
+        </SectionFrame>
+      )}
+
       <SectionFrame label="Date & Time">
         <div className={styles.dateRow}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
