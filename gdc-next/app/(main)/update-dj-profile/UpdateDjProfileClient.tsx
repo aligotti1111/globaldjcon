@@ -258,6 +258,12 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // (Equipment + calendar autosave; rates are manual save.)
   const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
 
+  // ClubBookingTab also reports when the booking toggle is on but no
+  // equipment option has been picked. In that state booking won't be
+  // live publicly until they pick equipment, so we want to warn on
+  // navigation away just like for unsaved changes.
+  const [clubBookingActivationIncomplete, setClubBookingActivationIncomplete] = useState(false);
+
   // Master save trigger — a counter that bumps when the user clicks the
   // page-level Save All button at the bottom. Both BookingTab (for
   // packages) and ClubBookingTab (for rates) listen via prop and try
@@ -274,13 +280,22 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   );
 
   const isPageDirty = isGeneralDirty || hasDirtyPackages || hasDirtyClubRates;
+  // beforeunload should also fire when the booking toggle is on but no
+  // equipment is selected — this isn't "dirty data", but leaving the
+  // page in that state means booking won't actually be live publicly,
+  // which the DJ should be warned about.
+  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete;
 
   // Native browser warning on tab close / refresh / external nav.
   // Custom message text is ignored by modern browsers (they show their
   // own generic "Leave site?" prompt for security), but the prompt only
   // appears at all if we set `event.returnValue` to a truthy string.
+  // We trigger this on `needsLeaveWarn` rather than `isPageDirty` so the
+  // prompt also fires when the booking toggle is on but no equipment
+  // is picked — leaving in that state means booking isn't live publicly,
+  // which the inline banner inside ClubBookingTab also warns about.
   useEffect(() => {
-    if (!isPageDirty) return;
+    if (!needsLeaveWarn) return;
     function handler(e: BeforeUnloadEvent) {
       e.preventDefault();
       // Required for some browsers to actually trigger the prompt.
@@ -288,7 +303,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     }
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [isPageDirty]);
+  }, [needsLeaveWarn]);
 
   // ── Generic helpers ─────────────────────────────────────────────
   function updateGeneral<K extends keyof GeneralFormState>(field: K, val: GeneralFormState[K]) {
@@ -538,6 +553,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
                 djSlug={general.slug}
                 onDirtyChange={setHasDirtyClubRates}
                 masterSaveTrigger={masterSaveTrigger}
+                onActivationIncompleteChange={setClubBookingActivationIncomplete}
               />
             ) : (
               <BookingTab
