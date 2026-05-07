@@ -16,7 +16,7 @@ import {
   cleanAddress,
   lookupZipCoords,
 } from './helpers';
-import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
+import BookingCardShell, { SectionFrame, StatusBadge, type BookingCardShellProps } from './BookingCardShell';
 import {
   CLUB_SET_TYPE_LABELS,
   CLUB_EQUIPMENT_LABELS,
@@ -198,8 +198,22 @@ export default function ClubBookingCard(props: Props) {
   );
 
   // ── Rate / Offer slot ──────────────────────────────────────────
-  const pricingSlot = (hasPrice || b.offer_amount != null || isQuote) ? (
+  // Always rendered so the status badge has a home. Inner content may
+  // be null for terminal states without a rate; the badge alone is
+  // still useful in that case.
+  const pricingSlot = (
     <SectionFrame label="Rate">
+      {/* Status badge — top-right of the rate section. Replaces the
+          old top-of-card badge. Sits over the price content via
+          absolute positioning. */}
+      <div style={{
+        position: 'absolute',
+        top: -2,
+        right: 8,
+        zIndex: 2,
+      }}>
+        <StatusBadge booking={b} />
+      </div>
       {(() => {
         const sym = currencySymbol(b.currency);
         const cur = b.currency || 'USD';
@@ -372,7 +386,7 @@ export default function ClubBookingCard(props: Props) {
         return null;
       })()}
     </SectionFrame>
-  ) : null;
+  );
 
   return (
     <BookingCardShell

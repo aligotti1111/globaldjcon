@@ -81,33 +81,23 @@ export default function BookingCardShell({
   // it to the booker yet (quote_sent_at still null).
   const hasDraftedRate = isClub && isQuote && b.quoted_rate != null && b.quote_sent_at == null;
 
-  // "Quote Requested" status label only applies BEFORE the DJ has sent
-  // a rate. Once a rate has been sent, the booking acts like a normal
-  // priced booking and shows the regular status.
-  const statusLabel = isQuote && !hasRateSent && status === 'pending'
-    ? 'Quote Requested'
-    : status;
+  // statusLabel and statusBadgeClass used to be derived here for the
+  // top-right card badge. The badge now lives inside each card's pricing
+  // section via the <StatusBadge/> component (see export at bottom of
+  // file), which computes its own label/class from the booking row.
 
   const targetId = isIncoming ? b.requester_id : b.dj_id;
   const targetName = isIncoming ? (b.requester_name || 'this user') : (b.dj_name || 'this DJ');
   const targetLabel = isIncoming ? (b.requester_name || 'Booker') : (b.dj_name || 'DJ');
 
-  // Status badge color class — keys match existing CSS module names
-  // (.statusPending, .accentApproved, etc).
+  // Status accent strip class — kept here in case we reintroduce the
+  // colored top-of-card strip treatment later.
   const statusAccentClass = {
     pending: styles.accentPending,
     approved: styles.accentApproved,
     denied: styles.accentDenied,
     counter: styles.accentCounter,
     cancelled: styles.accentCancelled,
-  }[status];
-
-  const statusBadgeClass = {
-    pending: styles.statusPending,
-    approved: styles.statusApproved,
-    denied: styles.statusDenied,
-    counter: styles.statusCounter,
-    cancelled: styles.statusCancelled,
   }[status];
 
   // Action visibility — DJ-side (incoming) vs booker-side (outgoing).
@@ -127,15 +117,10 @@ export default function BookingCardShell({
           redundant visual noise. statusAccentClass is kept above in case
           we want to reintroduce a subtle treatment later. */}
 
-      {/* Status badge — top-right corner of the card. Shows on every
-          booking on both sides so DJ + booker can see at a glance where
-          the booking sits in its lifecycle. statusLabel handles the
-          quote-mode special case ("Quote Requested" while no rate sent). */}
-      <div className={styles.statusBadgeWrap}>
-        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
-          {statusLabel}
-        </span>
-      </div>
+      {/* Status badge — moved inside each card's pricing section
+          (ClubBookingCard / MobileBookingCard render <StatusBadge/> there).
+          The top-right corner used to host this; it now lives where the
+          rate is so DJ/booker see status next to money. */}
 
       {/* Header — order# only when present (grouped views).
           The event type is no longer rendered here as a big title. It now
@@ -390,4 +375,33 @@ export function SectionFrame({ label, children }: { label: string; children: Rea
       {children}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// StatusBadge — pill that shows the booking's current status. Lives inside
+// each card's pricing section now (used to be top-right corner of the
+// card). Accepts the booking row and computes the same statusLabel /
+// statusBadgeClass logic the shell uses, so the source of truth stays
+// in one place.
+// ─────────────────────────────────────────────────────────────────────────
+export function StatusBadge({ booking: b }: { booking: BookingRow }) {
+  const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
+  const isQuote = !!b.is_quote;
+  const isClub = b.booking_type === 'club';
+  // Mirror of the shell's hasRateSent rule — club + quote-mode bookings
+  // need quote_sent_at; everything else uses quoted_rate.
+  const hasRateSent = (isClub && isQuote)
+    ? b.quote_sent_at != null
+    : b.quoted_rate != null;
+  const label = isQuote && !hasRateSent && status === 'pending'
+    ? 'Quote Requested'
+    : status;
+  const cls = {
+    pending: styles.statusPending,
+    approved: styles.statusApproved,
+    denied: styles.statusDenied,
+    counter: styles.statusCounter,
+    cancelled: styles.statusCancelled,
+  }[status];
+  return <span className={`${styles.statusBadge} ${cls}`}>{label}</span>;
 }
