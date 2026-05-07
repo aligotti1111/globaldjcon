@@ -245,32 +245,40 @@ export default function ClubBookingCard(props: Props) {
                 <div style={{
                   display: 'flex',
                   justifyContent: 'flex-end',
-                  marginTop: '.5rem',
+                  marginTop: '.65rem',
                 }}>
                   <button
                     type="button"
                     onClick={() => onSendQuote(b)}
                     style={{
-                      background: 'transparent',
-                      border: '1px solid var(--border)',
-                      color: 'var(--muted)',
+                      background: 'rgba(0, 245, 196, 0.08)',
+                      border: '1px solid var(--neon)',
+                      color: 'var(--neon)',
                       fontFamily: "'Space Mono', monospace",
-                      fontSize: '.55rem',
-                      letterSpacing: '.1em',
+                      fontSize: '.7rem',
+                      letterSpacing: '.12em',
                       textTransform: 'uppercase',
-                      padding: '.3rem .65rem',
-                      borderRadius: 4,
+                      fontWeight: 700,
+                      padding: '.5rem .95rem',
+                      borderRadius: 5,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '.3rem',
+                      gap: '.4rem',
+                      transition: 'background 120ms ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.18)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.08)';
                     }}
                   >
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
                     </svg>
-                    Edit
+                    Edit Quote
                   </button>
                 </div>
               )}

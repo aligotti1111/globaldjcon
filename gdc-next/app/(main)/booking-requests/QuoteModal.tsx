@@ -52,12 +52,22 @@ function formatTime12(t: string | null): string {
 }
 
 export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Props) {
-  const [price, setPrice] = useState('');
-  const [overtime, setOvertime] = useState('');
-  const [message, setMessage] = useState('');
+  // Pre-fill from existing values when the DJ is editing a previously
+  // sent quote. Empty strings on first quote, populated when re-opening.
+  const [price, setPrice] = useState(
+    booking.quoted_rate != null ? String(booking.quoted_rate) : ''
+  );
+  const [overtime, setOvertime] = useState(
+    booking.counter_rate != null ? String(booking.counter_rate) : ''
+  );
+  const [message, setMessage] = useState(booking.counter_message || '');
   const hasCocktail = !!booking.cocktail_needed;
-  const [cocktailIncluded, setCocktailIncluded] = useState(true);
-  const [cocktailPrice, setCocktailPrice] = useState('');
+  const [cocktailIncluded, setCocktailIncluded] = useState(
+    booking.cocktail_included == null ? true : booking.cocktail_included
+  );
+  const [cocktailPrice, setCocktailPrice] = useState(
+    booking.cocktail_price != null ? String(booking.cocktail_price) : ''
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +76,9 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   // simpler "set the rate for this set" flow with read-only set time
   // context at the top.
   const isClubBooking = booking.booking_type === 'club';
+  // Edit mode — the DJ has already sent a quote and is re-opening to
+  // adjust it. Title and submit button reflect this.
+  const isEditMode = booking.quoted_rate != null;
 
   const eventHours = eventHoursFromTimes(booking.start_time, booking.end_time);
   const hoursLabel = eventHours ? `${eventHours} Hour Event Price` : 'Event Price';
@@ -150,7 +163,9 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <div className={styles.modalTitle}>
-            {isClubBooking ? 'Add Custom Rate' : 'Send Price'}
+            {isClubBooking
+              ? (isEditMode ? 'Edit Custom Rate' : 'Add Custom Rate')
+              : (isEditMode ? 'Edit Price' : 'Send Price')}
           </div>
           <button
             type="button"
@@ -373,7 +388,11 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
             disabled={submitting}
             className={styles.counterSubmitBtn}
           >
-            {submitting ? 'Sending…' : isClubBooking ? 'Add Quote' : 'Send Price'}
+            {submitting
+              ? 'Saving…'
+              : isClubBooking
+                ? (isEditMode ? 'Update Quote' : 'Add Quote')
+                : (isEditMode ? 'Update Price' : 'Send Price')}
           </button>
         </div>
       </div>
