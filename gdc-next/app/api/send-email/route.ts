@@ -163,8 +163,15 @@ function venueTypeLabel(v: string | null | undefined): string {
 // Pass any subset of fields; missing ones are skipped. Used by
 // quote_sent and booking_counter so they show the same booking
 // context the original request email did.
+//
+// eventTypeText vs setTypeText: pick whichever fits the booking type.
+// Mobile DJ bookings use eventTypeText (Wedding / Birthday / Corporate).
+// Club/bar bookings use setTypeText (Headliner / Opener / Closing).
+// They render with different labels ("Event Type:" vs "Set Type:") so
+// the wording matches what the booker/DJ actually picked.
 function bookingInfoBox(opts: {
-  eventTypeText?: string;       // already-formatted (e.g. "Headliner")
+  eventTypeText?: string;       // mobile only — already-formatted (e.g. "Wedding")
+  setTypeText?: string;         // club only — already-formatted (e.g. "Headliner")
   date?: string | null;         // raw event_date YYYY-MM-DD
   timeRange?: string;           // pre-formatted, e.g. "9:00 PM – 1:00 AM"
   packageTitle?: string;
@@ -178,6 +185,7 @@ function bookingInfoBox(opts: {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   const rows: string[] = [];
   if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}</p>`);
+  if (opts.setTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Set Type:</strong> ${escHtml(opts.setTypeText)}</p>`);
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>`);
@@ -478,7 +486,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
         ${bookingInfoBox({
-          eventTypeText: setTypeLabel(setType),
+          setTypeText: setTypeLabel(setType),
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
           packageTitle,
@@ -531,7 +539,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Quote Received</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
         ${bookingInfoBox({
-          eventTypeText: setTypeLabel(setType),
+          setTypeText: setTypeLabel(setType),
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
           venueTypeText: venueTypeLabel(venueType),
