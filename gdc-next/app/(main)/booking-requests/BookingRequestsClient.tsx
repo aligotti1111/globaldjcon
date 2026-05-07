@@ -351,6 +351,13 @@ export default function BookingRequestsClient({
       if (error) throw error;
       // Patch local state so the UI flips immediately.
       applyBookingUpdate({ ...b, quote_sent_at: nowIso, status: 'counter', updated_at: nowIso });
+      // Refresh the header badge count immediately. Without this, the
+      // badge stays at its old number until the next 30s poll tick.
+      try {
+        window.dispatchEvent(new Event('gdc:refresh-booking-count'));
+      } catch {
+        // Non-fatal — the badge will catch up on the next poll.
+      }
       // Notify the booker — fire-and-forget. Uses the dedicated
       // 'quote_sent' email type. Pass the full booking context so the
       // email can render the same info card the original request did.
