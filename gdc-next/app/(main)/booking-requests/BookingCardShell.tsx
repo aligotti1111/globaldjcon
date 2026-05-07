@@ -56,7 +56,13 @@ export default function BookingCardShell({
   // ── Derived state shared by every card type ────────────────────
   const isQuote = !!b.is_quote;
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
-  const statusLabel = isQuote && status === 'pending' ? 'Quote Requested' : status;
+  // "Quote Requested" status label only applies BEFORE the DJ has sent
+  // a rate. Once b.quoted_rate is set, the booking acts like a normal
+  // priced booking and shows the regular status.
+  const hasRateSent = b.quoted_rate != null;
+  const statusLabel = isQuote && !hasRateSent && status === 'pending'
+    ? 'Quote Requested'
+    : status;
 
   const targetId = isIncoming ? b.requester_id : b.dj_id;
   const targetName = isIncoming ? (b.requester_name || 'this user') : (b.dj_name || 'this DJ');
@@ -222,9 +228,12 @@ export default function BookingCardShell({
                 </svg>
                 {' '}Deny
               </button>
-              {/* Counter — DJ proposes a different price. Hidden for quote-mode
-                  bookings without a quote yet (DJ should Send Quote first). */}
-              {!(isQuote && !b.quoted_rate) && (
+              {/* Counter — DJ proposes a different price. Only visible
+                  AFTER a rate has been established (b.quoted_rate set).
+                  Before that, the DJ's first response IS the rate, sent
+                  via Send Quote (quote mode) or Approve (offers mode) —
+                  there's nothing to "counter" yet. */}
+              {hasRateSent && (
                 <button
                   type="button"
                   onClick={() => onCounter(b, 'in')}

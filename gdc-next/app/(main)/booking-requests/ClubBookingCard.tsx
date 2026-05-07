@@ -214,75 +214,29 @@ export default function ClubBookingCard(props: Props) {
           );
         }
         if (hasPrice) {
-          const showLabel = isApproved
-            ? 'Agreed Price'
-            : isQuote ? 'Quoted Price'
-            : 'Rate';
-          // Edit affordance — DJ side only, quote-mode bookings, while
-          // still pending. Lets the DJ adjust the rate they sent before
-          // the booker has accepted/declined. Reuses the same QuoteModal
-          // (pre-fills nothing — DJ types the new amount).
-          const showEdit = isIncoming && isQuote && status === 'pending';
+          // Once a rate has been set, the booking acts like a normal
+          // priced booking — even if it started life as a quote request.
+          // Per spec: "after rate is sent quote mode should no longer show".
+          // The DJ uses the standard Counter button (in the actions row)
+          // to adjust their rate; no separate Edit affordance here.
+          const showLabel = isApproved ? 'Agreed Price' : 'Rate';
           return (
-            <>
-              <div className={styles.priceRow}>
-                <div className={styles.priceCol}>
-                  <div className={styles.tinyLabel} style={{ color: isApproved ? 'var(--neon)' : 'var(--white)' }}>
-                    {showLabel}
-                  </div>
-                  <div className={styles.bigPrice}>
-                    {sym}{Number(b.quoted_rate).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
-                  </div>
+            <div className={styles.priceRow}>
+              <div className={styles.priceCol}>
+                <div className={styles.tinyLabel} style={{ color: isApproved ? 'var(--neon)' : 'var(--white)' }}>
+                  {showLabel}
                 </div>
-                {durationLabel && (
-                  <div className={styles.priceCol}>
-                    <div className={styles.tinyLabel}>Duration</div>
-                    <div className={styles.bigPriceNeon}>{durationLabel}</div>
-                  </div>
-                )}
+                <div className={styles.bigPrice}>
+                  {sym}{Number(b.quoted_rate).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
+                </div>
               </div>
-              {showEdit && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  marginTop: '.65rem',
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => onSendQuote(b)}
-                    style={{
-                      background: 'rgba(0, 245, 196, 0.08)',
-                      border: '1px solid var(--neon)',
-                      color: 'var(--neon)',
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.7rem',
-                      letterSpacing: '.12em',
-                      textTransform: 'uppercase',
-                      fontWeight: 700,
-                      padding: '.5rem .95rem',
-                      borderRadius: 5,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '.4rem',
-                      transition: 'background 120ms ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.18)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.08)';
-                    }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                    Edit Quote
-                  </button>
+              {durationLabel && (
+                <div className={styles.priceCol}>
+                  <div className={styles.tinyLabel}>Duration</div>
+                  <div className={styles.bigPriceNeon}>{durationLabel}</div>
                 </div>
               )}
-            </>
+            </div>
           );
         }
         if (b.offer_amount != null) {
