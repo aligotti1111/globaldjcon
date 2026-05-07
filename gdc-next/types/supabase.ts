@@ -197,6 +197,10 @@ export interface Database {
           deposit_amount: number | null;
           currency: string | null;
           is_quote: boolean | null;
+          // ISO timestamp set when DJ explicitly sends a drafted quote.
+          // Null means rate may be drafted (quoted_rate set) but not yet
+          // visible to booker. Club quote-mode flow only.
+          quote_sent_at: string | null;
           // Negotiation history (JSON array of { from, amount, message, created_at })
           negotiation_log: Json | null;
           notes: string | null;
@@ -243,6 +247,7 @@ export interface Database {
           deposit_amount?: number | null;
           currency?: string | null;
           is_quote?: boolean | null;
+          quote_sent_at?: string | null;
           negotiation_log?: Json | null;
           notes?: string | null;
           status?: 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled' | null;
@@ -288,6 +293,7 @@ export interface Database {
           deposit_amount?: number | null;
           currency?: string | null;
           is_quote?: boolean | null;
+          quote_sent_at?: string | null;
           negotiation_log?: Json | null;
           notes?: string | null;
           status?: 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled' | null;
