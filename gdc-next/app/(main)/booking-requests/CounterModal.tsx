@@ -178,9 +178,18 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
 
       // Email the OTHER party (recipient) about the counter offer.
       // DJ countered → email the booker; booker countered → email the DJ.
+      // Pass the full booking context so the email renders the same info
+      // card the original booking_request used.
       // Failures are swallowed so the DB save isn't undone by an email outage.
       try {
         const isFromDj = group === 'in';
+        const bExt = booking as BookingRow & {
+          currency?: string;
+          set_type?: string | null;
+          venue_type?: string | null;
+          venue_address?: string | null;
+          package_title?: string | null;
+        };
         await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -193,8 +202,14 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
             counterRate: Number(amount),
             counterMessage: message.trim() || null,
             eventDate: booking.event_date,
+            startTime: booking.start_time,
+            endTime: booking.end_time,
+            setType: bExt.set_type,
+            venueType: bExt.venue_type,
             venueName: booking.venue_name,
-            currency: (booking as BookingRow & { currency?: string }).currency || 'USD',
+            venueAddress: bExt.venue_address,
+            packageTitle: bExt.package_title,
+            currency: bExt.currency || 'USD',
           }),
         });
       } catch (e) {

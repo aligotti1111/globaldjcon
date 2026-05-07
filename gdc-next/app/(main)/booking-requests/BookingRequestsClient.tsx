@@ -342,8 +342,8 @@ export default function BookingRequestsClient({
       // Patch local state so the UI flips immediately.
       applyBookingUpdate({ ...b, quote_sent_at: nowIso, updated_at: nowIso });
       // Notify the booker — fire-and-forget. Uses the dedicated
-      // 'quote_sent' email type (NOT booking_counter — this is the
-      // FIRST quote on the booking, not a counter to one).
+      // 'quote_sent' email type. Pass the full booking context so the
+      // email can render the same info card the original request did.
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -357,7 +357,12 @@ export default function BookingRequestsClient({
             quoteMessage: b.counter_message || null,
             currency: b.currency || 'USD',
             eventDate: b.event_date,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            setType: b.set_type,
+            venueType: b.venue_type,
             venueName: b.venue_name,
+            venueAddress: b.venue_address,
           }),
         });
       } catch (e) {
