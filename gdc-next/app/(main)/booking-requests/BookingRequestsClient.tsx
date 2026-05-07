@@ -331,7 +331,7 @@ export default function BookingRequestsClient({
       variant: 'primary',
     }))) return;
     try {
-      const supabase = supabaseRef.current;
+      const supabase = createClient();
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from('bookings')
