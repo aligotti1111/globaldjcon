@@ -26,7 +26,8 @@ type EmailType =
   | 'booking_request'
   | 'booking_status'
   | 'mob_booking_status'
-  | 'booking_counter';
+  | 'booking_counter'
+  | 'quote_sent';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -420,6 +421,49 @@ export async function POST(req: Request) {
           ${counterMessage ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(counterMessage)}</p>` : ''}
         </div>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
+      `),
+    };
+
+  // ── 8b. QUOTE SENT (DJ has responded to a quote request with a price) ─
+  // Sent to the booker when the DJ clicks "Send Quote" on a quote-mode
+  // club booking. This is the FIRST quote on the booking — not a counter
+  // — so it's framed as "Quote Received" rather than "Counter Offer".
+  } else if (type === 'quote_sent') {
+    const recipientEmail = await pickEmail(
+      body.recipientEmail as string | undefined,
+      body.recipientUserId as string | undefined,
+    );
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve recipient email for quote_sent' },
+        { status: 400 }
+      );
+    }
+    const recipientName = body.recipientName as string | undefined;
+    const djName = body.djName as string | undefined;
+    const quotedRate = body.quotedRate as number | undefined;
+    const quoteMessage = body.quoteMessage as string | undefined;
+    const eventDate = body.eventDate as string | undefined;
+    const venueName = body.venueName as string | undefined;
+    const currency = (body.currency as string | undefined) || 'USD';
+    const dateStr = fmtDate(eventDate);
+    const sym = currencySymbol(currency);
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [recipientEmail],
+      subject: `Quote received from ${djName || 'your DJ'}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Quote Received</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
+        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          ${quotedRate ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Quoted Rate:</strong> ${sym}${Number(quotedRate).toLocaleString()} ${escHtml(currency)}</p>` : ''}
+          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
+          ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
+          ${quoteMessage ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(quoteMessage)}</p>` : ''}
+        </div>
+        <p style="color:#666;margin-bottom:16px;font-size:13px;">You can accept this quote, propose a counter-offer, or decline.</p>
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Quote')}
       `),
     };
 
