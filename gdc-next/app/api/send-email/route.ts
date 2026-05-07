@@ -115,14 +115,17 @@ function currencySymbol(code: string | null | undefined): string {
   return map[code || 'USD'] || '$';
 }
 
-// Shared HTML wrapper — neon header bar + footer. Vanilla parity.
+// Shared HTML wrapper — solid dark header bar + footer. Vanilla parity.
+// Header background changed from gradient to solid #1a1a2e so the
+// logo PNG (which has its own dark-navy backdrop) blends seamlessly
+// instead of sitting as a visible black box on a teal gradient.
 function emailTemplate(content: string): string {
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-<tr><td style="background:linear-gradient(135deg,#0a6f61 0%,#1a1a2e 100%);padding:24px 32px;text-align:center;">
-<img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;" /></td></tr>
+<tr><td style="background:#1a1a2e;padding:24px 32px;text-align:center;">
+<img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;margin:0 auto;" /></td></tr>
 <tr><td style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
 <p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
@@ -132,6 +135,60 @@ function emailTemplate(content: string): string {
 
 function ctaButton(href: string, label: string): string {
   return `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">${label}</a></td></tr></table>`;
+}
+
+// Friendly labels for raw club booking enums — match constants.ts.
+// Used when emails render set_type / venue_type values from bookings rows.
+const CLUB_SET_TYPE_LABELS_EMAIL: Record<string, string> = {
+  opening: 'Opening Set',
+  headliner: 'Headliner',
+  closing: 'Closing Set',
+  opening_close: 'Opening – Close',
+  opening_and_closing: 'Opening & Closing',
+};
+const CLUB_VENUE_TYPE_LABELS_EMAIL: Record<string, string> = {
+  bar: 'Bar',
+  club: 'Club',
+};
+function setTypeLabel(s: string | null | undefined): string {
+  if (!s) return '';
+  return CLUB_SET_TYPE_LABELS_EMAIL[s] || s;
+}
+function venueTypeLabel(v: string | null | undefined): string {
+  if (!v) return '';
+  return CLUB_VENUE_TYPE_LABELS_EMAIL[v] || v;
+}
+
+// Shared booking-info card — same look as the booking_request email.
+// Pass any subset of fields; missing ones are skipped. Used by
+// quote_sent and booking_counter so they show the same booking
+// context the original request email did.
+function bookingInfoBox(opts: {
+  eventTypeText?: string;       // already-formatted (e.g. "Headliner")
+  date?: string | null;         // raw event_date YYYY-MM-DD
+  timeRange?: string;           // pre-formatted, e.g. "9:00 PM – 1:00 AM"
+  packageTitle?: string;
+  venueTypeText?: string;       // pre-formatted, e.g. "Bar"
+  venueName?: string;
+  venueAddress?: string;
+  rateLabel?: string;           // e.g. "Quoted Rate" / "Counter Offer"
+  rateValue?: string;           // e.g. "$300 USD"
+  message?: string;
+}): string {
+  const dateStr = opts.date ? fmtDate(opts.date) : '';
+  const rows: string[] = [];
+  if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}</p>`);
+  if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
+  if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
+  if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>`);
+  if (opts.venueTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(opts.venueTypeText)}</p>`);
+  if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
+  if (opts.venueAddress) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(opts.venueAddress)}</p>`);
+  if (opts.rateLabel && opts.rateValue) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${escHtml(opts.rateLabel)}:</strong> ${escHtml(opts.rateValue)}</p>`);
+  if (opts.message) rows.push(`<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(opts.message)}</p>`);
+  // Trim the trailing margin on the last row for a tight look
+  if (rows.length > 0) rows[rows.length - 1] = rows[rows.length - 1].replace('margin:0 0 8px', 'margin:0');
+  return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
 }
 
 // ── POST handler ───────────────────────────────────────────────────────
@@ -403,6 +460,12 @@ export async function POST(req: Request) {
     const counterMessage = body.counterMessage as string | undefined;
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
+    const venueAddress = body.venueAddress as string | undefined;
+    const startTime = body.startTime as string | undefined;
+    const endTime = body.endTime as string | undefined;
+    const setType = body.setType as string | undefined;
+    const venueType = body.venueType as string | undefined;
+    const packageTitle = body.packageTitle as string | undefined;
     const currency = (body.currency as string | undefined) || 'USD';
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
@@ -410,16 +473,22 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
-      subject: `Counter offer from ${senderName || 'the ' + (fromRole || 'other party')}`,
+      subject: `Counter offer from ${senderName || 'the ' + (fromRole || 'other party')} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          ${counterRate ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Counter Offer:</strong> ${sym}${Number(counterRate).toLocaleString()} ${escHtml(currency)}</p>` : ''}
-          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
-          ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
-          ${counterMessage ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(counterMessage)}</p>` : ''}
-        </div>
+        ${bookingInfoBox({
+          eventTypeText: setTypeLabel(setType),
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          packageTitle,
+          venueTypeText: venueTypeLabel(venueType),
+          venueName,
+          venueAddress,
+          rateLabel: 'Counter Offer',
+          rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()} ${currency}` : '',
+          message: counterMessage,
+        })}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
       `),
     };
@@ -445,6 +514,11 @@ export async function POST(req: Request) {
     const quoteMessage = body.quoteMessage as string | undefined;
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
+    const venueAddress = body.venueAddress as string | undefined;
+    const startTime = body.startTime as string | undefined;
+    const endTime = body.endTime as string | undefined;
+    const setType = body.setType as string | undefined;
+    const venueType = body.venueType as string | undefined;
     const currency = (body.currency as string | undefined) || 'USD';
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
@@ -452,16 +526,21 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
-      subject: `Quote received from ${djName || 'your DJ'}`,
+      subject: `Quote received from ${djName || 'your DJ'} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Quote Received</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          ${quotedRate ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Quoted Rate:</strong> ${sym}${Number(quotedRate).toLocaleString()} ${escHtml(currency)}</p>` : ''}
-          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
-          ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
-          ${quoteMessage ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(quoteMessage)}</p>` : ''}
-        </div>
+        ${bookingInfoBox({
+          eventTypeText: setTypeLabel(setType),
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          venueTypeText: venueTypeLabel(venueType),
+          venueName,
+          venueAddress,
+          rateLabel: 'Quoted Rate',
+          rateValue: quotedRate ? `${sym}${Number(quotedRate).toLocaleString()} ${currency}` : '',
+          message: quoteMessage,
+        })}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can accept this quote, propose a counter-offer, or decline.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Quote')}
       `),
