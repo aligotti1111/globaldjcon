@@ -102,11 +102,13 @@ export default function BookingCardShell({
 
   // Action visibility — DJ-side (incoming) vs booker-side (outgoing).
   // Approve/Deny/Counter/Send Quote → DJ when status is 'pending'.
-  // Cancel → either side at any non-terminal status (pending or counter).
+  // Cancel → DJ at any non-terminal status; booker only when status is
+  //   'pending' (when DJ has countered, the booker uses Decline instead
+  //   of Cancel — those two were redundant).
   // Accept/Decline counter → booker when DJ has countered.
   const showIncomingActions = isIncoming && status === 'pending';
   const showIncomingCancel = isIncoming && (status === 'pending' || status === 'counter');
-  const showOutgoingCancel = !isIncoming && (status === 'pending' || status === 'counter');
+  const showOutgoingCancel = !isIncoming && status === 'pending';
   const showOutgoingCounterResponse = !isIncoming && status === 'counter';
 
   return (
