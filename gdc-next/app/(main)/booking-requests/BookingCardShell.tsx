@@ -211,39 +211,15 @@ export default function BookingCardShell({
           DJ has countered an outgoing). Right side: Block/Unblock pill.
 
           For club + quote-mode bookings, the DJ-side flow has THREE phases:
-            1. No rate drafted → "Add Custom Rate" (opens QuoteModal) + Deny
-            2. Rate drafted, not sent → "Edit Custom Rate" + "Send Quote" + Deny
-            3. Rate sent (or non-quote/mobile) → Approve + Deny + Counter */}
+            1. No rate drafted → in-card "Add Custom Rate" + Deny here
+            2. Rate drafted, not sent → in-card "Edit Quote" + "Send Quote" here + Deny
+            3. Rate sent (or non-quote/mobile) → Approve + Deny + Counter
+          The Add/Edit Custom Rate button itself lives inside the Rate
+          section of the card, not in this row. */}
       <div className={styles.actionsRow}>
         <div className={styles.actionsLeft}>
           {showIncomingActions && (
             <>
-              {/* Phase 1 + 2: Add/Edit Custom Rate button.
-                  Visible whenever a rate hasn't been sent yet on a quote
-                  booking. Opens QuoteModal pre-filled with any draft. */}
-              {isQuote && !hasRateSent && (
-                <button
-                  type="button"
-                  onClick={() => onSendQuote(b)}
-                  className={`${styles.actBtn} ${hasDraftedRate ? styles.actBtnAmber : styles.actBtnPrimary}`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    {hasDraftedRate ? (
-                      <>
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
-                      </>
-                    ) : (
-                      <>
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </>
-                    )}
-                  </svg>
-                  {' '}{hasDraftedRate ? 'Edit Custom Rate' : 'Add Custom Rate'}
-                </button>
-              )}
-
               {/* Phase 2: Send Quote. Only when DJ has a draft to release.
                   Sets quote_sent_at on the booking, exposing the price to
                   the booker. After send, hasRateSent becomes true and the

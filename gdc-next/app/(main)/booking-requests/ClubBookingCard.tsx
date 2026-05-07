@@ -34,6 +34,10 @@ export default function ClubBookingCard(props: Props) {
   const {
     booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
   } = props;
+  // Pull onSendQuote so the in-card "Add Custom Rate" / "Edit Quote"
+  // buttons can open the QuoteModal directly. The shellProps spread
+  // still passes it through to BookingCardShell for any other use.
+  const { onSendQuote } = shellProps;
 
   // ── Computed values ────────────────────────────────────────────
   const isQuote = !!b.is_quote;
@@ -265,11 +269,77 @@ export default function ClubBookingCard(props: Props) {
           );
         }
         if (isQuote) {
-          // Quote-mode booking with no rate sent yet. Buttons (Add/Edit
-          // Custom Rate, Send Quote) live in the actions row below — this
-          // section just shows status. DJ side ALSO sees a "Drafted: $X"
-          // preview if they've started a quote but haven't sent it.
+          // Quote-mode booking with no rate sent yet. The in-box action
+          // (Add Custom Rate / Edit Quote) lives here so it's part of
+          // the Rate section, not floating in the actions row.
           if (isIncoming) {
+            // DJ has typed a price but hasn't released it — show the
+            // price plain (same visual as "Rate"), then an Edit Quote
+            // button below. Send Quote lives in the actions row below.
+            if (hasDraftedRate && b.quoted_rate != null) {
+              return (
+                <>
+                  <div className={styles.priceRow}>
+                    <div className={styles.priceCol}>
+                      <div className={styles.tinyLabel} style={{ color: 'var(--white)' }}>
+                        Rate
+                      </div>
+                      <div className={styles.bigPrice}>
+                        {sym}{Number(b.quoted_rate).toLocaleString()}{' '}
+                        <span className={styles.priceSub}>{cur}</span>
+                      </div>
+                    </div>
+                    {durationLabel && (
+                      <div className={styles.priceCol}>
+                        <div className={styles.tinyLabel}>Duration</div>
+                        <div className={styles.bigPriceNeon}>{durationLabel}</div>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginTop: '.65rem',
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => onSendQuote(b)}
+                      style={{
+                        background: 'rgba(0, 245, 196, 0.08)',
+                        border: '1px solid var(--neon)',
+                        color: 'var(--neon)',
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.7rem',
+                        letterSpacing: '.12em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        padding: '.5rem .95rem',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '.4rem',
+                        transition: 'background 120ms ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.18)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 245, 196, 0.08)';
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                      Edit Quote
+                    </button>
+                  </div>
+                </>
+              );
+            }
+            // DJ hasn't typed a price yet — show the centered Add
+            // Custom Rate button (original layout).
             return (
               <div style={{
                 display: 'flex',
@@ -281,35 +351,14 @@ export default function ClubBookingCard(props: Props) {
                 <div className={styles.tinyLabel} style={{ color: 'var(--muted)' }}>
                   Quote Requested
                 </div>
-                {hasDraftedRate && b.quoted_rate != null && (
-                  <div style={{
-                    marginTop: '.35rem',
-                    padding: '.55rem .85rem',
-                    border: '1px solid var(--amber)',
-                    borderRadius: 6,
-                    background: 'rgba(255, 176, 32, 0.08)',
-                    textAlign: 'center',
-                  }}>
-                    <div
-                      className={styles.tinyLabel}
-                      style={{ color: 'var(--amber)', marginBottom: '.15rem' }}
-                    >
-                      Drafted (not sent)
-                    </div>
-                    <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: '1.05rem' }}>
-                      {sym}{Number(b.quoted_rate).toLocaleString()}{' '}
-                      <span className={styles.priceSub}>{cur}</span>
-                    </div>
-                    <div style={{
-                      fontSize: '.65rem',
-                      color: 'var(--muted)',
-                      marginTop: '.2rem',
-                      lineHeight: 1.3,
-                    }}>
-                      Use Send Quote below to release this price to the booker.
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onSendQuote(b)}
+                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+                  style={{ minWidth: 180 }}
+                >
+                  + Add Custom Rate
+                </button>
               </div>
             );
           }
