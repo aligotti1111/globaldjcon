@@ -342,18 +342,19 @@ export default function BookingRequestsClient({
       // Patch local state so the UI flips immediately.
       applyBookingUpdate({ ...b, quote_sent_at: nowIso, updated_at: nowIso });
       // Notify the booker — fire-and-forget. Reuses the existing
-      // booking_counter email type since the payload shape matches
-      // (rate + DJ name + booking date) and the booker's response options
-      // are the same. If you want a dedicated email type later, swap here.
+      // booking_counter email type. Field names must match what the
+      // /api/send-email route expects for this type: recipientUserId,
+      // recipientName, senderName, fromRole.
       try {
         await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'booking_counter',
-            requesterUserId: b.requester_id,
-            requesterName: b.requester_name,
-            djName: currentUser.name,
+            recipientUserId: b.requester_id,
+            recipientName: b.requester_name,
+            senderName: currentUser.name,
+            fromRole: 'dj',
             counterRate: b.quoted_rate,
             currency: b.currency || 'USD',
             eventDate: b.event_date,
