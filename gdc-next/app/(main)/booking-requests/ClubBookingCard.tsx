@@ -34,6 +34,10 @@ export default function ClubBookingCard(props: Props) {
   const {
     booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
   } = props;
+  // Pull onSendQuote so we can wire the "Add Custom Rate" button below
+  // (DJ-side, quote-mode, no rate yet). The shellProps spread still
+  // includes it for the Send Quote button in the actions row.
+  const { onSendQuote } = shellProps;
 
   // ── Computed values ────────────────────────────────────────────
   const isQuote = !!b.is_quote;
@@ -252,6 +256,34 @@ export default function ClubBookingCard(props: Props) {
           );
         }
         if (isQuote) {
+          // DJ side — quote requested, no rate sent yet → show an
+          // "Add Custom Rate" button that opens the QuoteModal. Once
+          // the DJ submits a price, hasPrice becomes true and the
+          // 'Quoted Price' branch above renders instead.
+          if (isIncoming) {
+            return (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '.5rem',
+                padding: '.4rem 0 .2rem',
+              }}>
+                <div className={styles.tinyLabel} style={{ color: 'var(--muted)' }}>
+                  Quote Requested
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onSendQuote(b)}
+                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+                  style={{ minWidth: 180 }}
+                >
+                  + Add Custom Rate
+                </button>
+              </div>
+            );
+          }
+          // Booker side — keep the existing awaiting message.
           return (
             <div className={styles.awaitingQuote}>
               Awaiting price from {b.dj_name || 'DJ'}
