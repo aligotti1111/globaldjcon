@@ -20,6 +20,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
+import { formatLongDate } from './helpers';
 import type { BookingRow } from './page';
 
 interface Props {
@@ -169,13 +170,11 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         )}
 
         {/* Club booking context — read-only set times + duration so the
-            DJ can size the rate against the actual hours requested. */}
-        {isClubBooking && (booking.start_time || booking.end_time) && (
+            DJ can size the rate against the actual hours requested. Date
+            sits below the time row for full event context. */}
+        {isClubBooking && (booking.start_time || booking.end_time || booking.event_date) && (
           <div
             style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '1.25rem',
               padding: '.65rem .85rem',
               marginBottom: '.9rem',
               border: '1px solid var(--border)',
@@ -183,8 +182,76 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               background: 'rgba(255,255,255,.02)',
             }}
           >
-            {booking.start_time && (
-              <div>
+            {/* Time row — Set Start / Set End / Duration */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem' }}>
+              {booking.start_time && (
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.5rem',
+                      letterSpacing: '.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--muted)',
+                      marginBottom: '.15rem',
+                    }}
+                  >
+                    Set Start
+                  </div>
+                  <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                    {formatTime12(booking.start_time)}
+                  </div>
+                </div>
+              )}
+              {booking.end_time && (
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.5rem',
+                      letterSpacing: '.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--muted)',
+                      marginBottom: '.15rem',
+                    }}
+                  >
+                    Set End
+                  </div>
+                  <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                    {formatTime12(booking.end_time)}
+                  </div>
+                </div>
+              )}
+              {eventHours != null && (
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.5rem',
+                      letterSpacing: '.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--muted)',
+                      marginBottom: '.15rem',
+                    }}
+                  >
+                    Duration
+                  </div>
+                  <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                    {eventHours} hr{eventHours !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Date row — sits below the times */}
+            {booking.event_date && (
+              <div
+                style={{
+                  marginTop: '.65rem',
+                  paddingTop: '.55rem',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
                 <div
                   style={{
                     fontFamily: "'Space Mono', monospace",
@@ -195,48 +262,10 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
                     marginBottom: '.15rem',
                   }}
                 >
-                  Set Start
+                  Date
                 </div>
                 <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
-                  {formatTime12(booking.start_time)}
-                </div>
-              </div>
-            )}
-            {booking.end_time && (
-              <div>
-                <div
-                  style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: '.5rem',
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    marginBottom: '.15rem',
-                  }}
-                >
-                  Set End
-                </div>
-                <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
-                  {formatTime12(booking.end_time)}
-                </div>
-              </div>
-            )}
-            {eventHours != null && (
-              <div>
-                <div
-                  style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: '.5rem',
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    marginBottom: '.15rem',
-                  }}
-                >
-                  Duration
-                </div>
-                <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
-                  {eventHours} hr{eventHours !== 1 ? 's' : ''}
+                  {formatLongDate(booking.event_date)}
                 </div>
               </div>
             )}
@@ -344,7 +373,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
             disabled={submitting}
             className={styles.counterSubmitBtn}
           >
-            {submitting ? 'Sending…' : isClubBooking ? 'Send Quote' : 'Send Price'}
+            {submitting ? 'Sending…' : isClubBooking ? 'Add Quote' : 'Send Price'}
           </button>
         </div>
       </div>
