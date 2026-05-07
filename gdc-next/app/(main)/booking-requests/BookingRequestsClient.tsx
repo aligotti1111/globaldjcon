@@ -257,6 +257,40 @@ export default function BookingRequestsClient({
     }
   }
 
+  // DJ-side cancel — filters by dj_id (mirror of cancelOutgoing's
+  // requester_id filter). DJ can cancel a booking they've received at
+  // any non-terminal status: pending OR counter (after they've sent a
+  // quote and are waiting on the booker).
+  async function cancelIncoming(bookingId: string) {
+    if (!(await confirm({
+      title: 'Cancel this booking?',
+      message: 'The booker will see that this booking has been cancelled. This cannot be undone.',
+      confirmLabel: 'Cancel Booking',
+      cancelLabel: 'Keep It',
+      variant: 'danger',
+    }))) return;
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() } as unknown as never)
+        .eq('id', bookingId)
+        .eq('dj_id', currentUser.id);
+      if (error) throw error;
+      updateIncomingStatus(bookingId, 'cancelled');
+      // Refresh the header badge in case the cancelled booking was a
+      // pending one that contributed to the count.
+      try {
+        window.dispatchEvent(new Event('gdc:refresh-booking-count'));
+      } catch {
+        // Non-fatal — next 30s poll catches up.
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert('Error: ' + msg);
+    }
+  }
+
   // ── Counter response (booker side) ─────────────────────────────────
   // Booker accepts the DJ's counter offer → status becomes 'approved'
   // with the counter rate locked in. Same calendar-decrement effect as
@@ -492,6 +526,7 @@ export default function BookingRequestsClient({
                 onApprove={(id) => djUpdateStatus(id, 'approved')}
                 onDeny={(id) => djUpdateStatus(id, 'denied')}
                 onCancel={cancelOutgoing}
+                onCancelIncoming={cancelIncoming}
                 onBlock={blockUser}
                 onUnblock={unblockUser}
                 onCounter={openCounterModal}
@@ -510,6 +545,7 @@ export default function BookingRequestsClient({
                 onApprove={(id) => djUpdateStatus(id, 'approved')}
                 onDeny={(id) => djUpdateStatus(id, 'denied')}
                 onCancel={cancelOutgoing}
+                onCancelIncoming={cancelIncoming}
                 onBlock={blockUser}
                 onUnblock={unblockUser}
                 onCounter={openCounterModal}
@@ -557,6 +593,7 @@ export default function BookingRequestsClient({
               onApprove={(id) => djUpdateStatus(id, 'approved')}
               onDeny={(id) => djUpdateStatus(id, 'denied')}
               onCancel={cancelOutgoing}
+                onCancelIncoming={cancelIncoming}
               onBlock={blockUser}
               onUnblock={unblockUser}
               onCounter={openCounterModal}
@@ -651,6 +688,7 @@ interface ListProps {
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
   onCancel: (id: string) => void;
+  onCancelIncoming: (id: string) => void;
   onBlock: (userId: string, userName: string) => void;
   onUnblock: (userId: string) => void;
   // Counter / Quote / counter-response handlers
@@ -664,7 +702,7 @@ interface ListProps {
 
 function FlatList({
   bookings, isIncoming, blocked, currentUser,
-  onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
@@ -686,6 +724,7 @@ function FlatList({
             onApprove={onApprove}
             onDeny={onDeny}
             onCancel={onCancel}
+              onCancelIncoming={onCancelIncoming}
             onBlock={onBlock}
             onUnblock={onUnblock}
             onCounter={onCounter}
@@ -707,7 +746,7 @@ function FlatList({
 // label between the two events when only two bookings exist.
 function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
-  onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
@@ -776,6 +815,7 @@ function SameDayGrouped({
               onApprove={onApprove}
               onDeny={onDeny}
               onCancel={onCancel}
+              onCancelIncoming={onCancelIncoming}
               onBlock={onBlock}
               onUnblock={onUnblock}
               onCounter={onCounter}

@@ -32,6 +32,9 @@ export interface BookingCardShellProps {
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
   onCancel: (id: string) => void;
+  // DJ-side cancel — separate from onCancel (which is booker-side).
+  // Filters DB update by dj_id instead of requester_id.
+  onCancelIncoming: (id: string) => void;
   onBlock: (userId: string, userName: string) => void;
   onUnblock: (userId: string) => void;
   onCounter: (b: BookingRow, group: 'in' | 'out') => void;
@@ -53,7 +56,7 @@ export default function BookingCardShell({
   eventLabel,
   detailsSlot,
   pricingSlot,
-  onApprove, onDeny, onCancel, onBlock, onUnblock,
+  onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
@@ -109,9 +112,10 @@ export default function BookingCardShell({
 
   // Action visibility — DJ-side (incoming) vs booker-side (outgoing).
   // Approve/Deny/Counter/Send Quote → DJ when status is 'pending'.
-  // Cancel → booker (outgoing) at any non-terminal status.
+  // Cancel → either side at any non-terminal status (pending or counter).
   // Accept/Decline counter → booker when DJ has countered.
   const showIncomingActions = isIncoming && status === 'pending';
+  const showIncomingCancel = isIncoming && (status === 'pending' || status === 'counter');
   const showOutgoingCancel = !isIncoming && (status === 'pending' || status === 'counter');
   const showOutgoingCounterResponse = !isIncoming && status === 'counter';
 
@@ -122,6 +126,16 @@ export default function BookingCardShell({
           inside the Package & Price section, so the strip became
           redundant visual noise. statusAccentClass is kept above in case
           we want to reintroduce a subtle treatment later. */}
+
+      {/* Status badge — top-right corner of the card. Shows on every
+          booking on both sides so DJ + booker can see at a glance where
+          the booking sits in its lifecycle. statusLabel handles the
+          quote-mode special case ("Quote Requested" while no rate sent). */}
+      <div className={styles.statusBadgeWrap}>
+        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
+          {statusLabel}
+        </span>
+      </div>
 
       {/* Header — order# only when present (grouped views).
           The event type is no longer rendered here as a big title. It now
@@ -281,6 +295,18 @@ export default function BookingCardShell({
                 </button>
               )}
             </>
+          )}
+          {/* DJ-side Cancel — separate from showIncomingActions because
+              the DJ can also cancel a booking they've already sent a
+              quote on (status='counter', waiting on booker). */}
+          {showIncomingCancel && (
+            <button
+              type="button"
+              onClick={() => onCancelIncoming(b.id)}
+              className={`${styles.actBtn} ${styles.actBtnDanger}`}
+            >
+              Cancel
+            </button>
           )}
           {showOutgoingCancel && (
             <button
