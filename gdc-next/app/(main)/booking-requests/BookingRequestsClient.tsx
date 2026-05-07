@@ -312,6 +312,63 @@ export default function BookingRequestsClient({
     setQuoteModal({ booking });
   }
 
+  // ── Send drafted quote (club + quote-mode flow) ────────────────────
+  // The DJ has saved a quoted_rate via the QuoteModal but quote_sent_at
+  // is still null — meaning the booker can't see the price yet. This
+  // handler stamps quote_sent_at = now(), which flips the booking out
+  // of "draft" mode and into "rate sent" mode for both sides.
+  async function sendDraftQuote(b: BookingRow) {
+    if (!currentUser) return;
+    if (b.quoted_rate == null) {
+      alert('Add a custom rate first, then send.');
+      return;
+    }
+    if (!(await confirm({
+      title: 'Send this quote to the booker?',
+      message: `Once sent, ${b.requester_name || 'the booker'} will see your rate of $${Number(b.quoted_rate).toLocaleString()} and be able to accept, counter, or decline. You'll still be able to counter from there.`,
+      confirmLabel: 'Send Quote',
+      cancelLabel: 'Cancel',
+      variant: 'primary',
+    }))) return;
+    try {
+      const supabase = supabaseRef.current;
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('bookings')
+        .update({ quote_sent_at: nowIso, updated_at: nowIso } as unknown as never)
+        .eq('id', b.id)
+        .eq('dj_id', currentUser.id);
+      if (error) throw error;
+      // Patch local state so the UI flips immediately.
+      applyBookingUpdate({ ...b, quote_sent_at: nowIso, updated_at: nowIso });
+      // Notify the booker — fire-and-forget. Reuses the existing
+      // booking_counter email type since the payload shape matches
+      // (rate + DJ name + booking date) and the booker's response options
+      // are the same. If you want a dedicated email type later, swap here.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_counter',
+            requesterUserId: b.requester_id,
+            requesterName: b.requester_name,
+            djName: currentUser.name,
+            counterRate: b.quoted_rate,
+            currency: b.currency || 'USD',
+            eventDate: b.event_date,
+            venueName: b.venue_name,
+          }),
+        });
+      } catch (e) {
+        console.warn('Quote-sent email failed:', e);
+      }
+    } catch (e) {
+      console.error('Send draft quote failed:', e);
+      alert('Failed to send quote. Please try again.');
+    }
+  }
+
   // After a modal saves, patch the relevant local list with the updated row.
   function applyBookingUpdate(updated: BookingRow) {
     if (incoming.find((b) => b.id === updated.id)) {
@@ -417,6 +474,7 @@ export default function BookingRequestsClient({
                 onUnblock={unblockUser}
                 onCounter={openCounterModal}
                 onSendQuote={openQuoteModal}
+                onSendDraftQuote={sendDraftQuote}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
                 onMessage={openComposeModal}
@@ -434,6 +492,7 @@ export default function BookingRequestsClient({
                 onUnblock={unblockUser}
                 onCounter={openCounterModal}
                 onSendQuote={openQuoteModal}
+                onSendDraftQuote={sendDraftQuote}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
                 onMessage={openComposeModal}
@@ -480,6 +539,7 @@ export default function BookingRequestsClient({
               onUnblock={unblockUser}
               onCounter={openCounterModal}
               onSendQuote={openQuoteModal}
+                onSendDraftQuote={sendDraftQuote}
               onAcceptCounter={acceptCounter}
               onDeclineCounter={declineCounter}
               onMessage={openComposeModal}
@@ -574,6 +634,7 @@ interface ListProps {
   // Counter / Quote / counter-response handlers
   onCounter: (b: BookingRow, group: 'in' | 'out') => void;
   onSendQuote: (b: BookingRow) => void;
+  onSendDraftQuote: (b: BookingRow) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
   onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
@@ -582,7 +643,7 @@ interface ListProps {
 function FlatList({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
-  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
   return (
@@ -607,6 +668,7 @@ function FlatList({
             onUnblock={onUnblock}
             onCounter={onCounter}
             onSendQuote={onSendQuote}
+              onSendDraftQuote={onSendDraftQuote}
             onAcceptCounter={onAcceptCounter}
             onDeclineCounter={onDeclineCounter}
             onMessage={onMessage}
@@ -624,7 +686,7 @@ function FlatList({
 function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
-  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
   // Group by event_date. Sort within group by created_at (oldest first
@@ -696,6 +758,7 @@ function SameDayGrouped({
               onUnblock={onUnblock}
               onCounter={onCounter}
               onSendQuote={onSendQuote}
+              onSendDraftQuote={onSendDraftQuote}
               onAcceptCounter={onAcceptCounter}
               onDeclineCounter={onDeclineCounter}
               onMessage={onMessage}

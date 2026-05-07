@@ -80,6 +80,11 @@ interface BookingRow {
   cocktail_price: number | null;
   cocktail_included: boolean | null;
   is_quote: boolean | null;
+  // Set when the DJ explicitly sends a drafted quote to the booker.
+  // Null = rate may be drafted (quoted_rate set) but not yet visible to booker.
+  // Non-null = booker can see the price and respond. Club + quote-mode only;
+  // for mobile and non-quote bookings, quoted_rate alone signals "sent".
+  quote_sent_at: string | null;
   notes: string | null;
   status: string | null;
   created_at: string;

@@ -374,6 +374,24 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
 
         {error && <div className={styles.counterErr}>{error}</div>}
 
+        {isClubBooking && (
+          <div style={{
+            marginTop: '.4rem',
+            marginBottom: '.6rem',
+            padding: '.55rem .75rem',
+            background: 'rgba(255, 176, 32, 0.08)',
+            border: '1px solid rgba(255, 176, 32, 0.3)',
+            borderRadius: 5,
+            fontSize: '.72rem',
+            lineHeight: 1.4,
+            color: 'rgba(255,255,255,.8)',
+          }}>
+            <strong style={{ color: 'var(--amber)' }}>This saves a draft.</strong>{' '}
+            The booker will not see your price until you click{' '}
+            <strong>Send Quote</strong> on the booking card afterwards.
+          </div>
+        )}
+
         <div className={styles.counterActions}>
           <button
             type="button"
@@ -391,7 +409,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
             {submitting
               ? 'Saving…'
               : isClubBooking
-                ? (isEditMode ? 'Update Quote' : 'Add Quote')
+                ? (isEditMode ? 'Update Draft' : 'Save Draft')
                 : (isEditMode ? 'Update Price' : 'Send Price')}
           </button>
         </div>

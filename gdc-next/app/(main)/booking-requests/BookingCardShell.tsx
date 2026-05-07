@@ -36,6 +36,10 @@ export interface BookingCardShellProps {
   onUnblock: (userId: string) => void;
   onCounter: (b: BookingRow, group: 'in' | 'out') => void;
   onSendQuote: (b: BookingRow) => void;
+  // Releases a drafted quote to the booker (sets quote_sent_at).
+  // Club + quote-mode only — mobile and non-quote bookings use the
+  // existing one-shot flow.
+  onSendDraftQuote: (b: BookingRow) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
   onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
@@ -50,16 +54,33 @@ export default function BookingCardShell({
   detailsSlot,
   pricingSlot,
   onApprove, onDeny, onCancel, onBlock, onUnblock,
-  onCounter, onSendQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
   // ── Derived state shared by every card type ────────────────────
   const isQuote = !!b.is_quote;
+  const isClub = b.booking_type === 'club';
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
+
+  // "Rate sent" — different signal per booking type because club quote-mode
+  // has a draft → send two-step flow:
+  //   - Club + quote-mode: quote_sent_at must be non-null. quoted_rate alone
+  //     means "DJ drafted but didn't send"; booker shouldn't see the price.
+  //   - Mobile + quote-mode: one-shot; quoted_rate alone counts as sent.
+  //   - Non-quote bookings (offers mode, flat-rate accept): quoted_rate alone
+  //     counts as sent — booker established the price by submitting.
+  const hasRateSent = (isClub && isQuote)
+    ? b.quote_sent_at != null
+    : b.quoted_rate != null;
+
+  // Drafted-but-not-sent — only meaningful for club + quote-mode bookings
+  // where the DJ has typed a price (quoted_rate set) but hasn't released
+  // it to the booker yet (quote_sent_at still null).
+  const hasDraftedRate = isClub && isQuote && b.quoted_rate != null && b.quote_sent_at == null;
+
   // "Quote Requested" status label only applies BEFORE the DJ has sent
-  // a rate. Once b.quoted_rate is set, the booking acts like a normal
+  // a rate. Once a rate has been sent, the booking acts like a normal
   // priced booking and shows the regular status.
-  const hasRateSent = b.quoted_rate != null;
   const statusLabel = isQuote && !hasRateSent && status === 'pending'
     ? 'Quote Requested'
     : status;
@@ -187,25 +208,64 @@ export default function BookingCardShell({
 
       {/* Actions row — Approve/Deny/Counter (incoming pending) OR Cancel
           (outgoing pending/counter) OR Accept/Counter Back/Decline (when
-          DJ has countered an outgoing). Right side: Block/Unblock pill. */}
+          DJ has countered an outgoing). Right side: Block/Unblock pill.
+
+          For club + quote-mode bookings, the DJ-side flow has THREE phases:
+            1. No rate drafted → "Add Custom Rate" (opens QuoteModal) + Deny
+            2. Rate drafted, not sent → "Edit Custom Rate" + "Send Quote" + Deny
+            3. Rate sent (or non-quote/mobile) → Approve + Deny + Counter */}
       <div className={styles.actionsRow}>
         <div className={styles.actionsLeft}>
           {showIncomingActions && (
             <>
-              {/* Quote-mode booking with no quoted_rate yet → Send Quote opens
-                  the QuoteModal. Otherwise Approve is a direct status flip. */}
-              {isQuote && !b.quoted_rate ? (
+              {/* Phase 1 + 2: Add/Edit Custom Rate button.
+                  Visible whenever a rate hasn't been sent yet on a quote
+                  booking. Opens QuoteModal pre-filled with any draft. */}
+              {isQuote && !hasRateSent && (
                 <button
                   type="button"
                   onClick={() => onSendQuote(b)}
+                  className={`${styles.actBtn} ${hasDraftedRate ? styles.actBtnAmber : styles.actBtnPrimary}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    {hasDraftedRate ? (
+                      <>
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </>
+                    ) : (
+                      <>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </>
+                    )}
+                  </svg>
+                  {' '}{hasDraftedRate ? 'Edit Custom Rate' : 'Add Custom Rate'}
+                </button>
+              )}
+
+              {/* Phase 2: Send Quote. Only when DJ has a draft to release.
+                  Sets quote_sent_at on the booking, exposing the price to
+                  the booker. After send, hasRateSent becomes true and the
+                  Approve/Counter buttons take over. */}
+              {hasDraftedRate && (
+                <button
+                  type="button"
+                  onClick={() => onSendDraftQuote(b)}
                   className={`${styles.actBtn} ${styles.actBtnPrimary}`}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12" />
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
                   {' '}Send Quote
                 </button>
-              ) : (
+              )}
+
+              {/* Phase 3 (and the only Approve path for non-quote / mobile):
+                  Approve directly. Hidden when we're still in the
+                  draft/no-rate-yet phase of a quote booking. */}
+              {!(isQuote && !hasRateSent) && (
                 <button
                   type="button"
                   onClick={() => onApprove(b.id)}
@@ -217,6 +277,7 @@ export default function BookingCardShell({
                   {' '}Approve
                 </button>
               )}
+
               <button
                 type="button"
                 onClick={() => onDeny(b.id)}
@@ -228,11 +289,12 @@ export default function BookingCardShell({
                 </svg>
                 {' '}Deny
               </button>
+
               {/* Counter — DJ proposes a different price. Only visible
-                  AFTER a rate has been established (b.quoted_rate set).
-                  Before that, the DJ's first response IS the rate, sent
-                  via Send Quote (quote mode) or Approve (offers mode) —
-                  there's nothing to "counter" yet. */}
+                  AFTER a rate has been established and sent. Before that,
+                  the DJ's first response IS the rate, sent via Send Quote
+                  (club quote) or Approve (mobile/offers) — there's nothing
+                  to "counter" yet. */}
               {hasRateSent && (
                 <button
                   type="button"

@@ -34,10 +34,6 @@ export default function ClubBookingCard(props: Props) {
   const {
     booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
   } = props;
-  // Pull onSendQuote so we can wire the "Add Custom Rate" button below
-  // (DJ-side, quote-mode, no rate yet). The shellProps spread still
-  // includes it for the Send Quote button in the actions row.
-  const { onSendQuote } = shellProps;
 
   // ── Computed values ────────────────────────────────────────────
   const isQuote = !!b.is_quote;
@@ -85,7 +81,18 @@ export default function ClubBookingCard(props: Props) {
   const limitMiles = hasFiniteTravelLimit(djTravelDistance) ? Number(djTravelDistance) : null;
 
   // ── Counter price view ──────────────────────────────────────────
-  const hasPrice = !!b.quoted_rate;
+  // Mirror of the shell's hasRateSent rule for club + quote-mode bookings:
+  // a price is only "visible" (to either side) once quote_sent_at is set.
+  // For non-quote club bookings (offer/flat-rate accept), quoted_rate alone
+  // signals visibility — there's no draft phase.
+  const hasRateSent = isQuote
+    ? b.quote_sent_at != null
+    : b.quoted_rate != null;
+  // DJ has typed a price into the QuoteModal but hasn't released it to
+  // the booker yet. Used to show a small "Drafted: $X" preview on the
+  // DJ side only, plus the Add/Edit + Send buttons in the actions row.
+  const hasDraftedRate = isQuote && b.quoted_rate != null && b.quote_sent_at == null;
+  const hasPrice = hasRateSent;
   const isApproved = status === 'approved';
   const hasCounter = !!b.counter_rate && !isApproved;
   const labelText = hasCounter ? 'New Offer' : '';
@@ -258,10 +265,10 @@ export default function ClubBookingCard(props: Props) {
           );
         }
         if (isQuote) {
-          // DJ side — quote requested, no rate sent yet → show an
-          // "Add Custom Rate" button that opens the QuoteModal. Once
-          // the DJ submits a price, hasPrice becomes true and the
-          // 'Quoted Price' branch above renders instead.
+          // Quote-mode booking with no rate sent yet. Buttons (Add/Edit
+          // Custom Rate, Send Quote) live in the actions row below — this
+          // section just shows status. DJ side ALSO sees a "Drafted: $X"
+          // preview if they've started a quote but haven't sent it.
           if (isIncoming) {
             return (
               <div style={{
@@ -274,14 +281,35 @@ export default function ClubBookingCard(props: Props) {
                 <div className={styles.tinyLabel} style={{ color: 'var(--muted)' }}>
                   Quote Requested
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onSendQuote(b)}
-                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
-                  style={{ minWidth: 180 }}
-                >
-                  + Add Custom Rate
-                </button>
+                {hasDraftedRate && b.quoted_rate != null && (
+                  <div style={{
+                    marginTop: '.35rem',
+                    padding: '.55rem .85rem',
+                    border: '1px solid var(--amber)',
+                    borderRadius: 6,
+                    background: 'rgba(255, 176, 32, 0.08)',
+                    textAlign: 'center',
+                  }}>
+                    <div
+                      className={styles.tinyLabel}
+                      style={{ color: 'var(--amber)', marginBottom: '.15rem' }}
+                    >
+                      Drafted (not sent)
+                    </div>
+                    <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: '1.05rem' }}>
+                      {sym}{Number(b.quoted_rate).toLocaleString()}{' '}
+                      <span className={styles.priceSub}>{cur}</span>
+                    </div>
+                    <div style={{
+                      fontSize: '.65rem',
+                      color: 'var(--muted)',
+                      marginTop: '.2rem',
+                      lineHeight: 1.3,
+                    }}>
+                      Use Send Quote below to release this price to the booker.
+                    </div>
+                  </div>
+                )}
               </div>
             );
           }
