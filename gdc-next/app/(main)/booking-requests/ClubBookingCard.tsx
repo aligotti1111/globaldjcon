@@ -218,23 +218,63 @@ export default function ClubBookingCard(props: Props) {
             ? 'Agreed Price'
             : isQuote ? 'Quoted Price'
             : 'Rate';
+          // Edit affordance — DJ side only, quote-mode bookings, while
+          // still pending. Lets the DJ adjust the rate they sent before
+          // the booker has accepted/declined. Reuses the same QuoteModal
+          // (pre-fills nothing — DJ types the new amount).
+          const showEdit = isIncoming && isQuote && status === 'pending';
           return (
-            <div className={styles.priceRow}>
-              <div className={styles.priceCol}>
-                <div className={styles.tinyLabel} style={{ color: isApproved ? 'var(--neon)' : 'var(--white)' }}>
-                  {showLabel}
-                </div>
-                <div className={styles.bigPrice}>
-                  {sym}{Number(b.quoted_rate).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
-                </div>
-              </div>
-              {durationLabel && (
+            <>
+              <div className={styles.priceRow}>
                 <div className={styles.priceCol}>
-                  <div className={styles.tinyLabel}>Duration</div>
-                  <div className={styles.bigPriceNeon}>{durationLabel}</div>
+                  <div className={styles.tinyLabel} style={{ color: isApproved ? 'var(--neon)' : 'var(--white)' }}>
+                    {showLabel}
+                  </div>
+                  <div className={styles.bigPrice}>
+                    {sym}{Number(b.quoted_rate).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
+                  </div>
+                </div>
+                {durationLabel && (
+                  <div className={styles.priceCol}>
+                    <div className={styles.tinyLabel}>Duration</div>
+                    <div className={styles.bigPriceNeon}>{durationLabel}</div>
+                  </div>
+                )}
+              </div>
+              {showEdit && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: '.5rem',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => onSendQuote(b)}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      color: 'var(--muted)',
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.55rem',
+                      letterSpacing: '.1em',
+                      textTransform: 'uppercase',
+                      padding: '.3rem .65rem',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '.3rem',
+                    }}
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    Edit
+                  </button>
                 </div>
               )}
-            </div>
+            </>
           );
         }
         if (b.offer_amount != null) {
