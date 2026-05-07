@@ -243,28 +243,28 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               )}
             </div>
 
-            {/* Date row — sits below the times */}
+            {/* Date row — sits snug below the times */}
             {booking.event_date && (
               <div
                 style={{
-                  marginTop: '.65rem',
-                  paddingTop: '.55rem',
+                  marginTop: '.4rem',
+                  paddingTop: '.35rem',
                   borderTop: '1px solid var(--border)',
                 }}
               >
                 <div
                   style={{
                     fontFamily: "'Space Mono', monospace",
-                    fontSize: '.5rem',
+                    fontSize: '.45rem',
                     letterSpacing: '.1em',
                     textTransform: 'uppercase',
                     color: 'var(--muted)',
-                    marginBottom: '.15rem',
+                    marginBottom: '.1rem',
                   }}
                 >
                   Date
                 </div>
-                <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                <div style={{ color: 'var(--neon)', fontWeight: 600, fontSize: '.78rem' }}>
                   {formatLongDate(booking.event_date)}
                 </div>
               </div>
