@@ -333,14 +333,24 @@ export default function BookingRequestsClient({
     try {
       const supabase = createClient();
       const nowIso = new Date().toISOString();
+      // Flip status to 'counter' so:
+      //  - The booking leaves the DJ's Pending tab (filter is status==='pending')
+      //  - The booker sees Accept / Counter Back / Decline buttons
+      //    (booker actions gate on status === 'counter')
+      //  - DJ no longer sees Approve/Deny on a quote they themselves
+      //    just sent — the ball is in the booker's court.
       const { error } = await supabase
         .from('bookings')
-        .update({ quote_sent_at: nowIso, updated_at: nowIso } as unknown as never)
+        .update({
+          quote_sent_at: nowIso,
+          status: 'counter',
+          updated_at: nowIso,
+        } as unknown as never)
         .eq('id', b.id)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
       // Patch local state so the UI flips immediately.
-      applyBookingUpdate({ ...b, quote_sent_at: nowIso, updated_at: nowIso });
+      applyBookingUpdate({ ...b, quote_sent_at: nowIso, status: 'counter', updated_at: nowIso });
       // Notify the booker — fire-and-forget. Uses the dedicated
       // 'quote_sent' email type. Pass the full booking context so the
       // email can render the same info card the original request did.
