@@ -118,12 +118,21 @@ function computeRate(
     label = 'Rate with venue providing all equipment';
   }
 
-  // Pick the correct global rate field for this equipment
+  // Pick the correct global rate field for this equipment AND rate type.
+  // Hourly mode reads the rate_hourly_* fields; flat mode reads the
+  // rate_* (flat) fields. They're independent — a DJ who has flat
+  // values set but switches to hourly without entering hourly values
+  // will show no rate for hourly until they configure them.
   if (baseType !== 'offers') {
     let raw: number | string | null | undefined = null;
-    if (equipment === 'sound_system') raw = bs.rate_with_system;
-    else if (equipment === 'decks_only') raw = bs.rate_with_decks;
-    else if (equipment === 'venue_provides') raw = bs.rate_no_equip;
+    const isHourly = baseType === 'hourly';
+    if (equipment === 'sound_system') {
+      raw = isHourly ? bs.rate_hourly_with_system : bs.rate_with_system;
+    } else if (equipment === 'decks_only') {
+      raw = isHourly ? bs.rate_hourly_with_decks : bs.rate_with_decks;
+    } else if (equipment === 'venue_provides') {
+      raw = isHourly ? bs.rate_hourly_no_equip : bs.rate_no_equip;
+    }
 
     if (raw != null && raw !== '') {
       const n = Number(raw);

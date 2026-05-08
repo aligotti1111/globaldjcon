@@ -57,9 +57,20 @@ export interface BookingSettings {
   allow_offers?: boolean;        // mirror of global_rate_type === 'offers'
   rate_currency?: string;        // ISO 4217 code (USD/EUR/GBP/...)
   base_rate?: number | string;
+  // Flat-rate fields — used when global_rate_type === 'flat'.
+  // These are the original fields (legacy code may still write/read them
+  // ignoring rate type, so the public booking form does a fallback when
+  // the hourly fields are missing).
   rate_with_system?: number | string;  // when DJ provides full system
   rate_with_decks?: number | string;   // when DJ provides only decks
   rate_no_equip?: number | string;     // when venue provides everything
+  // Hourly-rate fields — used when global_rate_type === 'hourly'.
+  // Stored independently so switching rate types doesn't overwrite the
+  // other set of values; both can sit dormant and come back when the DJ
+  // switches back. New accounts default to empty / 0.
+  rate_hourly_with_system?: number | string;
+  rate_hourly_with_decks?: number | string;
+  rate_hourly_no_equip?: number | string;
 
   // ── Mobile DJ fields (mob_* prefix) ──────────────────────────
   // Same boolean booking_enabled controls both — vanilla checks this
