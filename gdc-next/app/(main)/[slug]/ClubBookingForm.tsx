@@ -32,6 +32,7 @@ import {
 import {
   MOB_TIME_OPTIONS,
   formatLongDate,
+  formatUSPhone,
   searchAddresses,
   type AddressSuggestion,
 } from './mobileBookingForm';
@@ -169,6 +170,7 @@ export default function ClubBookingForm({
   const [setType, setSetType] = useState<string>('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('US');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -274,6 +276,7 @@ export default function ClubBookingForm({
     if (!setType) { setError('Please select a set type.'); return; }
     if (!venueName.trim()) { setError('Please enter the venue name.'); return; }
     if (!venueAddress.trim()) { setError('Please enter the venue address.'); return; }
+    if (!phone.trim()) { setError('Please enter your phone number.'); return; }
     if (!startTime) { setError('Please select a start time.'); return; }
     if (!endTime) { setError('Please select an end time.'); return; }
     if (!equipment) { setError('Please select an equipment option.'); return; }
@@ -321,6 +324,7 @@ export default function ClubBookingForm({
         set_type: setType,
         venue_name: venueName.trim(),
         venue_address: venueAddress.trim(),
+        phone: phone.trim(),
         // Coords from a Nominatim suggestion the booker picked. Null when
         // they typed freehand or the search returned nothing. The
         // booking-requests card uses these for the venue distance check.
@@ -573,6 +577,21 @@ export default function ClubBookingForm({
               </div>
             )}
           </div>
+        </FormSection>
+
+        {/* Phone — collected so the DJ can reach the booker about
+            day-of logistics. Same US-style auto-formatter mobile uses. */}
+        <FormSection label="Phone Number">
+          <input
+            id="cbf-phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="(555) 555-5555"
+            value={phone}
+            onChange={(e) => setPhone(formatUSPhone(e.target.value))}
+            className={styles.input}
+            autoComplete="tel"
+          />
         </FormSection>
 
         {/* Times */}
