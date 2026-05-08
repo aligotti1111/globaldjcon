@@ -103,22 +103,27 @@ export default function BookingCardShell({
   // Action visibility — DJ-side (incoming) vs booker-side (outgoing).
   // Approve/Deny/Counter/Send Quote → DJ when status is 'pending'.
   // Cancel rules:
-  //   - DJ side: shows on fresh requests (status='pending' with no counter
-  //     in flight) and on quotes the DJ has sent (status='counter').
-  //     HIDDEN when the booker has countered (status='pending' AND
-  //     counter_rate is set) — at that point Deny is the action that
-  //     ends the negotiation, mirroring the booker-side rule.
+  //   - DJ side: shows on truly fresh requests (no offer, no counter,
+  //     no quote in flight) and on quotes the DJ has sent (status='counter').
+  //     HIDDEN whenever there's an active price to respond to — booker's
+  //     offer_amount, an in-flight counter_rate, or a quoted_rate. In
+  //     those cases Deny is the action that ends the negotiation.
   //   - Booker side: only on pending (Decline replaces Cancel when
   //     status='counter').
+  // Counter button (DJ side) — visible whenever there's an established
+  //   price to counter: a quote that's been sent, the booker's offer,
+  //   or an in-flight counter_rate.
   // Accept/Decline counter → booker when DJ has countered.
   const showIncomingActions = isIncoming && status === 'pending';
-  const hasActiveCounter = b.counter_rate != null;
+  const hasActivePrice = b.quoted_rate != null || b.offer_amount != null || b.counter_rate != null;
   const showIncomingCancel = isIncoming && (
-    (status === 'pending' && !hasActiveCounter) ||
+    (status === 'pending' && !hasActivePrice) ||
     status === 'counter'
   );
   const showOutgoingCancel = !isIncoming && status === 'pending';
   const showOutgoingCounterResponse = !isIncoming && status === 'counter';
+  // Counter button gate — used in the DJ action row below.
+  const showIncomingCounter = hasActivePrice;
 
   return (
     <div className={`${styles.card} ${styles[`card_${status}`]}`}>
@@ -276,12 +281,14 @@ export default function BookingCardShell({
                 {' '}Deny
               </button>
 
-              {/* Counter — DJ proposes a different price. Only visible
-                  AFTER a rate has been established and sent. Before that,
-                  the DJ's first response IS the rate, sent via Send Quote
-                  (club quote) or Approve (mobile/offers) — there's nothing
-                  to "counter" yet. */}
-              {hasRateSent && (
+              {/* Counter — DJ proposes a different price. Visible whenever
+                  there's an established price to counter:
+                    - booker submitted with offer_amount (offers mode)
+                    - DJ has sent a quote (quoted_rate)
+                    - either side has a counter_rate in flight
+                  Before any of those, there's nothing to counter — the
+                  DJ's first response IS the rate (Send Quote / Approve). */}
+              {showIncomingCounter && (
                 <button
                   type="button"
                   onClick={() => onCounter(b, 'in')}
