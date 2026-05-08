@@ -478,11 +478,19 @@ export async function POST(req: Request) {
     const currency = (body.currency as string | undefined) || 'USD';
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
+    // Subject — explicitly identifies the sender's role so the booker
+    // sees "Counter from DJ <name>" and the DJ sees "Counter from Host
+    // <name>". Falls back to the generic 'other party' wording if names
+    // or role aren't available.
+    const senderRoleLabel = fromRole === 'dj' ? 'DJ' : fromRole === 'booker' ? 'Host' : '';
+    const senderSubjectName = senderName
+      ? (senderRoleLabel ? `${senderRoleLabel} ${senderName}` : senderName)
+      : (senderRoleLabel ? `the ${senderRoleLabel.toLowerCase()}` : 'the other party');
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
-      subject: `Counter offer from ${senderName || 'the ' + (fromRole || 'other party')} – ${dateStr}`,
+      subject: `Counter Offer from ${senderSubjectName} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
