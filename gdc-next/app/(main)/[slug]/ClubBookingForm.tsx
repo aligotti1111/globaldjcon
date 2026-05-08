@@ -300,14 +300,15 @@ export default function ClubBookingForm({
       const initialPrice = isOffers && offerNum && !isNaN(offerNum)
         ? offerNum
         : (!isOffers && rateInfo.rate ? rateInfo.rate : null);
-      const initialLog = initialPrice != null
-        ? [{
-            from: 'booker',
-            amount: initialPrice,
-            message: notes.trim() || '',
-            created_at: new Date().toISOString(),
-          }]
-        : [];
+      const initialLog: Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> =
+        initialPrice != null
+          ? [{
+              from: 'booker' as const,
+              amount: initialPrice,
+              message: notes.trim() || '',
+              created_at: new Date().toISOString(),
+            }]
+          : [];
 
       const insertPayload = {
         dj_id: dj.id,
