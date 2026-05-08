@@ -159,28 +159,86 @@ export default function BookingRequestsClient({
       const b = incoming.find((x) => x.id === bookingId);
       updateIncomingStatus(bookingId, status);
 
-      // Email the booker that their request was approved/denied.
-      // Type depends on booking_type (mob_booking_status for mobile,
-      // booking_status for club). Failures are swallowed so the DB
-      // update isn't undone by an email outage.
+      // Email side — branches on approved vs denied.
+      // - APPROVED: fire booking_approved to BOTH booker and DJ. Both
+      //   parties get a confirmation with the full info card and the
+      //   agreed price. Two requests, one per recipient.
+      // - DENIED: fire the existing booker-only status email (unchanged).
+      // Failures are swallowed so the DB update isn't undone.
       if (b) {
-        try {
-          await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: b.booking_type === 'club' ? 'booking_status' : 'mob_booking_status',
-              requesterUserId: b.requester_id,
-              requesterName: b.requester_name,
-              djName: currentUser.name,
-              status,
-              eventDate: b.event_date,
-              venueName: b.venue_name,
-              packageTitle: b.package_title,
-            }),
-          });
-        } catch (e) {
-          console.warn('Booker status email failed:', e);
+        if (status === 'approved') {
+          // Agreed price: prefer counter_rate (most-recent active offer)
+          // then fall back to quoted_rate then offer_amount.
+          const agreedPrice = (b.counter_rate as number | null | undefined)
+            ?? (b.quoted_rate as number | null | undefined)
+            ?? (b.offer_amount as number | null | undefined)
+            ?? null;
+          const sharedFields = {
+            type: 'booking_approved',
+            agreedPrice,
+            currency: (b as BookingRow & { currency?: string }).currency || 'USD',
+            eventDate: b.event_date,
+            startTime: b.start_time,
+            endTime: b.end_time,
+            setType: (b as BookingRow & { set_type?: string | null }).set_type,
+            venueType: (b as BookingRow & { venue_type?: string | null }).venue_type,
+            eventType: (b as BookingRow & { event_type?: string | null }).event_type,
+            venueName: b.venue_name,
+            venueAddress: (b as BookingRow & { venue_address?: string | null }).venue_address,
+            packageTitle: b.package_title,
+          };
+          // To booker
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...sharedFields,
+                recipientUserId: b.requester_id,
+                recipientName: b.requester_name,
+                recipientRole: 'booker',
+                otherPartyName: currentUser.name,
+              }),
+            });
+          } catch (e) {
+            console.warn('Booker approval email failed:', e);
+          }
+          // To DJ (self) — confirmation copy in their inbox
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...sharedFields,
+                recipientUserId: currentUser.id,
+                recipientName: currentUser.name,
+                recipientRole: 'dj',
+                otherPartyName: b.requester_name,
+              }),
+            });
+          } catch (e) {
+            console.warn('DJ approval email failed:', e);
+          }
+        } else {
+          // Deny path — existing booker-only email.
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: b.booking_type === 'club' ? 'booking_status' : 'mob_booking_status',
+                requesterUserId: b.requester_id,
+                requesterName: b.requester_name,
+                djName: currentUser.name,
+                status,
+                eventDate: b.event_date,
+                venueName: b.venue_name,
+                packageTitle: b.package_title,
+              }),
+            });
+          } catch (e) {
+            console.warn('Booker status email failed:', e);
+          }
         }
       }
 
@@ -304,9 +362,64 @@ export default function BookingRequestsClient({
         .eq('id', bookingId)
         .eq('requester_id', currentUser.id);
       if (error) throw error;
+      const b = outgoing.find((x) => x.id === bookingId);
       setOutgoing((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, status: 'approved' } : b))
+        prev.map((x) => (x.id === bookingId ? { ...x, status: 'approved' } : x))
       );
+      // Fire booking_approved to BOTH parties — same as DJ-side approve.
+      // booker accepting a counter = booking confirmed at counter_rate.
+      if (b) {
+        const agreedPrice = (b.counter_rate as number | null | undefined)
+          ?? (b.quoted_rate as number | null | undefined)
+          ?? (b.offer_amount as number | null | undefined)
+          ?? null;
+        const sharedFields = {
+          type: 'booking_approved',
+          agreedPrice,
+          currency: (b as BookingRow & { currency?: string }).currency || 'USD',
+          eventDate: b.event_date,
+          startTime: b.start_time,
+          endTime: b.end_time,
+          setType: (b as BookingRow & { set_type?: string | null }).set_type,
+          venueType: (b as BookingRow & { venue_type?: string | null }).venue_type,
+          eventType: (b as BookingRow & { event_type?: string | null }).event_type,
+          venueName: b.venue_name,
+          venueAddress: (b as BookingRow & { venue_address?: string | null }).venue_address,
+          packageTitle: b.package_title,
+        };
+        // To DJ
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...sharedFields,
+              recipientUserId: b.dj_id,
+              recipientName: b.dj_name,
+              recipientRole: 'dj',
+              otherPartyName: currentUser.name,
+            }),
+          });
+        } catch (e) {
+          console.warn('DJ approval email failed:', e);
+        }
+        // To booker (self) — confirmation copy in their inbox
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...sharedFields,
+              recipientUserId: currentUser.id,
+              recipientName: currentUser.name,
+              recipientRole: 'booker',
+              otherPartyName: b.dj_name,
+            }),
+          });
+        } catch (e) {
+          console.warn('Booker approval email failed:', e);
+        }
+      }
     } catch (err) {
       alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
     }
