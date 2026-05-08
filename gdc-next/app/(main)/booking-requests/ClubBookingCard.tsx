@@ -223,6 +223,36 @@ export default function ClubBookingCard(props: Props) {
       {(() => {
         const sym = currencySymbol(b.currency);
         const cur = b.currency || 'USD';
+        // Approved short-circuit — once the booking is locked in, always
+        // show "Agreed Price" with the most recent meaningful amount.
+        // Priority: counter_rate (last counter that was accepted) →
+        // quoted_rate (DJ's quote) → offer_amount (booker's original offer).
+        // Without this, an approved offers-mode booking with no quoted_rate
+        // would fall through to the "Booker's Offer" branch and display
+        // the original offer amount instead of the agreed counter.
+        if (isApproved) {
+          const agreedPrice = b.counter_rate ?? b.quoted_rate ?? b.offer_amount;
+          if (agreedPrice != null) {
+            return (
+              <div className={styles.priceRow}>
+                <div className={styles.priceCol}>
+                  <div className={styles.tinyLabel} style={{ color: 'var(--neon)' }}>
+                    Agreed Price
+                  </div>
+                  <div className={styles.bigPrice}>
+                    {sym}{Number(agreedPrice).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
+                  </div>
+                </div>
+                {durationLabel && (
+                  <div className={styles.priceCol}>
+                    <div className={styles.tinyLabel}>Duration</div>
+                    <div className={styles.bigPriceNeon}>{durationLabel}</div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+        }
         if (hasCounter) {
           return (
             <div className={styles.priceRow}>
