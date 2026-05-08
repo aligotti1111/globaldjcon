@@ -43,6 +43,9 @@ export interface BookingCardShellProps {
   // Club + quote-mode only — mobile and non-quote bookings use the
   // existing one-shot flow.
   onSendDraftQuote: (b: BookingRow) => void;
+  // Opens the read-only counter history modal. Cards call this from a
+  // "View History" link inside their pricing section.
+  onViewHistory: (b: BookingRow, isIncoming: boolean) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
   onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
@@ -57,7 +60,7 @@ export default function BookingCardShell({
   detailsSlot,
   pricingSlot,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
-  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
   // ── Derived state shared by every card type ────────────────────
@@ -278,7 +281,7 @@ export default function BookingCardShell({
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-                {' '}Deny
+                {' '}Decline
               </button>
 
               {/* Counter — DJ proposes a different price. Visible whenever

@@ -32,6 +32,9 @@ export default function MobileBookingCard(props: Props) {
   const {
     booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
   } = props;
+  // Pull onViewHistory so the in-card "View History" link can open
+  // the read-only HistoryModal. shellProps still passes it through.
+  const { onViewHistory } = shellProps;
 
   // ── Computed values used by both detailsSlot and pricingSlot ──
   const isQuote = !!b.is_quote;
@@ -321,6 +324,40 @@ export default function MobileBookingCard(props: Props) {
           )}
         </div>
       )}
+      {/* View History — read-only modal of all counters/quotes on this
+          booking. Only shown once there are 2+ entries. */}
+      {(() => {
+        const log = (b.negotiation_log as Array<unknown> | null) || [];
+        if (log.length < 2) return null;
+        return (
+          <div style={{
+            marginTop: '.65rem',
+            paddingTop: '.55rem',
+            borderTop: '1px solid var(--border)',
+            textAlign: 'center',
+          }}>
+            <button
+              type="button"
+              onClick={() => onViewHistory(b, isIncoming)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--neon)',
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.65rem',
+                letterSpacing: '.1em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                padding: '.25rem .5rem',
+                textDecoration: 'underline',
+                textUnderlineOffset: 3,
+              }}
+            >
+              View History ({log.length})
+            </button>
+          </div>
+        );
+      })()}
     </SectionFrame>
   ) : null;
 

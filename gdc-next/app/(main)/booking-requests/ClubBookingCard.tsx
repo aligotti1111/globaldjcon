@@ -37,7 +37,9 @@ export default function ClubBookingCard(props: Props) {
   // Pull onSendQuote so the in-card "Add Custom Rate" / "Edit Quote"
   // buttons can open the QuoteModal directly. The shellProps spread
   // still passes it through to BookingCardShell for any other use.
-  const { onSendQuote } = shellProps;
+  // Pull onViewHistory so the in-card "View History" link can open
+  // the read-only HistoryModal.
+  const { onSendQuote, onViewHistory } = shellProps;
 
   // ── Computed values ────────────────────────────────────────────
   const isQuote = !!b.is_quote;
@@ -384,6 +386,42 @@ export default function ClubBookingCard(props: Props) {
           );
         }
         return null;
+      })()}
+      {/* View History — read-only modal of all counters/quotes on this
+          booking. Only shown once there are 2+ entries (a single entry
+          isn't really "history"). The negotiation_log column is seeded
+          on initial offer/quote and appended to by every counter. */}
+      {(() => {
+        const log = (b.negotiation_log as Array<unknown> | null) || [];
+        if (log.length < 2) return null;
+        return (
+          <div style={{
+            marginTop: '.65rem',
+            paddingTop: '.55rem',
+            borderTop: '1px solid var(--border)',
+            textAlign: 'center',
+          }}>
+            <button
+              type="button"
+              onClick={() => onViewHistory(b, isIncoming)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--neon)',
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.65rem',
+                letterSpacing: '.1em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                padding: '.25rem .5rem',
+                textDecoration: 'underline',
+                textUnderlineOffset: 3,
+              }}
+            >
+              View History ({log.length})
+            </button>
+          </div>
+        );
       })()}
     </SectionFrame>
   );

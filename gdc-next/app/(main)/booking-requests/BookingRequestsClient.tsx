@@ -16,6 +16,7 @@ import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
+import HistoryModal from './HistoryModal';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
@@ -67,6 +68,9 @@ export default function BookingRequestsClient({
     group: 'in' | 'out';
   } | null>(null);
   const [quoteModal, setQuoteModal] = useState<{ booking: BookingRow } | null>(null);
+  // historyModal: which booking's negotiation log to display in the
+  // read-only History modal (opened from the Rate box "View History" link).
+  const [historyModal, setHistoryModal] = useState<{ booking: BookingRow; isIncoming: boolean } | null>(null);
   // Compose-message modal — opened by Message button on each booking card.
   // The card gives us the recipient + a pre-filled subject describing
   // which booking the message is about ("Re: Booking on Aug 12, 2026").
@@ -139,11 +143,11 @@ export default function BookingRequestsClient({
   async function djUpdateStatus(bookingId: string, status: 'approved' | 'denied') {
     const isApprove = status === 'approved';
     const ok = await confirm({
-      title: isApprove ? 'Approve this booking?' : 'Deny this booking?',
+      title: isApprove ? 'Approve this booking?' : 'Decline this booking?',
       message: isApprove
         ? 'The booker will be notified by email and the date will be marked as booked on your calendar.'
         : 'The booker will be notified by email that you cannot accept this booking.',
-      confirmLabel: isApprove ? 'Approve' : 'Deny',
+      confirmLabel: isApprove ? 'Approve' : 'Decline',
       variant: isApprove ? 'primary' : 'danger',
     });
     if (!ok) return;
@@ -458,6 +462,9 @@ export default function BookingRequestsClient({
   function openQuoteModal(booking: BookingRow) {
     setQuoteModal({ booking });
   }
+  function openHistoryModal(booking: BookingRow, isIncoming: boolean) {
+    setHistoryModal({ booking, isIncoming });
+  }
 
   // ── Send drafted quote (club + quote-mode flow) ────────────────────
   // The DJ has saved a quoted_rate via the QuoteModal but quote_sent_at
@@ -480,24 +487,46 @@ export default function BookingRequestsClient({
     try {
       const supabase = createClient();
       const nowIso = new Date().toISOString();
+      // Fetch current negotiation_log so we can append the DJ's quote
+      // entry. Same pattern CounterModal uses — read first, then write,
+      // to avoid clobbering concurrent updates from the other side.
+      const { data: current } = await supabase
+        .from('bookings')
+        .select('negotiation_log')
+        .eq('id', b.id)
+        .single<{ negotiation_log: BookingRow['negotiation_log'] }>();
+      const log = (current?.negotiation_log as Array<{ from: string; amount: number; message: string; created_at: string }> | null) || [];
+      log.push({
+        from: 'dj',
+        amount: Number(b.quoted_rate),
+        message: b.counter_message || '',
+        created_at: nowIso,
+      });
       // Flip status to 'counter' so:
       //  - The booking leaves the DJ's Pending tab (filter is status==='pending')
       //  - The booker sees Accept / Counter Back / Decline buttons
       //    (booker actions gate on status === 'counter')
-      //  - DJ no longer sees Approve/Deny on a quote they themselves
+      //  - DJ no longer sees Approve/Decline on a quote they themselves
       //    just sent — the ball is in the booker's court.
       const { error } = await supabase
         .from('bookings')
         .update({
           quote_sent_at: nowIso,
           status: 'counter',
+          negotiation_log: log,
           updated_at: nowIso,
         } as unknown as never)
         .eq('id', b.id)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
       // Patch local state so the UI flips immediately.
-      applyBookingUpdate({ ...b, quote_sent_at: nowIso, status: 'counter', updated_at: nowIso });
+      applyBookingUpdate({
+        ...b,
+        quote_sent_at: nowIso,
+        status: 'counter',
+        negotiation_log: log,
+        updated_at: nowIso,
+      });
       // Refresh the header badge count immediately. Without this, the
       // badge stays at its old number until the next 30s poll tick.
       try {
@@ -645,6 +674,7 @@ export default function BookingRequestsClient({
                 onCounter={openCounterModal}
                 onSendQuote={openQuoteModal}
                 onSendDraftQuote={sendDraftQuote}
+                onViewHistory={openHistoryModal}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
                 onMessage={openComposeModal}
@@ -664,6 +694,7 @@ export default function BookingRequestsClient({
                 onCounter={openCounterModal}
                 onSendQuote={openQuoteModal}
                 onSendDraftQuote={sendDraftQuote}
+                onViewHistory={openHistoryModal}
                 onAcceptCounter={acceptCounter}
                 onDeclineCounter={declineCounter}
                 onMessage={openComposeModal}
@@ -712,6 +743,7 @@ export default function BookingRequestsClient({
               onCounter={openCounterModal}
               onSendQuote={openQuoteModal}
                 onSendDraftQuote={sendDraftQuote}
+                onViewHistory={openHistoryModal}
               onAcceptCounter={acceptCounter}
               onDeclineCounter={declineCounter}
               onMessage={openComposeModal}
@@ -743,6 +775,13 @@ export default function BookingRequestsClient({
           depositPct={currentUser.depositPct}
           onClose={() => setQuoteModal(null)}
           onSaved={(updated) => applyBookingUpdate(updated)}
+        />
+      )}
+      {historyModal && (
+        <HistoryModal
+          booking={historyModal.booking}
+          isIncoming={historyModal.isIncoming}
+          onClose={() => setHistoryModal(null)}
         />
       )}
       {composeModal && (
@@ -808,6 +847,7 @@ interface ListProps {
   onCounter: (b: BookingRow, group: 'in' | 'out') => void;
   onSendQuote: (b: BookingRow) => void;
   onSendDraftQuote: (b: BookingRow) => void;
+  onViewHistory: (b: BookingRow, isIncoming: boolean) => void;
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
   onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
@@ -816,7 +856,7 @@ interface ListProps {
 function FlatList({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
-  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
   return (
@@ -843,6 +883,7 @@ function FlatList({
             onCounter={onCounter}
             onSendQuote={onSendQuote}
               onSendDraftQuote={onSendDraftQuote}
+              onViewHistory={onViewHistory}
             onAcceptCounter={onAcceptCounter}
             onDeclineCounter={onDeclineCounter}
             onMessage={onMessage}
@@ -860,7 +901,7 @@ function FlatList({
 function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
-  onCounter, onSendQuote, onSendDraftQuote, onAcceptCounter, onDeclineCounter,
+  onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
   // Group by event_date. Sort within group by created_at (oldest first
@@ -934,6 +975,7 @@ function SameDayGrouped({
               onCounter={onCounter}
               onSendQuote={onSendQuote}
               onSendDraftQuote={onSendDraftQuote}
+              onViewHistory={onViewHistory}
               onAcceptCounter={onAcceptCounter}
               onDeclineCounter={onDeclineCounter}
               onMessage={onMessage}
