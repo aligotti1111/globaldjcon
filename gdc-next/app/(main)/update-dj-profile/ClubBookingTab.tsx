@@ -139,9 +139,16 @@ export default function ClubBookingTab({
     global_rate_type: 'flat' | 'hourly' | 'offers';
     rate_currency: string;
     base_rate: string;
+    // Flat-mode rates
     rate_with_system: string;
     rate_with_decks: string;
     rate_no_equip: string;
+    // Hourly-mode rates — stored independently so switching rate types
+    // doesn't overwrite either set. Each acts dormant when its type
+    // isn't active.
+    rate_hourly_with_system: string;
+    rate_hourly_with_decks: string;
+    rate_hourly_no_equip: string;
   };
 
   function snapshotRates(bs: BookingSettings): RatesDraft {
@@ -155,6 +162,9 @@ export default function ClubBookingTab({
       rate_with_system: bs.rate_with_system != null ? String(bs.rate_with_system) : '',
       rate_with_decks: bs.rate_with_decks != null ? String(bs.rate_with_decks) : '',
       rate_no_equip: bs.rate_no_equip != null ? String(bs.rate_no_equip) : '',
+      rate_hourly_with_system: bs.rate_hourly_with_system != null ? String(bs.rate_hourly_with_system) : '',
+      rate_hourly_with_decks: bs.rate_hourly_with_decks != null ? String(bs.rate_hourly_with_decks) : '',
+      rate_hourly_no_equip: bs.rate_hourly_no_equip != null ? String(bs.rate_hourly_no_equip) : '',
     };
   }
 
@@ -175,6 +185,9 @@ export default function ClubBookingTab({
     bookingSettings.rate_with_system,
     bookingSettings.rate_with_decks,
     bookingSettings.rate_no_equip,
+    bookingSettings.rate_hourly_with_system,
+    bookingSettings.rate_hourly_with_decks,
+    bookingSettings.rate_hourly_no_equip,
   ]);
 
   // Bubble dirty state up to parent (powers the page-leave warning AND
@@ -205,6 +218,9 @@ export default function ClubBookingTab({
       rate_with_system: ratesDraft.rate_with_system,
       rate_with_decks: ratesDraft.rate_with_decks,
       rate_no_equip: ratesDraft.rate_no_equip,
+      rate_hourly_with_system: ratesDraft.rate_hourly_with_system,
+      rate_hourly_with_decks: ratesDraft.rate_hourly_with_decks,
+      rate_hourly_no_equip: ratesDraft.rate_hourly_no_equip,
     });
     setRatesSaveStatus('saved');
     setTimeout(() => {
@@ -466,53 +482,73 @@ export default function ClubBookingTab({
                   rate options because the DJ COULD show up with less.
                     - equip_full  → can charge full system / decks-only / no-equip
                     - equip_decks → can charge decks-only / no-equip
-                    - equip_none  → only the no-equip rate (DJ has nothing) */}
-              {ratesDraft.global_rate_type !== 'offers' && equipFull && (
-                <>
-                  <RateInput
-                    label={`Rate with Sound System & Decks/Controller${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                    symbol={currentCurrency.symbol}
-                    value={ratesDraft.rate_with_system}
-                    onChange={(v) => setRateField('rate_with_system', v)}
-                  />
-                  <RateInput
-                    label={`Rate with Decks/Controller only${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                    symbol={currentCurrency.symbol}
-                    value={ratesDraft.rate_with_decks}
-                    onChange={(v) => setRateField('rate_with_decks', v)}
-                  />
-                  <RateInput
-                    label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                    symbol={currentCurrency.symbol}
-                    value={ratesDraft.rate_no_equip}
-                    onChange={(v) => setRateField('rate_no_equip', v)}
-                  />
-                </>
-              )}
-              {ratesDraft.global_rate_type !== 'offers' && equipDecks && (
-                <>
-                  <RateInput
-                    label={`Rate with Decks/Controller only${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                    symbol={currentCurrency.symbol}
-                    value={ratesDraft.rate_with_decks}
-                    onChange={(v) => setRateField('rate_with_decks', v)}
-                  />
-                  <RateInput
-                    label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                    symbol={currentCurrency.symbol}
-                    value={ratesDraft.rate_no_equip}
-                    onChange={(v) => setRateField('rate_no_equip', v)}
-                  />
-                </>
-              )}
-              {ratesDraft.global_rate_type !== 'offers' && equipNone && (
-                <RateInput
-                  label={`Rate with venue providing all equipment${ratesDraft.global_rate_type === 'hourly' ? ' (per hour)' : ''}`}
-                  symbol={currentCurrency.symbol}
-                  value={ratesDraft.rate_no_equip}
-                  onChange={(v) => setRateField('rate_no_equip', v)}
-                />
-              )}
+                    - equip_none  → only the no-equip rate (DJ has nothing)
+                  Each rate type (flat / hourly) has its own set of fields
+                  in the draft. The active field name + draft value is
+                  resolved here so the inputs stay simple. Switching rate
+                  type swaps which set of fields is shown — the dormant
+                  set stays in storage and reappears when you switch back. */}
+              {(() => { return null; })()}
+              {ratesDraft.global_rate_type !== 'offers' && (() => {
+                const isHourly = ratesDraft.global_rate_type === 'hourly';
+                const fSys = isHourly ? 'rate_hourly_with_system' : 'rate_with_system';
+                const fDecks = isHourly ? 'rate_hourly_with_decks' : 'rate_with_decks';
+                const fNone = isHourly ? 'rate_hourly_no_equip' : 'rate_no_equip';
+                const vSys = ratesDraft[fSys as keyof RatesDraft] as string;
+                const vDecks = ratesDraft[fDecks as keyof RatesDraft] as string;
+                const vNone = ratesDraft[fNone as keyof RatesDraft] as string;
+                const hourlySuffix = isHourly ? ' (per hour)' : '';
+                return (
+                  <>
+                    {equipFull && (
+                      <>
+                        <RateInput
+                          label={`Rate with Sound System & Decks/Controller${hourlySuffix}`}
+                          symbol={currentCurrency.symbol}
+                          value={vSys}
+                          onChange={(v) => setRateField(fSys as keyof RatesDraft, v)}
+                        />
+                        <RateInput
+                          label={`Rate with Decks/Controller only${hourlySuffix}`}
+                          symbol={currentCurrency.symbol}
+                          value={vDecks}
+                          onChange={(v) => setRateField(fDecks as keyof RatesDraft, v)}
+                        />
+                        <RateInput
+                          label={`Rate with venue providing all equipment${hourlySuffix}`}
+                          symbol={currentCurrency.symbol}
+                          value={vNone}
+                          onChange={(v) => setRateField(fNone as keyof RatesDraft, v)}
+                        />
+                      </>
+                    )}
+                    {equipDecks && (
+                      <>
+                        <RateInput
+                          label={`Rate with Decks/Controller only${hourlySuffix}`}
+                          symbol={currentCurrency.symbol}
+                          value={vDecks}
+                          onChange={(v) => setRateField(fDecks as keyof RatesDraft, v)}
+                        />
+                        <RateInput
+                          label={`Rate with venue providing all equipment${hourlySuffix}`}
+                          symbol={currentCurrency.symbol}
+                          value={vNone}
+                          onChange={(v) => setRateField(fNone as keyof RatesDraft, v)}
+                        />
+                      </>
+                    )}
+                    {equipNone && (
+                      <RateInput
+                        label={`Rate with venue providing all equipment${hourlySuffix}`}
+                        symbol={currentCurrency.symbol}
+                        value={vNone}
+                        onChange={(v) => setRateField(fNone as keyof RatesDraft, v)}
+                      />
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Save row — manual save button + status. Disabled when
                   nothing's dirty so the user knows they're up to date. */}
