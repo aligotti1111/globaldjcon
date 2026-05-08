@@ -291,6 +291,24 @@ export default function ClubBookingForm({
       const supabase = createClient();
       const offerNum = offerAmount ? Number(offerAmount) : null;
 
+      // Initial negotiation log entry. We seed the log at insert time so
+      // the booking-requests history modal can replay the full thread —
+      // CounterModal already appends to this column on each counter, but
+      // the FIRST price (booker's offer or flat-rate accept) was never
+      // recorded until now. Quote-mode bookings have no price yet and
+      // get an empty log; sendDraftQuote will seed it later.
+      const initialPrice = isOffers && offerNum && !isNaN(offerNum)
+        ? offerNum
+        : (!isOffers && rateInfo.rate ? rateInfo.rate : null);
+      const initialLog = initialPrice != null
+        ? [{
+            from: 'booker',
+            amount: initialPrice,
+            message: notes.trim() || '',
+            created_at: new Date().toISOString(),
+          }]
+        : [];
+
       const insertPayload = {
         dj_id: dj.id,
         requester_id: currentUser.id,
@@ -322,6 +340,7 @@ export default function ClubBookingForm({
         // for this equipment option. The DJ will respond with a custom
         // rate via the existing counter flow on the booking-requests page.
         is_quote: isQuoteMode,
+        negotiation_log: initialLog,
         status: 'pending',
       };
 
