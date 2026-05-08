@@ -27,7 +27,8 @@ type EmailType =
   | 'booking_status'
   | 'mob_booking_status'
   | 'booking_counter'
-  | 'quote_sent';
+  | 'quote_sent'
+  | 'booking_approved';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -551,6 +552,67 @@ export async function POST(req: Request) {
         })}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can accept this quote, propose a counter-offer, or decline.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Quote')}
+      `),
+    };
+
+  // ── 8c. BOOKING APPROVED (sent to BOTH parties when booking is confirmed) ─
+  // Fired from both djUpdateStatus(approve) and acceptCounter() in
+  // BookingRequestsClient. The client makes TWO calls — one for booker,
+  // one for DJ — each with the appropriate name in the recipient slot.
+  // Carries the same info card the request email used, plus a green
+  // "Booking Approved" header and the agreed price line.
+  } else if (type === 'booking_approved') {
+    const recipientEmail = await pickEmail(
+      body.recipientEmail as string | undefined,
+      body.recipientUserId as string | undefined,
+    );
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve recipient email for booking_approved' },
+        { status: 400 }
+      );
+    }
+    const recipientName = body.recipientName as string | undefined;
+    const recipientRole = body.recipientRole as string | undefined; // 'dj' | 'booker'
+    const otherPartyName = body.otherPartyName as string | undefined;
+    const agreedPrice = body.agreedPrice as number | undefined;
+    const eventDate = body.eventDate as string | undefined;
+    const venueName = body.venueName as string | undefined;
+    const venueAddress = body.venueAddress as string | undefined;
+    const startTime = body.startTime as string | undefined;
+    const endTime = body.endTime as string | undefined;
+    const setType = body.setType as string | undefined;
+    const venueType = body.venueType as string | undefined;
+    const eventType = body.eventType as string | undefined;
+    const packageTitle = body.packageTitle as string | undefined;
+    const currency = (body.currency as string | undefined) || 'USD';
+    const dateStr = fmtDate(eventDate);
+    const sym = currencySymbol(currency);
+    const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [recipientEmail],
+      subject: `Booking confirmed with ${otherPartyName || otherLabel} – ${dateStr}`,
+      html: emailTemplate(`
+        <!-- Approved badge — green pill above the heading. -->
+        <div style="display:inline-block;padding:5px 12px;background:rgba(61,220,132,0.12);border:1px solid rgba(61,220,132,0.4);border-radius:14px;color:#3ddc84;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">✓ Booking Approved</div>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin:4px 0 8px;">Price Agreed – Booking Confirmed</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
+        ${bookingInfoBox({
+          eventTypeText: eventType,
+          setTypeText: setTypeLabel(setType),
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          packageTitle,
+          venueTypeText: venueTypeLabel(venueType),
+          venueName,
+          venueAddress,
+          rateLabel: 'Agreed Price',
+          rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
+        })}
+        <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
 
