@@ -495,9 +495,10 @@ export default function BookingRequestsClient({
         .select('negotiation_log')
         .eq('id', b.id)
         .single<{ negotiation_log: BookingRow['negotiation_log'] }>();
-      const log = (current?.negotiation_log as Array<{ from: string; amount: number; message: string; created_at: string }> | null) || [];
+      const log: Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> =
+        (current?.negotiation_log as Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> | null) || [];
       log.push({
-        from: 'dj',
+        from: 'dj' as const,
         amount: Number(b.quoted_rate),
         message: b.counter_message || '',
         created_at: nowIso,
