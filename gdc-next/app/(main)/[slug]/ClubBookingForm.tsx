@@ -579,21 +579,6 @@ export default function ClubBookingForm({
           </div>
         </FormSection>
 
-        {/* Phone — collected so the DJ can reach the booker about
-            day-of logistics. Same US-style auto-formatter mobile uses. */}
-        <FormSection label="Phone Number">
-          <input
-            id="cbf-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={phone}
-            onChange={(e) => setPhone(formatUSPhone(e.target.value))}
-            className={styles.input}
-            autoComplete="tel"
-          />
-        </FormSection>
-
         {/* Times */}
         <FormSection label="Set Times">
           <div className={styles.timeRow}>
@@ -704,6 +689,21 @@ export default function ClubBookingForm({
             />
           </FormSection>
         )}
+
+        {/* Phone — collected so the DJ can reach the booker about
+            day-of logistics. Same US-style auto-formatter mobile uses. */}
+        <FormSection label="Phone Number">
+          <input
+            id="cbf-phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="(555) 555-5555"
+            value={phone}
+            onChange={(e) => setPhone(formatUSPhone(e.target.value))}
+            className={styles.input}
+            autoComplete="tel"
+          />
+        </FormSection>
 
         {/* Notes */}
         <FormSection label="Notes (optional)">
