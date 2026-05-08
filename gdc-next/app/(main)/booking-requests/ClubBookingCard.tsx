@@ -149,6 +149,10 @@ export default function ClubBookingCard(props: Props) {
           <div className={styles.infoBlock}>
             <div className={styles.tinyLabel}>Venue</div>
             <div className={styles.venueName}>{b.venue_name}</div>
+            {/* Address — shown on both sides. Booker entered it, but
+                surfacing it on their card is useful for quick reference
+                (open in maps, copy, share). Distance + range warning
+                stay DJ-only since they're tied to the DJ's travel radius. */}
             {cleanedAddr && (
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address || '')}`}
@@ -163,7 +167,7 @@ export default function ClubBookingCard(props: Props) {
                 {cleanedAddr}
               </a>
             )}
-            {milesDisplay && (
+            {isIncoming && milesDisplay && (
               <div className={styles.distLine}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={distColor} strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '3px' }}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
