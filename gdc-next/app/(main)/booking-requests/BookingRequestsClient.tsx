@@ -149,11 +149,15 @@ export default function BookingRequestsClient({
   // for that date so the calendar reflects the spent slot.
   async function djUpdateStatus(bookingId: string, status: 'approved' | 'denied') {
     const isApprove = status === 'approved';
+    // Look up the booking up front so we can address the booker by name
+    // in the confirm dialog rather than the generic "the booker".
+    const bookingRef = incoming.find((x) => x.id === bookingId);
+    const requesterName = bookingRef?.requester_name?.trim() || 'the booker';
     const ok = await confirm({
       title: isApprove ? 'Approve this booking?' : 'Decline this booking?',
       message: isApprove
-        ? 'The booker will be notified by email and the date will be marked as booked on your calendar.'
-        : 'The booker will be notified by email that you cannot accept this booking.',
+        ? `${requesterName} will be notified by email and the date will be marked as booked on your calendar.`
+        : `${requesterName} will be notified by email that you cannot accept this booking.`,
       confirmLabel: isApprove ? 'Approve' : 'Decline',
       variant: isApprove ? 'primary' : 'danger',
     });
