@@ -303,6 +303,18 @@ export default function ClubBookingForm({
       const supabase = createClient();
       const offerNum = offerAmount ? Number(offerAmount) : null;
 
+      // For flat-rate bookings, rateInfo.rate IS the total. For hourly
+      // bookings, the total is rate × hours (rateInfo.hourlyTotal). The
+      // booking card and emails treat quoted_rate as the FULL price
+      // agreed for the gig, so we save the computed total here — saving
+      // the per-hour rate to quoted_rate would make the card display
+      // $400 instead of $1400 for a 3.5-hour booking at $400/hr.
+      const computedTotal = !isOffers && rateInfo.rate
+        ? (rateInfo.rateType === 'hourly' && rateInfo.hourlyTotal
+            ? rateInfo.hourlyTotal
+            : rateInfo.rate)
+        : null;
+
       // Initial negotiation log entry. We seed the log at insert time so
       // the booking-requests history modal can replay the full thread —
       // CounterModal already appends to this column on each counter, but
@@ -311,7 +323,7 @@ export default function ClubBookingForm({
       // get an empty log; sendDraftQuote will seed it later.
       const initialPrice = isOffers && offerNum && !isNaN(offerNum)
         ? offerNum
-        : (!isOffers && rateInfo.rate ? rateInfo.rate : null);
+        : computedTotal;
       const initialLog: Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> =
         initialPrice != null
           ? [{
@@ -344,10 +356,10 @@ export default function ClubBookingForm({
         equipment,
         venue_equip_detail: venueEquipDetail.trim() || null,
         offer_amount: isOffers && offerNum && !isNaN(offerNum) ? offerNum : null,
-        // For flat: per-event rate. For hourly: per-hour rate (hourlyTotal
-        // is calculated server-side from times if needed). For offers:
+        // Full computed total — see computedTotal derivation above.
+        // For flat: per-event rate. For hourly: rate × hours. For offers:
         // null — there's no quoted rate, only the visitor's offer.
-        quoted_rate: !isOffers && rateInfo.rate ? rateInfo.rate : null,
+        quoted_rate: computedTotal,
         currency: rateInfo.currency,
         notes: notes.trim() || null,
         // is_quote=true when DJ has booking enabled but hasn't set rates
