@@ -115,8 +115,11 @@ export default function BookingRequestsClient({
     if (s in outCounts) outCounts[s]++;
   });
   // Show counter bookings under pending for the requester (awaiting their response)
-  const outPendingCount = outCounts.pending + outCounts.counter;
-  const outAll = outPendingCount + outCounts.approved + outCounts.denied;
+  // Mirror of DJ Pending count rule: only bookings actually waiting on
+  // the viewing user. status='pending' on outgoing = DJ is acting, not
+  // the booker — those don't belong in the Pending tab/badge count.
+  const outPendingCount = outCounts.counter;
+  const outAll = outCounts.pending + outCounts.counter + outCounts.approved + outCounts.denied;
 
   // ── Filtered lists ─────────────────────────────────────────────
   const filteredIncoming = (() => {
@@ -126,7 +129,11 @@ export default function BookingRequestsClient({
 
   const filteredOutgoing = (() => {
     if (outgoingTab === 'all') return outgoing.filter((b) => b.status !== 'cancelled');
-    if (outgoingTab === 'pending') return outgoing.filter((b) => b.status === 'pending' || b.status === 'counter');
+    // Mirror of the DJ Pending rule: "Pending" = bookings waiting on
+    // the viewing user. Booker is waiting to act when DJ has countered
+    // (status='counter'); status='pending' means the DJ is the one
+    // who has to act, so those bookings live in All only.
+    if (outgoingTab === 'pending') return outgoing.filter((b) => b.status === 'counter');
     return outgoing.filter((b) => b.status === outgoingTab);
   })();
 
