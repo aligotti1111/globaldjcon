@@ -609,6 +609,8 @@ export default function ClubBookingTab({
             bookingDays={bookingDays}
             onChange={setBookingDays}
             bookingWindowMonths={bookingWindow}
+            bookingSettings={bookingSettings}
+            currencySymbol={currentCurrency.symbol}
             lastChangedField={lastChangedField}
             autosaveStatus={autosaveStatus}
             onMonthChanged={(monthKey) => setLastChangedField(monthKey)}

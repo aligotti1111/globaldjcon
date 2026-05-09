@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import styles from './updateDjProfile.module.css';
-import type { BookingDays, DayData } from '@/app/(main)/[slug]/bookingSettings';
+import type { BookingDays, BookingSettings, DayData } from '@/app/(main)/[slug]/bookingSettings';
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -28,6 +28,11 @@ interface Props {
   bookingDays: BookingDays;
   onChange: (next: BookingDays) => void;
   bookingWindowMonths: number;
+  // Used by the day-edit modal to (a) decide which equipment-specific
+  // rate inputs to show (mirror of universal rate panel logic) and
+  // (b) format currency.
+  bookingSettings: BookingSettings;
+  currencySymbol: string;
   // Optional autosave hint props (mirror of MobileOwnerCalendar so the
   // parent's "Saving…/✓ Saved" indicator works the same way).
   lastChangedField?: string | null;
@@ -49,7 +54,7 @@ function monthKeyFromDateKey(dKey: string): string {
 }
 
 export default function ClubOwnerCalendar({
-  bookingDays, onChange, bookingWindowMonths,
+  bookingDays, onChange, bookingWindowMonths, bookingSettings, currencySymbol,
   lastChangedField, autosaveStatus, onMonthChanged,
 }: Props) {
   const today = useMemo(() => new Date(), []);
@@ -214,6 +219,8 @@ export default function ClubOwnerCalendar({
         <ClubDayEditModal
           dateKey={editorKey}
           dayData={bookingDays[editorKey] || {}}
+          bookingSettings={bookingSettings}
+          currencySymbol={currencySymbol}
           onClose={() => setEditorKey(null)}
           onSave={(update) => saveDayEditor(editorKey, update)}
         />
@@ -263,11 +270,15 @@ function CalSavedHint({
 function ClubDayEditModal({
   dateKey,
   dayData,
+  bookingSettings,
+  currencySymbol,
   onClose,
   onSave,
 }: {
   dateKey: string;
   dayData: DayData;
+  bookingSettings: BookingSettings;
+  currencySymbol: string;
   onClose: () => void;
   onSave: (update: DayData | null) => void;
 }) {
@@ -275,6 +286,34 @@ function ClubDayEditModal({
     dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available'
   );
   const [eventName, setEventName] = useState<string>(dayData.eventName || '');
+
+  // ── Per-day rate override state ──────────────────────────────────
+  // Initialised from existing day data; falls back to global rate type
+  // so the editor opens to the same flat/hourly/offers context the DJ
+  // uses universally. Each rate input has its own state so switching
+  // rateType doesn't blow away the dormant set.
+  const initialRateType: 'flat' | 'hourly' | 'offers' =
+    (dayData.rateType as 'flat' | 'hourly' | 'offers' | undefined)
+    || (bookingSettings.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined)
+    || 'flat';
+  const [rateType, setRateType] = useState<'flat' | 'hourly' | 'offers'>(initialRateType);
+  // Empty string when unset — same convention as universal rate panel.
+  const initStr = (v: number | string | undefined): string =>
+    v != null && v !== '' ? String(v) : '';
+  const [rateWithSystem, setRateWithSystem] = useState(initStr(dayData.rate_with_system));
+  const [rateWithDecks, setRateWithDecks] = useState(initStr(dayData.rate_with_decks));
+  const [rateNoEquip, setRateNoEquip] = useState(initStr(dayData.rate_no_equip));
+  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initStr(dayData.rate_hourly_with_system));
+  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initStr(dayData.rate_hourly_with_decks));
+  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initStr(dayData.rate_hourly_no_equip));
+
+  // Equipment flags from the DJ's universal settings — controls which
+  // rate inputs render. Higher equipment tier = more inputs (mirrors
+  // the universal rate panel: equip_full = 3 inputs, equip_decks = 2,
+  // equip_none = 1).
+  const equipFull = !!bookingSettings.equip_full;
+  const equipDecks = !!bookingSettings.equip_decks;
+  const equipNone = !!bookingSettings.equip_none;
 
   // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
   const formatted = useMemo(() => {
@@ -295,8 +334,32 @@ function ClubDayEditModal({
 
   function handleSave() {
     if (status === 'available') {
-      // Reset day to default → drop the entry entirely
-      onSave(null);
+      // Build a partial DayData carrying only set rate fields. If nothing
+      // is set, drop the day entry entirely (back to plain default).
+      // Note: we keep BOTH rate sets (flat + hourly) when present, even
+      // though only one is "active" via rateType — same behavior as the
+      // universal rate panel where dormant values are retained.
+      const next: DayData = {};
+      const tFlat = (s: string) => s.trim() === '' ? undefined : s.trim();
+      const flatSys = tFlat(rateWithSystem);
+      const flatDecks = tFlat(rateWithDecks);
+      const flatNone = tFlat(rateNoEquip);
+      const hrSys = tFlat(rateHourlyWithSystem);
+      const hrDecks = tFlat(rateHourlyWithDecks);
+      const hrNone = tFlat(rateHourlyNoEquip);
+      const anyRateSet = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateType !== initialRateType;
+      if (!anyRateSet) {
+        onSave(null);
+        return;
+      }
+      next.rateType = rateType;
+      if (flatSys) next.rate_with_system = flatSys;
+      if (flatDecks) next.rate_with_decks = flatDecks;
+      if (flatNone) next.rate_no_equip = flatNone;
+      if (hrSys) next.rate_hourly_with_system = hrSys;
+      if (hrDecks) next.rate_hourly_with_decks = hrDecks;
+      if (hrNone) next.rate_hourly_no_equip = hrNone;
+      onSave(next);
       return;
     }
     if (status === 'unavailable') {
@@ -351,6 +414,126 @@ function ClubDayEditModal({
           </label>
         </div>
 
+        {/* ── Per-day rate override (Available status only) ─────────
+            Mirror of the universal rate panel: rate-type tabs at top,
+            then equipment-specific rate inputs based on what the DJ
+            supports. Empty fields fall back to the universal rate;
+            non-empty fields win. */}
+        {status === 'available' && (
+          <div className={styles.dayEditorBookedFields}>
+            <div className={styles.dayEditorFieldGroup}>
+              <label className={styles.dayEditorFieldLabel}>
+                Rate Override (optional — leave blank to use your default rates)
+              </label>
+              {/* Rate type tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '.4rem',
+                marginBottom: '.6rem',
+                flexWrap: 'wrap',
+              }}>
+                {(['flat', 'hourly', 'offers'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setRateType(t)}
+                    style={{
+                      padding: '.35rem .8rem',
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.65rem',
+                      letterSpacing: '.08em',
+                      textTransform: 'uppercase',
+                      borderRadius: 4,
+                      border: '1px solid ' + (rateType === t ? 'var(--neon)' : 'var(--border)'),
+                      background: rateType === t ? 'rgba(0,245,196,0.1)' : 'transparent',
+                      color: rateType === t ? 'var(--neon)' : 'var(--muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t === 'flat' ? 'Flat' : t === 'hourly' ? 'Hourly' : 'Open Offers'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Rate inputs — visible per equipment + rateType. Mirror
+                  of universal rate panel: equip_full → 3 inputs,
+                  equip_decks → 2, equip_none → 1. Offers mode → none. */}
+              {rateType !== 'offers' && (() => {
+                const isHourly = rateType === 'hourly';
+                const suffix = isHourly ? ' (per hour)' : '';
+                // Pick the active state pair for each equipment slot
+                const sysVal = isHourly ? rateHourlyWithSystem : rateWithSystem;
+                const sysSet = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
+                const decksVal = isHourly ? rateHourlyWithDecks : rateWithDecks;
+                const decksSet = isHourly ? setRateHourlyWithDecks : setRateWithDecks;
+                const noneVal = isHourly ? rateHourlyNoEquip : rateNoEquip;
+                const noneSet = isHourly ? setRateHourlyNoEquip : setRateNoEquip;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    {equipFull && (
+                      <>
+                        <DayRateInput
+                          label={`Sound System & Decks/Controller${suffix}`}
+                          symbol={currencySymbol}
+                          value={sysVal}
+                          onChange={sysSet}
+                        />
+                        <DayRateInput
+                          label={`Decks/Controller only${suffix}`}
+                          symbol={currencySymbol}
+                          value={decksVal}
+                          onChange={decksSet}
+                        />
+                        <DayRateInput
+                          label={`Venue provides all equipment${suffix}`}
+                          symbol={currencySymbol}
+                          value={noneVal}
+                          onChange={noneSet}
+                        />
+                      </>
+                    )}
+                    {equipDecks && (
+                      <>
+                        <DayRateInput
+                          label={`Decks/Controller only${suffix}`}
+                          symbol={currencySymbol}
+                          value={decksVal}
+                          onChange={decksSet}
+                        />
+                        <DayRateInput
+                          label={`Venue provides all equipment${suffix}`}
+                          symbol={currencySymbol}
+                          value={noneVal}
+                          onChange={noneSet}
+                        />
+                      </>
+                    )}
+                    {equipNone && (
+                      <DayRateInput
+                        label={`Venue provides all equipment${suffix}`}
+                        symbol={currencySymbol}
+                        value={noneVal}
+                        onChange={noneSet}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
+              {rateType === 'offers' && (
+                <p style={{
+                  margin: '0',
+                  color: 'var(--muted)',
+                  fontSize: '.8rem',
+                  lineHeight: 1.5,
+                }}>
+                  This day will accept open offers from bookers — no rate
+                  shown publicly. Bookers submit what they want to pay.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {status === 'booked' && (
           <div className={styles.dayEditorBookedFields}>
             <div className={styles.dayEditorFieldGroup}>
@@ -378,6 +561,60 @@ function ClubDayEditModal({
             Save
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DayRateInput — small currency-prefixed number input for the per-day
+// rate override panel. Mirrors the universal RateInput pattern in
+// ClubBookingTab so rates are visually consistent in both places.
+// ─────────────────────────────────────────────────────────────────────────
+function DayRateInput({
+  label, symbol, value, onChange,
+}: {
+  label: string;
+  symbol: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.65rem',
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          color: 'var(--muted)',
+          marginBottom: '.25rem',
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <span style={{
+          position: 'absolute',
+          left: 10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--muted)',
+          pointerEvents: 'none',
+          fontSize: '.9rem',
+        }}>{symbol}</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          placeholder="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={styles.dayEditorInput}
+          style={{ paddingLeft: 28 }}
+        />
       </div>
     </div>
   );
