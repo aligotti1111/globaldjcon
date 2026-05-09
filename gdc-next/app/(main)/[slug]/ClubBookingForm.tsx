@@ -336,12 +336,10 @@ export default function ClubBookingForm({
 
     if (missing.size > 0) {
       setMissingFields(missing);
-      const count = missing.size;
-      setError(
-        count === 1
-          ? 'Please complete the highlighted field below.'
-          : `Please complete the ${count} highlighted fields below.`
-      );
+      // Top-of-form banner reads directly from missingFields.size — no
+      // duplicate error text. setError stays null so the bottom area
+      // remains clean (it's reserved for non-field errors like the
+      // equipment compatibility check or network failures).
       // Scroll the first missing field into view so the booker isn't
       // confused about WHERE the highlights are.
       const firstFieldId = (() => {
@@ -527,6 +525,28 @@ export default function ClubBookingForm({
             ✕
           </button>
         </div>
+
+        {/* Top-of-form summary for missing-required-fields validation.
+            The booker needs to see this BEFORE scrolling through the
+            fields, since the inline highlights are below. Non-field
+            errors (equipment-not-supported, submit network failures)
+            still render in the submit area below. */}
+        {missingFields.size > 0 && (
+          <div style={{
+            background: 'rgba(255, 95, 95, .08)',
+            border: '1px solid rgba(255, 95, 95, .35)',
+            borderRadius: 6,
+            padding: '.6rem .8rem',
+            color: '#ff5f5f',
+            fontSize: '.82rem',
+            fontFamily: 'DM Sans, sans-serif',
+            marginBottom: '.75rem',
+          }}>
+            {missingFields.size === 1
+              ? 'Please complete the highlighted field below.'
+              : `Please complete the ${missingFields.size} highlighted fields below.`}
+          </div>
+        )}
 
         {/* Event Type */}
         <FormSection
