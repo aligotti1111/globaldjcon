@@ -774,7 +774,11 @@ function HeroActions({
         )
       )}
 
-      {data.website ? (
+      {/* Social platforms — filled links render FIRST in declared
+          platform order. After all filled links, the owner-only "+"
+          add-buttons for missing platforms render to the right so the
+          hero reads "active socials | quick-adds" instead of mixed. */}
+      {data.website && (
         <a
           href={normalizedWebsite(data.website)}
           target="_blank"
@@ -784,18 +788,8 @@ function HeroActions({
         >
           <WebsiteIcon />
         </a>
-      ) : isOwnProfile ? (
-        <SocialAddButton
-          userId={data.id}
-          field="website"
-          label="Website"
-          placeholder="https://yoursite.com"
-          icon={<WebsiteIcon />}
-          colorClass={styles.actionBtnWebsite}
-        />
-      ) : null}
-
-      {data.soundcloud ? (
+      )}
+      {data.soundcloud && (
         <a
           href={normalizedSoundcloud(data.soundcloud)}
           target="_blank"
@@ -805,18 +799,8 @@ function HeroActions({
         >
           <SoundcloudIcon />
         </a>
-      ) : isOwnProfile ? (
-        <SocialAddButton
-          userId={data.id}
-          field="soundcloud"
-          label="SoundCloud"
-          placeholder="https://soundcloud.com/yourname"
-          icon={<SoundcloudIcon />}
-          colorClass={styles.actionBtnSoundcloud}
-        />
-      ) : null}
-
-      {data.instagram ? (
+      )}
+      {data.instagram && (
         <a
           href={normalizedInstagram(data.instagram)}
           target="_blank"
@@ -826,18 +810,8 @@ function HeroActions({
         >
           <InstagramIcon />
         </a>
-      ) : isOwnProfile ? (
-        <SocialAddButton
-          userId={data.id}
-          field="instagram"
-          label="Instagram"
-          placeholder="@djyourname"
-          icon={<InstagramIcon />}
-          colorClass={styles.actionBtnInstagram}
-        />
-      ) : null}
-
-      {data.tiktok ? (
+      )}
+      {data.tiktok && (
         <a
           href={normalizedTiktok(data.tiktok)}
           target="_blank"
@@ -847,18 +821,8 @@ function HeroActions({
         >
           <TiktokIcon />
         </a>
-      ) : isOwnProfile ? (
-        <SocialAddButton
-          userId={data.id}
-          field="tiktok"
-          label="TikTok"
-          placeholder="@djyourname"
-          icon={<TiktokIcon />}
-          colorClass={styles.actionBtnTiktok}
-        />
-      ) : null}
-
-      {data.facebook ? (
+      )}
+      {data.facebook && (
         <a
           href={normalizedFacebook(data.facebook)}
           target="_blank"
@@ -868,18 +832,8 @@ function HeroActions({
         >
           <FacebookIcon />
         </a>
-      ) : isOwnProfile ? (
-        <SocialAddButton
-          userId={data.id}
-          field="facebook"
-          label="Facebook"
-          placeholder="https://facebook.com/yourpage"
-          icon={<FacebookIcon />}
-          colorClass={styles.actionBtnFacebook}
-        />
-      ) : null}
-
-      {data.twitch ? (
+      )}
+      {data.twitch && (
         <a
           href={normalizedTwitch(data.twitch)}
           target="_blank"
@@ -889,7 +843,60 @@ function HeroActions({
         >
           <TwitchIcon />
         </a>
-      ) : isOwnProfile ? (
+      )}
+
+      {/* Owner-only quick-add buttons for platforms not yet filled. */}
+      {isOwnProfile && !data.website && (
+        <SocialAddButton
+          userId={data.id}
+          field="website"
+          label="Website"
+          placeholder="https://yoursite.com"
+          icon={<WebsiteIcon />}
+          colorClass={styles.actionBtnWebsite}
+        />
+      )}
+      {isOwnProfile && !data.soundcloud && (
+        <SocialAddButton
+          userId={data.id}
+          field="soundcloud"
+          label="SoundCloud"
+          placeholder="https://soundcloud.com/yourname"
+          icon={<SoundcloudIcon />}
+          colorClass={styles.actionBtnSoundcloud}
+        />
+      )}
+      {isOwnProfile && !data.instagram && (
+        <SocialAddButton
+          userId={data.id}
+          field="instagram"
+          label="Instagram"
+          placeholder="@djyourname"
+          icon={<InstagramIcon />}
+          colorClass={styles.actionBtnInstagram}
+        />
+      )}
+      {isOwnProfile && !data.tiktok && (
+        <SocialAddButton
+          userId={data.id}
+          field="tiktok"
+          label="TikTok"
+          placeholder="@djyourname"
+          icon={<TiktokIcon />}
+          colorClass={styles.actionBtnTiktok}
+        />
+      )}
+      {isOwnProfile && !data.facebook && (
+        <SocialAddButton
+          userId={data.id}
+          field="facebook"
+          label="Facebook"
+          placeholder="https://facebook.com/yourpage"
+          icon={<FacebookIcon />}
+          colorClass={styles.actionBtnFacebook}
+        />
+      )}
+      {isOwnProfile && !data.twitch && (
         <SocialAddButton
           userId={data.id}
           field="twitch"
@@ -898,7 +905,7 @@ function HeroActions({
           icon={<TwitchIcon />}
           colorClass={styles.actionBtnTwitch}
         />
-      ) : null}
+      )}
 
       {data.rate && (
         <span
