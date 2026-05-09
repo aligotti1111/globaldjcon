@@ -220,6 +220,26 @@ export default function ClubBookingForm({
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ── Field-level validation state ─────────────────────────────────
+  // Tracks which required fields are missing after a submit attempt.
+  // Used by FormSection (red label + inline error message) and inputs
+  // (red border via inline style). Once the user starts typing/picking
+  // in a flagged field, it's removed from this set so the highlight
+  // clears immediately. Field IDs are arbitrary string keys.
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
+  function clearMissing(field: string) {
+    setMissingFields((prev) => {
+      if (!prev.has(field)) return prev;
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
+  }
+  // hasError(f) — true when this field is in the missing set. Inputs
+  // call this to switch to the red border state.
+  function hasError(field: string): boolean {
+    return missingFields.has(field);
+  }
   const [success, setSuccess] = useState(false);
 
   // Per-day data (rate overrides etc) — read once at mount
@@ -299,22 +319,56 @@ export default function ClubBookingForm({
     e.preventDefault();
     setError(null);
 
-    // Validation — keep the same order vanilla uses so the user gets the
-    // most relevant message first.
-    if (!venueType) { setError('Please select Bar or Club.'); return; }
-    if (!setType) { setError('Please select a set type.'); return; }
-    if (!venueName.trim()) { setError('Please enter the venue name.'); return; }
-    if (!venueAddress.trim()) { setError('Please enter the venue address.'); return; }
-    if (!phone.trim()) { setError('Please enter your phone number.'); return; }
-    if (!startTime) { setError('Please select a start time.'); return; }
-    if (!endTime) { setError('Please select an end time.'); return; }
-    if (!equipment) { setError('Please select an equipment option.'); return; }
-    if (!isEquipmentSupported) {
-      setError('This DJ isn\'t able to bring that equipment. Please pick another option.');
+    // Collect ALL missing required fields up front so the booker sees
+    // every problem at once instead of having to fix → submit → fix
+    // each one. The set drives both the top-of-form summary and the
+    // per-field red-border / inline-error highlights.
+    const missing = new Set<string>();
+    if (!venueType) missing.add('venueType');
+    if (!setType) missing.add('setType');
+    if (!venueName.trim()) missing.add('venueName');
+    if (!venueAddress.trim()) missing.add('venueAddress');
+    if (!phone.trim()) missing.add('phone');
+    if (!startTime) missing.add('startTime');
+    if (!endTime) missing.add('endTime');
+    if (!equipment) missing.add('equipment');
+    if (isOffers && !offerAmount.trim()) missing.add('offerAmount');
+
+    if (missing.size > 0) {
+      setMissingFields(missing);
+      const count = missing.size;
+      setError(
+        count === 1
+          ? 'Please complete the highlighted field below.'
+          : `Please complete the ${count} highlighted fields below.`
+      );
+      // Scroll the first missing field into view so the booker isn't
+      // confused about WHERE the highlights are.
+      const firstFieldId = (() => {
+        // Order matches the form layout top → bottom for natural scroll
+        const order = ['venueType','setType','venueName','venueAddress','phone','startTime','endTime','equipment','offerAmount'];
+        for (const f of order) {
+          if (missing.has(f)) return f;
+        }
+        return null;
+      })();
+      if (firstFieldId) {
+        // Defer to next paint so the new error UI is in the DOM
+        setTimeout(() => {
+          const el = document.querySelector(`[data-field="${firstFieldId}"]`);
+          if (el && 'scrollIntoView' in el) {
+            (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
+      }
       return;
     }
-    if (isOffers && !offerAmount.trim()) {
-      setError('Please enter your offer amount.');
+
+    // Equipment-supported check happens AFTER all required fields are
+    // filled — it's not a "missing field" in the same sense, more a
+    // compatibility error, so keep it as a top-level error message.
+    if (!isEquipmentSupported) {
+      setError('This DJ isn\'t able to bring that equipment. Please pick another option.');
       return;
     }
 
@@ -475,13 +529,18 @@ export default function ClubBookingForm({
         </div>
 
         {/* Event Type */}
-        <FormSection label="Event Type">
+        <FormSection
+          label="Event Type"
+          fieldKey="venueType"
+          hasError={hasError('venueType')}
+          errorText="Please select Bar or Club."
+        >
           <div className={styles.pillRow}>
             {(['bar', 'club'] as const).map((v) => (
               <button
                 key={v}
                 type="button"
-                onClick={() => setVenueType(v)}
+                onClick={() => { setVenueType(v); clearMissing('venueType'); }}
                 className={`${styles.pill} ${venueType === v ? styles.pillActive : ''}`}
               >
                 {CLUB_VENUE_TYPE_LABELS[v]}
@@ -492,13 +551,18 @@ export default function ClubBookingForm({
 
         {/* Set Type — only after venue type picked */}
         {venueType && (
-          <FormSection label="Set Type">
+          <FormSection
+            label="Set Type"
+            fieldKey="setType"
+            hasError={hasError('setType')}
+            errorText="Please select a set type."
+          >
             <div className={styles.pillCol}>
               {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
                 <button
                   key={val}
                   type="button"
-                  onClick={() => setSetType(val)}
+                  onClick={() => { setSetType(val); clearMissing('setType'); }}
                   className={`${styles.pillWide} ${setType === val ? styles.pillActive : ''}`}
                 >
                   {lbl}
@@ -509,13 +573,25 @@ export default function ClubBookingForm({
         )}
 
         {/* Venue */}
-        <FormSection label="Venue">
+        <FormSection
+          label="Venue"
+          fieldKey="venueName"
+          hasError={hasError('venueName') || hasError('venueAddress')}
+          errorText={
+            hasError('venueName') && hasError('venueAddress')
+              ? 'Please enter the venue name and address.'
+              : hasError('venueName')
+                ? 'Please enter the venue name.'
+                : 'Please enter the venue address.'
+          }
+        >
           <input
             type="text"
             placeholder="Venue name"
             value={venueName}
-            onChange={(e) => setVenueName(e.target.value)}
+            onChange={(e) => { setVenueName(e.target.value); clearMissing('venueName'); }}
             className={styles.input}
+            style={hasError('venueName') ? { borderColor: '#ff5f5f' } : undefined}
           />
           {/* Country sits between venue name and address so picking it
               first scopes the address autocomplete to that country. */}
@@ -568,6 +644,7 @@ export default function ClubBookingForm({
               onChange={(e) => {
                 const val = e.target.value;
                 setVenueAddress(val);
+                clearMissing('venueAddress');
                 // User edited again — invalidate previously picked coords
                 venueCoordsRef.current = null;
                 // Debounce the Nominatim fetch (matches MobileBookingForm)
@@ -591,6 +668,7 @@ export default function ClubBookingForm({
                 if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
               }}
               className={styles.input}
+              style={hasError('venueAddress') ? { borderColor: '#ff5f5f' } : undefined}
               autoComplete="off"
             />
             {showAddrSuggestions && addrSuggestions.length > 0 && (
@@ -621,14 +699,26 @@ export default function ClubBookingForm({
         </FormSection>
 
         {/* Times */}
-        <FormSection label="Set Times">
+        <FormSection
+          label="Set Times"
+          fieldKey="startTime"
+          hasError={hasError('startTime') || hasError('endTime')}
+          errorText={
+            hasError('startTime') && hasError('endTime')
+              ? 'Please select start and end times.'
+              : hasError('startTime')
+                ? 'Please select a start time.'
+                : 'Please select an end time.'
+          }
+        >
           <div className={styles.timeRow}>
             <div className={styles.timeCol}>
               <label className={styles.timeLabel}>Set Start</label>
               <select
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => { setStartTime(e.target.value); clearMissing('startTime'); }}
                 className={styles.input}
+                style={hasError('startTime') ? { borderColor: '#ff5f5f' } : undefined}
               >
                 <option value="">Select…</option>
                 {MOB_TIME_OPTIONS.map((t) => (
@@ -640,8 +730,9 @@ export default function ClubBookingForm({
               <label className={styles.timeLabel}>Set End</label>
               <select
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => { setEndTime(e.target.value); clearMissing('endTime'); }}
                 className={styles.input}
+                style={hasError('endTime') ? { borderColor: '#ff5f5f' } : undefined}
               >
                 <option value="">Select…</option>
                 {MOB_TIME_OPTIONS.map((t) => (
@@ -659,7 +750,12 @@ export default function ClubBookingForm({
         </FormSection>
 
         {/* Equipment */}
-        <FormSection label="Equipment for venue">
+        <FormSection
+          label="Equipment for venue"
+          fieldKey="equipment"
+          hasError={hasError('equipment')}
+          errorText="Please select an equipment option."
+        >
           <div className={styles.pillCol}>
             {equipmentOptions.map((opt) => {
               const isActive = equipment === opt.value;
@@ -667,7 +763,7 @@ export default function ClubBookingForm({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setEquipment(opt.value)}
+                  onClick={() => { setEquipment(opt.value); clearMissing('equipment'); }}
                   className={`${styles.pillWide} ${isActive ? styles.pillActive : ''} ${
                     !opt.supported ? styles.pillUnsupported : ''
                   }`}
@@ -715,13 +811,19 @@ export default function ClubBookingForm({
             price shown, and the booking is flagged is_quote=true on submit
             so the DJ supplies the rate via the existing counter flow. */}
         {canShowRate && isEquipmentSupported && !isQuoteMode && (
-          <FormSection label="Rate">
+          <FormSection
+            label="Rate"
+            fieldKey="offerAmount"
+            hasError={isOffers && hasError('offerAmount')}
+            errorText="Please enter your offer amount."
+          >
             <RateDisplay
               info={rateInfo}
               allowOffers={allowOffers && !isOffers}
               isOffersOnly={isOffers}
               offerAmount={offerAmount}
-              setOfferAmount={setOfferAmount}
+              setOfferAmount={(v) => { setOfferAmount(v); clearMissing('offerAmount'); }}
+              offerHasError={isOffers && hasError('offerAmount')}
               baseRate={
                 (dayData as DayData & { base_rate?: number | string }).base_rate
                   || bookingSettings.base_rate
@@ -733,15 +835,21 @@ export default function ClubBookingForm({
 
         {/* Phone — collected so the DJ can reach the booker about
             day-of logistics. Same US-style auto-formatter mobile uses. */}
-        <FormSection label="Phone Number">
+        <FormSection
+          label="Phone Number"
+          fieldKey="phone"
+          hasError={hasError('phone')}
+          errorText="Please enter your phone number."
+        >
           <input
             id="cbf-phone"
             type="tel"
             inputMode="tel"
             placeholder="(555) 555-5555"
             value={phone}
-            onChange={(e) => setPhone(formatUSPhone(e.target.value))}
+            onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
             className={styles.input}
+            style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
             autoComplete="tel"
           />
         </FormSection>
@@ -777,11 +885,37 @@ export default function ClubBookingForm({
 // FormSection — small wrapper that gives each section its own padded card
 // row + label. Mirrors the look of the vanilla form.
 // ─────────────────────────────────────────────────────────────────────────
-function FormSection({ label, children }: { label: string; children: React.ReactNode }) {
+function FormSection({
+  label, children, hasError, fieldKey, errorText,
+}: {
+  label: string;
+  children: React.ReactNode;
+  // When true, label turns red. Set by parent based on missing-fields set.
+  hasError?: boolean;
+  // Used by handleSubmit's scroll-to-first-error logic to find the section.
+  fieldKey?: string;
+  // Optional inline message rendered below children when hasError is true.
+  errorText?: string;
+}) {
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionLabel}>{label}</div>
+    <div className={styles.section} data-field={fieldKey}>
+      <div
+        className={styles.sectionLabel}
+        style={hasError ? { color: '#ff5f5f' } : undefined}
+      >
+        {label}{hasError && ' *'}
+      </div>
       {children}
+      {hasError && errorText && (
+        <div style={{
+          marginTop: '.4rem',
+          color: '#ff5f5f',
+          fontSize: '.78rem',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          {errorText}
+        </div>
+      )}
     </div>
   );
 }
@@ -796,6 +930,7 @@ function RateDisplay({
   isOffersOnly,
   offerAmount,
   setOfferAmount,
+  offerHasError,
   baseRate,
 }: {
   info: RateInfo;
@@ -803,6 +938,7 @@ function RateDisplay({
   isOffersOnly: boolean;
   offerAmount: string;
   setOfferAmount: (v: string) => void;
+  offerHasError?: boolean;
   baseRate: number | string | null | undefined;
 }) {
   const { rate, symbol, currency, hourlyTotal, hours, label, rateType } = info;
@@ -835,6 +971,7 @@ function RateDisplay({
             value={offerAmount}
             onChange={(e) => setOfferAmount(e.target.value)}
             className={styles.offerInput}
+            style={offerHasError ? { borderColor: '#ff5f5f' } : undefined}
           />
         </div>
       </div>
