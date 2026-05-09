@@ -17,6 +17,7 @@
 //     parity: settings, packages, and the calendar all autosave silently.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
@@ -131,7 +132,16 @@ interface Props {
 }
 
 export default function UpdateDjProfileClient({ initialProfile, authEmail }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('general');
+  // Active tab — defaults to 'general'. Can be deep-linked via ?tab=
+  // (used by the public profile owner-view "+ Add" buttons that route
+  // here). Validates the value against known tab keys before applying.
+  const searchParams = useSearchParams();
+  const tabFromUrl = (() => {
+    const t = searchParams?.get('tab') || '';
+    const valid: TabKey[] = ['general', 'social', 'mixes', 'photos', 'video', 'testimonials', 'booking'];
+    return (valid as string[]).includes(t) ? (t as TabKey) : null;
+  })();
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl || 'general');
 
   const [general, setGeneral] = useState<GeneralFormState>(() => {
     // Vanilla default: a Mobile DJ with no event_types saved yet (new account)

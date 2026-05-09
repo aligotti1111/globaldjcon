@@ -710,6 +710,29 @@ function PackageCardWithCatTabs({
         return;
       }
       const v = validatePkg(d);
+      // Duplicate-title check inside the same category. Two packages
+      // in "general" both called "Silver Package" would confuse the
+      // booker on the public profile, so block the save with a clear
+      // error pointing at the title field. Comparison is
+      // case-insensitive and ignores leading/trailing whitespace.
+      if (v.ok) {
+        const myTitleNorm = (d.title || '').trim().toLowerCase();
+        if (myTitleNorm) {
+          const catList = packages[c] || [];
+          const dupe = catList.some((other, otherIdx) => {
+            if (otherIdx === idx) return false; // skip own slot
+            const otherTitle = (other.title || '').trim().toLowerCase();
+            return otherTitle && otherTitle === myTitleNorm;
+          });
+          if (dupe) {
+            v.ok = false;
+            v.errors.push({
+              field: 'title',
+              msg: `A package called "${d.title.trim()}" already exists in ${c}. Pick a different title.`,
+            });
+          }
+        }
+      }
       if (v.ok) {
         // Valid → save it
         payload[c] = d;
