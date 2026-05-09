@@ -708,6 +708,10 @@ function HeroActions({
   onClickMessage: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  // Tracks which SocialAddButton (if any) is expanded. Lifted here so
+  // opening one auto-closes any other that was open — only one inline
+  // social-add input can be active at a time across the row.
+  const [openSocialField, setOpenSocialField] = useState<string | null>(null);
 
   // Build the canonical share URL. Vanilla uses window.location.origin + '/' + slug.
   // We do that on click since it needs the runtime origin.
@@ -854,6 +858,8 @@ function HeroActions({
           placeholder="https://yoursite.com"
           icon={<WebsiteIcon />}
           colorClass={styles.actionBtnWebsite}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
       {isOwnProfile && !data.soundcloud && (
@@ -864,6 +870,8 @@ function HeroActions({
           placeholder="https://soundcloud.com/yourname"
           icon={<SoundcloudIcon />}
           colorClass={styles.actionBtnSoundcloud}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
       {isOwnProfile && !data.instagram && (
@@ -874,6 +882,8 @@ function HeroActions({
           placeholder="@djyourname"
           icon={<InstagramIcon />}
           colorClass={styles.actionBtnInstagram}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
       {isOwnProfile && !data.tiktok && (
@@ -884,6 +894,8 @@ function HeroActions({
           placeholder="@djyourname"
           icon={<TiktokIcon />}
           colorClass={styles.actionBtnTiktok}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
       {isOwnProfile && !data.facebook && (
@@ -894,6 +906,8 @@ function HeroActions({
           placeholder="https://facebook.com/yourpage"
           icon={<FacebookIcon />}
           colorClass={styles.actionBtnFacebook}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
       {isOwnProfile && !data.twitch && (
@@ -904,6 +918,8 @@ function HeroActions({
           placeholder="https://twitch.tv/yourname"
           icon={<TwitchIcon />}
           colorClass={styles.actionBtnTwitch}
+        openField={openSocialField}
+        setOpenField={setOpenSocialField}
         />
       )}
 
@@ -1008,6 +1024,8 @@ function SocialAddButton({
   placeholder,
   icon,
   colorClass,
+  openField,
+  setOpenField,
 }: {
   userId: string;
   field: 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch';
@@ -1015,11 +1033,25 @@ function SocialAddButton({
   placeholder: string;
   icon: React.ReactNode;
   colorClass: string;
+  // Lifted state — only one SocialAddButton can be expanded at a time.
+  // Each button reads openField to know if IT is the open one, and
+  // calls setOpenField(field) on click / setOpenField(null) on close.
+  openField: string | null;
+  setOpenField: (field: string | null) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const expanded = openField === field;
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // When the parent closes us (because another button got opened), reset
+  // local input state so we don't show stale text on next open.
+  useEffect(() => {
+    if (!expanded) {
+      setValue('');
+      setError(null);
+    }
+  }, [expanded]);
 
   async function handleSave() {
     const trimmed = value.trim();
@@ -1052,9 +1084,7 @@ function SocialAddButton({
       e.preventDefault();
       handleSave();
     } else if (e.key === 'Escape') {
-      setExpanded(false);
-      setValue('');
-      setError(null);
+      setOpenField(null);
     }
   }
 
@@ -1062,7 +1092,7 @@ function SocialAddButton({
     return (
       <button
         type="button"
-        onClick={() => setExpanded(true)}
+        onClick={() => setOpenField(field)}
         title={`Add ${label}`}
         aria-label={`Add ${label}`}
         className={`${styles.actionBtn} ${colorClass}`}
@@ -1096,10 +1126,19 @@ function SocialAddButton({
 
   return (
     <div style={{
-      display: 'inline-flex',
+      // flex-basis: 100% forces this row to break onto its own line
+      // inside the heroActions flex container, dropping the input panel
+      // BELOW the icon row instead of squeezing into it. order: 999 keeps
+      // it visually after all the icon buttons even though it's an
+      // earlier sibling in the JSX (the filled icons + other unfilled
+      // adds come first).
+      flexBasis: '100%',
+      order: 999,
+      display: 'flex',
       alignItems: 'center',
       gap: '.4rem',
-      padding: '.25rem .35rem',
+      padding: '.4rem .5rem',
+      marginTop: '.25rem',
       background: 'rgba(0, 245, 196, .06)',
       border: '1px solid var(--neon)',
       borderRadius: 6,
@@ -1113,8 +1152,9 @@ function SocialAddButton({
         placeholder={placeholder}
         disabled={saving}
         style={{
-          width: 200,
-          padding: '.35rem .55rem',
+          flex: 1,
+          minWidth: 0,
+          padding: '.45rem .65rem',
           background: 'rgba(0,0,0,0.25)',
           border: '1px solid var(--border, rgba(255,255,255,0.15))',
           borderRadius: 4,
@@ -1147,7 +1187,7 @@ function SocialAddButton({
       </button>
       <button
         type="button"
-        onClick={() => { setExpanded(false); setValue(''); setError(null); }}
+        onClick={() => setOpenField(null)}
         disabled={saving}
         title="Cancel"
         aria-label="Cancel"
