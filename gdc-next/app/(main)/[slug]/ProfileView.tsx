@@ -135,10 +135,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
-  // Inline social-links editor modal — opened from HeroActions when
-  // the profile owner clicks the "+" button. Lifted to ProfileView so
-  // the modal can be rendered outside the hero subtree.
-  const [socialEditorOpen, setSocialEditorOpen] = useState(false);
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -366,7 +362,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               effectiveSlug={effectiveSlug}
               isLoggedIn={isLoggedIn}
               isOwnProfile={isOwnProfile}
-              setSocialEditorOpen={setSocialEditorOpen}
               onClickMessage={() => {
                 // Owner can't message themselves; logged-out visitors are
                 // sent to /login first, returning to the same profile.
@@ -515,11 +510,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {/* Owner-only quick add — routes to update-dj-profile
-                    Mixes tab. Same pattern repeats for Photos/Video. */}
-                {isOwnProfile && (
-                  <OwnerAddButton href="/update-dj-profile?tab=mixes" label="Add a mix" />
-                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
@@ -544,9 +534,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     onClick={() => setLightboxSrc(url)}
                   />
                 ))}
-                {isOwnProfile && (
-                  <OwnerAddButton href="/update-dj-profile?tab=photos" label="Add photos" />
-                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
@@ -575,9 +562,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {isOwnProfile && (
-                  <OwnerAddButton href="/update-dj-profile?tab=video" label="Add a video" />
-                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
@@ -638,31 +622,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           recipientUserId={data.id}
           recipientName={data.name || 'this DJ'}
           onClose={() => setComposeOpen(false)}
-        />
-      )}
-
-      {/* Inline social-links editor — owner only. Opened by the "+"
-          button in HeroActions. Saves directly to public.users on
-          submit and reloads the page so the new socials are visible
-          in the hero. */}
-      {socialEditorOpen && isOwnProfile && (
-        <SocialLinksModal
-          userId={data.id}
-          initial={{
-            website: data.website,
-            soundcloud: data.soundcloud,
-            instagram: data.instagram,
-            tiktok: data.tiktok,
-            facebook: data.facebook,
-            twitch: data.twitch,
-          }}
-          onClose={() => setSocialEditorOpen(false)}
-          onSaved={() => {
-            setSocialEditorOpen(false);
-            // Easiest way to refresh the hero with the new values is a
-            // full reload — the data was loaded server-side via props.
-            window.location.reload();
-          }}
         />
       )}
     </>
@@ -741,17 +700,12 @@ function HeroActions({
   isLoggedIn,
   isOwnProfile,
   onClickMessage,
-  setSocialEditorOpen,
 }: {
   data: DjProfileData;
   effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
   onClickMessage: () => void;
-  // Owner-only — opens the inline socials editor modal mounted in the
-  // parent ProfileView. Lifted state because the modal sits outside
-  // this hero subtree and shares the data prop.
-  setSocialEditorOpen: (open: boolean) => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -820,7 +774,7 @@ function HeroActions({
         )
       )}
 
-      {data.website && (
+      {data.website ? (
         <a
           href={normalizedWebsite(data.website)}
           target="_blank"
@@ -830,9 +784,18 @@ function HeroActions({
         >
           <WebsiteIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="website"
+          label="Website"
+          placeholder="https://yoursite.com"
+          icon={<WebsiteIcon />}
+          colorClass={styles.actionBtnWebsite}
+        />
+      ) : null}
 
-      {data.soundcloud && (
+      {data.soundcloud ? (
         <a
           href={normalizedSoundcloud(data.soundcloud)}
           target="_blank"
@@ -842,9 +805,18 @@ function HeroActions({
         >
           <SoundcloudIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="soundcloud"
+          label="SoundCloud"
+          placeholder="https://soundcloud.com/yourname"
+          icon={<SoundcloudIcon />}
+          colorClass={styles.actionBtnSoundcloud}
+        />
+      ) : null}
 
-      {data.instagram && (
+      {data.instagram ? (
         <a
           href={normalizedInstagram(data.instagram)}
           target="_blank"
@@ -854,9 +826,18 @@ function HeroActions({
         >
           <InstagramIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="instagram"
+          label="Instagram"
+          placeholder="@djyourname"
+          icon={<InstagramIcon />}
+          colorClass={styles.actionBtnInstagram}
+        />
+      ) : null}
 
-      {data.tiktok && (
+      {data.tiktok ? (
         <a
           href={normalizedTiktok(data.tiktok)}
           target="_blank"
@@ -866,9 +847,18 @@ function HeroActions({
         >
           <TiktokIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="tiktok"
+          label="TikTok"
+          placeholder="@djyourname"
+          icon={<TiktokIcon />}
+          colorClass={styles.actionBtnTiktok}
+        />
+      ) : null}
 
-      {data.facebook && (
+      {data.facebook ? (
         <a
           href={normalizedFacebook(data.facebook)}
           target="_blank"
@@ -878,9 +868,18 @@ function HeroActions({
         >
           <FacebookIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="facebook"
+          label="Facebook"
+          placeholder="https://facebook.com/yourpage"
+          icon={<FacebookIcon />}
+          colorClass={styles.actionBtnFacebook}
+        />
+      ) : null}
 
-      {data.twitch && (
+      {data.twitch ? (
         <a
           href={normalizedTwitch(data.twitch)}
           target="_blank"
@@ -890,7 +889,16 @@ function HeroActions({
         >
           <TwitchIcon />
         </a>
-      )}
+      ) : isOwnProfile ? (
+        <SocialAddButton
+          userId={data.id}
+          field="twitch"
+          label="Twitch"
+          placeholder="https://twitch.tv/yourname"
+          icon={<TwitchIcon />}
+          colorClass={styles.actionBtnTwitch}
+        />
+      ) : null}
 
       {data.rate && (
         <span
@@ -909,21 +917,6 @@ function HeroActions({
       >
         <CopyIcon />
       </button>
-
-      {/* Owner-only quick add for social links — opens an inline editor
-          so the DJ can fill in any of the social fields without leaving
-          the profile page. Saves directly to public.users on submit. */}
-      {isOwnProfile && (
-        <button
-          type="button"
-          className={`${styles.actionBtn} ${styles.actionBtnGhost}`}
-          title="Add social links"
-          onClick={() => setSocialEditorOpen(true)}
-          style={{ fontWeight: 700, fontSize: '1.1rem' }}
-        >
-          +
-        </button>
-      )}
 
       {/* Message button — opens ComposeMessageModal. Hidden on the owner's
           own profile (you can't message yourself). For logged-out visitors,
@@ -951,291 +944,228 @@ function HeroActions({
 
 // ─────────────────────────────────────────────────────────────────────────
 // OwnerAddButton — quick-add link shown to the profile owner inside the
-// Mixes / Photos / Video tabs. Routes them to the corresponding tab
-// inside /update-dj-profile?tab=… so they can add new media. The "big"
-// variant takes over the empty-state pane; the default is a small
-// trailing tile that sits at the end of the existing media row.
+// Mixes / Photos / Video tabs when the tab is empty. Big centered "+"
+// in the middle of the tab area. Routes to update-dj-profile?tab=… so
+// they can add new media. Once any media exists the button disappears
+// (owner manages additions from update-dj-profile).
 // ─────────────────────────────────────────────────────────────────────────
 function OwnerAddButton({ href, label, big }: { href: string; label: string; big?: boolean }) {
-  if (big) {
-    return (
-      <a
-        href={href}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '.5rem',
-          padding: '.7rem 1.2rem',
-          background: 'rgba(0, 245, 196, .1)',
-          border: '1px solid var(--neon)',
-          borderRadius: 6,
-          color: 'var(--neon)',
-          textDecoration: 'none',
-          fontFamily: "'Space Mono', monospace",
-          fontSize: '.75rem',
-          letterSpacing: '.1em',
-          textTransform: 'uppercase',
-        }}
-      >
-        <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> {label}
-      </a>
-    );
-  }
+  // Only the big variant is used now — kept the prop signature so the
+  // call sites don't need to change. label is used as the title/aria.
+  void big;
   return (
     <a
       href={href}
+      title={label}
+      aria-label={label}
       style={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '.4rem',
-        minHeight: 80,
-        padding: '1rem',
-        background: 'rgba(0, 245, 196, .05)',
-        border: '1px dashed var(--neon)',
-        borderRadius: 6,
+        width: 96,
+        height: 96,
+        margin: '2.5rem auto',
+        background: 'rgba(0, 245, 196, .08)',
+        border: '2px solid var(--neon)',
+        borderRadius: '50%',
         color: 'var(--neon)',
         textDecoration: 'none',
-        fontFamily: "'Space Mono', monospace",
-        fontSize: '.7rem',
-        letterSpacing: '.1em',
-        textTransform: 'uppercase',
+        fontSize: '3rem',
+        lineHeight: 1,
+        fontWeight: 300,
+        transition: 'transform .15s ease, background .15s ease',
       }}
     >
-      <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span> {label}
+      +
     </a>
   );
 }
 
+
 // ─────────────────────────────────────────────────────────────────────────
-// SocialLinksModal — inline editor for the profile owner. Opened from
-// HeroActions's "+" button. Lets the DJ fill in any of the 6 social
-// fields (website, soundcloud, instagram, tiktok, facebook, twitch)
-// and saves directly to public.users via the supabase client. Mirrors
-// the field set in /update-dj-profile/SocialsTab so editing here is a
-// shortcut for a focused subset of the same task. On save we close +
-// reload the page so the hero refreshes with the new socials.
+// SocialAddButton — owner-only quick add for a single social platform.
+// Renders in the same hero action slot a normal social link would, but
+// in placeholder form: the platform's icon with a subtle dashed border
+// and a small "+" badge. Click expands an inline input row right after
+// the button; DJ pastes their URL or handle, hits Add, save writes to
+// public.users for that one field. On success we reload so the placeholder
+// is replaced by the real link button (with the colored hover state).
+//
+// Handle vs. URL paste is handled downstream by the existing normalized*
+// functions in HeroActions — we just save what the DJ types.
 // ─────────────────────────────────────────────────────────────────────────
-function SocialLinksModal({
+function SocialAddButton({
   userId,
-  initial,
-  onClose,
-  onSaved,
+  field,
+  label,
+  placeholder,
+  icon,
+  colorClass,
 }: {
   userId: string;
-  initial: {
-    website: string | null;
-    soundcloud: string | null;
-    instagram: string | null;
-    tiktok: string | null;
-    facebook: string | null;
-    twitch: string | null;
-  };
-  onClose: () => void;
-  onSaved: () => void;
+  field: 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch';
+  label: string;
+  placeholder: string;
+  icon: React.ReactNode;
+  colorClass: string;
 }) {
-  const [website, setWebsite] = useState(initial.website || '');
-  const [soundcloud, setSoundcloud] = useState(initial.soundcloud || '');
-  const [instagram, setInstagram] = useState(initial.instagram || '');
-  const [tiktok, setTiktok] = useState(initial.tiktok || '');
-  const [facebook, setFacebook] = useState(initial.facebook || '');
-  const [twitch, setTwitch] = useState(initial.twitch || '');
+  const [expanded, setExpanded] = useState(false);
+  const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setError('Enter something first.');
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
       const supabase = createClient();
-      // Empty string → null in DB so the conditionals on the public
-      // profile (which check for truthy values) hide the row when the
-      // DJ clears a field.
-      const payload = {
-        website: website.trim() || null,
-        soundcloud: soundcloud.trim() || null,
-        instagram: instagram.trim() || null,
-        tiktok: tiktok.trim() || null,
-        facebook: facebook.trim() || null,
-        twitch: twitch.trim() || null,
-      };
       const { error: dbError } = await supabase
         .from('users')
-        .update(payload as unknown as never)
+        .update({ [field]: trimmed } as unknown as never)
         .eq('id', userId);
       if (dbError) throw dbError;
-      onSaved();
+      // Reload so HeroActions re-renders with the live link button in
+      // place of this add button. Server-loaded props don't update
+      // otherwise.
+      window.location.reload();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not save social links.';
+      const msg = e instanceof Error ? e.message : 'Could not save.';
       setError(msg);
       setSaving(false);
     }
   }
 
-  const fields: { key: string; label: string; value: string; setter: (v: string) => void; placeholder: string }[] = [
-    { key: 'website', label: 'Website', value: website, setter: setWebsite, placeholder: 'https://yoursite.com' },
-    { key: 'soundcloud', label: 'SoundCloud', value: soundcloud, setter: setSoundcloud, placeholder: 'https://soundcloud.com/yourname' },
-    { key: 'instagram', label: 'Instagram', value: instagram, setter: setInstagram, placeholder: '@djyourname' },
-    { key: 'tiktok', label: 'TikTok', value: tiktok, setter: setTiktok, placeholder: '@djyourname' },
-    { key: 'facebook', label: 'Facebook', value: facebook, setter: setFacebook, placeholder: 'https://facebook.com/yourpage' },
-    { key: 'twitch', label: 'Twitch', value: twitch, setter: setTwitch, placeholder: 'https://twitch.tv/yourname' },
-  ];
+  function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setExpanded(false);
+      setValue('');
+      setError(null);
+    }
+  }
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '1rem',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        title={`Add ${label}`}
+        aria-label={`Add ${label}`}
+        className={`${styles.actionBtn} ${colorClass}`}
         style={{
-          background: 'var(--bg-card, #1a1a2e)',
-          border: '1px solid var(--border, rgba(255,255,255,0.1))',
-          borderRadius: 12,
-          padding: '1.5rem',
-          width: '100%',
-          maxWidth: 480,
-          maxHeight: '90vh',
-          overflowY: 'auto',
+          // Faded + dashed-border look so it reads as "add me", not "active link".
+          opacity: 0.55,
+          borderStyle: 'dashed',
+          position: 'relative',
         }}
       >
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1rem',
+        {icon}
+        {/* Tiny "+" badge in the corner so the affordance reads as add. */}
+        <span style={{
+          position: 'absolute',
+          top: -4,
+          right: -4,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: 'var(--neon)',
+          color: '#000',
+          fontSize: '0.7rem',
+          fontWeight: 700,
+          lineHeight: '16px',
+          textAlign: 'center',
+          pointerEvents: 'none',
+        }}>+</span>
+      </button>
+    );
+  }
+
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '.4rem',
+      padding: '.25rem .35rem',
+      background: 'rgba(0, 245, 196, .06)',
+      border: '1px solid var(--neon)',
+      borderRadius: 6,
+    }}>
+      <input
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => { setValue(e.target.value); if (error) setError(null); }}
+        onKeyDown={handleKey}
+        placeholder={placeholder}
+        disabled={saving}
+        style={{
+          width: 200,
+          padding: '.35rem .55rem',
+          background: 'rgba(0,0,0,0.25)',
+          border: '1px solid var(--border, rgba(255,255,255,0.15))',
+          borderRadius: 4,
+          color: 'var(--white, #fff)',
+          fontFamily: 'DM Sans, sans-serif',
+          fontSize: '.78rem',
+        }}
+      />
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        title={`Add ${label}`}
+        style={{
+          padding: '.35rem .65rem',
+          background: 'var(--neon)',
+          border: 'none',
+          borderRadius: 4,
+          color: '#000',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.65rem',
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+          fontWeight: 700,
+          cursor: saving ? 'not-allowed' : 'pointer',
+          opacity: saving ? 0.6 : 1,
+        }}
+      >
+        {saving ? '…' : 'Add'}
+      </button>
+      <button
+        type="button"
+        onClick={() => { setExpanded(false); setValue(''); setError(null); }}
+        disabled={saving}
+        title="Cancel"
+        aria-label="Cancel"
+        style={{
+          padding: '.25rem .4rem',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--muted, #888)',
+          cursor: saving ? 'not-allowed' : 'pointer',
+          fontSize: '1rem',
+          lineHeight: 1,
+        }}
+      >
+        ✕
+      </button>
+      {error && (
+        <span style={{
+          color: '#ff5f5f',
+          fontSize: '.7rem',
+          fontFamily: 'DM Sans, sans-serif',
+          marginLeft: '.25rem',
         }}>
-          <div style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: '1.4rem',
-            color: 'var(--white, #fff)',
-            letterSpacing: '.04em',
-          }}>
-            Social Links
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--muted, #888)',
-              fontSize: '1.4rem',
-              cursor: 'pointer',
-              padding: '.25rem .5rem',
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-          {fields.map((f) => (
-            <div key={f.key}>
-              <label style={{
-                display: 'block',
-                fontFamily: "'Space Mono', monospace",
-                fontSize: '.65rem',
-                letterSpacing: '.06em',
-                textTransform: 'uppercase',
-                color: 'var(--muted, #888)',
-                marginBottom: '.25rem',
-              }}>
-                {f.label}
-              </label>
-              <input
-                type="text"
-                value={f.value}
-                onChange={(e) => f.setter(e.target.value)}
-                placeholder={f.placeholder}
-                style={{
-                  width: '100%',
-                  padding: '.55rem .7rem',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.1))',
-                  borderRadius: 6,
-                  color: 'var(--white, #fff)',
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: '.85rem',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {error && (
-          <div style={{
-            marginTop: '.75rem',
-            padding: '.5rem .7rem',
-            background: 'rgba(255, 95, 95, .08)',
-            border: '1px solid rgba(255, 95, 95, .35)',
-            borderRadius: 6,
-            color: '#ff5f5f',
-            fontSize: '.78rem',
-          }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{
-          marginTop: '1.25rem',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '.6rem',
-        }}>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            style={{
-              padding: '.55rem 1rem',
-              background: 'transparent',
-              border: '1px solid var(--border, rgba(255,255,255,0.2))',
-              borderRadius: 6,
-              color: 'var(--muted, #888)',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.7rem',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              padding: '.55rem 1rem',
-              background: 'var(--neon, #00f5c4)',
-              border: 'none',
-              borderRadius: 6,
-              color: '#000',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.7rem',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-              opacity: saving ? 0.6 : 1,
-            }}
-          >
-            {saving ? 'Saving…' : 'Save Links'}
-          </button>
-        </div>
-      </div>
+          {error}
+        </span>
+      )}
     </div>
   );
 }
