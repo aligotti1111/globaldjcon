@@ -728,7 +728,7 @@ function PackageCardWithCatTabs({
             v.ok = false;
             v.errors.push({
               field: 'title',
-              msg: `A package called "${d.title.trim()}" already exists in ${c}. Pick a different title.`,
+              msg: `A package called "${(d.title || '').trim()}" already exists in ${c}. Pick a different title.`,
             });
           }
         }
