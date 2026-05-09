@@ -12,6 +12,19 @@ export interface DayData {
   location?: string;      // free text or "Private" to hide event name
   ticketUrl?: string;
   ticketLabel?: string;   // CTA label e.g. "Buy Tickets"
+  // ── Per-day rate overrides (club DJs only) ──────────────────────
+  // When present, these win over the universal booking_settings rate
+  // fields. Only set when the day's status is 'available' (no booked /
+  // unavailable flag) — the owner editor doesn't expose them otherwise.
+  // Each set behaves like the universal rates: switching rateType keeps
+  // the dormant set intact for when it's switched back.
+  rateType?: 'flat' | 'hourly' | 'offers';
+  rate_with_system?: number | string;        // flat
+  rate_with_decks?: number | string;
+  rate_no_equip?: number | string;
+  rate_hourly_with_system?: number | string; // hourly
+  rate_hourly_with_decks?: number | string;
+  rate_hourly_no_equip?: number | string;
 }
 
 export type BookingDays = Record<string, DayData>;

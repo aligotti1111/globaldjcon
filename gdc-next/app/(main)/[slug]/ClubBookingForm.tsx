@@ -118,20 +118,40 @@ function computeRate(
     label = 'Rate with venue providing all equipment';
   }
 
-  // Pick the correct global rate field for this equipment AND rate type.
+  // Pick the correct rate for this equipment AND rate type.
+  // Day-level overrides win — when present, the day's rate fields take
+  // priority over the DJ's universal rates. This lets the DJ promote a
+  // special rate for a specific date (e.g. high-demand Saturday) without
+  // changing their default rates.
   // Hourly mode reads the rate_hourly_* fields; flat mode reads the
-  // rate_* (flat) fields. They're independent — a DJ who has flat
-  // values set but switches to hourly without entering hourly values
-  // will show no rate for hourly until they configure them.
+  // rate_* (flat) fields. They're independent — a DJ who has flat values
+  // set but switches to hourly without entering hourly values will show
+  // no rate for hourly until they configure them.
   if (baseType !== 'offers') {
     let raw: number | string | null | undefined = null;
     const isHourly = baseType === 'hourly';
-    if (equipment === 'sound_system') {
-      raw = isHourly ? bs.rate_hourly_with_system : bs.rate_with_system;
-    } else if (equipment === 'decks_only') {
-      raw = isHourly ? bs.rate_hourly_with_decks : bs.rate_with_decks;
-    } else if (equipment === 'venue_provides') {
-      raw = isHourly ? bs.rate_hourly_no_equip : bs.rate_no_equip;
+    // Day-level field name matching equipment + rateType
+    const dayFlatKey = equipment === 'sound_system' ? 'rate_with_system'
+      : equipment === 'decks_only' ? 'rate_with_decks'
+      : equipment === 'venue_provides' ? 'rate_no_equip'
+      : null;
+    const dayHourlyKey = equipment === 'sound_system' ? 'rate_hourly_with_system'
+      : equipment === 'decks_only' ? 'rate_hourly_with_decks'
+      : equipment === 'venue_provides' ? 'rate_hourly_no_equip'
+      : null;
+    const dayKey = isHourly ? dayHourlyKey : dayFlatKey;
+    const dayRaw = dayKey ? (dayData as DayData & Record<string, number | string | undefined>)[dayKey] : undefined;
+    if (dayRaw != null && dayRaw !== '') {
+      raw = dayRaw;
+    } else {
+      // Fall back to global rate
+      if (equipment === 'sound_system') {
+        raw = isHourly ? bs.rate_hourly_with_system : bs.rate_with_system;
+      } else if (equipment === 'decks_only') {
+        raw = isHourly ? bs.rate_hourly_with_decks : bs.rate_with_decks;
+      } else if (equipment === 'venue_provides') {
+        raw = isHourly ? bs.rate_hourly_no_equip : bs.rate_no_equip;
+      }
     }
 
     if (raw != null && raw !== '') {
