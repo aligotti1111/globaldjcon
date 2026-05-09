@@ -24,6 +24,7 @@ type EmailType =
   | 'profile_claimed'
   | 'contact_us'
   | 'booking_request'
+  | 'booking_request_confirmation'
   | 'booking_status'
   | 'mob_booking_status'
   | 'booking_counter'
@@ -117,17 +118,20 @@ function currencySymbol(code: string | null | undefined): string {
 }
 
 // Shared HTML wrapper — solid dark header bar + footer. Vanilla parity.
-// Header background changed from gradient to solid #000 to match the
-// logo PNG's own backdrop — the logo image has a pure-black box behind
-// the wordmark, so any other shade (we previously tried #1a1a2e) shows
-// a visible seam between the cell and the logo. Pure black blends.
+// Header background: solid #000000 to match the logo PNG's own backdrop.
+// Logo is wrapped in an inner centering table because some email clients
+// (notably Gmail mobile) ignore text-align on the parent <td> for block
+// images. The inner table forces horizontal centering reliably.
 function emailTemplate(content: string): string {
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-<tr><td style="background:#000000;padding:24px 32px;text-align:center;">
-<img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;margin:0 auto;" /></td></tr>
+<tr><td style="background:#000000;padding:24px 32px;" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td align="center">
+<img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;outline:none;text-decoration:none;" />
+</td></tr></table>
+</td></tr>
 <tr><td style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
 <p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
@@ -380,6 +384,55 @@ export async function POST(req: Request) {
           ${venueAddress ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(venueAddress)}</p>` : ''}
         </div>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Request')}
+      `),
+    };
+
+  // ── 5b. BOOKING REQUEST CONFIRMATION (sent to BOOKER) ─────────────
+  // Mirror of booking_request but addressed to the booker — confirms
+  // their submission landed and gives them a record of what they sent.
+  // Same info card layout for visual consistency.
+  } else if (type === 'booking_request_confirmation') {
+    const requesterEmail = await pickEmail(
+      body.requesterEmail as string | undefined,
+      body.requesterUserId as string | undefined,
+    );
+    if (!requesterEmail) {
+      return NextResponse.json(
+        { error: 'Could not resolve requester email for booking_request_confirmation' },
+        { status: 400 }
+      );
+    }
+    const djName = body.djName as string | undefined;
+    const requesterName = body.requesterName as string | undefined;
+    const eventDate = body.eventDate as string | undefined;
+    const venueName = body.venueName as string | undefined;
+    const venueAddress = body.venueAddress as string | undefined;
+    const startTime = body.startTime as string | undefined;
+    const endTime = body.endTime as string | undefined;
+    const eventType = body.eventType as string | undefined;
+    const packageTitle = body.packageTitle as string | undefined;
+    const setType = body.setType as string | undefined;
+    const venueType = body.venueType as string | undefined;
+    const dateStr = fmtDate(eventDate);
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [requesterEmail],
+      subject: `Booking request sent to ${djName || 'your DJ'} – ${dateStr}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
+        ${bookingInfoBox({
+          eventTypeText: eventTypeLabel(eventType),
+          setTypeText: setTypeLabel(setType),
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          packageTitle,
+          venueTypeText: venueTypeLabel(venueType),
+          venueName,
+          venueAddress,
+        })}
+        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Your Request')}
       `),
     };
 
