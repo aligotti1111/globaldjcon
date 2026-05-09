@@ -297,15 +297,24 @@ function ClubDayEditModal({
     || (bookingSettings.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined)
     || 'flat';
   const [rateType, setRateType] = useState<'flat' | 'hourly' | 'offers'>(initialRateType);
-  // Empty string when unset — same convention as universal rate panel.
+  // Helper: empty string when unset — same convention as universal panel.
   const initStr = (v: number | string | undefined): string =>
     v != null && v !== '' ? String(v) : '';
-  const [rateWithSystem, setRateWithSystem] = useState(initStr(dayData.rate_with_system));
-  const [rateWithDecks, setRateWithDecks] = useState(initStr(dayData.rate_with_decks));
-  const [rateNoEquip, setRateNoEquip] = useState(initStr(dayData.rate_no_equip));
-  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initStr(dayData.rate_hourly_with_system));
-  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initStr(dayData.rate_hourly_with_decks));
-  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initStr(dayData.rate_hourly_no_equip));
+  // Pre-fill rule — when the day has no override for a field, fall back
+  // to the DJ's universal rate so the modal opens with their default
+  // values as a starting point. They can then edit those numbers for
+  // this specific day; on save we only persist values that DIFFER from
+  // the universal so the day data stays clean (no redundant copies).
+  const initRate = (
+    dayVal: number | string | undefined,
+    universalVal: number | string | undefined,
+  ): string => initStr(dayVal != null && dayVal !== '' ? dayVal : universalVal);
+  const [rateWithSystem, setRateWithSystem] = useState(initRate(dayData.rate_with_system, bookingSettings.rate_with_system));
+  const [rateWithDecks, setRateWithDecks] = useState(initRate(dayData.rate_with_decks, bookingSettings.rate_with_decks));
+  const [rateNoEquip, setRateNoEquip] = useState(initRate(dayData.rate_no_equip, bookingSettings.rate_no_equip));
+  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initRate(dayData.rate_hourly_with_system, bookingSettings.rate_hourly_with_system));
+  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initRate(dayData.rate_hourly_with_decks, bookingSettings.rate_hourly_with_decks));
+  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initRate(dayData.rate_hourly_no_equip, bookingSettings.rate_hourly_no_equip));
 
   // Equipment flags from the DJ's universal settings — controls which
   // rate inputs render. Higher equipment tier = more inputs (mirrors
@@ -334,25 +343,42 @@ function ClubDayEditModal({
 
   function handleSave() {
     if (status === 'available') {
-      // Build a partial DayData carrying only set rate fields. If nothing
-      // is set, drop the day entry entirely (back to plain default).
-      // Note: we keep BOTH rate sets (flat + hourly) when present, even
-      // though only one is "active" via rateType — same behavior as the
-      // universal rate panel where dormant values are retained.
-      const next: DayData = {};
+      // Build a partial DayData carrying only fields that DIFFER from
+      // the DJ's universal rates. Inputs are pre-filled with universal
+      // values, so unchanged inputs match universal and don't get saved.
+      // Only true overrides land in bookingDays[date].
+      // Compare as numbers so '300' === 300, and treat empty/zero as "unset".
       const tFlat = (s: string) => s.trim() === '' ? undefined : s.trim();
-      const flatSys = tFlat(rateWithSystem);
-      const flatDecks = tFlat(rateWithDecks);
-      const flatNone = tFlat(rateNoEquip);
-      const hrSys = tFlat(rateHourlyWithSystem);
-      const hrDecks = tFlat(rateHourlyWithDecks);
-      const hrNone = tFlat(rateHourlyNoEquip);
-      const anyRateSet = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateType !== initialRateType;
-      if (!anyRateSet) {
+      const norm = (v: string | number | undefined): number | null => {
+        if (v == null || v === '') return null;
+        const n = typeof v === 'number' ? v : Number(v);
+        return isNaN(n) ? null : n;
+      };
+      const diffs = (input: string, universal: number | string | undefined): string | undefined => {
+        const inputNum = norm(input);
+        const univNum = norm(universal);
+        // Same as universal (or both empty) → don't save (returns undefined).
+        if (inputNum === univNum) return undefined;
+        // Different → save the input value (or undefined if cleared).
+        return tFlat(input);
+      };
+      const flatSys = diffs(rateWithSystem, bookingSettings.rate_with_system);
+      const flatDecks = diffs(rateWithDecks, bookingSettings.rate_with_decks);
+      const flatNone = diffs(rateNoEquip, bookingSettings.rate_no_equip);
+      const hrSys = diffs(rateHourlyWithSystem, bookingSettings.rate_hourly_with_system);
+      const hrDecks = diffs(rateHourlyWithDecks, bookingSettings.rate_hourly_with_decks);
+      const hrNone = diffs(rateHourlyNoEquip, bookingSettings.rate_hourly_no_equip);
+      // rateType is an override only if it differs from the universal.
+      const universalRateType = (bookingSettings.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined) || 'flat';
+      const rateTypeChanged = rateType !== universalRateType;
+      const anyOverride = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateTypeChanged;
+      if (!anyOverride) {
+        // Nothing differs from universal — drop the day entry entirely.
         onSave(null);
         return;
       }
-      next.rateType = rateType;
+      const next: DayData = {};
+      if (rateTypeChanged) next.rateType = rateType;
       if (flatSys) next.rate_with_system = flatSys;
       if (flatDecks) next.rate_with_decks = flatDecks;
       if (flatNone) next.rate_no_equip = flatNone;
