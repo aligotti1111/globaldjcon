@@ -29,6 +29,7 @@ import {
   formatTime12,
   windowLabel,
 } from './bookingSettings';
+import { currencySymbol } from '@/lib/constants';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -40,6 +41,11 @@ const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 interface Props {
   bookingDays: BookingDays;
   bookingWindowMonths: number;
+  // Used by the owner edit popup when isOwnProfile=true. The popup
+  // mirrors the universal rate panel logic (equipment-aware inputs)
+  // for setting per-day rate overrides, so it needs access to the DJ's
+  // equipment flags, currency, and global rate type.
+  bookingSettings?: BookingSettings;
   djId: string;
   djSlug: string;
   djName: string;
@@ -102,6 +108,7 @@ function isInRange(y: number, m: number, windowMonths: number): boolean {
 export default function PublicCalendar({
   bookingDays: initialBookingDays,
   bookingWindowMonths,
+  bookingSettings,
   djId,
   djName,
   djSlug,
@@ -414,6 +421,7 @@ export default function PublicCalendar({
         <OwnerDayEditPopup
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
+          bookingSettings={bookingSettings}
           onClose={() => setOwnerEditKey(null)}
           onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
         />
@@ -872,11 +880,13 @@ function BookedEventPopup({
 function OwnerDayEditPopup({
   dateKey,
   dayData,
+  bookingSettings,
   onClose,
   onSave,
 }: {
   dateKey: string;
   dayData: DayData;
+  bookingSettings?: BookingSettings;
   onClose: () => void;
   onSave: (update: DayData | null) => void;
 }) {
@@ -884,6 +894,29 @@ function OwnerDayEditPopup({
     dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available'
   );
   const [eventName, setEventName] = useState<string>(dayData.eventName || '');
+
+  // ── Per-day rate override state ──────────────────────────────────
+  // Mirror of ClubDayEditModal in update-dj-profile/. Initialised from
+  // the existing day data; falls back to the global rate type so the
+  // editor opens to the same context the DJ uses universally.
+  const initialRateType: 'flat' | 'hourly' | 'offers' =
+    (dayData.rateType as 'flat' | 'hourly' | 'offers' | undefined)
+    || (bookingSettings?.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined)
+    || 'flat';
+  const [rateType, setRateType] = useState<'flat' | 'hourly' | 'offers'>(initialRateType);
+  const initStr = (v: number | string | undefined): string =>
+    v != null && v !== '' ? String(v) : '';
+  const [rateWithSystem, setRateWithSystem] = useState(initStr(dayData.rate_with_system));
+  const [rateWithDecks, setRateWithDecks] = useState(initStr(dayData.rate_with_decks));
+  const [rateNoEquip, setRateNoEquip] = useState(initStr(dayData.rate_no_equip));
+  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initStr(dayData.rate_hourly_with_system));
+  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initStr(dayData.rate_hourly_with_decks));
+  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initStr(dayData.rate_hourly_no_equip));
+
+  const equipFull = !!bookingSettings?.equip_full;
+  const equipDecks = !!bookingSettings?.equip_decks;
+  const equipNone = !!bookingSettings?.equip_none;
+  const sym = currencySymbol(bookingSettings?.rate_currency || 'USD');
 
   // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
   const formatted = useMemo(() => {
@@ -904,7 +937,29 @@ function OwnerDayEditPopup({
 
   function handleSave() {
     if (status === 'available') {
-      onSave(null);
+      // Build a partial DayData carrying only set rate fields. If
+      // nothing is set and rate type matches the global, drop the day
+      // entry entirely. Mirror of update-dj-profile/ClubOwnerCalendar.
+      const tFlat = (s: string) => s.trim() === '' ? undefined : s.trim();
+      const flatSys = tFlat(rateWithSystem);
+      const flatDecks = tFlat(rateWithDecks);
+      const flatNone = tFlat(rateNoEquip);
+      const hrSys = tFlat(rateHourlyWithSystem);
+      const hrDecks = tFlat(rateHourlyWithDecks);
+      const hrNone = tFlat(rateHourlyNoEquip);
+      const anyRateSet = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateType !== initialRateType;
+      if (!anyRateSet) {
+        onSave(null);
+        return;
+      }
+      const next: DayData = { rateType };
+      if (flatSys) next.rate_with_system = flatSys;
+      if (flatDecks) next.rate_with_decks = flatDecks;
+      if (flatNone) next.rate_no_equip = flatNone;
+      if (hrSys) next.rate_hourly_with_system = hrSys;
+      if (hrDecks) next.rate_hourly_with_decks = hrDecks;
+      if (hrNone) next.rate_hourly_no_equip = hrNone;
+      onSave(next);
       return;
     }
     if (status === 'unavailable') {
@@ -958,6 +1013,86 @@ function OwnerDayEditPopup({
           </label>
         </div>
 
+        {/* ── Per-day rate override (Available status only) ─────────
+            Mirror of the universal rate panel + the update-dj-profile
+            calendar's day-edit modal. Empty fields fall back to the
+            DJ's universal rates; non-empty fields win for that date. */}
+        {status === 'available' && bookingSettings && (
+          <div className={styles.ownerEditBookedFields}>
+            <div className={styles.ownerEditFieldGroup}>
+              <label className={styles.ownerEditFieldLabel}>
+                Rate Override (optional — leave blank to use your default rates)
+              </label>
+              {/* Rate type tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '.4rem',
+                marginBottom: '.6rem',
+                flexWrap: 'wrap',
+              }}>
+                {(['flat', 'hourly', 'offers'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setRateType(t)}
+                    style={{
+                      padding: '.35rem .8rem',
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.65rem',
+                      letterSpacing: '.08em',
+                      textTransform: 'uppercase',
+                      borderRadius: 4,
+                      border: '1px solid ' + (rateType === t ? 'var(--neon)' : 'var(--border)'),
+                      background: rateType === t ? 'rgba(0,245,196,0.1)' : 'transparent',
+                      color: rateType === t ? 'var(--neon)' : 'var(--muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t === 'flat' ? 'Flat' : t === 'hourly' ? 'Hourly' : 'Open Offers'}
+                  </button>
+                ))}
+              </div>
+
+              {rateType !== 'offers' && (() => {
+                const isHourly = rateType === 'hourly';
+                const suffix = isHourly ? ' (per hour)' : '';
+                const sysVal = isHourly ? rateHourlyWithSystem : rateWithSystem;
+                const sysSet = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
+                const decksVal = isHourly ? rateHourlyWithDecks : rateWithDecks;
+                const decksSet = isHourly ? setRateHourlyWithDecks : setRateWithDecks;
+                const noneVal = isHourly ? rateHourlyNoEquip : rateNoEquip;
+                const noneSet = isHourly ? setRateHourlyNoEquip : setRateNoEquip;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    {equipFull && (
+                      <>
+                        <PCDayRateInput label={`Sound System & Decks/Controller${suffix}`} symbol={sym} value={sysVal} onChange={sysSet} />
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                      </>
+                    )}
+                    {equipDecks && (
+                      <>
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                      </>
+                    )}
+                    {equipNone && (
+                      <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                    )}
+                  </div>
+                );
+              })()}
+              {rateType === 'offers' && (
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '.8rem', lineHeight: 1.5 }}>
+                  This day will accept open offers from bookers — no rate
+                  shown publicly. Bookers submit what they want to pay.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {status === 'booked' && (
           <div className={styles.ownerEditBookedFields}>
             <div className={styles.ownerEditFieldGroup}>
@@ -985,6 +1120,61 @@ function OwnerDayEditPopup({
             Save
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PCDayRateInput — currency-prefixed number input for the owner's per-day
+// rate override panel. Mirror of update-dj-profile/ClubOwnerCalendar's
+// DayRateInput; lives here so PublicCalendar doesn't import across
+// feature boundaries.
+// ─────────────────────────────────────────────────────────────────────────
+function PCDayRateInput({
+  label, symbol, value, onChange,
+}: {
+  label: string;
+  symbol: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.65rem',
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          color: 'var(--muted)',
+          marginBottom: '.25rem',
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <span style={{
+          position: 'absolute',
+          left: 10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--muted)',
+          pointerEvents: 'none',
+          fontSize: '.9rem',
+        }}>{symbol}</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          placeholder="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={styles.ownerEditInput}
+          style={{ paddingLeft: 28 }}
+        />
       </div>
     </div>
   );
