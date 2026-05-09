@@ -117,15 +117,16 @@ function currencySymbol(code: string | null | undefined): string {
 }
 
 // Shared HTML wrapper — solid dark header bar + footer. Vanilla parity.
-// Header background changed from gradient to solid #1a1a2e so the
-// logo PNG (which has its own dark-navy backdrop) blends seamlessly
-// instead of sitting as a visible black box on a teal gradient.
+// Header background changed from gradient to solid #000 to match the
+// logo PNG's own backdrop — the logo image has a pure-black box behind
+// the wordmark, so any other shade (we previously tried #1a1a2e) shows
+// a visible seam between the cell and the logo. Pure black blends.
 function emailTemplate(content: string): string {
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-<tr><td style="background:#1a1a2e;padding:24px 32px;text-align:center;">
+<tr><td style="background:#000000;padding:24px 32px;text-align:center;">
 <img src="https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/logo-email.png" alt="Global DJ Connect" width="280" style="display:block;border:0;margin:0 auto;" /></td></tr>
 <tr><td style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
