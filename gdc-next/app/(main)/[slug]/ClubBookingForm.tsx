@@ -887,7 +887,7 @@ export default function ClubBookingForm({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '.5rem',
+                  gap: '.75rem',
                   padding: '1.25rem .5rem',
                 }}>
                   <div style={{
@@ -896,19 +896,23 @@ export default function ClubBookingForm({
                     letterSpacing: '.1em',
                     textTransform: 'uppercase',
                     color: 'var(--neon)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '.5rem',
                   }}>
-                    <span style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: 'var(--neon)',
-                      animation: 'gdj-rate-pulse 1.4s ease-in-out infinite',
-                    }} />
                     Calculating…
                   </div>
+                  {/* Shimmer bar — horizontal sweep across a faint
+                      neon-tinted track. Reads as "loading" without
+                      being noisy. The gradient slides via background-
+                      position; setting background-size to 200% gives
+                      the sweep room to travel. */}
+                  <div style={{
+                    width: '100%',
+                    maxWidth: '20rem',
+                    height: 22,
+                    borderRadius: 4,
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(0, 245, 196, 0.18) 50%, transparent 100%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'gdj-rate-shimmer 1.6s ease-in-out infinite',
+                  }} />
                   <div style={{
                     color: 'var(--muted)',
                     fontSize: '.8rem',
@@ -922,9 +926,9 @@ export default function ClubBookingForm({
                   </div>
                 </div>
                 <style jsx>{`
-                  @keyframes gdj-rate-pulse {
-                    0%, 100% { opacity: 1; transform: scale(1); }
-                    50% { opacity: .35; transform: scale(.7); }
+                  @keyframes gdj-rate-shimmer {
+                    0% { background-position: 200% 0; }
+                    100% { background-position: -200% 0; }
                   }
                 `}</style>
               </div>
