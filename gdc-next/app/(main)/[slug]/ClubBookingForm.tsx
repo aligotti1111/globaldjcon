@@ -823,35 +823,114 @@ export default function ClubBookingForm({
           )}
         </FormSection>
 
-        {/* Rate display — only when the picked equipment is something the
-            DJ actually supports. If unsupported, the warning above tells
-            the booker why no rate is shown. In quote mode (DJ has no rate
-            configured for the picked equipment), the entire section is
-            skipped per spec — booker sees the same form layout with no
-            price shown, and the booking is flagged is_quote=true on submit
-            so the DJ supplies the rate via the existing counter flow. */}
-        {canShowRate && isEquipmentSupported && !isQuoteMode && (
-          <FormSection
-            label="Rate"
-            fieldKey="offerAmount"
-            hasError={isOffers && hasError('offerAmount')}
-            errorText="Please enter your offer amount."
-          >
-            <RateDisplay
-              info={rateInfo}
-              allowOffers={allowOffers && !isOffers}
-              isOffersOnly={isOffers}
-              offerAmount={offerAmount}
-              setOfferAmount={(v) => { setOfferAmount(v); clearMissing('offerAmount'); }}
-              offerHasError={isOffers && hasError('offerAmount')}
-              baseRate={
-                (dayData as DayData & { base_rate?: number | string }).base_rate
-                  || bookingSettings.base_rate
-                  || rateInfo.rate
-              }
-            />
-          </FormSection>
-        )}
+        {/* Rate — always rendered. Inside, the content branches on form
+            completeness: a calculating placeholder while required fields
+            are missing, a quote-mode message when the DJ has no rate for
+            the picked equipment, an equipment-unsupported notice, or the
+            real rate display when everything's filled in. */}
+        <FormSection
+          label="Rate"
+          fieldKey="offerAmount"
+          hasError={isOffers && hasError('offerAmount')}
+          errorText="Please enter your offer amount."
+        >
+          {(() => {
+            // Path 1 — full rate display ready to render
+            if (canShowRate && isEquipmentSupported && !isQuoteMode) {
+              return (
+                <RateDisplay
+                  info={rateInfo}
+                  allowOffers={allowOffers && !isOffers}
+                  isOffersOnly={isOffers}
+                  offerAmount={offerAmount}
+                  setOfferAmount={(v) => { setOfferAmount(v); clearMissing('offerAmount'); }}
+                  offerHasError={isOffers && hasError('offerAmount')}
+                  baseRate={
+                    (dayData as DayData & { base_rate?: number | string }).base_rate
+                      || bookingSettings.base_rate
+                      || rateInfo.rate
+                  }
+                />
+              );
+            }
+            // Path 2 — DJ has no rate configured for this equipment.
+            // Booking goes through as a quote; DJ replies with custom
+            // pricing through the counter flow.
+            if (equipment && isEquipmentSupported && isQuoteMode) {
+              return (
+                <div className={styles.rateBox}>
+                  <div className={styles.rateOffersHint}>
+                    Rate not yet configured for this option — the DJ will
+                    reply with a quote after you submit.
+                  </div>
+                </div>
+              );
+            }
+            // Path 3 — equipment picked but DJ can't bring it. The
+            // pillUnsupported warning above already explains; just keep
+            // the rate box empty-stated here.
+            if (equipment && !isEquipmentSupported) {
+              return (
+                <div className={styles.rateBox}>
+                  <div className={styles.rateOffersHint} style={{ color: 'var(--amber)' }}>
+                    Pick a supported equipment option above to see the rate.
+                  </div>
+                </div>
+              );
+            }
+            // Path 4 — calculating placeholder. Required fields aren't
+            // all filled yet; show a neutral "we're waiting on you"
+            // message so the booker knows the price will appear here.
+            return (
+              <div className={styles.rateBox}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '.5rem',
+                  padding: '1.25rem .5rem',
+                }}>
+                  <div style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '.75rem',
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--neon)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '.5rem',
+                  }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: 'var(--neon)',
+                      animation: 'gdj-rate-pulse 1.4s ease-in-out infinite',
+                    }} />
+                    Calculating…
+                  </div>
+                  <div style={{
+                    color: 'var(--muted)',
+                    fontSize: '.8rem',
+                    textAlign: 'center',
+                    lineHeight: 1.5,
+                    fontFamily: 'DM Sans, sans-serif',
+                    maxWidth: '24rem',
+                  }}>
+                    Once all required fields are populated, the estimated
+                    price will display here.
+                  </div>
+                </div>
+                <style jsx>{`
+                  @keyframes gdj-rate-pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: .35; transform: scale(.7); }
+                  }
+                `}</style>
+              </div>
+            );
+          })()}
+        </FormSection>
 
         {/* Phone — collected so the DJ can reach the booker about
             day-of logistics. Same US-style auto-formatter mobile uses. */}
