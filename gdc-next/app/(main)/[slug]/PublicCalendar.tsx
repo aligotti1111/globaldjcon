@@ -906,12 +906,20 @@ function OwnerDayEditPopup({
   const [rateType, setRateType] = useState<'flat' | 'hourly' | 'offers'>(initialRateType);
   const initStr = (v: number | string | undefined): string =>
     v != null && v !== '' ? String(v) : '';
-  const [rateWithSystem, setRateWithSystem] = useState(initStr(dayData.rate_with_system));
-  const [rateWithDecks, setRateWithDecks] = useState(initStr(dayData.rate_with_decks));
-  const [rateNoEquip, setRateNoEquip] = useState(initStr(dayData.rate_no_equip));
-  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initStr(dayData.rate_hourly_with_system));
-  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initStr(dayData.rate_hourly_with_decks));
-  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initStr(dayData.rate_hourly_no_equip));
+  // Pre-fill rule — same as update-dj-profile/ClubOwnerCalendar. Day
+  // override wins; falls back to universal so the modal opens with
+  // the DJ's default rates as a starting point. handleSave only
+  // persists fields that DIFFER from universal.
+  const initRate = (
+    dayVal: number | string | undefined,
+    universalVal: number | string | undefined,
+  ): string => initStr(dayVal != null && dayVal !== '' ? dayVal : universalVal);
+  const [rateWithSystem, setRateWithSystem] = useState(initRate(dayData.rate_with_system, bookingSettings?.rate_with_system));
+  const [rateWithDecks, setRateWithDecks] = useState(initRate(dayData.rate_with_decks, bookingSettings?.rate_with_decks));
+  const [rateNoEquip, setRateNoEquip] = useState(initRate(dayData.rate_no_equip, bookingSettings?.rate_no_equip));
+  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initRate(dayData.rate_hourly_with_system, bookingSettings?.rate_hourly_with_system));
+  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initRate(dayData.rate_hourly_with_decks, bookingSettings?.rate_hourly_with_decks));
+  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initRate(dayData.rate_hourly_no_equip, bookingSettings?.rate_hourly_no_equip));
 
   const equipFull = !!bookingSettings?.equip_full;
   const equipDecks = !!bookingSettings?.equip_decks;
@@ -937,22 +945,35 @@ function OwnerDayEditPopup({
 
   function handleSave() {
     if (status === 'available') {
-      // Build a partial DayData carrying only set rate fields. If
-      // nothing is set and rate type matches the global, drop the day
-      // entry entirely. Mirror of update-dj-profile/ClubOwnerCalendar.
+      // Build a partial DayData carrying only fields that DIFFER from
+      // universal rates. Mirror of update-dj-profile/ClubOwnerCalendar.
       const tFlat = (s: string) => s.trim() === '' ? undefined : s.trim();
-      const flatSys = tFlat(rateWithSystem);
-      const flatDecks = tFlat(rateWithDecks);
-      const flatNone = tFlat(rateNoEquip);
-      const hrSys = tFlat(rateHourlyWithSystem);
-      const hrDecks = tFlat(rateHourlyWithDecks);
-      const hrNone = tFlat(rateHourlyNoEquip);
-      const anyRateSet = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateType !== initialRateType;
-      if (!anyRateSet) {
+      const norm = (v: string | number | undefined): number | null => {
+        if (v == null || v === '') return null;
+        const n = typeof v === 'number' ? v : Number(v);
+        return isNaN(n) ? null : n;
+      };
+      const diffs = (input: string, universal: number | string | undefined): string | undefined => {
+        const inputNum = norm(input);
+        const univNum = norm(universal);
+        if (inputNum === univNum) return undefined;
+        return tFlat(input);
+      };
+      const flatSys = diffs(rateWithSystem, bookingSettings?.rate_with_system);
+      const flatDecks = diffs(rateWithDecks, bookingSettings?.rate_with_decks);
+      const flatNone = diffs(rateNoEquip, bookingSettings?.rate_no_equip);
+      const hrSys = diffs(rateHourlyWithSystem, bookingSettings?.rate_hourly_with_system);
+      const hrDecks = diffs(rateHourlyWithDecks, bookingSettings?.rate_hourly_with_decks);
+      const hrNone = diffs(rateHourlyNoEquip, bookingSettings?.rate_hourly_no_equip);
+      const universalRateType = (bookingSettings?.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined) || 'flat';
+      const rateTypeChanged = rateType !== universalRateType;
+      const anyOverride = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateTypeChanged;
+      if (!anyOverride) {
         onSave(null);
         return;
       }
-      const next: DayData = { rateType };
+      const next: DayData = {};
+      if (rateTypeChanged) next.rateType = rateType;
       if (flatSys) next.rate_with_system = flatSys;
       if (flatDecks) next.rate_with_decks = flatDecks;
       if (flatNone) next.rate_no_equip = flatNone;
