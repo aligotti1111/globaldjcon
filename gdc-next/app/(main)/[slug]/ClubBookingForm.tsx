@@ -478,6 +478,31 @@ export default function ClubBookingForm({
         // Email is best-effort; ignore failures
       }
 
+      // Confirmation copy to the booker — gives them a record of the
+      // request they just sent and confirms it landed. Same info-card
+      // layout as the DJ-side notification for visual consistency.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_request_confirmation',
+            requesterUserId: currentUser.id,
+            requesterName: currentUser.name,
+            djName: dj.name,
+            eventDate: dateKey,
+            venueName: venueName.trim(),
+            venueAddress: venueAddress.trim(),
+            venueType,
+            setType,
+            startTime,
+            endTime,
+          }),
+        });
+      } catch {
+        // Best-effort
+      }
+
       setSuccess(true);
       // Auto-dismiss the form after a short delay
       setTimeout(() => onClose(), 2500);
