@@ -2515,6 +2515,34 @@ function PhotoManagerModal({
             />
           ))}
         </div>
+        {/* Footer — Done button to close + reload. Each slot already
+            persists to DB on upload/remove, so this is purely a way to
+            dismiss the modal and refresh the underlying tab. */}
+        <div style={{
+          marginTop: '1.25rem',
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '.6rem 1.4rem',
+              background: 'var(--neon)',
+              border: 'none',
+              borderRadius: 6,
+              color: '#000',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.75rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );

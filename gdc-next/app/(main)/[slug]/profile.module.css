@@ -495,9 +495,13 @@
 /* ── IMAGES TAB ───────────────────────────────────────── */
 .imageGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Auto-fit lets the grid pick how many columns fit at the current
+     width with each tile at least 200px. So roughly 4 across on wide
+     desktops, 3 on tablets, 2 on small screens, 1 on phones — and
+     nothing left as awkward right-side dead space because the cells
+     stretch to fill the row evenly. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: .75rem;
-  max-width: 70%;
 }
 .imageGrid img {
   width: 100%;
