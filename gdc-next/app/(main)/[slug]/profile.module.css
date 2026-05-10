@@ -530,9 +530,9 @@
   background: var(--card);
   border: 1px solid var(--border);
   position: relative;
-  /* 16:9 aspect ratio — 56.25% padding-top gives the iframe its
-     standard video shape. */
-  padding-top: 56.25%;
+  /* Square aspect ratio — 100% padding-top makes the wrap as tall as
+     it is wide. */
+  padding-top: 100%;
   /* Fixed width — don't grow. flex: 0 0 keeps each card at the basis
      so two cards at 392px sit comfortably side-by-side without
      stretching to fill leftover space (which made them oversized). */
