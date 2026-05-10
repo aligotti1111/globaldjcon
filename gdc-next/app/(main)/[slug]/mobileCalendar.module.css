@@ -334,6 +334,8 @@
   border-radius: 2px;
   background: transparent;
   color: var(--muted);
+  /* Match club year view — faint dim grey outline around each day. */
+  border: 1px solid var(--border);
 }
 .miniCellPast { color: #3a3a4e; }
 .miniCellBooked {
@@ -344,9 +346,15 @@
   background: rgba(107, 107, 136, .12);
   color: var(--muted);
 }
+/* Available days — no default fill, neon-fill on hover (matches club). */
 .miniCellAvail {
-  background: rgba(0, 245, 196, .1);
-  color: var(--neon);
+  color: var(--white);
+  cursor: pointer;
+}
+.miniCellAvail:hover {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: #050507;
 }
 .miniCellToday {
   outline: 1px solid var(--neon);
