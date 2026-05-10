@@ -1685,7 +1685,9 @@ function MediaAddButton({
       // When inline (non-big), break to a new row inside the flex
       // parent (videoList/mediaList) and cap width so the panel reads
       // as a small input bar, not a full media-card-sized box.
-      ...(big ? {} : { flexBasis: '100%', order: 999 }),
+      // alignSelf flex-start prevents flex from stretching this item
+      // to match the tallest sibling (the square video cards).
+      ...(big ? {} : { flexBasis: '100%', order: 999, alignSelf: 'flex-start' }),
       display: 'flex',
       flexDirection: 'column',
       gap: '.5rem',
