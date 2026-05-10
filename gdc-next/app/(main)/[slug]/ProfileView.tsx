@@ -573,11 +573,26 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
+                {/* Owner-only inline add — appears below existing mixes
+                    until all 3 slots are filled. Saves to next empty
+                    mix_url_1/2/3 column. */}
+                {isOwnProfile && mixUrls.length < 3 && (
+                  <MediaAddButton
+                    userId={data.id}
+                    kind="mix"
+                    existing={[data.mix_url_1, data.mix_url_2, data.mix_url_3]}
+                  />
+                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <OwnerAddButton href="/update-dj-profile?tab=mixes" label="Add a mix" big />
+                  <MediaAddButton
+                    userId={data.id}
+                    kind="mix"
+                    existing={[data.mix_url_1, data.mix_url_2, data.mix_url_3]}
+                    big
+                  />
                 ) : 'Coming Soon'}
               </div>
             )}
@@ -625,11 +640,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
+                {isOwnProfile && videoUrls.length < 3 && (
+                  <MediaAddButton
+                    userId={data.id}
+                    kind="video"
+                    existing={[data.video_url_1, data.video_url_2, data.video_url_3]}
+                  />
+                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <OwnerAddButton href="/update-dj-profile?tab=video" label="Add a video" big />
+                  <MediaAddButton
+                    userId={data.id}
+                    kind="video"
+                    existing={[data.video_url_1, data.video_url_2, data.video_url_3]}
+                    big
+                  />
                 ) : 'Coming Soon'}
               </div>
             )}
@@ -1496,6 +1523,238 @@ function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: 
           }}>
             + Click to add your bio
           </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MediaAddButton — owner-only inline add for mixes or videos. The DJ
+// pastes a URL (SoundCloud/Mixcloud/etc for mixes, YouTube/Vimeo for
+// videos) and we save it to the next empty mix_url_1/2/3 or
+// video_url_1/2/3 slot, then reload so the embed appears in the tab.
+// Two visual modes: `big` (centered + button on empty tab) and inline
+// (smaller button rendered after existing media when slots remain).
+// ─────────────────────────────────────────────────────────────────────────
+function MediaAddButton({
+  userId,
+  kind,
+  existing,
+  big,
+}: {
+  userId: string;
+  kind: 'mix' | 'video';
+  // Current values of all 3 slots in DB order. Used to find the first
+  // empty slot to write to. Order matters — we always fill the lowest
+  // empty index so the slots stay packed.
+  existing: (string | null)[];
+  big?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const colPrefix = kind === 'mix' ? 'mix_url_' : 'video_url_';
+  const verb = kind === 'mix' ? 'mix' : 'video';
+  const placeholder = kind === 'mix'
+    ? 'Paste SoundCloud, Mixcloud, or other mix URL'
+    : 'Paste YouTube or Vimeo URL';
+
+  async function handleSave() {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setError('Paste a URL first.');
+      return;
+    }
+    // Find first empty slot (1, 2, or 3). If all full, bail — the
+    // calling tab already hides the button when 3 are filled, but
+    // belt-and-suspenders.
+    const emptyIdx = existing.findIndex((v) => !v);
+    if (emptyIdx === -1) {
+      setError(`You already have 3 ${verb}s. Remove one first.`);
+      return;
+    }
+    const column = `${colPrefix}${emptyIdx + 1}`;
+    setError(null);
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ [column]: trimmed } as unknown as never)
+        .eq('id', userId);
+      if (dbError) throw dbError;
+      window.location.reload();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not save.';
+      setError(msg);
+      setSaving(false);
+    }
+  }
+
+  function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setExpanded(false);
+      setValue('');
+      setError(null);
+    }
+  }
+
+  // Collapsed — neon button. Big variant is the centered empty-state
+  // call to action; inline variant is the smaller post-content add.
+  if (!expanded) {
+    if (big) {
+      return (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title={`Add a ${verb}`}
+          aria-label={`Add a ${verb}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 96,
+            height: 96,
+            margin: '2.5rem auto',
+            background: 'rgba(0, 245, 196, .08)',
+            border: '2px solid var(--neon)',
+            borderRadius: '50%',
+            color: 'var(--neon)',
+            cursor: 'pointer',
+            fontSize: '3rem',
+            lineHeight: 1,
+            fontWeight: 300,
+            padding: 0,
+          }}
+        >
+          +
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        title={`Add another ${verb}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '.4rem',
+          alignSelf: 'flex-start',
+          padding: '.55rem 1rem',
+          marginTop: '.75rem',
+          background: 'rgba(0, 245, 196, .08)',
+          border: '1px solid var(--neon)',
+          borderRadius: 6,
+          color: 'var(--neon)',
+          cursor: 'pointer',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.7rem',
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+        }}
+      >
+        + Add another {verb}
+      </button>
+    );
+  }
+
+  // Expanded — input row.
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '.5rem',
+      padding: '.75rem',
+      margin: big ? '2rem auto' : '.75rem 0',
+      maxWidth: big ? 520 : '100%',
+      background: 'rgba(0, 245, 196, .06)',
+      border: '1px solid var(--neon)',
+      borderRadius: 8,
+      boxShadow: '0 4px 16px rgba(0, 245, 196, .12)',
+    }}>
+      <div style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: '.7rem',
+        letterSpacing: '.08em',
+        textTransform: 'uppercase',
+        color: 'var(--neon)',
+      }}>
+        Add a {verb}
+      </div>
+      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+        <input
+          autoFocus
+          type="text"
+          value={value}
+          onChange={(e) => { setValue(e.target.value); if (error) setError(null); }}
+          onKeyDown={handleKey}
+          placeholder={placeholder}
+          disabled={saving}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '.55rem .7rem',
+            background: 'rgba(0,0,0,0.3)',
+            border: '1px solid var(--border, rgba(255,255,255,0.15))',
+            borderRadius: 4,
+            color: 'var(--white, #fff)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.85rem',
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            padding: '.55rem 1rem',
+            background: 'var(--neon)',
+            border: 'none',
+            borderRadius: 4,
+            color: '#000',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.7rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            opacity: saving ? 0.6 : 1,
+          }}
+        >
+          {saving ? '…' : 'Add'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setExpanded(false); setValue(''); setError(null); }}
+          disabled={saving}
+          aria-label="Cancel"
+          style={{
+            padding: '.35rem .55rem',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--muted, #888)',
+            cursor: saving ? 'not-allowed' : 'pointer',
+            fontSize: '1.1rem',
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      {error && (
+        <div style={{
+          color: '#ff5f5f',
+          fontSize: '.78rem',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          {error}
         </div>
       )}
     </div>
