@@ -159,6 +159,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // public URL to users.avatar_url and reload to refresh the hero.
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
+  // Photo manager modal — opens from the + button in the Photos tab.
+  // Shows all 4 slots so DJ can upload to / remove from each independently.
+  const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
 
   // Confirm modal — used for owner delete-video confirmation. Returns
   // a confirm() promise + a confirmDialog JSX element to render once.
@@ -738,23 +741,63 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     )}
                   </div>
                 ))}
-                {/* Owner-only inline add — appears in the grid until
-                    all 4 slots are filled. */}
+                {/* Owner-only inline add — opens manage-photos modal
+                    when there's room for more photos. */}
                 {isOwnProfile && galleryEntries.length < 4 && (
-                  <PhotoAddButton
-                    userId={data.id}
-                    existing={[data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setPhotoManagerOpen(true)}
+                    title="Add a photo"
+                    aria-label="Add a photo"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      aspectRatio: '1 / 1',
+                      background: 'rgba(0, 245, 196, .05)',
+                      border: '2px dashed var(--neon)',
+                      borderRadius: 8,
+                      color: 'var(--neon)',
+                      cursor: 'pointer',
+                      fontSize: '2.5rem',
+                      lineHeight: 1,
+                      fontWeight: 300,
+                      padding: 0,
+                    }}
+                  >
+                    +
+                  </button>
                 )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <PhotoAddButton
-                    userId={data.id}
-                    existing={[data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]}
-                    big
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setPhotoManagerOpen(true)}
+                    title="Add photos"
+                    aria-label="Add photos"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 96,
+                      height: 96,
+                      margin: '2.5rem auto',
+                      background: 'rgba(0, 245, 196, .08)',
+                      border: '2px solid var(--neon)',
+                      borderRadius: '50%',
+                      color: 'var(--neon)',
+                      cursor: 'pointer',
+                      fontSize: '3rem',
+                      lineHeight: 1,
+                      fontWeight: 300,
+                      padding: 0,
+                    }}
+                  >
+                    +
+                  </button>
                 ) : 'Coming Soon'}
               </div>
             )}
@@ -938,6 +981,28 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             setPickedAvatarFile(null);
             if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
             window.location.reload();
+          }}
+        />
+      )}
+
+      {/* Photo manager modal — owner-only. Lets the DJ upload to /
+          remove from any of the 4 gallery slots independently. Opened
+          from the + button in the Photos tab. */}
+      {photoManagerOpen && isOwnProfile && (
+        <PhotoManagerModal
+          userId={data.id}
+          slots={[
+            { slot: 1, url: data.gallery_img_1 },
+            { slot: 2, url: data.gallery_img_2 },
+            { slot: 3, url: data.gallery_img_3 },
+            { slot: 4, url: data.gallery_img_4 },
+          ]}
+          onClose={() => {
+            // Reload on close so any changes the DJ made show in the
+            // hero/photos tab. Cheaper than wiring up live state.
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
           }}
         />
       )}
@@ -2337,44 +2402,156 @@ function ExpandableDesc({ text }: { text: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// PhotoAddButton — owner-only file-upload affordance for the gallery.
-// `big` variant is the empty-state centered + button; default is an
-// inline tile that sits in the image grid alongside existing photos.
-// Click → native file picker → uploads to Supabase Storage at
-// `${userId}/gallery_${slot}.{ext}` (matches PhotosTab convention) →
-// writes public URL to gallery_img_${slot} → reloads on Photos tab.
+// PhotoManagerModal — owner-only popup that shows all 4 gallery slots
+// as boxes in a 2x2 grid. Empty boxes are click-to-upload, filled boxes
+// show the image with a remove ✕. Each slot operates independently and
+// writes directly to public.users.gallery_img_${slot} as it changes.
+// Mirrors the look of update-dj-profile/PhotosTab but lives on the
+// public profile so the DJ never has to leave.
+//
+// On close we reload (?tab=images) so the underlying photo grid in
+// the tab reflects whatever was added/removed.
 // ─────────────────────────────────────────────────────────────────────────
-function PhotoAddButton({
+function PhotoManagerModal({
   userId,
-  existing,
-  big,
+  slots,
+  onClose,
 }: {
   userId: string;
-  existing: (string | null)[];
-  big?: boolean;
+  slots: { slot: 1 | 2 | 3 | 4; url: string | null }[];
+  onClose: () => void;
+}) {
+  // Local mirror of slot URLs so the modal updates immediately on
+  // upload/remove without waiting for the close-and-reload roundtrip.
+  const [slotUrls, setSlotUrls] = useState<Record<number, string | null>>(() => {
+    const m: Record<number, string | null> = {};
+    for (const s of slots) m[s.slot] = s.url;
+    return m;
+  });
+
+  const filledCount = Object.values(slotUrls).filter((u) => !!u).length;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-card, #1a1a2e)',
+          border: '1px solid var(--border, rgba(255,255,255,0.1))',
+          borderRadius: 12,
+          padding: '1.5rem',
+          width: '100%',
+          maxWidth: 560,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '.4rem',
+        }}>
+          <div style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: '1.4rem',
+            color: 'var(--white, #fff)',
+            letterSpacing: '.04em',
+          }}>
+            Manage Photos
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--muted, #888)',
+              fontSize: '1.4rem',
+              cursor: 'pointer',
+              padding: '.25rem .5rem',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.7rem',
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          color: 'var(--muted, #888)',
+          marginBottom: '1rem',
+        }}>
+          {filledCount} of 4 slots filled
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '.75rem',
+        }}>
+          {([1, 2, 3, 4] as const).map((slot) => (
+            <PhotoManagerSlot
+              key={slot}
+              slot={slot}
+              userId={userId}
+              url={slotUrls[slot] || null}
+              onChange={(newUrl) => {
+                setSlotUrls((prev) => ({ ...prev, [slot]: newUrl }));
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// PhotoManagerSlot — a single 2x2 grid cell. Empty: dashed neon border
+// with a centered + that opens the file picker. Filled: shows the image
+// with a remove ✕ and a "Change Photo" overlay on hover. Uploads to
+// Supabase Storage via the same path convention the existing PhotosTab
+// uses (avatars bucket, `${userId}/gallery_${slot}.{ext}`).
+function PhotoManagerSlot({
+  slot,
+  userId,
+  url,
+  onChange,
+}: {
+  slot: 1 | 2 | 3 | 4;
+  userId: string;
+  url: string | null;
+  onChange: (url: string | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hovering, setHovering] = useState(false);
 
   function pick() {
-    if (uploading) return;
+    if (busy) return;
     inputRef.current?.click();
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // reset so same file can be re-picked later
+    e.target.value = '';
     if (!file) return;
-    // Find first empty slot
-    const emptyIdx = existing.findIndex((v) => !v);
-    if (emptyIdx === -1) {
-      setError('All 4 photo slots full. Delete one first.');
-      return;
-    }
-    const slot = emptyIdx + 1;
     setError(null);
-    setUploading(true);
+    setBusy(true);
     try {
       const supabase = createClient();
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -2384,63 +2561,142 @@ function PhotoAddButton({
         .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      // Cache-bust so the new image shows immediately even if same path
       const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
       const { error: dbErr } = await supabase
         .from('users')
         .update({ [`gallery_img_${slot}`]: publicUrl } as unknown as never)
         .eq('id', userId);
       if (dbErr) throw dbErr;
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', 'images');
-      window.location.href = url.toString();
+      onChange(publicUrl);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed.';
-      setError(msg);
-      setUploading(false);
+      setError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setBusy(false);
     }
   }
 
-  // Big variant — empty-state centered button (matches mix/video style).
-  if (big) {
-    return (
-      <>
-        <button
-          type="button"
-          onClick={pick}
-          disabled={uploading}
-          title="Add a photo"
-          aria-label="Add a photo"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 96,
-            height: 96,
-            margin: '2.5rem auto',
-            background: 'rgba(0, 245, 196, .08)',
-            border: '2px solid var(--neon)',
-            borderRadius: '50%',
-            color: 'var(--neon)',
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            fontSize: '3rem',
-            lineHeight: 1,
-            fontWeight: 300,
-            padding: 0,
-            opacity: uploading ? 0.5 : 1,
-          }}
-        >
-          {uploading ? '…' : '+'}
-        </button>
-        {error && (
+  async function remove(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ [`gallery_img_${slot}`]: null } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      onChange(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div
+        onClick={pick}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        style={{
+          position: 'relative',
+          aspectRatio: '1 / 1',
+          background: url ? '#000' : 'rgba(0, 245, 196, .05)',
+          border: url ? '1px solid var(--border, rgba(255,255,255,0.15))' : '2px dashed var(--neon)',
+          borderRadius: 8,
+          cursor: busy ? 'wait' : 'pointer',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: busy ? 0.6 : 1,
+          transition: 'opacity .15s',
+        }}
+      >
+        {url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt={`Gallery slot ${slot}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+            {hovering && !busy && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,.55)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--neon)',
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.7rem',
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+              }}>
+                Change Photo
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={remove}
+              title="Remove this photo"
+              aria-label="Remove this photo"
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: 'rgba(0, 0, 0, .8)',
+                border: '1px solid rgba(255, 95, 95, .7)',
+                color: '#ff5f5f',
+                fontSize: '.8rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </>
+        ) : (
           <div style={{
-            marginTop: '.75rem',
-            color: '#ff5f5f',
-            fontSize: '.78rem',
-            textAlign: 'center',
-            fontFamily: 'DM Sans, sans-serif',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '.4rem',
           }}>
-            {error}
+            <div style={{
+              color: 'var(--neon)',
+              fontSize: '2.5rem',
+              lineHeight: 1,
+              fontWeight: 300,
+            }}>
+              {busy ? '…' : '+'}
+            </div>
+            <div style={{
+              color: 'var(--muted, #888)',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.6rem',
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+            }}>
+              Photo {slot}
+            </div>
           </div>
         )}
         <input
@@ -2450,56 +2706,17 @@ function PhotoAddButton({
           style={{ display: 'none' }}
           onChange={onFile}
         />
-      </>
-    );
-  }
-
-  // Inline grid tile — same dimensions as a gallery image cell.
-  return (
-    <>
-      <button
-        type="button"
-        onClick={pick}
-        disabled={uploading}
-        title="Add a photo"
-        aria-label="Add a photo"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          aspectRatio: '1 / 1',
-          background: 'rgba(0, 245, 196, .05)',
-          border: '2px dashed var(--neon)',
-          borderRadius: 8,
-          color: 'var(--neon)',
-          cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: '2.5rem',
-          lineHeight: 1,
-          fontWeight: 300,
-          padding: 0,
-          opacity: uploading ? 0.5 : 1,
-        }}
-      >
-        {uploading ? '…' : '+'}
-      </button>
+      </div>
       {error && (
         <div style={{
+          marginTop: '.3rem',
           color: '#ff5f5f',
-          fontSize: '.78rem',
+          fontSize: '.7rem',
           fontFamily: 'DM Sans, sans-serif',
-          gridColumn: '1 / -1',
         }}>
           {error}
         </div>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={onFile}
-      />
-    </>
+    </div>
   );
 }
