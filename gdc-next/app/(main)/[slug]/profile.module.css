@@ -515,8 +515,14 @@
 /* ── VIDEO TAB ────────────────────────────────────────── */
 .videoList {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 1.25rem;
+}
+@media (max-width: 768px) {
+  .videoList {
+    flex-direction: column;
+  }
 }
 .videoWrap {
   border-radius: 10px;
@@ -524,8 +530,13 @@
   background: var(--card);
   border: 1px solid var(--border);
   position: relative;
-  padding-top: 24.5%;
-  max-width: 392px;
+  /* 16:9 aspect ratio — 56.25% padding-top gives the iframe its
+     standard video shape. Was 24.5% which only worked when the wrap
+     spanned the full tab width; with flex-row layout the wraps are
+     narrower and the old percentage rendered them too short. */
+  padding-top: 56.25%;
+  max-width: 480px;
+  flex: 1 1 320px;
 }
 .videoWrap iframe {
   position: absolute;
