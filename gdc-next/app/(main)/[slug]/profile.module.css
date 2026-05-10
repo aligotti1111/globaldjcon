@@ -547,6 +547,12 @@
   color: var(--white);
   line-height: 1.2;
   text-align: center;
+  /* Single line — overflow truncates with ellipsis. The card width is
+     constrained by the grid cell so longer titles get cut visually
+     instead of wrapping or breaking the card height. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .videoCardDesc {
   padding: .5rem 1rem .85rem;
