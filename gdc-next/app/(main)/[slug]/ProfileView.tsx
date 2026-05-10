@@ -1349,23 +1349,15 @@ function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: 
   }
 
   // View mode — clickable surface that switches to edit on click. When
-  // empty, shows a neon placeholder cue. When populated, shows the bio
-  // text with a small "Click to edit" hint underneath.
+  // empty, shows a small centered text cue. When populated, shows the
+  // bio text with a small "Click to edit" hint underneath.
   return (
     <div
       onClick={startEdit}
       style={{
         cursor: 'pointer',
-        padding: bio ? '.5rem' : '1.5rem',
-        margin: '-.5rem',
+        padding: 0,
         borderRadius: 6,
-        transition: 'background .15s ease',
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.background = 'rgba(0, 245, 196, .04)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
       }}
     >
       {bio ? (
@@ -1397,12 +1389,10 @@ function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: 
           textAlign: 'center',
           color: 'var(--neon)',
           fontFamily: "'Space Mono', monospace",
-          fontSize: '.8rem',
+          fontSize: '.7rem',
           letterSpacing: '.08em',
           textTransform: 'uppercase',
-          padding: '1.5rem 0',
-          border: '1px dashed var(--neon)',
-          borderRadius: 6,
+          padding: '.5rem 0',
         }}>
           + Click to add your bio
         </div>
