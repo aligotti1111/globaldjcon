@@ -220,6 +220,30 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       // Best-effort
     }
   }
+
+  // Delete a mix — clears mix_url_N for the given slot and reloads on
+  // the Mixes tab. Owner-only; called from X button on each mix embed.
+  async function deleteMix(slot: 1 | 2 | 3) {
+    const ok = await confirm({
+      title: 'Delete this mix?',
+      message: 'This removes the mix from your profile. You can add it back any time.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('users')
+        .update({ [`mix_url_${slot}`]: null } as unknown as never)
+        .eq('id', data.id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'mixes');
+      window.location.href = url.toString();
+    } catch {
+      // Best-effort
+    }
+  }
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -305,7 +329,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     : [];
 
   // Mix URLs (1-3) and Gallery (1-4) and Video URLs (1-3) — vanilla pattern
-  const mixUrls = [data.mix_url_1, data.mix_url_2, data.mix_url_3].filter((u): u is string => !!u);
+  // Slot-aware mix entries — needed so the owner delete X targets the
+  // right mix_url_N column even after earlier slots are emptied.
+  const mixEntries = [
+    { slot: 1 as const, url: data.mix_url_1 },
+    { slot: 2 as const, url: data.mix_url_2 },
+    { slot: 3 as const, url: data.mix_url_3 },
+  ].filter((m): m is { slot: 1 | 2 | 3; url: string } => !!m.url);
   const galleryUrls = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
     .filter((u): u is string => !!u);
   // Slot-aware gallery entries — needed so the owner delete X can
@@ -661,13 +691,48 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Mixes tab */}
           <div className={paneClass('mixes')}>
-            {mixUrls.length > 0 ? (
+            {mixEntries.length > 0 ? (
               <div className={styles.mediaList}>
-                {mixUrls.map((url, i) => {
-                  const embed = buildMixEmbed(url);
+                {mixEntries.map((m) => {
+                  const embed = buildMixEmbed(m.url);
                   if (!embed) return null;
                   return (
-                    <div key={i} className={styles.mediaEmbedWrap}>
+                    <div
+                      key={m.slot}
+                      className={styles.mediaEmbedWrap}
+                      style={isOwnProfile ? { position: 'relative' } : undefined}
+                    >
+                      {/* Owner-only delete X — top-right corner of the
+                          mix embed. Confirms before delete. */}
+                      {isOwnProfile && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMix(m.slot)}
+                          title="Delete this mix"
+                          aria-label="Delete this mix"
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            zIndex: 5,
+                            width: 26,
+                            height: 26,
+                            borderRadius: '50%',
+                            background: 'rgba(0, 0, 0, .8)',
+                            border: '1px solid rgba(255, 95, 95, .7)',
+                            color: '#ff5f5f',
+                            fontSize: '.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
                       <iframe
                         width="100%"
                         height={embed.height}
@@ -682,7 +747,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {/* Owner-only inline add — appears below existing mixes
                     until all 3 slots are filled. Saves to next empty
                     mix_url_1/2/3 column. */}
-                {isOwnProfile && mixUrls.length < 3 && (
+                {isOwnProfile && mixEntries.length < 3 && (
                   <MediaAddButton
                     userId={data.id}
                     kind="mix"
