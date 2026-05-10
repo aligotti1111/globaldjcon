@@ -731,6 +731,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           width="1280"
                           height="720"
                           frameBorder="0"
+                          loading="lazy"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         />
