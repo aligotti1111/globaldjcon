@@ -101,26 +101,31 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         onClick={onAvatarClick}
         title="Click to change photo"
       >
-        <div className={styles.avatarCircle}>
-          {state.avatarUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Wrapper is relatively positioned so the delete button can be
+            absolutely positioned over the avatar without being clipped
+            by .avatarCircle's overflow:hidden (which would chop the X). */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div className={styles.avatarCircle}>
+            {state.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={state.avatarUrl}
                 alt="Profile"
                 className={styles.avatarCircleImg}
               />
-              <button
-                type="button"
-                onClick={onAvatarDelete}
-                className={styles.avatarDeleteBtn}
-                title="Remove photo"
-              >
-                ✕
-              </button>
-            </>
-          ) : (
-            <span>{initials}</span>
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+          {state.avatarUrl && (
+            <button
+              type="button"
+              onClick={onAvatarDelete}
+              className={styles.avatarDeleteBtn}
+              title="Remove photo"
+            >
+              ✕
+            </button>
           )}
         </div>
         <div
