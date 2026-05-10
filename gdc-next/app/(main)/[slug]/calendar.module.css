@@ -431,8 +431,14 @@
   border: 1px solid var(--white);
 }
 .miniCellOpen {
-  background: rgba(0, 245, 196, .1);
-  border-color: var(--white);
+  cursor: pointer;
+}
+.miniCellOpen:hover {
+  background: var(--neon);
+  border-color: var(--neon);
+}
+.miniCellOpen:hover .miniNum {
+  color: #050507;
 }
 .miniCellToday {
   background: rgba(0, 245, 196, .18);
