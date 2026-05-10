@@ -286,7 +286,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
-            <div className={`${styles.heroAvatar} ${typeClass}`}>
+            <div className={`${styles.heroAvatar} ${typeClass}`} style={isOwnProfile && !data.avatar_url ? { position: 'relative' } : undefined}>
               {data.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -295,6 +295,41 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
                   onClick={() => setLightboxSrc(data.avatar_url!)}
                 />
+              ) : isOwnProfile ? (
+                // Owner has no profile pic yet — render the initials but
+                // overlay the whole avatar with a neon "+" shortcut that
+                // routes to update-dj-profile/General where the avatar
+                // upload + crop UI lives.
+                <>
+                  {initials(data.name)}
+                  <a
+                    href="/update-dj-profile?tab=general"
+                    title="Add a profile picture"
+                    aria-label="Add a profile picture"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      background: 'rgba(0, 0, 0, .55)',
+                      color: 'var(--neon)',
+                      fontSize: '3rem',
+                      fontWeight: 300,
+                      lineHeight: 1,
+                      textDecoration: 'none',
+                      opacity: 0,
+                      transition: 'opacity .15s ease',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0'; }}
+                    onFocus={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
+                    onBlur={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0'; }}
+                  >
+                    +
+                  </a>
+                </>
               ) : (
                 initials(data.name)
               )}
@@ -1387,14 +1422,21 @@ function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: 
       ) : (
         <div style={{
           textAlign: 'center',
-          color: 'var(--neon)',
-          fontFamily: "'Space Mono', monospace",
-          fontSize: '.7rem',
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
           padding: '.5rem 0',
         }}>
-          + Click to add your bio
+          <span style={{
+            display: 'inline-block',
+            color: 'var(--neon)',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.7rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            padding: '.4rem .8rem',
+            border: '1px dashed var(--neon)',
+            borderRadius: 6,
+          }}>
+            + Click to add your bio
+          </span>
         </div>
       )}
     </div>
