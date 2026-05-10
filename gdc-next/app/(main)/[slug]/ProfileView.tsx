@@ -1125,24 +1125,26 @@ function SocialAddButton({
   }
 
   return (
+    // Outer wrapper — owns the line break behavior. flex-basis: 100%
+    // forces this child to wrap onto its own row inside the heroActions
+    // flex container. The actual styled panel lives inside, constrained
+    // and left-aligned, so it doesn't sprawl across the whole hero.
     <div style={{
-      // flex-basis: 100% forces this row to break onto its own line
-      // inside the heroActions flex container, dropping the input panel
-      // BELOW the icon row instead of squeezing into it. order: 999
-      // keeps it visually after all the icon buttons even though it's
-      // an earlier sibling in the JSX.
       flexBasis: '100%',
       order: 999,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '.5rem',
-      padding: '.5rem .6rem',
       marginTop: '.5rem',
-      background: 'rgba(0, 245, 196, .08)',
-      border: '1px solid var(--neon)',
-      borderRadius: 8,
-      boxShadow: '0 4px 16px rgba(0, 245, 196, .12)',
     }}>
+      <div style={{
+        maxWidth: 460,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '.5rem',
+        padding: '.5rem .6rem',
+        background: 'rgba(0, 245, 196, .08)',
+        border: '1px solid var(--neon)',
+        borderRadius: 8,
+        boxShadow: '0 4px 16px rgba(0, 245, 196, .12)',
+      }}>
       <input
         autoFocus
         type="text"
@@ -1213,6 +1215,7 @@ function SocialAddButton({
           {error}
         </span>
       )}
+      </div>
     </div>
   );
 }
