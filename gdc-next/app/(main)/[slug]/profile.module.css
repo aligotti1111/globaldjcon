@@ -530,12 +530,10 @@
   background: var(--card);
   border: 1px solid var(--border);
   position: relative;
-  /* Square aspect ratio — 100% padding-top makes the wrap as tall as
-     it is wide. */
-  padding-top: 100%;
-  /* Fixed width — don't grow. flex: 0 0 keeps each card at the basis
-     so two cards at 392px sit comfortably side-by-side without
-     stretching to fill leftover space (which made them oversized). */
+  /* Square — aspect-ratio is reliable here because the wrap has a
+     fixed width; padding-top % would resolve against the parent
+     flex container's width, which made the wrap absurdly tall. */
+  aspect-ratio: 1 / 1;
   width: 392px;
   flex: 0 0 392px;
 }
