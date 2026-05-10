@@ -210,6 +210,20 @@ export default function AvatarCrop({ file, userId, onClose, onSuccess }: Props) 
     <div className={styles.cropModal} onClick={onClose}>
       <div className={styles.cropModalInner} onClick={(e) => e.stopPropagation()}>
         <h3>Crop Profile Photo</h3>
+        {/* Recommended-size hint — exported avatars are 400×400 square,
+            so a square source 400px+ on its shortest side gives the
+            best result. Anything smaller upscales and looks soft. */}
+        <p style={{
+          margin: '0 0 0.75rem',
+          color: 'var(--muted, #888)',
+          fontSize: '.78rem',
+          fontFamily: 'DM Sans, sans-serif',
+          textAlign: 'center',
+          lineHeight: 1.5,
+        }}>
+          Best fit: a square image at least <strong style={{ color: 'var(--neon)' }}>400×400</strong>.
+          800×800 or larger looks crispest.
+        </p>
 
         <div
           ref={wrapRef}
