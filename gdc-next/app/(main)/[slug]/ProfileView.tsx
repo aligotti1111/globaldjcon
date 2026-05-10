@@ -124,8 +124,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const searchParams = useSearchParams();
   const hasDateParam = !!searchParams.get('date');
 
+  // Active tab — defaults to booking (if visible) else about. Can be
+  // deep-linked via ?tab= so a reload (e.g. after adding a mix or video
+  // inline) lands back on the same tab. Validates against TabKey list.
+  const tabFromUrl = (() => {
+    const t = searchParams.get('tab') || '';
+    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials'];
+    return (valid as string[]).includes(t) ? (t as TabKey) : null;
+  })();
   const [activeTab, setActiveTab] = useState<TabKey>(
-    showBookingTab ? 'booking' : 'about'
+    tabFromUrl || (showBookingTab ? 'booking' : 'about')
   );
   // Club-booking flow — selectedDate drives the form, loginGateForDate
   // shows the login gate for unauthenticated visitors. Mirror of the
@@ -1586,7 +1594,13 @@ function MediaAddButton({
         .update({ [column]: trimmed } as unknown as never)
         .eq('id', userId);
       if (dbError) throw dbError;
-      window.location.reload();
+      // Reload with ?tab=mixes or ?tab=video so the user lands back on
+      // the tab they were adding to instead of jumping to the default
+      // (booking/about).
+      const tabParam = kind === 'mix' ? 'mixes' : 'video';
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabParam);
+      window.location.href = url.toString();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not save.';
       setError(msg);
