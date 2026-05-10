@@ -475,7 +475,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* About tab */}
           <div className={paneClass('about')}>
-            {data.bio ? (
+            {isOwnProfile ? (
+              <OwnerEditableBio userId={data.id} initialBio={data.bio} />
+            ) : data.bio ? (
               <p className={styles.bioText}>{data.bio}</p>
             ) : (
               <p className={styles.tabEmpty}>Coming Soon</p>
@@ -1216,6 +1218,195 @@ function SocialAddButton({
         </span>
       )}
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OwnerEditableBio — inline About editor shown on the profile owner's
+// own profile. Default state: shows the bio text (or a "Click to add"
+// hint if empty). Click → switches to a textarea with Save / Cancel.
+// Save writes to public.users.bio and updates local state so the new
+// text shows immediately. No reload needed.
+// ─────────────────────────────────────────────────────────────────────────
+function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: string | null }) {
+  const [bio, setBio] = useState<string>(initialBio || '');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>(initialBio || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function startEdit() {
+    setDraft(bio);
+    setError(null);
+    setEditing(true);
+  }
+  function cancel() {
+    setEditing(false);
+    setError(null);
+  }
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const trimmed = draft.trim();
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ bio: trimmed || null } as unknown as never)
+        .eq('id', userId);
+      if (dbError) throw dbError;
+      setBio(trimmed);
+      setEditing(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not save.';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Tell people about yourself, your sound, your style…"
+          disabled={saving}
+          rows={6}
+          style={{
+            width: '100%',
+            padding: '.75rem',
+            background: 'rgba(0,0,0,0.3)',
+            border: '1px solid var(--neon)',
+            borderRadius: 6,
+            color: 'var(--white, #fff)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.95rem',
+            lineHeight: 1.6,
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={saving}
+            style={{
+              padding: '.5rem .9rem',
+              background: 'transparent',
+              border: '1px solid var(--border, rgba(255,255,255,0.2))',
+              borderRadius: 6,
+              color: 'var(--muted, #888)',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.7rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              cursor: saving ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            style={{
+              padding: '.5rem 1rem',
+              background: 'var(--neon)',
+              border: 'none',
+              borderRadius: 6,
+              color: '#000',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.7rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        {error && (
+          <div style={{
+            padding: '.5rem .7rem',
+            background: 'rgba(255, 95, 95, .08)',
+            border: '1px solid rgba(255, 95, 95, .35)',
+            borderRadius: 6,
+            color: '#ff5f5f',
+            fontSize: '.78rem',
+          }}>
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // View mode — clickable surface that switches to edit on click. When
+  // empty, shows a neon placeholder cue. When populated, shows the bio
+  // text with a small "Click to edit" hint underneath.
+  return (
+    <div
+      onClick={startEdit}
+      style={{
+        cursor: 'pointer',
+        padding: bio ? '.5rem' : '1.5rem',
+        margin: '-.5rem',
+        borderRadius: 6,
+        transition: 'background .15s ease',
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = 'rgba(0, 245, 196, .04)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+      }}
+    >
+      {bio ? (
+        <>
+          <p style={{
+            margin: 0,
+            color: 'var(--white, #fff)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.95rem',
+            lineHeight: 1.6,
+            whiteSpace: 'pre-wrap',
+          }}>
+            {bio}
+          </p>
+          <div style={{
+            marginTop: '.5rem',
+            color: 'var(--neon)',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            opacity: 0.7,
+          }}>
+            ✏ Click to edit
+          </div>
+        </>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          color: 'var(--neon)',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.8rem',
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+          padding: '1.5rem 0',
+          border: '1px dashed var(--neon)',
+          borderRadius: 6,
+        }}>
+          + Click to add your bio
+        </div>
+      )}
     </div>
   );
 }
