@@ -426,10 +426,13 @@
   text-align: center;
   aspect-ratio: 1;
   background: transparent;
-  border: 1px solid transparent;
+  /* Match the full-month .cell — white outlined squares as the
+     default. State modifiers below override the border color. */
+  border: 1px solid var(--white);
 }
 .miniCellOpen {
   background: rgba(0, 245, 196, .1);
+  border-color: var(--white);
 }
 .miniCellToday {
   background: rgba(0, 245, 196, .18);
