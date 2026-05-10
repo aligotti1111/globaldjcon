@@ -1621,7 +1621,11 @@ function SocialAddButton({
 // ─────────────────────────────────────────────────────────────────────────
 function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: string | null }) {
   const [bio, setBio] = useState<string>(initialBio || '');
-  const [editing, setEditing] = useState(false);
+  // When the bio is empty by default, open straight into edit mode so
+  // the DJ sees the textbox right away instead of a "Click to add"
+  // affordance. If they already have a bio, we render in view mode
+  // with the pencil to start editing.
+  const [editing, setEditing] = useState(!initialBio);
   const [draft, setDraft] = useState<string>(initialBio || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
