@@ -531,12 +531,19 @@
   border: 1px solid var(--border);
   position: relative;
   /* 16:9 aspect ratio — 56.25% padding-top gives the iframe its
-     standard video shape. Was 24.5% which only worked when the wrap
-     spanned the full tab width; with flex-row layout the wraps are
-     narrower and the old percentage rendered them too short. */
+     standard video shape. */
   padding-top: 56.25%;
-  max-width: 480px;
-  flex: 1 1 320px;
+  /* Fixed width — don't grow. flex: 0 0 keeps each card at the basis
+     so two cards at 392px sit comfortably side-by-side without
+     stretching to fill leftover space (which made them oversized). */
+  width: 392px;
+  flex: 0 0 392px;
+}
+@media (max-width: 768px) {
+  .videoWrap {
+    width: 100%;
+    flex: 1 1 100%;
+  }
 }
 .videoWrap iframe {
   position: absolute;
