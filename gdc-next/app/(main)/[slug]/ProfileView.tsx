@@ -1127,6 +1127,7 @@ function SocialAddButton({
   return (
     <div style={{
       // flex-basis: 100% forces this row to break onto its own line
+      // flex-basis: 100% forces this row to break onto its own line
       // inside the heroActions flex container, dropping the input panel
       // BELOW the icon row instead of squeezing into it. order: 999 keeps
       // it visually after all the icon buttons even though it's an
@@ -1136,12 +1137,17 @@ function SocialAddButton({
       order: 999,
       display: 'flex',
       alignItems: 'center',
-      gap: '.4rem',
-      padding: '.4rem .5rem',
-      marginTop: '.25rem',
-      background: 'rgba(0, 245, 196, .06)',
+      gap: '.5rem',
+      // Cap width so the panel sits naturally below the icon row
+      // (which is itself constrained by its content), instead of
+      // stretching to the entire hero width.
+      maxWidth: 460,
+      padding: '.5rem .6rem',
+      marginTop: '.5rem',
+      background: 'rgba(0, 245, 196, .08)',
       border: '1px solid var(--neon)',
-      borderRadius: 6,
+      borderRadius: 8,
+      boxShadow: '0 4px 16px rgba(0, 245, 196, .12)',
     }}>
       <input
         autoFocus
@@ -1154,8 +1160,8 @@ function SocialAddButton({
         style={{
           flex: 1,
           minWidth: 0,
-          padding: '.45rem .65rem',
-          background: 'rgba(0,0,0,0.25)',
+          padding: '.5rem .7rem',
+          background: 'rgba(0,0,0,0.3)',
           border: '1px solid var(--border, rgba(255,255,255,0.15))',
           borderRadius: 4,
           color: 'var(--white, #fff)',
