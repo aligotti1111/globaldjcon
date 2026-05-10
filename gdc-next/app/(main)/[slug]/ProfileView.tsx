@@ -741,7 +741,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           initialDesc={v.desc}
                         />
                       ) : v.desc ? (
-                        <div className={styles.videoCardDesc}>{v.desc}</div>
+                        <div className={styles.videoCardDesc}>
+                          <ExpandableDesc text={v.desc} />
+                        </div>
                       ) : null}
                     </div>
                   );
@@ -2131,14 +2133,20 @@ function VideoMetaEditor({
       <div style={{
         flex: 1,
         minWidth: 0,
-        fontFamily: 'DM Sans, sans-serif',
-        fontSize: '.82rem',
-        color: initialDesc ? 'var(--white, #fff)' : 'rgba(255,255,255,.35)',
-        lineHeight: 1.5,
-        whiteSpace: 'pre-wrap',
-        fontStyle: initialDesc ? 'normal' : 'italic',
       }}>
-        {initialDesc || 'No description yet.'}
+        {initialDesc ? (
+          <ExpandableDesc text={initialDesc} />
+        ) : (
+          <div style={{
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.82rem',
+            color: 'rgba(255,255,255,.35)',
+            lineHeight: 1.5,
+            fontStyle: 'italic',
+          }}>
+            No description yet.
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -2166,6 +2174,82 @@ function VideoMetaEditor({
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
       </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ExpandableDesc — clamps the description to 3 lines via -webkit-line-clamp.
+// If the rendered text is taller than the clamp, shows a Show more / Show
+// less toggle. Used inside video cards in both owner-view (VideoMetaEditor)
+// and the read-only public render. Detection happens after layout via a
+// ref + scrollHeight comparison.
+// ─────────────────────────────────────────────────────────────────────────
+function ExpandableDesc({ text }: { text: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isOverflow, setIsOverflow] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    // Measure after paint. When clamped, scrollHeight > clientHeight
+    // means there's hidden content beyond the 3-line cap. We only set
+    // the toggle visible if there's overflow.
+    const el = ref.current;
+    if (!el) return;
+    // Defer to next frame so the line-clamp has been applied.
+    const id = window.requestAnimationFrame(() => {
+      setIsOverflow(el.scrollHeight > el.clientHeight + 1);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [text]);
+
+  // Style for the text body — when collapsed, line-clamp to 3 via the
+  // webkit -webkit-line-clamp / -webkit-box trick (still the most
+  // reliable cross-browser line clamp). Expanded just shows everything.
+  const collapsedStyle: React.CSSProperties = {
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: '.82rem',
+    color: 'var(--white, #fff)',
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
+  };
+  const expandedStyle: React.CSSProperties = {
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: '.82rem',
+    color: 'var(--white, #fff)',
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
+  };
+
+  return (
+    <div>
+      <div ref={ref} style={expanded ? expandedStyle : collapsedStyle}>
+        {text}
+      </div>
+      {isOverflow && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            marginTop: '.25rem',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--neon)',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
     </div>
   );
 }
