@@ -728,6 +728,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       <div className={styles.videoWrap}>
                         <iframe
                           src={embed.src}
+                          width="640"
+                          height="360"
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
