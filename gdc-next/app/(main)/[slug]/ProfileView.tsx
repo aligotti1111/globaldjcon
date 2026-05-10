@@ -5,7 +5,7 @@
 //   - Lightbox open/close for gallery images and avatar
 // Server Component (page.tsx) does the data fetch and passes everything in.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './profile.module.css';
@@ -19,6 +19,7 @@ import ClubBookingForm from './ClubBookingForm';
 import BookingLoginGate from './BookingLoginGate';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { createClient } from '@/lib/supabase/client';
+import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
@@ -135,6 +136,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
+  // Avatar upload — owner-only. fileInputRef triggers the native file
+  // picker; pickedAvatarFile holds the chosen File until AvatarCrop's
+  // crop modal commits or cancels. On crop success we write the new
+  // public URL to users.avatar_url and reload to refresh the hero.
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -286,7 +293,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
-            <div className={`${styles.heroAvatar} ${typeClass}`} style={isOwnProfile && !data.avatar_url ? { position: 'relative' } : undefined}>
+            <div className={`${styles.heroAvatar} ${typeClass}`} style={isOwnProfile ? { position: 'relative' } : undefined}>
               {data.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -295,43 +302,58 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
                   onClick={() => setLightboxSrc(data.avatar_url!)}
                 />
-              ) : isOwnProfile ? (
-                // Owner has no profile pic yet — render the initials but
-                // overlay the whole avatar with a neon "+" shortcut that
-                // routes to update-dj-profile/General where the avatar
-                // upload + crop UI lives.
+              ) : (
+                initials(data.name)
+              )}
+              {/* Owner-only camera badge — always visible, signals that
+                  the avatar can be changed. Click opens the native file
+                  picker; the chosen file flows through AvatarCrop modal
+                  for crop+upload, then we write the URL to users and
+                  reload. Sits in the bottom-right corner of the avatar
+                  circle whether there's a photo or initials underneath. */}
+              {isOwnProfile && (
                 <>
-                  {initials(data.name)}
-                  <a
-                    href="/update-dj-profile?tab=general"
-                    title="Add a profile picture"
-                    aria-label="Add a profile picture"
+                  <button
+                    type="button"
+                    onClick={() => avatarFileInputRef.current?.click()}
+                    title={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
+                    aria-label={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
                     style={{
                       position: 'absolute',
-                      inset: 0,
+                      bottom: 4,
+                      right: 4,
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'var(--neon)',
+                      border: '2px solid #000',
+                      color: '#000',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '50%',
-                      background: 'rgba(0, 0, 0, .55)',
-                      color: 'var(--neon)',
-                      fontSize: '3rem',
-                      fontWeight: 300,
-                      lineHeight: 1,
-                      textDecoration: 'none',
-                      opacity: 0,
-                      transition: 'opacity .15s ease',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0'; }}
-                    onFocus={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
-                    onBlur={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0'; }}
                   >
-                    +
-                  </a>
+                    {/* Inline camera SVG — keeps the badge crisp at any
+                        size without needing an extra icon import. */}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setPickedAvatarFile(file);
+                    }}
+                  />
                 </>
-              ) : (
-                initials(data.name)
               )}
             </div>
             {/* Mobile-only column: name + badges next to avatar */}
@@ -659,6 +681,39 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           recipientUserId={data.id}
           recipientName={data.name || 'this DJ'}
           onClose={() => setComposeOpen(false)}
+        />
+      )}
+
+      {/* Avatar upload + crop modal — owner-only. Opens once the user
+          has picked a file via the camera badge. AvatarCrop handles the
+          crop UI + Supabase Storage upload at ${userId}/avatar.png and
+          calls onSuccess with the public URL. We then write that URL
+          to users.avatar_url and reload so the hero shows the new pic. */}
+      {pickedAvatarFile && isOwnProfile && (
+        <AvatarCrop
+          file={pickedAvatarFile}
+          userId={data.id}
+          onClose={() => {
+            setPickedAvatarFile(null);
+            // Reset the input so picking the same file again still fires
+            // onChange (browsers skip duplicate file selections).
+            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+          }}
+          onSuccess={async (publicUrl) => {
+            try {
+              const supabase = createClient();
+              await supabase
+                .from('users')
+                .update({ avatar_url: publicUrl } as unknown as never)
+                .eq('id', data.id);
+            } catch {
+              // Non-blocking; the upload succeeded even if the row update
+              // failed. User can retry.
+            }
+            setPickedAvatarFile(null);
+            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+            window.location.reload();
+          }}
         />
       )}
     </>
