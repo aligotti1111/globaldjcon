@@ -2648,8 +2648,12 @@ function PhotoManagerSlot({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={url}
+              src={thumbUrl(url, 400)}
               alt={`Gallery slot ${slot}`}
+              width={400}
+              height={400}
+              loading="eager"
+              decoding="async"
               style={{
                 width: '100%',
                 height: '100%',
@@ -2747,4 +2751,42 @@ function PhotoManagerSlot({
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// thumbUrl — rewrite a Supabase Storage public URL to use the image
+// transform endpoint so we get a small thumbnail instead of the full
+// multi-MB original. Used by the photo manager modal so opening doesn't
+// stall while 4 full-resolution photos download.
+//
+// Pattern: /storage/v1/object/public/<bucket>/<path> →
+//          /storage/v1/render/image/public/<bucket>/<path>?width=N&resize=cover&quality=70
+//
+// Falls back to the original URL if the input doesn't match the
+// Supabase public-object pattern (e.g. external URLs from older data).
+// Preserves any cache-busting `?t=` query so updated images still
+// invalidate the browser cache.
+// ─────────────────────────────────────────────────────────────────────────
+function thumbUrl(originalUrl: string, size: number): string {
+  try {
+    const u = new URL(originalUrl);
+    if (!u.pathname.includes('/storage/v1/object/public/')) {
+      return originalUrl;
+    }
+    const transformedPath = u.pathname.replace(
+      '/storage/v1/object/public/',
+      '/storage/v1/render/image/public/'
+    );
+    // Preserve cache-busting timestamp if present
+    const t = u.searchParams.get('t');
+    const params = new URLSearchParams();
+    params.set('width', String(size));
+    params.set('height', String(size));
+    params.set('resize', 'cover');
+    params.set('quality', '70');
+    if (t) params.set('t', t);
+    return `${u.origin}${transformedPath}?${params.toString()}`;
+  } catch {
+    return originalUrl;
+  }
 }
