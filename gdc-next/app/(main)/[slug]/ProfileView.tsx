@@ -1682,12 +1682,17 @@ function MediaAddButton({
   // Expanded — input row.
   return (
     <div style={{
+      // When inline (non-big), break to a new row inside the flex
+      // parent (videoList/mediaList) and cap width so the panel reads
+      // as a small input bar, not a full media-card-sized box.
+      ...(big ? {} : { flexBasis: '100%', order: 999 }),
       display: 'flex',
       flexDirection: 'column',
       gap: '.5rem',
       padding: '.75rem',
-      margin: big ? '2rem auto' : '.75rem 0',
-      maxWidth: big ? 520 : '100%',
+      margin: big ? '2rem auto' : '.75rem 0 0',
+      width: big ? undefined : 'fit-content',
+      maxWidth: big ? 520 : 480,
       background: 'rgba(0, 245, 196, .06)',
       border: '1px solid var(--neon)',
       borderRadius: 8,
@@ -1714,6 +1719,7 @@ function MediaAddButton({
           style={{
             flex: 1,
             minWidth: 0,
+            width: 320,
             padding: '.55rem .7rem',
             background: 'rgba(0,0,0,0.3)',
             border: '1px solid var(--border, rgba(255,255,255,0.15))',
