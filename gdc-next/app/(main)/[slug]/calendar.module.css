@@ -426,7 +426,7 @@
   text-align: center;
   aspect-ratio: 1;
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
 }
 .miniCellOpen {
   cursor: pointer;
