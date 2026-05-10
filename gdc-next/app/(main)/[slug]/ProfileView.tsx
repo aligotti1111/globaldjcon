@@ -293,24 +293,29 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
-            <div className={`${styles.heroAvatar} ${typeClass}`} style={isOwnProfile ? { position: 'relative' } : undefined}>
-              {data.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={data.avatar_url}
-                  alt={data.name || 'DJ'}
-                  style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
-                  onClick={() => setLightboxSrc(data.avatar_url!)}
-                />
-              ) : (
-                initials(data.name)
-              )}
-              {/* Owner-only camera badge — always visible, signals that
-                  the avatar can be changed. Click opens the native file
-                  picker; the chosen file flows through AvatarCrop modal
-                  for crop+upload, then we write the URL to users and
-                  reload. Sits in the bottom-right corner of the avatar
-                  circle whether there's a photo or initials underneath. */}
+            {/* Avatar wrapper — relative-positioned so the camera
+                badge can sit on top of the avatar circle without being
+                clipped by .heroAvatar's overflow:hidden. */}
+            <div style={isOwnProfile ? { position: 'relative', flexShrink: 0 } : undefined}>
+              <div className={`${styles.heroAvatar} ${typeClass}`}>
+                {data.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={data.avatar_url}
+                    alt={data.name || 'DJ'}
+                    style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
+                    onClick={() => setLightboxSrc(data.avatar_url!)}
+                  />
+                ) : (
+                  initials(data.name)
+                )}
+              </div>
+              {/* Owner-only camera badge — always visible, signals
+                  that the avatar can be changed. Click opens the native
+                  file picker; the chosen file flows through AvatarCrop
+                  modal for crop+upload, then we write the URL to users
+                  and reload. Sits outside the avatar's overflow:hidden
+                  clip so it always shows fully. */}
               {isOwnProfile && (
                 <>
                   <button
@@ -320,10 +325,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     aria-label={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
                     style={{
                       position: 'absolute',
-                      bottom: 4,
-                      right: 4,
-                      width: 36,
-                      height: 36,
+                      bottom: 6,
+                      right: 6,
+                      width: 40,
+                      height: 40,
                       borderRadius: '50%',
                       background: 'var(--neon)',
                       border: '2px solid #000',
@@ -333,12 +338,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       justifyContent: 'center',
                       cursor: 'pointer',
                       padding: 0,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                      zIndex: 2,
                     }}
                   >
-                    {/* Inline camera SVG — keeps the badge crisp at any
-                        size without needing an extra icon import. */}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                       <circle cx="12" cy="13" r="4"/>
                     </svg>
