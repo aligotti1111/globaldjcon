@@ -192,6 +192,31 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       // Best-effort; user can retry.
     }
   }
+
+  // Delete a photo — clears gallery_img_N for the given slot and
+  // reloads on the Photos tab. Owner-only; called from X button on
+  // each gallery image.
+  async function deletePhoto(slot: 1 | 2 | 3 | 4) {
+    const ok = await confirm({
+      title: 'Delete this photo?',
+      message: 'This removes the photo from your profile gallery.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('users')
+        .update({ [`gallery_img_${slot}`]: null } as unknown as never)
+        .eq('id', data.id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'images');
+      window.location.href = url.toString();
+    } catch {
+      // Best-effort
+    }
+  }
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -280,6 +305,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const mixUrls = [data.mix_url_1, data.mix_url_2, data.mix_url_3].filter((u): u is string => !!u);
   const galleryUrls = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
     .filter((u): u is string => !!u);
+  // Slot-aware gallery entries — needed so the owner delete X can
+  // null out the correct gallery_img_N column (since galleryUrls is
+  // filtered, indexes don't line up with DB slots after a deletion).
+  const galleryEntries = [
+    { slot: 1 as const, url: data.gallery_img_1 },
+    { slot: 2 as const, url: data.gallery_img_2 },
+    { slot: 3 as const, url: data.gallery_img_3 },
+    { slot: 4 as const, url: data.gallery_img_4 },
+  ].filter((g): g is { slot: 1 | 2 | 3 | 4; url: string } => !!g.url);
   const videoUrls = [data.video_url_1, data.video_url_2, data.video_url_3].filter((u): u is string => !!u);
   // Pair each video URL with its title + description from the matching
   // numbered columns. slot is 1/2/3 — the original DB column index — so
@@ -659,23 +693,68 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Photos tab */}
           <div className={paneClass('images')}>
-            {galleryUrls.length > 0 ? (
+            {galleryEntries.length > 0 ? (
               <div className={styles.imageGrid}>
-                {galleryUrls.map((url, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={url}
-                    alt="Gallery photo"
-                    loading="lazy"
-                    onClick={() => setLightboxSrc(url)}
-                  />
+                {galleryEntries.map((g) => (
+                  <div
+                    key={g.slot}
+                    style={isOwnProfile ? { position: 'relative' } : undefined}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={g.url}
+                      alt="Gallery photo"
+                      loading="lazy"
+                      onClick={() => setLightboxSrc(g.url)}
+                    />
+                    {isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); deletePhoto(g.slot); }}
+                        title="Delete this photo"
+                        aria-label="Delete this photo"
+                        style={{
+                          position: 'absolute',
+                          top: 6,
+                          right: 6,
+                          zIndex: 5,
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: 'rgba(0, 0, 0, .8)',
+                          border: '1px solid rgba(255, 95, 95, .7)',
+                          color: '#ff5f5f',
+                          fontSize: '.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 ))}
+                {/* Owner-only inline add — appears in the grid until
+                    all 4 slots are filled. */}
+                {isOwnProfile && galleryEntries.length < 4 && (
+                  <PhotoAddButton
+                    userId={data.id}
+                    existing={[data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]}
+                  />
+                )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <OwnerAddButton href="/update-dj-profile?tab=photos" label="Add photos" big />
+                  <PhotoAddButton
+                    userId={data.id}
+                    existing={[data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]}
+                    big
+                  />
                 ) : 'Coming Soon'}
               </div>
             )}
@@ -2254,5 +2333,173 @@ function ExpandableDesc({ text }: { text: string }) {
         </button>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PhotoAddButton — owner-only file-upload affordance for the gallery.
+// `big` variant is the empty-state centered + button; default is an
+// inline tile that sits in the image grid alongside existing photos.
+// Click → native file picker → uploads to Supabase Storage at
+// `${userId}/gallery_${slot}.{ext}` (matches PhotosTab convention) →
+// writes public URL to gallery_img_${slot} → reloads on Photos tab.
+// ─────────────────────────────────────────────────────────────────────────
+function PhotoAddButton({
+  userId,
+  existing,
+  big,
+}: {
+  userId: string;
+  existing: (string | null)[];
+  big?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function pick() {
+    if (uploading) return;
+    inputRef.current?.click();
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset so same file can be re-picked later
+    if (!file) return;
+    // Find first empty slot
+    const emptyIdx = existing.findIndex((v) => !v);
+    if (emptyIdx === -1) {
+      setError('All 4 photo slots full. Delete one first.');
+      return;
+    }
+    const slot = emptyIdx + 1;
+    setError(null);
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${userId}/gallery_${slot}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      // Cache-bust so the new image shows immediately even if same path
+      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ [`gallery_img_${slot}`]: publicUrl } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'images');
+      window.location.href = url.toString();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed.';
+      setError(msg);
+      setUploading(false);
+    }
+  }
+
+  // Big variant — empty-state centered button (matches mix/video style).
+  if (big) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={pick}
+          disabled={uploading}
+          title="Add a photo"
+          aria-label="Add a photo"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 96,
+            height: 96,
+            margin: '2.5rem auto',
+            background: 'rgba(0, 245, 196, .08)',
+            border: '2px solid var(--neon)',
+            borderRadius: '50%',
+            color: 'var(--neon)',
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            fontSize: '3rem',
+            lineHeight: 1,
+            fontWeight: 300,
+            padding: 0,
+            opacity: uploading ? 0.5 : 1,
+          }}
+        >
+          {uploading ? '…' : '+'}
+        </button>
+        {error && (
+          <div style={{
+            marginTop: '.75rem',
+            color: '#ff5f5f',
+            fontSize: '.78rem',
+            textAlign: 'center',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            {error}
+          </div>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={onFile}
+        />
+      </>
+    );
+  }
+
+  // Inline grid tile — same dimensions as a gallery image cell.
+  return (
+    <>
+      <button
+        type="button"
+        onClick={pick}
+        disabled={uploading}
+        title="Add a photo"
+        aria-label="Add a photo"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          aspectRatio: '1 / 1',
+          background: 'rgba(0, 245, 196, .05)',
+          border: '2px dashed var(--neon)',
+          borderRadius: 8,
+          color: 'var(--neon)',
+          cursor: uploading ? 'not-allowed' : 'pointer',
+          fontSize: '2.5rem',
+          lineHeight: 1,
+          fontWeight: 300,
+          padding: 0,
+          opacity: uploading ? 0.5 : 1,
+        }}
+      >
+        {uploading ? '…' : '+'}
+      </button>
+      {error && (
+        <div style={{
+          color: '#ff5f5f',
+          fontSize: '.78rem',
+          fontFamily: 'DM Sans, sans-serif',
+          gridColumn: '1 / -1',
+        }}>
+          {error}
+        </div>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={onFile}
+      />
+    </>
   );
 }
