@@ -546,12 +546,13 @@
   letter-spacing: .03em;
   color: var(--white);
   line-height: 1.2;
+  text-align: center;
 }
 .videoCardDesc {
   padding: .5rem 1rem .85rem;
   font-family: 'DM Sans', sans-serif;
   font-size: .82rem;
-  color: var(--muted);
+  color: var(--white);
   line-height: 1.5;
   white-space: pre-wrap;
 }

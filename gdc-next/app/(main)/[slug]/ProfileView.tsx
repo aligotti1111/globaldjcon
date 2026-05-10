@@ -18,6 +18,7 @@ import MobilePublicCalendar from './MobilePublicCalendar';
 import ClubBookingForm from './ClubBookingForm';
 import BookingLoginGate from './BookingLoginGate';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
+import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
@@ -158,6 +159,39 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // public URL to users.avatar_url and reload to refresh the hero.
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
+
+  // Confirm modal — used for owner delete-video confirmation. Returns
+  // a confirm() promise + a confirmDialog JSX element to render once.
+  const { confirm, confirmDialog } = useConfirm();
+
+  // Delete a video — clears url/title/desc for the given slot and
+  // reloads on the same tab. Owner-only; called from the X button on
+  // each framed video card.
+  async function deleteVideo(slot: 1 | 2 | 3) {
+    const ok = await confirm({
+      title: 'Delete this video?',
+      message: 'This removes the video from your profile. You can add it back any time.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('users')
+        .update({
+          [`video_url_${slot}`]: null,
+          [`video_title_${slot}`]: null,
+          [`video_desc_${slot}`]: null,
+        } as unknown as never)
+        .eq('id', data.id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'video');
+      window.location.href = url.toString();
+    } catch {
+      // Best-effort; user can retry.
+    }
+  }
   // If the URL has ?date= AND this is a club DJ profile AND visitor is
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
@@ -248,13 +282,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     .filter((u): u is string => !!u);
   const videoUrls = [data.video_url_1, data.video_url_2, data.video_url_3].filter((u): u is string => !!u);
   // Pair each video URL with its title + description from the matching
-  // numbered columns. Filtered the same way as videoUrls so indexes
-  // line up; only kept entries where the URL is set.
+  // numbered columns. slot is 1/2/3 — the original DB column index — so
+  // delete handlers can target the right video_url_N / video_title_N /
+  // video_desc_N columns even after filtering out empty slots.
   const videoEntries = [
-    { url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
-    { url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
-    { url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
-  ].filter((v): v is { url: string; title: string | null; desc: string | null } => !!v.url);
+    { slot: 1 as const, url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
+    { slot: 2 as const, url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
+    { slot: 3 as const, url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
+  ].filter((v): v is { slot: 1 | 2 | 3; url: string; title: string | null; desc: string | null } => !!v.url);
 
   // Testimonials (JSON-stringified, mobile DJs only)
   let testimonials: Testimonial[] = [];
@@ -654,7 +689,39 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   const embed = buildVideoEmbed(v.url);
                   if (!embed) return null;
                   return (
-                    <div key={i} className={styles.videoCard}>
+                    <div key={i} className={styles.videoCard} style={isOwnProfile ? { position: 'relative' } : undefined}>
+                      {/* Owner-only delete X — top-right corner of the
+                          frame, above the title. Confirms before delete
+                          via useConfirm modal. */}
+                      {isOwnProfile && (
+                        <button
+                          type="button"
+                          onClick={() => deleteVideo(v.slot)}
+                          title="Delete this video"
+                          aria-label="Delete this video"
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            zIndex: 5,
+                            width: 26,
+                            height: 26,
+                            borderRadius: '50%',
+                            background: 'rgba(0, 0, 0, .8)',
+                            border: '1px solid rgba(255, 95, 95, .7)',
+                            color: '#ff5f5f',
+                            fontSize: '.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
                       {v.title && (
                         <div className={styles.videoCardTitle}>{v.title}</div>
                       )}
@@ -666,9 +733,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           allowFullScreen
                         />
                       </div>
-                      {v.desc && (
+                      {isOwnProfile ? (
+                        <VideoMetaEditor
+                          userId={data.id}
+                          slot={v.slot}
+                          initialTitle={v.title}
+                          initialDesc={v.desc}
+                        />
+                      ) : v.desc ? (
                         <div className={styles.videoCardDesc}>{v.desc}</div>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
@@ -731,6 +805,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <img src={lightboxSrc} alt="" onClick={(e) => e.stopPropagation()} />
         )}
       </div>
+
+      {/* Confirm modal — for owner delete-video. Renders only when an
+          active confirm is pending. */}
+      {confirmDialog}
 
       {/* Compose-message modal — opened by the Message button in HeroActions.
           Only renders for logged-in non-owner visitors (see onClickMessage). */}
@@ -1622,7 +1700,24 @@ function MediaAddButton({
       // Title/desc are sent as null if empty so the DB row stays clean.
       const payload: Record<string, string | null> = { [column]: trimmed };
       if (kind === 'video') {
-        payload[`video_title_${slotNum}`] = titleVal.trim() || null;
+        // Try to auto-fetch the YouTube title when the DJ left the
+        // title blank. oEmbed is keyless and free; we just shrug it
+        // off if the request fails (non-YouTube link, network blip,
+        // etc) and store null. Description is never auto-filled.
+        let resolvedTitle = titleVal.trim();
+        if (!resolvedTitle) {
+          try {
+            const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(trimmed)}&format=json`;
+            const r = await fetch(oembedUrl);
+            if (r.ok) {
+              const j = await r.json() as { title?: string };
+              if (j.title) resolvedTitle = j.title;
+            }
+          } catch {
+            // Ignore — leave title null
+          }
+        }
+        payload[`video_title_${slotNum}`] = resolvedTitle || null;
         payload[`video_desc_${slotNum}`] = descVal.trim() || null;
       }
       const { error: dbError } = await supabase
@@ -1857,6 +1952,220 @@ function MediaAddButton({
           {error}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// VideoMetaEditor — owner-only inline editor for a video's title +
+// description. Renders in the description area of each video card.
+// View mode: shows the description (if set) with a small pencil button
+// to start editing. Edit mode: textarea for description + input for
+// title + Save/Cancel. Saves directly to public.users.video_title_N /
+// video_desc_N for the slot. Reloads on save so the rendered card
+// reflects the new values.
+// ─────────────────────────────────────────────────────────────────────────
+function VideoMetaEditor({
+  userId,
+  slot,
+  initialTitle,
+  initialDesc,
+}: {
+  userId: string;
+  slot: 1 | 2 | 3;
+  initialTitle: string | null;
+  initialDesc: string | null;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(initialTitle || '');
+  const [descDraft, setDescDraft] = useState(initialDesc || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function startEdit() {
+    setTitleDraft(initialTitle || '');
+    setDescDraft(initialDesc || '');
+    setError(null);
+    setEditing(true);
+  }
+  function cancel() {
+    setEditing(false);
+    setError(null);
+  }
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({
+          [`video_title_${slot}`]: titleDraft.trim() || null,
+          [`video_desc_${slot}`]: descDraft.trim() || null,
+        } as unknown as never)
+        .eq('id', userId);
+      if (dbError) throw dbError;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'video');
+      window.location.href = url.toString();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not save.';
+      setError(msg);
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div style={{
+        padding: '.6rem 1rem .85rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '.45rem',
+      }}>
+        <input
+          autoFocus
+          type="text"
+          value={titleDraft}
+          onChange={(e) => setTitleDraft(e.target.value)}
+          placeholder="Title (optional)"
+          disabled={saving}
+          style={{
+            width: '100%',
+            padding: '.45rem .6rem',
+            background: 'rgba(0,0,0,0.3)',
+            border: '1px solid var(--neon)',
+            borderRadius: 4,
+            color: 'var(--white, #fff)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.85rem',
+            boxSizing: 'border-box',
+          }}
+        />
+        <textarea
+          value={descDraft}
+          onChange={(e) => setDescDraft(e.target.value)}
+          placeholder="Description (optional)"
+          disabled={saving}
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '.45rem .6rem',
+            background: 'rgba(0,0,0,0.3)',
+            border: '1px solid var(--neon)',
+            borderRadius: 4,
+            color: 'var(--white, #fff)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '.82rem',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+            lineHeight: 1.5,
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.4rem' }}>
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={saving}
+            style={{
+              padding: '.4rem .75rem',
+              background: 'transparent',
+              border: '1px solid var(--border, rgba(255,255,255,0.2))',
+              borderRadius: 4,
+              color: 'var(--muted, #888)',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.65rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              cursor: saving ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            style={{
+              padding: '.4rem .85rem',
+              background: 'var(--neon)',
+              border: 'none',
+              borderRadius: 4,
+              color: '#000',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.65rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        {error && (
+          <div style={{
+            color: '#ff5f5f',
+            fontSize: '.75rem',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // View mode — description text + pencil button to start editing.
+  // Show pencil even when both title + desc are empty so the owner
+  // has a way to add them later.
+  return (
+    <div style={{
+      padding: '.5rem 1rem .85rem',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: '.5rem',
+    }}>
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        fontFamily: 'DM Sans, sans-serif',
+        fontSize: '.82rem',
+        color: initialDesc ? 'var(--white, #fff)' : 'rgba(255,255,255,.35)',
+        lineHeight: 1.5,
+        whiteSpace: 'pre-wrap',
+        fontStyle: initialDesc ? 'normal' : 'italic',
+      }}>
+        {initialDesc || 'No description yet.'}
+      </div>
+      <button
+        type="button"
+        onClick={startEdit}
+        title="Edit title and description"
+        aria-label="Edit title and description"
+        style={{
+          flexShrink: 0,
+          width: 28,
+          height: 28,
+          borderRadius: 4,
+          background: 'transparent',
+          border: '1px solid var(--border, rgba(255,255,255,0.15))',
+          color: 'var(--neon)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+        }}
+      >
+        {/* Inline pencil SVG */}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </button>
     </div>
   );
 }
