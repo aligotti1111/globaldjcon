@@ -514,28 +514,53 @@
 
 /* ── VIDEO TAB ────────────────────────────────────────── */
 .videoList {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
 }
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .videoList {
-    flex-direction: column;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
-.videoWrap {
-  border-radius: 10px;
-  overflow: hidden;
+@media (max-width: 600px) {
+  .videoList {
+    grid-template-columns: 1fr;
+  }
+}
+/* Frame around each video — title at top, video in middle, description
+   at bottom. Card grows to fit longer descriptions; aspect-ratio on the
+   inner videoWrap holds the video at 16:9 regardless. */
+.videoCard {
   background: var(--card);
   border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.videoCardTitle {
+  padding: .75rem 1rem .5rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: .03em;
+  color: var(--white);
+  line-height: 1.2;
+}
+.videoCardDesc {
+  padding: .5rem 1rem .85rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.videoWrap {
   position: relative;
-  /* Square — aspect-ratio is reliable here because the wrap has a
-     fixed width; padding-top % would resolve against the parent
-     flex container's width, which made the wrap absurdly tall. */
-  aspect-ratio: 1 / 1;
-  width: 392px;
-  flex: 0 0 392px;
+  background: #000;
+  /* 16:9 inside the card frame. aspect-ratio resolves against the
+     element's own width which is now constrained by the grid cell. */
+  aspect-ratio: 16 / 9;
 }
 @media (max-width: 768px) {
   .videoWrap {

@@ -69,6 +69,14 @@ export interface DjProfileData {
   video_url_1: string | null;
   video_url_2: string | null;
   video_url_3: string | null;
+  // Optional title + description per video, set by DJ in the inline
+  // add form on the profile. Render in a frame around each video.
+  video_title_1: string | null;
+  video_title_2: string | null;
+  video_title_3: string | null;
+  video_desc_1: string | null;
+  video_desc_2: string | null;
+  video_desc_3: string | null;
 }
 
 interface Testimonial {
@@ -239,6 +247,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const galleryUrls = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
     .filter((u): u is string => !!u);
   const videoUrls = [data.video_url_1, data.video_url_2, data.video_url_3].filter((u): u is string => !!u);
+  // Pair each video URL with its title + description from the matching
+  // numbered columns. Filtered the same way as videoUrls so indexes
+  // line up; only kept entries where the URL is set.
+  const videoEntries = [
+    { url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
+    { url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
+    { url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
+  ].filter((v): v is { url: string; title: string | null; desc: string | null } => !!v.url);
 
   // Testimonials (JSON-stringified, mobile DJs only)
   let testimonials: Testimonial[] = [];
@@ -632,23 +648,31 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Video tab */}
           <div className={paneClass('video')}>
-            {videoUrls.length > 0 ? (
+            {videoEntries.length > 0 ? (
               <div className={styles.videoList}>
-                {videoUrls.map((url, i) => {
-                  const embed = buildVideoEmbed(url);
+                {videoEntries.map((v, i) => {
+                  const embed = buildVideoEmbed(v.url);
                   if (!embed) return null;
                   return (
-                    <div key={i} className={styles.videoWrap}>
-                      <iframe
-                        src={embed.src}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
+                    <div key={i} className={styles.videoCard}>
+                      {v.title && (
+                        <div className={styles.videoCardTitle}>{v.title}</div>
+                      )}
+                      <div className={styles.videoWrap}>
+                        <iframe
+                          src={embed.src}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                      {v.desc && (
+                        <div className={styles.videoCardDesc}>{v.desc}</div>
+                      )}
                     </div>
                   );
                 })}
-                {isOwnProfile && videoUrls.length < 3 && (
+                {isOwnProfile && videoEntries.length < 3 && (
                   <MediaAddButton
                     userId={data.id}
                     kind="video"
@@ -1561,6 +1585,10 @@ function MediaAddButton({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [value, setValue] = useState('');
+  // Optional title + description — only shown for videos. DJ leaves
+  // blank if they don't want them; both are nullable in the DB.
+  const [titleVal, setTitleVal] = useState('');
+  const [descVal, setDescVal] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1584,14 +1612,22 @@ function MediaAddButton({
       setError(`You already have 3 ${verb}s. Remove one first.`);
       return;
     }
-    const column = `${colPrefix}${emptyIdx + 1}`;
+    const slotNum = emptyIdx + 1;
+    const column = `${colPrefix}${slotNum}`;
     setError(null);
     setSaving(true);
     try {
       const supabase = createClient();
+      // Build payload: always the URL, plus title/desc for videos.
+      // Title/desc are sent as null if empty so the DB row stays clean.
+      const payload: Record<string, string | null> = { [column]: trimmed };
+      if (kind === 'video') {
+        payload[`video_title_${slotNum}`] = titleVal.trim() || null;
+        payload[`video_desc_${slotNum}`] = descVal.trim() || null;
+      }
       const { error: dbError } = await supabase
         .from('users')
-        .update({ [column]: trimmed } as unknown as never)
+        .update(payload as unknown as never)
         .eq('id', userId);
       if (dbError) throw dbError;
       // Reload with ?tab=mixes or ?tab=video so the user lands back on
@@ -1709,6 +1745,48 @@ function MediaAddButton({
       }}>
         Add a {verb}
       </div>
+      {/* Optional title + description — only shown for videos. Both
+          can be left blank; the rendered card just hides them then. */}
+      {kind === 'video' && (
+        <>
+          <input
+            type="text"
+            value={titleVal}
+            onChange={(e) => setTitleVal(e.target.value)}
+            placeholder="Title (optional)"
+            disabled={saving}
+            style={{
+              width: 320,
+              padding: '.5rem .7rem',
+              background: 'rgba(0,0,0,0.3)',
+              border: '1px solid var(--border, rgba(255,255,255,0.15))',
+              borderRadius: 4,
+              color: 'var(--white, #fff)',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '.85rem',
+            }}
+          />
+          <textarea
+            value={descVal}
+            onChange={(e) => setDescVal(e.target.value)}
+            placeholder="Description (optional)"
+            disabled={saving}
+            rows={2}
+            style={{
+              width: 320,
+              padding: '.5rem .7rem',
+              background: 'rgba(0,0,0,0.3)',
+              border: '1px solid var(--border, rgba(255,255,255,0.15))',
+              borderRadius: 4,
+              color: 'var(--white, #fff)',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '.85rem',
+              resize: 'vertical',
+              minHeight: 56,
+            }}
+          />
+        </>
+      )}
       <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
         <input
           autoFocus
