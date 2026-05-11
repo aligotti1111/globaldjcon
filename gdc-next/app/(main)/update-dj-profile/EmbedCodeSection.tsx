@@ -153,13 +153,9 @@ export default function EmbedCodeSection({ slug }: { slug: string }) {
             >
               Starting Height (px)
             </label>
-            <input
-              type="number"
-              min={300}
-              max={1200}
-              step={20}
+            <select
               value={height}
-              onChange={(e) => setHeight(parseInt(e.target.value, 10) || 520)}
+              onChange={(e) => setHeight(parseInt(e.target.value, 10))}
               style={{
                 width: '100%',
                 background: 'var(--deep)',
@@ -170,7 +166,13 @@ export default function EmbedCodeSection({ slug }: { slug: string }) {
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '.88rem',
               }}
-            />
+            >
+              <option value={400}>400px — Compact</option>
+              <option value={520}>520px — Standard</option>
+              <option value={600}>600px — Medium</option>
+              <option value={700}>700px — Tall</option>
+              <option value={850}>850px — Extra Tall</option>
+            </select>
           </div>
         </div>
 
