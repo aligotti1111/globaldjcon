@@ -162,6 +162,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
+  // Embed-calendar modal — owner-only shortcut on the profile so the DJ
+  // can grab their iframe embed snippet without leaving for update-dj-profile.
+  // Triggered by the "Embed Calendar" button above the calendar in the
+  // Booking/Availability tab.
+  const [embedModalOpen, setEmbedModalOpen] = useState(false);
 
   // Confirm modal — used for owner delete-video confirmation. Returns
   // a confirm() promise + a confirmDialog JSX element to render once.
@@ -613,6 +618,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
             <div className={paneClass('booking')} data-booking-anchor>
+              {isOwnProfile && (
+                <EmbedCalendarShortcut onClick={() => setEmbedModalOpen(true)} />
+              )}
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
@@ -656,6 +664,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           )}
           {showMobileBookingTab && (
             <div className={paneClass('booking')} data-booking-anchor>
+              {isOwnProfile && (
+                <EmbedCalendarShortcut onClick={() => setEmbedModalOpen(true)} />
+              )}
               <MobilePublicCalendar
                 djId={data.id}
                 djName={data.name || ''}
@@ -1079,6 +1090,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             url.searchParams.set('tab', 'images');
             window.location.href = url.toString();
           }}
+        />
+      )}
+
+      {/* Embed-calendar modal — owner-only. Lets the DJ generate / copy
+          their iframe embed snippet from the public profile without
+          having to go to update-dj-profile. Same generator UX as
+          EmbedCodeSection in update-dj-profile, ported inline to keep
+          this self-contained (no shared CSS module). */}
+      {embedModalOpen && isOwnProfile && (
+        <EmbedCalendarModal
+          slug={effectiveSlug}
+          onClose={() => setEmbedModalOpen(false)}
         />
       )}
     </>
@@ -2977,4 +3000,401 @@ function isImageMagicBytes(bytes: Uint8Array): boolean {
     bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70
   ) return true;
   return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EmbedCalendarShortcut — small owner-only banner button rendered above
+// the calendar in the Booking / Availability tab. Opens the embed-code
+// modal so the DJ can grab the iframe snippet without leaving the public
+// profile. Visible only to isOwnProfile users (the gate lives at the
+// call site in ProfileView).
+// ─────────────────────────────────────────────────────────────────────────
+function EmbedCalendarShortcut({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        marginBottom: '.75rem',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '.45rem',
+          padding: '.5rem .9rem',
+          background: 'transparent',
+          border: '1px solid var(--neon)',
+          borderRadius: 6,
+          color: 'var(--neon)',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.62rem',
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+          fontWeight: 700,
+          cursor: 'pointer',
+        }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+        Embed Calendar
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EmbedCalendarModal — owner-only popup that generates a copy-pasteable
+// iframe snippet pointing at /embed-calendar?slug=…. Mirrors the
+// generator UX of update-dj-profile/EmbedCodeSection but inlined here
+// so the public profile stays self-contained (no shared CSS module
+// dependency).
+//
+// Settings: theme (dark | light), starting height in px. The snippet
+// includes a tiny <script> that listens for the gdc-embed-height
+// postMessage from /embed-calendar and resizes the iframe automatically.
+// ─────────────────────────────────────────────────────────────────────────
+function EmbedCalendarModal({
+  slug,
+  onClose,
+}: {
+  slug: string;
+  onClose: () => void;
+}) {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [height, setHeight] = useState<number>(520);
+  const [copied, setCopied] = useState(false);
+
+  // Hardcoded production base — the snippet has to be portable across
+  // any third-party site, regardless of where the DJ generated it.
+  const baseSrc = `https://globaldjconnect.com/embed-calendar?slug=${encodeURIComponent(slug)}&theme=${theme}&months=1`;
+  const previewSrc = `/embed-calendar?slug=${encodeURIComponent(slug)}&theme=${theme}&months=1`;
+
+  const snippet =
+    `<!-- Global DJ Connect — availability calendar -->\n` +
+    `<iframe id="gdc-cal-${slug}" src="${baseSrc}" ` +
+    `style="width:100%;height:${height}px;border:0;display:block;" ` +
+    `loading="lazy" title="DJ Availability Calendar"></iframe>\n` +
+    `<script>\n` +
+    `(function(){window.addEventListener('message',function(e){` +
+    `if(e.data&&e.data.type==='gdc-embed-height'&&e.data.slug==='${slug}'){` +
+    `var f=document.getElementById('gdc-cal-${slug}');if(f)f.style.height=e.data.height+'px';}});` +
+    `})();\n` +
+    `<\/script>`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Fallback for browsers that block the async clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = snippet;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      } catch {
+        // Give up silently
+      }
+      document.body.removeChild(ta);
+    }
+  }
+
+  // No slug yet — should be effectively impossible from this entry
+  // point (button only shows on an owned profile) but guard anyway.
+  if (!slug) {
+    return (
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem',
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: 'var(--bg-card, #1a1a2e)',
+            border: '1px solid var(--border, rgba(255,255,255,0.1))',
+            borderRadius: 12,
+            padding: '1.5rem',
+            width: '100%',
+            maxWidth: 480,
+            color: 'var(--white, #fff)',
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Set your URL slug on the General tab first — the embed code
+          needs a slug to point at.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-card, #1a1a2e)',
+          border: '1px solid var(--border, rgba(255,255,255,0.1))',
+          borderRadius: 12,
+          padding: '1.5rem',
+          width: '100%',
+          maxWidth: 640,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '.4rem',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: '1.4rem',
+              color: 'var(--white, #fff)',
+              letterSpacing: '.04em',
+            }}
+          >
+            Embed Your Calendar
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--muted, #888)',
+              fontSize: '1.4rem',
+              cursor: 'pointer',
+              padding: '.25rem .5rem',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '.82rem',
+            color: 'var(--muted, #888)',
+            marginBottom: '1rem',
+            lineHeight: 1.5,
+          }}
+        >
+          Paste this snippet on any website to display your live calendar.
+          When visitors click an open date, they&apos;ll be sent to your
+          Global DJ Connect profile to book.
+        </div>
+
+        {/* Settings row */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '.75rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div>
+            <label
+              style={{
+                display: 'block',
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.6rem',
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                color: 'var(--muted, #888)',
+                marginBottom: '.35rem',
+              }}
+            >
+              Theme
+            </label>
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value as 'dark' | 'light')}
+              style={{
+                width: '100%',
+                background: 'var(--deep, #0a0a1a)',
+                border: '1px solid var(--border, rgba(255,255,255,0.1))',
+                borderRadius: 6,
+                color: 'var(--white, #fff)',
+                padding: '.55rem .75rem',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '.88rem',
+              }}
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div>
+            <label
+              style={{
+                display: 'block',
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.6rem',
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                color: 'var(--muted, #888)',
+                marginBottom: '.35rem',
+              }}
+            >
+              Starting Height (px)
+            </label>
+            <input
+              type="number"
+              min={300}
+              max={1200}
+              step={20}
+              value={height}
+              onChange={(e) => setHeight(parseInt(e.target.value, 10) || 520)}
+              style={{
+                width: '100%',
+                background: 'var(--deep, #0a0a1a)',
+                border: '1px solid var(--border, rgba(255,255,255,0.1))',
+                borderRadius: 6,
+                color: 'var(--white, #fff)',
+                padding: '.55rem .75rem',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '.88rem',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Code block + copy */}
+        <label
+          style={{
+            display: 'block',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.6rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            color: 'var(--muted, #888)',
+            marginBottom: '.35rem',
+          }}
+        >
+          Embed Code
+        </label>
+        <textarea
+          readOnly
+          value={snippet}
+          onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+          rows={5}
+          style={{
+            width: '100%',
+            background: 'var(--deep, #0a0a1a)',
+            border: '1px solid var(--border, rgba(255,255,255,0.1))',
+            borderRadius: 6,
+            color: 'var(--white, #fff)',
+            padding: '.75rem',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.7rem',
+            lineHeight: 1.55,
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+        <button
+          type="button"
+          onClick={copy}
+          style={{
+            marginTop: '.65rem',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            padding: '.6rem 1.2rem',
+            borderRadius: 6,
+            border: 'none',
+            background: copied ? 'var(--success, #4caf50)' : 'var(--neon)',
+            color: '#000',
+            cursor: 'pointer',
+            fontWeight: 700,
+            transition: 'background .2s',
+          }}
+        >
+          {copied ? '✓ Copied' : 'Copy Code'}
+        </button>
+
+        {/* Live preview */}
+        <div style={{ marginTop: '1.25rem' }}>
+          <div
+            style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.6rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              color: 'var(--muted, #888)',
+              marginBottom: '.45rem',
+            }}
+          >
+            Live Preview
+          </div>
+          <iframe
+            // Re-mount when slug or theme changes so the iframe reloads
+            key={`${slug}-${theme}`}
+            src={previewSrc}
+            style={{
+              width: '100%',
+              height: `${height}px`,
+              border: '1px solid var(--border, rgba(255,255,255,0.1))',
+              borderRadius: 6,
+              display: 'block',
+            }}
+            loading="lazy"
+            title="Embed preview"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
