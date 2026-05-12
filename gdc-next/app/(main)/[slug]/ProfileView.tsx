@@ -1485,7 +1485,7 @@ function HeroActions({
       {!isOwnProfile && (
         <button
           type="button"
-          className={styles.actionBtn}
+          className={`${styles.actionBtn} ${styles.actionBtnMessage}`}
           onClick={onClickMessage}
           title={`Message ${data.name || 'this DJ'}`}
         >

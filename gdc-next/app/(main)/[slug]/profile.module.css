@@ -689,6 +689,15 @@
   color: var(--amber);
   cursor: default;
 }
+.actionBtnMessage {
+  background: rgba(0, 245, 196, .08);
+  border-color: rgba(0, 245, 196, .4);
+  color: var(--neon);
+}
+.actionBtnMessage:hover {
+  background: var(--neon);
+  color: var(--black);
+}
 .actionBtnBookNow {
   background: var(--neon);
   border-color: var(--neon);
@@ -777,6 +786,11 @@
   background: rgba(15, 15, 20, .95);
   border-color: var(--amber);
   color: var(--amber);
+}
+.heroHasBanner .actionBtnMessage {
+  background: rgba(15, 15, 20, .95);
+  border-color: var(--neon);
+  color: var(--neon);
 }
 /* Hover states under banner — slight lighten of the dark bg to give
    feedback without losing the colored border. */
