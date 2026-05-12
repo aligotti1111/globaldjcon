@@ -76,21 +76,36 @@
 }
 
 /* ── BANNER ───────────────────────────────────────────── */
-/* Full-width image strip above the hero. If no banner_url is set we
-   only render this for the owner (empty dark band with an Add button). */
+/* Sits as an absolute layer behind the hero content (avatar, name,
+   social icons all render on top). For owners-only, the corner camera
+   button lets them upload/replace; visitors just see the image. A dark
+   gradient overlay sits on top of the image so the hero text stays
+   readable when a busy photo is set. */
 .banner {
-  position: relative;
-  width: 100%;
-  height: 240px;
-  background-color: rgba(255, 255, 255, .02);
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: transparent;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border-bottom: 1px solid var(--border);
+  pointer-events: none;
+}
+.banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 5, 7, .35) 0%,
+    rgba(5, 5, 7, .55) 60%,
+    rgba(5, 5, 7, .75) 100%
+  );
+  pointer-events: none;
 }
 .bannerEditBtn {
   position: absolute;
-  bottom: 12px;
+  top: 12px;
   right: 12px;
   display: inline-flex;
   align-items: center;
@@ -107,6 +122,8 @@
   cursor: pointer;
   backdrop-filter: blur(4px);
   transition: background .15s, border-color .15s;
+  pointer-events: auto;
+  z-index: 2;
 }
 .bannerEditBtn:hover {
   background: var(--neon);
@@ -118,11 +135,8 @@
   cursor: wait;
 }
 @media (max-width: 700px) {
-  .banner {
-    height: 160px;
-  }
   .bannerEditBtn {
-    bottom: 8px;
+    top: 8px;
     right: 8px;
     padding: .4rem .6rem;
     font-size: .6rem;
@@ -138,6 +152,14 @@
   align-items: flex-start;
   gap: 2.5rem;
   border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+/* Direct children of .hero (avatar, info, etc.) stack above the
+   absolutely-positioned .banner layer. The .banner is exempted so its
+   own position: absolute isn't overridden. */
+.hero > *:not(.banner) {
+  position: relative;
+  z-index: 1;
 }
 .heroAvatar {
   width: 180px;
