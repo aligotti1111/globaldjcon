@@ -451,6 +451,54 @@
   aspect-ratio: 1;
   background: transparent;
   border: 1px solid var(--border);
+  position: relative;
+}
+/* Owner mode: cell shows tiny ✓/✕ + ✏️ buttons in the corners. Give the
+   cell a little more height so the controls don't crowd the number. */
+.miniCellOwner {
+  aspect-ratio: auto;
+  min-height: 42px;
+  padding-top: 14px;
+}
+.miniOwnerControls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.miniOwnerQuickMark,
+.miniOwnerEditPencil {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  pointer-events: auto;
+  z-index: 5;
+}
+.miniOwnerQuickMark {
+  top: 2px;
+  left: 4px;
+  font-size: .6rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .35);
+}
+.miniOwnerQuickMark:hover {
+  color: rgba(255, 255, 255, .85);
+}
+.miniOwnerQuickMarkActive {
+  color: var(--neon);
+}
+.miniOwnerEditPencil {
+  top: 2px;
+  right: 4px;
+  font-size: .55rem;
+  color: var(--muted);
+  opacity: .7;
+}
+.miniOwnerEditPencil:hover {
+  opacity: 1;
+  filter: brightness(1.3);
 }
 .miniCellOpen {
   cursor: pointer;

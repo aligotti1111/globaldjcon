@@ -403,6 +403,7 @@ export default function PublicCalendar({
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
           onOwnerEdit={setOwnerEditKey}
+          onOwnerQuickToggle={quickToggleUnavail}
         />
       )}
 
@@ -710,6 +711,7 @@ function RollingMonthsView({
   onBookClick,
   isOwnProfile,
   onOwnerEdit,
+  onOwnerQuickToggle,
 }: {
   today: Date;
   bookingDays: BookingDays;
@@ -719,6 +721,7 @@ function RollingMonthsView({
   onBookClick: (key: string, e: React.MouseEvent) => void;
   isOwnProfile: boolean;
   onOwnerEdit: (key: string) => void;
+  onOwnerQuickToggle: (key: string) => void;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
   // Show min(window, 12) months — the window can be larger but the rolling
@@ -762,6 +765,7 @@ function RollingMonthsView({
       else if (isToday) cellClasses.push(styles.miniCellToday);
       else if (!isPast) cellClasses.push(styles.miniCellOpen);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
+      if (ownerCanEdit) cellClasses.push(styles.miniCellOwner);
 
       const numClasses = [styles.miniNum];
       if (isSelected) numClasses.push(styles.miniNumSelected);
@@ -777,6 +781,36 @@ function RollingMonthsView({
           onClick={onCellClick}
         >
           <div className={numClasses.join(' ')}>{d}</div>
+          {ownerCanEdit && (
+            <div className={styles.miniOwnerControls}>
+              {!isBooked && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOwnerQuickToggle(key);
+                  }}
+                  className={`${styles.miniOwnerQuickMark} ${
+                    isUnavail ? styles.miniOwnerQuickMarkActive : ''
+                  }`}
+                  title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+                >
+                  {isUnavail ? '✓' : '✕'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOwnerEdit(key);
+                }}
+                className={styles.miniOwnerEditPencil}
+                title="Edit day"
+              >
+                ✏️
+              </button>
+            </div>
+          )}
         </div>
       );
     }

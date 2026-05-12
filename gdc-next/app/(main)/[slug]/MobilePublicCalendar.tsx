@@ -413,6 +413,7 @@ export default function MobilePublicCalendar({
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
+          onQuickMark={quickMark}
           onOpenEdit={(key) => setOwnerEditKey(key)}
         />
       )}
@@ -673,6 +674,7 @@ function RollingMonthsView({
   selectedDate,
   onBookClick,
   isOwnProfile,
+  onQuickMark,
   onOpenEdit,
 }: {
   today: Date;
@@ -682,6 +684,7 @@ function RollingMonthsView({
   selectedDate: string | null;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   isOwnProfile: boolean;
+  onQuickMark: (key: string) => void;
   onOpenEdit: (key: string) => void;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
@@ -718,6 +721,9 @@ function RollingMonthsView({
       const isSelected = selectedDate === key;
 
       // Owner click → edit modal. Booker click → only if available, opens form.
+      // For owner mode we keep cell click for edit (so tapping anywhere on
+      // the cell still opens edit), but also render compact ✓/✕ + ✏️ buttons
+      // for quick-mark + explicit edit.
       const onCellClick = isOwnProfile
         ? (!isPast ? (() => onOpenEdit(key)) : undefined)
         : (isAvail ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
@@ -731,6 +737,7 @@ function RollingMonthsView({
       else if (isPast) cellClasses.push(styles.miniCellPast);
       if (isToday) cellClasses.push(styles.miniCellToday);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
+      if (isOwnProfile && !isPast) cellClasses.push(styles.miniCellOwner);
 
       cells.push(
         <div
@@ -738,7 +745,37 @@ function RollingMonthsView({
           className={cellClasses.join(' ')}
           onClick={onCellClick}
         >
-          {d}
+          <span className={styles.miniCellNum}>{d}</span>
+          {isOwnProfile && !isPast && (
+            <div className={styles.miniOwnerControls}>
+              {!isBooked && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onQuickMark(key);
+                  }}
+                  className={`${styles.miniOwnerQuickMark} ${
+                    isUnavail ? styles.miniOwnerQuickMarkActive : ''
+                  }`}
+                  title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+                >
+                  {isUnavail ? '✓' : '✕'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEdit(key);
+                }}
+                className={styles.miniOwnerEditPencil}
+                title="Edit day"
+              >
+                ✏️
+              </button>
+            </div>
+          )}
         </div>
       );
     }
