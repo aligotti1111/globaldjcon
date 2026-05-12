@@ -687,7 +687,23 @@
 /* ── BANNER-MODE OVERRIDES ──────────────────────────────────────
    When a banner is set, action buttons go solid (no transparency) so
    they read cleanly against any image. Brand colors stay intact;
-   only the backgrounds become opaque dark fills. */
+   only the backgrounds become opaque dark fills. Hero text picks up a
+   dark text-shadow so name, location, and badges stay legible on any
+   banner color. */
+.heroHasBanner .heroName,
+.heroHasBanner .heroLocation,
+.heroHasBanner .heroYears,
+.heroHasBanner .heroBadges {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, .9),
+    0 0 8px rgba(0, 0, 0, .7);
+}
+.heroHasBanner .heroLocation {
+  color: #fff;
+}
+.heroHasBanner .heroLocation svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+}
 .heroHasBanner .actionBtn {
   background: rgba(15, 15, 20, .95);
 }
