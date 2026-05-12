@@ -44,6 +44,7 @@ export interface DjProfileData {
   bio: string | null;
   avatar_url: string | null;
   avatar_position: string | null;
+  banner_url: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
@@ -159,6 +160,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // public URL to users.avatar_url and reload to refresh the hero.
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
+  // Banner upload — owner-only. Simple file picker → direct upload to
+  // Supabase Storage at ${userId}/banner.<ext>. On success we write the
+  // public URL to users.banner_url and reload to refresh the banner.
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -419,6 +425,82 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       )}
 
       <div>
+        {/* BANNER — full-width image above the hero. Owner can upload/replace
+            by clicking the camera button; visitors just see the image (or
+            nothing if no banner is set). */}
+        {(data.banner_url || isOwnProfile) && (
+          <div
+            className={styles.banner}
+            style={
+              data.banner_url
+                ? { backgroundImage: `url(${data.banner_url})` }
+                : undefined
+            }
+          >
+            {isOwnProfile && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => bannerFileInputRef.current?.click()}
+                  disabled={bannerUploading}
+                  className={styles.bannerEditBtn}
+                  title={data.banner_url ? 'Change banner' : 'Add banner'}
+                  aria-label={data.banner_url ? 'Change banner' : 'Add banner'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span>
+                    {bannerUploading
+                      ? 'Uploading…'
+                      : data.banner_url
+                        ? 'Change banner'
+                        : 'Add banner'}
+                  </span>
+                </button>
+                <input
+                  ref={bannerFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    const err = await validateImageFile(file);
+                    if (err) {
+                      alert(err);
+                      return;
+                    }
+                    setBannerUploading(true);
+                    try {
+                      const supabase = createClient();
+                      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+                      const path = `${data.id}/banner.${ext}`;
+                      const { error: upErr } = await supabase.storage
+                        .from('avatars')
+                        .upload(path, file, { upsert: true, contentType: file.type });
+                      if (upErr) throw upErr;
+                      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+                      const publicUrl = `${pub.publicUrl}?t=${Date.now()}`;
+                      const { error: dbErr } = await supabase
+                        .from('users')
+                        .update({ banner_url: publicUrl } as unknown as never)
+                        .eq('id', data.id);
+                      if (dbErr) throw dbErr;
+                      window.location.reload();
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : 'Upload failed.');
+                      setBannerUploading(false);
+                    }
+                  }}
+                />
+              </>
+            )}
+          </div>
+        )}
+
         {/* HERO */}
         <div className={styles.hero}>
           {/* Top row contains avatar; on mobile via media query, name+badges
