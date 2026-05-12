@@ -393,14 +393,14 @@
   padding: .6rem;
 }
 
-/* Year divider — spans the full 3-column row in the rolling 12-month
-   grid. Used to visually break the grid whenever the year changes. */
+/* Year divider — spans the full grid row to visually break the rolling
+   12-month view between years (e.g. between Dec 2025 and Jan 2026). */
 .yearDivider {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: .75rem;
-  margin: .25rem 0 -.25rem;
+  margin: .5rem 0;
 }
 .yearDivider::before,
 .yearDivider::after {
@@ -410,14 +410,14 @@
   background: linear-gradient(
     to right,
     transparent,
-    rgba(0, 245, 196, .35),
+    rgba(0, 245, 196, .45),
     transparent
   );
 }
 .yearDividerLabel {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.1rem;
-  letter-spacing: .1em;
+  font-size: 1.2rem;
+  letter-spacing: .12em;
   color: var(--neon);
   padding: 0 .5rem;
   white-space: nowrap;
