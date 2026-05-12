@@ -383,8 +383,10 @@
   align-items: flex-start;
   gap: 2.5rem;
   border-bottom: 1px solid var(--border);
-  overflow: hidden;
 }
+/* The .banner uses position: absolute inset: 0 and its background-image
+   paints within its own bounds — no overflow needed on .hero, which lets
+   popups (Events Serviced, tooltips) escape the hero box. */
 /* Direct children of .hero (avatar, info, etc.) stack above the
    absolutely-positioned .banner layer. The .banner is exempted so its
    own position: absolute isn't overridden. */
@@ -588,10 +590,10 @@
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  padding: .65rem .9rem;
+  padding: .58rem .8rem;
   border-radius: 8px;
   font-family: 'Space Mono', monospace;
-  font-size: .65rem;
+  font-size: .58rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   font-weight: 700;
@@ -600,9 +602,13 @@
   transition: all .2s;
   border: 1px solid;
   white-space: nowrap;
-  min-width: 46px;
-  min-height: 46px;
+  min-width: 41px;
+  min-height: 41px;
   position: relative;
+}
+.actionBtn svg {
+  width: 16px;
+  height: 16px;
 }
 .actionBtnPrimary {
   background: var(--neon-dim);
