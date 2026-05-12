@@ -292,7 +292,7 @@
 }
 .monthCard {
   background: rgba(255, 255, 255, .02);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, .6);
   border-radius: 8px;
   padding: .6rem;
 }
@@ -330,6 +330,20 @@
   letter-spacing: .08em;
   color: var(--neon);
   line-height: 1;
+}
+/* Per-year legend in the 12-month rolling view. Sits at the bottom of
+   each year group (after December or after the last month rendered) and
+   spans the full grid width. Reuses .legendItem / .legendDot styles. */
+.yearLegend {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: .25rem 0 .5rem;
+  padding: .4rem 0;
+  border-top: 1px solid var(--border);
 }
 .miniDayHeader {
   display: grid;

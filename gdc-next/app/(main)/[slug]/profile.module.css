@@ -95,18 +95,6 @@
     background-position: var(--banner-pos-mobile, var(--banner-pos, 50% 50%));
   }
 }
-.banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 5, 7, .35) 0%,
-    rgba(5, 5, 7, .55) 60%,
-    rgba(5, 5, 7, .75) 100%
-  );
-  pointer-events: none;
-}
 .bannerEditBtn {
   position: absolute;
   top: 24px;

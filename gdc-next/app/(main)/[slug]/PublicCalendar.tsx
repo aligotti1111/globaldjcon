@@ -838,6 +838,27 @@ function RollingMonthsView({
         <div className={styles.miniGrid}>{cells}</div>
       </div>
     );
+
+    // Year-end legend — push after December (end of year) or after the very
+    // last month rendered if the booking window doesn't end on December.
+    // The legend spans the full grid row so it visually closes out the year.
+    const isLastOfYear = mo === 11;
+    const isLastOfAll = i === monthsToRender - 1;
+    if (isLastOfYear || isLastOfAll) {
+      months.push(
+        <div key={`legend-${yr}-${mo}`} className={styles.yearLegend}>
+          <div className={`${styles.legendItem} ${styles.legendOpen}`}>
+            <span className={styles.legendDot} />Open
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendBooked}`}>
+            <span className={styles.legendDot} />Booked
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
+            <span className={styles.legendDot} />Unavailable
+          </div>
+        </div>
+      );
+    }
   }
 
   // Suppress isLoggedIn unused-warning — kept for future Session 5 wiring.
@@ -850,17 +871,6 @@ function RollingMonthsView({
         📅 This DJ is accepting bookings up to{' '}
         <strong>{windowLabel(bookingWindowMonths || 12)}</strong> in advance.
         Message them for dates beyond this.
-      </div>
-      <div className={styles.legendCentered}>
-        <div className={`${styles.legendItem} ${styles.legendOpen}`}>
-          <span className={styles.legendDot} />Open
-        </div>
-        <div className={`${styles.legendItem} ${styles.legendBooked}`}>
-          <span className={styles.legendDot} />Booked
-        </div>
-        <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
-          <span className={styles.legendDot} />Unavailable
-        </div>
       </div>
     </div>
   );

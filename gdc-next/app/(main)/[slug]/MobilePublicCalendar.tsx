@@ -418,18 +418,21 @@ export default function MobilePublicCalendar({
         />
       )}
 
-      {/* LEGEND */}
-      <div className={styles.legend}>
-        <div className={`${styles.legendItem} ${styles.legendAvail}`}>
-          <span className={styles.legendDot} />Available
+      {/* LEGEND — only shown in single-month view. In 12-month view the
+          legend is rendered inline at the end of each year inside the grid. */}
+      {!rollingActive && (
+        <div className={styles.legend}>
+          <div className={`${styles.legendItem} ${styles.legendAvail}`}>
+            <span className={styles.legendDot} />Available
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendBooked}`}>
+            <span className={styles.legendDot} />Booked
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
+            <span className={styles.legendDot} />Unavailable
+          </div>
         </div>
-        <div className={`${styles.legendItem} ${styles.legendBooked}`}>
-          <span className={styles.legendDot} />Booked
-        </div>
-        <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
-          <span className={styles.legendDot} />Unavailable
-        </div>
-      </div>
+      )}
 
       {/* BOOKING FORM — appears below the calendar after a date is selected.
           We use the date-key as a React key so picking a different date
@@ -803,6 +806,27 @@ function RollingMonthsView({
         <div className={styles.miniGrid}>{cells}</div>
       </div>
     );
+
+    // Year-end legend — push after December (end of year) or after the very
+    // last month rendered if the booking window doesn't end on December.
+    // The legend spans the full grid row so it visually closes out the year.
+    const isLastOfYear = mo === 11;
+    const isLastOfAll = i === monthsToRender - 1;
+    if (isLastOfYear || isLastOfAll) {
+      months.push(
+        <div key={`legend-${yr}-${mo}`} className={styles.yearLegend}>
+          <div className={`${styles.legendItem} ${styles.legendAvail}`}>
+            <span className={styles.legendDot} />Available
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendBooked}`}>
+            <span className={styles.legendDot} />Booked
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
+            <span className={styles.legendDot} />Unavailable
+          </div>
+        </div>
+      );
+    }
   }
 
   return <div className={styles.monthsGrid}>{months}</div>;
