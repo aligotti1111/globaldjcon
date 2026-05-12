@@ -45,6 +45,7 @@ export interface DjProfileData {
   avatar_url: string | null;
   avatar_position: string | null;
   banner_url: string | null;
+  banner_position: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
@@ -165,6 +166,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // public URL to users.banner_url and reload to refresh the banner.
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [bannerUploading, setBannerUploading] = useState(false);
+  // Reposition mode — owner can click+drag the banner vertically to choose
+  // which part shows. Live value tracked in state; saved to
+  // users.banner_position on commit. Format: '50% 50%' (CSS background-position).
+  const [bannerRepositioning, setBannerRepositioning] = useState(false);
+  const [bannerPosY, setBannerPosY] = useState<number>(() => {
+    // parse stored "X% Y%" — we keep X at 50% and only edit Y.
+    const stored = (data.banner_position || '50% 50%').split(' ');
+    const y = parseFloat(stored[1] || '50');
+    return Number.isFinite(y) ? y : 50;
+  });
+  const bannerDragRef = useRef<{ startY: number; startPos: number } | null>(null);
+  const [bannerSaving, setBannerSaving] = useState(false);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -177,6 +190,51 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Confirm modal — used for owner delete-video confirmation. Returns
   // a confirm() promise + a confirmDialog JSX element to render once.
   const { confirm, confirmDialog } = useConfirm();
+
+  // ── Banner reposition handlers ─────────────────────────────────
+  // Drag handler — moves the banner background vertically. Track
+  // pointer Y delta against the banner element height and convert to
+  // a 0–100% background-position-y value.
+  function onBannerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!bannerRepositioning) return;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    bannerDragRef.current = { startY: e.clientY, startPos: bannerPosY };
+  }
+  function onBannerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!bannerRepositioning || !bannerDragRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const deltaY = e.clientY - bannerDragRef.current.startY;
+    // Drag down = show more of the top of the image (lower % value).
+    // 1px of drag ≈ (100 / rect.height)% of position change.
+    const deltaPct = (deltaY / rect.height) * 100;
+    let next = bannerDragRef.current.startPos - deltaPct;
+    if (next < 0) next = 0;
+    if (next > 100) next = 100;
+    setBannerPosY(next);
+  }
+  function onBannerPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (bannerDragRef.current) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      bannerDragRef.current = null;
+    }
+  }
+  async function saveBannerPosition() {
+    setBannerSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({ banner_position: `50% ${bannerPosY}%` } as unknown as never)
+        .eq('id', data.id);
+      if (error) throw error;
+      setBannerRepositioning(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Save failed.');
+    } finally {
+      setBannerSaving(false);
+    }
+  }
 
   // Delete a video — clears url/title/desc for the given slot and
   // reloads on the same tab. Owner-only; called from the X button on
@@ -428,19 +486,28 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         {/* HERO */}
         <div className={styles.hero}>
           {/* BANNER — sits behind the hero content as a background layer.
-              Owner can upload/replace via the camera button in the corner;
-              visitors just see the image. */}
+              Owner can upload/replace via the camera button, or click
+              "Reposition" to drag the image vertically. */}
           {(data.banner_url || isOwnProfile) && (
             <div
-              className={styles.banner}
+              className={`${styles.banner} ${bannerRepositioning ? styles.bannerRepositioning : ''}`}
               style={
                 data.banner_url
-                  ? { backgroundImage: `url(${data.banner_url})` }
+                  ? {
+                      backgroundImage: `url(${data.banner_url})`,
+                      backgroundPosition: bannerRepositioning
+                        ? `50% ${bannerPosY}%`
+                        : (data.banner_position || '50% 50%'),
+                    }
                   : undefined
               }
+              onPointerDown={onBannerPointerDown}
+              onPointerMove={onBannerPointerMove}
+              onPointerUp={onBannerPointerUp}
+              onPointerCancel={onBannerPointerUp}
             >
-              {isOwnProfile && (
-                <>
+              {isOwnProfile && !bannerRepositioning && (
+                <div className={styles.bannerControls}>
                   <button
                     type="button"
                     onClick={() => bannerFileInputRef.current?.click()}
@@ -449,7 +516,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     title={data.banner_url ? 'Change banner' : 'Add banner'}
                     aria-label={data.banner_url ? 'Change banner' : 'Add banner'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                       <circle cx="12" cy="13" r="4"/>
                     </svg>
@@ -461,45 +528,91 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           : 'Add banner'}
                     </span>
                   </button>
-                  <input
-                    ref={bannerFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = '';
-                      if (!file) return;
-                      const err = await validateImageFile(file);
-                      if (err) {
-                        alert(err);
-                        return;
-                      }
-                      setBannerUploading(true);
-                      try {
-                        const supabase = createClient();
-                        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-                        const path = `${data.id}/banner.${ext}`;
-                        const { error: upErr } = await supabase.storage
-                          .from('avatars')
-                          .upload(path, file, { upsert: true, contentType: file.type });
-                        if (upErr) throw upErr;
-                        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-                        const publicUrl = `${pub.publicUrl}?t=${Date.now()}`;
-                        const { error: dbErr } = await supabase
-                          .from('users')
-                          .update({ banner_url: publicUrl } as unknown as never)
-                          .eq('id', data.id);
-                        if (dbErr) throw dbErr;
-                        window.location.reload();
-                      } catch (err) {
-                        alert(err instanceof Error ? err.message : 'Upload failed.');
-                        setBannerUploading(false);
-                      }
-                    }}
-                  />
-                </>
+                  {data.banner_url && (
+                    <button
+                      type="button"
+                      onClick={() => setBannerRepositioning(true)}
+                      className={styles.bannerEditBtn}
+                      title="Reposition banner"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="17 11 12 6 7 11" />
+                        <polyline points="17 17 12 22 7 17" />
+                      </svg>
+                      <span>Reposition</span>
+                    </button>
+                  )}
+                  <div className={styles.bannerSizeHint}>
+                    Recommended: 1600 × 400px (16:4)
+                  </div>
+                </div>
               )}
+              {isOwnProfile && bannerRepositioning && (
+                <div className={styles.bannerControls}>
+                  <div className={styles.bannerRepositionHint}>
+                    Drag to reposition
+                  </div>
+                  <button
+                    type="button"
+                    onClick={saveBannerPosition}
+                    disabled={bannerSaving}
+                    className={styles.bannerEditBtn}
+                  >
+                    {bannerSaving ? 'Saving…' : 'Save position'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Revert preview to stored value and exit mode.
+                      const stored = (data.banner_position || '50% 50%').split(' ');
+                      const y = parseFloat(stored[1] || '50');
+                      setBannerPosY(Number.isFinite(y) ? y : 50);
+                      setBannerRepositioning(false);
+                    }}
+                    disabled={bannerSaving}
+                    className={styles.bannerEditBtn}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              <input
+                ref={bannerFileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  const err = await validateImageFile(file);
+                  if (err) {
+                    alert(err);
+                    return;
+                  }
+                  setBannerUploading(true);
+                  try {
+                    const supabase = createClient();
+                    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+                    const path = `${data.id}/banner.${ext}`;
+                    const { error: upErr } = await supabase.storage
+                      .from('avatars')
+                      .upload(path, file, { upsert: true, contentType: file.type });
+                    if (upErr) throw upErr;
+                    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+                    const publicUrl = `${pub.publicUrl}?t=${Date.now()}`;
+                    const { error: dbErr } = await supabase
+                      .from('users')
+                      .update({ banner_url: publicUrl } as unknown as never)
+                      .eq('id', data.id);
+                    if (dbErr) throw dbErr;
+                    window.location.reload();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : 'Upload failed.');
+                    setBannerUploading(false);
+                  }
+                }}
+              />
             </div>
           )}
           {/* Top row contains avatar; on mobile via media query, name+badges

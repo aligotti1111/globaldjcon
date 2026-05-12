@@ -103,10 +103,34 @@
   );
   pointer-events: none;
 }
-.bannerEditBtn {
+/* When in reposition mode the entire banner is grabbable. The dark
+   overlay is suppressed slightly so the DJ can see the image clearly
+   while choosing the position. */
+.bannerRepositioning {
+  pointer-events: auto;
+  cursor: grab;
+}
+.bannerRepositioning:active {
+  cursor: grabbing;
+}
+.bannerRepositioning::after {
+  background: linear-gradient(
+    180deg,
+    rgba(5, 5, 7, .15) 0%,
+    rgba(5, 5, 7, .25) 100%
+  );
+}
+.bannerControls {
   position: absolute;
   top: 12px;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  pointer-events: auto;
+  z-index: 2;
+}
+.bannerEditBtn {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -116,14 +140,12 @@
   border-radius: 6px;
   color: var(--white);
   font-family: 'Space Mono', monospace;
-  font-size: .7rem;
+  font-size: .65rem;
   letter-spacing: .04em;
   text-transform: uppercase;
   cursor: pointer;
   backdrop-filter: blur(4px);
   transition: background .15s, border-color .15s;
-  pointer-events: auto;
-  z-index: 2;
 }
 .bannerEditBtn:hover {
   background: var(--neon);
@@ -134,12 +156,46 @@
   opacity: .6;
   cursor: wait;
 }
+.bannerSizeHint {
+  padding: .35rem .6rem;
+  background: rgba(0, 0, 0, .5);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.bannerRepositionHint {
+  padding: .5rem .8rem;
+  background: rgba(0, 0, 0, .65);
+  border: 1px solid var(--neon);
+  border-radius: 6px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
 @media (max-width: 700px) {
-  .bannerEditBtn {
+  .bannerControls {
     top: 8px;
     right: 8px;
-    padding: .4rem .6rem;
-    font-size: .6rem;
+    gap: .35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100% - 16px);
+  }
+  .bannerEditBtn {
+    padding: .35rem .55rem;
+    font-size: .55rem;
+  }
+  .bannerSizeHint {
+    font-size: .5rem;
+    padding: .3rem .5rem;
   }
 }
 
