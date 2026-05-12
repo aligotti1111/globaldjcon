@@ -720,9 +720,6 @@ function RollingMonthsView({
   const monthsToRender = Math.min(bookingWindowMonths || 12, 12);
 
   const months: React.ReactNode[] = [];
-  // Track the year we last rendered so we can insert a divider whenever
-  // we cross into a new year. First iteration always inserts a divider
-  // for the starting year — gives a consistent visual anchor at the top.
   let lastYear: number | null = null;
   for (let i = 0; i < monthsToRender; i++) {
     let mo = today.getMonth() + i;
