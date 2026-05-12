@@ -743,6 +743,16 @@ function RollingMonthsView({
       );
     }
 
+    // Year divider — before each January (skip the first month so we don't
+    // render a divider above the very first card if it happens to be Jan).
+    if (i > 0 && mo === 0) {
+      months.push(
+        <div key={`yr-${yr}`} className={styles.yearDivider}>
+          <span className={styles.yearDividerLabel}>{yr}</span>
+        </div>
+      );
+    }
+
     months.push(
       <div key={`m-${i}`} className={styles.monthCard}>
         <div className={styles.monthCardLabel}>

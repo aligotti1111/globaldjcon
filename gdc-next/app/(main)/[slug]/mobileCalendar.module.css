@@ -307,6 +307,30 @@
 .monthCardLabelYear {
   color: var(--neon);
 }
+
+/* Year divider — sits between Dec and Jan in the rolling 12-month grid.
+   Spans the full grid width so it breaks across the 3-column row. */
+.yearDivider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .5rem 0 .25rem;
+}
+.yearDivider::before,
+.yearDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.yearDividerLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: .08em;
+  color: var(--neon);
+  line-height: 1;
+}
 .miniDayHeader {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -339,8 +363,9 @@
 }
 .miniCellPast { color: #3a3a4e; }
 .miniCellBooked {
-  background: rgba(255, 95, 95, .12);
-  color: #ff5f5f;
+  background: #ff5f5f;
+  border-color: #ff5f5f;
+  color: #050507;
 }
 .miniCellUnavail {
   background: rgba(107, 107, 136, .12);
