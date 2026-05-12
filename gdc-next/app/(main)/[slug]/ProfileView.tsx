@@ -427,7 +427,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
       <div>
         {/* HERO */}
-        <div className={styles.hero}>
+        <div className={`${styles.hero} ${data.banner_url ? styles.heroHasBanner : ''}`}>
           {/* BANNER — sits behind the hero content as a background layer.
               Read-only here; all edits happen inside the BannerEditModal
               that opens from the corner button. Both desktop and mobile

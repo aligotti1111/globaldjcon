@@ -99,38 +99,13 @@
   content: '';
   position: absolute;
   inset: 0;
-  /* Two overlays stacked: a left-anchored radial fade that darkens the
-     area behind the avatar + name + social icons, plus a top/bottom
-     gradient that keeps the corners legible. Tuned so the banner image
-     is still clearly visible on the right while text on the left has a
-     solid backdrop. */
-  background:
-    radial-gradient(
-      ellipse 60% 100% at 0% 50%,
-      rgba(5, 5, 7, .85) 0%,
-      rgba(5, 5, 7, .55) 45%,
-      rgba(5, 5, 7, .15) 80%,
-      rgba(5, 5, 7, 0) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(5, 5, 7, .4) 0%,
-      rgba(5, 5, 7, .25) 50%,
-      rgba(5, 5, 7, .55) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(5, 5, 7, .35) 0%,
+    rgba(5, 5, 7, .55) 60%,
+    rgba(5, 5, 7, .75) 100%
+  );
   pointer-events: none;
-}
-@media (max-width: 700px) {
-  .banner::after {
-    /* On mobile the hero stacks; the left fade isn't useful so we
-       switch to a stronger top-to-bottom darken across the whole banner. */
-    background: linear-gradient(
-      180deg,
-      rgba(5, 5, 7, .55) 0%,
-      rgba(5, 5, 7, .65) 50%,
-      rgba(5, 5, 7, .8) 100%
-    );
-  }
 }
 .bannerEditBtn {
   position: absolute;
@@ -622,11 +597,6 @@
   min-width: 46px;
   min-height: 46px;
   position: relative;
-  /* Frosted-glass effect — keeps the colored brand tint visible while
-     darkening whatever banner image sits behind. Falls back gracefully
-     on browsers without backdrop-filter (Firefox <103 etc). */
-  backdrop-filter: blur(8px) saturate(1.2);
-  -webkit-backdrop-filter: blur(8px) saturate(1.2);
 }
 .actionBtnPrimary {
   background: var(--neon-dim);
@@ -712,6 +682,78 @@
   border-color: var(--neon);
   color: var(--black);
   font-weight: 700;
+}
+
+/* ── BANNER-MODE OVERRIDES ──────────────────────────────────────
+   When a banner is set, action buttons go solid (no transparency) so
+   they read cleanly against any image. Brand colors stay intact;
+   only the backgrounds become opaque dark fills. */
+.heroHasBanner .actionBtn {
+  background: rgba(15, 15, 20, .95);
+}
+.heroHasBanner .actionBtnPrimary {
+  background: rgba(15, 15, 20, .95);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+.heroHasBanner .actionBtnGhost {
+  background: rgba(15, 15, 20, .95);
+  border-color: rgba(255, 255, 255, .35);
+  color: var(--white);
+}
+.heroHasBanner .actionBtnPhone {
+  background: rgba(15, 15, 20, .95);
+  border-color: #3ddc84;
+  color: #3ddc84;
+}
+.heroHasBanner .actionBtnWebsite {
+  background: rgba(15, 15, 20, .95);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+.heroHasBanner .actionBtnSoundcloud {
+  background: rgba(15, 15, 20, .95);
+  border-color: #ff5500;
+  color: #ff5500;
+}
+.heroHasBanner .actionBtnInstagram {
+  background: rgba(15, 15, 20, .95);
+  border-color: #e1306c;
+  color: #e1306c;
+}
+.heroHasBanner .actionBtnTiktok {
+  background: rgba(15, 15, 20, .95);
+  border-color: #69c9d0;
+  color: #69c9d0;
+}
+.heroHasBanner .actionBtnFacebook {
+  background: rgba(15, 15, 20, .95);
+  border-color: #1877f2;
+  color: #1877f2;
+}
+.heroHasBanner .actionBtnTwitch {
+  background: rgba(15, 15, 20, .95);
+  border-color: #9146ff;
+  color: #9146ff;
+}
+.heroHasBanner .actionBtnRate {
+  background: rgba(15, 15, 20, .95);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+/* Hover states under banner — slight lighten of the dark bg to give
+   feedback without losing the colored border. */
+.heroHasBanner .actionBtn:hover {
+  background: rgba(30, 30, 38, .95);
+}
+.heroHasBanner .actionBtnBookNow {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: var(--black);
+}
+.heroHasBanner .actionBtnBookNow:hover {
+  background: var(--neon);
+  filter: brightness(1.1);
 }
 
 /* Tooltip on action buttons (vanilla uses [title]:hover::after) */
