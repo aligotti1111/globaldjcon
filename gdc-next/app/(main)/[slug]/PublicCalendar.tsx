@@ -401,6 +401,8 @@ export default function PublicCalendar({
           selectedDate={selectedDate}
           isLoggedIn={isLoggedIn}
           onBookClick={handleBookClick}
+          isOwnProfile={isOwnProfile}
+          onOwnerEdit={setOwnerEditKey}
         />
       )}
 
@@ -706,6 +708,8 @@ function RollingMonthsView({
   selectedDate,
   isLoggedIn,
   onBookClick,
+  isOwnProfile,
+  onOwnerEdit,
 }: {
   today: Date;
   bookingDays: BookingDays;
@@ -713,6 +717,8 @@ function RollingMonthsView({
   selectedDate: string | null;
   isLoggedIn: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
+  isOwnProfile: boolean;
+  onOwnerEdit: (key: string) => void;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
   // Show min(window, 12) months — the window can be larger but the rolling
@@ -741,13 +747,21 @@ function RollingMonthsView({
       const isSelected = selectedDate === key;
       const isOpenFuture = !isPast && !isBooked && !isUnavail && !isToday;
 
+      // Owner mode: clicking any non-past day opens the edit modal.
+      // Booker mode: clicking an open future day starts a booking.
+      const ownerCanEdit = isOwnProfile && !isPast;
+      const onCellClick = ownerCanEdit
+        ? () => onOwnerEdit(key)
+        : (isOpenFuture ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
+      const isClickable = !!onCellClick;
+
       const cellClasses = [styles.miniCell];
       if (isSelected) cellClasses.push(styles.miniCellSelected);
       else if (isBooked) cellClasses.push(styles.miniCellBooked);
       else if (isUnavail) cellClasses.push(styles.miniCellUnavail);
       else if (isToday) cellClasses.push(styles.miniCellToday);
       else if (!isPast) cellClasses.push(styles.miniCellOpen);
-      if (isOpenFuture) cellClasses.push(styles.miniCellPointer);
+      if (isClickable) cellClasses.push(styles.miniCellPointer);
 
       const numClasses = [styles.miniNum];
       if (isSelected) numClasses.push(styles.miniNumSelected);
@@ -760,7 +774,7 @@ function RollingMonthsView({
         <div
           key={key}
           className={cellClasses.join(' ')}
-          onClick={isOpenFuture ? (e) => onBookClick(key, e) : undefined}
+          onClick={onCellClick}
         >
           <div className={numClasses.join(' ')}>{d}</div>
         </div>

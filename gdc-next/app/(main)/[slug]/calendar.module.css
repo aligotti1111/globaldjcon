@@ -483,7 +483,7 @@
 }
 .miniNum {
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
+  font-size: .8rem;
   color: var(--white);
 }
 .miniNumPast { color: var(--muted); }
