@@ -362,16 +362,6 @@
   border: 1px solid var(--border);
   position: relative;
 }
-.miniCellNum {
-  line-height: 1;
-}
-/* Owner mode: cell shows tiny ✓/✕ + ✏️ buttons in the corners. Give the
-   cell a little more height so the controls don't crowd the number. */
-.miniCellOwner {
-  aspect-ratio: auto;
-  min-height: 38px;
-  padding: 2px;
-}
 .miniOwnerControls {
   position: absolute;
   inset: 0;
@@ -389,9 +379,9 @@
   z-index: 5;
 }
 .miniOwnerQuickMark {
-  top: 2px;
-  left: 3px;
-  font-size: .55rem;
+  top: 1px;
+  left: 2px;
+  font-size: .5rem;
   font-weight: 700;
   color: rgba(255, 255, 255, .35);
 }
@@ -402,9 +392,9 @@
   color: var(--neon);
 }
 .miniOwnerEditPencil {
-  top: 2px;
-  right: 3px;
-  font-size: .5rem;
+  top: 1px;
+  right: 2px;
+  font-size: .45rem;
   color: var(--muted);
   opacity: .7;
 }

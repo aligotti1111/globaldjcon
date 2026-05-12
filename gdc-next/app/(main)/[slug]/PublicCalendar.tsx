@@ -765,7 +765,6 @@ function RollingMonthsView({
       else if (isToday) cellClasses.push(styles.miniCellToday);
       else if (!isPast) cellClasses.push(styles.miniCellOpen);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
-      if (ownerCanEdit) cellClasses.push(styles.miniCellOwner);
 
       const numClasses = [styles.miniNum];
       if (isSelected) numClasses.push(styles.miniNumSelected);

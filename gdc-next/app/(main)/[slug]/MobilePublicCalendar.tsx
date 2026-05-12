@@ -737,7 +737,6 @@ function RollingMonthsView({
       else if (isPast) cellClasses.push(styles.miniCellPast);
       if (isToday) cellClasses.push(styles.miniCellToday);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
-      if (isOwnProfile && !isPast) cellClasses.push(styles.miniCellOwner);
 
       cells.push(
         <div
@@ -745,7 +744,7 @@ function RollingMonthsView({
           className={cellClasses.join(' ')}
           onClick={onCellClick}
         >
-          <span className={styles.miniCellNum}>{d}</span>
+          {d}
           {isOwnProfile && !isPast && (
             <div className={styles.miniOwnerControls}>
               {!isBooked && (
