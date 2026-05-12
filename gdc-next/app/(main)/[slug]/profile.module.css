@@ -99,13 +99,38 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 5, 7, .35) 0%,
-    rgba(5, 5, 7, .55) 60%,
-    rgba(5, 5, 7, .75) 100%
-  );
+  /* Two overlays stacked: a left-anchored radial fade that darkens the
+     area behind the avatar + name + social icons, plus a top/bottom
+     gradient that keeps the corners legible. Tuned so the banner image
+     is still clearly visible on the right while text on the left has a
+     solid backdrop. */
+  background:
+    radial-gradient(
+      ellipse 60% 100% at 0% 50%,
+      rgba(5, 5, 7, .85) 0%,
+      rgba(5, 5, 7, .55) 45%,
+      rgba(5, 5, 7, .15) 80%,
+      rgba(5, 5, 7, 0) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(5, 5, 7, .4) 0%,
+      rgba(5, 5, 7, .25) 50%,
+      rgba(5, 5, 7, .55) 100%
+    );
   pointer-events: none;
+}
+@media (max-width: 700px) {
+  .banner::after {
+    /* On mobile the hero stacks; the left fade isn't useful so we
+       switch to a stronger top-to-bottom darken across the whole banner. */
+    background: linear-gradient(
+      180deg,
+      rgba(5, 5, 7, .55) 0%,
+      rgba(5, 5, 7, .65) 50%,
+      rgba(5, 5, 7, .8) 100%
+    );
+  }
 }
 .bannerEditBtn {
   position: absolute;
@@ -597,6 +622,11 @@
   min-width: 46px;
   min-height: 46px;
   position: relative;
+  /* Frosted-glass effect — keeps the colored brand tint visible while
+     darkening whatever banner image sits behind. Falls back gracefully
+     on browsers without backdrop-filter (Firefox <103 etc). */
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
 }
 .actionBtnPrimary {
   background: var(--neon-dim);
