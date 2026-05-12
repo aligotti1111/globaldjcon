@@ -3631,9 +3631,10 @@ function BannerEditModal({
         </div>
 
         <div className={styles.bannerModalBody}>
-          {/* Two-up previews — desktop (4:1) on left/top, mobile (1.6:1)
-              on right/bottom. Each is independently draggable so the DJ
-              can position the image differently for each viewport. */}
+          {/* Two-up previews — desktop (4:1) on left, mobile (1.6:1) on
+              right. Each is independently draggable so the DJ can position
+              the image differently for each viewport. When no banner is
+              set, clicking either preview opens the file picker. */}
           <div className={styles.bannerPreviewsRow}>
             <div className={styles.bannerPreviewBlock}>
               <div className={styles.bannerPreviewLabel}>
@@ -3641,7 +3642,9 @@ function BannerEditModal({
                 <span className={styles.bannerPreviewRatio}>1600 × 400 (4:1)</span>
               </div>
               <div
-                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewDesktop}`}
+                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewDesktop} ${
+                  !previewUrl ? styles.bannerModalPreviewEmpty : ''
+                }`}
                 style={
                   previewUrl
                     ? {
@@ -3651,13 +3654,16 @@ function BannerEditModal({
                       }
                     : undefined
                 }
-                onPointerDown={makePointerDown(dragDesktopRef, posY)}
-                onPointerMove={makePointerMove(dragDesktopRef, setPosY)}
-                onPointerUp={makePointerUp(dragDesktopRef)}
-                onPointerCancel={makePointerUp(dragDesktopRef)}
+                onClick={!previewUrl ? () => fileRef.current?.click() : undefined}
+                onPointerDown={previewUrl ? makePointerDown(dragDesktopRef, posY) : undefined}
+                onPointerMove={previewUrl ? makePointerMove(dragDesktopRef, setPosY) : undefined}
+                onPointerUp={previewUrl ? makePointerUp(dragDesktopRef) : undefined}
+                onPointerCancel={previewUrl ? makePointerUp(dragDesktopRef) : undefined}
               >
                 {!previewUrl && (
-                  <div className={styles.bannerModalEmpty}>No banner yet</div>
+                  <div className={styles.bannerModalEmpty}>
+                    Click to upload
+                  </div>
                 )}
                 {previewUrl && (
                   <div className={styles.bannerModalDragHint}>Drag to reposition</div>
@@ -3671,7 +3677,9 @@ function BannerEditModal({
                 <span className={styles.bannerPreviewRatio}>~1.6:1</span>
               </div>
               <div
-                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewMobile}`}
+                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewMobile} ${
+                  !previewUrl ? styles.bannerModalPreviewEmpty : ''
+                }`}
                 style={
                   previewUrl
                     ? {
@@ -3681,13 +3689,16 @@ function BannerEditModal({
                       }
                     : undefined
                 }
-                onPointerDown={makePointerDown(dragMobileRef, posYMobile)}
-                onPointerMove={makePointerMove(dragMobileRef, setPosYMobile)}
-                onPointerUp={makePointerUp(dragMobileRef)}
-                onPointerCancel={makePointerUp(dragMobileRef)}
+                onClick={!previewUrl ? () => fileRef.current?.click() : undefined}
+                onPointerDown={previewUrl ? makePointerDown(dragMobileRef, posYMobile) : undefined}
+                onPointerMove={previewUrl ? makePointerMove(dragMobileRef, setPosYMobile) : undefined}
+                onPointerUp={previewUrl ? makePointerUp(dragMobileRef) : undefined}
+                onPointerCancel={previewUrl ? makePointerUp(dragMobileRef) : undefined}
               >
                 {!previewUrl && (
-                  <div className={styles.bannerModalEmpty}>No banner yet</div>
+                  <div className={styles.bannerModalEmpty}>
+                    Click to upload
+                  </div>
                 )}
                 {previewUrl && (
                   <div className={styles.bannerModalDragHint}>Drag to reposition</div>
@@ -3700,6 +3711,10 @@ function BannerEditModal({
             Upload a wide image (recommended <strong>1600 × 400px</strong>, max 5 MB).
             Drag each preview vertically to set the crop for desktop and mobile
             independently.
+          </div>
+          <div className={styles.bannerModalNote}>
+            Note: if dragging doesn&apos;t move the image, the entire image is
+            already fitting within the frame &mdash; no repositioning needed.
           </div>
 
           {error && <div className={styles.bannerModalError}>{error}</div>}

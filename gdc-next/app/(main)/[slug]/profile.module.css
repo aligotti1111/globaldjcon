@@ -254,6 +254,17 @@
   /* Approximates the live mobile hero crop shape — narrower frame. */
   aspect-ratio: 1.6 / 1;
 }
+.bannerModalPreviewEmpty {
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.bannerModalPreviewEmpty:hover {
+  background-color: rgba(0, 245, 196, .06);
+  border-color: var(--neon);
+}
+.bannerModalPreviewEmpty:hover .bannerModalEmpty {
+  color: var(--neon);
+}
 .bannerModalPreview:active {
   cursor: grabbing !important;
 }
@@ -295,6 +306,15 @@
 .bannerModalHint strong {
   color: var(--white);
   font-weight: 700;
+}
+.bannerModalNote {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .03em;
+  font-style: italic;
+  opacity: .85;
+  margin-top: -.5rem;
 }
 .bannerModalError {
   padding: .6rem .8rem;
