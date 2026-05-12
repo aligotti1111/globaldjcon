@@ -1630,13 +1630,7 @@ function SocialAddButton({
         onClick={() => setOpenField(field)}
         title={`Add ${label}`}
         aria-label={`Add ${label}`}
-        className={`${styles.actionBtn} ${colorClass}`}
-        style={{
-          // Faded + dashed-border look so it reads as "add me", not "active link".
-          opacity: 0.55,
-          borderStyle: 'dashed',
-          position: 'relative',
-        }}
+        className={`${styles.actionBtn} ${colorClass} ${styles.actionBtnEmpty}`}
       >
         {icon}
         {/* Tiny "+" badge in the corner so the affordance reads as add. */}

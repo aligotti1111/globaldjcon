@@ -684,6 +684,15 @@
   font-weight: 700;
 }
 
+/* Empty/unset social slot — owner-only "+" badge variant. Default look
+   is faded with a dashed border to signal "add me". Banner-mode override
+   below upgrades it to solid styling so it stays legible. */
+.actionBtnEmpty {
+  opacity: 0.55;
+  border-style: dashed;
+  position: relative;
+}
+
 /* ── BANNER-MODE OVERRIDES ──────────────────────────────────────
    When a banner is set, action buttons go solid (no transparency) so
    they read cleanly against any image. Brand colors stay intact;
@@ -770,6 +779,13 @@
 .heroHasBanner .actionBtnBookNow:hover {
   background: var(--neon);
   filter: brightness(1.1);
+}
+/* Empty social slots under a banner — drop the fade so they match the
+   solid look of populated ones. Keep the dashed border so the "+" badge
+   still reads as an add affordance. */
+.heroHasBanner .actionBtnEmpty {
+  opacity: 1;
+  border-style: dashed;
 }
 
 /* Tooltip on action buttons (vanilla uses [title]:hover::after) */
