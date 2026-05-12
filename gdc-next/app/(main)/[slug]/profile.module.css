@@ -787,6 +787,29 @@
   opacity: 1;
   border-style: dashed;
 }
+/* Badges (dj-type pill + events-serviced pill) — switch to solid dark
+   backgrounds with full-strength brand colors so they read against any
+   banner. */
+.heroHasBanner .typeBadgeMobile {
+  background: rgba(15, 15, 20, .95);
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.heroHasBanner .typeBadgeClub {
+  background: rgba(15, 15, 20, .95);
+  color: var(--pink);
+  border-color: var(--pink);
+}
+.heroHasBanner .tagSmallNeon {
+  background: rgba(15, 15, 20, .95);
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.heroHasBanner .tagSmallPink {
+  background: rgba(15, 15, 20, .95);
+  color: var(--pink);
+  border-color: var(--pink);
+}
 
 /* Tooltip on action buttons (vanilla uses [title]:hover::after) */
 .actionBtn[title]:hover::after {
