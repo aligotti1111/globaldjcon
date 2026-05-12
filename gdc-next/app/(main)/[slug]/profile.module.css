@@ -86,9 +86,14 @@
   z-index: 0;
   background-color: transparent;
   background-size: cover;
-  background-position: center;
+  background-position: var(--banner-pos, 50% 50%);
   background-repeat: no-repeat;
   pointer-events: none;
+}
+@media (max-width: 700px) {
+  .banner {
+    background-position: var(--banner-pos-mobile, var(--banner-pos, 50% 50%));
+  }
 }
 .banner::after {
   content: '';
@@ -197,9 +202,42 @@
   flex-direction: column;
   gap: 1rem;
 }
+.bannerPreviewsRow {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr;
+  gap: .9rem;
+  align-items: start;
+}
+@media (max-width: 600px) {
+  .bannerPreviewsRow {
+    grid-template-columns: 1fr;
+  }
+}
+.bannerPreviewBlock {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+}
+.bannerPreviewLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+.bannerPreviewRatio {
+  color: var(--muted);
+  font-size: .55rem;
+  letter-spacing: .04em;
+  text-transform: none;
+}
 .bannerModalPreview {
   width: 100%;
-  aspect-ratio: 4 / 1;
   background-color: rgba(255, 255, 255, .02);
   background-size: cover;
   background-repeat: no-repeat;
@@ -208,6 +246,13 @@
   position: relative;
   touch-action: none;
   user-select: none;
+}
+.bannerModalPreviewDesktop {
+  aspect-ratio: 4 / 1;
+}
+.bannerModalPreviewMobile {
+  /* Approximates the live mobile hero crop shape — narrower frame. */
+  aspect-ratio: 1.6 / 1;
 }
 .bannerModalPreview:active {
   cursor: grabbing !important;

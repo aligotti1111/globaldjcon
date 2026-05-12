@@ -46,6 +46,7 @@ export interface DjProfileData {
   avatar_position: string | null;
   banner_url: string | null;
   banner_position: string | null;
+  banner_position_mobile: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
@@ -429,16 +430,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         <div className={styles.hero}>
           {/* BANNER — sits behind the hero content as a background layer.
               Read-only here; all edits happen inside the BannerEditModal
-              that opens from the corner button. */}
+              that opens from the corner button. Both desktop and mobile
+              positions are passed as CSS variables and a media query in
+              profile.module.css picks the right one per viewport. */}
           {(data.banner_url || isOwnProfile) && (
             <div
               className={styles.banner}
               style={
                 data.banner_url
-                  ? {
+                  ? ({
                       backgroundImage: `url(${data.banner_url})`,
-                      backgroundPosition: data.banner_position || '50% 50%',
-                    }
+                      ['--banner-pos' as string]: data.banner_position || '50% 50%',
+                      ['--banner-pos-mobile' as string]:
+                        data.banner_position_mobile || data.banner_position || '50% 50%',
+                    } as React.CSSProperties)
                   : undefined
               }
             >
@@ -1110,12 +1115,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       )}
 
       {/* Banner edit modal — owner-only. Handles upload, replace, and
-          vertical reposition in one place. */}
+          vertical reposition for desktop AND mobile views in one place. */}
       {bannerModalOpen && isOwnProfile && (
         <BannerEditModal
           userId={data.id}
           initialUrl={data.banner_url}
           initialPosition={data.banner_position}
+          initialPositionMobile={data.banner_position_mobile}
           onClose={() => setBannerModalOpen(false)}
         />
       )}
@@ -3453,36 +3459,47 @@ function EmbedCalendarModal({
 // ── BannerEditModal ────────────────────────────────────────────
 // Self-contained modal for owner banner management:
 //   - Upload / replace banner image
-//   - Drag the preview vertically to reposition (background-position-y)
-//   - Save commits both banner_url (if new file uploaded) and banner_position
+//   - Two side-by-side previews (DESKTOP 4:1 and MOBILE 1.6:1) — each
+//     independently draggable to reposition the image vertically for
+//     that viewport.
+//   - Save commits banner_url (if new file uploaded), banner_position
+//     (desktop), and banner_position_mobile (mobile) in one update.
 // The modal reloads the page on save so the live banner refreshes.
 function BannerEditModal({
   userId,
   initialUrl,
   initialPosition,
+  initialPositionMobile,
   onClose,
 }: {
   userId: string;
   initialUrl: string | null;
   initialPosition: string | null;
+  initialPositionMobile: string | null;
   onClose: () => void;
 }) {
+  function parsePosY(stored: string | null, fallback: number): number {
+    const parts = (stored || '').split(' ');
+    const y = parseFloat(parts[1] || '');
+    return Number.isFinite(y) ? y : fallback;
+  }
+
   // Working state — starts from props but tracks unsaved changes locally.
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialUrl);
-  // The pending File and its blob URL (used for live preview before upload).
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingObjectUrl, setPendingObjectUrl] = useState<string | null>(null);
-  const [posY, setPosY] = useState<number>(() => {
-    const stored = (initialPosition || '50% 50%').split(' ');
-    const y = parseFloat(stored[1] || '50');
-    return Number.isFinite(y) ? y : 50;
-  });
+  const [posY, setPosY] = useState<number>(() => parsePosY(initialPosition, 50));
+  // Mobile defaults to the desktop position if not yet set so the user has
+  // a sane starting point on first edit.
+  const [posYMobile, setPosYMobile] = useState<number>(() =>
+    parsePosY(initialPositionMobile, parsePosY(initialPosition, 50))
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const dragRef = useRef<{ startY: number; startPos: number } | null>(null);
+  const dragDesktopRef = useRef<{ startY: number; startPos: number } | null>(null);
+  const dragMobileRef = useRef<{ startY: number; startPos: number } | null>(null);
 
-  // Clean up object URLs when component unmounts or a new file replaces them.
   useEffect(() => {
     return () => {
       if (pendingObjectUrl) URL.revokeObjectURL(pendingObjectUrl);
@@ -3499,7 +3516,6 @@ function BannerEditModal({
       return;
     }
     setError(null);
-    // Swap blob URL for live preview.
     if (pendingObjectUrl) URL.revokeObjectURL(pendingObjectUrl);
     const blobUrl = URL.createObjectURL(file);
     setPendingObjectUrl(blobUrl);
@@ -3507,26 +3523,41 @@ function BannerEditModal({
     setPendingFile(file);
   }
 
-  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!previewUrl) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY, startPos: posY };
+  // Generic drag handlers parameterized by which viewport we're editing.
+  function makePointerDown(
+    ref: React.MutableRefObject<{ startY: number; startPos: number } | null>,
+    currentPos: number
+  ) {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!previewUrl) return;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      ref.current = { startY: e.clientY, startPos: currentPos };
+    };
   }
-  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragRef.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const delta = e.clientY - dragRef.current.startY;
-    const deltaPct = (delta / rect.height) * 100;
-    let next = dragRef.current.startPos - deltaPct;
-    if (next < 0) next = 0;
-    if (next > 100) next = 100;
-    setPosY(next);
+  function makePointerMove(
+    ref: React.MutableRefObject<{ startY: number; startPos: number } | null>,
+    setter: (v: number) => void
+  ) {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!ref.current) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const delta = e.clientY - ref.current.startY;
+      const deltaPct = (delta / rect.height) * 100;
+      let next = ref.current.startPos - deltaPct;
+      if (next < 0) next = 0;
+      if (next > 100) next = 100;
+      setter(next);
+    };
   }
-  function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (dragRef.current) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-      dragRef.current = null;
-    }
+  function makePointerUp(
+    ref: React.MutableRefObject<{ startY: number; startPos: number } | null>
+  ) {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      if (ref.current) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        ref.current = null;
+      }
+    };
   }
 
   async function save() {
@@ -3535,7 +3566,6 @@ function BannerEditModal({
     try {
       const supabase = createClient();
       let newPublicUrl: string | null = null;
-      // 1) If a new file was picked, upload it first.
       if (pendingFile) {
         const ext = (pendingFile.name.split('.').pop() || 'jpg').toLowerCase();
         const path = `${userId}/banner.${ext}`;
@@ -3546,9 +3576,9 @@ function BannerEditModal({
         const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
         newPublicUrl = `${pub.publicUrl}?t=${Date.now()}`;
       }
-      // 2) Update users row with new URL (if uploaded) and position.
       const patch: Record<string, string> = {
         banner_position: `50% ${posY}%`,
+        banner_position_mobile: `50% ${posYMobile}%`,
       };
       if (newPublicUrl) patch.banner_url = newPublicUrl;
       const { error: dbErr } = await supabase
@@ -3571,7 +3601,11 @@ function BannerEditModal({
       const supabase = createClient();
       const { error: dbErr } = await supabase
         .from('users')
-        .update({ banner_url: null, banner_position: null } as unknown as never)
+        .update({
+          banner_url: null,
+          banner_position: null,
+          banner_position_mobile: null,
+        } as unknown as never)
         .eq('id', userId);
       if (dbErr) throw dbErr;
       window.location.reload();
@@ -3597,37 +3631,75 @@ function BannerEditModal({
         </div>
 
         <div className={styles.bannerModalBody}>
-          {/* Preview — drag vertically to reposition */}
-          <div
-            className={styles.bannerModalPreview}
-            style={
-              previewUrl
-                ? {
-                    backgroundImage: `url(${previewUrl})`,
-                    backgroundPosition: `50% ${posY}%`,
-                    cursor: 'grab',
-                  }
-                : undefined
-            }
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          >
-            {!previewUrl && (
-              <div className={styles.bannerModalEmpty}>
-                No banner yet — upload one to get started.
+          {/* Two-up previews — desktop (4:1) on left/top, mobile (1.6:1)
+              on right/bottom. Each is independently draggable so the DJ
+              can position the image differently for each viewport. */}
+          <div className={styles.bannerPreviewsRow}>
+            <div className={styles.bannerPreviewBlock}>
+              <div className={styles.bannerPreviewLabel}>
+                Desktop view
+                <span className={styles.bannerPreviewRatio}>1600 × 400 (4:1)</span>
               </div>
-            )}
-            {previewUrl && (
-              <div className={styles.bannerModalDragHint}>
-                Drag image to reposition
+              <div
+                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewDesktop}`}
+                style={
+                  previewUrl
+                    ? {
+                        backgroundImage: `url(${previewUrl})`,
+                        backgroundPosition: `50% ${posY}%`,
+                        cursor: 'grab',
+                      }
+                    : undefined
+                }
+                onPointerDown={makePointerDown(dragDesktopRef, posY)}
+                onPointerMove={makePointerMove(dragDesktopRef, setPosY)}
+                onPointerUp={makePointerUp(dragDesktopRef)}
+                onPointerCancel={makePointerUp(dragDesktopRef)}
+              >
+                {!previewUrl && (
+                  <div className={styles.bannerModalEmpty}>No banner yet</div>
+                )}
+                {previewUrl && (
+                  <div className={styles.bannerModalDragHint}>Drag to reposition</div>
+                )}
               </div>
-            )}
+            </div>
+
+            <div className={styles.bannerPreviewBlock}>
+              <div className={styles.bannerPreviewLabel}>
+                Mobile view
+                <span className={styles.bannerPreviewRatio}>~1.6:1</span>
+              </div>
+              <div
+                className={`${styles.bannerModalPreview} ${styles.bannerModalPreviewMobile}`}
+                style={
+                  previewUrl
+                    ? {
+                        backgroundImage: `url(${previewUrl})`,
+                        backgroundPosition: `50% ${posYMobile}%`,
+                        cursor: 'grab',
+                      }
+                    : undefined
+                }
+                onPointerDown={makePointerDown(dragMobileRef, posYMobile)}
+                onPointerMove={makePointerMove(dragMobileRef, setPosYMobile)}
+                onPointerUp={makePointerUp(dragMobileRef)}
+                onPointerCancel={makePointerUp(dragMobileRef)}
+              >
+                {!previewUrl && (
+                  <div className={styles.bannerModalEmpty}>No banner yet</div>
+                )}
+                {previewUrl && (
+                  <div className={styles.bannerModalDragHint}>Drag to reposition</div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className={styles.bannerModalHint}>
-            Recommended size: <strong>1600 × 400px</strong> (4:1 ratio). Max 5 MB.
+            Upload a wide image (recommended <strong>1600 × 400px</strong>, max 5 MB).
+            Drag each preview vertically to set the crop for desktop and mobile
+            independently.
           </div>
 
           {error && <div className={styles.bannerModalError}>{error}</div>}
