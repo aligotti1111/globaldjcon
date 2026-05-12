@@ -402,7 +402,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           data.dj_type === 'club' ? styles.typeBadgeClub : styles.typeBadgeMobile
         }`}
       >
-        {data.dj_type === 'club' ? '🎧 Club / Bar DJ' : '🎵 Mobile / Event DJ'}
+        <span className={styles.typeBadgeIcon}>
+          {data.dj_type === 'club' ? '🎧' : '🎵'}
+        </span>{' '}
+        {data.dj_type === 'club' ? 'Club / Bar DJ' : 'Mobile / Event DJ'}
       </span>
     </div>
   ) : null;

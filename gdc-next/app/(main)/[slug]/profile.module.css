@@ -457,6 +457,12 @@
   border-radius: 100px;
   border: 1px solid;
 }
+.typeBadgeIcon {
+  /* Emojis render dim on dark backgrounds — bump brightness + a touch of
+     drop-shadow so the icon glows alongside the brand-colored label. */
+  filter: brightness(1.25) saturate(1.4);
+  display: inline-block;
+}
 .typeBadgeMobile {
   background: var(--neon-dim);
   color: var(--neon);
