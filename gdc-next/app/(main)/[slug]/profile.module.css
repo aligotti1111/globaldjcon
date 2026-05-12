@@ -77,10 +77,9 @@
 
 /* ── BANNER ───────────────────────────────────────────── */
 /* Sits as an absolute layer behind the hero content (avatar, name,
-   social icons all render on top). For owners-only, the corner camera
-   button lets them upload/replace; visitors just see the image. A dark
-   gradient overlay sits on top of the image so the hero text stays
-   readable when a busy photo is set. */
+   social icons all render on top). For owners-only, a single corner
+   button opens the BannerEditModal where upload + reposition happen.
+   A dark gradient overlay keeps hero text readable on busy photos. */
 .banner {
   position: absolute;
   inset: 0;
@@ -103,34 +102,10 @@
   );
   pointer-events: none;
 }
-/* When in reposition mode the entire banner is grabbable. The dark
-   overlay is suppressed slightly so the DJ can see the image clearly
-   while choosing the position. */
-.bannerRepositioning {
-  pointer-events: auto;
-  cursor: grab;
-}
-.bannerRepositioning:active {
-  cursor: grabbing;
-}
-.bannerRepositioning::after {
-  background: linear-gradient(
-    180deg,
-    rgba(5, 5, 7, .15) 0%,
-    rgba(5, 5, 7, .25) 100%
-  );
-}
-.bannerControls {
+.bannerEditBtn {
   position: absolute;
   top: 12px;
   right: 12px;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  pointer-events: auto;
-  z-index: 2;
-}
-.bannerEditBtn {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -146,57 +121,192 @@
   cursor: pointer;
   backdrop-filter: blur(4px);
   transition: background .15s, border-color .15s;
+  pointer-events: auto;
+  z-index: 2;
 }
 .bannerEditBtn:hover {
   background: var(--neon);
   border-color: var(--neon);
   color: #050507;
 }
-.bannerEditBtn:disabled {
-  opacity: .6;
-  cursor: wait;
-}
-.bannerSizeHint {
-  padding: .35rem .6rem;
-  background: rgba(0, 0, 0, .5);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  backdrop-filter: blur(4px);
-}
-.bannerRepositionHint {
-  padding: .5rem .8rem;
-  background: rgba(0, 0, 0, .65);
-  border: 1px solid var(--neon);
-  border-radius: 6px;
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  backdrop-filter: blur(4px);
-}
 @media (max-width: 700px) {
-  .bannerControls {
+  .bannerEditBtn {
     top: 8px;
     right: 8px;
-    gap: .35rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: calc(100% - 16px);
-  }
-  .bannerEditBtn {
-    padding: .35rem .55rem;
+    padding: .4rem .6rem;
     font-size: .55rem;
   }
-  .bannerSizeHint {
-    font-size: .5rem;
-    padding: .3rem .5rem;
-  }
+}
+
+/* ── BANNER EDIT MODAL ────────────────────────────────────────── */
+.bannerModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.bannerModal {
+  background: #0a0a0e;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.bannerModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.bannerModalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .05em;
+  margin: 0;
+  color: var(--white);
+}
+.bannerModalClose {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bannerModalClose:hover {
+  color: var(--white);
+  border-color: var(--white);
+}
+.bannerModalBody {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.bannerModalPreview {
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  background-color: rgba(255, 255, 255, .02);
+  background-size: cover;
+  background-repeat: no-repeat;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+.bannerModalPreview:active {
+  cursor: grabbing !important;
+}
+.bannerModalEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  color: var(--muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.bannerModalDragHint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: .3rem .6rem;
+  background: rgba(0, 0, 0, .65);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.bannerModalHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  color: var(--muted);
+  letter-spacing: .03em;
+}
+.bannerModalHint strong {
+  color: var(--white);
+  font-weight: 700;
+}
+.bannerModalError {
+  padding: .6rem .8rem;
+  background: rgba(255, 95, 95, .12);
+  border: 1px solid #ff5f5f;
+  border-radius: 6px;
+  color: #ff5f5f;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+}
+.bannerModalActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding-top: .5rem;
+  border-top: 1px solid var(--border);
+}
+.bannerModalBtn {
+  padding: .55rem .9rem;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bannerModalBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, .08);
+  border-color: var(--white);
+}
+.bannerModalBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.bannerModalBtnPrimary {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: #050507;
+}
+.bannerModalBtnPrimary:hover:not(:disabled) {
+  background: var(--neon);
+  border-color: var(--neon);
+  filter: brightness(1.1);
+}
+.bannerModalBtnDanger {
+  color: #ff5f5f;
+  border-color: rgba(255, 95, 95, .4);
+}
+.bannerModalBtnDanger:hover:not(:disabled) {
+  background: rgba(255, 95, 95, .12);
+  border-color: #ff5f5f;
+  color: #ff5f5f;
 }
 
 /* ── HERO ─────────────────────────────────────────────── */
