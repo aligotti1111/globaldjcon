@@ -109,8 +109,8 @@
 }
 .bannerEditBtn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 24px;
+  right: 24px;
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -136,8 +136,8 @@
 }
 @media (max-width: 700px) {
   .bannerEditBtn {
-    top: 8px;
-    right: 8px;
+    top: 16px;
+    right: 16px;
     padding: .4rem .6rem;
     font-size: .55rem;
   }
@@ -733,6 +733,11 @@
 }
 .heroHasBanner .heroLocation svg {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+}
+.heroHasBanner .heroYears {
+  background: rgba(15, 15, 20, .95);
+  border-color: rgba(240, 240, 248, .35);
+  color: rgba(240, 240, 248, .85);
 }
 .heroHasBanner .actionBtn {
   background: rgba(15, 15, 20, .95);
