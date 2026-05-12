@@ -409,20 +409,13 @@
 .yearDivider {
   grid-column: 1 / -1;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: .75rem;
-  margin: .5rem 0 .25rem;
-}
-.yearDivider::before,
-.yearDivider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+  margin: 1rem 0 .5rem;
 }
 .yearDividerLabel {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.15rem;
+  font-size: 2.4rem;
   letter-spacing: .08em;
   color: var(--neon);
   line-height: 1;
