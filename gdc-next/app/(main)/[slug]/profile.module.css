@@ -935,23 +935,20 @@
   display: inline-flex;
   align-items: center;
   gap: .35rem;
-  padding: .4rem .8rem;
-  background: #fff;
-  border: 1px solid #fff;
-  border-radius: 100px;
-  color: #050507;
+  padding: .4rem .2rem;
+  background: transparent;
+  border: none;
+  color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: .55rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   font-weight: 700;
   cursor: pointer;
-  transition: all .15s;
+  transition: color .15s;
 }
 .editTabsBtn:hover {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
+  color: var(--neon);
 }
 
 /* ── EDIT-TABS MODAL ────────────────────────────────────── */

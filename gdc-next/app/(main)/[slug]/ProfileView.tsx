@@ -2106,7 +2106,9 @@ function MediaAddButton({
   existing: (string | null)[];
   big?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  // When `big` is true the tab has zero entries — auto-expand the form
+  // so the URL input is visible immediately (no need to click +).
+  const [expanded, setExpanded] = useState(!!big);
   const [value, setValue] = useState('');
   // Optional title + description — only shown for videos. DJ leaves
   // blank if they don't want them; both are nullable in the DB.
