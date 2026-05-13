@@ -458,20 +458,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   ) : null;
 
   // Auto-size the DJ name based on character length so the pill stays
-  // tight even for long company names. Tiers:
-  //   ≤ 14 chars → default size
-  //   15–22     → medium-small
+  // tight and fits on one line. Tiers tuned to keep most names single-line.
+  //   ≤ 10 chars → default size
+  //   11–16     → medium
+  //   17–22     → medium-small
   //   23–30     → small
   //   31+       → x-small
   const nameLen = (data.name || 'Unknown DJ').length;
   const nameSizeClass =
-    nameLen <= 14
+    nameLen <= 10
       ? ''
-      : nameLen <= 22
-        ? styles.heroNameMd
-        : nameLen <= 30
-          ? styles.heroNameSm
-          : styles.heroNameXs;
+      : nameLen <= 16
+        ? styles.heroNameLg
+        : nameLen <= 22
+          ? styles.heroNameMd
+          : nameLen <= 30
+            ? styles.heroNameSm
+            : styles.heroNameXs;
 
   return (
     <>
