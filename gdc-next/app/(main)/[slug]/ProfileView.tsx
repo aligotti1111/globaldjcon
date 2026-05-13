@@ -388,45 +388,41 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   //   { about: bool, mixes: bool, images: bool, video: bool, testimonials: bool }
   // Booking tab is NOT controlled here — that's still driven by
   // booking_settings.enabled. Defaults differ by DJ type:
-  //   - Club DJ: all five default ON
+  //   - Club DJ: all default ON (testimonials column is irrelevant)
   //   - Mobile DJ: all default ON except testimonials (default OFF)
-  // Owner can toggle any of these via the "Edit tabs" modal.
-  const tabVisibility = (() => {
+  // Owner can toggle via the "Edit tabs" modal.
+  const tabVisibility: {
+    about: boolean;
+    mixes: boolean;
+    images: boolean;
+    video: boolean;
+    testimonials: boolean;
+  } = (() => {
     const defaults = {
       about: true,
       mixes: true,
       images: true,
       video: true,
-      // Mobile DJs default testimonials OFF; club DJs default ON.
+      // Mobile DJs default testimonials OFF; club DJs ignored entirely.
       testimonials: !isMobileDJ,
     };
-    if (!data.tab_visibility) return defaults;
+    const raw = data.tab_visibility;
+    if (!raw) return defaults;
     try {
-      const parsed = typeof data.tab_visibility === 'string'
-        ? JSON.parse(data.tab_visibility)
-        : data.tab_visibility;
-      return {
-        about: typeof parsed.about === 'boolean' ? parsed.about : defaults.about,
-        mixes: typeof parsed.mixes === 'boolean' ? parsed.mixes : defaults.mixes,
-        images: typeof parsed.images === 'boolean' ? parsed.images : defaults.images,
-        video: typeof parsed.video === 'boolean' ? parsed.video : defaults.video,
-        testimonials: typeof parsed.testimonials === 'boolean' ? parsed.testimonials : defaults.testimonials,
-      };
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return defaults;
+      const out = { ...defaults };
+      for (const k of Object.keys(defaults) as Array<keyof typeof defaults>) {
+        if (typeof parsed[k] === 'boolean') out[k] = parsed[k];
+      }
+      return out;
     } catch {
       return defaults;
     }
   })();
-  // Tabs panes are still rendered (so the owner can see/use them when
-  // editing); we only hide the buttons in the public-facing nav. Owner
-  // and visitors both see the same set — controlled by tab_visibility.
-  // To re-enable a hidden tab, owner uses the "Edit tabs" button.
-  const showAbout = tabVisibility.about;
-  const showMixes = tabVisibility.mixes;
-  const showImages = tabVisibility.images;
-  const showVideo = tabVisibility.video;
-  // Testimonials: only available for mobile DJs. Visitors see the tab
-  // when enabled AND there's at least one testimonial. Owner sees the
-  // tab whenever enabled (even empty) so they can add some.
+  // Testimonials: only relevant for mobile DJs. Visitors only see the tab
+  // when enabled AND there's at least one testimonial; owner sees it
+  // whenever enabled (even empty) so they can add some.
   const showTestimonialsTab =
     isMobileDJ && tabVisibility.testimonials && (isOwnProfile || testimonials.length > 0);
 
@@ -691,7 +687,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {showMobileBookingTab ? 'Booking' : 'Availability'}
               </button>
             )}
-            {showAbout && (
+            {tabVisibility.about && (
               <button
                 className={tabClass('about')}
                 onClick={() => setActiveTab('about')}
@@ -700,7 +696,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 About
               </button>
             )}
-            {showMixes && (
+            {tabVisibility.mixes && (
               <button
                 className={tabClass('mixes')}
                 onClick={() => setActiveTab('mixes')}
@@ -709,7 +705,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Mixes
               </button>
             )}
-            {showImages && (
+            {tabVisibility.images && (
               <button
                 className={tabClass('images')}
                 onClick={() => setActiveTab('images')}
@@ -718,7 +714,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Photos
               </button>
             )}
-            {showVideo && (
+            {tabVisibility.video && (
               <button
                 className={tabClass('video')}
                 onClick={() => setActiveTab('video')}
