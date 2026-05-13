@@ -496,12 +496,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   : undefined
               }
             >
-              {/* Top-left name overlay — only shown when a banner is
-                  present, so the DJ/company name stays legible on top of
+              {/* Top-left DJ type overlay — only shown when a banner is
+                  present, so the DJ category is highlighted on top of
                   busy imagery. Has its own dark background pill. */}
               {data.banner_url && (
                 <div className={styles.bannerNameBadge}>
-                  {data.name || 'Unknown DJ'}
+                  {data.dj_type === 'club' ? 'Club / Bar DJ' : 'Mobile / Event DJ'}
                 </div>
               )}
               {isOwnProfile && (
