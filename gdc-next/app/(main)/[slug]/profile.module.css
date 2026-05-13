@@ -103,15 +103,16 @@
   top: 0;
   left: 0;
   z-index: 2;
-  padding: .25rem 1.1rem .3rem;
+  padding: .35rem 1.1rem .4rem;
   background: rgba(5, 5, 7, .85);
   border-right: 1px solid rgba(255, 255, 255, .15);
   border-bottom: 1px solid rgba(255, 255, 255, .15);
   border-bottom-right-radius: 12px;
   color: #fff;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.44rem;
-  letter-spacing: .04em;
+  font-family: 'Space Mono', monospace;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
   line-height: 1.1;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -123,8 +124,8 @@
 }
 @media (max-width: 700px) {
   .bannerNameBadge {
-    padding: .2rem .8rem .25rem;
-    font-size: 1.08rem;
+    padding: .3rem .8rem .35rem;
+    font-size: .7rem;
     max-width: calc(100% - 32px);
   }
 }
@@ -771,6 +772,10 @@
   border-radius: 8px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .heroHasBanner .heroLocation {
   color: #fff;
