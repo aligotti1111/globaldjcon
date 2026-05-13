@@ -95,6 +95,40 @@
     background-position: var(--banner-pos-mobile, var(--banner-pos, 50% 50%));
   }
 }
+/* Top-left DJ/company name overlay on the banner — only rendered when
+   data.banner_url is set. Has its own dark pill background so the name
+   stays legible over any photo. */
+.bannerNameBadge {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 2;
+  padding: .55rem 1.1rem;
+  background: rgba(5, 5, 7, .8);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  line-height: 1.1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+  max-width: calc(100% - 200px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 700px) {
+  .bannerNameBadge {
+    top: 16px;
+    left: 16px;
+    padding: .4rem .8rem;
+    font-size: 1.15rem;
+    max-width: calc(100% - 32px);
+  }
+}
 .bannerEditBtn {
   position: absolute;
   top: 24px;
