@@ -48,26 +48,31 @@
 .navSelectYear { flex: 1; }
 
 .viewToggle {
-  background: transparent;
-  border: 1px solid var(--white);
-  color: var(--white);
-  border-radius: 5px;
-  padding: .4rem .85rem;
+  background: linear-gradient(135deg, #00F5C4 0%, #00C49B 100%);
+  border: none;
+  color: #050507;
+  border-radius: 100px;
+  padding: .55rem 1.2rem;
   cursor: pointer;
   font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .08em;
+  font-size: .6rem;
+  letter-spacing: .1em;
   text-transform: uppercase;
+  font-weight: 700;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 245, 196, .35);
   transition: all .2s;
 }
 .viewToggle:hover {
-  border-color: var(--neon);
-  color: var(--neon);
+  filter: brightness(1.1);
+  box-shadow: 0 3px 12px rgba(0, 245, 196, .5);
 }
 .viewToggleActive {
-  border-color: var(--neon);
+  background: transparent;
+  border: 1px solid var(--neon);
   color: var(--neon);
+  font-weight: 400;
+  box-shadow: none;
 }
 
 /* ── OUT-OF-RANGE TOAST ──────────────────────────────────────────── */
