@@ -872,10 +872,10 @@
 }
 .tabBtn {
   font-family: 'Space Mono', monospace;
-  font-size: .65rem;
+  font-size: .72rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  padding: .65rem 1.5rem;
+  padding: .72rem 1.65rem;
   background: transparent;
   border: none;
   border-radius: 100px;
