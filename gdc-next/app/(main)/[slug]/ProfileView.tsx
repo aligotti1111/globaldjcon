@@ -440,20 +440,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // ── Render hero name + badges block (used in both desktop and mobile slots) ──
   // Desktop: name + badges live in heroInfo
   // Mobile: name + badges live in heroNameCol (next to avatar in heroTopRow)
-  // CSS media queries handle which one is visible. Hidden entirely when
-  // a banner is set, since the top-left bannerNameBadge takes its place.
-  const heroBadgesEl = data.dj_type && !data.banner_url ? (
+  // CSS media queries handle which one is visible. For mobile DJs, the
+  // type badge doubles as the Events Serviced dropdown (replaces the
+  // separate Events Serviced ▾ pill below).
+  const heroBadgesEl = data.dj_type ? (
     <div className={styles.heroBadges}>
-      <span
-        className={`${styles.typeBadge} ${
-          data.dj_type === 'club' ? styles.typeBadgeClub : styles.typeBadgeMobile
-        }`}
-      >
-        <span className={styles.typeBadgeIcon}>
-          {data.dj_type === 'club' ? '🎧' : '🎵'}
-        </span>{' '}
-        {data.dj_type === 'club' ? 'Club / Bar DJ' : 'Mobile / Event DJ'}
-      </span>
+      {isMobileDJ ? (
+        <DjTypeEventsDropdown events={eventTypes} />
+      ) : (
+        <span
+          className={`${styles.typeBadge} ${styles.typeBadgeClub}`}
+        >
+          <span className={styles.typeBadgeIcon}>🎧</span>{' '}
+          Club / Bar DJ
+        </span>
+      )}
     </div>
   ) : null;
 
@@ -516,20 +517,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   : undefined
               }
             >
-              {/* Top-left DJ type overlay — only shown when a banner is
-                  present. Picks up the brand color of the DJ type
-                  (neon = mobile, pink = club). */}
-              {data.banner_url && (
-                <div
-                  className={`${styles.bannerNameBadge} ${
-                    data.dj_type === 'club'
-                      ? styles.bannerNameBadgeClub
-                      : styles.bannerNameBadgeMobile
-                  }`}
-                >
-                  {data.dj_type === 'club' ? 'Club / Bar DJ' : 'Mobile / Event DJ'}
-                </div>
-              )}
               {isOwnProfile && (
                 <button
                   type="button"
@@ -653,16 +640,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             )}
 
-            {/* Event types + genres as hero tags.
-                Mobile DJs get ONE "Events Serviced ▾" badge that pops a list
-                on click (vanilla dj-profile.html lines 572-583). Other DJ
-                types get all event types as separate inline tags. Genres
-                always render as separate pink tags. */}
-            {(eventTypes.length > 0 || genres.length > 0) && (
+            {/* Event types + genres as hero tags. Mobile DJs now have
+                their Events Serviced list inside the type-badge dropdown
+                above (DjTypeEventsDropdown), so it's omitted here. Other
+                DJ types still get all event types as separate inline tags.
+                Genres always render as separate pink tags. */}
+            {((eventTypes.length > 0 && !isMobileDJ) || genres.length > 0) && (
               <div className={styles.heroTags}>
-                {eventTypes.length > 0 && isMobileDJ && (
-                  <EventsServicedBadge events={eventTypes} />
-                )}
                 {eventTypes.length > 0 && !isMobileDJ && (
                   eventTypes.map(e => (
                     <span
@@ -1345,6 +1329,71 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 // 572-583 (markup) + 2327-2337 (toggle + outside-click logic).
 // ──────────────────────────────────────────────────────────────────────────
 
+// ──────────────────────────────────────────────────────────────────────────
+// DjTypeEventsDropdown — mobile DJs only.
+// Replaces the old separate "Mobile / Event DJ" type badge + "Events
+// Serviced ▾" pill. Clicking the badge opens a popup listing the
+// event types the DJ services. Same color treatment as the original
+// type badge (neon green) with an added ▾ caret.
+// ──────────────────────────────────────────────────────────────────────────
+function DjTypeEventsDropdown({ events }: { events: string[] }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (!target.closest('[data-dj-type-dropdown]')) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [open]);
+
+  const hasEvents = events.length > 0;
+
+  return (
+    <span
+      data-dj-type-dropdown
+      className={`${styles.typeBadge} ${styles.typeBadgeMobile} ${hasEvents ? styles.eventsBadge : ''}`}
+      onClick={(e) => {
+        if (!hasEvents) return;
+        e.stopPropagation();
+        setOpen(o => !o);
+      }}
+      role={hasEvents ? 'button' : undefined}
+      tabIndex={hasEvents ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!hasEvents) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setOpen(o => !o);
+        }
+      }}
+      style={{ cursor: hasEvents ? 'pointer' : 'default' }}
+    >
+      <span className={styles.typeBadgeIcon}>🎵</span>{' '}
+      Mobile / Event DJ
+      {hasEvents && ' ▾'}
+      {open && hasEvents && (
+        <div className={styles.eventsPopup}>
+          {events.map(ev => (
+            <div key={ev} className={styles.eventsPopupItem}>
+              {EVENT_TYPE_LABELS[ev] || ev}
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// EventsServicedBadge — DEPRECATED (kept temporarily for any leftover
+// references). Merged into DjTypeEventsDropdown above.
+// ──────────────────────────────────────────────────────────────────────────
 function EventsServicedBadge({ events }: { events: string[] }) {
   const [open, setOpen] = useState(false);
 
