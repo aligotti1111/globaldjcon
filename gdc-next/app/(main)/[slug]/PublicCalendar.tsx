@@ -639,6 +639,10 @@ function SingleMonthView({
   return (
     <div>
       <div className={styles.monthHeaderRow}>
+        {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
+        <div className={styles.monthHeader}>
+          {MONTH_NAMES[month]} {year}
+        </div>
         {onEmbedClick && (
           <button
             type="button"
@@ -653,10 +657,6 @@ function SingleMonthView({
             Embed Calendar
           </button>
         )}
-        <div className={styles.monthHeader}>
-          {MONTH_NAMES[month]} {year}
-        </div>
-        {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
       </div>
 
       <div className={styles.dayHeaderRow}>
