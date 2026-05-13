@@ -889,6 +889,95 @@
   color: var(--neon);
   border-bottom-color: var(--neon);
 }
+/* Owner-only marker — a tiny dot beside a tab label means it's hidden
+   from the public. The owner can still click into and view/edit it. */
+.tabBtnHiddenPublic {
+  opacity: .55;
+}
+.tabHiddenDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .35);
+  margin-left: .4rem;
+  vertical-align: middle;
+}
+/* Owner-only "Edit tabs" pill — sits at the end of the tabs nav. */
+.editTabsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;
+  padding: .35rem .65rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  align-self: center;
+  flex: 0 0 auto;
+  transition: all .15s;
+}
+.editTabsBtn:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+
+/* ── EDIT-TABS MODAL ────────────────────────────────────── */
+.tabsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .02);
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.tabsRow:last-child {
+  border-bottom: none;
+}
+.tabsRow:hover {
+  background: rgba(255, 255, 255, .05);
+}
+.tabsRowText {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.tabsRowLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .04em;
+  color: var(--white);
+}
+.tabsRowHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .03em;
+}
+.tabsCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--neon);
+  cursor: pointer;
+}
+
 .tabPane {
   display: none;
 }

@@ -47,6 +47,7 @@ export interface DjProfileData {
   banner_url: string | null;
   banner_position: string | null;
   banner_position_mobile: string | null;
+  tab_visibility: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
@@ -166,6 +167,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // can upload/replace the banner image and reposition it vertically.
   // All upload + position logic lives inside BannerEditModal.
   const [bannerModalOpen, setBannerModalOpen] = useState(false);
+  // Edit-tabs — owner-only modal to toggle which tabs are visible to
+  // the public. Booking tab is NOT toggled here (use booking settings).
+  const [tabsModalOpen, setTabsModalOpen] = useState(false);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -378,7 +382,51 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       if (Array.isArray(parsed)) testimonials = parsed;
     } catch { /* invalid JSON — silently ignore, vanilla does the same */ }
   }
-  const showTestimonialsTab = isMobileDJ && testimonials.length > 0;
+
+  // ── Tab visibility ──────────────────────────────────────────────────
+  // Stored as JSONB on users.tab_visibility. Format:
+  //   { about: bool, mixes: bool, images: bool, video: bool, testimonials: bool }
+  // Booking tab is NOT controlled here — that's still driven by
+  // booking_settings.enabled. Defaults differ by DJ type:
+  //   - Club DJ: all five default ON
+  //   - Mobile DJ: all default ON except testimonials (default OFF)
+  // Owner can toggle any of these via the "Edit tabs" modal.
+  const tabVisibility = (() => {
+    const defaults = {
+      about: true,
+      mixes: true,
+      images: true,
+      video: true,
+      // Mobile DJs default testimonials OFF; club DJs default ON.
+      testimonials: !isMobileDJ,
+    };
+    if (!data.tab_visibility) return defaults;
+    try {
+      const parsed = typeof data.tab_visibility === 'string'
+        ? JSON.parse(data.tab_visibility)
+        : data.tab_visibility;
+      return {
+        about: typeof parsed.about === 'boolean' ? parsed.about : defaults.about,
+        mixes: typeof parsed.mixes === 'boolean' ? parsed.mixes : defaults.mixes,
+        images: typeof parsed.images === 'boolean' ? parsed.images : defaults.images,
+        video: typeof parsed.video === 'boolean' ? parsed.video : defaults.video,
+        testimonials: typeof parsed.testimonials === 'boolean' ? parsed.testimonials : defaults.testimonials,
+      };
+    } catch {
+      return defaults;
+    }
+  })();
+  // Tabs panes are still rendered (so the owner can see/use them when
+  // editing); we only hide the buttons in the public-facing nav for
+  // visitors. Owner sees ALL tabs in the nav with a small "hidden" marker.
+  const showAbout = isOwnProfile || tabVisibility.about;
+  const showMixes = isOwnProfile || tabVisibility.mixes;
+  const showImages = isOwnProfile || tabVisibility.images;
+  const showVideo = isOwnProfile || tabVisibility.video;
+  // Testimonials still requires having any to show for visitors; owner
+  // sees the tab regardless so they can add some.
+  const showTestimonialsTab =
+    isOwnProfile || (tabVisibility.testimonials && testimonials.length > 0);
 
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
@@ -627,7 +675,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
         {/* BODY */}
         <div className={styles.body}>
-          {/* Tab nav */}
+          {/* Tab nav. Owner sees all enabled tabs plus a small "Edit tabs"
+              link that opens the visibility modal. Tabs hidden from the
+              public (per tab_visibility) are shown to the owner with a
+              "hidden" dot marker so they know it's off-public. */}
           <nav className={styles.tabsNav}>
             {showBookingTab && (
               <button
@@ -638,25 +689,68 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {showMobileBookingTab ? 'Booking' : 'Availability'}
               </button>
             )}
-            <button className={tabClass('about')} onClick={() => setActiveTab('about')} type="button">
-              About
-            </button>
-            <button className={tabClass('mixes')} onClick={() => setActiveTab('mixes')} type="button">
-              Mixes
-            </button>
-            <button className={tabClass('images')} onClick={() => setActiveTab('images')} type="button">
-              Photos
-            </button>
-            <button className={tabClass('video')} onClick={() => setActiveTab('video')} type="button">
-              Video
-            </button>
+            {showAbout && (
+              <button
+                className={`${tabClass('about')} ${isOwnProfile && !tabVisibility.about ? styles.tabBtnHiddenPublic : ''}`}
+                onClick={() => setActiveTab('about')}
+                type="button"
+              >
+                About
+                {isOwnProfile && !tabVisibility.about && <span className={styles.tabHiddenDot} title="Hidden from public" />}
+              </button>
+            )}
+            {showMixes && (
+              <button
+                className={`${tabClass('mixes')} ${isOwnProfile && !tabVisibility.mixes ? styles.tabBtnHiddenPublic : ''}`}
+                onClick={() => setActiveTab('mixes')}
+                type="button"
+              >
+                Mixes
+                {isOwnProfile && !tabVisibility.mixes && <span className={styles.tabHiddenDot} title="Hidden from public" />}
+              </button>
+            )}
+            {showImages && (
+              <button
+                className={`${tabClass('images')} ${isOwnProfile && !tabVisibility.images ? styles.tabBtnHiddenPublic : ''}`}
+                onClick={() => setActiveTab('images')}
+                type="button"
+              >
+                Photos
+                {isOwnProfile && !tabVisibility.images && <span className={styles.tabHiddenDot} title="Hidden from public" />}
+              </button>
+            )}
+            {showVideo && (
+              <button
+                className={`${tabClass('video')} ${isOwnProfile && !tabVisibility.video ? styles.tabBtnHiddenPublic : ''}`}
+                onClick={() => setActiveTab('video')}
+                type="button"
+              >
+                Video
+                {isOwnProfile && !tabVisibility.video && <span className={styles.tabHiddenDot} title="Hidden from public" />}
+              </button>
+            )}
             {showTestimonialsTab && (
               <button
-                className={tabClass('testimonials')}
+                className={`${tabClass('testimonials')} ${isOwnProfile && !tabVisibility.testimonials ? styles.tabBtnHiddenPublic : ''}`}
                 onClick={() => setActiveTab('testimonials')}
                 type="button"
               >
                 Testimonials
+                {isOwnProfile && !tabVisibility.testimonials && <span className={styles.tabHiddenDot} title="Hidden from public" />}
+              </button>
+            )}
+            {isOwnProfile && (
+              <button
+                type="button"
+                onClick={() => setTabsModalOpen(true)}
+                className={styles.editTabsBtn}
+                title="Choose which tabs are visible to the public"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit tabs
               </button>
             )}
           </nav>
@@ -1126,6 +1220,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           initialPosition={data.banner_position}
           initialPositionMobile={data.banner_position_mobile}
           onClose={() => setBannerModalOpen(false)}
+        />
+      )}
+
+      {/* Edit tabs modal — owner-only. Toggles which tabs (about, mixes,
+          photos, video, testimonials) are visible to the public. */}
+      {tabsModalOpen && isOwnProfile && (
+        <EditTabsModal
+          userId={data.id}
+          initial={tabVisibility}
+          isMobileDJ={isMobileDJ}
+          onClose={() => setTabsModalOpen(false)}
         />
       )}
 
@@ -3761,6 +3866,135 @@ function BannerEditModal({
             style={{ display: 'none' }}
             onChange={onFilePick}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── EditTabsModal ──────────────────────────────────────────────
+// Owner-only modal to toggle which tabs are visible to public visitors.
+// Booking tab is not in here — it's controlled separately by booking
+// settings. Persists to users.tab_visibility as a JSON object.
+function EditTabsModal({
+  userId,
+  initial,
+  isMobileDJ,
+  onClose,
+}: {
+  userId: string;
+  initial: {
+    about: boolean;
+    mixes: boolean;
+    images: boolean;
+    video: boolean;
+    testimonials: boolean;
+  };
+  isMobileDJ: boolean;
+  onClose: () => void;
+}) {
+  const [vis, setVis] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggle(key: keyof typeof initial) {
+    setVis(v => ({ ...v, [key]: !v[key] }));
+  }
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ tab_visibility: vis } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  const rows: Array<{
+    key: keyof typeof initial;
+    label: string;
+    hint?: string;
+  }> = [
+    { key: 'about', label: 'About' },
+    { key: 'mixes', label: 'Mixes' },
+    { key: 'images', label: 'Photos' },
+    { key: 'video', label: 'Video' },
+    {
+      key: 'testimonials',
+      label: 'Testimonials',
+      hint: isMobileDJ ? 'Off by default for mobile DJs' : undefined,
+    },
+  ];
+
+  return (
+    <div className={styles.bannerModalBackdrop} onClick={onClose}>
+      <div className={styles.bannerModal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <div className={styles.bannerModalHeader}>
+          <h2 className={styles.bannerModalTitle}>Edit Tabs</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.bannerModalClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.bannerModalBody}>
+          <div className={styles.bannerModalHint}>
+            Choose which tabs are visible to visitors. The <strong>Booking</strong> tab
+            is controlled separately by your booking settings.
+          </div>
+
+          <div className={styles.tabsList}>
+            {rows.map(row => (
+              <label key={row.key} className={styles.tabsRow}>
+                <div className={styles.tabsRowText}>
+                  <div className={styles.tabsRowLabel}>{row.label}</div>
+                  {row.hint && (
+                    <div className={styles.tabsRowHint}>{row.hint}</div>
+                  )}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={vis[row.key]}
+                  onChange={() => toggle(row.key)}
+                  className={styles.tabsCheckbox}
+                />
+              </label>
+            ))}
+          </div>
+
+          {error && <div className={styles.bannerModalError}>{error}</div>}
+
+          <div className={styles.bannerModalActions}>
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className={styles.bannerModalBtn}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              className={`${styles.bannerModalBtn} ${styles.bannerModalBtnPrimary}`}
+            >
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
