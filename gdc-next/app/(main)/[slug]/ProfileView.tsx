@@ -417,16 +417,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     }
   })();
   // Tabs panes are still rendered (so the owner can see/use them when
-  // editing); we only hide the buttons in the public-facing nav for
-  // visitors. Owner sees ALL tabs in the nav with a small "hidden" marker.
-  const showAbout = isOwnProfile || tabVisibility.about;
-  const showMixes = isOwnProfile || tabVisibility.mixes;
-  const showImages = isOwnProfile || tabVisibility.images;
-  const showVideo = isOwnProfile || tabVisibility.video;
-  // Testimonials still requires having any to show for visitors; owner
-  // sees the tab regardless so they can add some.
-  const showTestimonialsTab =
-    isOwnProfile || (tabVisibility.testimonials && testimonials.length > 0);
+  // editing); we only hide the buttons in the public-facing nav. Owner
+  // and visitors both see the same set — controlled by tab_visibility.
+  // To re-enable a hidden tab, owner uses the "Edit tabs" button.
+  const showAbout = tabVisibility.about;
+  const showMixes = tabVisibility.mixes;
+  const showImages = tabVisibility.images;
+  const showVideo = tabVisibility.video;
+  // Testimonials still requires having any to show; owner toggles via
+  // Edit tabs but won't see the empty tab if it's enabled with 0 items.
+  const showTestimonialsTab = tabVisibility.testimonials && testimonials.length > 0;
 
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
@@ -691,52 +691,47 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             )}
             {showAbout && (
               <button
-                className={`${tabClass('about')} ${isOwnProfile && !tabVisibility.about ? styles.tabBtnHiddenPublic : ''}`}
+                className={tabClass('about')}
                 onClick={() => setActiveTab('about')}
                 type="button"
               >
                 About
-                {isOwnProfile && !tabVisibility.about && <span className={styles.tabHiddenDot} title="Hidden from public" />}
               </button>
             )}
             {showMixes && (
               <button
-                className={`${tabClass('mixes')} ${isOwnProfile && !tabVisibility.mixes ? styles.tabBtnHiddenPublic : ''}`}
+                className={tabClass('mixes')}
                 onClick={() => setActiveTab('mixes')}
                 type="button"
               >
                 Mixes
-                {isOwnProfile && !tabVisibility.mixes && <span className={styles.tabHiddenDot} title="Hidden from public" />}
               </button>
             )}
             {showImages && (
               <button
-                className={`${tabClass('images')} ${isOwnProfile && !tabVisibility.images ? styles.tabBtnHiddenPublic : ''}`}
+                className={tabClass('images')}
                 onClick={() => setActiveTab('images')}
                 type="button"
               >
                 Photos
-                {isOwnProfile && !tabVisibility.images && <span className={styles.tabHiddenDot} title="Hidden from public" />}
               </button>
             )}
             {showVideo && (
               <button
-                className={`${tabClass('video')} ${isOwnProfile && !tabVisibility.video ? styles.tabBtnHiddenPublic : ''}`}
+                className={tabClass('video')}
                 onClick={() => setActiveTab('video')}
                 type="button"
               >
                 Video
-                {isOwnProfile && !tabVisibility.video && <span className={styles.tabHiddenDot} title="Hidden from public" />}
               </button>
             )}
             {showTestimonialsTab && (
               <button
-                className={`${tabClass('testimonials')} ${isOwnProfile && !tabVisibility.testimonials ? styles.tabBtnHiddenPublic : ''}`}
+                className={tabClass('testimonials')}
                 onClick={() => setActiveTab('testimonials')}
                 type="button"
               >
                 Testimonials
-                {isOwnProfile && !tabVisibility.testimonials && <span className={styles.tabHiddenDot} title="Hidden from public" />}
               </button>
             )}
             {isOwnProfile && (
