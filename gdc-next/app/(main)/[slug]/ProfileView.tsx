@@ -505,25 +505,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             >
               {/* Top-left DJ type badge — primary display. For mobile
                   DJs, doubles as the Events Serviced dropdown (click to
-                  see event types). Shown always, banner or not. Extended
-                  to the right with the DJ's location pill. */}
+                  see event types). Shown always, banner or not. */}
               {data.dj_type && (
-                <div className={styles.bannerBadgeRow}>
-                  {isMobileDJ ? (
-                    <BannerTypeEventsDropdown events={eventTypes} />
-                  ) : (
-                    <div
-                      className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
-                    >
-                      Club / Bar DJ
-                    </div>
-                  )}
-                  {location && (
-                    <div className={styles.bannerLocationBadge}>
-                      <LocationPinIcon /> {location}
-                    </div>
-                  )}
-                </div>
+                isMobileDJ ? (
+                  <BannerTypeEventsDropdown events={eventTypes} />
+                ) : (
+                  <div
+                    className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
+                  >
+                    Club / Bar DJ
+                  </div>
+                )
               )}
               {isOwnProfile && (
                 <button
@@ -637,6 +629,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 
+            {location && (
+              <div className={styles.heroLocation}>
+                <LocationPinIcon /> {location}
+              </div>
+            )}
             {yearsText && (
               <div className={styles.heroYears} style={{ display: 'inline-flex' }}>
                 {yearsText}
