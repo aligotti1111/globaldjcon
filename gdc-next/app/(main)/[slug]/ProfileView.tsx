@@ -488,7 +488,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               that opens from the corner button. Both desktop and mobile
               positions are passed as CSS variables and a media query in
               profile.module.css picks the right one per viewport. */}
-          {(data.banner_url || isOwnProfile) && (
+          {(data.banner_url || isOwnProfile || data.dj_type) && (
             <div
               className={styles.banner}
               style={
@@ -502,6 +502,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   : undefined
               }
             >
+              {/* Top-left DJ type badge — primary display. For mobile
+                  DJs, doubles as the Events Serviced dropdown (click to
+                  see event types). Shown always, banner or not. */}
+              {data.dj_type && (
+                isMobileDJ ? (
+                  <BannerTypeEventsDropdown events={eventTypes} />
+                ) : (
+                  <div
+                    className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
+                  >
+                    Club / Bar DJ
+                  </div>
+                )
+              )}
               {isOwnProfile && (
                 <button
                   type="button"
@@ -518,20 +532,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </button>
               )}
             </div>
-          )}
-          {/* Top-left DJ type badge — sibling of .banner (NOT a child) so
-              its dropdown popup can render above the avatar. For mobile
-              DJs, doubles as the Events Serviced dropdown. */}
-          {data.dj_type && (
-            isMobileDJ ? (
-              <BannerTypeEventsDropdown events={eventTypes} />
-            ) : (
-              <div
-                className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
-              >
-                Club / Bar DJ
-              </div>
-            )
           )}
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
@@ -1336,6 +1336,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 // ──────────────────────────────────────────────────────────────────────────
 function BannerTypeEventsDropdown({ events }: { events: string[] }) {
   const [open, setOpen] = useState(false);
+  const badgeRef = useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1350,10 +1352,28 @@ function BannerTypeEventsDropdown({ events }: { events: string[] }) {
     return () => document.removeEventListener('click', onDocClick);
   }, [open]);
 
+  // Recalculate viewport position when opening, on resize, and on scroll.
+  useEffect(() => {
+    if (!open) return;
+    function update() {
+      if (!badgeRef.current) return;
+      const r = badgeRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
+
   const hasEvents = events.length > 0;
 
   return (
     <div
+      ref={badgeRef}
       data-banner-type-dropdown
       className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeMobile}`}
       onClick={(e) => {
@@ -1373,8 +1393,12 @@ function BannerTypeEventsDropdown({ events }: { events: string[] }) {
       style={{ cursor: hasEvents ? 'pointer' : 'default' }}
     >
       Mobile / Event DJ{hasEvents && ' ▾'}
-      {open && hasEvents && (
-        <div className={styles.bannerTypeDropdown}>
+      {open && hasEvents && pos && (
+        <div
+          className={styles.bannerTypeDropdown}
+          data-banner-type-dropdown
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}
+        >
           {events.map(ev => (
             <div key={ev} className={styles.bannerTypeDropdownItem}>
               {EVENT_TYPE_LABELS[ev] || ev}
