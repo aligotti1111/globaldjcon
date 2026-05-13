@@ -424,9 +424,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const showMixes = tabVisibility.mixes;
   const showImages = tabVisibility.images;
   const showVideo = tabVisibility.video;
-  // Testimonials still requires having any to show; owner toggles via
-  // Edit tabs but won't see the empty tab if it's enabled with 0 items.
-  const showTestimonialsTab = tabVisibility.testimonials && testimonials.length > 0;
+  // Testimonials: only available for mobile DJs. Visitors see the tab
+  // when enabled AND there's at least one testimonial. Owner sees the
+  // tab whenever enabled (even empty) so they can add some.
+  const showTestimonialsTab =
+    isMobileDJ && tabVisibility.testimonials && (isOwnProfile || testimonials.length > 0);
 
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
@@ -3922,11 +3924,14 @@ function EditTabsModal({
     { key: 'mixes', label: 'Mixes' },
     { key: 'images', label: 'Photos' },
     { key: 'video', label: 'Video' },
-    {
-      key: 'testimonials',
-      label: 'Testimonials',
-      hint: isMobileDJ ? 'Off by default for mobile DJs' : undefined,
-    },
+    // Testimonials are only relevant for mobile DJs.
+    ...(isMobileDJ
+      ? [{
+          key: 'testimonials' as const,
+          label: 'Testimonials',
+          hint: 'Off by default for new mobile DJs',
+        }]
+      : []),
   ];
 
   return (
