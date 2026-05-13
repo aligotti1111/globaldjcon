@@ -1122,6 +1122,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               all (see showTestimonialsTab logic above). */}
           {showTestimonialsTab && (
             <div className={paneClass('testimonials')}>
+              {isOwnProfile && testimonials.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the Testimonials tab on your profile
+                  until at least one is added.
+                </div>
+              )}
               {testimonials.map((t, i) => (
                 <div key={i} className={styles.testimonialItem}>
                   {isOwnProfile && (
