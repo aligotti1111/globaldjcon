@@ -103,16 +103,31 @@
 /* Top-left DJ/company name overlay on the banner — only rendered when
    data.banner_url is set. Anchored flush against the top-left corner
    of the banner, stemming outward from that edge for emphasis. */
-.bannerNameBadge {
+/* Wrapper for top-left badge row — type badge + location badge sit
+   flush together with a visual divider between them. */
+.bannerBadgeRow {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 2;
+  display: flex;
+  align-items: stretch;
+  max-width: calc(100% - 200px);
+}
+@media (max-width: 700px) {
+  .bannerBadgeRow {
+    max-width: calc(100% - 32px);
+  }
+}
+/* Top-left DJ type overlay on the banner — only rendered when
+   data.banner_url is set. Anchored flush against the top-left corner
+   of the banner, stemming outward from that edge for emphasis. */
+.bannerNameBadge {
+  position: relative;
   padding: .35rem 1.1rem .4rem;
   background: rgba(5, 5, 7, .85);
   border-right: 1px solid rgba(255, 255, 255, .15);
   border-bottom: 1px solid rgba(255, 255, 255, .15);
-  border-bottom-right-radius: 12px;
   color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: .85rem;
@@ -122,8 +137,46 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
-  max-width: calc(100% - 200px);
   white-space: nowrap;
+}
+/* When type badge is the only thing in the row (no location), it keeps
+   its own rounded bottom-right corner. */
+.bannerBadgeRow > .bannerNameBadge:last-child {
+  border-bottom-right-radius: 12px;
+}
+/* Location pill — extends to the right of the type badge with a
+   vertical divider between them. White text. */
+.bannerLocationBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem 1.1rem .4rem;
+  background: rgba(5, 5, 7, .85);
+  border-right: 1px solid rgba(255, 255, 255, .15);
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
+  border-left: 1px solid rgba(255, 255, 255, .25);
+  border-bottom-right-radius: 12px;
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .04em;
+  line-height: 1.1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bannerLocationBadge svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+}
+@media (max-width: 700px) {
+  .bannerLocationBadge {
+    padding: .3rem .8rem .35rem;
+    font-size: .65rem;
+  }
 }
 @media (max-width: 700px) {
   .bannerNameBadge {
