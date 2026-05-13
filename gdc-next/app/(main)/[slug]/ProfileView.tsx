@@ -457,6 +457,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     </div>
   ) : null;
 
+  // Auto-size the DJ name based on character length so the pill stays
+  // tight even for long company names. Tiers:
+  //   ≤ 14 chars → default size
+  //   15–22     → medium-small
+  //   23–30     → small
+  //   31+       → x-small
+  const nameLen = (data.name || 'Unknown DJ').length;
+  const nameSizeClass =
+    nameLen <= 14
+      ? ''
+      : nameLen <= 22
+        ? styles.heroNameMd
+        : nameLen <= 30
+          ? styles.heroNameSm
+          : styles.heroNameXs;
+
   return (
     <>
       {/* Claim bar — only shown for unclaimed/imported profiles */}
@@ -610,7 +626,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             </div>
             {/* Mobile-only column: name + badges next to avatar */}
             <div className={styles.heroNameCol}>
-              <div className={styles.heroName}>{data.name || 'Unknown DJ'}</div>
+              <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
               {heroBadgesEl}
             </div>
           </div>
@@ -619,7 +635,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               via the descendant selector .heroInfo .heroName / .heroInfo .heroBadges
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
-            <div className={styles.heroName}>{data.name || 'Unknown DJ'}</div>
+            <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 

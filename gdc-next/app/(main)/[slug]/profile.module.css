@@ -773,10 +773,12 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+/* Name-length size tiers — keeps the pill tight when the name is long.
+   Applied additively to .heroName via JS (nameSizeClass). */
+.heroNameMd { font-size: 2.5rem; }
+.heroNameSm { font-size: 2rem; }
+.heroNameXs { font-size: 1.6rem; letter-spacing: .02em; }
 .heroHasBanner .heroLocation {
   color: #fff;
 }
