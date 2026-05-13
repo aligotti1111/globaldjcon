@@ -788,9 +788,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
             <div className={paneClass('booking')} data-booking-anchor>
-              {isOwnProfile && (
-                <EmbedCalendarShortcut onClick={() => setEmbedModalOpen(true)} />
-              )}
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
@@ -803,6 +800,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 selectedDate={clubSelectedDate}
                 onBookDate={(key) => setClubSelectedDate(key)}
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
+                onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
               />
               {!isOwnProfile && clubSelectedDate && currentUser && (
                 <ClubBookingForm
@@ -834,9 +832,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           )}
           {showMobileBookingTab && (
             <div className={paneClass('booking')} data-booking-anchor>
-              {isOwnProfile && (
-                <EmbedCalendarShortcut onClick={() => setEmbedModalOpen(true)} />
-              )}
               <MobilePublicCalendar
                 djId={data.id}
                 djName={data.name || ''}
@@ -847,6 +842,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
                 isOwnProfile={isOwnProfile}
+                onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
               />
             </div>
           )}

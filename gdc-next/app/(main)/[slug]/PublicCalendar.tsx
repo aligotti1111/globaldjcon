@@ -64,6 +64,9 @@ interface Props {
   // the dateKey so it can open a login gate that returns the user to
   // this date after auth.
   onLoggedOutBookAttempt?: (dateKey: string) => void;
+  // Owner-only: opens the Embed Calendar modal. When set, an "Embed
+  // calendar" button is rendered inline in the nav row.
+  onEmbedClick?: () => void;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -117,6 +120,7 @@ export default function PublicCalendar({
   selectedDate = null,
   onBookDate,
   onLoggedOutBookAttempt,
+  onEmbedClick,
 }: Props) {
   const today = useMemo(() => new Date(), []);
   // For owner mode we maintain a local copy of bookingDays so quick-marks
@@ -325,6 +329,20 @@ export default function PublicCalendar({
 
       {/* TOP NAV ROW (always visible — toggle hides month/year selectors itself) */}
       <div className={styles.navRow}>
+        {onEmbedClick && (
+          <button
+            type="button"
+            className={styles.embedInlineBtn}
+            onClick={onEmbedClick}
+            title="Embed Calendar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            Embed Calendar
+          </button>
+        )}
         {!rollingActive && (
           <>
             <button

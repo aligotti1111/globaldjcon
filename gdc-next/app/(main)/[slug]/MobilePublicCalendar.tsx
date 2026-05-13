@@ -62,6 +62,9 @@ interface Props {
   // ✓/✗ quick-mark + ✏️ edit controls, and clicking a date opens the
   // owner day-edit modal instead of the booker form.
   isOwnProfile: boolean;
+  // Owner-only: opens the Embed Calendar modal. When set, an "Embed
+  // calendar" button is rendered inline in the nav row.
+  onEmbedClick?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -108,6 +111,7 @@ export default function MobilePublicCalendar({
   bookingSettings,
   isLoggedIn,
   isOwnProfile,
+  onEmbedClick,
 }: Props) {
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
@@ -334,6 +338,20 @@ export default function MobilePublicCalendar({
 
       {/* TOP NAV ROW */}
       <div className={styles.navRow}>
+        {onEmbedClick && (
+          <button
+            type="button"
+            className={styles.embedInlineBtn}
+            onClick={onEmbedClick}
+            title="Embed Calendar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            Embed Calendar
+          </button>
+        )}
         {!rollingActive && (
           <>
             <button
