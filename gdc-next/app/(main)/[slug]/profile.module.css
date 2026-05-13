@@ -1153,14 +1153,11 @@
   position: relative;
 }
 /* Owner-only — small note at top of pane when no testimonials yet,
-   explaining the tab won't be visible to visitors until one is added. */
+   explaining the tab won't be visible to visitors until one is added.
+   Plain text, no frame. */
 .testimonialOwnerNote {
-  background: rgba(0, 245, 196, .06);
-  border: 1px solid rgba(0, 245, 196, .25);
-  border-radius: 10px;
-  padding: .9rem 1.1rem;
-  margin-bottom: 1rem;
-  color: var(--white);
+  margin: 0 0 1.25rem;
+  color: var(--muted);
   font-family: 'Space Mono', monospace;
   font-size: .72rem;
   line-height: 1.5;

@@ -1156,13 +1156,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       ✕
                     </button>
                   )}
-                  <div className={styles.testimonialBlurb}>{t.blurb || ''}</div>
                   <div className={styles.testimonialMeta}>
                     <span className={styles.testimonialName}>{t.name || ''}</span>
                     {t.date && (
                       <span className={styles.testimonialDate}>· {t.date}</span>
                     )}
                   </div>
+                  <div className={styles.testimonialBlurb}>{t.blurb || ''}</div>
                 </div>
               ))}
               {isOwnProfile && (
