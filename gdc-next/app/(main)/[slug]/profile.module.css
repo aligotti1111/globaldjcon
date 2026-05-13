@@ -140,6 +140,34 @@
   border-right-color: rgba(245, 230, 66, .35);
   border-bottom-color: rgba(245, 230, 66, .35);
 }
+/* Dropdown popup for the top-left mobile-DJ events-serviced badge. */
+.bannerTypeDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 5;
+  margin-top: .25rem;
+  min-width: 220px;
+  background: rgba(5, 5, 7, .95);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: .5rem 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+.bannerTypeDropdownItem {
+  padding: .45rem 1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .85);
+  white-space: nowrap;
+}
+.bannerTypeDropdownItem:hover {
+  color: var(--neon);
+}
 .bannerEditBtn {
   position: absolute;
   top: 24px;
