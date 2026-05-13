@@ -863,8 +863,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px;
-  background: rgba(0, 245, 196, .04);
-  border: 1px solid rgba(0, 245, 196, .15);
+  background: #fff;
+  border: 1px solid #fff;
   border-radius: 100px;
   margin: 0 0 2rem;
 }
@@ -877,7 +877,7 @@
   background: transparent;
   border: none;
   border-radius: 100px;
-  color: var(--neon);
+  color: #00B589;
   cursor: pointer;
   transition: all .15s;
   flex: 1;
@@ -885,6 +885,7 @@
 }
 .tabBtn:hover {
   background: rgba(0, 245, 196, .08);
+  color: #008E6A;
 }
 .tabBtnActive {
   background: var(--neon);
@@ -894,6 +895,7 @@
 }
 .tabBtnActive:hover {
   background: var(--neon);
+  color: #050507;
   filter: brightness(1.05);
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
