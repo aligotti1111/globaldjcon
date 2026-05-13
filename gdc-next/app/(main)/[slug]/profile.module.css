@@ -103,14 +103,14 @@
   top: 0;
   left: 0;
   z-index: 2;
-  padding: .35rem .75rem;
+  padding: .65rem 1.4rem;
   background: rgba(5, 5, 7, .85);
   border-right: 1px solid rgba(255, 255, 255, .15);
   border-bottom: 1px solid rgba(255, 255, 255, .15);
   border-bottom-right-radius: 12px;
   color: #fff;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.6rem;
   letter-spacing: .04em;
   line-height: 1.1;
   backdrop-filter: blur(8px);
@@ -123,8 +123,8 @@
 }
 @media (max-width: 700px) {
   .bannerNameBadge {
-    padding: .3rem .65rem;
-    font-size: .95rem;
+    padding: .45rem 1rem;
+    font-size: 1.2rem;
     max-width: calc(100% - 32px);
   }
 }
@@ -1429,6 +1429,7 @@
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  margin-top: 2.5rem;
 }
 .heroNameCol {
   display: none; /* mobile only — see media query below */
@@ -1456,6 +1457,7 @@
     align-items: center;
     gap: 1rem;
     width: 100%;
+    margin-top: 1rem;
   }
   .heroAvatar {
     width: 99px !important;
