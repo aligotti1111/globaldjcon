@@ -488,7 +488,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               that opens from the corner button. Both desktop and mobile
               positions are passed as CSS variables and a media query in
               profile.module.css picks the right one per viewport. */}
-          {(data.banner_url || isOwnProfile || data.dj_type) && (
+          {(data.banner_url || isOwnProfile) && (
             <div
               className={styles.banner}
               style={
@@ -502,20 +502,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   : undefined
               }
             >
-              {/* Top-left DJ type badge — primary display. For mobile
-                  DJs, doubles as the Events Serviced dropdown (click to
-                  see event types). Shown always, banner or not. */}
-              {data.dj_type && (
-                isMobileDJ ? (
-                  <BannerTypeEventsDropdown events={eventTypes} />
-                ) : (
-                  <div
-                    className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
-                  >
-                    Club / Bar DJ
-                  </div>
-                )
-              )}
               {isOwnProfile && (
                 <button
                   type="button"
@@ -532,6 +518,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </button>
               )}
             </div>
+          )}
+          {/* Top-left DJ type badge — sibling of .banner (NOT a child) so
+              its dropdown popup can render above the avatar. For mobile
+              DJs, doubles as the Events Serviced dropdown. */}
+          {data.dj_type && (
+            isMobileDJ ? (
+              <BannerTypeEventsDropdown events={eventTypes} />
+            ) : (
+              <div
+                className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
+              >
+                Club / Bar DJ
+              </div>
+            )
           )}
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}

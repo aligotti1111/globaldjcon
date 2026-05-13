@@ -107,7 +107,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 2;
+  z-index: 100;
   padding: .35rem 1.1rem .4rem;
   background: rgba(5, 5, 7, .85);
   border-right: 1px solid rgba(255, 255, 255, .15);
@@ -148,7 +148,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 5;
+  z-index: 100;
   margin-top: .25rem;
   min-width: 220px;
   background: rgba(5, 5, 7, .95);
