@@ -6,6 +6,7 @@
 // Server Component (page.tsx) does the data fetch and passes everything in.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './profile.module.css';
@@ -1336,8 +1337,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 // ──────────────────────────────────────────────────────────────────────────
 function BannerTypeEventsDropdown({ events }: { events: string[] }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const badgeRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -1352,7 +1356,6 @@ function BannerTypeEventsDropdown({ events }: { events: string[] }) {
     return () => document.removeEventListener('click', onDocClick);
   }, [open]);
 
-  // Recalculate viewport position when opening, on resize, and on scroll.
   useEffect(() => {
     if (!open) return;
     function update() {
@@ -1393,7 +1396,7 @@ function BannerTypeEventsDropdown({ events }: { events: string[] }) {
       style={{ cursor: hasEvents ? 'pointer' : 'default' }}
     >
       Mobile / Event DJ{hasEvents && ' ▾'}
-      {open && hasEvents && pos && (
+      {mounted && open && hasEvents && pos && createPortal(
         <div
           className={styles.bannerTypeDropdown}
           data-banner-type-dropdown
@@ -1404,7 +1407,8 @@ function BannerTypeEventsDropdown({ events }: { events: string[] }) {
               {EVENT_TYPE_LABELS[ev] || ev}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
