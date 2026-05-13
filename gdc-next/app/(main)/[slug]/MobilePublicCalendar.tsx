@@ -338,20 +338,6 @@ export default function MobilePublicCalendar({
 
       {/* TOP NAV ROW */}
       <div className={styles.navRow}>
-        {onEmbedClick && (
-          <button
-            type="button"
-            className={styles.embedInlineBtn}
-            onClick={onEmbedClick}
-            title="Embed Calendar"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
-            Embed Calendar
-          </button>
-        )}
         {!rollingActive && (
           <>
             <button
@@ -418,6 +404,7 @@ export default function MobilePublicCalendar({
           isOwnProfile={isOwnProfile}
           onQuickMark={quickMark}
           onOpenEdit={(key) => setOwnerEditKey(key)}
+          onEmbedClick={onEmbedClick}
         />
       )}
 
@@ -518,6 +505,7 @@ function SingleMonthView({
   isOwnProfile,
   onQuickMark,
   onOpenEdit,
+  onEmbedClick,
 }: {
   year: number;
   month: number;
@@ -530,6 +518,8 @@ function SingleMonthView({
   isOwnProfile: boolean;
   onQuickMark: (key: string) => void;
   onOpenEdit: (key: string) => void;
+  // Owner-only Embed Calendar button — rendered in the month header row.
+  onEmbedClick?: () => void;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -668,8 +658,25 @@ function SingleMonthView({
 
   return (
     <div>
-      <div className={styles.monthHeader}>
-        {MONTH_NAMES[month]} {year}
+      <div className={styles.monthHeaderRow}>
+        {onEmbedClick && (
+          <button
+            type="button"
+            className={styles.embedInlineBtn}
+            onClick={onEmbedClick}
+            title="Embed Calendar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            Embed Calendar
+          </button>
+        )}
+        <div className={styles.monthHeader}>
+          {MONTH_NAMES[month]} {year}
+        </div>
+        {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
       </div>
 
       <div className={styles.dayHeaderRow}>

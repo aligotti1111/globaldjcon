@@ -111,6 +111,12 @@
 }
 
 /* ── MONTH HEADER (e.g. "April 2026") ──────────────────────────────── */
+.monthHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
 .monthHeader {
   text-align: center;
   font-family: 'Bebas Neue', sans-serif;
@@ -118,7 +124,23 @@
   letter-spacing: .08em;
   color: var(--neon);
   text-shadow: 0 0 18px rgba(0, 245, 196, .35);
-  margin-bottom: .75rem;
+  flex: 1;
+}
+/* Invisible right-side balancer so month name stays optically centered
+   when the Embed Calendar button is rendered on the left. */
+.monthHeaderSpacer {
+  flex: 0 0 auto;
+  visibility: hidden;
+  width: 168px;
+}
+@media (max-width: 700px) {
+  .monthHeaderRow {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .monthHeaderSpacer {
+    display: none;
+  }
 }
 
 /* ── MONTH GRID ──────────────────────────────────────────────────────── */
