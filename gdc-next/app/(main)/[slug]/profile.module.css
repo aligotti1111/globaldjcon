@@ -866,21 +866,23 @@
   background: rgba(0, 245, 196, .04);
   border: 1px solid rgba(0, 245, 196, .15);
   border-radius: 100px;
-  margin: 0 0 2rem;
+  margin: 0 auto 2rem;
+  width: fit-content;
+  max-width: 100%;
 }
 .tabBtn {
   font-family: 'Space Mono', monospace;
   font-size: .65rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  padding: .65rem 1rem;
+  padding: .65rem 1.5rem;
   background: transparent;
   border: none;
   border-radius: 100px;
   color: var(--neon);
   cursor: pointer;
   transition: all .15s;
-  flex: 1;
+  flex: 0 1 auto;
   text-align: center;
 }
 .tabBtn:hover {
