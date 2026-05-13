@@ -673,10 +673,25 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
         {/* BODY */}
         <div className={styles.body}>
-          {/* Tab nav. Owner sees all enabled tabs plus a small "Edit tabs"
-              link that opens the visibility modal. Tabs hidden from the
-              public (per tab_visibility) are shown to the owner with a
-              "hidden" dot marker so they know it's off-public. */}
+          {/* Owner-only "Edit tabs" link sits ABOVE the tabs nav, right
+              aligned, outside the pill frame. */}
+          {isOwnProfile && (
+            <div className={styles.editTabsRow}>
+              <button
+                type="button"
+                onClick={() => setTabsModalOpen(true)}
+                className={styles.editTabsBtn}
+                title="Choose which tabs are visible to the public"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit tabs
+              </button>
+            </div>
+          )}
+          {/* Tab nav — pill-segmented control. */}
           <nav className={styles.tabsNav}>
             {showBookingTab && (
               <button
@@ -733,22 +748,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </button>
             )}
           </nav>
-          {isOwnProfile && (
-            <div className={styles.editTabsRow}>
-              <button
-                type="button"
-                onClick={() => setTabsModalOpen(true)}
-                className={styles.editTabsBtn}
-                title="Choose which tabs are visible to the public"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                Edit tabs
-              </button>
-            </div>
-          )}
 
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
@@ -1116,11 +1115,47 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             )}
           </div>
 
-          {/* Testimonials tab — mobile DJs only */}
+          {/* Testimonials tab — mobile DJs only. Owner can add/edit/delete
+              from here; visitors see the list (read-only). If no
+              testimonials are saved yet, owner sees an explanatory
+              message and the add form; visitors don't see the tab at
+              all (see showTestimonialsTab logic above). */}
           {showTestimonialsTab && (
             <div className={paneClass('testimonials')}>
+              {isOwnProfile && testimonials.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  No testimonials yet. Add one below — visitors won&apos;t see
+                  the Testimonials tab on your profile until at least one is
+                  added.
+                </div>
+              )}
               {testimonials.map((t, i) => (
                 <div key={i} className={styles.testimonialItem}>
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm('Delete this testimonial?')) return;
+                        try {
+                          const next = testimonials.filter((_, idx) => idx !== i);
+                          const supabase = createClient();
+                          const { error } = await supabase
+                            .from('users')
+                            .update({ testimonials: JSON.stringify(next) } as unknown as never)
+                            .eq('id', data.id);
+                          if (error) throw error;
+                          window.location.reload();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Delete failed.');
+                        }
+                      }}
+                      className={styles.testimonialDeleteBtn}
+                      title="Delete testimonial"
+                      aria-label="Delete testimonial"
+                    >
+                      ✕
+                    </button>
+                  )}
                   <div className={styles.testimonialBlurb}>{t.blurb || ''}</div>
                   <div className={styles.testimonialMeta}>
                     <span className={styles.testimonialName}>{t.name || ''}</span>
@@ -1130,6 +1165,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 </div>
               ))}
+              {isOwnProfile && (
+                <TestimonialAddForm
+                  userId={data.id}
+                  existing={testimonials}
+                />
+              )}
             </div>
           )}
         </div>
@@ -3994,6 +4035,127 @@ function EditTabsModal({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TestimonialAddForm ─────────────────────────────────────────
+// Owner-only inline form to append a new testimonial. Lives at the
+// bottom of the Testimonials tab pane. On submit, appends to the
+// existing array and writes back to users.testimonials (JSON-stringified).
+function TestimonialAddForm({
+  userId,
+  existing,
+}: {
+  userId: string;
+  existing: Testimonial[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [blurb, setBlurb] = useState('');
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setBlurb('');
+    setName('');
+    setDate('');
+    setError(null);
+  }
+
+  async function save() {
+    if (!blurb.trim() || !name.trim()) {
+      setError('Quote and name are required.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const next: Testimonial[] = [
+        ...existing,
+        { blurb: blurb.trim(), name: name.trim(), date: date.trim() || undefined },
+      ];
+      const supabase = createClient();
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ testimonials: JSON.stringify(next) } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={styles.testimonialAddBtn}
+      >
+        + Add testimonial
+      </button>
+    );
+  }
+
+  return (
+    <div className={styles.testimonialAddForm}>
+      <div className={styles.testimonialAddFormLabel}>Quote</div>
+      <textarea
+        value={blurb}
+        onChange={(e) => setBlurb(e.target.value)}
+        rows={3}
+        placeholder="What they said about you…"
+        className={styles.testimonialAddInput}
+        disabled={busy}
+      />
+      <div className={styles.testimonialAddFormRow}>
+        <div style={{ flex: 1 }}>
+          <div className={styles.testimonialAddFormLabel}>Name</div>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Sarah J."
+            className={styles.testimonialAddInput}
+            disabled={busy}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className={styles.testimonialAddFormLabel}>Date (optional)</div>
+          <input
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            placeholder="May 2024"
+            className={styles.testimonialAddInput}
+            disabled={busy}
+          />
+        </div>
+      </div>
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+          disabled={busy}
+          className={styles.testimonialAddCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className={styles.testimonialAddSave}
+        >
+          {busy ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </div>
   );
