@@ -673,26 +673,27 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
         {/* BODY */}
         <div className={styles.body}>
-          {/* Owner-only "Edit tabs" link sits ABOVE the tabs nav, right
-              aligned, outside the pill frame. */}
-          {isOwnProfile && (
-            <div className={styles.editTabsRow}>
-              <button
-                type="button"
-                onClick={() => setTabsModalOpen(true)}
-                className={styles.editTabsBtn}
-                title="Choose which tabs are visible to the public"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                Edit tabs
-              </button>
-            </div>
-          )}
-          {/* Tab nav — pill-segmented control. */}
-          <nav className={styles.tabsNav}>
+          {/* Tabs section — Edit tabs button + pill-segmented nav share a
+              centered container so the button aligns to the right edge of
+              the pill bar (not the page). */}
+          <div className={styles.tabsSection}>
+            {isOwnProfile && (
+              <div className={styles.editTabsRow}>
+                <button
+                  type="button"
+                  onClick={() => setTabsModalOpen(true)}
+                  className={styles.editTabsBtn}
+                  title="Choose which tabs are visible to the public"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit tabs
+                </button>
+              </div>
+            )}
+            <nav className={styles.tabsNav}>
             {showBookingTab && (
               <button
                 className={tabClass('booking')}
@@ -748,6 +749,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </button>
             )}
           </nav>
+          </div>
 
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
@@ -4103,15 +4105,6 @@ function TestimonialAddForm({
 
   return (
     <div className={styles.testimonialAddForm}>
-      <div className={styles.testimonialAddFormLabel}>Quote</div>
-      <textarea
-        value={blurb}
-        onChange={(e) => setBlurb(e.target.value)}
-        rows={3}
-        placeholder="What they said about you…"
-        className={styles.testimonialAddInput}
-        disabled={busy}
-      />
       <div className={styles.testimonialAddFormRow}>
         <div style={{ flex: 1 }}>
           <div className={styles.testimonialAddFormLabel}>Name</div>
@@ -4134,6 +4127,15 @@ function TestimonialAddForm({
           />
         </div>
       </div>
+      <div className={styles.testimonialAddFormLabel}>Quote</div>
+      <textarea
+        value={blurb}
+        onChange={(e) => setBlurb(e.target.value)}
+        rows={3}
+        placeholder="What they said about you…"
+        className={styles.testimonialAddInput}
+        disabled={busy}
+      />
       {error && <div className={styles.testimonialAddError}>{error}</div>}
       <div className={styles.testimonialAddActions}>
         <button

@@ -912,9 +912,20 @@
   margin-left: .4rem;
   vertical-align: middle;
 }
+/* Centered wrapper around Edit Tabs row + pill nav so they share the
+   same width as the nav (which shrinks to fit its content). This makes
+   the Edit Tabs button sit at the right edge of the pill bar instead of
+   the right edge of the body. */
+.tabsSection {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 2rem;
+}
+.tabsSection .tabsNav {
+  margin: 0;
+}
 /* Owner-only "Edit tabs" button — sits ABOVE the pill-segmented tabs
-   nav, right-aligned, with a clean white look so it pops over any
-   banner. */
+   nav, aligned to the right edge of the nav. */
 .editTabsRow {
   display: flex;
   justify-content: flex-end;
