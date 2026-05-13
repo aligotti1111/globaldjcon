@@ -860,10 +860,10 @@
 /* ── TABS ─────────────────────────────────────────────── */
 .tabsNav {
   display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  align-items: center;
   margin: 0 -4rem 2rem;
-  padding: 0 4rem;
+  padding: 1.5rem 4rem .75rem;
   width: calc(100% + 8rem);
 }
 .tabBtn {
@@ -871,23 +871,24 @@
   font-size: .65rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  padding: .85rem 0;
-  background: transparent;
+  padding: .75rem 1rem;
+  background: #fff;
   border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
+  border-radius: 6px;
+  color: #00B589;
   cursor: pointer;
   transition: all .2s;
-  margin-bottom: -1px;
   flex: 1;
   text-align: center;
 }
 .tabBtn:hover {
-  color: var(--white);
+  color: #008E6A;
 }
 .tabBtnActive {
-  color: var(--neon);
-  border-bottom-color: var(--neon);
+  color: #008E6A;
+  font-weight: 700;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 245, 196, .4);
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
    from the public. The owner can still click into and view/edit it. */
