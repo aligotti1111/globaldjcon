@@ -1135,7 +1135,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm('Delete this testimonial?')) return;
+                        if (!window.confirm('Delete this testimonial?')) return;
                         try {
                           const next = testimonials.filter((_, idx) => idx !== i);
                           const supabase = createClient();
