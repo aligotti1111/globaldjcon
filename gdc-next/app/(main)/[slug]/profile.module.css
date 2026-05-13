@@ -128,6 +128,17 @@
     max-width: calc(100% - 32px);
   }
 }
+/* DJ type color variants — match the .typeBadge brand colors. */
+.bannerNameBadgeMobile {
+  color: var(--neon);
+  border-right-color: rgba(0, 245, 196, .35);
+  border-bottom-color: rgba(0, 245, 196, .35);
+}
+.bannerNameBadgeClub {
+  color: var(--pink);
+  border-right-color: rgba(245, 230, 66, .35);
+  border-bottom-color: rgba(245, 230, 66, .35);
+}
 .bannerEditBtn {
   position: absolute;
   top: 24px;

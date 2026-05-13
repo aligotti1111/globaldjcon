@@ -440,8 +440,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // ── Render hero name + badges block (used in both desktop and mobile slots) ──
   // Desktop: name + badges live in heroInfo
   // Mobile: name + badges live in heroNameCol (next to avatar in heroTopRow)
-  // CSS media queries handle which one is visible.
-  const heroBadgesEl = data.dj_type ? (
+  // CSS media queries handle which one is visible. Hidden entirely when
+  // a banner is set, since the top-left bannerNameBadge takes its place.
+  const heroBadgesEl = data.dj_type && !data.banner_url ? (
     <div className={styles.heroBadges}>
       <span
         className={`${styles.typeBadge} ${
@@ -497,10 +498,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               }
             >
               {/* Top-left DJ type overlay — only shown when a banner is
-                  present, so the DJ category is highlighted on top of
-                  busy imagery. Has its own dark background pill. */}
+                  present. Picks up the brand color of the DJ type
+                  (neon = mobile, pink = club). */}
               {data.banner_url && (
-                <div className={styles.bannerNameBadge}>
+                <div
+                  className={`${styles.bannerNameBadge} ${
+                    data.dj_type === 'club'
+                      ? styles.bannerNameBadgeClub
+                      : styles.bannerNameBadgeMobile
+                  }`}
+                >
                   {data.dj_type === 'club' ? 'Club / Bar DJ' : 'Mobile / Event DJ'}
                 </div>
               )}
