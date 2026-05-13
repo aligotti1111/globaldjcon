@@ -860,35 +860,41 @@
 /* ── TABS ─────────────────────────────────────────────── */
 .tabsNav {
   display: flex;
-  gap: 8px;
   align-items: center;
-  margin: 0 -4rem 2rem;
-  padding: 1.5rem 4rem .75rem;
-  width: calc(100% + 8rem);
+  gap: 6px;
+  padding: 6px;
+  background: rgba(0, 245, 196, .04);
+  border: 1px solid rgba(0, 245, 196, .15);
+  border-radius: 100px;
+  margin: 0 0 2rem;
 }
 .tabBtn {
   font-family: 'Space Mono', monospace;
   font-size: .65rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  padding: .75rem 1rem;
-  background: #fff;
+  padding: .65rem 1rem;
+  background: transparent;
   border: none;
-  border-radius: 6px;
-  color: #00B589;
+  border-radius: 100px;
+  color: var(--neon);
   cursor: pointer;
-  transition: all .2s;
+  transition: all .15s;
   flex: 1;
   text-align: center;
 }
 .tabBtn:hover {
-  color: #008E6A;
+  background: rgba(0, 245, 196, .08);
 }
 .tabBtnActive {
-  color: #008E6A;
+  background: var(--neon);
+  color: #050507;
   font-weight: 700;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(0, 245, 196, .4);
+  box-shadow: 0 0 12px rgba(0, 245, 196, .5);
+}
+.tabBtnActive:hover {
+  background: var(--neon);
+  filter: brightness(1.05);
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
    from the public. The owner can still click into and view/edit it. */
@@ -904,12 +910,17 @@
   margin-left: .4rem;
   vertical-align: middle;
 }
-/* Owner-only "Edit tabs" pill — sits at the end of the tabs nav. */
+/* Owner-only "Edit tabs" button — sits in its own right-aligned row
+   below the pill-segmented tabs nav. */
+.editTabsRow {
+  display: flex;
+  justify-content: flex-end;
+  margin: -1rem 0 1.5rem;
+}
 .editTabsBtn {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
-  margin-left: auto;
   padding: .35rem .65rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -920,8 +931,6 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
-  align-self: center;
-  flex: 0 0 auto;
   transition: all .15s;
 }
 .editTabsBtn:hover {

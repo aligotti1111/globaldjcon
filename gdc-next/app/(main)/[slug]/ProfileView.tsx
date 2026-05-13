@@ -732,7 +732,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Testimonials
               </button>
             )}
-            {isOwnProfile && (
+          </nav>
+          {isOwnProfile && (
+            <div className={styles.editTabsRow}>
               <button
                 type="button"
                 onClick={() => setTabsModalOpen(true)}
@@ -745,8 +747,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </svg>
                 Edit tabs
               </button>
-            )}
-          </nav>
+            </div>
+          )}
 
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
