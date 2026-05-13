@@ -538,7 +538,7 @@
 }
 
 .heroLocation {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: .35rem;
   padding: .35rem .85rem;
