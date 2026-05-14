@@ -383,19 +383,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </p>
       </div>
 
-      {/* Bio */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-bio">About / Bio</label>
-        <textarea
-          id="ud-bio"
-          rows={5}
-          placeholder="Tell people about yourself, your style, experience..."
-          value={state.bio}
-          onChange={(e) => onChange('bio', e.target.value)}
-          className={styles.textarea}
-        />
-      </div>
-
       {/* Phone */}
       <div className={styles.formGroup}>
         <label htmlFor="ud-phone">Phone</label>
