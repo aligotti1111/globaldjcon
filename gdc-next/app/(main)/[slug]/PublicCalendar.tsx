@@ -473,6 +473,7 @@ function SingleMonthView({
   onOwnerQuickToggle,
   onOwnerEdit,
   onEmbedClick,
+  onShareClick,
 }: {
   year: number;
   month: number;
