@@ -817,6 +817,16 @@
 .heroNameMd { font-size: 2rem; }
 .heroNameSm { font-size: 1.5rem; }
 .heroNameXs { font-size: 1.15rem; letter-spacing: .02em; }
+/* On mobile, the hero name pill must fit within the narrow viewport.
+   Scale down each tier so long company names like "E-SQUARED PRODUCTIONS"
+   don't overflow the right edge of the screen. */
+@media (max-width: 700px) {
+  .heroName { font-size: 2rem; }
+  .heroNameLg { font-size: 1.7rem; }
+  .heroNameMd { font-size: 1.3rem; }
+  .heroNameSm { font-size: 1.05rem; }
+  .heroNameXs { font-size: .9rem; letter-spacing: .02em; }
+}
 .heroHasBanner .heroLocation {
   color: #fff;
 }
