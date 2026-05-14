@@ -1645,7 +1645,20 @@
   gap: 1rem;
 }
 @media (max-width: 580px) {
-  .shareCardsGrid { grid-template-columns: minmax(0, 1fr); }
+  .shareCardsGrid { grid-template-columns: minmax(0, 1fr); gap: .65rem; }
+  /* On mobile, shrink the preview cards significantly so the whole
+     modal fits on screen without scrolling. */
+  .shareModal { padding: 1rem; max-height: 88vh; }
+  .shareCard { padding: .55rem; gap: .4rem; }
+  .sharePreviewSingle { aspect-ratio: 1.8 / 1; padding: 5px; }
+  .sharePreviewTwelve { aspect-ratio: 1.8 / 1; padding: 4px; gap: 2px; }
+  .sharePreviewSingleHead { font-size: 8px; }
+  .sharePreviewDays span { font-size: 4.5px; }
+  .sharePreviewCell,
+  .sharePreviewCellBooked,
+  .sharePreviewCellUnav,
+  .sharePreviewCellEmpty { font-size: 4px; }
+  .sharePreviewMiniLabel { font-size: 4px; }
 }
 .shareCard {
   background: rgba(255, 255, 255, .02);
