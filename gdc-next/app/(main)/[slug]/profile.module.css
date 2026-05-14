@@ -95,6 +95,39 @@
 .banner > * {
   pointer-events: auto;
 }
+/* Book Now button — mid-right of the banner. Solid neon green pill. */
+.bannerBookNowBtn {
+  position: absolute;
+  top: 50%;
+  right: 1.25rem;
+  transform: translateY(-50%);
+  z-index: 3;
+  padding: .75rem 1.5rem;
+  background: var(--neon);
+  border: 1px solid var(--neon);
+  border-radius: 100px;
+  color: #050507;
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 245, 196, .4);
+  transition: all .15s;
+}
+.bannerBookNowBtn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 20px rgba(0, 245, 196, .6);
+}
+@media (max-width: 700px) {
+  .bannerBookNowBtn {
+    right: .85rem;
+    padding: .55rem 1.1rem;
+    font-size: .65rem;
+  }
+}
 @media (max-width: 700px) {
   .banner {
     background-position: var(--banner-pos-mobile, var(--banner-pos, 50% 50%));

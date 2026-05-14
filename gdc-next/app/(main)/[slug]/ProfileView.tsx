@@ -174,6 +174,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Share-calendar — visible to all visitors. Opens a modal with two
   // preview cards (month view + 12-month view), each with a copyable URL.
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  // Counter that bumps to force the PublicCalendar/MobilePublicCalendar
+  // into 12-month rolling mode (used by the Book Now banner button).
+  const [forceCalendar12mo, setForceCalendar12mo] = useState(0);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -520,6 +523,31 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
+              {/* Book Now button — mid-right of banner. Visible to all
+                  visitors EXCEPT the profile owner. Clicking it switches
+                  to the booking tab, forces the calendar into 12-month
+                  view, and scrolls down to it. */}
+              {!isOwnProfile && showBookingTab && (
+                <button
+                  type="button"
+                  className={styles.bannerBookNowBtn}
+                  onClick={() => {
+                    // Force 12-month view via URL param, switch to
+                    // booking tab, and scroll the calendar into view.
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('view', '12mo');
+                    window.history.replaceState(null, '', url.toString());
+                    setActiveTab('booking');
+                    setForceCalendar12mo(c => c + 1);
+                    requestAnimationFrame(() => {
+                      const el = document.getElementById('booking-pane-anchor');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                  }}
+                >
+                  Book Now
+                </button>
+              )}
               {isOwnProfile && (
                 <button
                   type="button"
@@ -774,7 +802,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
-            <div className={paneClass('booking')} data-booking-anchor>
+            <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
@@ -789,6 +817,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
+                force12mo={forceCalendar12mo}
               />
               {!isOwnProfile && clubSelectedDate && currentUser && (
                 <ClubBookingForm
@@ -819,7 +848,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             </div>
           )}
           {showMobileBookingTab && (
-            <div className={paneClass('booking')} data-booking-anchor>
+            <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
               <MobilePublicCalendar
                 djId={data.id}
                 djName={data.name || ''}
@@ -832,6 +861,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 isOwnProfile={isOwnProfile}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
+                force12mo={forceCalendar12mo}
               />
             </div>
           )}

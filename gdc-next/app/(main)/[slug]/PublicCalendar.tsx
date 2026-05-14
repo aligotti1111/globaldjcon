@@ -70,6 +70,9 @@ interface Props {
   // Share Calendar — visible to all visitors. When set, a "Share" button
   // is rendered inline in the month header row.
   onShareClick?: () => void;
+  // Bump-counter from parent: each increase forces the calendar into
+  // 12-month mode. Used by the Book Now banner button.
+  force12mo?: number;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -125,6 +128,7 @@ export default function PublicCalendar({
   onLoggedOutBookAttempt,
   onEmbedClick,
   onShareClick,
+  force12mo,
 }: Props) {
   const today = useMemo(() => new Date(), []);
   // For owner mode we maintain a local copy of bookingDays so quick-marks
@@ -151,6 +155,12 @@ export default function PublicCalendar({
     else url.searchParams.delete('view');
     window.history.replaceState(null, '', url.toString());
   }, [rollingActive]);
+  // External trigger: parent bumps `force12mo` (e.g. Book Now banner
+  // button) to forcibly enter 12-month rolling view.
+  useEffect(() => {
+    if (force12mo === undefined || force12mo === 0) return;
+    setRollingActive(true);
+  }, [force12mo]);
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
   // Booked-event popup — clicking a non-private booked cell opens it.
   const [popupEvent, setPopupEvent] = useState<{

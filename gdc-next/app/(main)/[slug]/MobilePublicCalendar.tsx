@@ -68,6 +68,9 @@ interface Props {
   // Share Calendar — visible to all visitors. When set, a "Share" button
   // is rendered inline in the month header row.
   onShareClick?: () => void;
+  // Bump-counter from parent: each increase forces the calendar into
+  // 12-month mode. Used by the Book Now banner button.
+  force12mo?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -116,6 +119,7 @@ export default function MobilePublicCalendar({
   isOwnProfile,
   onEmbedClick,
   onShareClick,
+  force12mo,
 }: Props) {
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
@@ -147,6 +151,12 @@ export default function MobilePublicCalendar({
     else url.searchParams.delete('view');
     window.history.replaceState(null, '', url.toString());
   }, [rollingActive]);
+  // External trigger: parent bumps `force12mo` (e.g. Book Now banner
+  // button) to forcibly enter 12-month rolling view.
+  useEffect(() => {
+    if (force12mo === undefined || force12mo === 0) return;
+    setRollingActive(true);
+  }, [force12mo]);
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
   // Selected date drives the form below the calendar. null = no form shown.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
