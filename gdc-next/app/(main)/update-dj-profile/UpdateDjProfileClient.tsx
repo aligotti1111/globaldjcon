@@ -24,17 +24,15 @@ import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 import BookingTab from './BookingTab';
 import ClubBookingTab from './ClubBookingTab';
-import SocialsTab from './SocialsTab';
-import MixesTab from './MixesTab';
-import PhotosTab from './PhotosTab';
-import VideoTab from './VideoTab';
-import TestimonialsTab from './TestimonialsTab';
+// Removed imports for SocialsTab, MixesTab, PhotosTab, VideoTab, TestimonialsTab —
+// those tabs were removed from this page; their content is now managed
+// inline on the public profile page.
 import {
   type BookingSettings,
   parseBookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 
-type TabKey = 'general' | 'social' | 'mixes' | 'photos' | 'video' | 'testimonials' | 'booking';
+type TabKey = 'general' | 'booking';
 
 // All fields the General tab edits. Stored as state so each input is controlled.
 // All non-booking fields tracked by the form. Despite the name (kept for
@@ -138,7 +136,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   const searchParams = useSearchParams();
   const tabFromUrl = (() => {
     const t = searchParams?.get('tab') || '';
-    const valid: TabKey[] = ['general', 'social', 'mixes', 'photos', 'video', 'testimonials', 'booking'];
+    const valid: TabKey[] = ['general', 'booking'];
     return (valid as string[]).includes(t) ? (t as TabKey) : null;
   })();
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl || 'general');
@@ -523,17 +521,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Tab navigation */}
+          {/* Tab navigation — Socials/Mixes/Photos/Video/Testimonials
+              were removed; those are now managed inline on the public
+              profile page. */}
           <div className={styles.tabsBar}>
             <button type="button" className={tabClass('general')} onClick={() => setActiveTab('general')}>General</button>
-            <button type="button" className={tabClass('social')} onClick={() => setActiveTab('social')}>Socials</button>
-            <button type="button" className={tabClass('mixes')} onClick={() => setActiveTab('mixes')}>Mixes</button>
-            <button type="button" className={tabClass('photos')} onClick={() => setActiveTab('photos')}>Photos</button>
-            <button type="button" className={tabClass('video')} onClick={() => setActiveTab('video')}>Video</button>
-            {/* Testimonials only for Mobile DJs — vanilla hides this tab for clubs */}
-            {initialProfile.dj_type === 'mobile' && (
-              <button type="button" className={tabClass('testimonials')} onClick={() => setActiveTab('testimonials')}>Testimonials</button>
-            )}
             <button type="button" className={tabClass('booking')} onClick={() => setActiveTab('booking')}>Booking</button>
           </div>
 
@@ -580,30 +572,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               />
             )}
           </div>
-
-          {activeTab === 'social' && (
-            <SocialsTab state={general} onChange={updateGeneral} />
-          )}
-          {activeTab === 'mixes' && (
-            <MixesTab state={general} onChange={updateGeneral} />
-          )}
-          {activeTab === 'photos' && (
-            <PhotosTab
-              state={general}
-              onChange={updateGeneral}
-              userId={initialProfile.id}
-            />
-          )}
-          {activeTab === 'video' && (
-            <VideoTab state={general} onChange={updateGeneral} />
-          )}
-          {/* Testimonials tab only visible / accessible for Mobile DJs (vanilla parity).
-              Tab button is also hidden in the tabsBar above for non-mobile DJs.
-              The pane render is gated here too, defensively, in case a non-mobile
-              DJ somehow lands on activeTab === 'testimonials'. */}
-          {activeTab === 'testimonials' && initialProfile.dj_type === 'mobile' && (
-            <TestimonialsTab state={general} onChange={updateGeneral} />
-          )}
 
           {/* Page-level Save All — saves any pending edits across the
               entire form. Disabled when nothing is dirty so the user
