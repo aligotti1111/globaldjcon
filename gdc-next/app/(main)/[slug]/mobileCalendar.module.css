@@ -445,6 +445,22 @@
   border: 1px solid var(--border);
   position: relative;
 }
+/* Public visitor "Book" label inside available 12-month cells. Tiny
+   neon text. */
+.miniBookLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: .1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .42rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--neon);
+  font-weight: 700;
+  pointer-events: none;
+  line-height: 1;
+}
 .miniOwnerControls {
   position: absolute;
   inset: 0;

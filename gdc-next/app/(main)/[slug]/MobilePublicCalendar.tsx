@@ -813,6 +813,11 @@ function RollingMonthsView({
           onClick={onCellClick}
         >
           {d}
+          {/* Public visitor: show "Book" label on available days so
+              visitors can book directly from the 12-month grid. */}
+          {!isOwnProfile && isAvail && !isPast && (
+            <div className={styles.miniBookLabel}>Book</div>
+          )}
           {isOwnProfile && !isPast && (
             <div className={styles.miniOwnerControls}>
               {!isBooked && (

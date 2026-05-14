@@ -540,6 +540,22 @@
   border: 1px solid var(--border);
   position: relative;
 }
+/* Public visitor BOOK label rendered inside available 12-month cells —
+   tiny neon text at the bottom of the cell. */
+.miniBookLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: .15rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .5rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--neon);
+  font-weight: 700;
+  pointer-events: none;
+  line-height: 1;
+}
 .miniOwnerControls {
   position: absolute;
   inset: 0;
