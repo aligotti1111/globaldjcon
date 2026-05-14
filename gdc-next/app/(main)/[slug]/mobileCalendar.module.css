@@ -445,21 +445,27 @@
   border: 1px solid var(--border);
   position: relative;
 }
-/* Public visitor "Book" label inside available 12-month cells. Tiny
-   neon text. */
+/* Public visitor "Book" label inside available 12-month cells — matches
+   the single-month .bookBadge: solid neon pill with black text, scaled
+   for the smaller cell. */
 .miniBookLabel {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
   bottom: .1rem;
+  transform: translateX(-50%);
   font-family: 'Space Mono', monospace;
   font-size: .42rem;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--neon);
+  color: #050507;
+  background: var(--neon);
+  border: 1px solid var(--neon);
   font-weight: 700;
+  line-height: 1.2;
+  padding: 1px 4px;
+  border-radius: 3px;
   pointer-events: none;
-  line-height: 1;
+  white-space: nowrap;
 }
 .miniOwnerControls {
   position: absolute;

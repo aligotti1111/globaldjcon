@@ -541,20 +541,26 @@
   position: relative;
 }
 /* Public visitor BOOK label rendered inside available 12-month cells —
-   tiny neon text at the bottom of the cell. */
+   matches the single-month .bookBadge style: solid neon pill with black
+   text, scaled down for the small cell. */
 .miniBookLabel {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
   bottom: .15rem;
+  transform: translateX(-50%);
   font-family: 'Space Mono', monospace;
   font-size: .5rem;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--neon);
+  color: #050507;
+  background: var(--neon);
+  border: 1px solid var(--neon);
   font-weight: 700;
+  line-height: 1.2;
+  padding: 1px 5px;
+  border-radius: 3px;
   pointer-events: none;
-  line-height: 1;
+  white-space: nowrap;
 }
 .miniOwnerControls {
   position: absolute;
