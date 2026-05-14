@@ -407,7 +407,9 @@ export default function PublicCalendar({
           className={`${styles.viewToggle} ${rollingActive ? styles.viewToggleActive : ''}`}
           onClick={() => setRollingActive(v => !v)}
         >
-          {rollingActive ? '← Month View' : windowLabel(bookingWindowMonths)}
+          {rollingActive
+            ? '← Month View'
+            : `${bookingWindowMonths || 12} Month${(bookingWindowMonths || 12) > 1 ? 's' : ''}`}
         </button>
       </div>
 
