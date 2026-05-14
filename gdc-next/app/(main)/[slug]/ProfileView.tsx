@@ -171,6 +171,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Edit-tabs — owner-only modal to toggle which tabs are visible to
   // the public. Booking tab is NOT toggled here (use booking settings).
   const [tabsModalOpen, setTabsModalOpen] = useState(false);
+  // Share-calendar — visible to all visitors. Opens a modal with two
+  // preview cards (month view + 12-month view), each with a copyable URL.
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -785,6 +788,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onBookDate={(key) => setClubSelectedDate(key)}
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
+                onShareClick={() => setShareModalOpen(true)}
               />
               {!isOwnProfile && clubSelectedDate && currentUser && (
                 <ClubBookingForm
@@ -827,6 +831,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 isLoggedIn={isLoggedIn}
                 isOwnProfile={isOwnProfile}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
+                onShareClick={() => setShareModalOpen(true)}
               />
             </div>
           )}
@@ -1282,6 +1287,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           initial={tabVisibility}
           isMobileDJ={isMobileDJ}
           onClose={() => setTabsModalOpen(false)}
+        />
+      )}
+
+      {/* Share calendar modal — visible to all visitors. Two preview
+          cards (month view + 12-month view) with copyable URLs. */}
+      {shareModalOpen && (
+        <ShareCalendarModal
+          djSlug={effectiveSlug}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
 
@@ -4262,6 +4276,122 @@ function TestimonialAddForm({
         >
           {busy ? 'Saving…' : 'Save'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// ShareCalendarModal — visible to all visitors. Two preview cards: month
+// view and 12-month view, each with a small visual mockup + the share URL
+// with a Copy button. The link includes a ?view= query param so the
+// recipient lands directly on that view.
+// ──────────────────────────────────────────────────────────────────────────
+function ShareCalendarModal({
+  djSlug,
+  onClose,
+}: {
+  djSlug: string;
+  onClose: () => void;
+}) {
+  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : '') +
+    '/' + djSlug;
+  const monthUrl = baseUrl + '?view=month';
+  const twelveUrl = baseUrl + '?view=12mo';
+
+  // Render only the host (no protocol) for compactness.
+  const monthShort = monthUrl.replace(/^https?:\/\//, '');
+  const twelveShort = twelveUrl.replace(/^https?:\/\//, '');
+
+  const [copied, setCopied] = useState<'month' | '12mo' | null>(null);
+  async function copy(view: 'month' | '12mo') {
+    const url = view === 'month' ? monthUrl : twelveUrl;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(view);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); setCopied(view); setTimeout(() => setCopied(null), 1800); }
+      finally { document.body.removeChild(ta); }
+    }
+  }
+
+  return (
+    <div className={styles.shareModalBackdrop} onClick={onClose}>
+      <div className={styles.shareModal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.shareModalHeader}>
+          <h2 className={styles.shareModalTitle}>Share Calendar</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.shareModalClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.shareCardsGrid}>
+          {/* Month View card */}
+          <div className={styles.shareCard}>
+            <div className={styles.shareCardLabel}>Month View</div>
+            <div className={styles.sharePreviewSingle}>
+              <div className={styles.sharePreviewSingleHead}>May 2026</div>
+              <div className={styles.sharePreviewDays}>
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+              </div>
+              <div className={styles.sharePreviewGrid}>
+                <div className={styles.sharePreviewCellEmpty} /><div className={styles.sharePreviewCellEmpty} /><div className={styles.sharePreviewCellEmpty} /><div className={styles.sharePreviewCellEmpty} /><div className={styles.sharePreviewCellEmpty} />
+                <div className={styles.sharePreviewCell}>1</div><div className={styles.sharePreviewCell}>2</div>
+                <div className={styles.sharePreviewCell}>3</div><div className={styles.sharePreviewCell}>4</div><div className={styles.sharePreviewCell}>5</div><div className={styles.sharePreviewCell}>6</div><div className={styles.sharePreviewCell}>7</div><div className={styles.sharePreviewCell}>8</div><div className={styles.sharePreviewCell}>9</div>
+                <div className={styles.sharePreviewCell}>10</div><div className={styles.sharePreviewCell}>11</div><div className={styles.sharePreviewCell}>12</div><div className={styles.sharePreviewCellUnav}>13</div><div className={styles.sharePreviewCellUnav}>14</div><div className={styles.sharePreviewCellBooked}>15</div><div className={styles.sharePreviewCell}>16</div>
+                <div className={styles.sharePreviewCell}>17</div><div className={styles.sharePreviewCell}>18</div><div className={styles.sharePreviewCell}>19</div><div className={styles.sharePreviewCell}>20</div><div className={styles.sharePreviewCell}>21</div><div className={styles.sharePreviewCell}>22</div><div className={styles.sharePreviewCell}>23</div>
+                <div className={styles.sharePreviewCell}>24</div><div className={styles.sharePreviewCell}>25</div><div className={styles.sharePreviewCell}>26</div><div className={styles.sharePreviewCell}>27</div><div className={styles.sharePreviewCell}>28</div><div className={styles.sharePreviewCell}>29</div><div className={styles.sharePreviewCell}>30</div>
+                <div className={styles.sharePreviewCell}>31</div>
+              </div>
+            </div>
+            <div className={styles.shareLinkRow}>
+              <div className={styles.shareLinkUrl}>{monthShort}</div>
+              <button type="button" onClick={() => copy('month')} className={styles.shareLinkCopy}>
+                {copied === 'month' ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* 12-Month View card */}
+          <div className={styles.shareCard}>
+            <div className={styles.shareCardLabel}>12-Month View</div>
+            <div className={styles.sharePreviewTwelve}>
+              {['MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC','JAN','FEB','MAR','APR'].map((m, idx) => (
+                <div key={m} className={styles.sharePreviewMini}>
+                  <div className={styles.sharePreviewMiniLabel}>{m}</div>
+                  <div className={styles.sharePreviewMiniGrid}>
+                    {Array.from({ length: 28 }, (_, i) => {
+                      const seed = (idx * 7 + i) % 13;
+                      const cls = seed === 3
+                        ? styles.sharePreviewMiniCellBooked
+                        : (seed === 7 || seed === 11)
+                          ? styles.sharePreviewMiniCellUnav
+                          : styles.sharePreviewMiniCell;
+                      return <div key={i} className={cls} />;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={styles.shareLinkRow}>
+              <div className={styles.shareLinkUrl}>{twelveShort}</div>
+              <button type="button" onClick={() => copy('12mo')} className={styles.shareLinkCopy}>
+                {copied === '12mo' ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

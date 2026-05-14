@@ -38,6 +38,33 @@
   background: var(--neon);
   border-color: var(--neon);
 }
+.shareInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .42rem .85rem;
+  background: transparent;
+  border: 1px solid var(--neon);
+  border-radius: 100px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.shareInlineBtn:hover {
+  background: rgba(0, 245, 196, .12);
+}
+.monthHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 0 0 auto;
+}
 .navBtn {
   background: transparent;
   border: 1px solid var(--white);
@@ -133,7 +160,7 @@
 .monthHeaderSpacer {
   flex: 0 0 auto;
   visibility: hidden;
-  width: 168px;
+  width: 220px;
 }
 @media (max-width: 700px) {
   .monthHeaderRow {

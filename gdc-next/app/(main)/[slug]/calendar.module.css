@@ -33,6 +33,35 @@
   background: var(--neon);
   border-color: var(--neon);
 }
+/* Share button — visible to all visitors. Neon green outlined pill. */
+.shareInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .42rem .85rem;
+  background: transparent;
+  border: 1px solid var(--neon);
+  border-radius: 100px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.shareInlineBtn:hover {
+  background: rgba(0, 245, 196, .12);
+}
+/* Action group on the right side of the month header row. */
+.monthHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 0 0 auto;
+}
 .navBtn {
   background: transparent;
   border: 1px solid var(--white);
@@ -126,12 +155,12 @@
   text-shadow: 0 0 18px rgba(0, 245, 196, .35);
   flex: 1;
 }
-/* Invisible right-side balancer so month name stays optically centered
-   when the Embed Calendar button is rendered on the left. */
+/* Invisible left-side balancer so month name stays optically centered
+   when action buttons are rendered on the right. */
 .monthHeaderSpacer {
   flex: 0 0 auto;
   visibility: hidden;
-  width: 168px;
+  width: 240px;
 }
 @media (max-width: 700px) {
   .monthHeaderRow {

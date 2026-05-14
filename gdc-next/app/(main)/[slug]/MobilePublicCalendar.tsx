@@ -65,6 +65,9 @@ interface Props {
   // Owner-only: opens the Embed Calendar modal. When set, an "Embed
   // calendar" button is rendered inline in the nav row.
   onEmbedClick?: () => void;
+  // Share Calendar — visible to all visitors. When set, a "Share" button
+  // is rendered inline in the month header row.
+  onShareClick?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -112,6 +115,7 @@ export default function MobilePublicCalendar({
   isLoggedIn,
   isOwnProfile,
   onEmbedClick,
+  onShareClick,
 }: Props) {
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
@@ -129,7 +133,20 @@ export default function MobilePublicCalendar({
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [rollingActive, setRollingActive] = useState(false);
+  // rollingActive can be initialized from a `?view=12mo` URL param so
+  // the calendar opens directly in 12-month mode when someone shares
+  // that link. Subsequent toggles also update the URL.
+  const [rollingActive, setRollingActive] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('view') === '12mo';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (rollingActive) url.searchParams.set('view', '12mo');
+    else url.searchParams.delete('view');
+    window.history.replaceState(null, '', url.toString());
+  }, [rollingActive]);
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
   // Selected date drives the form below the calendar. null = no form shown.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -405,6 +422,7 @@ export default function MobilePublicCalendar({
           onQuickMark={quickMark}
           onOpenEdit={(key) => setOwnerEditKey(key)}
           onEmbedClick={onEmbedClick}
+          onShareClick={onShareClick}
         />
       )}
 
@@ -506,6 +524,7 @@ function SingleMonthView({
   onQuickMark,
   onOpenEdit,
   onEmbedClick,
+  onShareClick,
 }: {
   year: number;
   month: number;
@@ -520,6 +539,8 @@ function SingleMonthView({
   onOpenEdit: (key: string) => void;
   // Owner-only Embed Calendar button — rendered in the month header row.
   onEmbedClick?: () => void;
+  // Share Calendar — visible to all visitors, opens share modal.
+  onShareClick?: () => void;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -659,24 +680,43 @@ function SingleMonthView({
   return (
     <div>
       <div className={styles.monthHeaderRow}>
-        {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
+        {(onEmbedClick || onShareClick) && <div className={styles.monthHeaderSpacer} />}
         <div className={styles.monthHeader}>
           {MONTH_NAMES[month]} {year}
         </div>
-        {onEmbedClick && (
-          <button
-            type="button"
-            className={styles.embedInlineBtn}
-            onClick={onEmbedClick}
-            title="Embed Calendar"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
-            Embed Calendar
-          </button>
-        )}
+        <div className={styles.monthHeaderActions}>
+          {onShareClick && (
+            <button
+              type="button"
+              className={styles.shareInlineBtn}
+              onClick={onShareClick}
+              title="Share Calendar"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              Share
+            </button>
+          )}
+          {onEmbedClick && (
+            <button
+              type="button"
+              className={styles.embedInlineBtn}
+              onClick={onEmbedClick}
+              title="Embed Calendar"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+              Embed Calendar
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.dayHeaderRow}>
