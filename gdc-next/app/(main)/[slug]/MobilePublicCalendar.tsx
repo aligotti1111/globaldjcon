@@ -322,6 +322,19 @@ export default function MobilePublicCalendar({
 
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
+    // If the book was triggered from the 12-month rolling view, switch
+    // back to single-month and navigate to the booked day's month so
+    // the booking form renders in context.
+    if (rollingActive) {
+      const [yStr, mStr] = key.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10) - 1; // dateKey month is 1-based
+      if (!Number.isNaN(y) && !Number.isNaN(m)) {
+        setYear(y);
+        setMonth(m);
+      }
+      setRollingActive(false);
+    }
     if (!isLoggedIn || !currentUser) {
       // Logged-out: open the custom login gate modal. It explains who
       // they're trying to book + what date, and gives Log In / Sign Up

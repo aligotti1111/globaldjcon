@@ -306,6 +306,19 @@ export default function PublicCalendar({
 
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
+    // If the book was triggered from the 12-month rolling view, switch
+    // back to single-month view and navigate to the booked day's month
+    // so the user can see the booking form in context.
+    if (rollingActive) {
+      const [yStr, mStr] = key.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10) - 1; // dateKey month is 1-based
+      if (!Number.isNaN(y) && !Number.isNaN(m)) {
+        setYear(y);
+        setMonth(m);
+      }
+      setRollingActive(false);
+    }
     if (!isLoggedIn) {
       onLoggedOutBookAttempt?.(key);
       return;
