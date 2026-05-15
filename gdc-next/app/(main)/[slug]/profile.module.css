@@ -514,7 +514,7 @@
 /* Direct children of .hero (avatar, info, etc.) stack above the
    absolutely-positioned .banner layer. The .banner is exempted so its
    own position: absolute isn't overridden. */
-.hero > *:not(.banner) {
+.hero > *:not(.banner):not(.bannerCtaRow) {
   position: relative;
   z-index: 1;
 }
