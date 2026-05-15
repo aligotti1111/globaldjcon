@@ -327,7 +327,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     data.dj_type === 'mobile' ? styles.heroAvatarMobile :
                                 styles.heroAvatarNone;
 
-  const location = [data.city, data.state, data.country].filter(Boolean).join(', ');
+  const location = (() => {
+    const parts = [data.city, data.state, data.country].filter(Boolean) as string[];
+    // Abbreviate verbose country names for display.
+    const COUNTRY_ABBR: Record<string, string> = {
+      'United States': 'USA',
+      'United States of America': 'USA',
+      'United Kingdom': 'UK',
+    };
+    return parts
+      .map(p => COUNTRY_ABBR[p] || p)
+      .join(', ');
+  })();
   const yearsText = data.dj_start_year
     ? (() => {
         const yrs = new Date().getFullYear() - data.dj_start_year!;
