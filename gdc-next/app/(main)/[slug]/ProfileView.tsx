@@ -574,6 +574,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               )}
             </div>
           )}
+          {/* Under-banner socials strip — snug against the bottom of the
+              banner, centered. Replaces the in-hero social icons row. */}
+          <UnderBannerSocials data={data} />
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
@@ -708,12 +711,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             )}
 
-            {/* Hero action buttons — socials, contact, copy link */}
+            {/* Hero action buttons — phone, message, copy link.
+                Socials are rendered separately as UnderBannerSocials. */}
             <HeroActions
               data={data}
               effectiveSlug={effectiveSlug}
               isLoggedIn={isLoggedIn}
               isOwnProfile={isOwnProfile}
+              hideSocials={true}
               onClickMessage={() => {
                 // Owner can't message themselves; logged-out visitors are
                 // sent to /login first, returning to the same profile.
@@ -1536,12 +1541,14 @@ function HeroActions({
   isLoggedIn,
   isOwnProfile,
   onClickMessage,
+  hideSocials,
 }: {
   data: DjProfileData;
   effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
   onClickMessage: () => void;
+  hideSocials?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   // Tracks which SocialAddButton (if any) is expanded. Lifted here so
@@ -1618,7 +1625,7 @@ function HeroActions({
           platform order. After all filled links, the owner-only "+"
           add-buttons for missing platforms render to the right so the
           hero reads "active socials | quick-adds" instead of mixed. */}
-      {data.website && (
+      {!hideSocials && data.website && (
         <a
           href={normalizedWebsite(data.website)}
           target="_blank"
@@ -1629,7 +1636,7 @@ function HeroActions({
           <WebsiteIcon />
         </a>
       )}
-      {data.soundcloud && (
+      {!hideSocials && data.soundcloud && (
         <a
           href={normalizedSoundcloud(data.soundcloud)}
           target="_blank"
@@ -1640,7 +1647,7 @@ function HeroActions({
           <SoundcloudIcon />
         </a>
       )}
-      {data.instagram && (
+      {!hideSocials && data.instagram && (
         <a
           href={normalizedInstagram(data.instagram)}
           target="_blank"
@@ -1651,7 +1658,7 @@ function HeroActions({
           <InstagramIcon />
         </a>
       )}
-      {data.tiktok && (
+      {!hideSocials && data.tiktok && (
         <a
           href={normalizedTiktok(data.tiktok)}
           target="_blank"
@@ -1662,7 +1669,7 @@ function HeroActions({
           <TiktokIcon />
         </a>
       )}
-      {data.facebook && (
+      {!hideSocials && data.facebook && (
         <a
           href={normalizedFacebook(data.facebook)}
           target="_blank"
@@ -1673,7 +1680,7 @@ function HeroActions({
           <FacebookIcon />
         </a>
       )}
-      {data.twitch && (
+      {!hideSocials && data.twitch && (
         <a
           href={normalizedTwitch(data.twitch)}
           target="_blank"
@@ -1686,7 +1693,7 @@ function HeroActions({
       )}
 
       {/* Owner-only quick-add buttons for platforms not yet filled. */}
-      {isOwnProfile && !data.website && (
+      {!hideSocials && isOwnProfile && !data.website && (
         <SocialAddButton
           userId={data.id}
           field="website"
@@ -1698,7 +1705,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.soundcloud && (
+      {!hideSocials && isOwnProfile && !data.soundcloud && (
         <SocialAddButton
           userId={data.id}
           field="soundcloud"
@@ -1710,7 +1717,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.instagram && (
+      {!hideSocials && isOwnProfile && !data.instagram && (
         <SocialAddButton
           userId={data.id}
           field="instagram"
@@ -1722,7 +1729,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.tiktok && (
+      {!hideSocials && isOwnProfile && !data.tiktok && (
         <SocialAddButton
           userId={data.id}
           field="tiktok"
@@ -1734,7 +1741,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.facebook && (
+      {!hideSocials && isOwnProfile && !data.facebook && (
         <SocialAddButton
           userId={data.id}
           field="facebook"
@@ -1746,7 +1753,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.twitch && (
+      {!hideSocials && isOwnProfile && !data.twitch && (
         <SocialAddButton
           userId={data.id}
           field="twitch"
@@ -4436,3 +4443,40 @@ function ShareCalendarModal({
   );
 }
 
+
+// ──────────────────────────────────────────────────────────────────────────
+// UnderBannerSocials — horizontal strip of social icons rendered snug
+// against the bottom of the banner, centered. For owners, also shows
+// "+ add" buttons for missing socials so they can add inline.
+// ──────────────────────────────────────────────────────────────────────────
+function UnderBannerSocials({ data }: { data: DjProfileData }) {
+  function n(s: string, prefix: string): string {
+    return s.startsWith('http') ? s : prefix + s.replace('@', '');
+  }
+  const links: { key: string; href: string; title: string; cls: string; icon: React.ReactNode }[] = [];
+  if (data.website) links.push({ key: 'web', href: n(data.website, 'https://'), title: 'Website', cls: styles.underBannerSocialWebsite, icon: <WebsiteIcon /> });
+  if (data.soundcloud) links.push({ key: 'sc', href: n(data.soundcloud, 'https://soundcloud.com/'), title: 'SoundCloud', cls: styles.underBannerSocialSoundcloud, icon: <SoundcloudIcon /> });
+  if (data.instagram) links.push({ key: 'ig', href: n(data.instagram, 'https://instagram.com/'), title: 'Instagram', cls: styles.underBannerSocialInstagram, icon: <InstagramIcon /> });
+  if (data.tiktok) links.push({ key: 'tk', href: n(data.tiktok, 'https://tiktok.com/@'), title: 'TikTok', cls: styles.underBannerSocialTiktok, icon: <TiktokIcon /> });
+  if (data.facebook) links.push({ key: 'fb', href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', cls: styles.underBannerSocialFacebook, icon: <FacebookIcon /> });
+  if (data.twitch) links.push({ key: 'tw', href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', cls: styles.underBannerSocialTwitch, icon: <TwitchIcon /> });
+
+  if (!links.length) return null;
+
+  return (
+    <div className={styles.underBannerSocials}>
+      {links.map(l => (
+        <a
+          key={l.key}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${styles.underBannerSocialBtn} ${l.cls}`}
+          title={l.title}
+        >
+          {l.icon}
+        </a>
+      ))}
+    </div>
+  );
+}

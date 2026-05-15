@@ -1862,3 +1862,49 @@
   filter: brightness(1.1);
 }
 
+
+/* ── UNDER-BANNER SOCIALS STRIP ───────────────────────────────────── */
+/* Snug horizontal strip of social icons immediately under the banner.
+   Centered on both desktop and mobile. */
+.underBannerSocials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .55rem 1rem;
+  background: rgba(5, 5, 7, .6);
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  flex-wrap: wrap;
+}
+.underBannerSocialBtn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, .5);
+  transition: all .15s;
+}
+.underBannerSocialBtn svg {
+  width: 16px;
+  height: 16px;
+}
+.underBannerSocialBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.2);
+}
+.underBannerSocialSoundcloud { color: #ff5500; }
+.underBannerSocialInstagram { color: #e1306c; }
+.underBannerSocialFacebook { color: #1877f2; }
+.underBannerSocialTiktok { color: #fff; }
+.underBannerSocialTwitch { color: #9146ff; }
+.underBannerSocialWebsite { color: var(--neon); }
+@media (max-width: 700px) {
+  .underBannerSocials { gap: .35rem; padding: .45rem .75rem; }
+  .underBannerSocialBtn { width: 32px; height: 32px; min-width: 32px; }
+  .underBannerSocialBtn svg { width: 14px; height: 14px; }
+}
