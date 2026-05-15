@@ -732,7 +732,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         </div>
         {/* Under-banner socials strip — full-width row sitting snug
             against the bottom of the hero/banner. Centered. */}
-        <UnderBannerSocials data={data} />
+        <UnderBannerSocials data={data} isOwnProfile={isOwnProfile} />
 
         {/* BODY */}
         <div className={styles.body}>
@@ -1693,7 +1693,7 @@ function HeroActions({
       )}
 
       {/* Owner-only quick-add buttons for platforms not yet filled. */}
-      {isOwnProfile && !data.website && (
+      {!hideSocials && isOwnProfile && !data.website && (
         <SocialAddButton
           userId={data.id}
           field="website"
@@ -1705,7 +1705,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.soundcloud && (
+      {!hideSocials && isOwnProfile && !data.soundcloud && (
         <SocialAddButton
           userId={data.id}
           field="soundcloud"
@@ -1717,7 +1717,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.instagram && (
+      {!hideSocials && isOwnProfile && !data.instagram && (
         <SocialAddButton
           userId={data.id}
           field="instagram"
@@ -1729,7 +1729,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.tiktok && (
+      {!hideSocials && isOwnProfile && !data.tiktok && (
         <SocialAddButton
           userId={data.id}
           field="tiktok"
@@ -1741,7 +1741,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.facebook && (
+      {!hideSocials && isOwnProfile && !data.facebook && (
         <SocialAddButton
           userId={data.id}
           field="facebook"
@@ -1753,7 +1753,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {isOwnProfile && !data.twitch && (
+      {!hideSocials && isOwnProfile && !data.twitch && (
         <SocialAddButton
           userId={data.id}
           field="twitch"
@@ -4449,7 +4449,10 @@ function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-function UnderBannerSocials({ data }: { data: DjProfileData }) {
+function UnderBannerSocials({ data, isOwnProfile }: { data: DjProfileData; isOwnProfile: boolean }) {
+  // Lifted: only one SocialAddButton can be expanded at a time.
+  const [openSocialField, setOpenSocialField] = useState<string | null>(null);
+
   function n(s: string, prefix: string): string {
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
   }
@@ -4461,7 +4464,9 @@ function UnderBannerSocials({ data }: { data: DjProfileData }) {
   if (data.facebook) links.push({ key: 'fb', href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', cls: styles.underBannerSocialFacebook, icon: <FacebookIcon /> });
   if (data.twitch) links.push({ key: 'tw', href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', cls: styles.underBannerSocialTwitch, icon: <TwitchIcon /> });
 
-  if (!links.length) return null;
+  // Owner sees the strip even with no socials yet, so they can use the
+  // + add buttons. Visitors see nothing if there are no socials.
+  if (!links.length && !isOwnProfile) return null;
 
   return (
     <div className={styles.underBannerSocials}>
@@ -4477,6 +4482,80 @@ function UnderBannerSocials({ data }: { data: DjProfileData }) {
           {l.icon}
         </a>
       ))}
+      {/* Owner-only + add buttons for missing platforms — sit alongside
+          the existing social links so all social management is in one row. */}
+      {isOwnProfile && !data.website && (
+        <SocialAddButton
+          userId={data.id}
+          field="website"
+          label="Website"
+          placeholder="https://yoursite.com"
+          icon={<WebsiteIcon />}
+          colorClass={styles.actionBtnWebsite}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {isOwnProfile && !data.soundcloud && (
+        <SocialAddButton
+          userId={data.id}
+          field="soundcloud"
+          label="SoundCloud"
+          placeholder="https://soundcloud.com/yourname"
+          icon={<SoundcloudIcon />}
+          colorClass={styles.actionBtnSoundcloud}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {isOwnProfile && !data.instagram && (
+        <SocialAddButton
+          userId={data.id}
+          field="instagram"
+          label="Instagram"
+          placeholder="https://instagram.com/yourname"
+          icon={<InstagramIcon />}
+          colorClass={styles.actionBtnInstagram}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {isOwnProfile && !data.tiktok && (
+        <SocialAddButton
+          userId={data.id}
+          field="tiktok"
+          label="TikTok"
+          placeholder="https://tiktok.com/@yourname"
+          icon={<TiktokIcon />}
+          colorClass={styles.actionBtnTiktok}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {isOwnProfile && !data.facebook && (
+        <SocialAddButton
+          userId={data.id}
+          field="facebook"
+          label="Facebook"
+          placeholder="https://facebook.com/yourname"
+          icon={<FacebookIcon />}
+          colorClass={styles.actionBtnFacebook}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {isOwnProfile && !data.twitch && (
+        <SocialAddButton
+          userId={data.id}
+          field="twitch"
+          label="Twitch"
+          placeholder="https://twitch.tv/yourname"
+          icon={<TwitchIcon />}
+          colorClass={styles.actionBtnTwitch}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
     </div>
   );
 }
