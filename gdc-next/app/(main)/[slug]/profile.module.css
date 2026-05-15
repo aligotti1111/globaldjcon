@@ -95,13 +95,12 @@
 .banner > * {
   pointer-events: auto;
 }
-/* Book Now + Message Us row — mid-right of the banner. */
 .bannerCtaRow {
   position: absolute;
   top: 50%;
   right: 10%;
   transform: translateY(-50%);
-  z-index: 3;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: .6rem;
