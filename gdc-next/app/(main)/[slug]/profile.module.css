@@ -1907,15 +1907,19 @@
    34px existing social icons, override actionBtnEmpty's dashed border
    so add buttons visually match the populated ones. */
 .underBannerSocials .actionBtn {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  padding: 0;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  max-height: 34px !important;
+  padding: 0 !important;
   position: relative;
-  border-style: solid;
+  border-style: solid !important;
   border-radius: 6px;
   background: rgba(0, 0, 0, .5);
   gap: 0;
+  box-sizing: border-box;
+  flex: 0 0 34px;
 }
 .underBannerSocials .actionBtn svg {
   width: 15px;
@@ -1925,6 +1929,13 @@
   .underBannerSocials { gap: .35rem; padding: .45rem .75rem; }
   .underBannerSocialBtn { width: 32px; height: 32px; min-width: 32px; }
   .underBannerSocialBtn svg { width: 14px; height: 14px; }
-  .underBannerSocials .actionBtn { width: 32px; height: 32px; min-width: 32px; }
+  .underBannerSocials .actionBtn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    flex: 0 0 32px;
+  }
   .underBannerSocials .actionBtn svg { width: 14px; height: 14px; }
 }
