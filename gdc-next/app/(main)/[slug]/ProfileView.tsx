@@ -534,15 +534,27 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => setBannerModalOpen(true)}
+                  className={styles.bannerEditBtn}
+                  title="Edit banner"
+                  aria-label="Edit banner"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
                   <span>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
                 </button>
               )}
             </div>
           )}
-          {/* Book Now + Message Us — visible to all visitors EXCEPT
-              the profile owner. Mid-right of the banner. Rendered as a
-              sibling of .banner (not a child) so its z-index can sit
-              above all hero content. */}
+          {/* Book Now + Message Us — visible to all visitors EXCEPT the
+              profile owner. Sibling of .banner so its z-index can sit
+              above hero content. Book Now scrolls to calendar in 12-month
+              view; Message Us opens compose modal (sends to DJ inbox). */}
           {!isOwnProfile && (
             <div className={styles.bannerCtaRow}>
               {showBookingTab && (
@@ -578,23 +590,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               >
                 Message Us
               </button>
-            </div>
-          )}
-              {isOwnProfile && (
-                <button
-                  type="button"
-                  onClick={() => setBannerModalOpen(true)}
-                  className={styles.bannerEditBtn}
-                  title="Edit banner"
-                  aria-label="Edit banner"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
-                  <span>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
-                </button>
-              )}
             </div>
           )}
           {/* Top row contains avatar; on mobile via media query, name+badges
