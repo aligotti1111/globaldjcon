@@ -1903,8 +1903,23 @@
 .underBannerSocialTiktok { color: #fff; }
 .underBannerSocialTwitch { color: #9146ff; }
 .underBannerSocialWebsite { color: var(--neon); }
+/* SocialAddButton inside the under-banner strip: shrink to match the
+   34px existing social icons (default actionBtn is ~46px). */
+.underBannerSocials .actionBtn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  position: relative;
+}
+.underBannerSocials .actionBtn svg {
+  width: 15px;
+  height: 15px;
+}
 @media (max-width: 700px) {
   .underBannerSocials { gap: .35rem; padding: .45rem .75rem; }
   .underBannerSocialBtn { width: 32px; height: 32px; min-width: 32px; }
   .underBannerSocialBtn svg { width: 14px; height: 14px; }
+  .underBannerSocials .actionBtn { width: 32px; height: 32px; min-width: 32px; }
+  .underBannerSocials .actionBtn svg { width: 14px; height: 14px; }
 }
