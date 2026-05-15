@@ -1802,20 +1802,6 @@ function HeroActions({
         <CopyIcon />
       </button>
 
-      {/* Message button — opens ComposeMessageModal. Hidden on the owner's
-          own profile (you can't message yourself). For logged-out visitors,
-          the parent's onClickMessage handler routes them to /login first. */}
-      {!isOwnProfile && (
-        <button
-          type="button"
-          className={`${styles.actionBtn} ${styles.actionBtnMessage}`}
-          onClick={onClickMessage}
-          title={`Message ${data.name || 'this DJ'}`}
-        >
-          <MessageIcon />
-        </button>
-      )}
-
       {/* Calendar icon kept hidden for now — the booking calendar lives in
           the tabs below, not in the hero. Keeping the import wired so we
           can add it back later without re-importing. */}
