@@ -534,28 +534,47 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
-              {/* Book Now button — mid-right of banner. Visible to all
-                  visitors EXCEPT the profile owner. Clicking it switches
-                  to the booking tab, forces the calendar into 12-month
-                  view, and scrolls down to it. */}
-              {!isOwnProfile && showBookingTab && (
-                <button
-                  type="button"
-                  className={styles.bannerBookNowBtn}
-                  onClick={() => {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('view', '12mo');
-                    window.history.replaceState(null, '', url.toString());
-                    setActiveTab('booking');
-                    setForceCalendar12mo(c => c + 1);
-                    requestAnimationFrame(() => {
-                      const el = document.getElementById('booking-pane-anchor');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    });
-                  }}
-                >
-                  Book Now
-                </button>
+              {/* Book Now + Message Us — visible to all visitors EXCEPT
+                  the profile owner. Mid-right of the banner. Book Now
+                  scrolls to the calendar in 12-month view; Message Us
+                  opens the compose modal (sends message to the DJ's
+                  inbox). */}
+              {!isOwnProfile && (
+                <div className={styles.bannerCtaRow}>
+                  {showBookingTab && (
+                    <button
+                      type="button"
+                      className={styles.bannerBookNowBtn}
+                      onClick={() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('view', '12mo');
+                        window.history.replaceState(null, '', url.toString());
+                        setActiveTab('booking');
+                        setForceCalendar12mo(c => c + 1);
+                        requestAnimationFrame(() => {
+                          const el = document.getElementById('booking-pane-anchor');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
+                      Book Now
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.bannerMessageUsBtn}
+                    onClick={() => {
+                      if (!isLoggedIn) {
+                        window.location.href =
+                          `/login?redirect=${encodeURIComponent(`/${effectiveSlug}`)}`;
+                        return;
+                      }
+                      setComposeOpen(true);
+                    }}
+                  >
+                    Message Us
+                  </button>
+                </div>
               )}
               {isOwnProfile && (
                 <button

@@ -95,13 +95,18 @@
 .banner > * {
   pointer-events: auto;
 }
-/* Book Now button — mid-right of the banner. Solid neon green pill. */
-.bannerBookNowBtn {
+/* Book Now + Message Us row — mid-right of the banner. */
+.bannerCtaRow {
   position: absolute;
   top: 50%;
   right: 10%;
   transform: translateY(-50%);
   z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.bannerBookNowBtn {
   padding: .75rem 1.5rem;
   background: var(--neon);
   border: 1px solid var(--neon);
@@ -121,9 +126,34 @@
   filter: brightness(1.1);
   box-shadow: 0 4px 20px rgba(0, 245, 196, .6);
 }
+.bannerMessageUsBtn {
+  padding: .75rem 1.5rem;
+  background: #fff;
+  border: 1px solid #fff;
+  border-radius: 100px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, .2);
+  transition: all .15s;
+}
+.bannerMessageUsBtn:hover {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: #050507;
+}
 @media (max-width: 700px) {
-  .bannerBookNowBtn {
+  .bannerCtaRow {
     right: 5%;
+    gap: .4rem;
+  }
+  .bannerBookNowBtn,
+  .bannerMessageUsBtn {
     padding: .45rem .85rem;
     font-size: .55rem;
     letter-spacing: .06em;
