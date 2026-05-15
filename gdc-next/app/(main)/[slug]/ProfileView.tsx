@@ -574,9 +574,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               )}
             </div>
           )}
-          {/* Under-banner socials strip — snug against the bottom of the
-              banner, centered. Replaces the in-hero social icons row. */}
-          <UnderBannerSocials data={data} />
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
@@ -733,6 +730,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             />
           </div>
         </div>
+        {/* Under-banner socials strip — full-width row sitting snug
+            against the bottom of the hero/banner. Centered. */}
+        <UnderBannerSocials data={data} />
 
         {/* BODY */}
         <div className={styles.body}>

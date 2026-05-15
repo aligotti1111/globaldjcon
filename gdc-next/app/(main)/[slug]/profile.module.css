@@ -1878,9 +1878,9 @@
   flex-wrap: wrap;
 }
 .underBannerSocialBtn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1890,8 +1890,8 @@
   transition: all .15s;
 }
 .underBannerSocialBtn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 .underBannerSocialBtn:hover {
   transform: translateY(-1px);
