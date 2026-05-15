@@ -534,35 +534,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
-              {isOwnProfile && (
+              {/* Book Now button — mid-right of banner. Visible to all
+                  visitors EXCEPT the profile owner. Clicking it switches
+                  to the booking tab, forces the calendar into 12-month
+                  view, and scrolls down to it. */}
+              {!isOwnProfile && showBookingTab && (
                 <button
                   type="button"
-                  onClick={() => setBannerModalOpen(true)}
-                  className={styles.bannerEditBtn}
-                  title="Edit banner"
-                  aria-label="Edit banner"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
-                  <span>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
-                </button>
-              )}
-            </div>
-          )}
-          {/* Under-banner socials strip — snug against the bottom of the
-              banner. Compact icon-only buttons, ~25% smaller than the
-              old in-hero socials. */}
-          <UnderBannerSocials data={data} />
-          {/* Action buttons row — Book Now + Message Us. Sits in the
-              hero, replaces where socials used to live. Non-owner only. */}
-          {!isOwnProfile && (
-            <div className={styles.heroActionsCta}>
-              {showBookingTab && (
-                <button
-                  type="button"
-                  className={styles.ctaBookNow}
+                  className={styles.bannerBookNowBtn}
                   onClick={() => {
                     const url = new URL(window.location.href);
                     url.searchParams.set('view', '12mo');
@@ -578,20 +557,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   Book Now
                 </button>
               )}
-              <button
-                type="button"
-                className={styles.ctaMessageUs}
-                onClick={() => {
-                  if (!isLoggedIn) {
-                    window.location.href =
-                      `/login?redirect=${encodeURIComponent(`/${effectiveSlug}`)}`;
-                    return;
-                  }
-                  setComposeOpen(true);
-                }}
-              >
-                Message Us
-              </button>
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => setBannerModalOpen(true)}
+                  className={styles.bannerEditBtn}
+                  title="Edit banner"
+                  aria-label="Edit banner"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
+                </button>
+              )}
             </div>
           )}
           {/* Top row contains avatar; on mobile via media query, name+badges
@@ -728,16 +708,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             )}
 
-            {/* Hero action buttons — phone, message, copy link.
-                Socials are now rendered as a separate under-banner strip
-                (see UnderBannerSocials above), so they're suppressed
-                here via hideSocials. */}
+            {/* Hero action buttons — socials, contact, copy link */}
             <HeroActions
               data={data}
               effectiveSlug={effectiveSlug}
               isLoggedIn={isLoggedIn}
               isOwnProfile={isOwnProfile}
-              hideSocials={true}
               onClickMessage={() => {
                 // Owner can't message themselves; logged-out visitors are
                 // sent to /login first, returning to the same profile.
@@ -1560,18 +1536,12 @@ function HeroActions({
   isLoggedIn,
   isOwnProfile,
   onClickMessage,
-  hideSocials,
 }: {
   data: DjProfileData;
   effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
   onClickMessage: () => void;
-  // When true, socials are not rendered inside HeroActions (they're
-  // rendered separately as the UnderBannerSocials strip). Owner-only
-  // social ADD buttons are still rendered so the DJ can still add new
-  // social platforms inline from the hero.
-  hideSocials?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   // Tracks which SocialAddButton (if any) is expanded. Lifted here so
@@ -1648,7 +1618,7 @@ function HeroActions({
           platform order. After all filled links, the owner-only "+"
           add-buttons for missing platforms render to the right so the
           hero reads "active socials | quick-adds" instead of mixed. */}
-      {!hideSocials && data.website && (
+      {data.website && (
         <a
           href={normalizedWebsite(data.website)}
           target="_blank"
@@ -1659,7 +1629,7 @@ function HeroActions({
           <WebsiteIcon />
         </a>
       )}
-      {!hideSocials && data.soundcloud && (
+      {data.soundcloud && (
         <a
           href={normalizedSoundcloud(data.soundcloud)}
           target="_blank"
@@ -1670,7 +1640,7 @@ function HeroActions({
           <SoundcloudIcon />
         </a>
       )}
-      {!hideSocials && data.instagram && (
+      {data.instagram && (
         <a
           href={normalizedInstagram(data.instagram)}
           target="_blank"
@@ -1681,7 +1651,7 @@ function HeroActions({
           <InstagramIcon />
         </a>
       )}
-      {!hideSocials && data.tiktok && (
+      {data.tiktok && (
         <a
           href={normalizedTiktok(data.tiktok)}
           target="_blank"
@@ -1692,7 +1662,7 @@ function HeroActions({
           <TiktokIcon />
         </a>
       )}
-      {!hideSocials && data.facebook && (
+      {data.facebook && (
         <a
           href={normalizedFacebook(data.facebook)}
           target="_blank"
@@ -1703,7 +1673,7 @@ function HeroActions({
           <FacebookIcon />
         </a>
       )}
-      {!hideSocials && data.twitch && (
+      {data.twitch && (
         <a
           href={normalizedTwitch(data.twitch)}
           target="_blank"
@@ -4466,40 +4436,3 @@ function ShareCalendarModal({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// UnderBannerSocials — compact horizontal strip of social icons rendered
-// immediately under the banner image. ~25% smaller than the previous
-// in-hero icons. Owner-only "+ add" buttons are NOT rendered here — the
-// owner adds new socials from the Update Profile page.
-// ──────────────────────────────────────────────────────────────────────────
-function UnderBannerSocials({ data }: { data: DjProfileData }) {
-  function n(s: string, prefix: string): string {
-    return s.startsWith('http') ? s : prefix + s.replace('@', '');
-  }
-  const links: { key: string; href: string; title: string; cls: string; icon: React.ReactNode }[] = [];
-  if (data.website) links.push({ key: 'web', href: n(data.website, 'https://'), title: 'Website', cls: styles.underBannerSocialWebsite, icon: <WebsiteIcon /> });
-  if (data.soundcloud) links.push({ key: 'sc', href: n(data.soundcloud, 'https://soundcloud.com/'), title: 'SoundCloud', cls: styles.underBannerSocialSoundcloud, icon: <SoundcloudIcon /> });
-  if (data.instagram) links.push({ key: 'ig', href: n(data.instagram, 'https://instagram.com/'), title: 'Instagram', cls: styles.underBannerSocialInstagram, icon: <InstagramIcon /> });
-  if (data.tiktok) links.push({ key: 'tk', href: n(data.tiktok, 'https://tiktok.com/@'), title: 'TikTok', cls: styles.underBannerSocialTiktok, icon: <TiktokIcon /> });
-  if (data.facebook) links.push({ key: 'fb', href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', cls: styles.underBannerSocialFacebook, icon: <FacebookIcon /> });
-  if (data.twitch) links.push({ key: 'tw', href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', cls: styles.underBannerSocialTwitch, icon: <TwitchIcon /> });
-
-  if (!links.length) return null;
-
-  return (
-    <div className={styles.underBannerSocials}>
-      {links.map(l => (
-        <a
-          key={l.key}
-          href={l.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${styles.underBannerSocialBtn} ${l.cls}`}
-          title={l.title}
-        >
-          {l.icon}
-        </a>
-      ))}
-    </div>
-  );
-}
