@@ -148,8 +148,14 @@
 }
 @media (max-width: 700px) {
   .bannerCtaRow {
-    right: 5%;
-    gap: .4rem;
+    /* On mobile, drop below the location pill — center horizontally
+       and sit lower in the banner area. */
+    top: auto;
+    bottom: 1.25rem;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: .5rem;
   }
   .bannerBookNowBtn,
   .bannerMessageUsBtn {
@@ -717,6 +723,13 @@
   gap: .75rem;
   margin-top: 1.2rem;
   flex-wrap: wrap;
+}
+/* On mobile, push the Copy Link button (last .actionBtnGhost in the row)
+   to the opposite side of where other action buttons sit. */
+@media (max-width: 700px) {
+  .heroActions .actionBtnGhost {
+    margin-left: auto;
+  }
 }
 .actionBtn {
   display: inline-flex;
