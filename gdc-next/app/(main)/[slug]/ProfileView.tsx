@@ -1970,9 +1970,12 @@ function SocialAddButton({
       flexBasis: '100%',
       order: 999,
       marginTop: '.5rem',
+      display: 'flex',
+      justifyContent: 'center',
     }}>
       <div style={{
         maxWidth: 460,
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         gap: '.5rem',
