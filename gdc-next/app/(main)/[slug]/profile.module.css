@@ -1904,13 +1904,18 @@
 .underBannerSocialTwitch { color: #9146ff; }
 .underBannerSocialWebsite { color: var(--neon); }
 /* SocialAddButton inside the under-banner strip: shrink to match the
-   34px existing social icons (default actionBtn is ~46px). */
+   34px existing social icons, override actionBtnEmpty's dashed border
+   so add buttons visually match the populated ones. */
 .underBannerSocials .actionBtn {
   width: 34px;
   height: 34px;
   min-width: 34px;
   padding: 0;
   position: relative;
+  border-style: solid;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .5);
+  gap: 0;
 }
 .underBannerSocials .actionBtn svg {
   width: 15px;
