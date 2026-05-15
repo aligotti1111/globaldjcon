@@ -1693,7 +1693,7 @@ function HeroActions({
       )}
 
       {/* Owner-only quick-add buttons for platforms not yet filled. */}
-      {!hideSocials && isOwnProfile && !data.website && (
+      {isOwnProfile && !data.website && (
         <SocialAddButton
           userId={data.id}
           field="website"
@@ -1705,7 +1705,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {!hideSocials && isOwnProfile && !data.soundcloud && (
+      {isOwnProfile && !data.soundcloud && (
         <SocialAddButton
           userId={data.id}
           field="soundcloud"
@@ -1717,7 +1717,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {!hideSocials && isOwnProfile && !data.instagram && (
+      {isOwnProfile && !data.instagram && (
         <SocialAddButton
           userId={data.id}
           field="instagram"
@@ -1729,7 +1729,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {!hideSocials && isOwnProfile && !data.tiktok && (
+      {isOwnProfile && !data.tiktok && (
         <SocialAddButton
           userId={data.id}
           field="tiktok"
@@ -1741,7 +1741,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {!hideSocials && isOwnProfile && !data.facebook && (
+      {isOwnProfile && !data.facebook && (
         <SocialAddButton
           userId={data.id}
           field="facebook"
@@ -1753,7 +1753,7 @@ function HeroActions({
         setOpenField={setOpenSocialField}
         />
       )}
-      {!hideSocials && isOwnProfile && !data.twitch && (
+      {isOwnProfile && !data.twitch && (
         <SocialAddButton
           userId={data.id}
           field="twitch"
