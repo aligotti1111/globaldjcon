@@ -1,17 +1,29 @@
 /* ClubBookingForm — visitor-side booking form for club DJ profiles.
-   Mirrors the look/feel of vanilla's in-booth form: single card with
-   sectioned rows, neon accents, dark theme. */
+   Renders as a centered popup modal (not an inline section). */
 
 .formWrap {
-  margin-top: 1.5rem;
-  margin-bottom: 2rem;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .formCard {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
+  border-radius: 12px;
+  overflow: visible;
+  width: 100%;
+  max-width: 560px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
 }
 
 /* ── Header (date + close) ────────────────────────────────────── */
@@ -77,9 +89,13 @@
 }
 .pillCol {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: .4rem;
+}
+.pillCol .pillWide {
+  flex: 0 0 auto;
+  text-align: center;
 }
 .pill,
 .pillWide {
@@ -373,4 +389,96 @@
 }
 .addrSuggestion:hover {
   background: rgba(0, 245, 196, .08);
+}
+
+/* ── Address + Country row ───────────────────────────────────────── */
+/* Address input takes the full width left of the compact country pill. */
+.addrRow {
+  display: flex;
+  gap: .4rem;
+  align-items: stretch;
+}
+.addrRow > .addrInputWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.countryPill {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: 0 .7rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-size: .82rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  user-select: none;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  transition: border-color .15s;
+}
+.countryPill:hover {
+  border-color: var(--neon);
+}
+.countryPill .flag {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.countryPill .code {
+  letter-spacing: .04em;
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+}
+.countryPill .caret {
+  color: var(--muted);
+  font-size: .6rem;
+  margin-left: .15rem;
+}
+/* Country picker popover */
+.countryPopover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  margin-top: .25rem;
+  width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--card, #0a0a0c);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .7);
+  padding: .35rem 0;
+}
+.countryItem {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .45rem .75rem;
+  cursor: pointer;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+}
+.countryItem:hover {
+  background: rgba(0, 245, 196, .08);
+}
+.countryItem .flag {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.countryItem .name {
+  flex: 1;
+}
+.countryItem .code {
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+}
+.countryItemActive {
+  background: rgba(0, 245, 196, .12);
+  color: var(--neon);
 }

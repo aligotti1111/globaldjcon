@@ -21,7 +21,7 @@
 // The form is rendered inline in the booking tab below the calendar — it
 // does NOT use a modal, matching MobileBookingForm's UX.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './clubBookingForm.module.css';
 import {
@@ -638,108 +638,74 @@ export default function ClubBookingForm({
             className={styles.input}
             style={hasError('venueName') ? { borderColor: '#ff5f5f' } : undefined}
           />
-          {/* Country sits between venue name and address so picking it
-              first scopes the address autocomplete to that country. */}
-          <select
-            value={country}
-            onChange={(e) => {
-              setCountry(e.target.value);
-              // Suggestions + picked coords were country-scoped, so they're
-              // stale now. Clear them so the booker re-searches under the
-              // new country before they pick a result.
-              setAddrSuggestions([]);
-              setShowAddrSuggestions(false);
-              venueCoordsRef.current = null;
-            }}
-            className={styles.input}
-            style={{ marginTop: '.5rem', cursor: 'pointer' }}
-          >
-            <option value="US">United States</option>
-            <option value="GB">United Kingdom</option>
-            <option value="CA">Canada</option>
-            <option value="AU">Australia</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-            <option value="ES">Spain</option>
-            <option value="IT">Italy</option>
-            <option value="NL">Netherlands</option>
-            <option value="SE">Sweden</option>
-            <option value="NO">Norway</option>
-            <option value="DK">Denmark</option>
-            <option value="NZ">New Zealand</option>
-            <option value="SG">Singapore</option>
-            <option value="ZA">South Africa</option>
-            <option value="AE">UAE</option>
-            <option value="IN">India</option>
-            <option value="JP">Japan</option>
-            <option value="MX">Mexico</option>
-            <option value="BR">Brazil</option>
-            <option value="CH">Switzerland</option>
-            <option value="IE">Ireland</option>
-          </select>
-          {/* Venue Address — Nominatim autocomplete dropdown.
-              Coords from a picked suggestion are stored in the ref so
-              they can be sent with the booking insert (DJ uses them
-              for distance check on the booking-requests card). */}
-          <div style={{ position: 'relative', marginTop: '.5rem' }}>
-            <input
-              type="text"
-              placeholder="Venue address"
-              value={venueAddress}
-              onChange={(e) => {
-                const val = e.target.value;
-                setVenueAddress(val);
-                clearMissing('venueAddress');
-                // User edited again — invalidate previously picked coords
+          {/* Address with compact country picker pill on the right.
+              Picking a country first scopes the address autocomplete. */}
+          <div className={styles.addrRow} style={{ marginTop: '.5rem' }}>
+            <div className={styles.addrInputWrap}>
+              <input
+                type="text"
+                placeholder="Venue address"
+                value={venueAddress}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setVenueAddress(val);
+                  clearMissing('venueAddress');
+                  venueCoordsRef.current = null;
+                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                  if (val.trim().length < 3) {
+                    setAddrSuggestions([]);
+                    setShowAddrSuggestions(false);
+                    return;
+                  }
+                  addrTimerRef.current = setTimeout(async () => {
+                    const results = await searchAddresses(val.trim(), country);
+                    setAddrSuggestions(results);
+                    setShowAddrSuggestions(results.length > 0);
+                  }, 350);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setShowAddrSuggestions(false), 150);
+                }}
+                onFocus={() => {
+                  if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
+                }}
+                className={styles.input}
+                style={hasError('venueAddress') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="off"
+              />
+              {showAddrSuggestions && addrSuggestions.length > 0 && (
+                <div className={styles.addrSuggestions}>
+                  {addrSuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={styles.addrSuggestion}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setVenueAddress(s.display);
+                        if (s.lat != null && s.lon != null) {
+                          venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                        } else {
+                          venueCoordsRef.current = null;
+                        }
+                        setShowAddrSuggestions(false);
+                        clearMissing('venueAddress');
+                      }}
+                    >
+                      {s.display}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <CountryPicker
+              value={country}
+              onChange={(code) => {
+                setCountry(code);
+                setAddrSuggestions([]);
+                setShowAddrSuggestions(false);
                 venueCoordsRef.current = null;
-                // Debounce the Nominatim fetch (matches MobileBookingForm)
-                if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
-                if (val.trim().length < 3) {
-                  setAddrSuggestions([]);
-                  setShowAddrSuggestions(false);
-                  return;
-                }
-                addrTimerRef.current = setTimeout(async () => {
-                  const results = await searchAddresses(val.trim(), country);
-                  setAddrSuggestions(results);
-                  setShowAddrSuggestions(results.length > 0);
-                }, 350);
               }}
-              onBlur={() => {
-                // Delay so a click on a suggestion fires before we hide
-                setTimeout(() => setShowAddrSuggestions(false), 150);
-              }}
-              onFocus={() => {
-                if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
-              }}
-              className={styles.input}
-              style={hasError('venueAddress') ? { borderColor: '#ff5f5f' } : undefined}
-              autoComplete="off"
             />
-            {showAddrSuggestions && addrSuggestions.length > 0 && (
-              <div className={styles.addrSuggestions}>
-                {addrSuggestions.map((s, i) => (
-                  <div
-                    key={i}
-                    className={styles.addrSuggestion}
-                    // onMouseDown not onClick — fires before the input's
-                    // onBlur, so the dropdown isn't dismissed first.
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setVenueAddress(s.display);
-                      if (s.lat != null && s.lon != null) {
-                        venueCoordsRef.current = { lat: s.lat, lon: s.lon };
-                      } else {
-                        venueCoordsRef.current = null;
-                      }
-                      setShowAddrSuggestions(false);
-                    }}
-                  >
-                    {s.display}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </FormSection>
 
@@ -1155,6 +1121,95 @@ function RateDisplay({
       <div className={styles.rateOffersHint}>
         Rate not yet configured for this option — the DJ will reply with a quote.
       </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// CountryPicker — compact flag + ISO-code pill that opens a dropdown
+// for picking the country that scopes address autocomplete.
+// ──────────────────────────────────────────────────────────────────────────
+const COUNTRIES: { code: string; name: string; flag: string }[] = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'NO', name: 'Norway', flag: '🇳🇴' },
+  { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
+  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'AE', name: 'UAE', flag: '🇦🇪' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+];
+
+function CountryPicker({ value, onChange }: { value: string; onChange: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [open]);
+
+  const sel = COUNTRIES.find((c) => c.code === value) || COUNTRIES[0];
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: '0 0 auto' }}>
+      <div
+        className={styles.countryPill}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+        title="Filter by country"
+      >
+        <span className={styles.flag}>{sel.flag}</span>
+        <span className={styles.code}>{sel.code}</span>
+        <span className={styles.caret}>▾</span>
+      </div>
+      {open && (
+        <div className={styles.countryPopover}>
+          {COUNTRIES.map((c) => (
+            <div
+              key={c.code}
+              className={`${styles.countryItem} ${c.code === value ? styles.countryItemActive : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(c.code);
+                setOpen(false);
+              }}
+            >
+              <span className={styles.flag}>{c.flag}</span>
+              <span className={styles.name}>{c.name}</span>
+              <span className={styles.code}>{c.code}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
