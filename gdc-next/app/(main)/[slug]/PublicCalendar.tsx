@@ -902,45 +902,6 @@ function RollingMonthsView({
           onClick={onCellClick}
         >
           <div className={numClasses.join(' ')}>{d}</div>
-          {/* Public visitor: BOOK pill on available days; PENDING pill
-              instead if this viewer already has a pending request. */}
-          {!isOwnProfile && isOpenFuture && (
-            isPendingForViewer ? (
-              <div className={`${styles.miniBookLabel} ${styles.miniBookLabelPending}`}>Pending</div>
-            ) : (
-              <div className={styles.miniBookLabel}>Book</div>
-            )
-          )}
-          {ownerCanEdit && (
-            <div className={styles.miniOwnerControls}>
-              {!isBooked && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOwnerQuickToggle(key);
-                  }}
-                  className={`${styles.miniOwnerQuickMark} ${
-                    isUnavail ? styles.miniOwnerQuickMarkActive : ''
-                  }`}
-                  title={isUnavail ? 'Mark available' : 'Mark unavailable'}
-                >
-                  {isUnavail ? '✓' : '✕'}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOwnerEdit(key);
-                }}
-                className={styles.miniOwnerEditPencil}
-                title="Edit day"
-              >
-                ✏️
-              </button>
-            </div>
-          )}
         </div>
       );
     }
