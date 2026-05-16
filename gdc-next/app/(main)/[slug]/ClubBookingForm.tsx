@@ -777,7 +777,7 @@ export default function ClubBookingForm({
           hasError={hasError('equipment')}
           errorText="Please select an equipment option."
         >
-          <div className={styles.pillCol}>
+          <div className={styles.equipCol}>
             {equipmentOptions.map((opt) => {
               const isActive = equipment === opt.value;
               return (
@@ -785,7 +785,7 @@ export default function ClubBookingForm({
                   key={opt.value}
                   type="button"
                   onClick={() => { setEquipment(opt.value); clearMissing('equipment'); }}
-                  className={`${styles.pillWide} ${isActive ? styles.pillActive : ''} ${
+                  className={`${styles.equipBtn} ${isActive ? styles.pillActive : ''} ${
                     !opt.supported ? styles.pillUnsupported : ''
                   }`}
                   // Always allow click — the warning below explains the

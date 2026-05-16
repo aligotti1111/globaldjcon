@@ -190,51 +190,51 @@
 .rateBox {
   background: var(--deep);
   border-radius: 8px;
-  padding: 1rem 1rem .9rem;
+  padding: .75rem .75rem .68rem;
 }
 .rateLabelMini {
   font-family: 'Space Mono', monospace;
-  font-size: .58rem;
+  font-size: .44rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: .35rem;
+  margin-bottom: .26rem;
 }
 .rateValueLarge {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.8rem;
+  font-size: 1.35rem;
   color: var(--neon);
   line-height: 1.1;
 }
 .rateCurrency {
-  font-size: .9rem;
+  font-size: .68rem;
   color: var(--muted);
 }
 .rateOffersHint {
-  font-size: .82rem;
+  font-size: .62rem;
   color: var(--white);
   line-height: 1.55;
-  margin-bottom: .65rem;
+  margin-bottom: .5rem;
 }
 .rateTotalRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: .65rem;
-  padding-top: .65rem;
+  margin-top: .5rem;
+  padding-top: .5rem;
   border-top: 1px solid rgba(255, 255, 255, .08);
-  gap: .5rem;
+  gap: .4rem;
   flex-wrap: wrap;
 }
 .rateTotalLabel {
   font-family: 'Space Mono', monospace;
-  font-size: .68rem;
+  font-size: .51rem;
   letter-spacing: .03em;
   color: var(--muted);
 }
 .rateTotalValue {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.13rem;
   color: var(--neon);
   line-height: 1;
 }
@@ -481,4 +481,27 @@
 .countryItemActive {
   background: rgba(0, 245, 196, .12);
   color: var(--neon);
+}
+
+/* ── Equipment options — stacked vertically, equal full width ───── */
+.equipCol {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.equipBtn {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .6rem .9rem;
+  color: var(--white);
+  font-size: .82rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.equipBtn:hover {
+  border-color: var(--neon);
 }
