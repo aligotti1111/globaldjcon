@@ -237,6 +237,36 @@
   display: inline;
 }
 
+/* 12-month view BOOK label — matches the single-month .bookBadge so
+   visitors see a consistent neon-green pill across both views. */
+.miniBookLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .5rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-block;
+  white-space: nowrap;
+  background: var(--neon);
+  color: #050507;
+  border: 1px solid var(--neon);
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.2;
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  .miniBookLabel {
+    font-size: .42rem;
+    padding: 1px 4px;
+  }
+}
+
 /* Booked-cell event name + time */
 .eventName {
   font-size: clamp(.48rem, 1vw, .62rem);
