@@ -257,10 +257,15 @@ export default function BookingRequestsClient({
         }
       }
 
-      // Decrement bookings_available on approve. Re-read settings first so
-      // we don't clobber concurrent edits — same defensive pattern as the
-      // owner calendar's persistBookingDays.
+      // Calendar update on approve. Branches by DJ type:
+      // - CLUB DJs: mark booking_days[date].booked = true so the day turns
+      //   red on the calendar and no more bookings can be made on it.
+      // - MOBILE DJs: decrement mob_booking_days[date].bookings_available so
+      //   the per-day capacity tracker reflects the new approved booking.
+      // Re-read settings first so we don't clobber concurrent edits — same
+      // defensive pattern as the owner calendar's persistBookingDays.
       if (status === 'approved' && b && b.event_date) {
+        const isClubBooking = !!(b as BookingRow & { set_type?: string | null }).set_type;
         try {
           const { data: djRow } = await supabase
             .from('users')
@@ -278,6 +283,14 @@ export default function BookingRequestsClient({
               startTime?: string;
               endTime?: string;
             }>;
+            booking_days?: Record<string, {
+              booked?: boolean;
+              unavailable?: boolean;
+              eventName?: string;
+              startTime?: string;
+              endTime?: string;
+              location?: string;
+            }>;
           } = {};
           if (djRow?.booking_settings) {
             try {
@@ -286,18 +299,27 @@ export default function BookingRequestsClient({
               bs = {};
             }
           }
-          const defaultPerDay = bs.mob_bookings_per_day || 1;
-          if (!bs.mob_booking_days) bs.mob_booking_days = {};
-          const dayData = bs.mob_booking_days[b.event_date] || {};
-          const current = dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay;
-          const newCount = Math.max(0, current - 1);
-          bs.mob_booking_days[b.event_date] = { ...dayData, bookings_available: newCount };
+          if (isClubBooking) {
+            // CLUB DJ — flip the date's booked flag to true so the public
+            // calendar shows it red and the booking form refuses it.
+            if (!bs.booking_days) bs.booking_days = {};
+            const existing = bs.booking_days[b.event_date] || {};
+            bs.booking_days[b.event_date] = { ...existing, booked: true };
+          } else {
+            // MOBILE DJ — decrement bookings_available.
+            const defaultPerDay = bs.mob_bookings_per_day || 1;
+            if (!bs.mob_booking_days) bs.mob_booking_days = {};
+            const dayData = bs.mob_booking_days[b.event_date] || {};
+            const current = dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay;
+            const newCount = Math.max(0, current - 1);
+            bs.mob_booking_days[b.event_date] = { ...dayData, bookings_available: newCount };
+          }
           await supabase
             .from('users')
             .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
             .eq('id', currentUser.id);
         } catch (calErr) {
-          console.error('Calendar decrement failed:', calErr);
+          console.error('Calendar update on approve failed:', calErr);
         }
       }
     } catch (err) {
