@@ -914,7 +914,8 @@ function RollingMonthsView({
           )}
           {/* Owner controls — quick-mark unavailable ✕/✓ (toggles) plus
               pencil-edit ✏️ to open the day edit modal. Shown only to
-              the profile owner on non-past days. */}
+              the profile owner on non-past days. No pencil on booked
+              days (booked days have their own edit flow via cell click). */}
           {ownerCanEdit && (
             <div className={styles.miniOwnerControls}>
               {!isBooked && (
@@ -932,17 +933,19 @@ function RollingMonthsView({
                   {isUnavail ? '✓' : '✕'}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOwnerEdit(key);
-                }}
-                className={styles.miniOwnerEditPencil}
-                title="Edit day"
-              >
-                ✏️
-              </button>
+              {!isBooked && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOwnerEdit(key);
+                  }}
+                  className={styles.miniOwnerEditPencil}
+                  title="Edit day"
+                >
+                  ✏️
+                </button>
+              )}
             </div>
           )}
         </div>
