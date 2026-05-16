@@ -13,7 +13,11 @@ import { resolveUserEmail } from '@/lib/supabase/admin';
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
 const ADMIN_EMAIL = 'info@globaldjconnect.com';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://globaldjconnect.com';
+// Always use the production domain for links in outgoing emails — staging
+// deploys must never send emails with staging.globaldjconnect.com links to
+// real users. Hardcoded so a misconfigured NEXT_PUBLIC_SITE_URL on a staging
+// build can't leak through.
+const SITE_URL = 'https://globaldjconnect.com';
 
 // All email types supported by this route. Mirror of vanilla send-email.js.
 type EmailType =
