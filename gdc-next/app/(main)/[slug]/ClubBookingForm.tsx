@@ -22,6 +22,7 @@
 // does NOT use a modal, matching MobileBookingForm's UX.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './clubBookingForm.module.css';
 import {
@@ -207,6 +208,12 @@ export default function ClubBookingForm({
   const [venueEquipDetail, setVenueEquipDetail] = useState('');
   const [offerAmount, setOfferAmount] = useState('');
   const [notes, setNotes] = useState('');
+
+  // ── SSR-safe portal flag — Next.js renders on server where document
+  // doesn't exist. Render null until mounted, then portal to body so
+  // the modal escapes any parent stacking context. ──────────────────
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // ── Address autocomplete (Nominatim) ─────────────────────────────
   // Suggestions are fetched debounced (350ms) when the user has typed
@@ -517,7 +524,8 @@ export default function ClubBookingForm({
 
   // ── Success state ────────────────────────────────────────────────
   if (success) {
-    return (
+    if (!mounted) return null;
+    return createPortal(
       <div className={styles.formWrap}>
         <div className={styles.successCard}>
           <div className={styles.successIcon}>✓</div>
@@ -527,12 +535,14 @@ export default function ClubBookingForm({
             They&apos;ll be in touch shortly.
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
   // ── Form UI ──────────────────────────────────────────────────────
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <form onSubmit={handleSubmit} className={styles.formWrap}>
       <div className={styles.formCard}>
         {/* Header */}
@@ -971,7 +981,8 @@ export default function ClubBookingForm({
           </button>
         </div>
       </div>
-    </form>
+    </form>,
+    document.body,
   );
 }
 

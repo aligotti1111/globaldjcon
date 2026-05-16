@@ -4,7 +4,7 @@
 .formWrap {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 99999;
   background: rgba(0, 0, 0, .65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
