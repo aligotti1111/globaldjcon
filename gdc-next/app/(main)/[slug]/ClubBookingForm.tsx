@@ -261,17 +261,17 @@ export default function ClubBookingForm({
     return [
       {
         value: 'sound_system',
-        label: 'Full sound system and decks/controller must be provided by DJ',
+        label: 'DJ provides system + decks',
         supported: !!bookingSettings.equip_full,
       },
       {
         value: 'decks_only',
-        label: 'Decks or controller must be provided by DJ',
+        label: 'DJ provides decks',
         supported: !!(bookingSettings.equip_full || bookingSettings.equip_decks),
       },
       {
         value: 'venue_provides',
-        label: 'Venue provides all equipment',
+        label: 'Venue provides all',
         supported: true,
       },
     ];
