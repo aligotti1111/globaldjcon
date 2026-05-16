@@ -505,3 +505,8 @@
 .equipBtn:hover {
   border-color: var(--neon);
 }
+.equipBtn.pillActive {
+  background: var(--neon-dim);
+  border-color: var(--neon);
+  color: var(--neon);
+}
