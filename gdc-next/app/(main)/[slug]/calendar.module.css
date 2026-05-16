@@ -9,59 +9,6 @@
   margin-bottom: 1rem;
   flex-wrap: nowrap;
 }
-/* Owner-only "Embed Calendar" button — sits inline at the start of
-   the nav row. White pill, black text. */
-.embedInlineBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .42rem .85rem;
-  background: #fff;
-  border: 1px solid #fff;
-  border-radius: 100px;
-  color: #050507;
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all .15s;
-}
-.embedInlineBtn:hover {
-  background: var(--neon);
-  border-color: var(--neon);
-}
-/* Share button — visible to all visitors. Neon green outlined pill. */
-.shareInlineBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .42rem .85rem;
-  background: transparent;
-  border: 1px solid var(--neon);
-  border-radius: 100px;
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all .15s;
-}
-.shareInlineBtn:hover {
-  background: rgba(0, 245, 196, .12);
-}
-/* Action group on the right side of the month header row. */
-.monthHeaderActions {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex: 0 0 auto;
-}
 .navBtn {
   background: transparent;
   border: 1px solid var(--white);
@@ -96,32 +43,27 @@
 .navSelectYear { flex: 1; }
 
 .viewToggle {
-  background: linear-gradient(135deg, #00F5C4 0%, #00C49B 100%);
-  border: none;
-  color: #050507;
-  border-radius: 100px;
-  padding: .55rem 1.2rem;
+  background: transparent;
+  border: 1px solid var(--white);
+  color: var(--white);
+  border-radius: 5px;
+  padding: .4rem .75rem;
   cursor: pointer;
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .1em;
+  font-size: .55rem;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  font-weight: 700;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 245, 196, .35);
   transition: all .2s;
   margin-left: auto;
 }
 .viewToggle:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 3px 12px rgba(0, 245, 196, .5);
+  border-color: var(--neon);
+  color: var(--neon);
 }
 .viewToggleActive {
-  background: transparent;
-  border: 1px solid var(--neon);
+  border-color: var(--neon);
   color: var(--neon);
-  font-weight: 400;
-  box-shadow: none;
 }
 
 /* ── OUT-OF-RANGE TOAST ──────────────────────────────────────────────── */
@@ -140,12 +82,6 @@
 }
 
 /* ── MONTH HEADER (e.g. "April 2026") ──────────────────────────────── */
-.monthHeaderRow {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: .75rem;
-}
 .monthHeader {
   text-align: center;
   font-family: 'Bebas Neue', sans-serif;
@@ -153,23 +89,7 @@
   letter-spacing: .08em;
   color: var(--neon);
   text-shadow: 0 0 18px rgba(0, 245, 196, .35);
-  flex: 1;
-}
-/* Invisible left-side balancer so month name stays optically centered
-   when action buttons are rendered on the right. */
-.monthHeaderSpacer {
-  flex: 0 0 auto;
-  visibility: hidden;
-  width: 240px;
-}
-@media (max-width: 700px) {
-  .monthHeaderRow {
-    flex-wrap: wrap;
-    gap: .5rem;
-  }
-  .monthHeaderSpacer {
-    display: none;
-  }
+  margin-bottom: .75rem;
 }
 
 /* ── MONTH GRID ──────────────────────────────────────────────────────── */
@@ -468,7 +388,7 @@
 }
 .monthCard {
   background: rgba(255, 255, 255, .02);
-  border: 1px solid rgba(255, 255, 255, .6);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: .6rem;
 }
@@ -482,37 +402,6 @@
 }
 .monthCardLabelYear {
   color: var(--neon);
-}
-
-/* Year divider — sits between Dec and Jan in the rolling 12-month grid.
-   Spans the full grid width so it breaks across the 3-column row. */
-.yearDivider {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 1rem 0 .5rem;
-}
-.yearDividerLabel {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.4rem;
-  letter-spacing: .08em;
-  color: var(--neon);
-  line-height: 1;
-}
-/* Per-year legend in the 12-month rolling view. Sits at the bottom of
-   each year group (after December or after the last month rendered) and
-   spans the full grid width. Reuses .legendItem / .legendDot styles. */
-.yearLegend {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: .25rem 0 .5rem;
-  padding: .4rem 0;
-  border-bottom: 1px solid var(--border);
 }
 .miniDayHeader {
   display: grid;
@@ -538,82 +427,6 @@
   aspect-ratio: 1;
   background: transparent;
   border: 1px solid var(--border);
-  position: relative;
-}
-/* Public visitor BOOK label rendered inside available 12-month cells —
-   matches the single-month .bookBadge style: solid neon pill with black
-   text, scaled down for the small cell. */
-.miniBookLabel {
-  position: absolute;
-  left: 50%;
-  bottom: .15rem;
-  transform: translateX(-50%);
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #050507;
-  background: var(--neon);
-  border: 1px solid var(--neon);
-  font-weight: 700;
-  line-height: 1.2;
-  padding: 1px 5px;
-  border-radius: 3px;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.miniOwnerControls {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.miniOwnerQuickMark,
-.miniOwnerEditPencil {
-  position: absolute;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  pointer-events: auto;
-  z-index: 5;
-}
-.miniOwnerQuickMark {
-  bottom: 2px;
-  left: 3px;
-  font-size: .55rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, .35);
-}
-.miniOwnerQuickMark:hover {
-  color: rgba(255, 255, 255, .85);
-}
-.miniOwnerQuickMarkActive {
-  color: var(--neon);
-}
-.miniOwnerEditPencil {
-  bottom: 2px;
-  right: 3px;
-  font-size: .5rem;
-  color: var(--muted);
-  opacity: .7;
-}
-.miniOwnerEditPencil:hover {
-  opacity: 1;
-  filter: brightness(1.3);
-}
-/* When the cell is hovered (neon green bg), invert button colors so they
-   stay readable against the green. */
-.miniCellOpen:hover .miniOwnerQuickMark {
-  color: #050507;
-}
-.miniCellOpen:hover .miniOwnerQuickMarkActive {
-  color: #050507;
-}
-.miniCellOpen:hover .miniOwnerEditPencil {
-  color: #050507;
-  opacity: 1;
-  filter: none;
 }
 .miniCellOpen {
   cursor: pointer;
@@ -630,20 +443,11 @@
   border-color: var(--neon);
 }
 .miniCellBooked {
-  background: #ff5f5f;
-  border-color: #ff5f5f;
+  background: rgba(255, 60, 60, .28);
+  border-color: rgba(255, 95, 95, .2);
 }
 .miniCellUnavail {
-  /* Diagonal stripe pattern — matches single-month view's .cellUnavail
-     so unavailable days look consistent across both views. */
-  cursor: not-allowed;
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 2px,
-    rgba(255, 255, 255, 0.15) 2px,
-    rgba(255, 255, 255, 0.15) 3px
-  );
+  background: rgba(90, 90, 120, .22);
   border-color: rgba(107, 107, 136, .2);
 }
 .miniCellSelected {
@@ -655,11 +459,11 @@
 }
 .miniNum {
   font-family: 'Space Mono', monospace;
-  font-size: .8rem;
+  font-size: .6rem;
   color: var(--white);
 }
 .miniNumPast { color: var(--muted); }
-.miniNumBooked { color: #050507; }
+.miniNumBooked { color: #ff5f5f; }
 .miniNumUnavail { color: var(--muted); }
 .miniNumToday { color: var(--neon); }
 .miniNumSelected { color: var(--amber); }
@@ -924,3 +728,23 @@
   transition: opacity .2s;
 }
 .ownerEditSaveBtn:hover { opacity: .85; }
+
+/* ── Pending booking pills ──────────────────────────────────────────
+   Shown only to the viewer who has a pending request on this date.
+   Muted amber styling distinguishes from the green "Book" pill so the
+   viewer knows their request is awaiting DJ response. */
+.bookBadgePending {
+  background: rgba(255, 184, 0, .14);
+  color: #ffb800;
+  border-color: rgba(255, 184, 0, .55);
+  cursor: default;
+}
+.bookBadgePending:hover {
+  background: rgba(255, 184, 0, .14);
+}
+.miniBookLabelPending {
+  background: rgba(255, 184, 0, .14) !important;
+  color: #ffb800 !important;
+  border-color: rgba(255, 184, 0, .55) !important;
+  cursor: default !important;
+}

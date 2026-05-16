@@ -155,6 +155,36 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const { user: currentUser } = useAuth();
   const [clubSelectedDate, setClubSelectedDate] = useState<string | null>(null);
   const [clubLoginGateDate, setClubLoginGateDate] = useState<string | null>(null);
+  // ── Pending bookings for the logged-in viewer with THIS DJ.
+  // We show "Pending" on the calendar (instead of "Book") for dates the
+  // current viewer already has a pending request on — only they see this;
+  // the date stays available for everyone else. Refetched whenever the
+  // viewer submits a new request via clubPendingRefreshKey. ───────────
+  const [clubPendingDates, setClubPendingDates] = useState<Set<string>>(new Set());
+  const [clubPendingRefreshKey, setClubPendingRefreshKey] = useState(0);
+  useEffect(() => {
+    if (!currentUser?.id || !data.id) {
+      setClubPendingDates(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: rows } = await supabase
+        .from('bookings')
+        .select('event_date')
+        .eq('dj_id', data.id)
+        .eq('requester_id', currentUser.id)
+        .eq('status', 'pending');
+      if (cancelled) return;
+      const set = new Set<string>();
+      (rows as { event_date: string | null }[] | null)?.forEach((r) => {
+        if (r.event_date) set.add(r.event_date);
+      });
+      setClubPendingDates(set);
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, data.id, clubPendingRefreshKey]);
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
@@ -850,6 +880,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 force12mo={forceCalendar12mo}
+                pendingDates={clubPendingDates}
               />
               {!isOwnProfile && clubSelectedDate && currentUser && (
                 <ClubBookingForm
@@ -866,7 +897,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     email: currentUser.email,
                     name: currentUser.name,
                   }}
-                  onClose={() => setClubSelectedDate(null)}
+                  onClose={() => {
+                    setClubSelectedDate(null);
+                    // Refresh pending dates — if the booker just submitted
+                    // a request, the new pending row should now show up
+                    // as "Pending" on the calendar instead of "Book".
+                    setClubPendingRefreshKey((k) => k + 1);
+                  }}
                 />
               )}
               {clubLoginGateDate !== null && (

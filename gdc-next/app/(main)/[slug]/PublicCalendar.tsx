@@ -73,6 +73,11 @@ interface Props {
   // Bump-counter from parent: each increase forces the calendar into
   // 12-month mode. Used by the Book Now banner button.
   force12mo?: number;
+  // Dates (YYYY-MM-DD) where the CURRENT logged-in viewer has a pending
+  // booking request with this DJ. Only these dates render a "Pending"
+  // label (instead of "Book") for the booker. Other viewers see "Book"
+  // because their pending set is different. Owners see the day normally.
+  pendingDates?: Set<string>;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -129,6 +134,7 @@ export default function PublicCalendar({
   onEmbedClick,
   onShareClick,
   force12mo,
+  pendingDates,
 }: Props) {
   const today = useMemo(() => new Date(), []);
   // For owner mode we maintain a local copy of bookingDays so quick-marks
@@ -438,6 +444,7 @@ export default function PublicCalendar({
           onOwnerEdit={setOwnerEditKey}
           onEmbedClick={onEmbedClick}
           onShareClick={onShareClick}
+          pendingDates={pendingDates}
         />
       )}
 
@@ -453,6 +460,7 @@ export default function PublicCalendar({
           isOwnProfile={isOwnProfile}
           onOwnerEdit={setOwnerEditKey}
           onOwnerQuickToggle={quickToggleUnavail}
+          pendingDates={pendingDates}
         />
       )}
 
@@ -499,6 +507,7 @@ function SingleMonthView({
   onOwnerEdit,
   onEmbedClick,
   onShareClick,
+  pendingDates,
 }: {
   year: number;
   month: number;
@@ -517,6 +526,9 @@ function SingleMonthView({
   onEmbedClick?: () => void;
   // Share Calendar button — visible to all visitors, opens share modal.
   onShareClick?: () => void;
+  // Viewer's own pending-request dates — render "Pending" pill instead
+  // of "Book" on these dates. Empty/undefined for logged-out or owner.
+  pendingDates?: Set<string>;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -600,16 +612,31 @@ function SingleMonthView({
       } else if (isUnavail) {
         inner = null; // no badge for unavail
       } else if (!isOwnProfile) {
-        // Open cell — show "Book Now" badge (owners don't book themselves)
-        inner = (
-          <div
-            className={styles.bookBadge}
-            onClick={(e) => onBookClick(key, e)}
-            role="button"
-          >
-            <span className={styles.bookBadgeText}>Book</span>
-          </div>
-        );
+        // Open cell — show "Book Now" badge OR "Pending" if the viewer
+        // already has a pending request on this date. The Pending pill
+        // is non-clickable (no double-booking the same date).
+        const isPendingForViewer = !!pendingDates?.has(key);
+        if (isPendingForViewer) {
+          inner = (
+            <div
+              className={`${styles.bookBadge} ${styles.bookBadgePending}`}
+              role="status"
+              aria-label="Booking pending"
+            >
+              <span className={styles.bookBadgeText}>Pending</span>
+            </div>
+          );
+        } else {
+          inner = (
+            <div
+              className={styles.bookBadge}
+              onClick={(e) => onBookClick(key, e)}
+              role="button"
+            >
+              <span className={styles.bookBadgeText}>Book</span>
+            </div>
+          );
+        }
       }
     }
 
@@ -803,6 +830,7 @@ function RollingMonthsView({
   isOwnProfile,
   onOwnerEdit,
   onOwnerQuickToggle,
+  pendingDates,
 }: {
   today: Date;
   bookingDays: BookingDays;
@@ -813,6 +841,7 @@ function RollingMonthsView({
   isOwnProfile: boolean;
   onOwnerEdit: (key: string) => void;
   onOwnerQuickToggle: (key: string) => void;
+  pendingDates?: Set<string>;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
   // Show min(window, 12) months — the window can be larger but the rolling
@@ -841,12 +870,14 @@ function RollingMonthsView({
       const isSelected = selectedDate === key;
       const isOpenFuture = !isPast && !isBooked && !isUnavail && !isToday;
 
+      const isPendingForViewer = !!pendingDates?.has(key) && isOpenFuture;
       // Owner mode: clicking any non-past day opens the edit modal.
-      // Booker mode: clicking an open future day starts a booking.
+      // Booker mode: clicking an open future day starts a booking,
+      // UNLESS they already have a pending request on that date.
       const ownerCanEdit = isOwnProfile && !isPast;
       const onCellClick = ownerCanEdit
         ? () => onOwnerEdit(key)
-        : (isOpenFuture ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
+        : (isOpenFuture && !isPendingForViewer ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
       const isClickable = !!onCellClick;
 
       const cellClasses = [styles.miniCell];
@@ -871,10 +902,14 @@ function RollingMonthsView({
           onClick={onCellClick}
         >
           <div className={numClasses.join(' ')}>{d}</div>
-          {/* Public visitor: show "BOOK" label on available future days
-              so visitors can grab a booking directly from the 12-month grid. */}
+          {/* Public visitor: BOOK pill on available days; PENDING pill
+              instead if this viewer already has a pending request. */}
           {!isOwnProfile && isOpenFuture && (
-            <div className={styles.miniBookLabel}>Book</div>
+            isPendingForViewer ? (
+              <div className={`${styles.miniBookLabel} ${styles.miniBookLabelPending}`}>Pending</div>
+            ) : (
+              <div className={styles.miniBookLabel}>Book</div>
+            )
           )}
           {ownerCanEdit && (
             <div className={styles.miniOwnerControls}>
