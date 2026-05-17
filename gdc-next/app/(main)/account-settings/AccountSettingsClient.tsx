@@ -40,17 +40,26 @@ interface BlockedUser {
   name: string;
 }
 
+interface SmsPrefsInit {
+  phone: string;
+  sms_enabled: boolean;
+  sms_notify_booking_request: boolean;
+  sms_notify_booking_status: boolean;
+  sms_notify_inbox_message: boolean;
+}
+
 interface Props {
   initialProfile: ProfileInit;
   currentEmail: string;
   initialBlocked: BlockedUser[];
+  initialSmsPrefs: SmsPrefsInit;
 }
 
 // Status object that drives the alert text under each save button.
 type Alert = { type: 'success' | 'error'; msg: string } | null;
 
 export default function AccountSettingsClient({
-  initialProfile, currentEmail, initialBlocked,
+  initialProfile, currentEmail, initialBlocked, initialSmsPrefs,
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
 
@@ -77,8 +86,7 @@ export default function AccountSettingsClient({
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwAlert, setPwAlert] = useState<Alert>(null);
+  const [pwSaving, setPwSaving] = useState(false);  const [pwAlert, setPwAlert] = useState<Alert>(null);
 
   // ── Venue (only used when isVenue) ────────────────────────────────
   const [venueName, setVenueName] = useState(initialProfile.venueName);
@@ -107,6 +115,18 @@ export default function AccountSettingsClient({
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [venueSaving, setVenueSaving] = useState(false);
   const [venueAlert, setVenueAlert] = useState<Alert>(null);
+
+  // ── SMS notifications ────────────────────────────────────────────
+  // Master toggle controls whether SMS is sent at all. Sub-toggles
+  // control which event types fire when the master is on. Phone re-uses
+  // the existing users.phone column.
+  const [smsPhone, setSmsPhone] = useState(initialSmsPrefs.phone);
+  const [smsEnabled, setSmsEnabled] = useState(initialSmsPrefs.sms_enabled);
+  const [smsBookingRequest, setSmsBookingRequest] = useState(initialSmsPrefs.sms_notify_booking_request);
+  const [smsBookingStatus, setSmsBookingStatus] = useState(initialSmsPrefs.sms_notify_booking_status);
+  const [smsInboxMessage, setSmsInboxMessage] = useState(initialSmsPrefs.sms_notify_inbox_message);
+  const [smsSaving, setSmsSaving] = useState(false);
+  const [smsAlert, setSmsAlert] = useState<Alert>(null);
 
   // ── Blocked users — local state so unblock removes from list ─────
   const [blocked, setBlocked] = useState<BlockedUser[]>(initialBlocked);
@@ -312,6 +332,47 @@ export default function AccountSettingsClient({
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       alert('Error: ' + msg);
+    }
+  }
+
+  async function saveSms() {
+    setSmsAlert(null);
+    // If they're enabling SMS but haven't entered a phone, block save —
+    // a master-on with no phone means we'd silently never send anything.
+    const trimmedPhone = smsPhone.trim();
+    if (smsEnabled && !trimmedPhone) {
+      setSmsAlert({ type: 'error', msg: 'Enter a phone number to enable text notifications.' });
+      return;
+    }
+    // Light validation: must have at least 10 digits if provided. Twilio
+    // does proper E.164 validation on send; this is just to catch typos.
+    if (trimmedPhone) {
+      const digits = trimmedPhone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        setSmsAlert({ type: 'error', msg: 'Please enter a valid phone number.' });
+        return;
+      }
+    }
+    setSmsSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({
+          phone: trimmedPhone || null,
+          sms_enabled: smsEnabled,
+          sms_notify_booking_request: smsBookingRequest,
+          sms_notify_booking_status: smsBookingStatus,
+          sms_notify_inbox_message: smsInboxMessage,
+        } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+      setSmsAlert({ type: 'success', msg: 'Notification preferences saved.' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setSmsAlert({ type: 'error', msg });
+    } finally {
+      setSmsSaving(false);
     }
   }
 
@@ -575,6 +636,87 @@ export default function AccountSettingsClient({
           onClick={savePassword}
         >
           {pwSaving ? 'Updating…' : 'Update Password'}
+        </button>
+      </div>
+
+      {/* ── Text Notifications ─────────────────────────────────────── */}
+      <div className={styles.card}>
+        <h2>Text Notifications</h2>
+        <p className={styles.cardHint}>
+          Get a text message when something happens. Standard message and
+          data rates may apply. We&apos;ll never share your number.
+        </p>
+
+        <div className={styles.smsToggleRow}>
+          <label className={styles.smsToggleLabel}>
+            <input
+              type="checkbox"
+              checked={smsEnabled}
+              onChange={(e) => setSmsEnabled(e.target.checked)}
+              className={styles.smsToggleCheckbox}
+            />
+            <span>Send me text notifications</span>
+          </label>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="sms-phone">Mobile Number</label>
+          <input
+            id="sms-phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="(555) 555-5555"
+            value={smsPhone}
+            onChange={(e) => setSmsPhone(e.target.value)}
+            autoComplete="tel"
+          />
+        </div>
+
+        <div className={smsEnabled ? styles.smsSubGroup : styles.smsSubGroupDisabled}>
+          <div className={styles.smsSubHeader}>Text me when…</div>
+          <label className={styles.smsSubRow}>
+            <input
+              type="checkbox"
+              checked={smsBookingRequest}
+              onChange={(e) => setSmsBookingRequest(e.target.checked)}
+              disabled={!smsEnabled}
+            />
+            <span>A new booking request comes in</span>
+          </label>
+          <label className={styles.smsSubRow}>
+            <input
+              type="checkbox"
+              checked={smsBookingStatus}
+              onChange={(e) => setSmsBookingStatus(e.target.checked)}
+              disabled={!smsEnabled}
+            />
+            <span>A booking is approved, denied, or countered</span>
+          </label>
+          <label className={styles.smsSubRow}>
+            <input
+              type="checkbox"
+              checked={smsInboxMessage}
+              onChange={(e) => setSmsInboxMessage(e.target.checked)}
+              disabled={!smsEnabled}
+            />
+            <span>I get a new inbox message</span>
+          </label>
+        </div>
+
+        <p className={styles.smsFinePrint}>
+          Reply <strong>STOP</strong> to any text to unsubscribe.
+          Reply <strong>HELP</strong> for help.
+        </p>
+
+        {smsAlert && <AlertBlock alert={smsAlert} />}
+
+        <button
+          type="button"
+          className={styles.saveBtn}
+          disabled={smsSaving}
+          onClick={saveSms}
+        >
+          {smsSaving ? 'Saving…' : 'Save Preferences'}
         </button>
       </div>
 

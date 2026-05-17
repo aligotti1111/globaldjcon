@@ -221,3 +221,88 @@
   border-color: var(--neon);
   color: var(--neon);
 }
+
+/* ── Text Notifications card ─────────────────────────────────────── */
+.cardHint {
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+}
+
+.smsToggleRow {
+  margin-bottom: 1.25rem;
+  padding: .75rem 1rem;
+  background: rgba(0, 245, 196, .04);
+  border: 1px solid rgba(0, 245, 196, .15);
+  border-radius: 6px;
+}
+.smsToggleLabel {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--white);
+  font-weight: 600;
+}
+.smsToggleCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--neon);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.smsSubGroup,
+.smsSubGroupDisabled {
+  margin: 1rem 0 1.25rem;
+  padding: .85rem 1rem;
+  background: rgba(10, 10, 16, .5);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: opacity .2s;
+}
+.smsSubGroupDisabled {
+  opacity: .45;
+}
+.smsSubHeader {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .7rem;
+}
+.smsSubRow {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .4rem 0;
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--white);
+}
+.smsSubRow input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--neon);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.smsSubRow input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+
+.smsFinePrint {
+  font-size: .72rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: .25rem 0 1rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
+}
+.smsFinePrint strong {
+  color: var(--white);
+  font-weight: 600;
+}
