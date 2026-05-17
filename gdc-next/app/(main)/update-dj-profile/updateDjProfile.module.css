@@ -1993,3 +1993,236 @@
   cursor: pointer;
   opacity: 1;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   MOBILE BREAKPOINT — phones ≤600px wide
+   Surgical overrides. Desktop styles above are untouched.
+   ────────────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Page shell — reclaim space eaten by desktop padding */
+  .card {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  .header {
+    margin-bottom: 1.25rem;
+  }
+  .header h1 {
+    font-size: 2.2rem;
+  }
+  .header p {
+    font-size: .6rem;
+    letter-spacing: .08em;
+  }
+  .headerRow {
+    margin-bottom: 1rem;
+  }
+
+  /* Tabs — keep horizontal but smaller */
+  .tabBtn {
+    padding: .55rem .35rem;
+    font-size: .58rem;
+  }
+
+  /* Form groups — slightly tighter */
+  .formGroup {
+    margin-bottom: 1.15rem;
+  }
+  .formGroup label {
+    font-size: .6rem;
+  }
+
+  /* Spec box (Mobile Party Types / Music Genres) —
+     remove the desktop left indent that pushed content off-screen */
+  .specBox {
+    margin-left: 0;
+    padding: .65rem .6rem .75rem;
+    border-left-width: 1px;
+  }
+  .checkboxGrid {
+    gap: .3rem;
+  }
+
+  /* Settings rows — let label/control stack instead of cramming inline */
+  .settingLabelWrap {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .settingSelect,
+  .settingNumber {
+    min-width: 0;
+  }
+  .settingRow {
+    gap: .55rem;
+  }
+
+  /* Avatar header card */
+  .avatarTop {
+    padding: 1rem;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .avatarCircle {
+    width: 60px;
+    height: 60px;
+    font-size: 1.2rem;
+  }
+  .avatarTopInfo strong {
+    font-size: .85rem;
+  }
+  .avatarTopInfo span {
+    font-size: .58rem;
+  }
+
+  /* Section cards (Embed, etc.) inherit card padding implicitly via parent */
+  .sectionHeader {
+    padding: .85rem 1rem;
+  }
+  .sectionBody {
+    padding: 1rem;
+  }
+  .sectionTitle {
+    font-size: 1rem;
+  }
+
+  /* Package editor cards */
+  .pkgCard {
+    padding: .75rem;
+  }
+  .pkgHeaderTitle {
+    font-size: 1.4rem;
+  }
+  .innerCatTabs {
+    flex-wrap: wrap;
+  }
+  .innerCatTab {
+    flex: 1 1 calc(50% - 4px);
+    font-size: .58rem;
+    padding: .45rem .35rem;
+  }
+  .pkgFieldLabel {
+    font-size: .6rem;
+  }
+
+  /* RTE toolbar — wrap on small screens */
+  .rteToolbar {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Price / setup / cocktail rows — already flex-wrap, just tighten */
+  .priceRowLabel {
+    min-width: 0;
+  }
+  .priceInput {
+    max-width: none;
+  }
+
+  /* Photo upload */
+  .uploadBox {
+    padding: 1rem .5rem;
+    min-height: 80px;
+  }
+
+  /* Photos gallery — keep 2 columns but tighter gap */
+  .galleryGrid {
+    gap: .6rem;
+  }
+
+  /* Calendar — month cells need to fit 7 across in ~340px */
+  .calMonthWrap {
+    padding: .4rem;
+  }
+  .calMonthHeader {
+    font-size: .62rem;
+  }
+  .calGrid {
+    gap: 2px;
+  }
+  .calCell {
+    min-height: 44px;
+    padding: 3px 1px 1px;
+  }
+  .calCellNum {
+    font-size: .65rem;
+  }
+  .calCellQuickBtn,
+  .calCellEditBtn {
+    font-size: .6rem;
+  }
+  .calEditedDot {
+    font-size: .34rem;
+  }
+  .calLabel {
+    font-size: .45rem;
+  }
+  .calLegendItem {
+    font-size: .5rem;
+  }
+
+  /* Day editor modal */
+  .modalBackdrop {
+    padding: 1rem;
+  }
+  .modalInner {
+    padding: 1.25rem;
+    border-radius: 10px;
+  }
+  .dayEditorBox {
+    padding: 1.25rem;
+  }
+  .dayEditorDate {
+    font-size: .95rem;
+  }
+  .modalTimeRow {
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .modalActions {
+    flex-direction: column-reverse;
+  }
+  .modalCancelBtn,
+  .modalSaveBtn,
+  .dayEditorCancelBtn,
+  .dayEditorSaveBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Avatar crop modal */
+  .cropModalInner {
+    padding: 1rem;
+    width: 100%;
+  }
+  .cropModalInner h3 {
+    font-size: 1.35rem;
+  }
+  .cropBtnsRow {
+    flex-direction: column-reverse;
+  }
+  .cropBtnCancel,
+  .cropBtnApply {
+    width: 100%;
+  }
+
+  /* Rate pills — keep one row but smaller */
+  .rateTypePill {
+    padding: .5rem .9rem;
+    font-size: .65rem;
+  }
+
+  /* Testimonials — already a card, just tighten */
+  .testimonialCard {
+    padding: 1rem;
+  }
+
+  /* Submit button — full width on mobile */
+  .submitBtn {
+    width: 100%;
+  }
+
+  /* Equip option blocks — already vertical, no change needed */
+  .equipOption {
+    padding: .85rem;
+  }
+}
