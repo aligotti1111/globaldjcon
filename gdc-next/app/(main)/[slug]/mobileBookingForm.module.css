@@ -484,7 +484,7 @@
 .photoLightbox {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 100000;
   background: rgba(0, 0, 0, .88);
   display: flex;
   align-items: center;
@@ -493,12 +493,15 @@
 }
 .photoLightboxInner {
   position: relative;
-  max-width: 90vw;
+  display: inline-block;
+  max-width: min(500px, 90vw);
   max-height: 85vh;
 }
 .photoLightboxImg {
-  max-width: 100%;
+  max-width: min(500px, 90vw);
   max-height: 85vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--border);
