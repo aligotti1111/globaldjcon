@@ -46,10 +46,14 @@
 
 /* ─── Tabs ─── */
 .tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   margin-bottom: 1.5rem;
+  max-width: 100%;
   overflow-x: auto;
 }
 .tabBtn {
@@ -57,22 +61,28 @@
   font-size: .58rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  padding: .7rem 1rem;
+  padding: .6rem 1rem;
   background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
   color: var(--muted);
   cursor: pointer;
-  transition: all .2s;
-  margin-bottom: -1px;
+  transition: background .15s, color .15s, border-color .15s;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 .tabBtn:hover {
   color: var(--white);
+  background: rgba(255, 255, 255, .03);
 }
 .tabBtnActive {
   color: var(--neon);
-  border-bottom-color: var(--neon);
+  background: rgba(0, 245, 196, .08);
+  border-color: rgba(0, 245, 196, .4);
+}
+.tabBtnActive:hover {
+  background: rgba(0, 245, 196, .12);
+  color: var(--neon);
 }
 
 /* ─── Empty states ─── */
