@@ -21,7 +21,7 @@ export type SmsEvent =
   | 'inbox_message';     // either side — new inbox message
 
 interface SmsPrefs {
-  phone: string | null;
+  sms_phone: string | null;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
   sms_notify_booking_status: boolean;
@@ -45,7 +45,7 @@ async function loadSmsPrefs(userId: string): Promise<SmsPrefs | null> {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('users')
-      .select('phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
+      .select('sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
       .eq('id', userId)
       .maybeSingle<SmsPrefs>();
     if (error || !data) return null;
@@ -63,6 +63,9 @@ async function loadSmsPrefs(userId: string): Promise<SmsPrefs | null> {
 // userId: who to text (the recipient, not the sender)
 // event: which sub-toggle to check
 // body: the message text (already formatted, including any "Reply STOP")
+//
+// Future: when Twilio is wired, replace the console.log block with a
+// real send. No caller changes required.
 export async function sendSmsNotification(
   userId: string,
   event: SmsEvent,
@@ -70,7 +73,7 @@ export async function sendSmsNotification(
 ): Promise<void> {
   const prefs = await loadSmsPrefs(userId);
   if (!prefs) return;
-  if (!prefs.phone) return;
+  if (!prefs.sms_phone) return;
   if (!prefs.sms_enabled) return;
   if (!prefs[subToggleCol(event)]) return;
 
@@ -78,7 +81,7 @@ export async function sendSmsNotification(
   // else with status 21211. Users will enter "(555) 555-5555", "555-555-5555",
   // "+1 555 555 5555", etc. — strip everything non-digit, then prepend +1
   // if it's 10 digits (US default) or + if it's 11+ digits.
-  const digits = prefs.phone.replace(/\D/g, '');
+  const digits = prefs.sms_phone.replace(/\D/g, '');
   let to: string;
   if (digits.length === 10) {
     to = `+1${digits}`;
@@ -88,7 +91,7 @@ export async function sendSmsNotification(
     // International — preserve as-is with leading +
     to = `+${digits}`;
   } else {
-    console.warn('[sms] phone too short to dial, skipping:', prefs.phone);
+    console.warn('[sms] phone too short to dial, skipping:', prefs.sms_phone);
     return;
   }
 
