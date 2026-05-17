@@ -19,7 +19,7 @@ import QuoteModal from './QuoteModal';
 import HistoryModal from './HistoryModal';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
-import { bookingsOverlap, formatShortDate, timeToMins } from './helpers';
+import { bookingsOverlap, formatShortDate, formatTime, timeToMins, MOB_EVENT_LABELS } from './helpers';
 import type { BookingRow } from './page';
 
 interface CurrentUser {
@@ -893,35 +893,86 @@ function FlatList({
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
+  // Track which bookings are currently expanded. Default: only the first
+  // booking in the list. Clicking a collapsed banner expands it; clicking
+  // an expanded card's collapse chevron collapses it back to a banner.
+  // First-booking default is computed from the bookings list — when the
+  // list changes (tab switch, action), the first id becomes the default.
+  const firstId = bookings[0]?.id;
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(firstId ? [firstId] : []),
+  );
+
+  // If the list mutates (e.g. a booking gets approved and falls out of the
+  // Pending tab), make sure the new first booking is expanded by default.
+  // We don't useEffect — that'd close everything on every re-render. Instead
+  // we patch the set inline if the first id changed AND the user hasn't
+  // explicitly opened/closed it yet. Simpler: if expandedIds is empty AND
+  // there's a first booking, seed it.
+  if (firstId && expandedIds.size === 0) {
+    expandedIds.add(firstId);
+  }
+
+  function toggle(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <>
       {bookings.map((b) => {
+        if (!expandedIds.has(b.id)) {
+          return (
+            <CollapsibleBanner
+              key={b.id}
+              booking={b}
+              isIncoming={isIncoming}
+              onClick={() => toggle(b.id)}
+            />
+          );
+        }
         // Pick card by booking_type. Treat unknown / null as 'mobile' for
         // legacy rows (vanilla didn't always set booking_type early on).
         const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
         return (
-          <Card
-            key={b.id}
-            booking={b}
-            isIncoming={isIncoming}
-            orderNum={null}
-            isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
-            djZip={currentUser.zip}
-            djTravelDistance={currentUser.travelDistance}
-            onApprove={onApprove}
-            onDeny={onDeny}
-            onCancel={onCancel}
+          <div key={b.id} className={styles.expandableWrap}>
+            <Card
+              booking={b}
+              isIncoming={isIncoming}
+              orderNum={null}
+              isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
+              djZip={currentUser.zip}
+              djTravelDistance={currentUser.travelDistance}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              onCancel={onCancel}
               onCancelIncoming={onCancelIncoming}
-            onBlock={onBlock}
-            onUnblock={onUnblock}
-            onCounter={onCounter}
-            onSendQuote={onSendQuote}
+              onBlock={onBlock}
+              onUnblock={onUnblock}
+              onCounter={onCounter}
+              onSendQuote={onSendQuote}
               onSendDraftQuote={onSendDraftQuote}
               onViewHistory={onViewHistory}
-            onAcceptCounter={onAcceptCounter}
-            onDeclineCounter={onDeclineCounter}
-            onMessage={onMessage}
-          />
+              onAcceptCounter={onAcceptCounter}
+              onDeclineCounter={onDeclineCounter}
+              onMessage={onMessage}
+            />
+            <button
+              type="button"
+              className={styles.collapseBtn}
+              onClick={() => toggle(b.id)}
+              aria-label="Collapse booking"
+              title="Collapse"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            </button>
+          </div>
         );
       })}
     </>
@@ -932,6 +983,12 @@ function FlatList({
 // requests for the same date, they're rendered in a wrapper card showing
 // the count + an overlap warning if their times conflict + a time-gap
 // label between the two events when only two bookings exist.
+//
+// Collapsible behavior: each day-group is treated as a single expandable
+// unit. By default the FIRST day-group is expanded; the rest collapse into
+// individual banners (one banner per booking, even within the same day).
+// Clicking any banner expands the entire day-group at once — matching the
+// "overlap rule": if one booking on a day is open, ALL bookings that day are.
 function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
@@ -955,9 +1012,49 @@ function SameDayGrouped({
     (a, b) => new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime()
   );
 
+  // Group-level expansion state. Keyed by event_date (the group key).
+  // Default: first group expanded.
+  const firstGroupKey = sortedGroups[0]?.[0]?.event_date || sortedGroups[0]?.[0]?.id || null;
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(firstGroupKey ? [firstGroupKey] : []),
+  );
+  if (firstGroupKey && expandedGroups.size === 0) {
+    expandedGroups.add(firstGroupKey);
+  }
+
+  function toggleGroup(key: string) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <>
       {sortedGroups.map((group) => {
+        const groupKey = group[0].event_date || group[0].id;
+        const isExpanded = expandedGroups.has(groupKey);
+
+        // Collapsed state — render a banner for each booking in the group.
+        // Clicking any banner expands the whole group (overlap rule).
+        if (!isExpanded) {
+          return (
+            <div key={groupKey} className={styles.collapsedGroup}>
+              {group.map((b) => (
+                <CollapsibleBanner
+                  key={b.id}
+                  booking={b}
+                  isIncoming={isIncoming}
+                  onClick={() => toggleGroup(groupKey)}
+                />
+              ))}
+            </div>
+          );
+        }
+
+        // Expanded state — original rendering logic.
         const hasMultiple = group.length > 1;
         const hasOverlap =
           hasMultiple &&
@@ -1017,11 +1114,32 @@ function SameDayGrouped({
           );
         });
 
-        if (!hasMultiple) return cards;
+        // Single-booking day, expanded: render the card with a collapse chevron
+        // appended (matches FlatList's expanded-card UX).
+        if (!hasMultiple) {
+          return (
+            <div key={groupKey} className={styles.expandableWrap}>
+              {cards}
+              <button
+                type="button"
+                className={styles.collapseBtn}
+                onClick={() => toggleGroup(groupKey)}
+                aria-label="Collapse booking"
+                title="Collapse"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              </button>
+            </div>
+          );
+        }
 
+        // Multi-booking day, expanded: original wrapper + a collapse chevron
+        // on the group header.
         return (
           <div
-            key={group[0].id}
+            key={groupKey}
             className={`${styles.groupWrap} ${hasOverlap ? styles.groupWrapOverlap : ''}`}
           >
             <div className={`${styles.groupHeader} ${hasOverlap ? styles.groupHeaderOverlap : ''}`}>
@@ -1035,6 +1153,17 @@ function SameDayGrouped({
                   ? `${group.length} OVERLAPPING REQUESTS FOR ${formatShortDate(group[0].event_date).toUpperCase()} — ORDER RECEIVED`
                   : `${group.length} REQUESTS FOR ${formatShortDate(group[0].event_date).toUpperCase()} — TIMES DON'T OVERLAP, CAN ACCEPT BOTH`}
               </span>
+              <button
+                type="button"
+                className={styles.collapseBtnInline}
+                onClick={() => toggleGroup(groupKey)}
+                aria-label="Collapse group"
+                title="Collapse"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              </button>
             </div>
             {timeGapLabel && (
               <div className={styles.logisticsBar}>
@@ -1052,5 +1181,76 @@ function SameDayGrouped({
         );
       })}
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CollapsibleBanner — single-line summary for collapsed bookings.
+//
+// Content varies by booking type AND direction:
+//   - Incoming Club/Bar DJ: date · start–end time · venue
+//   - Incoming Mobile DJ:   date · start–end time · event type
+//   - Outgoing (host/venue): date · start time
+//
+// Clicking anywhere on the banner triggers onClick (parent toggles the
+// expanded state). Chevron icon on the right signals it's expandable.
+// ─────────────────────────────────────────────────────────────────────────
+
+function CollapsibleBanner({
+  booking,
+  isIncoming,
+  onClick,
+}: {
+  booking: BookingRow;
+  isIncoming: boolean;
+  onClick: () => void;
+}) {
+  const date = formatShortDate(booking.event_date).toUpperCase();
+  const startTime = formatTime(booking.start_time);
+  const endTime = formatTime(booking.end_time);
+  const timeStr = endTime ? `${startTime}–${endTime}` : startTime;
+
+  // Build the right-hand label per role/section.
+  let label = '';
+  if (!isIncoming) {
+    // Outgoing — just date + start time per spec.
+    label = startTime ? `${date} · ${startTime}` : date;
+  } else if (booking.booking_type === 'club') {
+    // Incoming club: date · start–end · venue
+    const venue = booking.venue_name?.trim() || 'Venue TBD';
+    label = `${date} · ${timeStr} · ${venue}`;
+  } else {
+    // Incoming mobile: date · start–end · event type
+    const eventTypeRaw = booking.event_type || '';
+    const eventLabel =
+      (MOB_EVENT_LABELS as Record<string, string>)[eventTypeRaw] ||
+      (eventTypeRaw
+        ? eventTypeRaw.charAt(0).toUpperCase() + eventTypeRaw.slice(1)
+        : 'Event');
+    label = `${date} · ${timeStr} · ${eventLabel}`;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={styles.collapsedBanner}
+      aria-label={`Expand booking: ${label}`}
+    >
+      <span className={styles.collapsedBannerText}>{label}</span>
+      <svg
+        className={styles.collapsedBannerChevron}
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
   );
 }

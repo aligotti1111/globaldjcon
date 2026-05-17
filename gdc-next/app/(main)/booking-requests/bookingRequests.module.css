@@ -837,3 +837,110 @@
   text-transform: uppercase;
   color: var(--white);
 }
+
+/* ── Collapsible booking banners ──────────────────────────────────── */
+/* Wrapper around an expanded card. Lets us position a collapse chevron
+   in the top-right corner without modifying the card components. */
+.expandableWrap {
+  position: relative;
+}
+.collapseBtn {
+  position: absolute;
+  top: .85rem;
+  right: .85rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.collapseBtn:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .25);
+}
+
+/* Collapse chevron rendered inline (inside the same-day group header) */
+.collapseBtnInline {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.collapseBtnInline:hover {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .25);
+  background: rgba(255, 255, 255, .04);
+}
+
+/* Container for a collapsed day-group — stacks its banners with a hairline
+   separator so they read as a group without the noisy overlap-warning
+   chrome that the expanded version uses. */
+.collapsedGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* The banner itself. Full width, one line, clickable. */
+.collapsedBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+  padding: .85rem 1rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  text-align: left;
+  transition: background .15s, border-color .15s, color .15s;
+  margin-bottom: 8px;
+}
+.collapsedBanner:hover {
+  background: var(--card);
+  border-color: rgba(255, 255, 255, .25);
+}
+.collapsedBanner:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+.collapsedBannerText {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.collapsedBannerChevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: color .15s, transform .15s;
+}
+.collapsedBanner:hover .collapsedBannerChevron {
+  color: var(--white);
+}
+/* Inside collapsedGroup, banners shouldn't double-stack margin */
+.collapsedGroup .collapsedBanner {
+  margin-bottom: 0;
+}
