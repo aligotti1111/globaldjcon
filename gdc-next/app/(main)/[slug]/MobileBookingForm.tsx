@@ -305,6 +305,34 @@ export default function MobileBookingForm({
         console.warn('DJ email failed:', e);
       }
 
+      // Confirmation copy to the booker — gives them a record of the
+      // request they just sent and confirms it landed. Mirrors the
+      // ClubBookingForm pattern. Best-effort; failures don't surface to
+      // the user since the booking itself already succeeded above.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_request_confirmation',
+            requesterUserId: currentUser.id,
+            requesterName: currentUser.name,
+            djName: dj.name,
+            eventDate: dateKey,
+            eventType: eventType === 'other'
+              ? (eventTypeOther.trim() || 'other')
+              : eventType,
+            packageTitle: selectedPkg?.title || null,
+            venueName: venueName.trim(),
+            venueAddress: venueAddress.trim(),
+            startTime,
+            endTime: endTime || null,
+          }),
+        });
+      } catch {
+        // Best-effort
+      }
+
       setSuccessState({ isQuote: finalPrice.isQuote });
       // Auto-dismiss the form after a short delay (matches ClubBookingForm)
       setTimeout(() => onClose(), 2500);
