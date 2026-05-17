@@ -254,11 +254,6 @@
   grid-template-columns: 1fr;
   gap: .75rem;
 }
-@media (min-width: 760px) {
-  .packagesGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
 .packageCard {
   position: relative;
   background: var(--deep);
