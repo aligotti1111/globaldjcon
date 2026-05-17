@@ -540,3 +540,23 @@
   background: rgba(61, 220, 132, .08);
   color: #3ddc84;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   MOBILE BREAKPOINT — phones ≤600px wide
+   Prevents the "Available ✓" status from being pushed off-screen by
+   allowing the URL preview row to wrap.
+   ────────────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .urlPreviewRow {
+    flex-wrap: wrap;
+  }
+  .urlPreviewInput {
+    /* Force a min width so prefix + input share the first line, then
+       status wraps to its own line below. */
+    flex: 1 1 140px;
+  }
+  .urlStatus {
+    /* Push status to its own line on mobile */
+    flex: 1 1 100%;
+  }
+}
