@@ -1,9 +1,13 @@
 // SMS notification helper.
 //
-// Looks up the user's SMS preferences and (eventually) sends a Twilio
-// text. Until Twilio is configured, this is a no-op that console.logs
-// what WOULD have been sent — lets us ship the UI + DB changes safely
-// and bolt on Twilio later without touching any callers.
+// Looks up the user's SMS preferences, normalizes the phone to E.164, and
+// sends via Twilio. Gates: user must have a phone on file, sms_enabled
+// must be true, AND the per-event sub-toggle must be true. Any miss
+// silently returns — SMS is best-effort, never blocks the email path.
+//
+// Env vars (set in Netlify): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+// TWILIO_PHONE_NUMBER. If creds are absent (local dev), falls back to
+// console.log so dev work isn't blocked.
 //
 // Called from /api/send-email/route.ts AFTER the email is sent, so each
 // event fires both channels in parallel. SMS failures are swallowed —
@@ -59,9 +63,6 @@ async function loadSmsPrefs(userId: string): Promise<SmsPrefs | null> {
 // userId: who to text (the recipient, not the sender)
 // event: which sub-toggle to check
 // body: the message text (already formatted, including any "Reply STOP")
-//
-// Future: when Twilio is wired, replace the console.log block with a
-// real send. No caller changes required.
 export async function sendSmsNotification(
   userId: string,
   event: SmsEvent,
@@ -73,33 +74,46 @@ export async function sendSmsNotification(
   if (!prefs.sms_enabled) return;
   if (!prefs[subToggleCol(event)]) return;
 
-  // ── Twilio send goes here ─────────────────────────────────────────
-  // For now: log what we WOULD have sent. Replace with Twilio call when
-  // ready. Keep the gating above intact — that's the user-facing
-  // contract.
-  console.log('[sms] (stub — Twilio not yet configured) would send:', {
-    to: prefs.phone,
-    event,
-    body,
-  });
-  // ──────────────────────────────────────────────────────────────────
+  // Normalize the phone to E.164 (+15551234567). Twilio rejects anything
+  // else with status 21211. Users will enter "(555) 555-5555", "555-555-5555",
+  // "+1 555 555 5555", etc. — strip everything non-digit, then prepend +1
+  // if it's 10 digits (US default) or + if it's 11+ digits.
+  const digits = prefs.phone.replace(/\D/g, '');
+  let to: string;
+  if (digits.length === 10) {
+    to = `+1${digits}`;
+  } else if (digits.length === 11 && digits.startsWith('1')) {
+    to = `+${digits}`;
+  } else if (digits.length >= 10) {
+    // International — preserve as-is with leading +
+    to = `+${digits}`;
+  } else {
+    console.warn('[sms] phone too short to dial, skipping:', prefs.phone);
+    return;
+  }
 
-  // Example shape when Twilio is added:
-  //
-  // const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  // const authToken  = process.env.TWILIO_AUTH_TOKEN;
-  // const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-  // if (!accountSid || !authToken || !fromNumber) return;
-  // try {
-  //   const twilio = (await import('twilio')).default(accountSid, authToken);
-  //   await twilio.messages.create({
-  //     to: prefs.phone,
-  //     from: fromNumber,
-  //     body,
-  //   });
-  // } catch (e) {
-  //   console.error('[sms] Twilio send failed:', e);
-  // }
+  // ── Twilio send ───────────────────────────────────────────────────
+  // Env vars set in Netlify: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+  // TWILIO_PHONE_NUMBER. If any are missing (e.g., local dev without a
+  // .env), fall back to console.log so dev work isn't blocked.
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+  if (!accountSid || !authToken || !fromNumber) {
+    console.log('[sms] Twilio creds missing — would send:', { to, event, body });
+    return;
+  }
+  try {
+    const twilioMod = await import('twilio');
+    const client = twilioMod.default(accountSid, authToken);
+    const msg = await client.messages.create({ to, from: fromNumber, body });
+    console.log('[sms] sent:', { to, event, sid: msg.sid });
+  } catch (e) {
+    // Best-effort — Twilio failures shouldn't break the email/booking flow.
+    // Common error codes: 21211 (invalid To), 21408 (geo permission denied),
+    // 21610 (unsubscribed via STOP), 30007 (carrier filtered, e.g., no A2P).
+    console.error('[sms] Twilio send failed:', e);
+  }
 }
 
 // Compose the standard "Reply STOP to unsubscribe" footer.
