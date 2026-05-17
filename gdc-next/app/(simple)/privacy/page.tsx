@@ -20,11 +20,12 @@ export default function PrivacyPage() {
 
       <div className={styles.page}>
         <h1 className={styles.title}>Privacy Policy</h1>
-        <div className={styles.updated}>Last updated: April 8, 2026</div>
+        <div className={styles.updated}>Last updated: May 17, 2026</div>
 
         <div className={styles.section}>
           <p>
             Global DJ Connect (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) operates globaldjconnect.com.
+            Global DJ Connect is a brand of Source Playlist LLC, the legal entity that owns and operates this platform.
             This Privacy Policy explains how we collect, use, and protect your information when you use our platform.
           </p>
 
@@ -35,6 +36,7 @@ export default function PrivacyPage() {
             <li>Profile information such as location, bio, photos, and social media links</li>
             <li>Booking request details including event date, venue, and contact information</li>
             <li>Messages sent through our platform</li>
+            <li>Mobile phone number, if you choose to opt in to SMS text notifications</li>
             <li>Payment-related information (we do not store full card details)</li>
           </ul>
           <p>
@@ -53,11 +55,35 @@ export default function PrivacyPage() {
             <li>Comply with legal obligations</li>
           </ul>
 
+          <h2>SMS Text Message Notifications</h2>
+          <p>
+            If you opt in to SMS notifications in your account settings, we will send you text messages
+            about events on the platform you have chosen to be notified about, such as new booking requests,
+            booking status changes, and new inbox messages. SMS opt-in is entirely optional and disabled
+            by default.
+          </p>
+          <p>
+            By providing your mobile number and enabling SMS notifications, you consent to receive automated
+            text messages from us at that number. Message frequency varies based on platform activity.
+            Message and data rates may apply. We do not share your mobile number with third parties or
+            affiliates for marketing or promotional purposes.
+          </p>
+          <p>
+            <strong>How to opt out:</strong> You can stop SMS messages at any time by replying{' '}
+            <strong>STOP</strong> to any text we send, or by turning off text notifications in your account
+            settings. Reply <strong>HELP</strong> to any text for help, or contact us at{' '}
+            <a href="mailto:info@globaldjconnect.com">info@globaldjconnect.com</a>.
+          </p>
+          <p>
+            SMS messages are delivered through Twilio, our communications service provider. Mobile carriers
+            are not liable for delayed or undelivered messages.
+          </p>
+
           <h2>Sharing Your Information</h2>
           <p>We do not sell your personal information. We may share your information with:</p>
           <ul>
             <li>Other users as necessary to facilitate bookings (e.g., your name and contact details shared with a DJ you book)</li>
-            <li>Service providers who help us operate the platform (e.g., email delivery, hosting)</li>
+            <li>Service providers who help us operate the platform, including Supabase (database and authentication), Resend (email delivery), Twilio (SMS delivery), and Netlify (hosting)</li>
             <li>Law enforcement or government agencies if required by law</li>
           </ul>
 
@@ -110,6 +136,8 @@ export default function PrivacyPage() {
           <h2>Contact Us</h2>
           <p>
             If you have any questions about this Privacy Policy, please contact us at:
+            <br />
+            Source Playlist LLC (d/b/a Global DJ Connect)
             <br />
             <a href="mailto:info@globaldjconnect.com">info@globaldjconnect.com</a>
             <br />
