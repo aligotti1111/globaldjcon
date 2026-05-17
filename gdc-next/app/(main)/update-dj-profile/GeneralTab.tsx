@@ -12,7 +12,7 @@
 // country, zip, travel distance, dj start year, bio, phone. Avatar upload
 // + crop is also here (AvatarCrop modal mounts on file select).
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
@@ -395,6 +395,11 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           className={styles.input}
         />
       </div>
+
+      {/* Text Notifications — opt-in SMS to the phone above. Self-contained:
+          loads + saves its own DB columns independently of the main profile
+          save. Same behavior as the card on /account-settings. */}
+      <SmsNotificationsBlock userId={userId} />
     </div>
   );
 }
@@ -787,6 +792,276 @@ function PasswordChangeBlock() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SmsNotificationsBlock — opt-in SMS preferences card on the General tab.
+//
+// Self-contained: loads its own state from users (phone + 4 sms_* columns)
+// and saves directly. Independent of the parent's profile save flow, so a
+// DJ can toggle SMS without interacting with the rest of the form, and
+// vice-versa.
+//
+// Phone source of truth is users.phone — same column displayed/edited in
+// the phone field above this card. We don't re-render the phone field here
+// to avoid two inputs writing the same column. We only show a hint pointing
+// up to the phone field.
+//
+// Mirrors the SMS card on /account-settings, just embedded in the DJ flow.
+// ─────────────────────────────────────────────────────────────────────────
+
+interface SmsPrefsState {
+  sms_enabled: boolean;
+  sms_notify_booking_request: boolean;
+  sms_notify_booking_status: boolean;
+  sms_notify_inbox_message: boolean;
+}
+
+function SmsNotificationsBlock({ userId }: { userId: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [prefs, setPrefs] = useState<SmsPrefsState>({
+    sms_enabled: false,
+    sms_notify_booking_request: true,
+    sms_notify_booking_status: true,
+    sms_notify_inbox_message: true,
+  });
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  // Load current prefs on mount. Failures are silent — the form just shows
+  // defaults, user can save to set their preference.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('users')
+          .select('sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
+          .eq('id', userId)
+          .maybeSingle<SmsPrefsState>();
+        if (cancelled) return;
+        if (data) {
+          setPrefs({
+            sms_enabled: !!data.sms_enabled,
+            sms_notify_booking_request: data.sms_notify_booking_request !== false,
+            sms_notify_booking_status: data.sms_notify_booking_status !== false,
+            sms_notify_inbox_message: data.sms_notify_inbox_message !== false,
+          });
+        }
+      } catch (e) {
+        console.warn('[SmsNotificationsBlock] load failed:', e);
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  function update<K extends keyof SmsPrefsState>(field: K, value: SmsPrefsState[K]) {
+    setPrefs((prev) => ({ ...prev, [field]: value }));
+    setFeedback(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({
+          sms_enabled: prefs.sms_enabled,
+          sms_notify_booking_request: prefs.sms_notify_booking_request,
+          sms_notify_booking_status: prefs.sms_notify_booking_status,
+          sms_notify_inbox_message: prefs.sms_notify_inbox_message,
+        } as unknown as never)
+        .eq('id', userId);
+      if (error) throw error;
+      setFeedback({ msg: 'Notification preferences saved.', ok: true });
+    } catch (e) {
+      setFeedback({
+        msg: e instanceof Error ? e.message : 'Failed to save',
+        ok: false,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div
+      style={{
+        marginTop: '1.5rem',
+        padding: '1.25rem',
+        background: 'rgba(10, 10, 16, .4)',
+        border: '1px solid var(--border)',
+        borderRadius: '8px',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: '1.4rem',
+          letterSpacing: '.04em',
+          color: 'var(--white)',
+          marginBottom: '.4rem',
+        }}
+      >
+        Text Notifications
+      </div>
+      <p
+        style={{
+          fontSize: '.78rem',
+          color: 'var(--muted)',
+          lineHeight: 1.5,
+          margin: '0 0 1rem',
+        }}
+      >
+        Get a text when a booking request comes in, a booking status
+        changes, or you receive an inbox message. Texts go to the phone
+        number entered above. Standard message and data rates may apply.
+      </p>
+
+      {/* Master toggle */}
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '.65rem',
+          padding: '.7rem .85rem',
+          background: 'rgba(0, 245, 196, .04)',
+          border: '1px solid rgba(0, 245, 196, .15)',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          marginBottom: '1rem',
+          fontSize: '.85rem',
+          color: 'var(--white)',
+          fontWeight: 600,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={prefs.sms_enabled}
+          onChange={(e) => update('sms_enabled', e.target.checked)}
+          style={{
+            width: '18px',
+            height: '18px',
+            accentColor: 'var(--neon)',
+            cursor: 'pointer',
+          }}
+        />
+        <span>Send me text notifications</span>
+      </label>
+
+      {/* Sub-toggles */}
+      <div
+        style={{
+          padding: '.85rem 1rem',
+          background: 'rgba(10, 10, 16, .5)',
+          border: '1px solid var(--border)',
+          borderRadius: '6px',
+          opacity: prefs.sms_enabled ? 1 : 0.45,
+          transition: 'opacity .2s',
+          marginBottom: '1rem',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.58rem',
+            letterSpacing: '.1em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+            marginBottom: '.7rem',
+          }}
+        >
+          Text me when…
+        </div>
+        {[
+          { key: 'sms_notify_booking_request' as const, label: 'A new booking request comes in' },
+          { key: 'sms_notify_booking_status' as const,  label: 'A booking is approved, denied, or countered' },
+          { key: 'sms_notify_inbox_message' as const,   label: 'I get a new inbox message' },
+        ].map(({ key, label }) => (
+          <label
+            key={key}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '.65rem',
+              padding: '.4rem 0',
+              cursor: prefs.sms_enabled ? 'pointer' : 'not-allowed',
+              fontSize: '.85rem',
+              color: 'var(--white)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={prefs[key]}
+              onChange={(e) => update(key, e.target.checked)}
+              disabled={!prefs.sms_enabled}
+              style={{
+                width: '16px',
+                height: '16px',
+                accentColor: 'var(--neon)',
+                cursor: prefs.sms_enabled ? 'pointer' : 'not-allowed',
+              }}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+
+      <p
+        style={{
+          fontSize: '.72rem',
+          color: 'var(--muted)',
+          lineHeight: 1.5,
+          margin: '0 0 1rem',
+          paddingTop: '.75rem',
+          borderTop: '1px solid var(--border)',
+        }}
+      >
+        Reply <strong style={{ color: 'var(--white)', fontWeight: 600 }}>STOP</strong> to
+        any text to unsubscribe. Reply{' '}
+        <strong style={{ color: 'var(--white)', fontWeight: 600 }}>HELP</strong> for help.
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.1em',
+            textTransform: 'uppercase',
+            background: 'var(--neon)',
+            color: 'var(--bg)',
+            border: 'none',
+            padding: '.6rem 1.1rem',
+            borderRadius: '6px',
+            cursor: saving ? 'wait' : 'pointer',
+            fontWeight: 700,
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          {saving ? 'Saving…' : 'Save Preferences'}
+        </button>
+        {feedback && (
+          <span style={{
+            fontSize: '.78rem',
+            color: feedback.ok ? 'var(--success)' : 'var(--error)',
+          }}>
+            {feedback.msg}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
