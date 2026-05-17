@@ -47,7 +47,7 @@
 /* ─── Tabs ─── */
 .tabs {
   display: inline-flex;
-  gap: 2px;
+  gap: 4px;
   padding: 4px;
   background: var(--deep);
   border: 1px solid var(--border);
@@ -67,22 +67,23 @@
   border-radius: 7px;
   color: var(--muted);
   cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
+  transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 .tabBtn:hover {
   color: var(--white);
-  background: rgba(255, 255, 255, .03);
+  background: rgba(255, 255, 255, .04);
 }
 .tabBtnActive {
-  color: var(--neon);
-  background: rgba(0, 245, 196, .08);
-  border-color: rgba(0, 245, 196, .4);
+  color: var(--white);
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 2px 6px rgba(0, 0, 0, .35);
 }
 .tabBtnActive:hover {
-  background: rgba(0, 245, 196, .12);
-  color: var(--neon);
+  background: var(--card);
+  color: var(--white);
 }
 
 /* ─── Empty states ─── */
