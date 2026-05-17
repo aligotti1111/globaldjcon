@@ -40,6 +40,7 @@ interface ProfileRow {
   venue_name: string | null;
   blocked_users: string[] | null;
   phone: string | null;
+  sms_phone: string | null;
   sms_enabled: boolean | null;
   sms_notify_booking_request: boolean | null;
   sms_notify_booking_status: boolean | null;
@@ -53,7 +54,7 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
+    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -92,7 +93,7 @@ export default async function AccountSettingsPage() {
       currentEmail={authUser.email || ''}
       initialBlocked={blockedNames}
       initialSmsPrefs={{
-        phone: profile.phone || '',
+        sms_phone: profile.sms_phone || '',
         sms_enabled: !!profile.sms_enabled,
         sms_notify_booking_request: profile.sms_notify_booking_request !== false,
         sms_notify_booking_status: profile.sms_notify_booking_status !== false,
