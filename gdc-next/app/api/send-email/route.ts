@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { resolveUserEmail } from '@/lib/supabase/admin';
+import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
@@ -230,6 +231,11 @@ export async function POST(req: Request) {
   }
 
   let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
+  // Optional SMS to fire after the email sends. Each branch below sets this
+  // if the event has a corresponding text-notification (booking_request,
+  // booking_status, mob_booking_status, inbox_notification). Branches that
+  // don't set it (welcome, claim_*, contact_us, etc.) simply skip SMS.
+  let smsPlan: { userId: string; event: SmsEvent; body: string } | null = null;
 
   // ── 1. WELCOME ─────────────────────────────────────────────────────
   if (type === 'welcome') {
@@ -292,6 +298,26 @@ export async function POST(req: Request) {
         ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
       `),
     };
+
+    if (body.recipientUserId) {
+      // Truncate the preview so the text isn't a wall of text. SMS has
+      // a 160-char practical limit before it gets split into segments
+      // (and costs more) — keep the body well under that with footer.
+      const preview = message.length > 80
+        ? message.slice(0, 80).trim() + '…'
+        : message;
+      const smsLines = [
+        `New message from ${senderName || 'a user'}.`,
+        subject ? `Re: ${subject}` : null,
+        preview,
+        `View: ${SITE_URL}/inbox`,
+      ].filter(Boolean).join('\n');
+      smsPlan = {
+        userId: body.recipientUserId as string,
+        event: 'inbox_message',
+        body: withSmsFooter(smsLines),
+      };
+    }
 
   // ── 3. CLAIM REQUEST (admin notified of new claim) ─────────────────
   } else if (type === 'claim_request') {
@@ -391,6 +417,21 @@ export async function POST(req: Request) {
       `),
     };
 
+    // SMS to the DJ. Short, no HTML, links to the booking-requests page.
+    if (body.djUserId) {
+      const smsLines = [
+        `New booking request from ${requesterName || 'a booker'}.`,
+        `${dateStr}${timeStr !== '—' ? ` · ${timeStr}` : ''}`,
+        venueName ? `Venue: ${venueName}` : null,
+        `View: ${SITE_URL}/booking-requests`,
+      ].filter(Boolean).join('\n');
+      smsPlan = {
+        userId: body.djUserId as string,
+        event: 'booking_request',
+        body: withSmsFooter(smsLines),
+      };
+    }
+
   // ── 5b. BOOKING REQUEST CONFIRMATION (sent to BOOKER) ─────────────
   // Mirror of booking_request but addressed to the booker — confirms
   // their submission landed and gives them a record of what they sent.
@@ -474,6 +515,19 @@ export async function POST(req: Request) {
       `),
     };
 
+    if (body.requesterUserId) {
+      const smsLines = [
+        `Your booking with ${djName || 'the DJ'} was ${status}.`,
+        `${dateStr}${venueName ? ` · ${venueName}` : ''}`,
+        `View: ${SITE_URL}/booking-requests`,
+      ].join('\n');
+      smsPlan = {
+        userId: body.requesterUserId as string,
+        event: 'booking_status',
+        body: withSmsFooter(smsLines),
+      };
+    }
+
   // ── 7. MOB BOOKING STATUS (DJ approved/denied a MOBILE booking) ───
   } else if (type === 'mob_booking_status') {
     const requesterEmail = await pickEmail(
@@ -507,6 +561,19 @@ export async function POST(req: Request) {
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
+
+    if (body.requesterUserId) {
+      const smsLines = [
+        `Your booking with ${djName || 'the DJ'} was ${status}.`,
+        `${dateStr}${venueName ? ` · ${venueName}` : ''}`,
+        `View: ${SITE_URL}/booking-requests`,
+      ].join('\n');
+      smsPlan = {
+        userId: body.requesterUserId as string,
+        event: 'booking_status',
+        body: withSmsFooter(smsLines),
+      };
+    }
 
   // ── 8. BOOKING COUNTER (one side counter-offered the other) ───────
   } else if (type === 'booking_counter') {
@@ -743,6 +810,14 @@ export async function POST(req: Request) {
     if (error) {
       console.error('Resend error:', error);
       return NextResponse.json({ error: error.message || 'Resend failed' }, { status: 500 });
+    }
+    // Fire SMS in parallel with the response. We don't await — text
+    // delivery is best-effort and shouldn't delay returning success on
+    // the email. Failures are logged inside sendSmsNotification.
+    if (smsPlan) {
+      sendSmsNotification(smsPlan.userId, smsPlan.event, smsPlan.body).catch((e) => {
+        console.error('[sms] dispatch failed:', e);
+      });
     }
     return NextResponse.json({ ok: true, id: data?.id });
   } catch (e) {
