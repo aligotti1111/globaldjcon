@@ -799,20 +799,19 @@ function PasswordChangeBlock() {
 // ─────────────────────────────────────────────────────────────────────────
 // SmsNotificationsBlock — opt-in SMS preferences card on the General tab.
 //
-// Self-contained: loads its own state from users (phone + 4 sms_* columns)
-// and saves directly. Independent of the parent's profile save flow, so a
-// DJ can toggle SMS without interacting with the rest of the form, and
-// vice-versa.
+// Self-contained: loads its own state (sms_phone + sms_enabled + 3
+// sub-toggles) and saves directly. Independent of the parent's profile
+// save flow, so a DJ can toggle SMS without interacting with the rest
+// of the form, and vice-versa.
 //
-// Phone source of truth is users.phone — same column displayed/edited in
-// the phone field above this card. We don't re-render the phone field here
-// to avoid two inputs writing the same column. We only show a hint pointing
-// up to the phone field.
-//
-// Mirrors the SMS card on /account-settings, just embedded in the DJ flow.
+// SMS phone is INTENTIONALLY separate from users.phone — that field is
+// the public business contact shown on the DJ's profile and might be
+// a business line/Google Voice. The SMS field is the private mobile
+// where the DJ actually wants alerts.
 // ─────────────────────────────────────────────────────────────────────────
 
 interface SmsPrefsState {
+  sms_phone: string;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
   sms_notify_booking_status: boolean;
@@ -822,6 +821,7 @@ interface SmsPrefsState {
 function SmsNotificationsBlock({ userId }: { userId: string }) {
   const [loaded, setLoaded] = useState(false);
   const [prefs, setPrefs] = useState<SmsPrefsState>({
+    sms_phone: '',
     sms_enabled: false,
     sms_notify_booking_request: true,
     sms_notify_booking_status: true,
@@ -839,12 +839,13 @@ function SmsNotificationsBlock({ userId }: { userId: string }) {
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
+          .select('sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message')
           .eq('id', userId)
           .maybeSingle<SmsPrefsState>();
         if (cancelled) return;
         if (data) {
           setPrefs({
+            sms_phone: data.sms_phone || '',
             sms_enabled: !!data.sms_enabled,
             sms_notify_booking_request: data.sms_notify_booking_request !== false,
             sms_notify_booking_status: data.sms_notify_booking_status !== false,
@@ -868,11 +869,27 @@ function SmsNotificationsBlock({ userId }: { userId: string }) {
   async function save() {
     setSaving(true);
     setFeedback(null);
+    // Validate phone if SMS is being enabled — block save with no phone.
+    const trimmedPhone = prefs.sms_phone.trim();
+    if (prefs.sms_enabled && !trimmedPhone) {
+      setFeedback({ msg: 'Enter a phone number to enable text notifications.', ok: false });
+      setSaving(false);
+      return;
+    }
+    if (trimmedPhone) {
+      const digits = trimmedPhone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        setFeedback({ msg: 'Please enter a valid phone number.', ok: false });
+        setSaving(false);
+        return;
+      }
+    }
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from('users')
         .update({
+          sms_phone: trimmedPhone || null,
           sms_enabled: prefs.sms_enabled,
           sms_notify_booking_request: prefs.sms_notify_booking_request,
           sms_notify_booking_status: prefs.sms_notify_booking_status,
@@ -923,9 +940,39 @@ function SmsNotificationsBlock({ userId }: { userId: string }) {
         }}
       >
         Get a text when a booking request comes in, a booking status
-        changes, or you receive an inbox message. Texts go to the phone
-        number entered above. Standard message and data rates may apply.
+        changes, or you receive an inbox message. Standard message and
+        data rates may apply. This number stays private and is separate
+        from your public profile phone.
       </p>
+
+      {/* SMS phone — private, separate from users.phone (the public
+          business contact above). Stored in users.sms_phone. */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label
+          htmlFor="sms-phone-input"
+          style={{
+            display: 'block',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.6rem',
+            letterSpacing: '.1em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+            marginBottom: '.4rem',
+          }}
+        >
+          Mobile Number (for texts)
+        </label>
+        <input
+          id="sms-phone-input"
+          type="tel"
+          inputMode="tel"
+          placeholder="(555) 555-5555"
+          value={prefs.sms_phone}
+          onChange={(e) => update('sms_phone', e.target.value)}
+          autoComplete="tel"
+          className={styles.input}
+        />
+      </div>
 
       {/* Master toggle */}
       <label
