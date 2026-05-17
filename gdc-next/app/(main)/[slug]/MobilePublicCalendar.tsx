@@ -503,6 +503,7 @@ export default function MobilePublicCalendar({
             email: currentUser.email,
             name: currentUser.name,
           }}
+          onClose={() => setSelectedDate(null)}
         />
       )}
 

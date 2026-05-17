@@ -1,23 +1,55 @@
 /* MobileBookingForm styles — port of djp-mob-public.js inline styles into
-   a CSS module. The form is shown directly below the calendar when the
-   user clicks Book on an available date. */
+   a CSS module. Renders as a centered popup modal (portaled to body),
+   matching ClubBookingForm. */
+
+.formWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+}
 
 .formCard {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
-  margin-top: 1.5rem;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
 }
 
 .formHeaderRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 1.25rem;
   gap: .75rem;
-  flex-wrap: wrap;
 }
+.formHeaderEyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .25rem;
+}
+.formHeaderDate {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: .04em;
+  color: var(--neon);
+  line-height: 1;
+}
+/* Legacy title/date classes kept for backward compatibility — no longer
+   rendered, but a future revert wouldn't have to touch the CSS again. */
 .formTitle {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.6rem;
@@ -29,6 +61,21 @@
   font-size: .62rem;
   color: var(--neon);
   letter-spacing: .04em;
+}
+.formCloseBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--white);
+  border-radius: 6px;
+  padding: .35rem .55rem;
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1;
+  transition: border-color .15s, color .15s;
+  flex-shrink: 0;
+}
+.formCloseBtn:hover {
+  border-color: var(--white);
 }
 
 /* ── Alerts ─────────────────────────────────────────── */

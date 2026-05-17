@@ -4,9 +4,12 @@
 // Faithful port of vanilla djp-mob-public.js renderMobPubForm + submission
 // logic (lines 709–1340).
 //
-// Shown directly below the calendar when the user clicks Book on an
-// available date. All form fields, package selection, and live price
-// calculation match vanilla. Includes Nominatim address autocomplete.
+// Renders as a centered popup modal (portaled to document.body), matching
+// ClubBookingForm. The parent (MobilePublicCalendar) controls visibility
+// by mounting/unmounting based on selectedDate, and provides onClose to
+// dismiss. The X button in the header invokes onClose; backdrop click
+// does NOT close (intentional — long forms shouldn't be lost by a stray
+// tap), again matching ClubBookingForm.
 //
 // On submit, if the booker picked a Nominatim suggestion we capture the
 // venue lat/lon and store them on the booking row. The DJ's booking-
@@ -23,6 +26,7 @@
 //     no email is sent — same behavior as vanilla.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './mobileBookingForm.module.css';
 import {
@@ -60,6 +64,7 @@ interface Props {
   dj: DjLite;
   bookingSettings: BookingSettings;
   currentUser: CurrentUser;
+  onClose: () => void;
 }
 
 export default function MobileBookingForm({
@@ -67,6 +72,7 @@ export default function MobileBookingForm({
   dj,
   bookingSettings,
   currentUser,
+  onClose,
 }: Props) {
   // ── Form state ────────────────────────────────────────────────────
   const [phone, setPhone] = useState('');
@@ -106,11 +112,12 @@ export default function MobileBookingForm({
   const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Scroll the form into view on mount
+  // ── SSR-safe portal flag — Next.js renders on server where document
+  // doesn't exist. Render null until mounted, then portal to body so
+  // the modal escapes any parent stacking context. ──────────────────
   const rootRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // ── Derived data ─────────────────────────────────────────────────
   const dateLabel = formatLongDate(dateKey);
@@ -299,6 +306,8 @@ export default function MobileBookingForm({
       }
 
       setSuccessState({ isQuote: finalPrice.isQuote });
+      // Auto-dismiss the form after a short delay (matches ClubBookingForm)
+      setTimeout(() => onClose(), 2500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Submission failed';
       setErrorMsg(`Error: ${msg}`);
@@ -308,17 +317,21 @@ export default function MobileBookingForm({
 
   // ── Success state ────────────────────────────────────────────────
   if (successState) {
+    if (!mounted) return null;
     const djName = dj.name || 'The DJ';
-    return (
-      <div ref={rootRef} className={styles.successCard}>
-        <div className={styles.successCheck}>✓</div>
-        <div className={styles.successTitle}>
-          {successState.isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}
+    return createPortal(
+      <div className={styles.formWrap}>
+        <div className={styles.successCard}>
+          <div className={styles.successCheck}>✓</div>
+          <div className={styles.successTitle}>
+            {successState.isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}
+          </div>
+          <div className={styles.successMsg}>
+            {djName} will be in touch shortly.
+          </div>
         </div>
-        <div className={styles.successMsg}>
-          {djName} will be in touch shortly.
-        </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
@@ -332,12 +345,23 @@ export default function MobileBookingForm({
     ? 'Request Quote'
     : 'Request Booking';
 
-  return (
-    <>
+  if (!mounted) return null;
+  return createPortal(
+    <div className={styles.formWrap}>
       <div ref={rootRef} className={styles.formCard}>
         <div className={styles.formHeaderRow}>
-          <div className={styles.formTitle}>Request Booking</div>
-          <div className={styles.formDate}>{dateLabel}</div>
+          <div>
+            <div className={styles.formHeaderEyebrow}>Booking Request</div>
+            <div className={styles.formHeaderDate}>{dateLabel}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.formCloseBtn}
+            aria-label="Close booking form"
+          >
+            ✕
+          </button>
         </div>
 
         {errorMsg && <div className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
@@ -724,7 +748,8 @@ export default function MobileBookingForm({
           </div>
         </div>
       )}
-    </>
+    </div>,
+    document.body,
   );
 }
 
