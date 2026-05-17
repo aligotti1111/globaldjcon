@@ -41,7 +41,7 @@ interface BlockedUser {
 }
 
 interface SmsPrefsInit {
-  phone: string;
+  sms_phone: string;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
   sms_notify_booking_status: boolean;
@@ -120,7 +120,7 @@ export default function AccountSettingsClient({
   // Master toggle controls whether SMS is sent at all. Sub-toggles
   // control which event types fire when the master is on. Phone re-uses
   // the existing users.phone column.
-  const [smsPhone, setSmsPhone] = useState(initialSmsPrefs.phone);
+  const [smsPhone, setSmsPhone] = useState(initialSmsPrefs.sms_phone);
   const [smsEnabled, setSmsEnabled] = useState(initialSmsPrefs.sms_enabled);
   const [smsBookingRequest, setSmsBookingRequest] = useState(initialSmsPrefs.sms_notify_booking_request);
   const [smsBookingStatus, setSmsBookingStatus] = useState(initialSmsPrefs.sms_notify_booking_status);
@@ -359,7 +359,7 @@ export default function AccountSettingsClient({
       const { error } = await supabase
         .from('users')
         .update({
-          phone: trimmedPhone || null,
+          sms_phone: trimmedPhone || null,
           sms_enabled: smsEnabled,
           sms_notify_booking_request: smsBookingRequest,
           sms_notify_booking_status: smsBookingStatus,
