@@ -70,20 +70,28 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
     const startBound = today > monthStart ? today : monthStart;
 
     async function load() {
-      const supabase = createClient();
-      // Fetch real booking rows (approved + manual) in this month.
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual')
-        .eq('dj_id', djId)
-        .gte('event_date', startBound)
-        .lt('event_date', monthEnd)
-        .or('status.eq.approved,is_manual.eq.true')
-        .order('event_date', { ascending: true })
-        .order('start_time', { ascending: true });
+      // Use server-side admin-backed API instead of direct client query —
+      // anon clients can't read other DJs' bookings via RLS, but we need
+      // them visible on the public profile.
+      let realRows: EventRow[] = [];
+      try {
+        const params = new URLSearchParams({
+          djId,
+          from: startBound,
+          to: monthEnd,
+        });
+        const res = await fetch(`/api/dj-upcoming-events?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          realRows = (json.events as EventRow[]) || [];
+        } else {
+          console.error('[MonthEventsList] events API error', res.status);
+        }
+      } catch (e) {
+        console.error('[MonthEventsList] events API exception', e);
+      }
       if (!mounted) return;
 
-      const realRows = (data as EventRow[]) || [];
       const realDateSet = new Set(realRows.map((r) => r.event_date));
 
       // Use the bookingDays passed from PublicCalendar (server-loaded with
@@ -117,7 +125,6 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
       });
       setEvents(merged);
       setLoading(false);
-      if (error) console.error('[MonthEventsList] bookings fetch error', error);
     }
     load();
     return () => { mounted = false; };
@@ -456,16 +463,22 @@ function EventListItem({
         </div>
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
-      {/* Owner-only: Edit Details button on every manual booking row so the
-          owner can update venue/time/address/etc at any time. */}
+      {/* Owner-only: small "public" hint pill + Edit Details button. The
+          pill signals to the owner that this booking row is publicly
+          visible on their profile (since any populated field shows up). */}
       {isOwnProfile && event.is_manual && (
-        <button
-          type="button"
-          className={styles.editDetailsBtn}
-          onClick={() => onEditDate?.(event.event_date || '')}
-        >
-          Edit Details
-        </button>
+        <div className={styles.ownerActions}>
+          <span className={styles.publicHint} title="This event is visible on your public profile">
+            <span className={styles.publicDot} /> Public
+          </span>
+          <button
+            type="button"
+            className={styles.editDetailsBtn}
+            onClick={() => onEditDate?.(event.event_date || '')}
+          >
+            Edit Details
+          </button>
+        </div>
       )}
     </div>
   );

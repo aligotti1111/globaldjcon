@@ -65,6 +65,33 @@
   font-style: italic;
 }
 
+/* Owner-only actions cluster on the right of a manual booking row. */
+.ownerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.publicHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .7;
+}
+.publicDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon);
+  opacity: .8;
+}
+
 .datePill {
   display: flex;
   align-items: center;
