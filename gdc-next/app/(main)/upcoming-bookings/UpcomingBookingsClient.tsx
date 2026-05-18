@@ -85,6 +85,27 @@ export default function UpcomingBookingsClient({
   // When set, the modal opens in edit mode prefilled with this booking's data.
   // Mutually exclusive with showAddModal — opening one closes the other.
   const [editing, setEditing] = useState<UpcomingBooking | null>(null);
+  // Optional date to prefill into the add modal when it opens. Set when the
+  // page is loaded with `?addManual=YYYY-MM-DD` (used by the public profile
+  // calendar's "Add Booking Details" button so the date is already populated).
+  const [prefillDate, setPrefillDate] = useState<string>('');
+
+  // Read URL params on mount: ?addManual=YYYY-MM-DD opens the add modal with
+  // that date already populated. Strip the param from history so a refresh
+  // doesn't re-open the modal.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const addManual = params.get('addManual');
+    if (addManual) {
+      setPrefillDate(addManual);
+      setShowAddModal(true);
+      // Clean the URL so subsequent navigations / refreshes don't loop.
+      const url = new URL(window.location.href);
+      url.searchParams.delete('addManual');
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, []);
 
   // Group by month (YYYY-MM); keys sorted descending (most recent month first).
   const grouped = useMemo(() => {
@@ -191,7 +212,8 @@ export default function UpcomingBookingsClient({
           bookingsPerDay={bookingsPerDay}
           existingBookings={bookings}
           existing={editing}
-          onClose={() => { setShowAddModal(false); setEditing(null); }}
+          prefillDate={prefillDate}
+          onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); }}
           onAdded={handleAdded}
           onUpdated={handleUpdated}
         />
@@ -470,7 +492,7 @@ function formatLongDate(d: string): string {
 
 function AddManualBookingModal({
   userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
-  existing, onClose, onAdded, onUpdated,
+  existing, prefillDate, onClose, onAdded, onUpdated,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
@@ -479,6 +501,10 @@ function AddManualBookingModal({
   bookingsPerDay: number;
   existingBookings: UpcomingBooking[];
   existing: UpcomingBooking | null;
+  // Optional initial date for the new-booking flow — used when the modal
+  // is opened from the public calendar's "Add Booking Details" button so
+  // the date is already populated.
+  prefillDate?: string;
   onClose: () => void;
   onAdded: (b: UpcomingBooking) => void;
   onUpdated: (b: UpcomingBooking) => void;
@@ -489,7 +515,9 @@ function AddManualBookingModal({
     if (!t) return '';
     return t.length >= 5 ? t.slice(0, 5) : t;
   }
-  const [eventDate, setEventDate] = useState(existing?.event_date || '');
+  // When editing, existing.event_date wins; otherwise use the optional
+  // prefillDate (from the public calendar deep-link).
+  const [eventDate, setEventDate] = useState(existing?.event_date || prefillDate || '');
   const [startTime, setStartTime] = useState(trimTime(existing?.start_time || null));
   const [endTime, setEndTime] = useState(trimTime(existing?.end_time || null));
   const [venueName, setVenueName] = useState(existing?.venue_name || '');
