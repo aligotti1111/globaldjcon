@@ -346,7 +346,6 @@ function AddManualBookingModal({
                 onChange={(e) => setEventDate(e.target.value)}
                 className={styles.dateInput}
               />
-              {!eventDate && <span className={styles.datePlaceholder}>Select a date</span>}
             </div>
           </div>
 
