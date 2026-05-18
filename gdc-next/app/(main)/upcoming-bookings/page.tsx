@@ -1,19 +1,16 @@
 // /upcoming-bookings — DJ-only page showing all future approved bookings
-// (real + DJ-added manual entries), grouped by month, most recent first.
+// (real + DJ-added manual entries), grouped by month.
 //
 // Auth/redirect rules:
 //   - Not logged in → /login
-//   - Logged in but role is not a DJ → /booking-requests (since the page is
-//     DJ-specific; hosts/venues don't have an "own schedule" view)
+//   - Logged in but role is not 'dj' → /booking-requests
 //
 // Data shape sent to the client:
-//   - bookings: future-dated rows where dj_id matches the logged-in user AND
-//     (status = 'approved' OR is_manual = true).
-//   - djType: 'mobile' or 'club' so the form/list can vary fields.
-//   - bookingsPerDay: the mobile DJ's daily cap; ignored for club.
-//
-// Manual booking inserts and deletes happen client-side via Supabase RLS;
-// server only renders the initial list.
+//   - bookings: future-dated rows where dj_id matches the logged-in user
+//     AND (status = 'approved' OR is_manual = true).
+//   - djType: 'mobile' or 'club' (from users.dj_type).
+//   - bookingsPerDay: mob_bookings_per_day from users.booking_settings JSON
+//     (defaults to 1 if unset). Used only for mobile DJs.
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -37,10 +34,15 @@ export interface UpcomingBooking {
   event_type: string | null;
   booking_type: string | null;
   is_manual: boolean;
-  // Real-booking metadata: present for non-manual rows, useful for context
   requester_name?: string | null;
   package_title?: string | null;
   notes?: string | null;
+}
+
+interface ProfileRow {
+  role: string | null;
+  dj_type: string | null;
+  booking_settings: { mob_bookings_per_day?: number } | null;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -48,28 +50,25 @@ export default async function UpcomingBookingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Fetch the DJ's role + bookings_per_day to gate access + drive form rules.
+  // Pull role + dj_type + booking_settings. The role is a single value 'dj'
+  // (not split into mobile_dj/club_dj — that distinction is in dj_type).
   const { data: profile } = await supabase
     .from('users')
-    .select('role, dj_type, bookings_per_day')
+    .select('role, dj_type, booking_settings')
     .eq('id', user.id)
-    .maybeSingle<{ role: string | null; dj_type: string | null; bookings_per_day: number | null }>();
+    .maybeSingle<ProfileRow>();
 
-  // Only DJs (mobile or club) get this page. Hosts/venues fall back to
-  // booking-requests where their outgoing list lives.
-  const role = profile?.role || '';
-  const djType = profile?.dj_type || '';
-  const isDj = role === 'dj' || role === 'mobile_dj' || role === 'club_dj' || djType === 'mobile' || djType === 'club';
-  if (!isDj) redirect('/booking-requests');
+  if (profile?.role !== 'dj') redirect('/booking-requests');
 
-  // Today's date in YYYY-MM-DD format (server-side timezone — Supabase stores
-  // event_date as a plain date, so a string compare against today is fine).
+  // Normalize djType. Default to 'mobile' if somehow unset.
+  const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
+  const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
+
+  // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
+  // a plain date so a string compare works).
   const today = new Date().toISOString().slice(0, 10);
 
-  // Pull future approved-or-manual bookings for this DJ. Sort ascending by
-  // date so the list naturally reads earliest → latest; we'll group on the
-  // client. Limit 200 — DJs almost never have more queued; if they do we
-  // can paginate later.
+  // Fetch future approved-or-manual bookings for this DJ.
   const { data: rows } = await supabase
     .from('bookings')
     .select('id, event_date, start_time, end_time, venue_name, venue_type, event_type, booking_type, is_manual, requester_name, package_title, notes')
@@ -80,16 +79,11 @@ export default async function UpcomingBookingsPage() {
     .order('start_time', { ascending: true })
     .limit(200);
 
-  // Normalize djType: if profile.dj_type isn't set, infer from role.
-  let resolvedDjType: 'club' | 'mobile' = 'mobile';
-  if (djType === 'club' || role === 'club_dj') resolvedDjType = 'club';
-  else if (djType === 'mobile' || role === 'mobile_dj') resolvedDjType = 'mobile';
-
   return (
     <UpcomingBookingsClient
       userId={user.id}
-      djType={resolvedDjType}
-      bookingsPerDay={profile?.bookings_per_day ?? 1}
+      djType={djType}
+      bookingsPerDay={bookingsPerDay}
       initialBookings={(rows || []) as UpcomingBooking[]}
     />
   );
