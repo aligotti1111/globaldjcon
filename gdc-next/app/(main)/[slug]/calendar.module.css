@@ -751,6 +751,38 @@
 }
 .ownerEditAddDetailsBtn:hover { background: #00d4a9; }
 
+/* When a manual booking already exists for this date, show its key
+   details inline above the Edit button. Compact label/value rows so
+   the owner can see what's on file without opening the full edit form. */
+.ownerEditExistingDetails {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .75rem .85rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: .35rem;
+}
+.ownerEditDetailRow {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: .6rem;
+  align-items: baseline;
+}
+.ownerEditDetailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ownerEditDetailValue {
+  font-size: .85rem;
+  color: var(--white);
+  word-break: break-word;
+}
+
 .ownerEditActions {
   display: flex;
   gap: .75rem;

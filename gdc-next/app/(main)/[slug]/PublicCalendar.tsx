@@ -493,6 +493,7 @@ export default function PublicCalendar({
       {isOwnProfile && ownerEditKey && (
         <OwnerDayEditPopup
           dateKey={ownerEditKey}
+          djId={djId}
           dayData={bookingDays[ownerEditKey] || {}}
           bookingSettings={bookingSettings}
           onClose={() => setOwnerEditKey(null)}
@@ -1056,12 +1057,14 @@ function BookedEventPopup({
 
 function OwnerDayEditPopup({
   dateKey,
+  djId,
   dayData,
   bookingSettings,
   onClose,
   onSave,
 }: {
   dateKey: string;
+  djId: string;
   dayData: DayData;
   bookingSettings?: BookingSettings;
   onClose: () => void;
@@ -1071,6 +1074,36 @@ function OwnerDayEditPopup({
     dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available'
   );
   const [eventName, setEventName] = useState<string>(dayData.eventName || '');
+
+  // Existing manual booking for this date (if any). Populated async after
+  // mount; if present, we render the booking's details inline and the
+  // "Add Booking Details" button becomes "Edit Booking Details".
+  const [existingBooking, setExistingBooking] = useState<{
+    id: string;
+    start_time: string | null;
+    end_time: string | null;
+    venue_name: string | null;
+    venue_address: string | null;
+    venue_type: string | null;
+    set_type: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, start_time, end_time, venue_name, venue_address, venue_type, set_type')
+        .eq('dj_id', djId)
+        .eq('event_date', dateKey)
+        .eq('is_manual', true)
+        .limit(1)
+        .maybeSingle<{ id: string; start_time: string | null; end_time: string | null; venue_name: string | null; venue_address: string | null; venue_type: string | null; set_type: string | null }>();
+      if (mounted && data) setExistingBooking(data);
+    })();
+    return () => { mounted = false; };
+  }, [djId, dateKey]);
 
   // ── Per-day rate override state ──────────────────────────────────
   // Mirror of ClubDayEditModal in update-dj-profile/. Initialised from
@@ -1293,28 +1326,65 @@ function OwnerDayEditPopup({
 
         {status === 'booked' && (
           <div className={styles.ownerEditBookedFields}>
-            {/* Owner can add full booking details (venue, time, address, flyer)
-                by opening the Upcoming Bookings page with the date prefilled.
-                Calendar mark is preserved either way — public visitors see
-                the date as booked even if details aren't added. */}
+            {existingBooking && (
+              <div className={styles.ownerEditExistingDetails}>
+                {existingBooking.start_time && (
+                  <div className={styles.ownerEditDetailRow}>
+                    <span className={styles.ownerEditDetailLabel}>Time</span>
+                    <span className={styles.ownerEditDetailValue}>
+                      {formatTime12(existingBooking.start_time)}
+                      {existingBooking.end_time ? ` – ${formatTime12(existingBooking.end_time)}` : ''}
+                    </span>
+                  </div>
+                )}
+                {existingBooking.venue_name && (
+                  <div className={styles.ownerEditDetailRow}>
+                    <span className={styles.ownerEditDetailLabel}>Venue</span>
+                    <span className={styles.ownerEditDetailValue}>{existingBooking.venue_name}</span>
+                  </div>
+                )}
+                {existingBooking.venue_address && (
+                  <div className={styles.ownerEditDetailRow}>
+                    <span className={styles.ownerEditDetailLabel}>Address</span>
+                    <span className={styles.ownerEditDetailValue}>{existingBooking.venue_address}</span>
+                  </div>
+                )}
+                {existingBooking.venue_type && (
+                  <div className={styles.ownerEditDetailRow}>
+                    <span className={styles.ownerEditDetailLabel}>Venue Type</span>
+                    <span className={styles.ownerEditDetailValue}>
+                      {existingBooking.venue_type.charAt(0).toUpperCase() + existingBooking.venue_type.slice(1)}
+                    </span>
+                  </div>
+                )}
+                {existingBooking.set_type && (
+                  <div className={styles.ownerEditDetailRow}>
+                    <span className={styles.ownerEditDetailLabel}>Set</span>
+                    <span className={styles.ownerEditDetailValue}>
+                      {existingBooking.set_type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => {
-                // Persist the booked mark first (no event name needed — the
-                // upcoming-bookings page collects venue/event info instead).
                 onSave({
                   booked: true,
                   eventName: undefined,
                 });
-                window.location.href = `/upcoming-bookings?addManual=${encodeURIComponent(dateKey)}`;
+                window.location.href = `/upcoming-bookings?addManual=${encodeURIComponent(dateKey)}&returnTo=${encodeURIComponent(window.location.pathname)}`;
               }}
               className={styles.ownerEditAddDetailsBtn}
             >
-              + Add Booking Details
+              {existingBooking ? '✎ Edit Booking Details' : '+ Add Booking Details'}
             </button>
-            <p className={styles.ownerEditComingSoon}>
-              Without details, this date shows publicly as a private booked event.
-            </p>
+            {!existingBooking && (
+              <p className={styles.ownerEditComingSoon}>
+                Without details, this date shows publicly as a private booked event.
+              </p>
+            )}
           </div>
         )}
 
