@@ -874,8 +874,6 @@
 }
 .collapseBar:hover {
   color: var(--white);
-  background: var(--deep);
-  border-color: rgba(255, 255, 255, .35);
 }
 .collapseBar:focus-visible {
   outline: 2px solid var(--neon);
