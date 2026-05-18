@@ -221,7 +221,6 @@ function EventListItem({
             requester_id: djId,
             booking_type: 'club',
             event_date: dateKey,
-            start_time: '00:00',
             is_manual: true,
             status: 'approved',
           } as unknown as never)
@@ -301,6 +300,9 @@ function EventListItem({
     );
   }
 
+  const hasTime = !!event.start_time;
+  const hasVenue = !!event.venue_name?.trim();
+  const hasAddress = !!event.venue_address?.trim();
   const timeRange = formatTimeRange(event.start_time, event.end_time);
   const venueLine = event.venue_name?.trim()
     || event.venue_address?.split(',')[0]
@@ -426,19 +428,31 @@ function EventListItem({
         onChange={handleFile}
       />
 
-      {/* Middle: venue (bold) on top, time + map link below. */}
+      {/* Middle: venue (bold) on top, time + map link below. Owner sees
+          "Add X" placeholders for missing fields; public viewers see only
+          what's actually been filled in. */}
       <div className={styles.middle}>
-        <div className={styles.venue}>{venueLine}</div>
+        {hasVenue ? (
+          <div className={styles.venue}>{venueLine}</div>
+        ) : isOwnProfile ? (
+          <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
+        ) : null}
         <div className={styles.meta}>
-          {timeRange}
-          {mapUrl && (
-            <>
-              {' · '}
+          {hasTime ? timeRange : isOwnProfile ? (
+            <span className={styles.placeholderField}>Add time</span>
+          ) : null}
+          {(hasTime && (hasAddress || (isOwnProfile && !hasAddress))) && ' · '}
+          {hasAddress ? (
+            mapUrl ? (
               <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
                 {event.venue_address?.split(',').slice(0, 2).join(',') || 'Map'}
               </a>
-            </>
-          )}
+            ) : (
+              <span>{event.venue_address}</span>
+            )
+          ) : isOwnProfile ? (
+            <span className={styles.placeholderField}>Add address</span>
+          ) : null}
         </div>
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
