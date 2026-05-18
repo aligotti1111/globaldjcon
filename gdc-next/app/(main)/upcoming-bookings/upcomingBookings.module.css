@@ -374,7 +374,7 @@
    now actually a <button> for proper a11y. */
 .row {
   display: grid;
-  grid-template-columns: 130px 150px 1fr auto auto 16px;
+  grid-template-columns: 130px 150px 1fr auto auto auto 16px;
   gap: 1rem;
   align-items: center;
   padding: .85rem 1rem;
@@ -490,6 +490,27 @@
   background: rgba(255, 85, 119, .08);
 }
 
+/* Edit pencil button — same shape as delete, neon hover color. */
+.editBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+  user-select: none;
+}
+.editBtn:hover {
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .5);
+  background: rgba(0, 245, 196, .08);
+}
+
 /* Mobile — collapse details to single column. */
 @media (max-width: 600px) {
   .detailPairRow {
@@ -497,13 +518,16 @@
     gap: .75rem;
   }
   .row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto auto;
     grid-template-areas:
-      "date     pill"
-      "time     time"
-      "context  context"
-      "delete   chevron";
+      "date     pill   pill    pill"
+      "time     time   time    time"
+      "context  context context context"
+      ".        edit   delete  chevron";
     gap: .35rem;
   }
   .rowChevron { grid-area: chevron; justify-self: end; }
+  .editBtn { grid-area: edit; }
+  .deleteBtn { grid-area: delete; }
+  .manualPill { grid-area: pill; justify-self: end; }
 }

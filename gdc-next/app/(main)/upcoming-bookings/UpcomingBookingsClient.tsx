@@ -81,6 +81,9 @@ export default function UpcomingBookingsClient({
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   const [showAddModal, setShowAddModal] = useState(false);
+  // When set, the modal opens in edit mode prefilled with this booking's data.
+  // Mutually exclusive with showAddModal — opening one closes the other.
+  const [editing, setEditing] = useState<UpcomingBooking | null>(null);
 
   // Group by month (YYYY-MM); keys sorted descending (most recent month first).
   const grouped = useMemo(() => {
@@ -112,6 +115,21 @@ export default function UpcomingBookingsClient({
       return next;
     });
     setShowAddModal(false);
+  }
+
+  // Replace an existing booking in local state with the updated row. Re-sorts
+  // in case the date/time changed and the row needs to move months.
+  async function handleUpdated(updated: UpcomingBooking) {
+    setBookings((prev) => {
+      const next = prev.map((b) => (b.id === updated.id ? updated : b));
+      next.sort((a, b) => {
+        const da = (a.event_date || '') + ' ' + (a.start_time || '');
+        const db = (b.event_date || '') + ' ' + (b.start_time || '');
+        return da.localeCompare(db);
+      });
+      return next;
+    });
+    setEditing(null);
   }
 
   async function handleDelete(id: string) {
@@ -154,6 +172,7 @@ export default function UpcomingBookingsClient({
                     booking={b}
                     djType={djType}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
+                    onEdit={b.is_manual ? () => setEditing(b) : undefined}
                   />
                 ))}
               </div>
@@ -162,15 +181,17 @@ export default function UpcomingBookingsClient({
         </div>
       )}
 
-      {showAddModal && (
+      {(showAddModal || editing) && (
         <AddManualBookingModal
           userId={userId}
           djType={djType}
           djCountry={djCountry}
           bookingsPerDay={bookingsPerDay}
           existingBookings={bookings}
-          onClose={() => setShowAddModal(false)}
+          existing={editing}
+          onClose={() => { setShowAddModal(false); setEditing(null); }}
           onAdded={handleAdded}
+          onUpdated={handleUpdated}
         />
       )}
     </div>
@@ -182,11 +203,12 @@ export default function UpcomingBookingsClient({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingRow({
-  booking, djType, onDelete,
+  booking, djType, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   onDelete?: () => void;
+  onEdit?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const dateLabel = formatDayLabel(booking.event_date);
@@ -204,7 +226,12 @@ function BookingRow({
     if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
 
-  // Stop the delete button from also expanding/collapsing the row.
+  // Both edit and delete must stop propagation so they don't also toggle
+  // the row's expand/collapse state (the row is itself a <button>).
+  function handleEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    onEdit && onEdit();
+  }
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
     onDelete && onDelete();
@@ -223,6 +250,20 @@ function BookingRow({
         <div className={styles.rowContext}>{context}</div>
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+        )}
+        {onEdit && (
+          <span
+            onClick={handleEdit}
+            className={styles.editBtn}
+            role="button"
+            aria-label="Edit manual booking"
+            title="Edit"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          </span>
         )}
         {onDelete && (
           <span
@@ -426,28 +467,41 @@ function formatLongDate(d: string): string {
 // ───────────────────────────────────────────────────────────────────────
 
 function AddManualBookingModal({
-  userId, djType, djCountry, bookingsPerDay, existingBookings, onClose, onAdded,
+  userId, djType, djCountry, bookingsPerDay, existingBookings,
+  existing, onClose, onAdded, onUpdated,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
   djCountry: string;
   bookingsPerDay: number;
   existingBookings: UpcomingBooking[];
+  // When `existing` is set, the modal opens in EDIT mode prefilled with the
+  // booking's current values. Save will UPDATE that row instead of insert.
+  existing: UpcomingBooking | null;
   onClose: () => void;
   onAdded: (b: UpcomingBooking) => void;
+  onUpdated: (b: UpcomingBooking) => void;
 }) {
-  const [eventDate, setEventDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [venueName, setVenueName] = useState('');
-  const [venueAddress, setVenueAddress] = useState('');
-  // Default to the DJ's own country so the autocomplete is immediately
-  // biased to the right region. User can change it per booking (e.g. a
-  // gig in another country).
+  const isEdit = existing !== null;
+
+  // Initialize state from `existing` (edit mode) or empty defaults (add mode).
+  // Convert stored 24h "HH:MM:SS" times to the dropdown's "HH:MM" value form.
+  function trimTime(t: string | null): string {
+    if (!t) return '';
+    return t.length >= 5 ? t.slice(0, 5) : t;
+  }
+  const [eventDate, setEventDate] = useState(existing?.event_date || '');
+  const [startTime, setStartTime] = useState(trimTime(existing?.start_time || null));
+  const [endTime, setEndTime] = useState(trimTime(existing?.end_time || null));
+  const [venueName, setVenueName] = useState(existing?.venue_name || '');
+  const [venueAddress, setVenueAddress] = useState(existing?.venue_address || '');
+  // Country: use existing booking's country if we can infer it; otherwise
+  // fall back to the DJ's profile country. We don't store country on the
+  // booking row directly, so default to djCountry on edit too.
   const [country, setCountry] = useState<string>(djCountry || 'United States');
-  const [venueType, setVenueType] = useState<string>(''); // club only — no default
-  const [setType, setSetType] = useState<string>(''); // club only — no default
-  const [eventType, setEventType] = useState<string>('wedding'); // mobile only
+  const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
+  const [setType, setSetType] = useState<string>(existing?.set_type || '');
+  const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -455,16 +509,17 @@ function AddManualBookingModal({
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const addrTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+  // Preserve existing coords if we're editing — user might not re-pick from
+  // the autocomplete dropdown, in which case we want to keep the original pin.
+  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(
+    existing?.venue_lat != null && existing?.venue_lon != null
+      ? { lat: existing.venue_lat, lon: existing.venue_lon }
+      : null,
+  );
 
-  // Native date picker behavior: clicking ANYWHERE on the wrapping field
-  // (label, the styled box, etc.) should fire .showPicker() so the system
-  // calendar opens even if the click missed the small native picker icon.
   const dateInputRef = useRef<HTMLInputElement>(null);
-
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Clean up the debounce timer if the modal unmounts mid-typing.
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
 
   function openDatePicker() {
@@ -481,18 +536,20 @@ function AddManualBookingModal({
     setError(null);
     if (!eventDate) { setError('Pick a date.'); return; }
     if (!startTime) { setError('Pick a start time.'); return; }
-    // End time required only for mobile DJs. Club/bar DJs often don't know
-    // the exact end (open-ended sets), so it's optional for them.
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
-    // Daily-cap check.
-    const onSameDay = existingBookings.filter((b) => b.event_date === eventDate).length;
+    // Daily-cap check — only fires when adding NEW or moving an existing
+    // booking onto a fuller day. Editing an existing booking on its own
+    // date is exempt (we'd be counting it against itself).
+    const sameDay = existingBookings.filter(
+      (b) => b.event_date === eventDate && (!isEdit || b.id !== existing.id),
+    ).length;
     const cap = djType === 'club' ? 1 : Math.max(1, bookingsPerDay || 1);
-    if (onSameDay >= cap) {
+    if (sameDay >= cap) {
       const msg = djType === 'club'
-        ? `You already have a booking on ${eventDate}. Club/bar DJs can only have one booking per day. Add anyway?`
-        : `You already have ${onSameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Add anyway?`;
+        ? `You already have a booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
+        : `You already have ${sameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
       if (!confirm(msg)) return;
     }
 
@@ -500,13 +557,12 @@ function AddManualBookingModal({
     try {
       const supabase = createClient();
       const coords = venueCoordsRef.current;
-      const insertRow = {
-        dj_id: userId,
-        requester_id: userId, // self-attributed so NOT NULL constraints pass
+      // Shared payload for both insert and update.
+      const payload = {
         booking_type: djType,
         event_date: eventDate,
         start_time: startTime,
-        end_time: endTime,
+        end_time: endTime || null,
         venue_name: venueName.trim() || null,
         venue_address: venueAddress.trim() || null,
         venue_lat: coords?.lat ?? null,
@@ -514,16 +570,38 @@ function AddManualBookingModal({
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
-        is_manual: true,
-        status: 'approved',
       };
-      const { data, error: e } = await supabase
-        .from('bookings')
-        .insert(insertRow as unknown as never)
-        .select('id, event_date, start_time, end_time, venue_name, venue_type, event_type, booking_type, is_manual')
-        .single();
-      if (e) throw e;
-      onAdded({ ...(data as unknown as UpcomingBooking), is_manual: true });
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual';
+
+      if (isEdit) {
+        // UPDATE existing manual booking. Scope by dj_id too as defense in
+        // depth — RLS should already prevent cross-user writes.
+        const { data, error: e } = await supabase
+          .from('bookings')
+          .update(payload as unknown as never)
+          .eq('id', existing.id)
+          .eq('dj_id', userId)
+          .select(selectCols)
+          .single();
+        if (e) throw e;
+        onUpdated({ ...(data as unknown as UpcomingBooking), is_manual: true });
+      } else {
+        // INSERT new manual booking.
+        const insertRow = {
+          ...payload,
+          dj_id: userId,
+          requester_id: userId,
+          is_manual: true,
+          status: 'approved',
+        };
+        const { data, error: e } = await supabase
+          .from('bookings')
+          .insert(insertRow as unknown as never)
+          .select(selectCols)
+          .single();
+        if (e) throw e;
+        onAdded({ ...(data as unknown as UpcomingBooking), is_manual: true });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.');
     } finally {
@@ -535,7 +613,7 @@ function AddManualBookingModal({
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Add Manual Booking</h2>
+          <h2 className={styles.modalTitle}>{isEdit ? 'Edit Manual Booking' : 'Add Manual Booking'}</h2>
           <button type="button" onClick={onClose} className={styles.modalClose} aria-label="Close">✕</button>
         </div>
 
@@ -711,7 +789,7 @@ function AddManualBookingModal({
         <div className={styles.modalFooter}>
           <button type="button" onClick={onClose} className={styles.cancelBtn} disabled={saving}>Cancel</button>
           <button type="button" onClick={handleSave} className={styles.saveBtn} disabled={saving}>
-            {saving ? 'Saving…' : 'Add Booking'}
+            {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Add Booking')}
           </button>
         </div>
       </div>
