@@ -319,9 +319,6 @@ function EventListItem({
               {venueLine}
             </a>
           ) : venueLine}
-          {event.set_type && (
-            <span className={styles.setType}> · {formatSetType(event.set_type)}</span>
-          )}
         </div>
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
@@ -355,11 +352,4 @@ function formatTime12(t: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return `${h}:${m} ${ampm}`;
-}
-
-function formatSetType(s: string): string {
-  return s
-    .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
 }

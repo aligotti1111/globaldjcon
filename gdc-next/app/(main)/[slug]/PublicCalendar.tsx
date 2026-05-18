@@ -784,47 +784,6 @@ function SingleMonthView({
           <span className={styles.legendDot} />Unavailable
         </div>
       </div>
-
-      {/* Events-this-month list */}
-      {monthEvents.length > 0 && (
-        <div className={styles.eventsList}>
-          <div className={styles.eventsListLabel}>Events This Month</div>
-          <div className={styles.eventsListBody}>
-            {monthEvents.map(({ day: d, key, data }) => {
-              const dateLabel = new Date(year, month, d).toLocaleDateString(
-                'en-US',
-                { weekday: 'short', month: 'short', day: 'numeric' }
-              );
-              const cleanLoc = cleanLocation(data.location);
-              const timeStr = data.startTime ? formatTime12(data.startTime) : '';
-              return (
-                <div key={key} className={styles.eventItem}>
-                  <div className={styles.eventDateCol}>
-                    <div>{dateLabel}</div>
-                    {timeStr && (
-                      <div className={styles.eventDateColTime}>{timeStr}</div>
-                    )}
-                  </div>
-                  <div className={styles.eventCenter}>
-                    <div className={styles.eventTitle}>{data.eventName}</div>
-                    {cleanLoc && <div className={styles.eventLoc}>{cleanLoc}</div>}
-                  </div>
-                  {data.ticketUrl && (
-                    <a
-                      href={data.ticketUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.eventTicketLink}
-                    >
-                      {data.ticketLabel || 'More Info'}
-                    </a>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
