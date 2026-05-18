@@ -1293,16 +1293,6 @@ function OwnerDayEditPopup({
 
         {status === 'booked' && (
           <div className={styles.ownerEditBookedFields}>
-            <div className={styles.ownerEditFieldGroup}>
-              <label className={styles.ownerEditFieldLabel}>Event / Venue Name</label>
-              <input
-                type="text"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                placeholder="e.g. Saturday Night Live"
-                className={styles.ownerEditInput}
-              />
-            </div>
             {/* Owner can add full booking details (venue, time, address, flyer)
                 by opening the Upcoming Bookings page with the date prefilled.
                 Calendar mark is preserved either way — public visitors see
@@ -1310,11 +1300,11 @@ function OwnerDayEditPopup({
             <button
               type="button"
               onClick={() => {
-                // Persist any pending eventName change first so the user
-                // doesn't lose it when we navigate away.
+                // Persist the booked mark first (no event name needed — the
+                // upcoming-bookings page collects venue/event info instead).
                 onSave({
                   booked: true,
-                  eventName: eventName.trim() || undefined,
+                  eventName: undefined,
                 });
                 window.location.href = `/upcoming-bookings?addManual=${encodeURIComponent(dateKey)}`;
               }}
