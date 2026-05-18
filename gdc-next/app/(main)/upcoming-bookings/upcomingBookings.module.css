@@ -41,7 +41,7 @@
   letter-spacing: .1em;
   text-transform: uppercase;
   background: var(--neon);
-  color: var(--bg);
+  color: #000;
   border: none;
   border-radius: 6px;
   padding: .7rem 1.1rem;

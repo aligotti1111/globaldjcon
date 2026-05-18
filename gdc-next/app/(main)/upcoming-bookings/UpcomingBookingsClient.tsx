@@ -89,7 +89,8 @@ export default function UpcomingBookingsClient({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(b);
     }
-    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+    // Sort ascending: soonest month first.
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [bookings]);
 
   function monthLabel(key: string): string {
