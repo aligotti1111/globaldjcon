@@ -76,6 +76,11 @@ export default function MobileMenu() {
                     </Link>
                   )}
                   <Link href="/booking-requests" onClick={close} className="mobile-menu-item">Bookings</Link>
+                  {user.role === 'dj' && (
+                    <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
+                      Upcoming Bookings
+                    </Link>
+                  )}
                   <Link
                     href="/inbox"
                     onClick={close}
