@@ -34,7 +34,8 @@ type EmailType =
   | 'mob_booking_status'
   | 'booking_counter'
   | 'quote_sent'
-  | 'booking_approved';
+  | 'booking_approved'
+  | 'manual_booking_invite';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -794,6 +795,69 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Profile Approved</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(claimerName || 'there')}, your claim on <strong>${escHtml(profileName || 'your profile')}</strong> has been approved. You can now sign in and edit your profile.</p>
         ${ctaButton(`${SITE_URL}/${profileSlug || ''}`, 'View Profile')}
+      `),
+    };
+
+  // ── 11. MANUAL BOOKING INVITE (DJ-added booking sent to host's email) ──
+  // DJ creates a manual booking and chooses to notify the host. We email
+  // the host with full booking details and a CTA to sign up + claim the
+  // booking. The signup link carries the host's email (prefill) and the
+  // booking id (to auto-link after signup completes — handled in the
+  // signup flow, not here).
+  } else if (type === 'manual_booking_invite') {
+    const recipientEmail = body.hostEmail as string | undefined;
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return NextResponse.json(
+        { error: 'Missing or invalid hostEmail for manual_booking_invite' },
+        { status: 400 }
+      );
+    }
+    const djName = (body.djName as string | undefined) || 'Your DJ';
+    const djType = body.djType as string | undefined; // 'club' | 'mobile'
+    const bookingId = body.bookingId as string | undefined;
+    const eventDate = body.eventDate as string | null | undefined;
+    const startTime = body.startTime as string | null | undefined;
+    const endTime = body.endTime as string | null | undefined;
+    const venueName = body.venueName as string | null | undefined;
+    const venueAddress = body.venueAddress as string | null | undefined;
+    const venueType = body.venueType as string | null | undefined;
+    const setType = body.setType as string | null | undefined;
+    const eventType = body.eventType as string | null | undefined;
+    const isResend = body.isResend === true;
+
+    // Build the signup URL with email prefilled + booking-claim hint.
+    const claimUrl = `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${
+      bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''
+    }`;
+
+    const intro = isResend
+      ? `${escHtml(djName)} has updated your booking details. Here's the latest info on file:`
+      : `${escHtml(djName)} has booked you for an upcoming event and wants to share the details. Here's everything we have on file:`;
+
+    const subject = isResend
+      ? `Updated booking details from ${djName}`
+      : `Booking details from ${djName}`;
+
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [recipientEmail],
+      subject,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${isResend ? 'Booking Updated' : 'Your Booking Details'}</h2>
+        <p style="color:#666666;margin-bottom:20px;">${intro}</p>
+        ${bookingInfoBox({
+          eventTypeText: djType === 'mobile' ? eventTypeLabel(eventType || undefined) : undefined,
+          setTypeText: djType === 'club' ? setTypeLabel(setType) : undefined,
+          venueTypeText: djType === 'club' ? venueTypeLabel(venueType) : undefined,
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          venueName: venueName || undefined,
+          venueAddress: venueAddress || undefined,
+        })}
+        <p style="color:#666666;margin-bottom:20px;">Create a free account to keep track of this booking, message ${escHtml(djName)} directly, and manage any future bookings — all in one place.</p>
+        ${ctaButton(claimUrl, 'Create Account')}
+        <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
       `),
     };
 
