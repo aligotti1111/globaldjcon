@@ -839,36 +839,32 @@
 }
 
 /* ── Collapsible booking banners ──────────────────────────────────── */
-/* Wrapper around an expanded card. The wrapper has the same dimensions
-   as the card (no padding) — the chevron is absolutely positioned to
-   sit ON the card's top-right corner, inside its visual frame. */
+/* Wrapper around an expanded card. Renders a thin bordered bar above the
+   card containing only a chevron icon — click it to collapse the card. */
 .expandableWrap {
   position: relative;
 }
-.collapseBtn {
-  position: absolute;
-  top: .6rem;
-  right: .6rem;
-  z-index: 2;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  background: var(--card);
-  border: 1px solid rgba(255, 255, 255, .25);
-  color: var(--white);
-  cursor: pointer;
-  display: inline-flex;
+.collapseBar {
+  display: flex;
   align-items: center;
   justify-content: center;
-  transition: background .15s, border-color .15s, transform .1s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
-}
-.collapseBtn:hover {
+  height: 28px;
   background: var(--deep);
-  border-color: rgba(255, 255, 255, .5);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
 }
-.collapseBtn:active {
-  transform: scale(0.95);
+.collapseBar:hover {
+  color: var(--white);
+  background: var(--card);
+  border-color: rgba(255, 255, 255, .45);
+}
+.collapseBar:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
 }
 
 /* Collapse chevron rendered inline (inside the same-day group header) */

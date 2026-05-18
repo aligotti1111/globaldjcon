@@ -947,6 +947,19 @@ function FlatList({
         const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
         return (
           <div key={b.id} className={styles.expandableWrap}>
+            <div
+              className={styles.collapseBar}
+              onClick={() => toggle(b.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(b.id); } }}
+              aria-label="Collapse booking"
+              title="Collapse"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            </div>
             <Card
               booking={b}
               isIncoming={isIncoming}
@@ -968,17 +981,6 @@ function FlatList({
               onDeclineCounter={onDeclineCounter}
               onMessage={onMessage}
             />
-            <button
-              type="button"
-              className={styles.collapseBtn}
-              onClick={() => toggle(b.id)}
-              aria-label="Collapse booking"
-              title="Collapse"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="18 15 12 9 6 15" />
-              </svg>
-            </button>
           </div>
         );
       })}
@@ -1127,18 +1129,20 @@ function SameDayGrouped({
         if (!hasMultiple) {
           return (
             <div key={groupKey} className={styles.expandableWrap}>
-              {cards}
-              <button
-                type="button"
-                className={styles.collapseBtn}
+              <div
+                className={styles.collapseBar}
                 onClick={() => toggleGroup(groupKey)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGroup(groupKey); } }}
                 aria-label="Collapse booking"
                 title="Collapse"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="18 15 12 9 6 15" />
                 </svg>
-              </button>
+              </div>
+              {cards}
             </div>
           );
         }
