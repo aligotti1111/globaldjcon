@@ -222,9 +222,8 @@
   font-family: 'Space Mono', monospace;
   font-size: 11px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-word;
 }
 .metaLink {
   color: var(--neon);
@@ -256,4 +255,45 @@
   .flyerWrap, .uploadBtn { width: 50px; height: 50px; }
   .meta { white-space: normal; }
   .flyerActions { opacity: 1; }
+}
+
+/* Flyer lightbox — fixed full-screen overlay with the enlarged flyer
+   centered. Click anywhere outside the image (or the × button) to close. */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+.lightboxImg {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
+  cursor: default;
+}
+.lightboxClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, .6);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.lightboxClose:hover {
+  background: rgba(0, 0, 0, .85);
 }

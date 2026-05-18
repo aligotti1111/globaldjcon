@@ -55,6 +55,8 @@ interface Props {
 export default function MonthEventsList({ djId, isOwnProfile, year, month, bookingDays, onEditDate }: Props) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Lightbox: when set, the enlarged flyer overlay shows this URL.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -164,21 +166,49 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
             isOwnProfile={isOwnProfile}
             onFlyerChange={(url) => updateFlyerUrl(ev.id, url)}
             onEditDate={onEditDate}
+            onFlyerClick={(url) => setLightboxUrl(url)}
           />
         ))}
       </div>
+
+      {/* Flyer lightbox — click anywhere or press Esc to close. */}
+      {lightboxUrl && (
+        <div
+          className={styles.lightboxOverlay}
+          onClick={() => setLightboxUrl(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Event flyer enlarged"
+            className={styles.lightboxImg}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className={styles.lightboxClose}
+            onClick={() => setLightboxUrl(null)}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function EventListItem({
-  event, djId, isOwnProfile, onFlyerChange, onEditDate,
+  event, djId, isOwnProfile, onFlyerChange, onEditDate, onFlyerClick,
 }: {
   event: EventRow;
   djId: string;
   isOwnProfile: boolean;
   onFlyerChange: (url: string | null) => void;
   onEditDate?: (dateKey: string) => void;
+  onFlyerClick?: (url: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -310,6 +340,11 @@ function EventListItem({
   const hasTime = !!event.start_time;
   const hasVenue = !!event.venue_name?.trim();
   const hasAddress = !!event.venue_address?.trim();
+  const hasFlyer = !!event.flyer_url;
+  // Flyer-only state: row has a flyer image but no venue/time/address. For
+  // public viewers we surface "See flyer for more info" so they know to
+  // look at the image. Owners still see the Add X placeholders.
+  const flyerOnly = hasFlyer && !hasTime && !hasVenue && !hasAddress;
   const timeRange = formatTimeRange(event.start_time, event.end_time);
   const venueLine = event.venue_name?.trim()
     || event.venue_address?.split(',')[0]
@@ -374,8 +409,6 @@ function EventListItem({
     }
   }
 
-  const hasFlyer = !!event.flyer_url;
-
   return (
     <div className={styles.row}>
       {/* Date pill — big day number with DOW + MO stacked beside it. First
@@ -394,7 +427,16 @@ function EventListItem({
       {hasFlyer ? (
         <div className={styles.flyerWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={event.flyer_url || ''} alt="Event flyer" className={styles.flyerImg} />
+          <img
+            src={event.flyer_url || ''}
+            alt="Event flyer"
+            className={styles.flyerImg}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (event.flyer_url) onFlyerClick?.(event.flyer_url);
+            }}
+            style={{ cursor: event.flyer_url ? 'zoom-in' : 'default' }}
+          />
           {isOwnProfile && (
             <div className={styles.flyerActions}>
               <button
@@ -437,12 +479,15 @@ function EventListItem({
 
       {/* Middle: venue (bold) on top, time + map link below. Owner sees
           "Add X" placeholders for missing fields; public viewers see only
-          what's actually been filled in. */}
+          what's actually been filled in. If only a flyer is set, public
+          viewers see "See flyer for more info" instead of an empty row. */}
       <div className={styles.middle}>
         {hasVenue ? (
           <div className={styles.venue}>{venueLine}</div>
         ) : isOwnProfile ? (
           <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
+        ) : flyerOnly ? (
+          <div className={styles.venue}>See flyer for more info</div>
         ) : null}
         <div className={styles.meta}>
           {hasTime ? timeRange : isOwnProfile ? (
@@ -452,7 +497,7 @@ function EventListItem({
           {hasAddress ? (
             mapUrl ? (
               <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                {event.venue_address?.split(',').slice(0, 2).join(',') || 'Map'}
+                {event.venue_address}
               </a>
             ) : (
               <span>{event.venue_address}</span>
