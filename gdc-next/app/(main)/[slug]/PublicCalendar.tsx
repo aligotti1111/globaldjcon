@@ -20,6 +20,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import styles from './calendar.module.css';
+import MonthEventsList from './MonthEventsList';
 import { createClient } from '@/lib/supabase/client';
 import {
   type BookingDays,
@@ -445,6 +446,18 @@ export default function PublicCalendar({
           onEmbedClick={onEmbedClick}
           onShareClick={onShareClick}
           pendingDates={pendingDates}
+        />
+      )}
+
+      {/* UPCOMING EVENTS LIST — only in single-month view. Anyone can see
+          the list; only the profile owner sees the per-event flyer upload
+          controls. */}
+      {!rollingActive && (
+        <MonthEventsList
+          djId={djId}
+          isOwnProfile={isOwnProfile}
+          year={year}
+          month={month}
         />
       )}
 
