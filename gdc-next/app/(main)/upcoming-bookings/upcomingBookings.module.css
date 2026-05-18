@@ -531,3 +531,77 @@
   .deleteBtn { grid-area: delete; }
   .manualPill { grid-area: pill; justify-self: end; }
 }
+
+/* ── Host invite block in modal ─────────────────────────────────────── */
+.hostInviteBlock {
+  margin-top: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.inviteCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  user-select: none;
+}
+.inviteCheckRow input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--neon);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.inviteCheckRow input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+.checkHint {
+  color: var(--muted);
+  font-size: .75rem;
+}
+/* Banner shown when the email has already been sent — locks the input
+   from triggering a double-send and offers an explicit Resend button. */
+.sentBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .65rem .8rem;
+  background: rgba(0, 245, 196, .06);
+  border: 1px solid rgba(0, 245, 196, .25);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.sentBannerText {
+  font-size: .8rem;
+  color: var(--white);
+  flex: 1 1 auto;
+}
+.resendBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: 1px solid var(--neon);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.resendBtn:hover:not(:disabled) {
+  background: var(--neon);
+  color: #000;
+}
+.resendBtn:disabled {
+  opacity: .6;
+  cursor: wait;
+}

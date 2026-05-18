@@ -41,6 +41,9 @@ export interface UpcomingBooking {
   event_type: string | null;
   booking_type: string | null;
   is_manual: boolean;
+  // Host invitation fields — only meaningful for manual bookings.
+  host_email?: string | null;
+  host_email_sent_at?: string | null;
   requester_name?: string | null;
   requester_id?: string | null;
   phone?: string | null;
@@ -61,6 +64,8 @@ interface ProfileRow {
   role: string | null;
   dj_type: string | null;
   country: string | null;
+  full_name: string | null;
+  display_name: string | null;
   booking_settings: { mob_bookings_per_day?: number } | null;
 }
 
@@ -71,7 +76,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, dj_type, country, booking_settings')
+    .select('role, dj_type, country, full_name, display_name, booking_settings')
     .eq('id', user.id)
     .maybeSingle<ProfileRow>();
 
@@ -80,6 +85,7 @@ export default async function UpcomingBookingsPage() {
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
   const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
   const djCountry = profile?.country || 'United States';
+  const djName = profile?.display_name || profile?.full_name || 'Your DJ';
 
   // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
   // a plain date so a string compare works).
@@ -88,7 +94,7 @@ export default async function UpcomingBookingsPage() {
   // Fetch future approved-or-manual bookings for this DJ.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, requester_name, requester_id, phone, package_title, package_details, quoted_rate, counter_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, quoted_rate, counter_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -101,6 +107,7 @@ export default async function UpcomingBookingsPage() {
       userId={user.id}
       djType={djType}
       djCountry={djCountry}
+      djName={djName}
       bookingsPerDay={bookingsPerDay}
       initialBookings={(rows || []) as UpcomingBooking[]}
     />

@@ -29,6 +29,7 @@ interface Props {
   userId: string;
   djType: 'club' | 'mobile';
   djCountry: string;
+  djName: string;
   bookingsPerDay: number;
   initialBookings: UpcomingBooking[];
 }
@@ -77,7 +78,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 })();
 
 export default function UpcomingBookingsClient({
-  userId, djType, djCountry, bookingsPerDay, initialBookings,
+  userId, djType, djCountry, djName, bookingsPerDay, initialBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -186,6 +187,7 @@ export default function UpcomingBookingsClient({
           userId={userId}
           djType={djType}
           djCountry={djCountry}
+          djName={djName}
           bookingsPerDay={bookingsPerDay}
           existingBookings={bookings}
           existing={editing}
@@ -467,16 +469,15 @@ function formatLongDate(d: string): string {
 // ───────────────────────────────────────────────────────────────────────
 
 function AddManualBookingModal({
-  userId, djType, djCountry, bookingsPerDay, existingBookings,
+  userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
   existing, onClose, onAdded, onUpdated,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
   djCountry: string;
+  djName: string;
   bookingsPerDay: number;
   existingBookings: UpcomingBooking[];
-  // When `existing` is set, the modal opens in EDIT mode prefilled with the
-  // booking's current values. Save will UPDATE that row instead of insert.
   existing: UpcomingBooking | null;
   onClose: () => void;
   onAdded: (b: UpcomingBooking) => void;
@@ -484,8 +485,6 @@ function AddManualBookingModal({
 }) {
   const isEdit = existing !== null;
 
-  // Initialize state from `existing` (edit mode) or empty defaults (add mode).
-  // Convert stored 24h "HH:MM:SS" times to the dropdown's "HH:MM" value form.
   function trimTime(t: string | null): string {
     if (!t) return '';
     return t.length >= 5 ? t.slice(0, 5) : t;
@@ -495,22 +494,28 @@ function AddManualBookingModal({
   const [endTime, setEndTime] = useState(trimTime(existing?.end_time || null));
   const [venueName, setVenueName] = useState(existing?.venue_name || '');
   const [venueAddress, setVenueAddress] = useState(existing?.venue_address || '');
-  // Country: use existing booking's country if we can infer it; otherwise
-  // fall back to the DJ's profile country. We don't store country on the
-  // booking row directly, so default to djCountry on edit too.
   const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
   const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
+  // Host invite — only relevant for manual bookings. If editing a row that
+  // already has an email saved, prefill it. If the email was already sent
+  // (host_email_sent_at populated), the UI shows a "sent" state instead of
+  // the checkbox to prevent accidental double-sends.
+  const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
+  const [sendInvite, setSendInvite] = useState<boolean>(false);
+  const hostEmailAlreadySent = !!existing?.host_email_sent_at;
+  const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
+    existing?.host_email_sent_at || null,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
-  // Address autocomplete state
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const addrTimerRef = useRef<NodeJS.Timeout | null>(null);
-  // Preserve existing coords if we're editing — user might not re-pick from
-  // the autocomplete dropdown, in which case we want to keep the original pin.
   const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(
     existing?.venue_lat != null && existing?.venue_lon != null
       ? { lat: existing.venue_lat, lon: existing.venue_lon }
@@ -521,6 +526,93 @@ function AddManualBookingModal({
   const todayStr = new Date().toISOString().slice(0, 10);
 
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
+
+  // Hit the email API. Returns ok / error message. Used for both "send"
+  // (after save) and explicit "resend" actions.
+  async function sendHostInviteEmail(opts: {
+    bookingId: string;
+    recipientEmail: string;
+    isResend: boolean;
+    // Snapshot of the current form values so the email reflects what the
+    // user just saved, not stale values from the booking row.
+    snapshot: {
+      eventDate: string;
+      startTime: string;
+      endTime: string;
+      venueName: string;
+      venueAddress: string;
+      venueType: string;
+      setType: string;
+      eventType: string;
+    };
+  }): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'manual_booking_invite',
+          hostEmail: opts.recipientEmail,
+          djName,
+          djType,
+          bookingId: opts.bookingId,
+          eventDate: opts.snapshot.eventDate,
+          startTime: opts.snapshot.startTime,
+          endTime: opts.snapshot.endTime || null,
+          venueName: opts.snapshot.venueName || null,
+          venueAddress: opts.snapshot.venueAddress || null,
+          venueType: opts.snapshot.venueType || null,
+          setType: opts.snapshot.setType || null,
+          eventType: opts.snapshot.eventType || null,
+          isResend: opts.isResend,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, error: data.error || 'Email send failed' };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Network error' };
+    }
+  }
+
+  // Standalone resend (edit mode, after the email's already been sent once).
+  async function handleResend() {
+    setResendBusy(true);
+    setResendSuccess(false);
+    setError(null);
+    if (!existing) { setResendBusy(false); return; }
+    const recipientEmail = (hostEmail || existing.host_email || '').trim();
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      setError('No valid host email on file to resend to.');
+      setResendBusy(false);
+      return;
+    }
+    const result = await sendHostInviteEmail({
+      bookingId: existing.id,
+      recipientEmail,
+      isResend: true,
+      snapshot: {
+        eventDate, startTime, endTime, venueName, venueAddress,
+        venueType, setType, eventType,
+      },
+    });
+    if (!result.ok) {
+      setError(result.error || 'Resend failed.');
+      setResendBusy(false);
+      return;
+    }
+    // Update host_email_sent_at server-side too so future opens see fresh date.
+    const supabase = createClient();
+    const nowIso = new Date().toISOString();
+    await supabase
+      .from('bookings')
+      .update({ host_email: recipientEmail, host_email_sent_at: nowIso } as unknown as never)
+      .eq('id', existing.id)
+      .eq('dj_id', userId);
+    setHostEmailSentAt(nowIso);
+    setResendSuccess(true);
+    setResendBusy(false);
+  }
 
   function openDatePicker() {
     const el = dateInputRef.current;
@@ -558,6 +650,7 @@ function AddManualBookingModal({
       const supabase = createClient();
       const coords = venueCoordsRef.current;
       // Shared payload for both insert and update.
+      const trimmedEmail = hostEmail.trim();
       const payload = {
         booking_type: djType,
         event_date: eventDate,
@@ -570,12 +663,14 @@ function AddManualBookingModal({
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
+        host_email: trimmedEmail || null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at';
+
+      // Decide whether to send the invite email after save.
+      const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
 
       if (isEdit) {
-        // UPDATE existing manual booking. Scope by dj_id too as defense in
-        // depth — RLS should already prevent cross-user writes.
         const { data, error: e } = await supabase
           .from('bookings')
           .update(payload as unknown as never)
@@ -584,9 +679,38 @@ function AddManualBookingModal({
           .select(selectCols)
           .single();
         if (e) throw e;
-        onUpdated({ ...(data as unknown as UpcomingBooking), is_manual: true });
+        let updated = { ...(data as unknown as UpcomingBooking), is_manual: true };
+        // Fire email if requested.
+        if (shouldSend) {
+          const result = await sendHostInviteEmail({
+            bookingId: existing.id,
+            recipientEmail: trimmedEmail,
+            isResend: false,
+            snapshot: {
+              eventDate, startTime, endTime, venueName, venueAddress,
+              venueType, setType, eventType,
+            },
+          });
+          if (result.ok) {
+            const nowIso = new Date().toISOString();
+            await supabase
+              .from('bookings')
+              .update({ host_email_sent_at: nowIso } as unknown as never)
+              .eq('id', existing.id)
+              .eq('dj_id', userId);
+            updated = { ...updated, host_email_sent_at: nowIso };
+            setHostEmailSentAt(nowIso);
+          } else {
+            // Save succeeded but email failed — surface the error and bail
+            // so the user can decide what to do. Booking is already updated.
+            setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
+            setSaving(false);
+            onUpdated(updated);
+            return;
+          }
+        }
+        onUpdated(updated);
       } else {
-        // INSERT new manual booking.
         const insertRow = {
           ...payload,
           dj_id: userId,
@@ -600,7 +724,33 @@ function AddManualBookingModal({
           .select(selectCols)
           .single();
         if (e) throw e;
-        onAdded({ ...(data as unknown as UpcomingBooking), is_manual: true });
+        let inserted = { ...(data as unknown as UpcomingBooking), is_manual: true };
+        if (shouldSend) {
+          const result = await sendHostInviteEmail({
+            bookingId: inserted.id,
+            recipientEmail: trimmedEmail,
+            isResend: false,
+            snapshot: {
+              eventDate, startTime, endTime, venueName, venueAddress,
+              venueType, setType, eventType,
+            },
+          });
+          if (result.ok) {
+            const nowIso = new Date().toISOString();
+            await supabase
+              .from('bookings')
+              .update({ host_email_sent_at: nowIso } as unknown as never)
+              .eq('id', inserted.id)
+              .eq('dj_id', userId);
+            inserted = { ...inserted, host_email_sent_at: nowIso };
+          } else {
+            setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
+            setSaving(false);
+            onAdded(inserted);
+            return;
+          }
+        }
+        onAdded(inserted);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.');
@@ -783,6 +933,55 @@ function AddManualBookingModal({
             </label>
           )}
 
+          {/* ── Host invitation section ─────────────────────────────────
+              DJ can email the host with booking details. After the email
+              sends once, the checkbox/send-button UI is replaced with a
+              "sent on X" banner + a Resend button, so the DJ can't double-
+              fire emails by accident. */}
+          <div className={styles.hostInviteBlock}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
+              <input
+                type="email"
+                value={hostEmail}
+                onChange={(e) => setHostEmail(e.target.value)}
+                placeholder="host@example.com"
+                className={styles.input}
+                autoComplete="off"
+              />
+            </label>
+            {hostEmailAlreadySent ? (
+              <div className={styles.sentBanner}>
+                <div className={styles.sentBannerText}>
+                  Booking details sent {hostEmailSentAt ? `on ${formatSentDate(hostEmailSentAt)}` : ''}.
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendBusy || saving}
+                  className={styles.resendBtn}
+                >
+                  {resendBusy ? 'Sending…' : (resendSuccess ? 'Sent ✓' : 'Resend Email')}
+                </button>
+              </div>
+            ) : (
+              <label className={styles.inviteCheckRow}>
+                <input
+                  type="checkbox"
+                  checked={sendInvite}
+                  onChange={(e) => setSendInvite(e.target.checked)}
+                  disabled={!hostEmail.trim() || !hostEmail.includes('@')}
+                />
+                <span>
+                  Send booking details to host
+                  {(!hostEmail.trim() || !hostEmail.includes('@')) && (
+                    <span className={styles.checkHint}> · enter a valid email first</span>
+                  )}
+                </span>
+              </label>
+            )}
+          </div>
+
           {error && <div className={styles.errorBox}>{error}</div>}
         </div>
 
@@ -824,4 +1023,15 @@ function formatTime12(t: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return `${h}:${m} ${ampm}`;
+}
+
+// Format an ISO timestamp as a short "Mar 15, 2026" date for the "sent on"
+// banner. Used only in the modal's host-invite section.
+function formatSentDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return iso;
+  }
 }
