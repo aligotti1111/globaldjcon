@@ -136,11 +136,9 @@ export function AuthProvider({
 
   // Pending-booking claim: if a user just verified after arriving via a
   // booking-invite link, the signup page stashed the booking id in
-  // localStorage. Now that we're authenticated AND we have the user's
-  // email, claim the booking by setting requester_id = user.id. The
-  // host_email match in the WHERE clause prevents anyone from claiming
-  // a booking they weren't invited to — they'd need access to both the
-  // invitee's email AND the bookingId.
+  // localStorage. Hit the server-side claim API to link the booking to
+  // this user. Server validates host_email match before granting the
+  // claim (avoids needing a permissive RLS policy on the client side).
   useEffect(() => {
     if (!user || !user.email || !user.id) return;
     if (typeof window === 'undefined') return;
@@ -149,21 +147,21 @@ export function AuthProvider({
       bookingId = window.localStorage.getItem(PENDING_BOOKING_CLAIM_KEY);
     } catch { return; }
     if (!bookingId) return;
-    // Best-effort claim. We don't surface errors — if the booking can't
-    // be found or the email doesn't match, just clear the key silently.
+    // Best-effort claim. Clear the key after the request finishes either way
+    // so a stale claim doesn't loop on every page load.
     (async () => {
       try {
-        await supabase
-          .from('bookings')
-          .update({
-            requester_id: user.id,
-            requester_name: user.name || null,
-          } as unknown as never)
-          .eq('id', bookingId)
-          .eq('host_email', user.email)
-          .eq('is_manual', true);
+        const res = await fetch('/api/claim-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          console.warn('[booking-claim] api error (non-fatal)', data);
+        }
       } catch (e) {
-        console.warn('[booking-claim] update failed (non-fatal)', e);
+        console.warn('[booking-claim] fetch failed (non-fatal)', e);
       }
       try {
         window.localStorage.removeItem(PENDING_BOOKING_CLAIM_KEY);
