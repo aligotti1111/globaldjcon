@@ -831,8 +831,8 @@ export async function POST(req: Request) {
     }`;
 
     const intro = isResend
-      ? `${escHtml(djName)} has updated your booking details. Here's the latest info on file:`
-      : `${escHtml(djName)} has booked you for an upcoming event and wants to share the details. Here's everything we have on file:`;
+      ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
+      : `${escHtml(djName)} is your DJ for an upcoming event and wants to share the booking details with you. Here's everything on file:`;
 
     const subject = isResend
       ? `Updated booking details from ${djName}`
