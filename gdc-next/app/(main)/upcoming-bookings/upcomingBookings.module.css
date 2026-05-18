@@ -1,0 +1,299 @@
+/* Upcoming Bookings page — DJ schedule view */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  color: var(--white);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  line-height: 1;
+  margin: 0 0 .35rem;
+}
+.backLink {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.backLink:hover { color: var(--white); }
+
+.addBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  padding: .7rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background .15s, transform .1s;
+}
+.addBtn:hover { background: #00d4a9; }
+.addBtn:active { transform: scale(0.97); }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty {
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.empty p { margin: 0 0 .5rem; }
+.emptyHint { font-size: .85rem; max-width: 480px; margin: .5rem auto 0; }
+
+/* ── Month groups ───────────────────────────────────────────────────── */
+.monthList {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.month { }
+.monthLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .08em;
+  color: var(--white);
+  margin: 0 0 .85rem;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid var(--border);
+}
+.monthItems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Row ────────────────────────────────────────────────────────────── */
+.row {
+  display: grid;
+  grid-template-columns: 130px 150px 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: .85rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rowDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .05em;
+  color: var(--neon);
+  font-weight: 700;
+}
+.rowTime {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  color: var(--white);
+}
+.rowContext {
+  font-size: .9rem;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.manualPill {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .25rem .5rem;
+  border: 1px solid rgba(247, 201, 72, .4);
+  background: rgba(247, 201, 72, .08);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 700;
+}
+.deleteBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.deleteBtn:hover {
+  color: var(--error, #ff5577);
+  border-color: rgba(255, 85, 119, .5);
+  background: rgba(255, 85, 119, .08);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  margin: 0;
+}
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 .3rem;
+}
+.modalClose:hover { color: var(--white); }
+
+.modalBody {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.fieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.input {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.errorBox {
+  padding: .65rem .8rem;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .4);
+  color: var(--error, #ff5577);
+  font-size: .82rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: .65rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--deep);
+}
+.cancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+}
+.cancelBtn:hover { color: var(--white); border-color: rgba(255, 255, 255, .25); }
+.saveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  padding: .65rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:disabled { opacity: .6; cursor: wait; }
+
+/* ── Mobile ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: stretch; }
+  .addBtn { width: 100%; }
+  .row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "date     pill"
+      "time     time"
+      "context  context"
+      "delete   delete";
+    gap: .35rem;
+  }
+  .rowDate { grid-area: date; }
+  .rowTime { grid-area: time; }
+  .rowContext { grid-area: context; white-space: normal; }
+  .manualPill { grid-area: pill; justify-self: end; }
+  .deleteBtn { grid-area: delete; justify-self: end; }
+}
