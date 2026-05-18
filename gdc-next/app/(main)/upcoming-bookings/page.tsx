@@ -30,13 +30,31 @@ export interface UpcomingBooking {
   start_time: string | null;
   end_time: string | null;
   venue_name: string | null;
+  venue_address: string | null;
+  venue_lat: number | null;
+  venue_lon: number | null;
   venue_type: string | null;
+  set_type: string | null;
+  equipment: string | null;
+  room_details: string | null;
+  guest_count: number | null;
   event_type: string | null;
   booking_type: string | null;
   is_manual: boolean;
   requester_name?: string | null;
+  requester_id?: string | null;
+  phone?: string | null;
   package_title?: string | null;
+  package_details?: string | null;
+  quoted_rate?: number | null;
+  counter_rate?: number | null;
+  offer_amount?: number | null;
+  deposit_pct?: number | null;
+  deposit_amount?: number | null;
+  currency?: string | null;
   notes?: string | null;
+  status?: string | null;
+  created_at?: string;
 }
 
 interface ProfileRow {
@@ -71,7 +89,7 @@ export default async function UpcomingBookingsPage() {
   // Fetch future approved-or-manual bookings for this DJ.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_type, event_type, booking_type, is_manual, requester_name, package_title, notes')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, requester_name, requester_id, phone, package_title, package_details, quoted_rate, counter_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')

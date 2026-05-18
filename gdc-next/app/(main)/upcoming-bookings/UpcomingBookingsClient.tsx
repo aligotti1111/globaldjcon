@@ -185,6 +185,7 @@ function BookingRow({
   djType: 'club' | 'mobile';
   onDelete?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const dateLabel = formatDayLabel(booking.event_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
 
@@ -200,21 +201,168 @@ function BookingRow({
     if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
 
+  // Stop the delete button from also expanding/collapsing the row.
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    onDelete && onDelete();
+  }
+
   return (
-    <div className={styles.row}>
-      <div className={styles.rowDate}>{dateLabel}</div>
-      <div className={styles.rowTime}>{timeRange}</div>
-      <div className={styles.rowContext}>{context}</div>
-      {booking.is_manual && (
-        <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
+      <button
+        type="button"
+        className={styles.row}
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <div className={styles.rowDate}>{dateLabel}</div>
+        <div className={styles.rowTime}>{timeRange}</div>
+        <div className={styles.rowContext}>{context}</div>
+        {booking.is_manual && (
+          <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+        )}
+        {onDelete && (
+          <span
+            onClick={handleDelete}
+            className={styles.deleteBtn}
+            role="button"
+            aria-label="Delete manual booking"
+            title="Delete"
+          >
+            ✕
+          </span>
+        )}
+        <svg
+          className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && <BookingDetails booking={booking} djType={djType} />}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// BookingDetails — full info panel shown when a row is expanded inline.
+// Renders every field we have on file for the booking, grouped sensibly.
+// Empty/null fields are hidden so the panel stays clean for manual bookings
+// (which won't have requester/package/quote info).
+// ───────────────────────────────────────────────────────────────────────
+
+function BookingDetails({
+  booking, djType,
+}: {
+  booking: UpcomingBooking;
+  djType: 'club' | 'mobile';
+}) {
+  // Format an event type / venue type / set type with a fallback to raw.
+  const setTypeLabel = booking.set_type
+    ? (booking.set_type
+        .split('_')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' '))
+    : null;
+
+  const eventTypeLabel = booking.event_type
+    ? (MOBILE_EVENT_TYPES.find((e) => e.value === booking.event_type)?.label
+        || booking.event_type)
+    : null;
+
+  // Format currency-aware money. Default USD if currency missing.
+  function money(n: number | null | undefined): string | null {
+    if (n == null) return null;
+    const cur = booking.currency || 'USD';
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n);
+    } catch {
+      return `${cur} ${n}`;
+    }
+  }
+
+  // Build a list of label/value pairs to render. Null/empty values
+  // automatically filtered below.
+  const fields: Array<[string, string | null | undefined]> = [
+    ['Event Date', booking.event_date ? formatLongDate(booking.event_date) : null],
+    ['Start Time', booking.start_time ? formatTime12(booking.start_time) : null],
+    ['End Time', booking.end_time ? formatTime12(booking.end_time) : null],
+    ['Venue Name', booking.venue_name],
+    ['Venue Address', booking.venue_address],
+    ...(djType === 'club' ? [
+      ['Venue Type', booking.venue_type ? capitalize(booking.venue_type) : null] as [string, string | null],
+      ['Set Type', setTypeLabel] as [string, string | null],
+      ['Equipment', booking.equipment ? capitalize(booking.equipment.replace(/_/g, ' ')) : null] as [string, string | null],
+    ] : [
+      ['Event Type', eventTypeLabel] as [string, string | null],
+      ['Guest Count', booking.guest_count != null ? String(booking.guest_count) : null] as [string, string | null],
+      ['Room Details', booking.room_details] as [string, string | null],
+    ]),
+    ['Booked By', booking.is_manual ? 'You (manual)' : (booking.requester_name || null)],
+    ['Contact Phone', booking.phone],
+    ['Package', booking.package_title],
+    ['Agreed Rate', money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount)],
+    ['Deposit',
+      booking.deposit_amount != null
+        ? money(booking.deposit_amount)
+        : booking.deposit_pct != null
+          ? `${booking.deposit_pct}%`
+          : null,
+    ],
+    ['Status', booking.status ? booking.status.toUpperCase() : null],
+    ['Booked On', booking.created_at ? formatLongDate(booking.created_at) : null],
+  ];
+
+  const visible = fields.filter(([, v]) => v != null && v !== '');
+  const hasNotes = booking.notes && booking.notes.trim().length > 0;
+  const hasPackageDetails = booking.package_details && booking.package_details.trim().length > 0;
+
+  return (
+    <div className={styles.detailsPanel}>
+      <dl className={styles.detailsGrid}>
+        {visible.map(([label, value]) => (
+          <div key={label} className={styles.detailRow}>
+            <dt className={styles.detailLabel}>{label}</dt>
+            <dd className={styles.detailValue}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {hasPackageDetails && (
+        <div className={styles.detailLongBlock}>
+          <div className={styles.detailLabel}>Package Details</div>
+          <div
+            className={styles.detailLongValue}
+            // package_details may contain HTML from the RTE — render it as-is.
+            // Trusted source: stored by the DJ themself via the package editor.
+            dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
+          />
+        </div>
       )}
-      {onDelete && (
-        <button type="button" onClick={onDelete} className={styles.deleteBtn} aria-label="Delete manual booking" title="Delete">
-          ✕
-        </button>
+      {hasNotes && (
+        <div className={styles.detailLongBlock}>
+          <div className={styles.detailLabel}>Notes</div>
+          <div className={styles.detailLongValue}>{booking.notes}</div>
+        </div>
       )}
     </div>
   );
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatLongDate(d: string): string {
+  // Accepts YYYY-MM-DD OR an ISO timestamp; handle both.
+  const onlyDate = d.length === 10 ? d : d.slice(0, 10);
+  const [y, m, day] = onlyDate.split('-').map((s) => parseInt(s, 10));
+  if (!y || !m || !day) return d;
+  const date = new Date(y, m - 1, day);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
 }
 
 // ───────────────────────────────────────────────────────────────────────
