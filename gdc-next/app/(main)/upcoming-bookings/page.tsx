@@ -60,6 +60,7 @@ export interface UpcomingBooking {
 interface ProfileRow {
   role: string | null;
   dj_type: string | null;
+  country: string | null;
   booking_settings: { mob_bookings_per_day?: number } | null;
 }
 
@@ -68,19 +69,17 @@ export default async function UpcomingBookingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Pull role + dj_type + booking_settings. The role is a single value 'dj'
-  // (not split into mobile_dj/club_dj — that distinction is in dj_type).
   const { data: profile } = await supabase
     .from('users')
-    .select('role, dj_type, booking_settings')
+    .select('role, dj_type, country, booking_settings')
     .eq('id', user.id)
     .maybeSingle<ProfileRow>();
 
   if (profile?.role !== 'dj') redirect('/booking-requests');
 
-  // Normalize djType. Default to 'mobile' if somehow unset.
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
   const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
+  const djCountry = profile?.country || 'United States';
 
   // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
   // a plain date so a string compare works).
@@ -101,6 +100,7 @@ export default async function UpcomingBookingsPage() {
     <UpcomingBookingsClient
       userId={user.id}
       djType={djType}
+      djCountry={djCountry}
       bookingsPerDay={bookingsPerDay}
       initialBookings={(rows || []) as UpcomingBooking[]}
     />

@@ -21,12 +21,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses } from '../[slug]/mobileBookingForm';
+import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 
 interface Props {
   userId: string;
   djType: 'club' | 'mobile';
+  djCountry: string;
   bookingsPerDay: number;
   initialBookings: UpcomingBooking[];
 }
@@ -75,7 +77,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 })();
 
 export default function UpcomingBookingsClient({
-  userId, djType, bookingsPerDay, initialBookings,
+  userId, djType, djCountry, bookingsPerDay, initialBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -164,6 +166,7 @@ export default function UpcomingBookingsClient({
         <AddManualBookingModal
           userId={userId}
           djType={djType}
+          djCountry={djCountry}
           bookingsPerDay={bookingsPerDay}
           existingBookings={bookings}
           onClose={() => setShowAddModal(false)}
@@ -423,10 +426,11 @@ function formatLongDate(d: string): string {
 // ───────────────────────────────────────────────────────────────────────
 
 function AddManualBookingModal({
-  userId, djType, bookingsPerDay, existingBookings, onClose, onAdded,
+  userId, djType, djCountry, bookingsPerDay, existingBookings, onClose, onAdded,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
+  djCountry: string;
   bookingsPerDay: number;
   existingBookings: UpcomingBooking[];
   onClose: () => void;
@@ -437,6 +441,10 @@ function AddManualBookingModal({
   const [endTime, setEndTime] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
+  // Default to the DJ's own country so the autocomplete is immediately
+  // biased to the right region. User can change it per booking (e.g. a
+  // gig in another country).
+  const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(''); // club only — no default
   const [setType, setSetType] = useState<string>(''); // club only — no default
   const [eventType, setEventType] = useState<string>('wedding'); // mobile only
@@ -591,7 +599,32 @@ function AddManualBookingModal({
           </label>
 
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Venue Location</span>
+            {/* Label row hosts the field title AND a compact country select.
+                Picking a country biases (and restricts) Nominatim results to
+                that country only — prevents irrelevant cross-border matches
+                when a US street name also exists elsewhere. */}
+            <div className={styles.fieldLabelRow}>
+              <span className={styles.fieldLabel}>Venue Location</span>
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  // Country changed → invalidate any pending suggestions
+                  // since they were biased to the previous country.
+                  setAddrSuggestions([]);
+                  setShowAddrSuggestions(false);
+                  venueCoordsRef.current = null;
+                }}
+                className={styles.countrySelect}
+                aria-label="Country for address search"
+              >
+                {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
+                  <option key={c} value={c}>
+                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className={styles.addrWrap}>
               <input
                 type="text"
@@ -607,7 +640,11 @@ function AddManualBookingModal({
                     return;
                   }
                   addrTimerRef.current = setTimeout(async () => {
-                    const results = await searchAddresses(val.trim());
+                    // Country code (e.g. 'us') restricts Nominatim's results
+                    // to that country only. Falls back to global search if
+                    // we don't have a mapping for the picked country.
+                    const cc = COUNTRY_CODES_ADDR[country] || null;
+                    const results = await searchAddresses(val.trim(), cc);
                     setAddrSuggestions(results);
                     setShowAddrSuggestions(results.length > 0);
                   }, 350);

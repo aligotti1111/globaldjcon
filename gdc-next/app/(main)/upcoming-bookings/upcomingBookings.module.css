@@ -190,6 +190,34 @@
   text-transform: uppercase;
   color: var(--muted);
 }
+/* Label row — hosts the field title + an inline compact widget on the right
+   (e.g. the country selector next to "Venue Location"). */
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .35rem;
+}
+.countrySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: .25rem .45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  /* Make this look like a chip, not a wide select field. */
+  min-width: 64px;
+  height: 24px;
+}
+.countrySelect:focus {
+  outline: none;
+  border-color: var(--neon);
+}
 .input {
   background: var(--deep);
   border: 1px solid var(--border);
