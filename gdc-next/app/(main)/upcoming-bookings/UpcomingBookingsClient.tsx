@@ -91,20 +91,32 @@ export default function UpcomingBookingsClient({
   const [prefillDate, setPrefillDate] = useState<string>('');
 
   // Read URL params on mount: ?addManual=YYYY-MM-DD opens the add modal with
-  // that date already populated. Strip the param from history so a refresh
-  // doesn't re-open the modal.
+  // that date already populated. If a booking already exists on that date,
+  // we open the EDIT modal for it instead so the owner sees their previously
+  // entered details. Strip the param from history so a refresh doesn't loop.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const addManual = params.get('addManual');
     if (addManual) {
-      setPrefillDate(addManual);
-      setShowAddModal(true);
-      // Clean the URL so subsequent navigations / refreshes don't loop.
+      // Look for an existing booking on this date. Prefer manual bookings
+      // (those are the ones we let the user edit). If only an approved
+      // real booking exists, we can't edit it anyway — fall back to opening
+      // the add modal with the date prefilled.
+      const existing = initialBookings.find(
+        (b) => b.event_date === addManual && b.is_manual,
+      );
+      if (existing) {
+        setEditing(existing);
+      } else {
+        setPrefillDate(addManual);
+        setShowAddModal(true);
+      }
       const url = new URL(window.location.href);
       url.searchParams.delete('addManual');
       window.history.replaceState(null, '', url.toString());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Group by month (YYYY-MM); keys sorted descending (most recent month first).
