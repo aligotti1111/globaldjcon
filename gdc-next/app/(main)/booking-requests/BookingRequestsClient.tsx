@@ -9,7 +9,7 @@
 //
 // Faithful port of vanilla br-load-render.js renderList + br-shared-actions.js.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
@@ -902,22 +902,20 @@ function FlatList({
   // Track which bookings are currently expanded. Default: only the first
   // booking in the list. Clicking a collapsed banner expands it; clicking
   // an expanded card's collapse chevron collapses it back to a banner.
-  // First-booking default is computed from the bookings list — when the
-  // list changes (tab switch, action), the first id becomes the default.
   const firstId = bookings[0]?.id;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(firstId ? [firstId] : []),
   );
 
-  // If the list mutates (e.g. a booking gets approved and falls out of the
-  // Pending tab), make sure the new first booking is expanded by default.
-  // We don't useEffect — that'd close everything on every re-render. Instead
-  // we patch the set inline if the first id changed AND the user hasn't
-  // explicitly opened/closed it yet. Simpler: if expandedIds is empty AND
-  // there's a first booking, seed it.
-  if (firstId && expandedIds.size === 0) {
-    expandedIds.add(firstId);
-  }
+  // When the visible list changes (tab switch, status update removes a
+  // booking from this filter), reset to "first booking expanded, rest
+  // collapsed". Triggered by currentTab change — that's the only signal
+  // we need; the bookings array changes too but tracking it would cause
+  // unwanted resets on every status mutation.
+  useEffect(() => {
+    setExpandedIds(new Set(firstId ? [firstId] : []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTab]);
 
   function toggle(id: string) {
     setExpandedIds((prev) => {
@@ -1027,9 +1025,12 @@ function SameDayGrouped({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => new Set(firstGroupKey ? [firstGroupKey] : []),
   );
-  if (firstGroupKey && expandedGroups.size === 0) {
-    expandedGroups.add(firstGroupKey);
-  }
+
+  // Reset to "first group expanded" on tab change.
+  useEffect(() => {
+    setExpandedGroups(new Set(firstGroupKey ? [firstGroupKey] : []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTab]);
 
   function toggleGroup(key: string) {
     setExpandedGroups((prev) => {

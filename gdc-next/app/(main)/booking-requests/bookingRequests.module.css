@@ -839,20 +839,27 @@
 }
 
 /* ── Collapsible booking banners ──────────────────────────────────── */
-/* Wrapper around an expanded card. Renders a thin bordered bar above the
-   card containing only a chevron icon — click it to collapse the card. */
+/* Wrapper around an expanded card. Renders a thin bordered bar fused to
+   the top of the card. The bar contains a right-aligned chevron icon —
+   click anywhere on the bar to collapse the card. */
 .expandableWrap {
   position: relative;
 }
 .collapseBar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   height: 28px;
+  padding: 0 .85rem;
   background: var(--deep);
   border: 1px solid rgba(255, 255, 255, .25);
-  border-radius: 8px;
-  margin-bottom: 6px;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  /* Sit flush on top of the card below (overlap the card's own top border
+     by 1px so we read as one continuous frame). */
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
   color: var(--muted);
   cursor: pointer;
   transition: color .15s, background .15s, border-color .15s;
@@ -865,6 +872,14 @@
 .collapseBar:focus-visible {
   outline: 2px solid var(--neon);
   outline-offset: 2px;
+}
+/* When the bar sits on top of a card, the card's top border-radius should
+   be squared off to match the bar's bottom edge. We do that by targeting
+   the immediate next sibling (the card) via a class on its container. */
+.expandableWrap > .collapseBar + :global(.cardRoot),
+.expandableWrap > .collapseBar + div {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 /* Collapse chevron rendered inline (inside the same-day group header) */
