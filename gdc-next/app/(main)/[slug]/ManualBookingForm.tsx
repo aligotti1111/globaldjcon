@@ -351,27 +351,29 @@ export default function ManualBookingForm({
 
   return (
     <div className={styles.form}>
-      {/* Date */}
-      <div className={styles.field}>
-        <span className={styles.fieldLabel}>Date</span>
-        <div
-          className={styles.dateWrap}
-          onClick={openDatePicker}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
-        >
-          <input
-            ref={dateInputRef}
-            type="date"
-            min={todayStr}
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            disabled={lockDate}
-            className={styles.dateInput}
-          />
+      {/* Date — hidden when the date is locked by the caller (e.g. day-edit
+          popup where the date is already shown in the modal header). */}
+      {!lockDate && (
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>Date</span>
+          <div
+            className={styles.dateWrap}
+            onClick={openDatePicker}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
+          >
+            <input
+              ref={dateInputRef}
+              type="date"
+              min={todayStr}
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className={styles.dateInput}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Time */}
       <div className={styles.fieldRow}>
