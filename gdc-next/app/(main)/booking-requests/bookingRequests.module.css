@@ -37,7 +37,7 @@
   letter-spacing: .1em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--neon);
+  color: #000;
   background: var(--white);
   border: none;
   border-radius: 6px;
