@@ -10,6 +10,7 @@
 // Faithful port of vanilla br-load-render.js renderList + br-shared-actions.js.
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
@@ -665,7 +666,14 @@ export default function BookingRequestsClient({
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.pageTitle}>Booking Requests</h1>
+      <div className={styles.titleRow}>
+        <h1 className={styles.pageTitle}>Booking Requests</h1>
+        {isDj && (
+          <Link href="/upcoming-bookings" className={styles.upcomingBtn}>
+            View Upcoming Bookings →
+          </Link>
+        )}
+      </div>
 
       {/* INCOMING — DJs only */}
       {showIncoming && (

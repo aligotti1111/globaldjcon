@@ -18,6 +18,37 @@
   letter-spacing: .08em;
   margin-bottom: .25rem;
 }
+/* Row containing the page title + "View Upcoming Bookings" CTA. The CTA
+   is DJ-only and sits flush right with title baseline-aligned. */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.titleRow .pageTitle {
+  margin-bottom: 0;
+}
+.upcomingBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--neon);
+  border: none;
+  border-radius: 6px;
+  padding: .7rem 1.1rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background .15s, transform .1s;
+}
+.upcomingBtn:hover { background: #00d4a9; }
+.upcomingBtn:active { transform: scale(0.97); }
 .pageSub {
   font-family: 'Space Mono', monospace;
   font-size: .6rem;
