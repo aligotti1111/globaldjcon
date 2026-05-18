@@ -43,9 +43,12 @@ interface Props {
   isOwnProfile: boolean;
   year: number;
   month: number;  // 0-indexed
+  // Owner-only callback: when the owner clicks "Edit Details" on a row, this
+  // fires with the date key so the parent can open the day-edit popup.
+  onEditDate?: (dateKey: string) => void;
 }
 
-export default function MonthEventsList({ djId, isOwnProfile, year, month }: Props) {
+export default function MonthEventsList({ djId, isOwnProfile, year, month, onEditDate }: Props) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -159,6 +162,7 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month }: Pro
             djId={djId}
             isOwnProfile={isOwnProfile}
             onFlyerChange={(url) => updateFlyerUrl(ev.id, url)}
+            onEditDate={onEditDate}
           />
         ))}
       </div>
@@ -167,12 +171,13 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month }: Pro
 }
 
 function EventListItem({
-  event, djId, isOwnProfile, onFlyerChange,
+  event, djId, isOwnProfile, onFlyerChange, onEditDate,
 }: {
   event: EventRow;
   djId: string;
   isOwnProfile: boolean;
   onFlyerChange: (url: string | null) => void;
+  onEditDate?: (dateKey: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -180,21 +185,59 @@ function EventListItem({
 
   const { day, dow, mo } = parseDateParts(event.event_date);
 
-  // Private events (calendar mark without a real booking row) render with
-  // a grayed-out date pill + "Private Event" label. No flyer, no map link.
+  // Private events (calendar mark without a real booking row).
+  //   - Owner sees: full row with flyer-upload slot, placeholder fields, and
+  //     an "Edit Details" button that opens the day-edit popup so they can
+  //     fill in time/venue/address/etc in one flow.
+  //   - Public sees: muted date pill + italic "Private Event" label only.
   if (event.is_private) {
+    if (!isOwnProfile) {
+      return (
+        <div className={styles.row}>
+          <div className={`${styles.datePill} ${styles.datePillMuted}`}>
+            <div className={styles.dayNum}>{day}</div>
+            <div className={styles.dayMeta}>
+              <div className={styles.dow}>{dow}</div>
+              <div className={styles.mo}>{mo}</div>
+            </div>
+          </div>
+          <div className={styles.middle}>
+            <div className={styles.privateLabel}>Private Event</div>
+          </div>
+        </div>
+      );
+    }
+    // Owner view: prompt them to complete the booking. The synthetic id is
+    // "private:YYYY-MM-DD" so we extract the date for the flyer-upload path
+    // and edit-popup target. Flyer can't be uploaded yet because no
+    // booking row exists; we hide the flyer slot for private rows until
+    // they've added at least the minimum details.
+    const dateKey = event.event_date;
     return (
       <div className={styles.row}>
-        <div className={`${styles.datePill} ${styles.datePillMuted}`}>
+        <div className={styles.datePill}>
           <div className={styles.dayNum}>{day}</div>
           <div className={styles.dayMeta}>
             <div className={styles.dow}>{dow}</div>
             <div className={styles.mo}>{mo}</div>
           </div>
         </div>
+        <div className={styles.uploadBtn} aria-hidden="true" style={{ cursor: 'default', opacity: .5 }}>—</div>
         <div className={styles.middle}>
-          <div className={styles.privateLabel}>Private Event</div>
+          <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
+          <div className={styles.meta}>
+            <span className={styles.placeholderField}>Add time</span>
+            {' · '}
+            <span className={styles.placeholderField}>Add address</span>
+          </div>
         </div>
+        <button
+          type="button"
+          className={styles.editDetailsBtn}
+          onClick={() => onEditDate?.(dateKey || '')}
+        >
+          Edit Details
+        </button>
       </div>
     );
   }

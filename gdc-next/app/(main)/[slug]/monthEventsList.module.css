@@ -23,6 +23,7 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-width: 720px;
 }
 
 .row {
@@ -36,6 +37,32 @@
 }
 .row:hover {
   border-color: rgba(255, 255, 255, .15);
+}
+
+/* Edit Details button — appears on the right of owner's view of private/empty
+   rows so they can fill in time, venue, address, etc. in one click. */
+.editDetailsBtn {
+  flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: 1px solid rgba(0, 245, 196, .45);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.editDetailsBtn:hover {
+  background: var(--neon);
+  color: #000;
+}
+.placeholderField {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .datePill {
