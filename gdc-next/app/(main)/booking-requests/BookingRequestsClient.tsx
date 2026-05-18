@@ -699,6 +699,7 @@ export default function BookingRequestsClient({
                 isIncoming={true}
                 blocked={blocked}
                 currentUser={currentUser}
+                currentTab={incomingTab}
                 onApprove={(id) => djUpdateStatus(id, 'approved')}
                 onDeny={(id) => djUpdateStatus(id, 'denied')}
                 onCancel={cancelOutgoing}
@@ -719,6 +720,7 @@ export default function BookingRequestsClient({
                 isIncoming={true}
                 blocked={blocked}
                 currentUser={currentUser}
+                currentTab={incomingTab}
                 onApprove={(id) => djUpdateStatus(id, 'approved')}
                 onDeny={(id) => djUpdateStatus(id, 'denied')}
                 onCancel={cancelOutgoing}
@@ -768,6 +770,7 @@ export default function BookingRequestsClient({
               isIncoming={false}
               blocked={blocked}
               currentUser={currentUser}
+              currentTab={outgoingTab}
               onApprove={(id) => djUpdateStatus(id, 'approved')}
               onDeny={(id) => djUpdateStatus(id, 'denied')}
               onCancel={cancelOutgoing}
@@ -871,6 +874,9 @@ interface ListProps {
   isIncoming: boolean;
   blocked: string[];
   currentUser: CurrentUser;
+  /** Current tab filter — used to decide whether collapsed banners show
+      a status pill (only on the "all" tab where statuses actually vary). */
+  currentTab: string;
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
   onCancel: (id: string) => void;
@@ -888,7 +894,7 @@ interface ListProps {
 }
 
 function FlatList({
-  bookings, isIncoming, blocked, currentUser,
+  bookings, isIncoming, blocked, currentUser, currentTab,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
@@ -931,6 +937,7 @@ function FlatList({
               key={b.id}
               booking={b}
               isIncoming={isIncoming}
+              currentTab={currentTab}
               onClick={() => toggle(b.id)}
             />
           );
@@ -990,7 +997,7 @@ function FlatList({
 // Clicking any banner expands the entire day-group at once — matching the
 // "overlap rule": if one booking on a day is open, ALL bookings that day are.
 function SameDayGrouped({
-  bookings, isIncoming, blocked, currentUser,
+  bookings, isIncoming, blocked, currentUser, currentTab,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
@@ -1047,6 +1054,7 @@ function SameDayGrouped({
                   key={b.id}
                   booking={b}
                   isIncoming={isIncoming}
+                  currentTab={currentTab}
                   onClick={() => toggleGroup(groupKey)}
                 />
               ))}
@@ -1199,10 +1207,12 @@ function SameDayGrouped({
 function CollapsibleBanner({
   booking,
   isIncoming,
+  currentTab,
   onClick,
 }: {
   booking: BookingRow;
   isIncoming: boolean;
+  currentTab: string;
   onClick: () => void;
 }) {
   const date = formatShortDate(booking.event_date).toUpperCase();
@@ -1230,6 +1240,19 @@ function CollapsibleBanner({
     label = `${date} · ${timeStr} · ${eventLabel}`;
   }
 
+  // Status pill — only rendered when the user is viewing the "all" tab,
+  // where statuses vary. On Pending/Approved/Denied/Counter tabs every
+  // booking has the same status so the pill would be noise.
+  const showStatus = currentTab === 'all';
+  const statusRaw = (booking.status || '').toLowerCase();
+  const statusClass =
+    statusRaw === 'pending' ? styles.statusPillPending :
+    statusRaw === 'approved' ? styles.statusPillApproved :
+    statusRaw === 'denied' ? styles.statusPillDenied :
+    statusRaw === 'counter' ? styles.statusPillCounter :
+    statusRaw === 'cancelled' ? styles.statusPillCancelled :
+    '';
+
   return (
     <button
       type="button"
@@ -1238,6 +1261,11 @@ function CollapsibleBanner({
       aria-label={`Expand booking: ${label}`}
     >
       <span className={styles.collapsedBannerText}>{label}</span>
+      {showStatus && statusRaw && (
+        <span className={`${styles.statusPill} ${statusClass}`}>
+          {statusRaw.toUpperCase()}
+        </span>
+      )}
       <svg
         className={styles.collapsedBannerChevron}
         width="14"

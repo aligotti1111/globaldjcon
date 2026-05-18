@@ -839,10 +839,9 @@
 }
 
 /* ── Collapsible booking banners ──────────────────────────────────── */
-/* Wrapper around an expanded card. Lets us position a collapse chevron
-   in the top-right corner without modifying the card components.
-   Top padding gives the chevron a dedicated row so it doesn't overlap
-   the first content section's neon header pill. */
+/* Wrapper around an expanded card. The chevron sits at the top-right of
+   the wrapper itself (inside the card's visual bounds since the card
+   typically has its own padding/border). */
 .expandableWrap {
   position: relative;
   padding-top: 2.25rem;
@@ -850,24 +849,27 @@
 .collapseBtn {
   position: absolute;
   top: .55rem;
-  right: .85rem;
+  right: .55rem;
   z-index: 2;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid var(--border);
-  color: var(--muted);
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: var(--white);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color .15s, background .15s, border-color .15s;
+  transition: background .15s, border-color .15s, transform .1s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
 }
 .collapseBtn:hover {
-  color: var(--white);
-  background: rgba(255, 255, 255, .08);
-  border-color: rgba(255, 255, 255, .25);
+  background: var(--deep);
+  border-color: rgba(255, 255, 255, .5);
+}
+.collapseBtn:active {
+  transform: scale(0.95);
 }
 
 /* Collapse chevron rendered inline (inside the same-day group header) */
@@ -947,4 +949,46 @@
 /* Inside collapsedGroup, banners shouldn't double-stack margin */
 .collapsedGroup .collapsedBanner {
   margin-bottom: 0;
+}
+
+/* Status pill on the right side of a collapsed banner. Only rendered on
+   the "All" tab where statuses vary. Color matches semantic state. */
+.statusPill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .3rem .55rem;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.statusPillPending {
+  color: var(--amber, #f7c948);
+  border-color: rgba(247, 201, 72, .4);
+  background: rgba(247, 201, 72, .08);
+}
+.statusPillApproved {
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .4);
+  background: rgba(0, 245, 196, .08);
+}
+.statusPillDenied {
+  color: var(--error, #ff5577);
+  border-color: rgba(255, 85, 119, .4);
+  background: rgba(255, 85, 119, .08);
+}
+.statusPillCounter {
+  color: var(--amber, #f7c948);
+  border-color: rgba(247, 201, 72, .4);
+  background: rgba(247, 201, 72, .08);
+}
+.statusPillCancelled {
+  color: var(--muted);
+  border-color: var(--border);
+  background: rgba(255, 255, 255, .03);
 }
