@@ -899,21 +899,28 @@ function FlatList({
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: ListProps) {
-  // Track which bookings are currently expanded. Default: only the first
-  // booking in the list. Clicking a collapsed banner expands it; clicking
-  // an expanded card's collapse chevron collapses it back to a banner.
+  // Track which bookings are currently expanded. Default rules:
+  //   - On the "pending" tab: ALL bookings expanded by default (the user
+  //     can collapse individually). Pending requests are the most action-
+  //     oriented — keep them visible.
+  //   - On any other tab: only the FIRST booking expanded, rest collapsed.
+  // The user's manual collapse/expand actions are preserved until they
+  // switch tabs (the useEffect below resets on tab change).
   const firstId = bookings[0]?.id;
+  function defaultExpanded(tab: string, list: BookingRow[]): Set<string> {
+    if (tab === 'pending') return new Set(list.map((b) => b.id));
+    return new Set(list[0] ? [list[0].id] : []);
+  }
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(firstId ? [firstId] : []),
+    () => defaultExpanded(currentTab, bookings),
   );
 
-  // When the visible list changes (tab switch, status update removes a
-  // booking from this filter), reset to "first booking expanded, rest
-  // collapsed". Triggered by currentTab change — that's the only signal
-  // we need; the bookings array changes too but tracking it would cause
-  // unwanted resets on every status mutation.
+  // When the user switches tabs, reset expansion to the default for that
+  // tab. We deliberately only watch currentTab — the bookings array also
+  // changes when a status mutates (approve / deny etc.) but resetting on
+  // every mutation would close cards mid-action.
   useEffect(() => {
-    setExpandedIds(new Set(firstId ? [firstId] : []));
+    setExpandedIds(defaultExpanded(currentTab, bookings));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab]);
 
@@ -1020,15 +1027,19 @@ function SameDayGrouped({
   );
 
   // Group-level expansion state. Keyed by event_date (the group key).
-  // Default: first group expanded.
-  const firstGroupKey = sortedGroups[0]?.[0]?.event_date || sortedGroups[0]?.[0]?.id || null;
+  // SameDayGrouped is only rendered on the incoming "pending" tab, so all
+  // day-groups are expanded by default. The user can collapse individual
+  // groups manually if they want.
+  function defaultExpandedGroups(groups: BookingRow[][]): Set<string> {
+    return new Set(groups.map((g) => g[0].event_date || g[0].id));
+  }
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    () => new Set(firstGroupKey ? [firstGroupKey] : []),
+    () => defaultExpandedGroups(sortedGroups),
   );
 
-  // Reset to "first group expanded" on tab change.
+  // Reset to "all groups expanded" on tab change.
   useEffect(() => {
-    setExpandedGroups(new Set(firstGroupKey ? [firstGroupKey] : []));
+    setExpandedGroups(defaultExpandedGroups(sortedGroups));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab]);
 
