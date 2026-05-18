@@ -31,6 +31,11 @@ interface EventRow {
   set_type: string | null;
   flyer_url: string | null;
   is_manual: boolean;
+  // Synthetic flag for calendar-marked booked dates that don't have a
+  // corresponding bookings row. Such "private" entries render with date
+  // only — no venue/time/flyer because none exists. Set by the merge
+  // logic in load() below.
+  is_private?: boolean;
 }
 
 interface Props {
@@ -59,7 +64,8 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month }: Pro
 
     async function load() {
       const supabase = createClient();
-      const { data } = await supabase
+      // Fetch real booking rows (approved + manual) in this month.
+      const bookingsPromise = supabase
         .from('bookings')
         .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual')
         .eq('dj_id', djId)
@@ -68,8 +74,52 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month }: Pro
         .or('status.eq.approved,is_manual.eq.true')
         .order('event_date', { ascending: true })
         .order('start_time', { ascending: true });
+
+      // Also fetch the calendar booking_days so calendar-marked dates
+      // without a real booking row appear in the list as private events.
+      const calendarPromise = supabase
+        .from('users')
+        .select('booking_settings')
+        .eq('id', djId)
+        .maybeSingle<{ booking_settings: { booking_days?: Record<string, { booked?: boolean }> } | null }>();
+
+      const [bookingsRes, calendarRes] = await Promise.all([bookingsPromise, calendarPromise]);
       if (!mounted) return;
-      setEvents((data as EventRow[]) || []);
+
+      const realRows = (bookingsRes.data as EventRow[]) || [];
+      const realDateSet = new Set(realRows.map((r) => r.event_date));
+
+      // Collect calendar-marked booked dates in this month that DON'T
+      // already have a matching real booking. These are private events.
+      const bookingDays = calendarRes.data?.booking_settings?.booking_days || {};
+      const privateRows: EventRow[] = [];
+      for (const [dateKey, day] of Object.entries(bookingDays)) {
+        if (!day?.booked) continue;
+        if (dateKey < startBound) continue;
+        if (dateKey >= monthEnd) continue;
+        if (realDateSet.has(dateKey)) continue;
+        privateRows.push({
+          id: `private:${dateKey}`,
+          event_date: dateKey,
+          start_time: null,
+          end_time: null,
+          venue_name: null,
+          venue_address: null,
+          venue_lat: null,
+          venue_lon: null,
+          set_type: null,
+          flyer_url: null,
+          is_manual: false,
+          is_private: true,
+        });
+      }
+
+      const merged = [...realRows, ...privateRows].sort((a, b) => {
+        const da = a.event_date + ' ' + (a.start_time || '');
+        const db = b.event_date + ' ' + (b.start_time || '');
+        return da.localeCompare(db);
+      });
+      setEvents(merged);
       setLoading(false);
     }
     load();
@@ -129,6 +179,24 @@ function EventListItem({
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const dateLabel = formatDateLabel(event.event_date);
+
+  // Private events (calendar mark without a real booking row) render with
+  // ONLY the date + "Private Event". No flyer, no upload, no map link —
+  // there's nothing to attach because no row exists yet. Owner sees the
+  // same minimal display; to add details they go through the calendar.
+  if (event.is_private) {
+    return (
+      <div className={styles.row}>
+        <div className={styles.details}>
+          <div className={styles.date}>{dateLabel}</div>
+          <div className={styles.venue}>
+            <span className={styles.setType}>Private Event</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const timeRange = formatTimeRange(event.start_time, event.end_time);
   const venueLine = event.venue_name?.trim()
     || event.venue_address?.split(',')[0]

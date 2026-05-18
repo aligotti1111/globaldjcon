@@ -1344,9 +1344,27 @@ function OwnerDayEditPopup({
                 className={styles.ownerEditInput}
               />
             </div>
+            {/* Owner can add full booking details (venue, time, address, flyer)
+                by opening the Upcoming Bookings page with the date prefilled.
+                Calendar mark is preserved either way — public visitors see
+                the date as booked even if details aren't added. */}
+            <button
+              type="button"
+              onClick={() => {
+                // Persist any pending eventName change first so the user
+                // doesn't lose it when we navigate away.
+                onSave({
+                  booked: true,
+                  eventName: eventName.trim() || undefined,
+                });
+                window.location.href = `/upcoming-bookings?addManual=${encodeURIComponent(dateKey)}`;
+              }}
+              className={styles.ownerEditAddDetailsBtn}
+            >
+              + Add Booking Details
+            </button>
             <p className={styles.ownerEditComingSoon}>
-              Address, times, ticket URL, and per-day rate overrides
-              coming in a future update.
+              Without details, this date shows publicly as a private booked event.
             </p>
           </div>
         )}
