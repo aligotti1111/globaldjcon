@@ -7,8 +7,14 @@
 //      - Real-time slug availability check + alternative suggestions (DJ + Venue)
 //      - ZIP-code → city/state autofill via Nominatim (DJ + Venue)
 //   3. Success screen ("Check your email") with token-based verification email
+//
+// QUERY PARAMS (booking-claim flow):
+//   ?email=<addr>            — prefill the email field
+//   ?claim_booking=<bookId>  — auto-route to Host signup, lock email, and stash
+//                              the booking id in localStorage so AuthProvider
+//                              can link the booking to the user once verified.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -24,6 +30,10 @@ import { SlugInput, type SlugStatus } from './SlugInput';
 import { ZipLookup } from './ZipLookup';
 import styles from './signup.module.css';
 
+// localStorage key used by AuthProvider to claim the booking after the
+// new account verifies + logs in. Must match the key AuthProvider reads.
+const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
+
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
 
 interface SuccessInfo {
@@ -36,6 +46,32 @@ interface SuccessInfo {
 export default function SignupPage() {
   const [screen, setScreen] = useState<Screen>('type-select');
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
+  // URL-param state (read once on mount; SSR-safe because we're in 'use client').
+  const [prefillEmail, setPrefillEmail] = useState<string>('');
+  const [lockedEmail, setLockedEmail] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email') || '';
+    const claimBookingId = params.get('claim_booking') || '';
+    if (email) setPrefillEmail(email);
+    // If we have a claim_booking, this is the host-invite flow:
+    //   - Auto-route to the host form (skip the type chooser).
+    //   - Lock the email field so the host can't accidentally use a
+    //     different address than the one the booking is keyed against.
+    //   - Stash the booking id so the post-verify hook can claim it.
+    if (claimBookingId) {
+      setLockedEmail(true);
+      setScreen('host');
+      try {
+        window.localStorage.setItem(PENDING_BOOKING_CLAIM_KEY, claimBookingId);
+      } catch {
+        // localStorage unavailable (private mode etc.) — fall back to losing
+        // the claim. The DJ can resend the email if needed.
+      }
+    }
+  }, []);
 
   return (
     <div className={styles.body}>
@@ -65,6 +101,8 @@ export default function SignupPage() {
           <HostForm
             onBack={() => setScreen('type-select')}
             onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
+            prefillEmail={prefillEmail}
+            lockedEmail={lockedEmail}
           />
         )}
         {screen === 'venue' && (
@@ -492,13 +530,18 @@ function DjForm({ onBack, onSuccess }: {
 // HOST FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function HostForm({ onBack, onSuccess }: {
+function HostForm({ onBack, onSuccess, prefillEmail, lockedEmail }: {
   onBack: () => void;
   onSuccess: (info: SuccessInfo) => void;
+  // Email prefilled from URL (booking-invite flow). When `lockedEmail` is
+  // true the email field is readOnly — used when the user arrived via a
+  // claim_booking link so we don't pair the booking with a different email.
+  prefillEmail?: string;
+  lockedEmail?: boolean;
 }) {
   const supabase = createClient();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United States');
   const [error, setError] = useState<string | null>(null);
@@ -591,8 +634,15 @@ function HostForm({ onBack, onSuccess }: {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          readOnly={!!lockedEmail}
           autoComplete="email"
+          style={lockedEmail ? { background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' } : undefined}
         />
+        {lockedEmail && (
+          <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+            Email is locked to match your booking invitation.
+          </small>
+        )}
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="host-password">Password</label>
