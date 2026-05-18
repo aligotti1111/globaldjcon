@@ -2,21 +2,25 @@
 
 // UpcomingBookingsClient — DJ's own future schedule view.
 //
-// Renders the list grouped by month (most recent month first per the spec,
-// then ascending within the month). Provides an "Add Manual Booking" CTA
-// that opens a modal form with the right fields for the DJ's type:
-//   - Club/Bar DJ: date, start, end, venue name, venue type (bar/club)
-//   - Mobile DJ: date, start, end, event type
+// Renders the list grouped by month (most recent month first), shows each
+// upcoming approved/manual booking as a single row, and provides an
+// "+ Add Manual Booking" CTA that opens a modal with the right fields for
+// the DJ's type.
+//
+// Form fields per role:
+//   - Club/Bar DJ: date · start · end · venue name · address (Nominatim) ·
+//     venue type (bar/club) · set type (opening/headliner/closing/opening+closing)
+//   - Mobile DJ:   date · start · end · venue name (optional) · address ·
+//     event type
 //
 // Daily-cap rule applied at form save:
 //   - Club: max 1 booking per date (real + manual combined). Soft block.
-//   - Mobile: max users.bookings_per_day per date. Soft block.
-// "Soft" = we surface a warning + require confirm, but don't refuse outright,
-// because DJs sometimes legitimately overbook themselves.
+//   - Mobile: max users.booking_settings.mob_bookings_per_day per date. Soft block.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { searchAddresses } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 
@@ -27,7 +31,7 @@ interface Props {
   initialBookings: UpcomingBooking[];
 }
 
-// Mobile-DJ event-type labels — keep aligned with the public booking form.
+// Mobile-DJ event-type labels (kept aligned with the public booking form).
 const MOBILE_EVENT_TYPES: Array<{ value: string; label: string }> = [
   { value: 'wedding', label: 'Wedding' },
   { value: 'birthday', label: 'Birthday Party' },
@@ -45,28 +49,49 @@ const CLUB_VENUE_TYPES: Array<{ value: string; label: string }> = [
   { value: 'club', label: 'Club' },
 ];
 
+const CLUB_SET_TYPES: Array<{ value: string; label: string }> = [
+  { value: 'opening', label: 'Opening' },
+  { value: 'headliner', label: 'Headliner' },
+  { value: 'closing', label: 'Closing' },
+  { value: 'opening_and_closing', label: 'Opening + Closing' },
+];
+
+// Build 48 half-hour time options ("12:00 AM" → "11:30 PM"). Each option's
+// value is HH:MM (24h, to store cleanly), label is 12h-with-AM/PM for display.
+const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
+  const out: Array<{ value: string; label: string }> = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      const value = `${hh}:${mm}`;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = ((h % 12) || 12);
+      const label = `${h12}:${mm} ${ampm}`;
+      out.push({ value, label });
+    }
+  }
+  return out;
+})();
+
 export default function UpcomingBookingsClient({
   userId, djType, bookingsPerDay, initialBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Group by month (YYYY-MM) and sort the keys descending (most recent
-  // month first per spec). Within each month, ascending date order is
-  // already established by the server query.
+  // Group by month (YYYY-MM); keys sorted descending (most recent month first).
   const grouped = useMemo(() => {
     const map = new Map<string, UpcomingBooking[]>();
     for (const b of bookings) {
       if (!b.event_date) continue;
-      const monthKey = b.event_date.slice(0, 7); // YYYY-MM
-      if (!map.has(monthKey)) map.set(monthKey, []);
-      map.get(monthKey)!.push(b);
+      const key = b.event_date.slice(0, 7);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(b);
     }
-    // Sort descending: most recent month first.
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [bookings]);
 
-  // Format a month key (YYYY-MM) into a display label like "MAY 2026".
   function monthLabel(key: string): string {
     const [y, m] = key.split('-').map((s) => parseInt(s, 10));
     const date = new Date(y, m - 1, 1);
@@ -74,9 +99,6 @@ export default function UpcomingBookingsClient({
   }
 
   async function handleAdded(newBooking: UpcomingBooking) {
-    // Optimistic insert: add the new row to local state in the correct
-    // sorted position (ascending by date+time). Falls within the right
-    // month group automatically via the useMemo above.
     setBookings((prev) => {
       const next = [...prev, newBooking];
       next.sort((a, b) => {
@@ -93,10 +115,7 @@ export default function UpcomingBookingsClient({
     if (!confirm('Delete this manual booking? This cannot be undone.')) return;
     const supabase = createClient();
     const { error } = await supabase.from('bookings').delete().eq('id', id).eq('dj_id', userId);
-    if (error) {
-      alert('Delete failed: ' + error.message);
-      return;
-    }
+    if (error) { alert('Delete failed: ' + error.message); return; }
     setBookings((prev) => prev.filter((b) => b.id !== id));
   }
 
@@ -107,11 +126,7 @@ export default function UpcomingBookingsClient({
           <h1 className={styles.title}>Upcoming Bookings</h1>
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className={styles.addBtn}
-        >
+        <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
           + Add Manual Booking
         </button>
       </div>
@@ -120,8 +135,8 @@ export default function UpcomingBookingsClient({
         <div className={styles.empty}>
           <p>No upcoming bookings yet.</p>
           <p className={styles.emptyHint}>
-            Approved booking requests show up here automatically. You can also add
-            bookings manually using the button above.
+            Approved booking requests show up here automatically. You can also add bookings
+            manually using the button above.
           </p>
         </div>
       ) : (
@@ -160,13 +175,10 @@ export default function UpcomingBookingsClient({
 
 // ───────────────────────────────────────────────────────────────────────
 // BookingRow — single-line summary for one booking in the month list.
-// Layout: date · time range · venue/event · optional manual pill + delete
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingRow({
-  booking,
-  djType,
-  onDelete,
+  booking, djType, onDelete,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -175,7 +187,6 @@ function BookingRow({
   const dateLabel = formatDayLabel(booking.event_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
 
-  // Right-side context label: venue type for club, event type for mobile.
   let context = '';
   if (djType === 'club') {
     const venue = booking.venue_name?.trim() || '—';
@@ -184,7 +195,7 @@ function BookingRow({
   } else {
     const ev = booking.event_type || '';
     const found = MOBILE_EVENT_TYPES.find((e) => e.value === ev);
-    context = found ? found.label : (ev ? ev : 'Event');
+    context = found ? found.label : (ev || 'Event');
     if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
 
@@ -197,13 +208,7 @@ function BookingRow({
         <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
       )}
       {onDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          className={styles.deleteBtn}
-          aria-label="Delete manual booking"
-          title="Delete"
-        >
+        <button type="button" onClick={onDelete} className={styles.deleteBtn} aria-label="Delete manual booking" title="Delete">
           ✕
         </button>
       )}
@@ -216,8 +221,7 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function AddManualBookingModal({
-  userId, djType, bookingsPerDay, existingBookings,
-  onClose, onAdded,
+  userId, djType, bookingsPerDay, existingBookings, onClose, onAdded,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
@@ -230,13 +234,38 @@ function AddManualBookingModal({
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [venueName, setVenueName] = useState('');
+  const [venueAddress, setVenueAddress] = useState('');
   const [venueType, setVenueType] = useState<string>('bar'); // club only
+  const [setType, setSetType] = useState<string>('opening'); // club only
   const [eventType, setEventType] = useState<string>('wedding'); // mobile only
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Today (server-rendered timezone) as the minimum allowed date.
+  // Address autocomplete state
+  const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
+  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
+  const addrTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+
+  // Native date picker behavior: clicking ANYWHERE on the wrapping field
+  // (label, the styled box, etc.) should fire .showPicker() so the system
+  // calendar opens even if the click missed the small native picker icon.
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Clean up the debounce timer if the modal unmounts mid-typing.
+  useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
+
+  function openDatePicker() {
+    const el = dateInputRef.current;
+    if (!el) return;
+    // showPicker is the modern API. Fall back to focus() on older browsers.
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return; } catch { /* fall through */ }
+    }
+    el.focus();
+  }
 
   async function handleSave() {
     setError(null);
@@ -245,7 +274,7 @@ function AddManualBookingModal({
     if (!endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
-    // Daily-cap check. Club = 1 per day. Mobile = bookingsPerDay (or 1 if unset).
+    // Daily-cap check.
     const onSameDay = existingBookings.filter((b) => b.event_date === eventDate).length;
     const cap = djType === 'club' ? 1 : Math.max(1, bookingsPerDay || 1);
     if (onSameDay >= cap) {
@@ -258,15 +287,20 @@ function AddManualBookingModal({
     setSaving(true);
     try {
       const supabase = createClient();
+      const coords = venueCoordsRef.current;
       const insertRow = {
         dj_id: userId,
-        requester_id: userId, // self-attributed so NOT NULL constraints are satisfied
+        requester_id: userId, // self-attributed so NOT NULL constraints pass
         booking_type: djType,
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime,
         venue_name: venueName.trim() || null,
+        venue_address: venueAddress.trim() || null,
+        venue_lat: coords?.lat ?? null,
+        venue_lon: coords?.lon ?? null,
         venue_type: djType === 'club' ? venueType : null,
+        set_type: djType === 'club' ? setType : null,
         event_type: djType === 'mobile' ? eventType : null,
         is_manual: true,
         status: 'approved',
@@ -277,10 +311,7 @@ function AddManualBookingModal({
         .select('id, event_date, start_time, end_time, venue_name, venue_type, event_type, booking_type, is_manual')
         .single();
       if (e) throw e;
-      onAdded({
-        ...(data as unknown as UpcomingBooking),
-        is_manual: true,
-      });
+      onAdded({ ...(data as unknown as UpcomingBooking), is_manual: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.');
     } finally {
@@ -297,97 +328,153 @@ function AddManualBookingModal({
         </div>
 
         <div className={styles.modalBody}>
-          <label className={styles.field}>
+          {/* Date — clicking ANYWHERE on the field opens the native picker. */}
+          <div className={styles.field}>
             <span className={styles.fieldLabel}>Date</span>
-            <input
-              type="date"
-              min={todayStr}
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className={styles.input}
-            />
-          </label>
+            <div
+              className={styles.dateWrap}
+              onClick={openDatePicker}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
+            >
+              <input
+                ref={dateInputRef}
+                type="date"
+                min={todayStr}
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className={styles.dateInput}
+              />
+              {!eventDate && <span className={styles.datePlaceholder}>Select a date</span>}
+            </div>
+          </div>
 
           <div className={styles.fieldRow}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Start Time</span>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className={styles.input}
-              />
+              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>End Time</span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={styles.input}
-              />
+              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
             </label>
+          </div>
+
+          {/* Venue name + address — applies to both DJ types, address required field name is the same */}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+            </span>
+            <input
+              type="text"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+              className={styles.input}
+            />
+          </label>
+
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Venue Location</span>
+            <div className={styles.addrWrap}>
+              <input
+                type="text"
+                value={venueAddress}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setVenueAddress(val);
+                  venueCoordsRef.current = null; // user re-typed → invalidate previous pick
+                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                  if (val.trim().length < 3) {
+                    setAddrSuggestions([]);
+                    setShowAddrSuggestions(false);
+                    return;
+                  }
+                  addrTimerRef.current = setTimeout(async () => {
+                    const results = await searchAddresses(val.trim());
+                    setAddrSuggestions(results);
+                    setShowAddrSuggestions(results.length > 0);
+                  }, 350);
+                }}
+                onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
+                onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
+                placeholder="Start typing address…"
+                className={styles.input}
+                autoComplete="off"
+              />
+              {showAddrSuggestions && addrSuggestions.length > 0 && (
+                <div className={styles.addrSuggestions}>
+                  {addrSuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={styles.addrSuggestion}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setVenueAddress(s.display);
+                        if (s.lat != null && s.lon != null) {
+                          venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                        } else {
+                          venueCoordsRef.current = null;
+                        }
+                        setShowAddrSuggestions(false);
+                      }}
+                    >
+                      {s.display}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {djType === 'club' ? (
             <>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Venue Name</span>
-                <input
-                  type="text"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  placeholder="e.g. Black Velvet Lounge"
-                  className={styles.input}
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Venue Type</span>
-                <select
-                  value={venueType}
-                  onChange={(e) => setVenueType(e.target.value)}
-                  className={styles.input}
-                >
-                  {CLUB_VENUE_TYPES.map((v) => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
-                  ))}
-                </select>
-              </label>
+              <div className={styles.fieldRow}>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Venue Type</span>
+                  <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
+                    {CLUB_VENUE_TYPES.map((v) => (
+                      <option key={v.value} value={v.value}>{v.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Set Type</span>
+                  <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
+                    {CLUB_SET_TYPES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </>
           ) : (
-            <>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Event Type</span>
-                <select
-                  value={eventType}
-                  onChange={(e) => setEventType(e.target.value)}
-                  className={styles.input}
-                >
-                  {MOBILE_EVENT_TYPES.map((v) => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Venue Name (optional)</span>
-                <input
-                  type="text"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  placeholder="e.g. Riverside Park Pavilion"
-                  className={styles.input}
-                />
-              </label>
-            </>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Event Type</span>
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
+                {MOBILE_EVENT_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </label>
           )}
 
           {error && <div className={styles.errorBox}>{error}</div>}
         </div>
 
         <div className={styles.modalFooter}>
-          <button type="button" onClick={onClose} className={styles.cancelBtn} disabled={saving}>
-            Cancel
-          </button>
+          <button type="button" onClick={onClose} className={styles.cancelBtn} disabled={saving}>Cancel</button>
           <button type="button" onClick={handleSave} className={styles.saveBtn} disabled={saving}>
             {saving ? 'Saving…' : 'Add Booking'}
           </button>
@@ -397,18 +484,12 @@ function AddManualBookingModal({
   );
 }
 
-// ───────────────────────────────────────────────────────────────────────
-// Display helpers — local to this file because the formatting is specific
-// to the upcoming-bookings list layout (compact "Thu · May 30").
-// ───────────────────────────────────────────────────────────────────────
+// ── Display helpers ────────────────────────────────────────────────────
 
 function formatDayLabel(d: string | null): string {
   if (!d) return '—';
-  // Parse as local date (Y-M-D), not UTC. Otherwise dates near midnight
-  // shift by one day in some timezones.
   const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
   const date = new Date(y, m - 1, day);
-  // Format: "Thu · May 30"
   const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   const md = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${weekday} · ${md}`;
@@ -423,7 +504,6 @@ function formatTimeRange(s: string | null, e: string | null): string {
 }
 
 function formatTime12(t: string): string {
-  // Accept "HH:MM" or "HH:MM:SS". Render as "H:MM AM/PM".
   const [hStr, mStr] = t.split(':');
   let h = parseInt(hStr, 10);
   const m = mStr || '00';

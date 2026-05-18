@@ -232,6 +232,82 @@
   outline: none;
   border-color: var(--neon);
 }
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Date field: wrap the native input in a clickable box so any click on
+   the field surface opens the system date picker. The native input is
+   stretched to fill the wrapper so clicks don't fall through. */
+.dateWrap {
+  position: relative;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+}
+.dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
+.dateWrap:focus-within { border-color: var(--neon); }
+.dateInput {
+  background: transparent;
+  border: none;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+  cursor: pointer;
+  /* On webkit, the native picker icon takes a small area on the right; we
+     want the entire input area to be clickable, so suppress the icon styling. */
+  appearance: none;
+}
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(1);
+}
+.datePlaceholder {
+  position: absolute;
+  left: .8rem;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* Address autocomplete dropdown — same UX as the booking forms. */
+.addrWrap { position: relative; }
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.addrSuggestion {
+  padding: .65rem .85rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child { border-bottom: none; }
+.addrSuggestion:hover {
+  background: var(--deep);
+  color: var(--neon);
+}
 .errorBox {
   padding: .65rem .8rem;
   border-radius: 6px;
