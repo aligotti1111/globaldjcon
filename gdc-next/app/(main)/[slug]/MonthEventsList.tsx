@@ -89,6 +89,18 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, onEdi
       const [bookingsRes, calendarRes] = await Promise.all([bookingsPromise, calendarPromise]);
       if (!mounted) return;
 
+      // DEBUG — remove after diagnosing private-event display
+      // eslint-disable-next-line no-console
+      console.log('[MonthEventsList] debug', {
+        djId,
+        startBound, monthEnd,
+        bookingsErr: bookingsRes.error,
+        calendarErr: calendarRes.error,
+        bookingsCount: bookingsRes.data?.length || 0,
+        bookingDaysKeys: Object.keys((calendarRes.data?.booking_settings as { booking_days?: Record<string, unknown> } | null)?.booking_days || {}),
+        bookingDaysSample: calendarRes.data?.booking_settings?.booking_days,
+      });
+
       const realRows = (bookingsRes.data as EventRow[]) || [];
       const realDateSet = new Set(realRows.map((r) => r.event_date));
 
