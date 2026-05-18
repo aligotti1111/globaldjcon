@@ -89,20 +89,22 @@ export default function UpcomingBookingsClient({
   // page is loaded with `?addManual=YYYY-MM-DD` (used by the public profile
   // calendar's "Add Booking Details" button so the date is already populated).
   const [prefillDate, setPrefillDate] = useState<string>('');
+  // When set, after the modal saves successfully we redirect to this URL
+  // (typically the profile calendar that opened the modal). Lets the owner
+  // edit a booking inline without losing their place on the public profile.
+  const [returnToUrl, setReturnToUrl] = useState<string>('');
 
   // Read URL params on mount: ?addManual=YYYY-MM-DD opens the add modal with
   // that date already populated. If a booking already exists on that date,
   // we open the EDIT modal for it instead so the owner sees their previously
-  // entered details. Strip the param from history so a refresh doesn't loop.
+  // entered details. ?returnTo=/path sends them back to that URL after save.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const addManual = params.get('addManual');
+    const returnTo = params.get('returnTo');
+    if (returnTo) setReturnToUrl(returnTo);
     if (addManual) {
-      // Look for an existing booking on this date. Prefer manual bookings
-      // (those are the ones we let the user edit). If only an approved
-      // real booking exists, we can't edit it anyway — fall back to opening
-      // the add modal with the date prefilled.
       const existing = initialBookings.find(
         (b) => b.event_date === addManual && b.is_manual,
       );
@@ -114,6 +116,7 @@ export default function UpcomingBookingsClient({
       }
       const url = new URL(window.location.href);
       url.searchParams.delete('addManual');
+      url.searchParams.delete('returnTo');
       window.history.replaceState(null, '', url.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -149,6 +152,11 @@ export default function UpcomingBookingsClient({
       return next;
     });
     setShowAddModal(false);
+    // If we were opened via ?returnTo (typically from the public calendar),
+    // bounce back so the owner doesn't lose context.
+    if (returnToUrl && typeof window !== 'undefined') {
+      window.location.href = returnToUrl;
+    }
   }
 
   // Replace an existing booking in local state with the updated row. Re-sorts
@@ -164,6 +172,9 @@ export default function UpcomingBookingsClient({
       return next;
     });
     setEditing(null);
+    if (returnToUrl && typeof window !== 'undefined') {
+      window.location.href = returnToUrl;
+    }
   }
 
   async function handleDelete(id: string) {
