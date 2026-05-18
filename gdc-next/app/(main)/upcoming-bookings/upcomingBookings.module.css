@@ -190,29 +190,29 @@
   text-transform: uppercase;
   color: var(--muted);
 }
-/* Label row — hosts the field title + an inline compact widget on the right
-   (e.g. the country selector next to "Venue Location"). */
-.fieldLabelRow {
+/* Address row — input grows; country chip takes its natural width. */
+.addrRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
   gap: .5rem;
-  margin-bottom: .35rem;
+}
+.addrRow .addrWrap {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .countrySelect {
   background: var(--deep);
   border: 1px solid var(--border);
   color: var(--white);
   font-family: 'Space Mono', monospace;
-  font-size: .62rem;
+  font-size: .7rem;
   font-weight: 700;
   letter-spacing: .1em;
-  padding: .25rem .45rem;
-  border-radius: 4px;
+  padding: 0 .55rem;
+  border-radius: 6px;
   cursor: pointer;
-  /* Make this look like a chip, not a wide select field. */
-  min-width: 64px;
-  height: 24px;
+  min-width: 78px;
+  flex-shrink: 0;
 }
 .countrySelect:focus {
   outline: none;

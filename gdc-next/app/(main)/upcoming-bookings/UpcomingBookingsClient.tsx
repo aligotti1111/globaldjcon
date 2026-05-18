@@ -599,56 +599,29 @@ function AddManualBookingModal({
           </label>
 
           <div className={styles.field}>
-            {/* Label row hosts the field title AND a compact country select.
-                Picking a country biases (and restricts) Nominatim results to
-                that country only — prevents irrelevant cross-border matches
-                when a US street name also exists elsewhere. */}
-            <div className={styles.fieldLabelRow}>
-              <span className={styles.fieldLabel}>Venue Location</span>
-              <select
-                value={country}
-                onChange={(e) => {
-                  setCountry(e.target.value);
-                  // Country changed → invalidate any pending suggestions
-                  // since they were biased to the previous country.
-                  setAddrSuggestions([]);
-                  setShowAddrSuggestions(false);
-                  venueCoordsRef.current = null;
-                }}
-                className={styles.countrySelect}
-                aria-label="Country for address search"
-              >
-                {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
-                  <option key={c} value={c}>
-                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.addrWrap}>
-              <input
-                type="text"
-                value={venueAddress}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setVenueAddress(val);
-                  venueCoordsRef.current = null; // user re-typed → invalidate previous pick
-                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
-                  if (val.trim().length < 3) {
-                    setAddrSuggestions([]);
-                    setShowAddrSuggestions(false);
-                    return;
-                  }
-                  addrTimerRef.current = setTimeout(async () => {
-                    // Country code (e.g. 'us') restricts Nominatim's results
-                    // to that country only. Falls back to global search if
-                    // we don't have a mapping for the picked country.
-                    const cc = COUNTRY_CODES_ADDR[country] || null;
-                    const results = await searchAddresses(val.trim(), cc);
-                    setAddrSuggestions(results);
-                    setShowAddrSuggestions(results.length > 0);
-                  }, 350);
-                }}
+            <span className={styles.fieldLabel}>Venue Location</span>
+            <div className={styles.addrRow}>
+              <div className={styles.addrWrap}>
+                <input
+                  type="text"
+                  value={venueAddress}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setVenueAddress(val);
+                    venueCoordsRef.current = null;
+                    if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                    if (val.trim().length < 3) {
+                      setAddrSuggestions([]);
+                      setShowAddrSuggestions(false);
+                      return;
+                    }
+                    addrTimerRef.current = setTimeout(async () => {
+                      const cc = COUNTRY_CODES_ADDR[country] || null;
+                      const results = await searchAddresses(val.trim(), cc);
+                      setAddrSuggestions(results);
+                      setShowAddrSuggestions(results.length > 0);
+                    }, 350);
+                  }}
                 onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
                 onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
                 placeholder="Start typing address…"
@@ -677,6 +650,24 @@ function AddManualBookingModal({
                   ))}
                 </div>
               )}
+              </div>
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setAddrSuggestions([]);
+                  setShowAddrSuggestions(false);
+                  venueCoordsRef.current = null;
+                }}
+                className={styles.countrySelect}
+                aria-label="Country for address search"
+              >
+                {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
+                  <option key={c} value={c}>
+                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
