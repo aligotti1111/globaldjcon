@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { resolveUserEmail } from '@/lib/supabase/admin';
+import { resolveUserEmail, resolveUserIdByEmail } from '@/lib/supabase/admin';
 import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
@@ -825,10 +825,19 @@ export async function POST(req: Request) {
     const eventType = body.eventType as string | null | undefined;
     const isResend = body.isResend === true;
 
-    // Build the signup URL with email prefilled + booking-claim hint.
-    const claimUrl = `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${
-      bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''
-    }`;
+    // Build the CTA. If the host's email already has an account, send them
+    // to a dedicated claim landing page (which requires login + email match);
+    // otherwise send them to signup with email prefilled + booking id stashed.
+    const existingUserId = await resolveUserIdByEmail(recipientEmail);
+    const ctaHref = existingUserId
+      ? `${SITE_URL}/claim-booking?id=${encodeURIComponent(bookingId || '')}`
+      : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${
+          bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''
+        }`;
+    const ctaLabel = existingUserId ? 'Add Booking to My Account' : 'Create Account';
+    const accountPitch = existingUserId
+      ? `You already have an account at Global DJ Connect — click below to add this booking to your account.`
+      : `Create a free account to keep track of this booking, message ${escHtml(djName)} directly, and manage any future bookings — all in one place.`;
 
     const intro = isResend
       ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
@@ -855,8 +864,8 @@ export async function POST(req: Request) {
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
         })}
-        <p style="color:#666666;margin-bottom:20px;">Create a free account to keep track of this booking, message ${escHtml(djName)} directly, and manage any future bookings — all in one place.</p>
-        ${ctaButton(claimUrl, 'Create Account')}
+        <p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>
+        ${ctaButton(ctaHref, ctaLabel)}
         <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
       `),
     };
