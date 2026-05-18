@@ -216,7 +216,14 @@ function EventListItem({
             <div className={styles.mo}>{mo}</div>
           </div>
         </div>
-        <div className={styles.uploadBtn} aria-hidden="true" style={{ cursor: 'default', opacity: .5 }}>—</div>
+        <button
+          type="button"
+          className={styles.uploadBtn}
+          onClick={() => onEditDate?.(dateKey || '')}
+          title="Add booking details to upload flyer"
+        >
+          + Flyer
+        </button>
         <div className={styles.middle}>
           <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
           <div className={styles.meta}>
@@ -350,7 +357,7 @@ function EventListItem({
           disabled={uploading}
           title="Upload flyer"
         >
-          {uploading ? '…' : '+'}
+          {uploading ? '…' : '+ Flyer'}
         </button>
       ) : null}
       <input

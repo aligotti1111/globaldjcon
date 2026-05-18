@@ -160,9 +160,13 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-  padding: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 4px;
   transition: color .15s, border-color .15s;
 }
 .uploadBtn:hover:not(:disabled) {
