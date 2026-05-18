@@ -839,20 +839,19 @@
 }
 
 /* ── Collapsible booking banners ──────────────────────────────────── */
-/* Wrapper around an expanded card. The chevron sits at the top-right of
-   the wrapper itself (inside the card's visual bounds since the card
-   typically has its own padding/border). */
+/* Wrapper around an expanded card. The wrapper has the same dimensions
+   as the card (no padding) — the chevron is absolutely positioned to
+   sit ON the card's top-right corner, inside its visual frame. */
 .expandableWrap {
   position: relative;
-  padding-top: 2.25rem;
 }
 .collapseBtn {
   position: absolute;
-  top: .55rem;
-  right: .55rem;
+  top: .6rem;
+  right: .6rem;
   z-index: 2;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   background: var(--card);
   border: 1px solid rgba(255, 255, 255, .25);
@@ -862,7 +861,7 @@
   align-items: center;
   justify-content: center;
   transition: background .15s, border-color .15s, transform .1s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
 }
 .collapseBtn:hover {
   background: var(--deep);
