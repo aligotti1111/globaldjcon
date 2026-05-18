@@ -840,8 +840,8 @@
 
 /* ── Collapsible booking banners ──────────────────────────────────── */
 /* Wrapper around an expanded card. Renders a thin bordered bar fused to
-   the top of the card. The bar contains a right-aligned chevron icon —
-   click anywhere on the bar to collapse the card. */
+   the top of the card. Bar background matches the card so they read as
+   one continuous surface; the chevron sits at the right edge. */
 .expandableWrap {
   position: relative;
 }
@@ -851,32 +851,39 @@
   justify-content: flex-end;
   height: 28px;
   padding: 0 .85rem;
-  background: var(--deep);
-  border: 1px solid rgba(255, 255, 255, .25);
+  /* Match the card's background so the bar reads as part of the card,
+     not a separate widget glued on top. */
+  background: var(--card);
+  /* Side and top borders match the card's border color exactly so the
+     vertical edges line up without hairlines or color shifts. */
+  border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  /* Sit flush on top of the card below (overlap the card's own top border
-     by 1px so we read as one continuous frame). */
+  /* Sit flush on top of the card below — overlap its top border by 1px so
+     we read as one continuous frame. */
   margin-bottom: -1px;
   position: relative;
   z-index: 1;
   color: var(--muted);
   cursor: pointer;
   transition: color .15s, background .15s, border-color .15s;
+  /* box-sizing: border-box ensures the bar's width matches the card's
+     width exactly (both render at content-width + 2px for borders). */
+  box-sizing: border-box;
+  width: 100%;
 }
 .collapseBar:hover {
   color: var(--white);
-  background: var(--card);
-  border-color: rgba(255, 255, 255, .45);
+  background: var(--deep);
+  border-color: rgba(255, 255, 255, .35);
 }
 .collapseBar:focus-visible {
   outline: 2px solid var(--neon);
   outline-offset: 2px;
 }
 /* When the bar sits on top of a card, the card's top border-radius should
-   be squared off to match the bar's bottom edge. We do that by targeting
-   the immediate next sibling (the card) via a class on its container. */
-.expandableWrap > .collapseBar + :global(.cardRoot),
+   be squared off to match the bar's bottom edge. The combinator targets
+   the immediate next sibling (the card's root div from BookingCardShell). */
 .expandableWrap > .collapseBar + div {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
