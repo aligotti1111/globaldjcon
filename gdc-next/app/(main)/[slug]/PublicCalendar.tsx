@@ -1373,6 +1373,7 @@ function OwnerDayEditPopup({
                 existing={existingBooking}
                 prefillDate={dateKey}
                 lockDate={true}
+                onCancel={onClose}
                 onSaved={(row, mode) => {
                   // Persist the booked calendar mark so the day stays red
                   // even if the user closes without re-saving.
@@ -1398,14 +1399,19 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        <div className={styles.ownerEditActions}>
-          <button type="button" onClick={onClose} className={styles.ownerEditCancelBtn}>
-            Cancel
-          </button>
-          <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
-            Save
-          </button>
-        </div>
+        {/* Outer modal's Save/Cancel row. Hidden when the inline booking
+            form is expanded (the form provides its own Add Booking / Save
+            Changes button so a separate Save would be redundant). */}
+        {!(status === 'booked' && formExpanded) && (
+          <div className={styles.ownerEditActions}>
+            <button type="button" onClick={onClose} className={styles.ownerEditCancelBtn}>
+              Cancel
+            </button>
+            <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
+              Save
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
