@@ -386,11 +386,16 @@
   border-radius: 0 0 8px 8px;
   padding: 1rem 1.1rem 1.25rem;
 }
-.detailsGrid {
+.detailsStack {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+.detailPairRow {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: .75rem 1.5rem;
-  margin: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
 }
 .detailRow {
   display: flex;
@@ -410,6 +415,15 @@
   font-size: .9rem;
   color: var(--white);
   word-break: break-word;
+}
+.addressLink {
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 3px;
+}
+.addressLink:hover {
+  text-decoration-color: var(--neon);
 }
 .detailLongBlock {
   margin-top: 1rem;
@@ -450,8 +464,9 @@
 
 /* Mobile — collapse details to single column. */
 @media (max-width: 600px) {
-  .detailsGrid {
+  .detailPairRow {
     grid-template-columns: 1fr;
+    gap: .75rem;
   }
   .row {
     grid-template-columns: 1fr auto;

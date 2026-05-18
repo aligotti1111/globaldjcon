@@ -258,7 +258,7 @@ function BookingDetails({
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
 }) {
-  // Format an event type / venue type / set type with a fallback to raw.
+  // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
     ? (booking.set_type
         .split('_')
@@ -271,7 +271,7 @@ function BookingDetails({
         || booking.event_type)
     : null;
 
-  // Format currency-aware money. Default USD if currency missing.
+  // Currency-aware money formatting. Default USD if no currency set.
   function money(n: number | null | undefined): string | null {
     if (n == null) return null;
     const cur = booking.currency || 'USD';
@@ -282,59 +282,112 @@ function BookingDetails({
     }
   }
 
-  // Build a list of label/value pairs to render. Null/empty values
-  // automatically filtered below.
-  const fields: Array<[string, string | null | undefined]> = [
-    ['Event Date', booking.event_date ? formatLongDate(booking.event_date) : null],
-    ['Start Time', booking.start_time ? formatTime12(booking.start_time) : null],
-    ['End Time', booking.end_time ? formatTime12(booking.end_time) : null],
-    ['Venue Name', booking.venue_name],
-    ['Venue Address', booking.venue_address],
-    ...(djType === 'club' ? [
-      ['Venue Type', booking.venue_type ? capitalize(booking.venue_type) : null] as [string, string | null],
-      ['Set Type', setTypeLabel] as [string, string | null],
-      ['Equipment', booking.equipment ? capitalize(booking.equipment.replace(/_/g, ' ')) : null] as [string, string | null],
-    ] : [
-      ['Event Type', eventTypeLabel] as [string, string | null],
-      ['Guest Count', booking.guest_count != null ? String(booking.guest_count) : null] as [string, string | null],
-      ['Room Details', booking.room_details] as [string, string | null],
-    ]),
-    ['Booked By', booking.is_manual ? 'You (manual)' : (booking.requester_name || null)],
-    ['Contact Phone', booking.phone],
-    ['Package', booking.package_title],
-    ['Agreed Rate', money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount)],
-    ['Deposit',
-      booking.deposit_amount != null
-        ? money(booking.deposit_amount)
-        : booking.deposit_pct != null
-          ? `${booking.deposit_pct}%`
-          : null,
+  // Linkified address — clicking opens Google Maps directions to that address.
+  // If we have lat/lon we use those for a more precise pin; otherwise fall
+  // back to URL-encoded address text.
+  const addressUrl = booking.venue_address
+    ? (booking.venue_lat != null && booking.venue_lon != null
+        ? `https://www.google.com/maps/search/?api=1&query=${booking.venue_lat},${booking.venue_lon}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.venue_address)}`)
+    : null;
+
+  // Each row in `rows` is one or two label/value pairs. A pair appears
+  // side-by-side; a single appears alone. We pre-filter empties so a row
+  // collapses to a single column when one of its halves is empty.
+  type Cell = { label: string; value: React.ReactNode | string | null | undefined };
+  type DetailRow = Cell[];
+
+  // Build the rows. Null values get filtered out below.
+  const rows: DetailRow[] = [
+    // Row 1: Event Date + Venue/Event Type
+    [
+      { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
+      djType === 'club'
+        ? { label: 'Venue Type', value: booking.venue_type ? capitalize(booking.venue_type) : null }
+        : { label: 'Event Type', value: eventTypeLabel },
     ],
-    ['Status', booking.status ? booking.status.toUpperCase() : null],
-    ['Booked On', booking.created_at ? formatLongDate(booking.created_at) : null],
+    // Row 2: Start Time + End Time
+    [
+      { label: 'Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
+      { label: 'End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
+    ],
+    // Row 3: Venue Name + Venue Address (linkified to Google Maps)
+    [
+      { label: 'Venue Name', value: booking.venue_name },
+      {
+        label: 'Venue Address',
+        value: addressUrl ? (
+          <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
+            {booking.venue_address}
+          </a>
+        ) : booking.venue_address,
+      },
+    ],
+    // Row 4: DJ-type-specific extra info
+    djType === 'club'
+      ? [
+          { label: 'Set Type', value: setTypeLabel },
+          { label: 'Equipment', value: booking.equipment ? capitalize(booking.equipment.replace(/_/g, ' ')) : null },
+        ]
+      : [
+          { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
+          { label: 'Room Details', value: booking.room_details },
+        ],
+    // Row 5: Booked By + Contact Phone
+    [
+      { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
+      { label: 'Contact Phone', value: booking.phone },
+    ],
+    // Row 6: Package + Agreed Rate
+    [
+      { label: 'Package', value: booking.package_title },
+      { label: 'Agreed Rate', value: money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount) },
+    ],
+    // Row 7: Deposit + Status
+    [
+      {
+        label: 'Deposit',
+        value: booking.deposit_amount != null
+          ? money(booking.deposit_amount)
+          : booking.deposit_pct != null
+            ? `${booking.deposit_pct}%`
+            : null,
+      },
+      { label: 'Status', value: booking.status ? booking.status.toUpperCase() : null },
+    ],
+    // Row 8: Booked On (alone)
+    [
+      { label: 'Booked On', value: booking.created_at ? formatLongDate(booking.created_at) : null },
+    ],
   ];
 
-  const visible = fields.filter(([, v]) => v != null && v !== '');
+  // Filter empty cells from each row; drop rows that become entirely empty.
+  const visibleRows = rows
+    .map((row) => row.filter((c) => c.value != null && c.value !== ''))
+    .filter((row) => row.length > 0);
+
   const hasNotes = booking.notes && booking.notes.trim().length > 0;
   const hasPackageDetails = booking.package_details && booking.package_details.trim().length > 0;
 
   return (
     <div className={styles.detailsPanel}>
-      <dl className={styles.detailsGrid}>
-        {visible.map(([label, value]) => (
-          <div key={label} className={styles.detailRow}>
-            <dt className={styles.detailLabel}>{label}</dt>
-            <dd className={styles.detailValue}>{value}</dd>
+      <div className={styles.detailsStack}>
+        {visibleRows.map((row, i) => (
+          <div key={i} className={styles.detailPairRow}>
+            {row.map((cell) => (
+              <div key={cell.label} className={styles.detailRow}>
+                <div className={styles.detailLabel}>{cell.label}</div>
+                <div className={styles.detailValue}>{cell.value}</div>
+              </div>
+            ))}
           </div>
         ))}
-      </dl>
+      </div>
       {hasPackageDetails && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Package Details</div>
           <div
             className={styles.detailLongValue}
-            // package_details may contain HTML from the RTE — render it as-is.
-            // Trusted source: stored by the DJ themself via the package editor.
             dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
           />
         </div>
