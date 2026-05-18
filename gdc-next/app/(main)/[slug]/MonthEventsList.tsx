@@ -351,9 +351,7 @@ function EventListItem({
     || '—';
 
   const mapUrl = event.venue_address
-    ? (event.venue_lat != null && event.venue_lon != null
-        ? `https://www.google.com/maps/search/?api=1&query=${event.venue_lat},${event.venue_lon}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue_address)}`)
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue_address)}`
     : null;
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -435,7 +433,7 @@ function EventListItem({
               e.stopPropagation();
               if (event.flyer_url) onFlyerClick?.(event.flyer_url);
             }}
-            style={{ cursor: event.flyer_url ? 'zoom-in' : 'default' }}
+            style={{ cursor: event.flyer_url ? 'pointer' : 'default' }}
           />
           {isOwnProfile && (
             <div className={styles.flyerActions}>
@@ -487,7 +485,7 @@ function EventListItem({
         ) : isOwnProfile ? (
           <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
         ) : flyerOnly ? (
-          <div className={styles.venue}>See flyer for more info</div>
+          <div className={`${styles.venue} ${styles.flyerHint}`}>See flyer for more info</div>
         ) : null}
         <div className={styles.meta}>
           {hasTime ? timeRange : isOwnProfile ? (
