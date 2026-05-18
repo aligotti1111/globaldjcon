@@ -64,8 +64,7 @@ interface ProfileRow {
   role: string | null;
   dj_type: string | null;
   country: string | null;
-  full_name: string | null;
-  display_name: string | null;
+  name: string | null;
   booking_settings: { mob_bookings_per_day?: number } | null;
 }
 
@@ -76,7 +75,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, dj_type, country, full_name, display_name, booking_settings')
+    .select('role, dj_type, country, name, booking_settings')
     .eq('id', user.id)
     .maybeSingle<ProfileRow>();
 
@@ -85,7 +84,7 @@ export default async function UpcomingBookingsPage() {
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
   const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
   const djCountry = profile?.country || 'United States';
-  const djName = profile?.display_name || profile?.full_name || 'Your DJ';
+  const djName = profile?.name || 'Your DJ';
 
   // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
   // a plain date so a string compare works).
