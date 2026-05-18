@@ -235,8 +235,8 @@ function AddManualBookingModal({
   const [endTime, setEndTime] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
-  const [venueType, setVenueType] = useState<string>('bar'); // club only
-  const [setType, setSetType] = useState<string>('opening'); // club only
+  const [venueType, setVenueType] = useState<string>(''); // club only — no default
+  const [setType, setSetType] = useState<string>(''); // club only — no default
   const [eventType, setEventType] = useState<string>('wedding'); // mobile only
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -271,7 +271,9 @@ function AddManualBookingModal({
     setError(null);
     if (!eventDate) { setError('Pick a date.'); return; }
     if (!startTime) { setError('Pick a start time.'); return; }
-    if (!endTime) { setError('Pick an end time.'); return; }
+    // End time required only for mobile DJs. Club/bar DJs often don't know
+    // the exact end (open-ended sets), so it's optional for them.
+    if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
     // Daily-cap check.
@@ -299,8 +301,8 @@ function AddManualBookingModal({
         venue_address: venueAddress.trim() || null,
         venue_lat: coords?.lat ?? null,
         venue_lon: coords?.lon ?? null,
-        venue_type: djType === 'club' ? venueType : null,
-        set_type: djType === 'club' ? setType : null,
+        venue_type: djType === 'club' ? (venueType || null) : null,
+        set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
         is_manual: true,
         status: 'approved',
@@ -360,7 +362,9 @@ function AddManualBookingModal({
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>End Time</span>
+              <span className={styles.fieldLabel}>
+                End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}
+              </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
@@ -443,6 +447,7 @@ function AddManualBookingModal({
                 <label className={styles.field}>
                   <span className={styles.fieldLabel}>Venue Type</span>
                   <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
+                    <option value="">Select…</option>
                     {CLUB_VENUE_TYPES.map((v) => (
                       <option key={v.value} value={v.value}>{v.label}</option>
                     ))}
@@ -451,6 +456,7 @@ function AddManualBookingModal({
                 <label className={styles.field}>
                   <span className={styles.fieldLabel}>Set Type</span>
                   <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
+                    <option value="">Select…</option>
                     {CLUB_SET_TYPES.map((s) => (
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
