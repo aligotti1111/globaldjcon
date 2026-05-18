@@ -37,8 +37,8 @@
   letter-spacing: .1em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--bg);
-  background: var(--neon);
+  color: var(--neon);
+  background: var(--white);
   border: none;
   border-radius: 6px;
   padding: .7rem 1.1rem;
@@ -47,7 +47,7 @@
   display: inline-block;
   transition: background .15s, transform .1s;
 }
-.upcomingBtn:hover { background: #00d4a9; }
+.upcomingBtn:hover { background: #d8d8e8; }
 .upcomingBtn:active { transform: scale(0.97); }
 .pageSub {
   font-family: 'Space Mono', monospace;
