@@ -1,0 +1,230 @@
+/* ManualBookingForm — reusable form component. Styles match the modal
+   version in /upcoming-bookings so the experience is identical regardless
+   of whether the form is mounted in a modal or inline in the day-edit
+   popup. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.fieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.input {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+}
+.input:focus { outline: none; border-color: var(--neon); }
+
+.dateWrap {
+  position: relative;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+}
+.dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
+.dateWrap:focus-within { border-color: var(--neon); }
+.dateInput {
+  background: transparent;
+  border: none;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+}
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(1);
+}
+.dateInput:disabled { cursor: not-allowed; opacity: .6; }
+
+.addrRow {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+}
+.addrRow .addrWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.addrWrap { position: relative; }
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.addrSuggestion {
+  padding: .65rem .85rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child { border-bottom: none; }
+.addrSuggestion:hover {
+  background: var(--deep);
+  color: var(--neon);
+}
+.countrySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 0 .55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 78px;
+  flex-shrink: 0;
+}
+.countrySelect:focus { outline: none; border-color: var(--neon); }
+
+.hostInviteBlock {
+  margin-top: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.inviteCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  user-select: none;
+}
+.inviteCheckRow input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--neon);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.inviteCheckRow input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .5; }
+.checkHint { color: var(--muted); font-size: .75rem; }
+
+.sentBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .65rem .8rem;
+  background: rgba(0, 245, 196, .06);
+  border: 1px solid rgba(0, 245, 196, .25);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.sentBannerText {
+  font-size: .8rem;
+  color: var(--white);
+  flex: 1 1 auto;
+}
+.resendBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: 1px solid var(--neon);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.resendBtn:hover:not(:disabled) { background: var(--neon); color: #000; }
+.resendBtn:disabled { opacity: .6; cursor: wait; }
+
+.errorBox {
+  padding: .65rem .8rem;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .4);
+  color: var(--error, #ff5577);
+  font-size: .82rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .65rem;
+  padding-top: .5rem;
+}
+.cancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+}
+.cancelBtn:hover { color: var(--white); border-color: rgba(255, 255, 255, .25); }
+.saveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: .65rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:disabled { opacity: .6; cursor: wait; }

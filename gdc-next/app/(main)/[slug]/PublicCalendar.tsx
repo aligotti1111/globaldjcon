@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './calendar.module.css';
 import MonthEventsList from './MonthEventsList';
+import ManualBookingForm, { type ManualBookingRow } from './ManualBookingForm';
 import { createClient } from '@/lib/supabase/client';
 import {
   type BookingDays,
@@ -1076,31 +1077,50 @@ function OwnerDayEditPopup({
   const [eventName, setEventName] = useState<string>(dayData.eventName || '');
 
   // Existing manual booking for this date (if any). Populated async after
-  // mount; if present, we render the booking's details inline and the
-  // "Add Booking Details" button becomes "Edit Booking Details".
-  const [existingBooking, setExistingBooking] = useState<{
-    id: string;
-    start_time: string | null;
-    end_time: string | null;
-    venue_name: string | null;
-    venue_address: string | null;
-    venue_type: string | null;
-    set_type: string | null;
-  } | null>(null);
+  // mount; if present, the booking-details form opens prefilled with this
+  // row's data. Also fetches the DJ's profile country so the form's
+  // address-search country picker defaults sensibly.
+  const [existingBooking, setExistingBooking] = useState<ManualBookingRow | null>(null);
+  const [djCountry, setDjCountry] = useState<string>('United States');
+  // All existing manual bookings — needed by the form's daily-cap check.
+  // We only need {id, event_date} but fetch lightly.
+  const [allBookings, setAllBookings] = useState<Array<{ id: string; event_date: string | null }>>([]);
+  const [bookingDetailsLoading, setBookingDetailsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase
+      // Fetch booking for this date (manual only).
+      const bookingPromise = supabase
         .from('bookings')
-        .select('id, start_time, end_time, venue_name, venue_address, venue_type, set_type')
+        .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at')
         .eq('dj_id', djId)
         .eq('event_date', dateKey)
         .eq('is_manual', true)
         .limit(1)
-        .maybeSingle<{ id: string; start_time: string | null; end_time: string | null; venue_name: string | null; venue_address: string | null; venue_type: string | null; set_type: string | null }>();
-      if (mounted && data) setExistingBooking(data);
+        .maybeSingle<ManualBookingRow>();
+      // Fetch profile country for address-search default.
+      const profilePromise = supabase
+        .from('users')
+        .select('country')
+        .eq('id', djId)
+        .maybeSingle<{ country: string | null }>();
+      // Fetch all future bookings (just the dates) for daily-cap check.
+      const today = new Date().toISOString().slice(0, 10);
+      const allBookingsPromise = supabase
+        .from('bookings')
+        .select('id, event_date')
+        .eq('dj_id', djId)
+        .gte('event_date', today);
+      const [bookingRes, profileRes, allRes] = await Promise.all([
+        bookingPromise, profilePromise, allBookingsPromise,
+      ]);
+      if (!mounted) return;
+      if (bookingRes.data) setExistingBooking(bookingRes.data);
+      if (profileRes.data?.country) setDjCountry(profileRes.data.country);
+      setAllBookings((allRes.data as Array<{ id: string; event_date: string | null }>) || []);
+      setBookingDetailsLoading(false);
     })();
     return () => { mounted = false; };
   }, [djId, dateKey]);
@@ -1326,63 +1346,33 @@ function OwnerDayEditPopup({
 
         {status === 'booked' && (
           <div className={styles.ownerEditBookedFields}>
-            {existingBooking && (
-              <div className={styles.ownerEditExistingDetails}>
-                {existingBooking.start_time && (
-                  <div className={styles.ownerEditDetailRow}>
-                    <span className={styles.ownerEditDetailLabel}>Time</span>
-                    <span className={styles.ownerEditDetailValue}>
-                      {formatTime12(existingBooking.start_time)}
-                      {existingBooking.end_time ? ` – ${formatTime12(existingBooking.end_time)}` : ''}
-                    </span>
-                  </div>
-                )}
-                {existingBooking.venue_name && (
-                  <div className={styles.ownerEditDetailRow}>
-                    <span className={styles.ownerEditDetailLabel}>Venue</span>
-                    <span className={styles.ownerEditDetailValue}>{existingBooking.venue_name}</span>
-                  </div>
-                )}
-                {existingBooking.venue_address && (
-                  <div className={styles.ownerEditDetailRow}>
-                    <span className={styles.ownerEditDetailLabel}>Address</span>
-                    <span className={styles.ownerEditDetailValue}>{existingBooking.venue_address}</span>
-                  </div>
-                )}
-                {existingBooking.venue_type && (
-                  <div className={styles.ownerEditDetailRow}>
-                    <span className={styles.ownerEditDetailLabel}>Venue Type</span>
-                    <span className={styles.ownerEditDetailValue}>
-                      {existingBooking.venue_type.charAt(0).toUpperCase() + existingBooking.venue_type.slice(1)}
-                    </span>
-                  </div>
-                )}
-                {existingBooking.set_type && (
-                  <div className={styles.ownerEditDetailRow}>
-                    <span className={styles.ownerEditDetailLabel}>Set</span>
-                    <span className={styles.ownerEditDetailValue}>
-                      {existingBooking.set_type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                    </span>
-                  </div>
-                )}
-              </div>
+            {bookingDetailsLoading ? (
+              <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
+            ) : (
+              <ManualBookingForm
+                userId={djId}
+                djType="club"
+                djCountry={djCountry}
+                djName=""
+                bookingsPerDay={1}
+                existingBookings={allBookings}
+                existing={existingBooking}
+                prefillDate={dateKey}
+                lockDate={true}
+                onSaved={(row, mode) => {
+                  // Persist the booked calendar mark first so the day stays
+                  // red even if the user navigates away.
+                  onSave({ booked: true, eventName: undefined });
+                  setExistingBooking(row);
+                  // Close popup after a successful add/update so the calendar
+                  // reflects the new state. Form handles its own error display.
+                  if (mode === 'added' || mode === 'updated') onClose();
+                }}
+              />
             )}
-            <button
-              type="button"
-              onClick={() => {
-                onSave({
-                  booked: true,
-                  eventName: undefined,
-                });
-                window.location.href = `/upcoming-bookings?addManual=${encodeURIComponent(dateKey)}&returnTo=${encodeURIComponent(window.location.pathname)}`;
-              }}
-              className={styles.ownerEditAddDetailsBtn}
-            >
-              {existingBooking ? '✎ Edit Booking Details' : '+ Add Booking Details'}
-            </button>
-            {!existingBooking && (
+            {!existingBooking && !bookingDetailsLoading && (
               <p className={styles.ownerEditComingSoon}>
-                Without details, this date shows publicly as a private booked event.
+                You can save just as Booked (no details) — the date shows publicly as a private event.
               </p>
             )}
           </div>
