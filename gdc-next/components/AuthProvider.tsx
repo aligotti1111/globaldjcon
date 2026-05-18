@@ -59,6 +59,11 @@ const AuthContext = createContext<AuthContextValue>({
 // (newer timestamp), the key won't match and the banner fires again.
 const ACK_STORAGE_KEY = 'gdc_email_verified_ack';
 
+// localStorage key set by the signup page when a host arrives via a
+// claim_booking link. Stores the booking id; we claim it on first
+// authenticated load if the user's email matches the booking's host_email.
+const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
+
 // Window during which a fresh email_verified_at counts as "just verified".
 // 60 seconds covers the magic-link round trip with comfortable margin.
 const JUST_VERIFIED_WINDOW_MS = 60_000;
@@ -128,6 +133,44 @@ export function AuthProvider({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pending-booking claim: if a user just verified after arriving via a
+  // booking-invite link, the signup page stashed the booking id in
+  // localStorage. Now that we're authenticated AND we have the user's
+  // email, claim the booking by setting requester_id = user.id. The
+  // host_email match in the WHERE clause prevents anyone from claiming
+  // a booking they weren't invited to — they'd need access to both the
+  // invitee's email AND the bookingId.
+  useEffect(() => {
+    if (!user || !user.email || !user.id) return;
+    if (typeof window === 'undefined') return;
+    let bookingId: string | null = null;
+    try {
+      bookingId = window.localStorage.getItem(PENDING_BOOKING_CLAIM_KEY);
+    } catch { return; }
+    if (!bookingId) return;
+    // Best-effort claim. We don't surface errors — if the booking can't
+    // be found or the email doesn't match, just clear the key silently.
+    (async () => {
+      try {
+        await supabase
+          .from('bookings')
+          .update({
+            requester_id: user.id,
+            requester_name: user.name || null,
+          } as unknown as never)
+          .eq('id', bookingId)
+          .eq('host_email', user.email)
+          .eq('is_manual', true);
+      } catch (e) {
+        console.warn('[booking-claim] update failed (non-fatal)', e);
+      }
+      try {
+        window.localStorage.removeItem(PENDING_BOOKING_CLAIM_KEY);
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.email]);
 
   // Derive justVerified from the user's timestamp. It's true when:
   //   1. user.email_verified_at exists
