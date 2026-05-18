@@ -178,20 +178,22 @@ function EventListItem({
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  const dateLabel = formatDateLabel(event.event_date);
+  const { day, dow, mo } = parseDateParts(event.event_date);
 
   // Private events (calendar mark without a real booking row) render with
-  // ONLY the date + "Private Event". No flyer, no upload, no map link —
-  // there's nothing to attach because no row exists yet. Owner sees the
-  // same minimal display; to add details they go through the calendar.
+  // a grayed-out date pill + "Private Event" label. No flyer, no map link.
   if (event.is_private) {
     return (
       <div className={styles.row}>
-        <div className={styles.details}>
-          <div className={styles.date}>{dateLabel}</div>
-          <div className={styles.venue}>
-            <span className={styles.setType}>Private Event</span>
+        <div className={`${styles.datePill} ${styles.datePillMuted}`}>
+          <div className={styles.dayNum}>{day}</div>
+          <div className={styles.dayMeta}>
+            <div className={styles.dow}>{dow}</div>
+            <div className={styles.mo}>{mo}</div>
           </div>
+        </div>
+        <div className={styles.middle}>
+          <div className={styles.privateLabel}>Private Event</div>
         </div>
       </div>
     );
@@ -265,7 +267,19 @@ function EventListItem({
 
   return (
     <div className={styles.row}>
-      {/* Left column: flyer image (if set) OR upload button (owner only). */}
+      {/* Date pill — big day number with DOW + MO stacked beside it. First
+          thing users scan for. */}
+      <div className={styles.datePill}>
+        <div className={styles.dayNum}>{day}</div>
+        <div className={styles.dayMeta}>
+          <div className={styles.dow}>{dow}</div>
+          <div className={styles.mo}>{mo}</div>
+        </div>
+      </div>
+
+      {/* Flyer: thumbnail on the left when present, or upload button (owner)
+          / nothing (public). 56x56 keeps the row compact while still
+          surfacing the flyer visually. */}
       {hasFlyer ? (
         <div className={styles.flyerWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -297,8 +311,9 @@ function EventListItem({
           onClick={() => fileInputRef.current?.click()}
           className={styles.uploadBtn}
           disabled={uploading}
+          title="Upload flyer"
         >
-          {uploading ? 'Uploading…' : '+ Upload Flyer'}
+          {uploading ? '…' : '+'}
         </button>
       ) : null}
       <input
@@ -309,16 +324,19 @@ function EventListItem({
         onChange={handleFile}
       />
 
-      {/* Right: event details. */}
-      <div className={styles.details}>
-        <div className={styles.date}>{dateLabel}</div>
-        <div className={styles.time}>{timeRange}</div>
-        <div className={styles.venue}>
-          {mapUrl ? (
-            <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.venueLink}>
-              {venueLine}
-            </a>
-          ) : venueLine}
+      {/* Middle: venue (bold) on top, time + map link below. */}
+      <div className={styles.middle}>
+        <div className={styles.venue}>{venueLine}</div>
+        <div className={styles.meta}>
+          {timeRange}
+          {mapUrl && (
+            <>
+              {' · '}
+              <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                {event.venue_address?.split(',').slice(0, 2).join(',') || 'Map'}
+              </a>
+            </>
+          )}
         </div>
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
@@ -328,12 +346,17 @@ function EventListItem({
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-function formatDateLabel(d: string): string {
+// Parse an event_date "YYYY-MM-DD" string into the three parts the date
+// pill needs: day number, abbreviated weekday (Thu), abbreviated month (May).
+function parseDateParts(d: string | null): { day: string; dow: string; mo: string } {
+  if (!d) return { day: '—', dow: '', mo: '' };
   const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
   const date = new Date(y, m - 1, day);
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-  const md = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${weekday} · ${md}`;
+  return {
+    day: String(day),
+    dow: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    mo: date.toLocaleDateString('en-US', { month: 'short' }),
+  };
 }
 
 function formatTimeRange(s: string | null, e: string | null): string {
