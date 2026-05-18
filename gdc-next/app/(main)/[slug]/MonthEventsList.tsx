@@ -43,12 +43,16 @@ interface Props {
   isOwnProfile: boolean;
   year: number;
   month: number;  // 0-indexed
+  // Calendar booking_days dict passed from PublicCalendar — used to detect
+  // calendar-marked dates without a real bookings row (private events).
+  // Avoids a client-side RLS-blocked re-fetch of users.booking_settings.
+  bookingDays: Record<string, { booked?: boolean }>;
   // Owner-only callback: when the owner clicks "Edit Details" on a row, this
   // fires with the date key so the parent can open the day-edit popup.
   onEditDate?: (dateKey: string) => void;
 }
 
-export default function MonthEventsList({ djId, isOwnProfile, year, month, onEditDate }: Props) {
+export default function MonthEventsList({ djId, isOwnProfile, year, month, bookingDays, onEditDate }: Props) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +72,7 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, onEdi
     async function load() {
       const supabase = createClient();
       // Fetch real booking rows (approved + manual) in this month.
-      const bookingsPromise = supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual')
         .eq('dj_id', djId)
@@ -77,36 +81,13 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, onEdi
         .or('status.eq.approved,is_manual.eq.true')
         .order('event_date', { ascending: true })
         .order('start_time', { ascending: true });
-
-      // Also fetch the calendar booking_days so calendar-marked dates
-      // without a real booking row appear in the list as private events.
-      const calendarPromise = supabase
-        .from('users')
-        .select('booking_settings')
-        .eq('id', djId)
-        .maybeSingle<{ booking_settings: { booking_days?: Record<string, { booked?: boolean }> } | null }>();
-
-      const [bookingsRes, calendarRes] = await Promise.all([bookingsPromise, calendarPromise]);
       if (!mounted) return;
 
-      // DEBUG — remove after diagnosing private-event display
-      // eslint-disable-next-line no-console
-      console.log('[MonthEventsList] debug', {
-        djId,
-        startBound, monthEnd,
-        bookingsErr: bookingsRes.error,
-        calendarErr: calendarRes.error,
-        bookingsCount: bookingsRes.data?.length || 0,
-        bookingDaysKeys: Object.keys((calendarRes.data?.booking_settings as { booking_days?: Record<string, unknown> } | null)?.booking_days || {}),
-        bookingDaysSample: calendarRes.data?.booking_settings?.booking_days,
-      });
-
-      const realRows = (bookingsRes.data as EventRow[]) || [];
+      const realRows = (data as EventRow[]) || [];
       const realDateSet = new Set(realRows.map((r) => r.event_date));
 
-      // Collect calendar-marked booked dates in this month that DON'T
-      // already have a matching real booking. These are private events.
-      const bookingDays = calendarRes.data?.booking_settings?.booking_days || {};
+      // Use the bookingDays passed from PublicCalendar (server-loaded with
+      // proper auth) to find calendar marks WITHOUT a matching real booking.
       const privateRows: EventRow[] = [];
       for (const [dateKey, day] of Object.entries(bookingDays)) {
         if (!day?.booked) continue;
@@ -136,10 +117,11 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, onEdi
       });
       setEvents(merged);
       setLoading(false);
+      if (error) console.error('[MonthEventsList] bookings fetch error', error);
     }
     load();
     return () => { mounted = false; };
-  }, [djId, year, month]);
+  }, [djId, year, month, bookingDays]);
 
   function updateFlyerUrl(id: string, url: string | null) {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, flyer_url: url } : e)));

@@ -459,6 +459,7 @@ export default function PublicCalendar({
           isOwnProfile={isOwnProfile}
           year={year}
           month={month}
+          bookingDays={bookingDays}
           onEditDate={(dateKey) => setOwnerEditKey(dateKey)}
         />
       )}
