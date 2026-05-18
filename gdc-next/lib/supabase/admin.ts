@@ -36,3 +36,38 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
     return null;
   }
 }
+
+// Resolves a user id from auth.users by email. Returns null if no user
+// with that email exists. Used by the booking-invite email flow to decide
+// whether to send a "Create Account" or "Add to My Account" CTA.
+//
+// Implementation: paginate auth.admin.listUsers and match locally. Supabase
+// JS SDK doesn't expose a filter param on listUsers (as of v2.x), so we
+// fetch pages of 1000 and bail as soon as we find the match. For a typical
+// site this completes in 1-2 page fetches.
+export async function resolveUserIdByEmail(email: string): Promise<string | null> {
+  if (!email) return null;
+  const target = email.toLowerCase().trim();
+  if (!target) return null;
+  try {
+    const admin = createAdminClient();
+    const perPage = 1000;
+    // Cap at a few pages so a misconfigured account can't spiral into a
+    // long-running request. 5 pages = 5000 users, well past typical scale.
+    for (let page = 1; page <= 5; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        console.error('[resolveUserIdByEmail] listUsers error', error);
+        return null;
+      }
+      const users = data?.users || [];
+      const match = users.find((u) => (u.email || '').toLowerCase() === target);
+      if (match) return match.id;
+      if (users.length < perPage) return null; // last page
+    }
+    return null;
+  } catch (e) {
+    console.error('[resolveUserIdByEmail] error', e);
+    return null;
+  }
+}
