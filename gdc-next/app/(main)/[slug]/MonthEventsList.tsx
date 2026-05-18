@@ -201,12 +201,61 @@ function EventListItem({
         </div>
       );
     }
-    // Owner view: prompt them to complete the booking. The synthetic id is
-    // "private:YYYY-MM-DD" so we extract the date for the flyer-upload path
-    // and edit-popup target. Flyer can't be uploaded yet because no
-    // booking row exists; we hide the flyer slot for private rows until
-    // they've added at least the minimum details.
+    // Owner view: full row with flyer-upload slot + placeholder fields.
+    // "+ Flyer" creates a minimal manual booking row on the fly and uploads
+    // the chosen image, transitioning the row from private → real. The
+    // owner can fill in remaining details later via "Edit Details".
     const dateKey = event.event_date;
+    async function handleFlyerForPrivate(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0];
+      if (!file || !dateKey) return;
+      setUploading(true);
+      setUploadErr(null);
+      try {
+        const supabase = createClient();
+        // 1. Create the stub booking row.
+        const { data: inserted, error: insertErr } = await supabase
+          .from('bookings')
+          .insert({
+            dj_id: djId,
+            requester_id: djId,
+            booking_type: 'club',
+            event_date: dateKey,
+            start_time: '00:00',
+            is_manual: true,
+            status: 'approved',
+          } as unknown as never)
+          .select('id')
+          .single<{ id: string }>();
+        if (insertErr || !inserted) throw insertErr || new Error('Insert failed');
+
+        // 2. Upload the flyer keyed to the new booking id.
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `${djId}/flyers/${inserted.id}.${ext}`;
+        const { error: uploadErrInner } = await supabase.storage
+          .from('avatars')
+          .upload(path, file, { upsert: true, contentType: file.type });
+        if (uploadErrInner) throw uploadErrInner;
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+        const publicUrl = `${pub.publicUrl}?t=${Date.now()}`;
+
+        // 3. Save the URL on the booking row.
+        const { error: updErr } = await supabase
+          .from('bookings')
+          .update({ flyer_url: publicUrl } as unknown as never)
+          .eq('id', inserted.id)
+          .eq('dj_id', djId);
+        if (updErr) throw updErr;
+
+        // Reload so the list refreshes — booking_days still has the calendar
+        // mark, but now the date also has a real booking row with a flyer.
+        window.location.reload();
+      } catch (err) {
+        setUploadErr(err instanceof Error ? err.message : 'Upload failed');
+        setUploading(false);
+        e.target.value = '';
+      }
+    }
     return (
       <div className={styles.row}>
         <div className={styles.datePill}>
@@ -219,11 +268,19 @@ function EventListItem({
         <button
           type="button"
           className={styles.uploadBtn}
-          onClick={() => onEditDate?.(dateKey || '')}
-          title="Add booking details to upload flyer"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          title="Upload flyer"
         >
-          + Flyer
+          {uploading ? '…' : '+ Flyer'}
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFlyerForPrivate}
+        />
         <div className={styles.middle}>
           <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
           <div className={styles.meta}>
@@ -231,6 +288,7 @@ function EventListItem({
             {' · '}
             <span className={styles.placeholderField}>Add address</span>
           </div>
+          {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
         </div>
         <button
           type="button"
