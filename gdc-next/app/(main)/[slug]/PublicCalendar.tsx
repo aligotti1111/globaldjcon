@@ -1156,6 +1156,20 @@ function OwnerDayEditPopup({
   const equipNone = !!bookingSettings?.equip_none;
   const sym = currencySymbol(bookingSettings?.rate_currency || 'USD');
 
+  // Form-expansion state for the Booked panel.
+  //   - Existing booking on file → form open by default (edit mode)
+  //   - No existing booking → form closed; user clicks "Add Booking Details"
+  // We initialize once when bookingDetailsLoading flips false so re-renders
+  // don't reset the user's toggle.
+  const [formExpanded, setFormExpanded] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
+  useEffect(() => {
+    if (!bookingDetailsLoading && !formInitialized) {
+      setFormExpanded(!!existingBooking);
+      setFormInitialized(true);
+    }
+  }, [bookingDetailsLoading, existingBooking, formInitialized]);
+
   // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
   const formatted = useMemo(() => {
     const [y, m, d] = dateKey.split('-').map(Number);
@@ -1348,7 +1362,7 @@ function OwnerDayEditPopup({
           <div className={styles.ownerEditBookedFields}>
             {bookingDetailsLoading ? (
               <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
-            ) : (
+            ) : formExpanded ? (
               <ManualBookingForm
                 userId={djId}
                 djType="club"
@@ -1360,20 +1374,26 @@ function OwnerDayEditPopup({
                 prefillDate={dateKey}
                 lockDate={true}
                 onSaved={(row, mode) => {
-                  // Persist the booked calendar mark first so the day stays
-                  // red even if the user navigates away.
+                  // Persist the booked calendar mark so the day stays red
+                  // even if the user closes without re-saving.
                   onSave({ booked: true, eventName: undefined });
                   setExistingBooking(row);
-                  // Close popup after a successful add/update so the calendar
-                  // reflects the new state. Form handles its own error display.
                   if (mode === 'added' || mode === 'updated') onClose();
                 }}
               />
-            )}
-            {!existingBooking && !bookingDetailsLoading && (
-              <p className={styles.ownerEditComingSoon}>
-                You can save just as Booked (no details) — the date shows publicly as a private event.
-              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFormExpanded(true)}
+                  className={styles.ownerEditAddDetailsBtn}
+                >
+                  + Add Booking Details
+                </button>
+                <p className={styles.ownerEditComingSoon}>
+                  You can also save just as Booked (no details) — the date shows publicly as a private event.
+                </p>
+              </>
             )}
           </div>
         )}
