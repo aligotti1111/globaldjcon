@@ -442,6 +442,17 @@ function EventListItem({
         </div>
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
+      {/* Owner-only: Edit Details button on every manual booking row so the
+          owner can update venue/time/address/etc at any time. */}
+      {isOwnProfile && event.is_manual && (
+        <button
+          type="button"
+          className={styles.editDetailsBtn}
+          onClick={() => onEditDate?.(event.event_date || '')}
+        >
+          Edit Details
+        </button>
+      )}
     </div>
   );
 }
