@@ -33,16 +33,17 @@
 }
 .sectionLabelIn,
 .sectionLabelOut {
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .12em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  margin-bottom: .6rem;
-  padding-bottom: .4rem;
+  margin-bottom: 1rem;
+  padding-bottom: .55rem;
   border-bottom: 1px solid var(--border);
+  line-height: 1;
 }
 .sectionLabelIn { color: var(--neon); }
-.sectionLabelOut { color: var(--muted); }
+.sectionLabelOut { color: var(--white); }
 
 /* ─── Tabs ─── */
 .tabs {

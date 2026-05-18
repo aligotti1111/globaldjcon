@@ -663,15 +663,9 @@ export default function BookingRequestsClient({
     }
   }
 
-  // Page subtitle echoes the user's role so the page makes sense at a glance.
-  const pageSub = isDj
-    ? 'Manage incoming requests + your outgoing bookings'
-    : 'Manage your booking requests';
-
   return (
     <div className={styles.page}>
       <h1 className={styles.pageTitle}>Booking Requests</h1>
-      <div className={styles.pageSub}>{pageSub}</div>
 
       {/* INCOMING — DJs only */}
       {showIncoming && (
