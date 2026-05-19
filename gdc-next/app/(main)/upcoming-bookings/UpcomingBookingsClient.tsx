@@ -838,28 +838,28 @@ function AddManualBookingModal({
         </div>
 
         <div className={styles.modalBody}>
-          {/* Date — clicking ANYWHERE on the field opens the native picker. */}
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Date</span>
-            <div
-              className={styles.dateWrap}
-              onClick={openDatePicker}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
-            >
-              <input
-                ref={dateInputRef}
-                type="date"
-                min={todayStr}
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className={styles.dateInput}
-              />
+          {/* Date + Start Time + End Time on a single row. Clicking
+              anywhere on the date field opens the native picker. */}
+          <div className={styles.fieldRow3}>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Date</span>
+              <div
+                className={styles.dateWrap}
+                onClick={openDatePicker}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
+              >
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  min={todayStr}
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className={styles.dateInput}
+                />
+              </div>
             </div>
-          </div>
-
-          <div className={styles.fieldRow}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Start Time</span>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
