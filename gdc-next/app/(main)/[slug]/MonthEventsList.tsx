@@ -557,7 +557,7 @@ function EventListItem({
               rel="noreferrer"
               className={styles.linkBtn}
             >
-              {event.link_label?.trim() || 'More Information'}
+              {event.link_label?.trim() || 'More Info'}
             </a>
           )}
           {isOwnProfile && event.booking_type === 'club' && (
@@ -745,7 +745,7 @@ function LinkEditModal({
           </label>
           <label className={styles.linkField}>
             <span className={styles.linkFieldLabel}>
-              Button Label <span className={styles.linkFieldOptional}>(optional — defaults to &ldquo;More Information&rdquo;)</span>
+              Button Label <span className={styles.linkFieldOptional}>(optional — defaults to &ldquo;More Info&rdquo;)</span>
             </span>
             <input
               type="text"
