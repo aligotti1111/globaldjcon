@@ -1,16 +1,20 @@
 // /claim-booking — landing page from the booking-invite email's "Add to
-// My Account" CTA (shown when the host already has an account).
+// My Account" CTA. Handles two flows:
+//
+//   1. HOST flow (existing): DJ created a manual booking and emailed the
+//      host. Host has an existing account → comes here → email matches
+//      booking.host_email → requester_id is set to host.
+//
+//   2. DJ flow (new): Host/venue created a manual event on /upcoming-events
+//      and attached a DJ via email. The DJ already has an account → comes
+//      here → email matches booking.dj_email → dj_id is set to the DJ.
 //
 // Behavior:
-//   - Not logged in → redirect to /login?redirect=/claim-booking?id=<id>
-//   - Logged in but email doesn't match the booking's host_email →
-//     show an error screen (no claim performed).
-//   - Logged in with matching email → run the claim, then redirect to
-//     /booking-requests.
-//
-// Server-side end-to-end — no client JS needed. The claim uses the same
-// admin-backed logic as /api/claim-booking but executed inline so the
-// page can redirect immediately on success.
+//   - Not logged in → /login?redirect=/claim-booking?id=<id>
+//   - Logged in but email doesn't match either side → error screen
+//   - Logged in with matching email → run the claim, then redirect:
+//       - host claim → /booking-requests
+//       - DJ claim → /upcoming-bookings
 
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -22,6 +26,15 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{ id?: string }>;
+}
+
+interface BookingLookup {
+  id: string;
+  host_email: string | null;
+  dj_email: string | null;
+  is_manual: boolean;
+  requester_id: string | null;
+  dj_id: string | null;
 }
 
 export default async function ClaimBookingPage({ searchParams }: PageProps) {
@@ -40,20 +53,18 @@ export default async function ClaimBookingPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || !user.email) {
-    // Bounce to login with a redirect-back URL so the user comes right
-    // back here after authenticating.
     const back = `/claim-booking?id=${encodeURIComponent(bookingId)}`;
     redirect(`/login?redirect=${encodeURIComponent(back)}`);
   }
 
-  // Look up the booking via admin to bypass RLS — we need to check
-  // host_email even if the current user can't yet read this booking.
+  // Admin lookup of the booking — bypasses RLS since the user may not yet
+  // own this row.
   const admin = createAdminClient();
   const { data: booking } = await admin
     .from('bookings')
-    .select('id, host_email, is_manual, requester_id')
+    .select('id, host_email, dj_email, is_manual, requester_id, dj_id')
     .eq('id', bookingId)
-    .maybeSingle<{ id: string; host_email: string | null; is_manual: boolean; requester_id: string | null }>();
+    .maybeSingle<BookingLookup>();
 
   if (!booking) {
     return (
@@ -71,7 +82,12 @@ export default async function ClaimBookingPage({ searchParams }: PageProps) {
       />
     );
   }
-  if (!booking.host_email || booking.host_email.toLowerCase() !== user.email.toLowerCase()) {
+
+  const userEmail = user.email.toLowerCase();
+  const hostEmailMatch = booking.host_email?.toLowerCase() === userEmail;
+  const djEmailMatch = booking.dj_email?.toLowerCase() === userEmail;
+
+  if (!hostEmailMatch && !djEmailMatch) {
     return (
       <ErrorScreen
         title="Wrong account"
@@ -80,16 +96,50 @@ export default async function ClaimBookingPage({ searchParams }: PageProps) {
     );
   }
 
-  // Already claimed by this user — skip the update, just redirect.
+  // ── DJ claim path ──────────────────────────────────────────────────
+  if (djEmailMatch) {
+    // Verify the user's role is dj; only DJs can be attached as dj_id.
+    const { data: profile } = await admin
+      .from('users')
+      .select('role, dj_type')
+      .eq('id', user.id)
+      .maybeSingle<{ role: string | null; dj_type: string | null }>();
+    if (profile?.role !== 'dj') {
+      return (
+        <ErrorScreen
+          title="DJ account required"
+          body="This invitation is for a DJ. You need to be signed in as a DJ to claim it."
+        />
+      );
+    }
+    // Already linked → just redirect.
+    if (booking.dj_id !== user.id) {
+      const { error: updateErr } = await admin
+        .from('bookings')
+        .update({
+          dj_id: user.id,
+          dj_email: null,
+        } as unknown as never)
+        .eq('id', bookingId);
+      if (updateErr) {
+        return (
+          <ErrorScreen
+            title="Couldn't link booking"
+            body={'Something went wrong: ' + updateErr.message}
+          />
+        );
+      }
+    }
+    redirect('/upcoming-bookings');
+  }
+
+  // ── Host claim path ────────────────────────────────────────────────
   if (booking.requester_id !== user.id) {
-    // Look up the host's name for requester_name so the booking renders
-    // nicely on the DJ's side.
     const { data: profile } = await admin
       .from('users')
       .select('name')
       .eq('id', user.id)
       .maybeSingle<{ name: string | null }>();
-
     const { error: updateErr } = await admin
       .from('bookings')
       .update({
@@ -97,7 +147,6 @@ export default async function ClaimBookingPage({ searchParams }: PageProps) {
         requester_name: profile?.name || null,
       } as unknown as never)
       .eq('id', bookingId);
-
     if (updateErr) {
       return (
         <ErrorScreen
@@ -107,9 +156,6 @@ export default async function ClaimBookingPage({ searchParams }: PageProps) {
       );
     }
   }
-
-  // All good — send them to booking-requests where the booking now
-  // shows up in their outgoing tab.
   redirect('/booking-requests');
 }
 
