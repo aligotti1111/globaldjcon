@@ -122,6 +122,18 @@ export default function ManualBookingForm({
   const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
   const [sendInvite, setSendInvite] = useState<boolean>(false);
+  // Optional flat rate the DJ charged/will charge for this gig. Stored as
+  // offer_amount + currency so it flows through the same fields used by
+  // the normal booking flow. Display-only on the booking record — purely
+  // for the DJ's own bookkeeping.
+  const [rate, setRate] = useState<string>(
+    existing && (existing as { offer_amount?: number | null }).offer_amount != null
+      ? String((existing as { offer_amount?: number | null }).offer_amount)
+      : '',
+  );
+  const [rateCurrency, setRateCurrency] = useState<string>(
+    (existing as { currency?: string | null } | null)?.currency || 'USD',
+  );
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
     existing?.host_email_sent_at || null,
@@ -254,6 +266,17 @@ export default function ManualBookingForm({
       const supabase = createClient();
       const coords = venueCoordsRef.current;
       const trimmedEmail = hostEmail.trim();
+      // Parse rate. Empty → null (don't save). Invalid → error.
+      const rateTrimmed = rate.trim();
+      let rateNum: number | null = null;
+      if (rateTrimmed) {
+        rateNum = Number(rateTrimmed);
+        if (!Number.isFinite(rateNum) || rateNum < 0) {
+          setError('Rate must be a positive number.');
+          setSaving(false);
+          return;
+        }
+      }
       const payload = {
         booking_type: djType,
         event_date: eventDate,
@@ -267,8 +290,10 @@ export default function ManualBookingForm({
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
         host_email: trimmedEmail || null,
+        offer_amount: rateNum,
+        currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label, offer_amount, currency';
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
 
       if (isEdit) {
@@ -521,6 +546,40 @@ export default function ManualBookingForm({
           </select>
         </label>
       )}
+
+      {/* Rate — optional flat amount for your own bookkeeping. Not shown
+          publicly; just stored on the booking row. */}
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>
+          Rate <span className={styles.optional}>(optional)</span>
+        </span>
+        <div className={styles.rateRow}>
+          <span className={styles.rateCurrencyPrefix}>
+            {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            placeholder="0"
+            className={styles.rateInput}
+          />
+          <select
+            value={rateCurrency}
+            onChange={(e) => setRateCurrency(e.target.value)}
+            className={styles.rateCurrencySelect}
+            aria-label="Currency"
+          >
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="CAD">CAD</option>
+            <option value="AUD">AUD</option>
+          </select>
+        </div>
+      </label>
 
       {/* Host invite section */}
       <div className={styles.hostInviteBlock}>
