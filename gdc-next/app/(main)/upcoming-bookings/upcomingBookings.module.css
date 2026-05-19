@@ -533,6 +533,52 @@
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
+/* Rate row: currency prefix + numeric input + currency selector. */
+.rateRow {
+  display: flex;
+  align-items: stretch;
+  gap: .35rem;
+}
+.rateCurrencyPrefix {
+  display: flex;
+  align-items: center;
+  padding: 0 .65rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+.rateInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+}
+.rateInput:focus { outline: none; border-color: var(--neon); }
+.rateCurrencySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 0 .55rem;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  min-width: 64px;
+}
+.rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
+
 .hostInviteBlock {
   margin-top: .5rem;
   padding-top: 1rem;
