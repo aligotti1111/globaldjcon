@@ -82,6 +82,50 @@
 }
 
 /* ── MONTH HEADER (e.g. "April 2026") ──────────────────────────────── */
+/* Row that holds the month label centered + share/embed buttons aligned
+   to the right. Spacer on the left balances the buttons so the title
+   stays visually centered. */
+.monthHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.monthHeaderSpacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.monthHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+.shareInlineBtn,
+.embedInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .4rem .65rem;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.shareInlineBtn:hover,
+.embedInlineBtn:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
 .monthHeader {
   text-align: center;
   font-family: 'Bebas Neue', sans-serif;
@@ -89,7 +133,27 @@
   letter-spacing: .08em;
   color: var(--neon);
   text-shadow: 0 0 18px rgba(0, 245, 196, .35);
-  margin-bottom: .75rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .monthHeaderRow {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .5rem;
+  }
+  .monthHeaderSpacer { display: none; }
+  .monthHeaderActions {
+    flex: 0 0 auto;
+    width: 100%;
+    justify-content: center;
+  }
+  .shareInlineBtn,
+  .embedInlineBtn {
+    font-size: .55rem;
+    padding: .35rem .55rem;
+  }
 }
 
 /* ── MONTH GRID ──────────────────────────────────────────────────────── */
