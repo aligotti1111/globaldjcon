@@ -35,7 +35,8 @@ type EmailType =
   | 'booking_counter'
   | 'quote_sent'
   | 'booking_approved'
-  | 'manual_booking_invite';
+  | 'manual_booking_invite'
+  | 'event_invite_from_host';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -865,6 +866,75 @@ export async function POST(req: Request) {
           venueAddress: venueAddress || undefined,
         })}
         <p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>
+        ${ctaButton(ctaHref, ctaLabel)}
+        <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
+      `),
+    };
+
+  } else if (type === 'event_invite_from_host') {
+    // Host/venue added a DJ to a manual event on /upcoming-events. Two cases:
+    //   1. DJ already has an account → "You have a pending booking" + login CTA
+    //   2. DJ NOT on system → "Create an account to claim this booking" + signup CTA
+    const recipientEmail = body.recipientEmail as string | undefined;
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return NextResponse.json(
+        { error: 'Missing or invalid recipientEmail for event_invite_from_host' },
+        { status: 400 },
+      );
+    }
+    const hostName = (body.hostName as string | undefined) || 'A host';
+    const djFound = body.djFound === true;
+    const djType = body.djType as string | null | undefined; // 'club' | 'mobile' if known
+    const bookingId = body.bookingId as string | undefined;
+    const eventDate = body.eventDate as string | null | undefined;
+    const startTime = body.startTime as string | null | undefined;
+    const endTime = body.endTime as string | null | undefined;
+    const eventType = body.eventType as string | undefined; // 'club' | 'mobile'
+    const venueName = body.venueName as string | null | undefined;
+    const venueAddress = body.venueAddress as string | null | undefined;
+    const rate = body.rate as number | null | undefined;
+    const currency = (body.currency as string | undefined) || 'USD';
+
+    // Type-mismatch note: club/bar event going to a mobile DJ (or vice versa).
+    // Only relevant when the DJ exists on the system AND their dj_type
+    // doesn't match the event's booking_type.
+    const eventTypeLabelStr = eventType === 'club' ? 'Club / Bar' : eventType === 'mobile' ? 'Mobile / Private' : 'Event';
+    const typeMismatch = djFound && djType && eventType && djType !== eventType;
+    const mismatchNote = typeMismatch
+      ? `<p style="color:#666666;margin-bottom:14px;font-size:13px;line-height:1.5;background:#fff3cd;border-left:3px solid #f0ad4e;padding:10px 12px;border-radius:4px;"><strong>Note:</strong> This is a ${escHtml(eventTypeLabelStr)} event. Your profile is registered as a ${escHtml(djType === 'club' ? 'Club / Bar' : 'Mobile')} DJ. You can still accept the booking — it will appear in your upcoming bookings — but it won't be displayed publicly on your profile event list.</p>`
+      : '';
+
+    const rateLine = (rate != null && Number.isFinite(rate) && rate > 0)
+      ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Offered Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
+      : '';
+
+    const ctaHref = djFound
+      ? `${SITE_URL}/booking-requests`
+      : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''}`;
+    const ctaLabel = djFound ? 'View Booking Request' : 'Create Account';
+
+    const intro = djFound
+      ? `${escHtml(hostName)} has added you as the DJ for an upcoming event. Review and approve the booking from your booking requests page.`
+      : `${escHtml(hostName)} wants to book you for an upcoming event. Create a free account to accept the booking and manage future events.`;
+
+    const subject = `New booking request from ${hostName}`;
+
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [recipientEmail],
+      subject,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
+        <p style="color:#666666;margin-bottom:20px;">${intro}</p>
+        ${mismatchNote}
+        ${bookingInfoBox({
+          date: eventDate,
+          timeRange: fmtTimeRange(startTime, endTime),
+          venueName: venueName || undefined,
+          venueAddress: venueAddress || undefined,
+        })}
+        ${rateLine ? `<div style="margin:14px 0;">${rateLine}</div>` : ''}
         ${ctaButton(ctaHref, ctaLabel)}
         <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
       `),
