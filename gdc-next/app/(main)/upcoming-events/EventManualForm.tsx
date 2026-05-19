@@ -115,6 +115,8 @@ export default function EventManualForm({
       // Look up the recipient DJ if email provided. If no DJ exists in the
       // system we save with dj_id=null and send an invite email; if a DJ
       // exists we attach dj_id and the booking enters their pending tab.
+      // Also requests capacity info for the event date so we can warn the
+      // host before submitting if the DJ is already at their daily cap.
       let djId: string | null = null;
       let djLookupResult: {
         found: boolean;
@@ -122,14 +124,29 @@ export default function EventManualForm({
         dj_type?: string | null;
         name?: string | null;
         isDj?: boolean;
+        capacity?: { max: number; existing: number; atCap: boolean } | null;
       } | null = null;
       if (trimmedEmail && trimmedEmail.includes('@')) {
         try {
-          const res = await fetch(`/api/lookup-dj-by-email?email=${encodeURIComponent(trimmedEmail)}`);
+          const res = await fetch(
+            `/api/lookup-dj-by-email?email=${encodeURIComponent(trimmedEmail)}&date=${encodeURIComponent(eventDate)}`,
+          );
           if (res.ok) {
             djLookupResult = await res.json();
             if (djLookupResult?.found && djLookupResult.isDj) {
               djId = djLookupResult.id || null;
+              // Capacity warning — only blocks if the host confirms NO.
+              const cap = djLookupResult.capacity;
+              if (cap && cap.atCap) {
+                const djLabel = djLookupResult.name || 'this DJ';
+                const msg = djLookupResult.dj_type === 'club'
+                  ? `${djLabel} already has a booking on ${eventDate} (club/bar DJs can only accept 1 booking per day). Send anyway?`
+                  : `${djLabel} already has ${cap.existing} booking(s) on ${eventDate} (their daily cap is ${cap.max}). Send anyway?`;
+                if (!confirm(msg)) {
+                  setSaving(false);
+                  return;
+                }
+              }
             }
           }
         } catch (e) {
