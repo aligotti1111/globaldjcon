@@ -53,6 +53,21 @@ export default function EventManualForm({
   const [venueAddress, setVenueAddress] = useState(existing?.venue_address || '');
   const [country, setCountry] = useState<string>(userCountry || 'United States');
   const [notes, setNotes] = useState(existing?.notes || '');
+  // Required event type — drives booking_type column. Club/Bar share the
+  // 'club' value (matches club_dj); Mobile is 'mobile'. No default — host
+  // must pick. The form validates this before submit.
+  const [eventType, setEventType] = useState<'club' | 'mobile' | ''>(
+    (existing?.booking_type as 'club' | 'mobile' | undefined) || '',
+  );
+  // Optional recipient DJ email. If the email matches a DJ on the platform,
+  // the booking is saved with their dj_id + status='pending' (they approve
+  // via booking-requests). If no match, an invite email is sent and the
+  // booking stays dj_id=null until they sign up.
+  const [djEmail, setDjEmail] = useState('');
+  // Optional flat rate (number) + currency. Stored on the bookings row as
+  // offer_amount + currency so it flows through the normal booking flow.
+  const [rate, setRate] = useState<string>('');
+  const [rateCurrency, setRateCurrency] = useState<string>('USD');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,11 +98,45 @@ export default function EventManualForm({
     setError(null);
     if (!eventDate) { setError('Pick a date.'); return; }
     if (!startTime) { setError('Pick a start time.'); return; }
+    if (!eventType) { setError('Pick an event type.'); return; }
 
     setSaving(true);
     try {
       const supabase = createClient();
       const coords = venueCoordsRef.current;
+      const trimmedEmail = djEmail.trim().toLowerCase();
+      const rateNum = rate.trim() ? Number(rate.trim()) : null;
+      if (rateNum != null && (!Number.isFinite(rateNum) || rateNum < 0)) {
+        setError('Rate must be a positive number.');
+        setSaving(false);
+        return;
+      }
+
+      // Look up the recipient DJ if email provided. If no DJ exists in the
+      // system we save with dj_id=null and send an invite email; if a DJ
+      // exists we attach dj_id and the booking enters their pending tab.
+      let djId: string | null = null;
+      let djLookupResult: {
+        found: boolean;
+        id?: string;
+        dj_type?: string | null;
+        name?: string | null;
+        isDj?: boolean;
+      } | null = null;
+      if (trimmedEmail && trimmedEmail.includes('@')) {
+        try {
+          const res = await fetch(`/api/lookup-dj-by-email?email=${encodeURIComponent(trimmedEmail)}`);
+          if (res.ok) {
+            djLookupResult = await res.json();
+            if (djLookupResult?.found && djLookupResult.isDj) {
+              djId = djLookupResult.id || null;
+            }
+          }
+        } catch (e) {
+          console.error('[EventManualForm] DJ lookup failed', e);
+        }
+      }
+
       const payload = {
         event_date: eventDate,
         start_time: startTime,
@@ -97,6 +146,9 @@ export default function EventManualForm({
         venue_lat: coords?.lat ?? null,
         venue_lon: coords?.lon ?? null,
         notes: notes.trim() || null,
+        booking_type: eventType,
+        offer_amount: rateNum,
+        currency: rateNum != null ? rateCurrency : null,
       };
       const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at';
 
@@ -111,13 +163,16 @@ export default function EventManualForm({
         if (e) throw e;
         onUpdated(data as unknown as UpcomingEvent);
       } else {
+        // For new bookings: if a DJ is attached, the booking enters their
+        // booking-requests pending tab (status='pending'). Otherwise it's
+        // immediately approved (host's own manual event).
         const insertRow = {
           ...payload,
           requester_id: userId,
-          dj_id: null,
-          booking_type: null,
+          dj_id: djId,
           is_manual: true,
-          status: 'approved',
+          status: djId ? 'pending' : 'approved',
+          host_email: null,
         };
         const { data, error: e } = await supabase
           .from('bookings')
@@ -125,7 +180,36 @@ export default function EventManualForm({
           .select(selectCols)
           .single();
         if (e) throw e;
-        onAdded(data as unknown as UpcomingEvent);
+        const inserted = data as unknown as UpcomingEvent;
+
+        // Send invite email if an email was entered. Two cases:
+        //  - DJ on system → "you've been added to an event" notification
+        //  - Not on system → "create an account to manage this event"
+        if (trimmedEmail) {
+          fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'event_invite_from_host',
+              recipientEmail: trimmedEmail,
+              hostName: userName,
+              djFound: !!djLookupResult?.found && !!djLookupResult?.isDj,
+              djName: djLookupResult?.name || null,
+              djType: djLookupResult?.dj_type || null,
+              bookingId: inserted.id,
+              eventDate,
+              startTime,
+              endTime: endTime || null,
+              eventType,
+              venueName: venueName || null,
+              venueAddress: venueAddress || null,
+              rate: rateNum,
+              currency: rateCurrency,
+            }),
+          }).catch((e) => console.error('[EventManualForm] email send failed', e));
+        }
+
+        onAdded(inserted);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.');
@@ -263,6 +347,72 @@ export default function EventManualForm({
               </select>
             </div>
           </div>
+
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Event Type <span className={styles.required}>*</span></span>
+              <select
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value as 'club' | 'mobile' | '')}
+                className={styles.input}
+              >
+                <option value="">Select…</option>
+                <option value="club">Club / Bar</option>
+                <option value="mobile">Mobile (private event)</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Rate <span className={styles.fieldOptional}>(optional)</span>
+              </span>
+              <div className={styles.rateRow}>
+                <span className={styles.rateCurrencyPrefix}>
+                  {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  placeholder="0"
+                  className={styles.rateInput}
+                />
+                <select
+                  value={rateCurrency}
+                  onChange={(e) => setRateCurrency(e.target.value)}
+                  className={styles.rateCurrencySelect}
+                  aria-label="Currency"
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                </select>
+              </div>
+            </label>
+          </div>
+
+          {/* Optional recipient DJ. Email-based: looked up against the user
+              base on save. If found, the DJ gets a pending booking they
+              must approve. If not found, an invite email is sent. */}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Recipient DJ Email <span className={styles.fieldOptional}>(optional)</span>
+            </span>
+            <input
+              type="email"
+              value={djEmail}
+              onChange={(e) => setDjEmail(e.target.value)}
+              placeholder="dj@example.com"
+              className={styles.input}
+              autoComplete="off"
+            />
+            <span className={styles.fieldHint}>
+              If the DJ has an account, they&rsquo;ll get a pending booking to approve. If not, they&rsquo;ll get an invite email.
+            </span>
+          </label>
 
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Notes <span className={styles.fieldOptional}>(optional)</span></span>
