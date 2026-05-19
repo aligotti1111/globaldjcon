@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     // host contact info, no internal IDs beyond what the UI needs.
     const { data, error } = await admin
       .from('bookings')
-      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual')
+      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual, link_url, link_label')
       .eq('dj_id', djId)
       .gte('event_date', from)
       .lt('event_date', to)
