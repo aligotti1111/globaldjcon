@@ -41,7 +41,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 })();
 
 export default function EventManualForm({
-  userId, userCountry, existing, onClose, onAdded, onUpdated,
+  userId, userCountry, userName, existing, onClose, onAdded, onUpdated,
 }: Props) {
   const isEdit = existing !== null;
   const trim = (t: string | null) => (t ? (t.length >= 5 ? t.slice(0, 5) : t) : '');
