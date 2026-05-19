@@ -668,9 +668,13 @@ export default function BookingRequestsClient({
     <div className={styles.page}>
       <div className={styles.titleRow}>
         <h1 className={styles.pageTitle}>Booking Requests</h1>
-        {isDj && (
+        {isDj ? (
           <Link href="/upcoming-bookings" className={styles.upcomingBtn}>
             View Upcoming Bookings →
+          </Link>
+        ) : (
+          <Link href="/upcoming-events" className={styles.upcomingBtn}>
+            View All Events →
           </Link>
         )}
       </div>
