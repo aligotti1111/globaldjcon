@@ -122,11 +122,6 @@ export default function ManualBookingForm({
   const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
   const [sendInvite, setSendInvite] = useState<boolean>(false);
-  // External link the DJ attaches to surface as a CTA button on the public
-  // event row (e.g. ticket page). Label defaults to "More Information" in
-  // the UI when blank; the placeholder example shown is "Purchase Tickets".
-  const [linkUrl, setLinkUrl] = useState<string>(existing?.link_url || '');
-  const [linkLabel, setLinkLabel] = useState<string>(existing?.link_label || '');
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
     existing?.host_email_sent_at || null,
@@ -272,8 +267,6 @@ export default function ManualBookingForm({
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
         host_email: trimmedEmail || null,
-        link_url: linkUrl.trim() || null,
-        link_label: linkLabel.trim() || null,
       };
       const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label';
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -528,32 +521,6 @@ export default function ManualBookingForm({
           </select>
         </label>
       )}
-
-      {/* External link — surfaces as a CTA button on the public event row.
-          URL + custom button label. If label is left blank, the public
-          button reads "More Information". */}
-      <div className={styles.field}>
-        <span className={styles.fieldLabel}>Link <span className={styles.optional}>(optional — for tickets, event page, etc.)</span></span>
-        <input
-          type="url"
-          value={linkUrl}
-          onChange={(e) => setLinkUrl(e.target.value)}
-          placeholder="https://example.com/tickets"
-          className={styles.input}
-          autoComplete="off"
-        />
-      </div>
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>Button Label <span className={styles.optional}>(optional — defaults to &ldquo;More Information&rdquo;)</span></span>
-        <input
-          type="text"
-          value={linkLabel}
-          onChange={(e) => setLinkLabel(e.target.value)}
-          placeholder="Purchase Tickets"
-          className={styles.input}
-          maxLength={40}
-        />
-      </label>
 
       {/* Host invite section */}
       <div className={styles.hostInviteBlock}>

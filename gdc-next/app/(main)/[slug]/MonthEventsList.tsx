@@ -33,6 +33,7 @@ interface EventRow {
   is_manual: boolean;
   link_url?: string | null;
   link_label?: string | null;
+  booking_type?: string | null;
   // Synthetic flag for calendar-marked booked dates that don't have a
   // corresponding bookings row. Such "private" entries render with date
   // only — no venue/time/flyer because none exists. Set by the merge
@@ -138,6 +139,13 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, flyer_url: url } : e)));
   }
 
+  // Update link fields in local state without re-fetching after a save.
+  function updateLink(id: string, url: string | null, label: string | null) {
+    setEvents((prev) => prev.map((e) => (
+      e.id === id ? { ...e, link_url: url, link_label: label } : e
+    )));
+  }
+
   if (loading) {
     return (
       <div className={styles.section}>
@@ -169,6 +177,7 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
             onFlyerChange={(url) => updateFlyerUrl(ev.id, url)}
             onEditDate={onEditDate}
             onFlyerClick={(url) => setLightboxUrl(url)}
+            onLinkChange={(url, label) => updateLink(ev.id, url, label)}
           />
         ))}
       </div>
@@ -203,7 +212,7 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
 }
 
 function EventListItem({
-  event, djId, isOwnProfile, onFlyerChange, onEditDate, onFlyerClick,
+  event, djId, isOwnProfile, onFlyerChange, onEditDate, onFlyerClick, onLinkChange,
 }: {
   event: EventRow;
   djId: string;
@@ -211,10 +220,14 @@ function EventListItem({
   onFlyerChange: (url: string | null) => void;
   onEditDate?: (dateKey: string) => void;
   onFlyerClick?: (url: string) => void;
+  onLinkChange?: (url: string | null, label: string | null) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  // Link-edit modal state. The mini modal lets the DJ attach an external
+  // URL + custom button label to any club/bar booking (manual or approved).
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
 
   const { day, dow, mo } = parseDateParts(event.event_date);
 
@@ -513,11 +526,12 @@ function EventListItem({
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
 
-      {/* Right column. Owner sees Public hint + Edit Details + optional
-          link button (if URL set). Public viewers see only the link button. */}
-      {event.is_manual && (event.link_url || isOwnProfile) && (
+      {/* Right column. Owner sees Public hint + (manual) Edit Details +
+          (club only) Add Link button + optional link CTA. Public viewers
+          see ONLY the link CTA if a link is set. */}
+      {(event.link_url || (isOwnProfile && (event.is_manual || event.booking_type === 'club'))) && (
         <div className={styles.ownerActions}>
-          {isOwnProfile && (
+          {isOwnProfile && event.is_manual && (
             <span className={styles.publicHint} title="This event is visible on your public profile">
               <span className={styles.publicDot} /> Public
             </span>
@@ -532,7 +546,16 @@ function EventListItem({
               {event.link_label?.trim() || 'More Information'}
             </a>
           )}
-          {isOwnProfile && (
+          {isOwnProfile && event.booking_type === 'club' && (
+            <button
+              type="button"
+              className={styles.editDetailsBtn}
+              onClick={() => setLinkModalOpen(true)}
+            >
+              {event.link_url ? 'Edit Link' : '+ Add Link'}
+            </button>
+          )}
+          {isOwnProfile && event.is_manual && (
             <button
               type="button"
               className={styles.editDetailsBtn}
@@ -542,6 +565,22 @@ function EventListItem({
             </button>
           )}
         </div>
+      )}
+
+      {/* Link edit modal — only mounted when the user opens it. Self-contained
+          mini-form with URL + Label fields; saves directly to the booking row. */}
+      {linkModalOpen && (
+        <LinkEditModal
+          bookingId={event.id}
+          djId={djId}
+          initialUrl={event.link_url || ''}
+          initialLabel={event.link_label || ''}
+          onClose={() => setLinkModalOpen(false)}
+          onSaved={(url, label) => {
+            onLinkChange?.(url, label);
+            setLinkModalOpen(false);
+          }}
+        />
       )}
     </div>
   );
@@ -578,4 +617,141 @@ function formatTime12(t: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return `${h}:${m} ${ampm}`;
+}
+
+// ── Link edit modal ───────────────────────────────────────────────────
+// Mini modal for attaching/editing the external link CTA on a booking row.
+// Works for both manual and approved bookings — RLS allows the DJ to update
+// their own bookings. Public viewers never see this modal.
+
+function LinkEditModal({
+  bookingId, djId, initialUrl, initialLabel, onClose, onSaved,
+}: {
+  bookingId: string;
+  djId: string;
+  initialUrl: string;
+  initialLabel: string;
+  onClose: () => void;
+  onSaved: (url: string | null, label: string | null) => void;
+}) {
+  const [url, setUrl] = useState(initialUrl);
+  const [label, setLabel] = useState(initialLabel);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setError(null);
+    const trimmedUrl = url.trim();
+    const trimmedLabel = label.trim();
+    // Light URL sanity check. Allow empty to clear the link.
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      setError('URL must start with http:// or https://');
+      return;
+    }
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: e } = await supabase
+        .from('bookings')
+        .update({
+          link_url: trimmedUrl || null,
+          link_label: trimmedLabel || null,
+        } as unknown as never)
+        .eq('id', bookingId)
+        .eq('dj_id', djId);
+      if (e) throw e;
+      onSaved(trimmedUrl || null, trimmedLabel || null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove() {
+    if (!confirm('Remove this link?')) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: e } = await supabase
+        .from('bookings')
+        .update({ link_url: null, link_label: null } as unknown as never)
+        .eq('id', bookingId)
+        .eq('dj_id', djId);
+      if (e) throw e;
+      onSaved(null, null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Remove failed');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={styles.linkModalOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.linkModal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.linkModalHeader}>
+          <h3 className={styles.linkModalTitle}>{initialUrl ? 'Edit Link' : 'Add Link'}</h3>
+          <button type="button" className={styles.linkModalClose} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className={styles.linkModalBody}>
+          <label className={styles.linkField}>
+            <span className={styles.linkFieldLabel}>URL</span>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/tickets"
+              className={styles.linkInput}
+              autoComplete="off"
+              autoFocus
+            />
+          </label>
+          <label className={styles.linkField}>
+            <span className={styles.linkFieldLabel}>
+              Button Label <span className={styles.linkFieldOptional}>(optional — defaults to &ldquo;More Information&rdquo;)</span>
+            </span>
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Purchase Tickets"
+              className={styles.linkInput}
+              maxLength={40}
+            />
+          </label>
+          {error && <div className={styles.linkError}>{error}</div>}
+        </div>
+        <div className={styles.linkModalActions}>
+          {initialUrl && (
+            <button
+              type="button"
+              className={styles.linkRemoveBtn}
+              onClick={handleRemove}
+              disabled={saving}
+            >
+              Remove
+            </button>
+          )}
+          <div className={styles.linkModalActionsRight}>
+            <button
+              type="button"
+              className={styles.linkCancelBtn}
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.linkSaveBtn}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -326,3 +326,155 @@
 .lightboxClose:hover {
   background: rgba(0, 0, 0, .85);
 }
+
+/* ── Link edit mini-modal ──────────────────────────────────────────── */
+.linkModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .7);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.linkModal {
+  width: 100%;
+  max-width: 460px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
+  overflow: hidden;
+}
+.linkModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.linkModalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: .04em;
+  color: var(--neon);
+  margin: 0;
+}
+.linkModalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.linkModalClose:hover { color: var(--white); }
+.linkModalBody {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.linkField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.linkFieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.linkFieldOptional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.linkInput {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+}
+.linkInput:focus { outline: none; border-color: var(--neon); }
+.linkError {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .35);
+  color: var(--error, #ff5577);
+  font-size: 13px;
+}
+.linkModalActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.linkModalActionsRight {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+.linkRemoveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--error, #ff5577);
+  border: 1px solid var(--error, #ff5577);
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.linkRemoveBtn:hover:not(:disabled) {
+  background: var(--error, #ff5577);
+  color: #fff;
+}
+.linkRemoveBtn:disabled { opacity: .5; cursor: not-allowed; }
+.linkCancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.linkCancelBtn:hover:not(:disabled) {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .3);
+}
+.linkSaveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.linkSaveBtn:hover:not(:disabled) { background: #00d4a9; }
+.linkSaveBtn:disabled { opacity: .6; cursor: wait; }
