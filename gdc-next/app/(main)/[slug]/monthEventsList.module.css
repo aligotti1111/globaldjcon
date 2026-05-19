@@ -60,6 +60,28 @@
   background: var(--neon);
   color: #000;
 }
+
+/* Compact icon-only button used for Edit Details (pencil) and Add Link
+   (paperclip) on owner-view event rows. Neutral by default, neon on hover. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.iconBtn:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.iconBtn:disabled { opacity: .5; cursor: not-allowed; }
 .placeholderField {
   color: var(--muted);
   font-style: italic;
@@ -71,11 +93,10 @@
   font-size: 13px;
 }
 
-/* Owner-only actions cluster on the right of a manual booking row. */
 .ownerActions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }

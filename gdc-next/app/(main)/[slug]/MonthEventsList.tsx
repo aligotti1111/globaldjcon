@@ -343,10 +343,12 @@ function EventListItem({
         </div>
         <button
           type="button"
-          className={styles.editDetailsBtn}
+          className={styles.iconBtn}
           onClick={() => onEditDate?.(dateKey || '')}
+          title="Edit details"
+          aria-label="Edit details"
         >
-          Edit Details
+          <PencilIcon />
         </button>
       </div>
     );
@@ -526,16 +528,11 @@ function EventListItem({
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
 
-      {/* Right column. Owner sees Public hint + (manual) Edit Details +
-          (club only) Add Link button + optional link CTA. Public viewers
-          see ONLY the link CTA if a link is set. */}
+      {/* Right column. Owner sees Edit Details (pencil) + Add/Edit Link
+          (paperclip) + optional link CTA. Public viewers see ONLY the link
+          CTA if a link is set. */}
       {(event.link_url || (isOwnProfile && (event.is_manual || event.booking_type === 'club'))) && (
         <div className={styles.ownerActions}>
-          {isOwnProfile && event.is_manual && (
-            <span className={styles.publicHint} title="This event is visible on your public profile">
-              <span className={styles.publicDot} /> Public
-            </span>
-          )}
           {event.link_url && (
             <a
               href={event.link_url}
@@ -549,19 +546,23 @@ function EventListItem({
           {isOwnProfile && event.booking_type === 'club' && (
             <button
               type="button"
-              className={styles.editDetailsBtn}
+              className={styles.iconBtn}
               onClick={() => setLinkModalOpen(true)}
+              title={event.link_url ? 'Edit link' : 'Add link'}
+              aria-label={event.link_url ? 'Edit link' : 'Add link'}
             >
-              {event.link_url ? 'Edit Link' : '+ Add Link'}
+              <PaperclipIcon />
             </button>
           )}
           {isOwnProfile && event.is_manual && (
             <button
               type="button"
-              className={styles.editDetailsBtn}
+              className={styles.iconBtn}
               onClick={() => onEditDate?.(event.event_date || '')}
+              title="Edit details"
+              aria-label="Edit details"
             >
-              Edit Details
+              <PencilIcon />
             </button>
           )}
         </div>
@@ -617,6 +618,25 @@ function formatTime12(t: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return `${h}:${m} ${ampm}`;
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────
+// Inline SVGs keep styling consistent with the rest of the app — emojis
+// render differently across OSes and don't pick up CSS color.
+
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
+    </svg>
+  );
+}
+function PaperclipIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
 }
 
 // ── Link edit modal ───────────────────────────────────────────────────
