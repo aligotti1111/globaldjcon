@@ -205,7 +205,7 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
           to the profile owner; public viewers don't need this context. */}
       {isOwnProfile && events.some((e) => !e.is_private) && (
         <div className={styles.ownerFootnote}>
-          Event info agreed on via Global DJ Connect can not be edited.
+          Only manually added events can be edited.
         </div>
       )}
 
