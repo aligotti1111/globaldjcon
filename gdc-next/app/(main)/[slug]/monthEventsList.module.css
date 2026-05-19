@@ -97,6 +97,29 @@
   background: var(--neon);
   opacity: .8;
 }
+/* CTA link button (e.g. "Purchase Tickets") that surfaces when the DJ has
+   attached a link_url to the booking. Public viewers see only this button;
+   owners see it alongside the Edit Details button. */
+.linkBtn {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: 1px solid var(--neon);
+  border-radius: 4px;
+  padding: 7px 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.linkBtn:hover {
+  background: #00d4a9;
+  color: #000;
+}
 
 .datePill {
   display: flex;

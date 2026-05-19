@@ -31,6 +31,8 @@ interface EventRow {
   set_type: string | null;
   flyer_url: string | null;
   is_manual: boolean;
+  link_url?: string | null;
+  link_label?: string | null;
   // Synthetic flag for calendar-marked booked dates that don't have a
   // corresponding bookings row. Such "private" entries render with date
   // only — no venue/time/flyer because none exists. Set by the merge
@@ -475,10 +477,9 @@ function EventListItem({
         onChange={handleFile}
       />
 
-      {/* Middle: venue (bold) on top, time + map link below. Owner sees
-          "Add X" placeholders for missing fields; public viewers see only
-          what's actually been filled in. If only a flyer is set, public
-          viewers see "See flyer for more info" instead of an empty row. */}
+      {/* Middle: venue (bold) on top, then time on its own line, then
+          address on its own line. Owner sees "Add X" placeholders for
+          missing fields; public viewers see only what's filled in. */}
       <div className={styles.middle}>
         {hasVenue ? (
           <div className={styles.venue}>{venueLine}</div>
@@ -487,40 +488,59 @@ function EventListItem({
         ) : flyerOnly ? (
           <div className={`${styles.venue} ${styles.flyerHint}`}>See flyer for more info</div>
         ) : null}
-        <div className={styles.meta}>
-          {hasTime ? timeRange : isOwnProfile ? (
+        {hasTime ? (
+          <div className={styles.meta}>{timeRange}</div>
+        ) : isOwnProfile ? (
+          <div className={styles.meta}>
             <span className={styles.placeholderField}>Add time</span>
-          ) : null}
-          {(hasTime && (hasAddress || (isOwnProfile && !hasAddress))) && ' · '}
-          {hasAddress ? (
-            mapUrl ? (
+          </div>
+        ) : null}
+        {hasAddress ? (
+          <div className={styles.meta}>
+            {mapUrl ? (
               <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
                 {event.venue_address}
               </a>
             ) : (
               <span>{event.venue_address}</span>
-            )
-          ) : isOwnProfile ? (
+            )}
+          </div>
+        ) : isOwnProfile ? (
+          <div className={styles.meta}>
             <span className={styles.placeholderField}>Add address</span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
       </div>
-      {/* Owner-only: small "public" hint pill + Edit Details button. The
-          pill signals to the owner that this booking row is publicly
-          visible on their profile (since any populated field shows up). */}
-      {isOwnProfile && event.is_manual && (
+
+      {/* Right column. Owner sees Public hint + Edit Details + optional
+          link button (if URL set). Public viewers see only the link button. */}
+      {event.is_manual && (event.link_url || isOwnProfile) && (
         <div className={styles.ownerActions}>
-          <span className={styles.publicHint} title="This event is visible on your public profile">
-            <span className={styles.publicDot} /> Public
-          </span>
-          <button
-            type="button"
-            className={styles.editDetailsBtn}
-            onClick={() => onEditDate?.(event.event_date || '')}
-          >
-            Edit Details
-          </button>
+          {isOwnProfile && (
+            <span className={styles.publicHint} title="This event is visible on your public profile">
+              <span className={styles.publicDot} /> Public
+            </span>
+          )}
+          {event.link_url && (
+            <a
+              href={event.link_url}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.linkBtn}
+            >
+              {event.link_label?.trim() || 'More Information'}
+            </a>
+          )}
+          {isOwnProfile && (
+            <button
+              type="button"
+              className={styles.editDetailsBtn}
+              onClick={() => onEditDate?.(event.event_date || '')}
+            >
+              Edit Details
+            </button>
+          )}
         </div>
       )}
     </div>
