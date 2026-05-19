@@ -921,9 +921,9 @@ export async function POST(req: Request) {
     const detailsLine = [dateStr, venueStr].filter(Boolean).join(' at ');
 
     const ctaHref = djFound
-      ? `${SITE_URL}/upcoming-bookings`
+      ? `${SITE_URL}/claim-booking?id=${encodeURIComponent(bookingId || '')}`
       : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''}`;
-    const ctaLabel = djFound ? 'View Event' : 'Create Account';
+    const ctaLabel = djFound ? 'Add Booking to My Account' : 'Create Account';
 
     const intro = djFound
       ? `${escHtml(hostName)} has shared event details${detailsLine ? ` for ${escHtml(detailsLine)}` : ''}. Log in to see this in your upcoming bookings.`
