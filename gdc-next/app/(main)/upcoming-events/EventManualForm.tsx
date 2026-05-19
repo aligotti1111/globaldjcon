@@ -149,8 +149,12 @@ export default function EventManualForm({
         booking_type: eventType,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
+        // Persist the DJ email regardless of whether they're on the system
+        // yet. If they sign up later (or click claim from email), the
+        // /api/claim-booking route uses this to attach dj_id.
+        dj_email: trimmedEmail || null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, dj_email, flyer_url, link_url, link_label, notes, status, created_at';
 
       if (isEdit && existing) {
         const { data, error: e } = await supabase
