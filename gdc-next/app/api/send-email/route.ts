@@ -908,16 +908,28 @@ export async function POST(req: Request) {
       ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Offered Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
       : '';
 
+    // Compose a one-line "shared event details for {date} at {venue}"
+    // summary used in the intro paragraph and subject line.
+    const fmtDateShort = (d: string | null | undefined): string => {
+      if (!d) return '';
+      const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
+      const dt = new Date(y, m - 1, day);
+      return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+    const dateStr = fmtDateShort(eventDate);
+    const venueStr = (venueName || '').trim() || (venueAddress || '').split(',')[0].trim();
+    const detailsLine = [dateStr, venueStr].filter(Boolean).join(' at ');
+
     const ctaHref = djFound
-      ? `${SITE_URL}/booking-requests`
+      ? `${SITE_URL}/upcoming-bookings`
       : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''}`;
-    const ctaLabel = djFound ? 'View Booking Request' : 'Create Account';
+    const ctaLabel = djFound ? 'View Event' : 'Create Account';
 
     const intro = djFound
-      ? `${escHtml(hostName)} has added you as the DJ for an upcoming event. Review and approve the booking from your booking requests page.`
-      : `${escHtml(hostName)} wants to book you for an upcoming event. Create a free account to accept the booking and manage future events.`;
+      ? `${escHtml(hostName)} has shared event details${detailsLine ? ` for ${escHtml(detailsLine)}` : ''}. Log in to see this in your upcoming bookings.`
+      : `${escHtml(hostName)} has shared event details${detailsLine ? ` for ${escHtml(detailsLine)}` : ''}. Create a free account to manage it and access future bookings.`;
 
-    const subject = `New booking request from ${hostName}`;
+    const subject = `New event from ${hostName}`;
 
     emailPayload = {
       from: FROM,
@@ -925,7 +937,7 @@ export async function POST(req: Request) {
       to: [recipientEmail],
       subject,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">You've Been Added to an Event</h2>
         <p style="color:#666666;margin-bottom:20px;">${intro}</p>
         ${mismatchNote}
         ${bookingInfoBox({
