@@ -745,7 +745,7 @@ function LinkEditModal({
           </label>
           <label className={styles.linkField}>
             <span className={styles.linkFieldLabel}>
-              Button Label <span className={styles.linkFieldOptional}>(optional — defaults to &ldquo;More Info&rdquo;)</span>
+              Button Label <span className={styles.linkFieldOptional}>(optional — defaults to &ldquo;More Info&rdquo;, {20 - label.length} left)</span>
             </span>
             <input
               type="text"
@@ -753,7 +753,7 @@ function LinkEditModal({
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Purchase Tickets"
               className={styles.linkInput}
-              maxLength={40}
+              maxLength={20}
             />
           </label>
           {error && <div className={styles.linkError}>{error}</div>}
