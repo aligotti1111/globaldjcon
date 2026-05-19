@@ -147,6 +147,12 @@ function EventRow({
   const [uploading, setUploading] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const isManual = event.is_manual;
+  // Hosts/venues can upload a flyer to:
+  //   - Any manual event they added (no DJ or any DJ)
+  //   - Any approved club/bar booking they made
+  // Mobile (private-party) bookings don't get flyer slots — those aren't
+  // public-facing promotional events.
+  const canUploadFlyer = isManual || event.booking_type === 'club';
 
   const dateParts = parseDateParts(event.event_date);
   const timeRange = formatTimeRange(event.start_time, event.end_time);
@@ -203,11 +209,12 @@ function EventRow({
 
   return (
     <div className={styles.row}>
-      {/* Flyer / upload slot. Manual events can upload; approved bookings
-          via the platform are read-only for the requester (no flyer). */}
+      {/* Flyer / upload slot. Manual events + approved club/bar bookings
+          can have flyers uploaded by the host/venue. Mobile bookings stay
+          read-only (private events, no flyer). */}
       {event.flyer_url ? (
         <img src={event.flyer_url} alt="Event flyer" className={styles.flyer} />
-      ) : isManual ? (
+      ) : canUploadFlyer ? (
         <button
           type="button"
           className={styles.flyerSlot}
