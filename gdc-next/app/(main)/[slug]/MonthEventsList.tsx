@@ -15,7 +15,7 @@
 // the left of the row + a "Replace" affordance. Replacement happens via
 // the same file input (upsert).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './monthEventsList.module.css';
 
@@ -60,6 +60,22 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
   const [loading, setLoading] = useState(true);
   // Lightbox: when set, the enlarged flyer overlay shows this URL.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Stable signature of the booked-dates we care about. Without this the
+  // effect re-runs (and re-fetches the events list) whenever PublicCalendar
+  // refreshes its state and passes a new bookingDays object reference,
+  // even if the actual data is unchanged. Causes a visible reload of the
+  // "Upcoming Events" section every few seconds.
+  const bookingDaysSignature = useMemo(() => {
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const nextMonth = new Date(year, month + 1, 1);
+    const monthEnd = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    return Object.entries(bookingDays)
+      .filter(([d, v]) => v?.booked && d >= monthStart && d < monthEnd)
+      .map(([d]) => d)
+      .sort()
+      .join(',');
+  }, [bookingDays, year, month]);
 
   useEffect(() => {
     let mounted = true;
@@ -133,7 +149,8 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
     }
     load();
     return () => { mounted = false; };
-  }, [djId, year, month, bookingDays]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [djId, year, month, bookingDaysSignature]);
 
   function updateFlyerUrl(id: string, url: string | null) {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, flyer_url: url } : e)));
