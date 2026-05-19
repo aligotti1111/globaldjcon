@@ -18,6 +18,17 @@
   color: var(--muted);
   padding: .75rem 0;
 }
+.ownerFootnote {
+  margin-top: .85rem;
+  padding-top: .65rem;
+  border-top: 1px dashed var(--border);
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
 
 .list {
   display: flex;

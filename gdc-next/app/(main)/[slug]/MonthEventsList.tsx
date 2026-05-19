@@ -199,6 +199,16 @@ export default function MonthEventsList({ djId, isOwnProfile, year, month, booki
         ))}
       </div>
 
+      {/* Owner-only footnote: explains why some bookings on this list don't
+          have a Link / Edit Details button (those are approved bookings made
+          through the platform — their core details are locked). Only shown
+          to the profile owner; public viewers don't need this context. */}
+      {isOwnProfile && events.some((e) => !e.is_private) && (
+        <div className={styles.ownerFootnote}>
+          Event info agreed on via Global DJ Connect can not be edited.
+        </div>
+      )}
+
       {/* Flyer lightbox — click anywhere or press Esc to close. */}
       {lightboxUrl && (
         <div
