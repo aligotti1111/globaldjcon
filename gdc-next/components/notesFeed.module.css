@@ -1,60 +1,56 @@
-/* Shared NotesFeed module — same look on /upcoming-events,
-   /upcoming-bookings, and /booking-requests when a card is expanded. */
+/* Shared NotesFeed module — condensed, frameless variant. Reads as an
+   inline section, not a heavy boxed widget. */
 
 .feed {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  gap: 8px;
 }
 .feedHeader {
   font-family: 'Space Mono', monospace;
   font-size: 9px;
   letter-spacing: .18em;
   text-transform: uppercase;
-  color: var(--neon);
+  color: var(--muted);
   font-weight: 700;
 }
 
 .empty {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   font-style: italic;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .noteList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 .note {
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 10px 12px;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  border-bottom: 1px dashed var(--border);
+}
+.note:last-child {
+  border-bottom: none;
 }
 .noteHeader {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .noteAuthor {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--white);
   font-weight: 600;
 }
 .noteDate {
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--muted);
 }
 .editedTag {
@@ -62,17 +58,18 @@
   opacity: .75;
 }
 .noteContent {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--white);
-  line-height: 1.45;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
+  opacity: .9;
 }
 
 .noteActions {
   display: flex;
-  gap: 10px;
-  margin-top: 2px;
+  gap: 8px;
+  margin-top: 1px;
 }
 .noteAction,
 .noteActionDanger {
@@ -80,7 +77,7 @@
   border: none;
   padding: 0;
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: .1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -94,63 +91,85 @@
 .editBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .editActions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
+.editTextarea {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 9px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 40px;
+  width: 100%;
+}
+.editTextarea:focus { outline: none; border-color: var(--neon); }
 
+/* Composer: single-line input + small Post button on the right. */
 .composer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-}
-.composerActions {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
+  margin-top: 2px;
 }
-.charCount {
+.composerInput {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 12px;
+}
+.composerInput::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+.composerInput:focus {
+  outline: none;
+  border-bottom-color: var(--neon);
+}
+.composerInput:disabled { opacity: .6; }
+
+.postBtn {
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.postBtn:hover:not(:disabled) { color: #00d4a9; }
+.postBtn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
   color: var(--muted);
 }
 
-.textarea {
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 9px 11px;
-  color: var(--white);
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  resize: vertical;
-  min-height: 56px;
-  width: 100%;
-}
-.textarea:focus {
-  outline: none;
-  border-color: var(--neon);
-}
-.textarea:disabled { opacity: .6; }
-
 .btnPrimary {
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: .12em;
   text-transform: uppercase;
   font-weight: 700;
   background: var(--neon);
   color: #000;
   border: none;
-  border-radius: 5px;
-  padding: 7px 14px;
+  border-radius: 4px;
+  padding: 5px 10px;
   cursor: pointer;
 }
 .btnPrimary:hover:not(:disabled) { background: #00d4a9; }
@@ -158,15 +177,15 @@
 
 .btnGhost {
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: .12em;
   text-transform: uppercase;
   font-weight: 700;
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 6px 12px;
+  border-radius: 4px;
+  padding: 4px 9px;
   cursor: pointer;
 }
 .btnGhost:hover {
@@ -175,10 +194,10 @@
 }
 
 .error {
-  padding: 8px 10px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: 4px;
   background: rgba(255, 85, 119, .08);
   border: 1px solid rgba(255, 85, 119, .35);
   color: var(--error, #ff5577);
-  font-size: 12px;
+  font-size: 11px;
 }

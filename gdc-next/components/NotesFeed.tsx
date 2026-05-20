@@ -155,12 +155,7 @@ export default function NotesFeed({ bookingId, currentUserId }: Props) {
 
   return (
     <div className={styles.feed}>
-      <div className={styles.feedHeader}>Notes</div>
-
       {loading && <div className={styles.empty}>Loading notes…</div>}
-      {!loading && notes.length === 0 && (
-        <div className={styles.empty}>No notes yet. Add the first one below.</div>
-      )}
 
       {!loading && notes.length > 0 && (
         <div className={styles.noteList}>
@@ -181,7 +176,7 @@ export default function NotesFeed({ bookingId, currentUserId }: Props) {
                     <textarea
                       value={editDraft}
                       onChange={(e) => setEditDraft(e.target.value)}
-                      className={styles.textarea}
+                      className={styles.editTextarea}
                       rows={2}
                       maxLength={2000}
                     />
@@ -216,25 +211,22 @@ export default function NotesFeed({ bookingId, currentUserId }: Props) {
       )}
 
       <form onSubmit={handleSubmit} className={styles.composer}>
-        <textarea
+        <input
+          type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a note…"
-          className={styles.textarea}
-          rows={2}
+          placeholder="Add note about event…"
+          className={styles.composerInput}
           maxLength={2000}
           disabled={submitting}
         />
-        <div className={styles.composerActions}>
-          <span className={styles.charCount}>{2000 - draft.length} left</span>
-          <button
-            type="submit"
-            className={styles.btnPrimary}
-            disabled={submitting || !draft.trim()}
-          >
-            {submitting ? 'Posting…' : 'Post note'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          className={styles.postBtn}
+          disabled={submitting || !draft.trim()}
+        >
+          {submitting ? 'Posting…' : 'Post'}
+        </button>
       </form>
 
       {error && <div className={styles.error}>{error}</div>}
