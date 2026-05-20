@@ -1013,6 +1013,8 @@
 }
 .collapsedBannerChevron {
   flex-shrink: 0;
+  justify-self: end;
+  grid-column: 5;
   color: var(--muted);
   transition: color .15s, transform .15s;
 }
@@ -1036,6 +1038,8 @@
   .collapsedBannerContext {
     font-size: .85rem;
   }
+  .statusPill { grid-column: auto; }
+  .collapsedBannerChevron { grid-column: auto; }
 }
 
 /* Status pill on the right side of a collapsed banner. Only rendered on
@@ -1044,6 +1048,8 @@
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
+  justify-self: end;
+  grid-column: 4;
   font-family: 'Space Mono', monospace;
   font-size: .55rem;
   font-weight: 700;
