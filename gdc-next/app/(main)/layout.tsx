@@ -12,6 +12,7 @@ import Footer from '@/components/Footer';
 import MobileMenu from '@/components/MobileMenu';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 import EmailVerifiedBanner from '@/components/EmailVerifiedBanner';
+import BookingClaimedBanner from '@/components/BookingClaimedBanner';
 
 export default function MainLayout({
   children,
@@ -21,6 +22,7 @@ export default function MainLayout({
   return (
     <div id="view-public" className="view active">
       <EmailVerifiedBanner />
+      <BookingClaimedBanner />
       <VerifyEmailBanner />
       <Header />
       <MobileMenu />
