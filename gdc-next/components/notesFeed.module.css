@@ -1,0 +1,184 @@
+/* Shared NotesFeed module — same look on /upcoming-events,
+   /upcoming-bookings, and /booking-requests when a card is expanded. */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.feedHeader {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--neon);
+  font-weight: 700;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.noteList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.note {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.noteHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.noteAuthor {
+  font-size: 12px;
+  color: var(--white);
+  font-weight: 600;
+}
+.noteDate {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+.editedTag {
+  font-style: italic;
+  opacity: .75;
+}
+.noteContent {
+  font-size: 13px;
+  color: var(--white);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.noteActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+.noteAction,
+.noteActionDanger {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-weight: 700;
+}
+.noteAction { color: var(--muted); }
+.noteAction:hover { color: var(--neon); }
+.noteActionDanger { color: var(--muted); }
+.noteActionDanger:hover { color: var(--error, #ff5577); }
+
+.editBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.charCount {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.textarea {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 9px 11px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 56px;
+  width: 100%;
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.textarea:disabled { opacity: .6; }
+
+.btnPrimary {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.btnPrimary:hover:not(:disabled) { background: #00d4a9; }
+.btnPrimary:disabled { opacity: .6; cursor: not-allowed; }
+
+.btnGhost {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.btnGhost:hover {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .25);
+}
+
+.error {
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .35);
+  color: var(--error, #ff5577);
+  font-size: 12px;
+}
