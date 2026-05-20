@@ -15,7 +15,6 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
-import NotesFeed from '@/components/NotesFeed';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
 import HistoryModal from './HistoryModal';
@@ -993,11 +992,6 @@ function FlatList({
               onDeclineCounter={onDeclineCounter}
               onMessage={onMessage}
             />
-            {b.booking_type === 'club' && (
-              <div className={styles.notesFeedWrap}>
-                <NotesFeed bookingId={b.id} currentUserId={currentUser.id} />
-              </div>
-            )}
           </div>
         );
       })}
@@ -1151,7 +1145,6 @@ function SameDayGrouped({
         // Single-booking day, expanded: render the card with a collapse chevron
         // appended (matches FlatList's expanded-card UX).
         if (!hasMultiple) {
-          const onlyBooking = group[0];
           return (
             <div key={groupKey} className={styles.expandableWrap}>
               <div
@@ -1168,11 +1161,6 @@ function SameDayGrouped({
                 </svg>
               </div>
               {cards}
-              {onlyBooking.booking_type === 'club' && (
-                <div className={styles.notesFeedWrap}>
-                  <NotesFeed bookingId={onlyBooking.id} currentUserId={currentUser.id} />
-                </div>
-              )}
             </div>
           );
         }
