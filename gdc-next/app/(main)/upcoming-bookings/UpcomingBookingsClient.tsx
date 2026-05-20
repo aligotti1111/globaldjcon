@@ -22,6 +22,18 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
+
+// Country flag emojis — matches the homepage country picker so the look
+// is consistent across the app. Maps country name → flag emoji; defaults
+// to a globe for unknown entries.
+const COUNTRY_FLAGS: Record<string, string> = {
+  'United States': '🇺🇸', 'United Kingdom': '🇬🇧', 'Canada': '🇨🇦',
+  'Australia': '🇦🇺', 'Germany': '🇩🇪', 'France': '🇫🇷', 'Netherlands': '🇳🇱',
+  'Spain': '🇪🇸', 'Italy': '🇮🇹', 'Brazil': '🇧🇷', 'Mexico': '🇲🇽',
+  'Japan': '🇯🇵', 'South Africa': '🇿🇦', 'New Zealand': '🇳🇿',
+  'Ireland': '🇮🇪', 'Sweden': '🇸🇪', 'Norway': '🇳🇴', 'Denmark': '🇩🇰',
+  'Belgium': '🇧🇪', 'Switzerland': '🇨🇭', 'Portugal': '🇵🇹', 'Other': '🌍',
+};
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 
@@ -962,7 +974,7 @@ function AddManualBookingModal({
               >
                 {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
                   <option key={c} value={c}>
-                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+                    {COUNTRY_FLAGS[c] || '🌍'} {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
                   </option>
                 ))}
               </select>
