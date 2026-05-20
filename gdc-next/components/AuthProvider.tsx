@@ -64,6 +64,12 @@ const ACK_STORAGE_KEY = 'gdc_email_verified_ack';
 // authenticated load if the user's email matches the booking's host_email.
 const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 
+// localStorage key where AuthProvider stashes the result of a successful
+// booking claim so BookingClaimedBanner can show a one-time confirmation
+// message. Includes the booking summary + direction (host vs dj) so the
+// banner can link to the right page.
+const BOOKING_CLAIMED_RESULT_KEY = 'gdc_booking_claimed_result';
+
 // Window during which a fresh email_verified_at counts as "just verified".
 // 60 seconds covers the magic-link round trip with comfortable margin.
 const JUST_VERIFIED_WINDOW_MS = 60_000;
@@ -156,7 +162,28 @@ export function AuthProvider({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookingId }),
         });
-        if (!res.ok) {
+        if (res.ok) {
+          // Success — stash the booking summary so BookingClaimedBanner
+          // can show a one-time confirmation toast. Banner clears the key
+          // after it displays so it doesn't loop on refresh.
+          try {
+            const data = await res.json();
+            if (data?.ok && data.booking) {
+              window.localStorage.setItem(
+                BOOKING_CLAIMED_RESULT_KEY,
+                JSON.stringify({
+                  direction: data.direction,
+                  booking: data.booking,
+                  at: Date.now(),
+                }),
+              );
+              // Notify the banner component (which lives in the same tab)
+              // that something fresh is available — same-tab storage events
+              // don't fire automatically, so dispatch a custom one.
+              window.dispatchEvent(new CustomEvent('gdc-booking-claimed'));
+            }
+          } catch { /* parse failure non-fatal */ }
+        } else {
           const data = await res.json().catch(() => ({}));
           console.warn('[booking-claim] api error (non-fatal)', data);
         }
