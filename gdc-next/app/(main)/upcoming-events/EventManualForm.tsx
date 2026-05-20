@@ -422,11 +422,11 @@ export default function EventManualForm({
           {/* Optional recipient DJ. Email-based: looked up against the user
               base on save. If found, the DJ gets a pending booking they
               must approve. If not found, an invite email is sent.
-              Only shown when ADDING a new event with no DJ yet — once a DJ
-              is attached (either because the host picked one or because
-              the booking came from a DJ-side manual entry), the field
-              becomes meaningless and is hidden. */}
-          {!isEdit && !existing?.dj_id && (
+              Only shown when ADDING a new event. When editing an existing
+              event, the DJ is either already attached or this is a host's
+              own private event — either way the recipient field doesn't
+              apply. */}
+          {!isEdit && (
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
                 Recipient DJ Email <span className={styles.fieldOptional}>(optional)</span>
