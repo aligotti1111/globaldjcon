@@ -193,7 +193,7 @@ export default function UpcomingBookingsClient({
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
         <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
-          + Add Manual Booking
+          + Add Booking Manually
         </button>
       </div>
 
