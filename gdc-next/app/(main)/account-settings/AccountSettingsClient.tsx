@@ -62,6 +62,10 @@ export default function AccountSettingsClient({
   initialProfile, currentEmail, initialBlocked, initialSmsPrefs,
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
+  // SMS preferences: hosts and venues don't get the "new booking request"
+  // option because incoming booking requests only flow to DJs. They DO still
+  // get the booking-status + inbox-message options.
+  const isDj = initialProfile.role === 'dj';
 
   // ── Profile (name + country) ─────────────────────────────────────
   const [name, setName] = useState(initialProfile.name);
@@ -674,15 +678,17 @@ export default function AccountSettingsClient({
 
         <div className={smsEnabled ? styles.smsSubGroup : styles.smsSubGroupDisabled}>
           <div className={styles.smsSubHeader}>Text me when…</div>
-          <label className={styles.smsSubRow}>
-            <input
-              type="checkbox"
-              checked={smsBookingRequest}
-              onChange={(e) => setSmsBookingRequest(e.target.checked)}
-              disabled={!smsEnabled}
-            />
-            <span>A new booking request comes in</span>
-          </label>
+          {isDj && (
+            <label className={styles.smsSubRow}>
+              <input
+                type="checkbox"
+                checked={smsBookingRequest}
+                onChange={(e) => setSmsBookingRequest(e.target.checked)}
+                disabled={!smsEnabled}
+              />
+              <span>A new booking request comes in</span>
+            </label>
+          )}
           <label className={styles.smsSubRow}>
             <input
               type="checkbox"
