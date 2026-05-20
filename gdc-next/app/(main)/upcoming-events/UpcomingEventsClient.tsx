@@ -187,6 +187,20 @@ function EventRow({
         .eq('requester_id', userId);
       if (updErr) throw updErr;
       onFlyerSaved(publicUrl);
+      // Notify the other party (DJ) that a flyer was added. Best-effort —
+      // never blocks the upload UI. Only meaningful for club/bar bookings
+      // that have a DJ on the other side; the server-side handler will
+      // skip silently if either condition isn't met.
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_activity',
+          bookingId: event.id,
+          actorId: userId,
+          activity: 'flyer',
+        }),
+      }).catch((e) => console.warn('[UpcomingEvents] flyer email failed', e));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed');
     } finally {
