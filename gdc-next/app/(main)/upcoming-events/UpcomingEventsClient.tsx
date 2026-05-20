@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { UpcomingEvent } from './page';
 import styles from './upcomingEvents.module.css';
 import EventManualForm from './EventManualForm';
+import NotesFeed from '@/components/NotesFeed';
 
 interface Props {
   userId: string;
@@ -391,8 +392,11 @@ function EventRow({
                 <div className={styles.detailLabel}>Link</div>
                 <div className={styles.detailValue}>
                   <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                    {event.link_label?.trim() || event.link_url}
+                    {event.link_url}
                   </a>
+                  {event.link_label?.trim() && (
+                    <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
+                  )}
                 </div>
               </div>
             )}
@@ -415,11 +419,18 @@ function EventRow({
             )}
             {event.notes && (
               <div className={`${styles.detailItem} ${styles.detailItemFull}`}>
-                <div className={styles.detailLabel}>Notes</div>
+                <div className={styles.detailLabel}>Original Notes</div>
                 <div className={styles.detailValue}>{event.notes}</div>
               </div>
             )}
           </div>
+          {/* Shared notes feed for club/bar bookings — both DJ and host
+              can read + post. Mobile (private) bookings don't get this. */}
+          {event.booking_type === 'club' && (
+            <div className={styles.notesFeedWrap}>
+              <NotesFeed bookingId={event.id} currentUserId={userId} />
+            </div>
+          )}
         </div>
       )}
 

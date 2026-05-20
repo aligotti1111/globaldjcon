@@ -278,6 +278,14 @@
   text-underline-offset: 2px;
 }
 .linkLikeBtn:hover { text-decoration-color: var(--neon); }
+.linkLabelHint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.notesFeedWrap {
+  margin-top: 14px;
+}
 .metaDj {
   font-size: 12px;
   color: var(--white);
