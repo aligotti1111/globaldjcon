@@ -950,35 +950,54 @@
   margin-bottom: 8px;
 }
 
-/* The banner itself. Full width, one line, clickable. */
+/* The banner itself. Grid layout mirroring the upcoming-bookings row:
+   neon date column · white time column · white context column · status
+   pill (optional) · chevron. */
 .collapsedBanner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 130px 150px 1fr auto auto;
+  gap: 1rem;
   align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
   width: 100%;
-  padding: 1rem 1.1rem;
-  background: var(--deep);
+  padding: .85rem 1rem;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .85rem;
-  font-weight: 700;
-  letter-spacing: .04em;
+  font-family: inherit;
   text-align: left;
   transition: background .15s, border-color .15s, color .15s;
   margin-bottom: 8px;
 }
 .collapsedBanner:hover {
-  background: var(--card);
-  border-color: rgba(255, 255, 255, .25);
+  background: var(--deep);
+  border-color: rgba(255, 255, 255, .2);
 }
 .collapsedBanner:focus-visible {
   outline: 2px solid var(--neon);
   outline-offset: 2px;
 }
+.collapsedBannerDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .05em;
+  color: var(--neon);
+  font-weight: 700;
+}
+.collapsedBannerTime {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  color: var(--white);
+}
+.collapsedBannerContext {
+  font-size: .9rem;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Legacy single-line text class kept for any callers still using it. */
 .collapsedBannerText {
   flex: 1 1 auto;
   overflow: hidden;
@@ -996,6 +1015,20 @@
 /* Inside collapsedGroup, banners shouldn't double-stack margin */
 .collapsedGroup .collapsedBanner {
   margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .collapsedBanner {
+    grid-template-columns: 1fr auto auto;
+    gap: .6rem;
+  }
+  .collapsedBannerTime,
+  .collapsedBannerContext {
+    grid-column: 1 / -3;
+  }
+  .collapsedBannerContext {
+    font-size: .85rem;
+  }
 }
 
 /* Status pill on the right side of a collapsed banner. Only rendered on
