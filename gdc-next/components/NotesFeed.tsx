@@ -100,6 +100,18 @@ export default function NotesFeed({ bookingId, currentUserId }: Props) {
       if (insErr) throw insErr;
       setDraft('');
       await load();
+      // Best-effort notification email to the OTHER party. Fire-and-forget;
+      // failure here shouldn't block the UI from showing the new note.
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_activity',
+          bookingId,
+          actorId: currentUserId,
+          activity: 'note',
+        }),
+      }).catch((e) => console.warn('[NotesFeed] activity email failed', e));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to post note');
     } finally {
