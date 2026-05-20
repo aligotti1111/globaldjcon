@@ -66,8 +66,12 @@ export default function EventManualForm({
   const [djEmail, setDjEmail] = useState('');
   // Optional flat rate (number) + currency. Stored on the bookings row as
   // offer_amount + currency so it flows through the normal booking flow.
-  const [rate, setRate] = useState<string>('');
-  const [rateCurrency, setRateCurrency] = useState<string>('USD');
+  const [rate, setRate] = useState<string>(
+    existing?.offer_amount != null ? String(existing.offer_amount) : '',
+  );
+  const [rateCurrency, setRateCurrency] = useState<string>(
+    existing?.currency || 'USD',
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -417,23 +421,29 @@ export default function EventManualForm({
 
           {/* Optional recipient DJ. Email-based: looked up against the user
               base on save. If found, the DJ gets a pending booking they
-              must approve. If not found, an invite email is sent. */}
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Recipient DJ Email <span className={styles.fieldOptional}>(optional)</span>
-            </span>
-            <input
-              type="email"
-              value={djEmail}
-              onChange={(e) => setDjEmail(e.target.value)}
-              placeholder="dj@example.com"
-              className={styles.input}
-              autoComplete="off"
-            />
-            <span className={styles.fieldHint}>
-              If the DJ has an account, they&rsquo;ll get a pending booking to approve. If not, they&rsquo;ll get an invite email.
-            </span>
-          </label>
+              must approve. If not found, an invite email is sent.
+              Only shown when ADDING a new event with no DJ yet — once a DJ
+              is attached (either because the host picked one or because
+              the booking came from a DJ-side manual entry), the field
+              becomes meaningless and is hidden. */}
+          {!isEdit && !existing?.dj_id && (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Recipient DJ Email <span className={styles.fieldOptional}>(optional)</span>
+              </span>
+              <input
+                type="email"
+                value={djEmail}
+                onChange={(e) => setDjEmail(e.target.value)}
+                placeholder="dj@example.com"
+                className={styles.input}
+                autoComplete="off"
+              />
+              <span className={styles.fieldHint}>
+                If the DJ has an account, they&rsquo;ll get a pending booking to approve. If not, they&rsquo;ll get an invite email.
+              </span>
+            </label>
+          )}
 
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Notes <span className={styles.fieldOptional}>(optional)</span></span>
