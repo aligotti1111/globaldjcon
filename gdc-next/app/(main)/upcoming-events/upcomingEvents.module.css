@@ -330,12 +330,34 @@
   grid-template-columns: 1fr 1fr;
   gap: .75rem;
 }
+.fieldRow3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: .45rem;
+}
+.fieldRow3 > .field {
+  min-width: 0;
+}
+.fieldRow3 .input,
+.fieldRow3 .dateInput,
+.fieldRow3 .dateWrap {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 420px) {
+  .fieldRow3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fieldRow3 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
 .fieldLabel {
   font-family: 'Space Mono', monospace;
   font-size: 10px;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--white);
 }
 .fieldOptional {
   text-transform: none;
@@ -480,13 +502,13 @@
   border: 1px solid var(--border);
   color: var(--white);
   font-family: 'Space Mono', monospace;
-  font-size: .7rem;
+  font-size: .75rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
   padding: 0 .55rem;
   border-radius: 6px;
   cursor: pointer;
-  min-width: 78px;
+  min-width: 88px;
   flex-shrink: 0;
 }
 .countrySelect:focus { outline: none; border-color: var(--neon); }

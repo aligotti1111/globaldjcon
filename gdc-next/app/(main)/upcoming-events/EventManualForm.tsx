@@ -12,6 +12,17 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
+
+// Country flag emojis — matches the homepage country picker so the look
+// is consistent across the app. Maps country name → flag emoji.
+const COUNTRY_FLAGS: Record<string, string> = {
+  'United States': '🇺🇸', 'United Kingdom': '🇬🇧', 'Canada': '🇨🇦',
+  'Australia': '🇦🇺', 'Germany': '🇩🇪', 'France': '🇫🇷', 'Netherlands': '🇳🇱',
+  'Spain': '🇪🇸', 'Italy': '🇮🇹', 'Brazil': '🇧🇷', 'Mexico': '🇲🇽',
+  'Japan': '🇯🇵', 'South Africa': '🇿🇦', 'New Zealand': '🇳🇿',
+  'Ireland': '🇮🇪', 'Sweden': '🇸🇪', 'Norway': '🇳🇴', 'Denmark': '🇩🇰',
+  'Belgium': '🇧🇪', 'Switzerland': '🇨🇭', 'Portugal': '🇵🇹', 'Other': '🌍',
+};
 import type { UpcomingEvent } from './page';
 import styles from './upcomingEvents.module.css';
 
@@ -252,21 +263,20 @@ export default function EventManualForm({
         </div>
 
         <div className={styles.modalBody}>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Date</span>
-            <div className={styles.dateWrap} onClick={openDatePicker}>
-              <input
-                ref={dateInputRef}
-                type="date"
-                min={todayStr}
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className={styles.dateInput}
-              />
+          <div className={styles.fieldRow3}>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Date</span>
+              <div className={styles.dateWrap} onClick={openDatePicker}>
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  min={todayStr}
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className={styles.dateInput}
+                />
+              </div>
             </div>
-          </div>
-
-          <div className={styles.fieldRow}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Start Time</span>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
@@ -366,7 +376,7 @@ export default function EventManualForm({
               >
                 {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
                   <option key={c} value={c}>
-                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+                    {COUNTRY_FLAGS[c] || '🌍'} {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
                   </option>
                 ))}
               </select>
@@ -418,6 +428,9 @@ export default function EventManualForm({
               </div>
             </label>
           </div>
+          <span className={styles.fieldHint}>
+            Rate will only be visible to you and the DJ.
+          </span>
 
           {/* Optional recipient DJ. Email-based: looked up against the user
               base on save. If found, the DJ gets a pending booking they
@@ -439,9 +452,6 @@ export default function EventManualForm({
                 className={styles.input}
                 autoComplete="off"
               />
-              <span className={styles.fieldHint}>
-                If the DJ has an account, they&rsquo;ll get a pending booking to approve. If not, they&rsquo;ll get an invite email.
-              </span>
             </label>
           )}
 
