@@ -1242,24 +1242,23 @@ function CollapsibleBanner({
   const endTime = formatTime(booking.end_time);
   const timeStr = endTime ? `${startTime}–${endTime}` : startTime;
 
-  // Build the right-hand label per role/section.
-  let label = '';
+  // Build the right-hand "context" cell per role/section. This is the
+  // last text column before the status pill / chevron.
+  let context = '';
   if (!isIncoming) {
-    // Outgoing — just date + start time per spec.
-    label = startTime ? `${date} · ${startTime}` : date;
+    // Outgoing: no extra context, just date + time.
+    context = '';
   } else if (booking.booking_type === 'club') {
-    // Incoming club: date · start–end · venue
-    const venue = booking.venue_name?.trim() || 'Venue TBD';
-    label = `${date} · ${timeStr} · ${venue}`;
+    // Incoming club: venue name (or TBD)
+    context = booking.venue_name?.trim() || 'Venue TBD';
   } else {
-    // Incoming mobile: date · start–end · event type
+    // Incoming mobile: event type label
     const eventTypeRaw = booking.event_type || '';
-    const eventLabel =
+    context =
       (MOB_EVENT_LABELS as Record<string, string>)[eventTypeRaw] ||
       (eventTypeRaw
         ? eventTypeRaw.charAt(0).toUpperCase() + eventTypeRaw.slice(1)
         : 'Event');
-    label = `${date} · ${timeStr} · ${eventLabel}`;
   }
 
   // Status pill — only rendered when the user is viewing the "all" tab,
@@ -1275,14 +1274,19 @@ function CollapsibleBanner({
     statusRaw === 'cancelled' ? styles.statusPillCancelled :
     '';
 
+  // Build aria-label that flattens the columns for screen readers.
+  const ariaLabel = `Expand booking: ${[date, timeStr, context].filter(Boolean).join(' · ')}`;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={styles.collapsedBanner}
-      aria-label={`Expand booking: ${label}`}
+      aria-label={ariaLabel}
     >
-      <span className={styles.collapsedBannerText}>{label}</span>
+      <span className={styles.collapsedBannerDate}>{date}</span>
+      {timeStr && <span className={styles.collapsedBannerTime}>{timeStr}</span>}
+      {context && <span className={styles.collapsedBannerContext}>{context}</span>}
       {showStatus && statusRaw && (
         <span className={`${styles.statusPill} ${statusClass}`}>
           {statusRaw.toUpperCase()}
