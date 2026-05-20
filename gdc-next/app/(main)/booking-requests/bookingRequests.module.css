@@ -919,6 +919,13 @@
   border-top-right-radius: 0;
 }
 
+/* NotesFeed sits under the expanded card. Slight indent + top margin so
+   it reads as attached to the card above, not a separate row. */
+.notesFeedWrap {
+  margin-top: .75rem;
+  margin-bottom: 8px;
+}
+
 /* Collapse chevron rendered inline (inside the same-day group header) */
 .collapseBtnInline {
   margin-left: auto;
