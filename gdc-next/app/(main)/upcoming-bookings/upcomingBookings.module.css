@@ -217,7 +217,7 @@
   font-size: .58rem;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--white);
 }
 /* Address row — input grows; country chip takes its natural width. */
 .addrRow {
@@ -234,13 +234,13 @@
   border: 1px solid var(--border);
   color: var(--white);
   font-family: 'Space Mono', monospace;
-  font-size: .7rem;
+  font-size: .75rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
   padding: 0 .55rem;
   border-radius: 6px;
   cursor: pointer;
-  min-width: 78px;
+  min-width: 88px;
   flex-shrink: 0;
 }
 .countrySelect:focus {
