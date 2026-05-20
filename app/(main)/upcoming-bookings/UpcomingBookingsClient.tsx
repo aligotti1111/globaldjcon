@@ -700,6 +700,26 @@ function AddManualBookingModal({
       setResendBusy(false);
       return;
     }
+
+    // Same guard as handleSave — never send a host invite to a DJ account.
+    try {
+      const lookupRes = await fetch(
+        `/api/lookup-dj-by-email?email=${encodeURIComponent(recipientEmail)}`,
+      );
+      if (lookupRes.ok) {
+        const lookup = await lookupRes.json() as { found?: boolean; isDj?: boolean };
+        if (lookup?.found && lookup.isDj) {
+          setError(
+            'This email is registered as a DJ account, which can\u2019t be added as the host of a booking. Update the email before resending.',
+          );
+          setResendBusy(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[upcoming-bookings] resend host email lookup failed', e);
+    }
+
     const result = await sendHostInviteEmail({
       bookingId: existing.id,
       recipientEmail,
@@ -764,6 +784,38 @@ function AddManualBookingModal({
       const coords = venueCoordsRef.current;
       // Shared payload for both insert and update.
       const trimmedEmail = hostEmail.trim();
+
+      // Block: the host_email field is for the booking's HOST (the person
+      // who hired the DJ). It must not point to another DJ account — a DJ
+      // can't accept their own gig as the host. Look the email up against
+      // the user base and reject if it resolves to a DJ. Hosts and venues
+      // are both valid as host-side accounts.
+      if (trimmedEmail && trimmedEmail.includes('@')) {
+        try {
+          const lookupRes = await fetch(
+            `/api/lookup-dj-by-email?email=${encodeURIComponent(trimmedEmail)}`,
+          );
+          if (lookupRes.ok) {
+            const lookup = await lookupRes.json() as {
+              found?: boolean;
+              isDj?: boolean;
+              name?: string | null;
+            };
+            if (lookup?.found && lookup.isDj) {
+              setError(
+                'This email is registered as a DJ account, which can\u2019t be added as the host of a booking. Enter a host or venue email, or leave the field blank.',
+              );
+              setSaving(false);
+              return;
+            }
+          }
+        } catch (e) {
+          // Network failure on lookup — don't hard-block, just log. The
+          // host-side has the same forgiving behavior.
+          console.error('[upcoming-bookings] host email lookup failed', e);
+        }
+      }
+
       // Parse rate. Empty → null; invalid → error.
       const rateTrimmed = rate.trim();
       let rateNum: number | null = null;
