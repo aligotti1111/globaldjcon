@@ -36,6 +36,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
+import NotesFeed from '@/components/NotesFeed';
 
 interface Props {
   userId: string;
@@ -228,6 +229,7 @@ export default function UpcomingBookingsClient({
                     key={b.id}
                     booking={b}
                     djType={djType}
+                    userId={userId}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={b.is_manual ? () => setEditing(b) : undefined}
                   />
@@ -262,10 +264,11 @@ export default function UpcomingBookingsClient({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingRow({
-  booking, djType, onDelete, onEdit,
+  booking, djType, userId, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
+  userId: string;
   onDelete?: () => void;
   onEdit?: () => void;
 }) {
@@ -343,7 +346,7 @@ function BookingRow({
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {expanded && <BookingDetails booking={booking} djType={djType} />}
+      {expanded && <BookingDetails booking={booking} djType={djType} userId={userId} />}
     </div>
   );
 }
@@ -356,10 +359,11 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType,
+  booking, djType, userId,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
+  userId: string;
 }) {
   // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
@@ -499,6 +503,14 @@ function BookingDetails({
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Notes</div>
           <div className={styles.detailLongValue}>{booking.notes}</div>
+        </div>
+      )}
+      {/* Shared notes feed — both DJ and host can read + post. Currently
+          scoped to club/bar bookings; mobile (private) bookings don't get
+          this feed. */}
+      {djType === 'club' && (
+        <div className={styles.notesFeedWrap}>
+          <NotesFeed bookingId={booking.id} currentUserId={userId} />
         </div>
       )}
     </div>

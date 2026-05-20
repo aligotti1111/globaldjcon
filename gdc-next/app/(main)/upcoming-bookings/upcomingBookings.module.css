@@ -496,6 +496,9 @@
 }
 .detailLongValue :global(p) { margin: 0 0 .5rem; }
 .detailLongValue :global(p:last-child) { margin-bottom: 0; }
+.notesFeedWrap {
+  margin-top: 1rem;
+}
 
 /* Delete button inside the clickable row — needs to look like a button
    even though it's a <span> (avoid nesting button-in-button). */
