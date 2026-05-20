@@ -969,30 +969,7 @@ function AddManualBookingModal({
             </div>
           </div>
 
-          {djType === 'club' ? (
-            <>
-              <div className={styles.fieldRow}>
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Venue Type</span>
-                  <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
-                    <option value="">Select…</option>
-                    {CLUB_VENUE_TYPES.map((v) => (
-                      <option key={v.value} value={v.value}>{v.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Set Type</span>
-                  <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
-                    <option value="">Select…</option>
-                    {CLUB_SET_TYPES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </>
-          ) : (
+          {djType === 'mobile' && (
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Event Type</span>
               <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
