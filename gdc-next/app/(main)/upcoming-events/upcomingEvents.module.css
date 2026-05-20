@@ -266,6 +266,18 @@
   text-underline-offset: 2px;
 }
 .metaLink:hover { text-decoration-color: var(--neon); }
+.linkLikeBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 2px;
+}
+.linkLikeBtn:hover { text-decoration-color: var(--neon); }
 .metaDj {
   font-size: 12px;
   color: var(--white);

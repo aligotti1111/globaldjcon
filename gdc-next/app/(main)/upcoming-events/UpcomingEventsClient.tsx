@@ -294,6 +294,8 @@ function EventRow({
                   <Link
                     href={`/${event.dj_slug}`}
                     className={styles.metaDjLink}
+                    target="_blank"
+                    rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {event.dj_name}
@@ -398,15 +400,16 @@ function EventRow({
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Flyer</div>
                 <div className={styles.detailValue}>
-                  <a
-                    href={event.flyer_url}
-                    download
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.metaLink}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ext = (event.flyer_url || '').split('?')[0].split('.').pop() || 'jpg';
+                      downloadFlyer(event.flyer_url!, `flyer-${event.id}.${ext}`);
+                    }}
+                    className={styles.linkLikeBtn}
                   >
                     Download flyer
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
@@ -432,15 +435,16 @@ function EventRow({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={event.flyer_url} alt="Event flyer" className={styles.lightboxImg} />
             <div className={styles.lightboxActions}>
-              <a
-                href={event.flyer_url}
-                download
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
                 className={styles.lightboxDownload}
+                onClick={() => {
+                  const ext = (event.flyer_url || '').split('?')[0].split('.').pop() || 'jpg';
+                  downloadFlyer(event.flyer_url!, `flyer-${event.id}.${ext}`);
+                }}
               >
                 Download
-              </a>
+              </button>
               <button type="button" className={styles.lightboxClose} onClick={() => setShowLightbox(false)}>
                 Close
               </button>
@@ -620,6 +624,31 @@ function formatTimeRange(s: string | null, e: string | null): string {
   if (start && end) return `${start} – ${end}`;
   if (start) return start;
   return '';
+}
+
+// Forces a real download of a flyer URL. The native `download` attribute on
+// <a> is ignored when the target lives on another origin (Supabase Storage
+// in our case). To work around that we fetch the file as a blob and create
+// a temporary object URL that the browser treats as same-origin, allowing
+// the download attribute to actually save the file instead of navigating.
+async function downloadFlyer(url: string, filename: string) {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch (e) {
+    console.error('[downloadFlyer] failed', e);
+    // Fallback: open in a new tab so the user can right-click → Save As.
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
 }
 
 function formatTime12(t: string): string {
