@@ -36,6 +36,7 @@ export interface UpcomingEvent {
   is_manual: boolean;
   dj_id?: string | null;
   dj_name?: string | null;
+  dj_slug?: string | null;
   flyer_url?: string | null;
   link_url?: string | null;
   link_label?: string | null;
@@ -94,19 +95,25 @@ export default async function UpcomingEventsPage() {
   const djIds = Array.from(
     new Set(events.map((e) => e.dj_id).filter((id): id is string => !!id)),
   );
-  let djNameById: Record<string, string> = {};
+  let djInfoById: Record<string, { name: string; slug: string | null }> = {};
   if (djIds.length > 0) {
     const { data: djs } = await supabase
       .from('users')
-      .select('id, name')
+      .select('id, name, slug')
       .in('id', djIds);
-    djNameById = (djs || []).reduce((acc: Record<string, string>, row: { id: string; name: string | null }) => {
-      acc[row.id] = row.name || '';
-      return acc;
-    }, {});
+    djInfoById = (djs || []).reduce(
+      (acc: Record<string, { name: string; slug: string | null }>, row: { id: string; name: string | null; slug: string | null }) => {
+        acc[row.id] = { name: row.name || '', slug: row.slug };
+        return acc;
+      },
+      {},
+    );
   }
   for (const e of events) {
-    if (e.dj_id) e.dj_name = djNameById[e.dj_id] || null;
+    if (e.dj_id && djInfoById[e.dj_id]) {
+      e.dj_name = djInfoById[e.dj_id].name || null;
+      e.dj_slug = djInfoById[e.dj_id].slug || null;
+    }
   }
 
   return (

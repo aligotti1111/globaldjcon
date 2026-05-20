@@ -146,6 +146,10 @@ function EventRow({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  // Lightbox for the flyer image — shown when the user clicks the
+  // thumbnail. Provides a Download link inside the overlay.
+  const [showLightbox, setShowLightbox] = useState(false);
   const isManual = event.is_manual;
   // Hosts/venues can upload a flyer to:
   //   - Any manual event they added (no DJ or any DJ)
@@ -207,102 +211,243 @@ function EventRow({
     }
   }
 
+  // Helper to format event type for the details panel.
+  const eventTypeLabel = event.booking_type === 'club'
+    ? 'Club / Bar'
+    : event.booking_type === 'mobile'
+      ? 'Mobile / Private'
+      : null;
+
+  // Helper for the rate line (uses non-public offer_amount + currency).
+  const rateText = (event as { offer_amount?: number | null; currency?: string | null }).offer_amount != null
+      && Number.isFinite((event as { offer_amount?: number | null }).offer_amount as number)
+    ? `${(event as { currency?: string | null }).currency || 'USD'} ${
+        ((event as { offer_amount?: number | null }).offer_amount as number).toLocaleString()
+      }`
+    : null;
+
   return (
-    <div className={styles.row}>
-      {/* Flyer / upload slot. Manual events + approved club/bar bookings
-          can have flyers uploaded by the host/venue. Mobile bookings stay
-          read-only (private events, no flyer). */}
-      {event.flyer_url ? (
-        <img src={event.flyer_url} alt="Event flyer" className={styles.flyer} />
-      ) : canUploadFlyer ? (
+    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
+      <div className={styles.row}>
+        {/* Flyer / upload slot. Manual events + approved club/bar bookings
+            can have flyers uploaded by the host/venue. Mobile bookings stay
+            read-only (private events, no flyer). Clicking the existing
+            flyer opens a lightbox with a download link. */}
+        {event.flyer_url ? (
+          <button
+            type="button"
+            className={styles.flyerBtn}
+            onClick={(e) => { e.stopPropagation(); setShowLightbox(true); }}
+            aria-label="View flyer"
+            title="View flyer"
+          >
+            <img src={event.flyer_url} alt="Event flyer" className={styles.flyer} />
+          </button>
+        ) : canUploadFlyer ? (
+          <button
+            type="button"
+            className={styles.flyerSlot}
+            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            disabled={uploading}
+            title="Upload flyer"
+          >
+            {uploading ? '…' : '+ Flyer'}
+          </button>
+        ) : (
+          <div className={styles.flyerEmpty} />
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFile}
+        />
+
+        {/* Clickable middle area — toggles expansion. */}
         <button
           type="button"
-          className={styles.flyerSlot}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          title="Upload flyer"
+          className={styles.rowToggle}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
         >
-          {uploading ? '…' : '+ Flyer'}
-        </button>
-      ) : (
-        <div className={styles.flyerEmpty} />
-      )}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={handleFile}
-      />
+          <div className={styles.datePill}>
+            <div className={styles.dayNum}>{dateParts.day}</div>
+            <div className={styles.dayMeta}>
+              <div className={styles.dow}>{dateParts.dow}</div>
+              <div className={styles.mo}>{dateParts.mo}</div>
+            </div>
+          </div>
 
-      <div className={styles.datePill}>
-        <div className={styles.dayNum}>{dateParts.day}</div>
-        <div className={styles.dayMeta}>
-          <div className={styles.dow}>{dateParts.dow}</div>
-          <div className={styles.mo}>{dateParts.mo}</div>
+          <div className={styles.middle}>
+            <div className={styles.venue}>{venueLine}</div>
+            <div className={styles.meta}>{timeRange}</div>
+            {event.venue_address && (
+              <div className={styles.meta}>
+                {event.venue_address}
+              </div>
+            )}
+            {event.dj_name && (
+              <div className={styles.metaDj}>
+                DJ:{' '}
+                {event.dj_slug ? (
+                  <Link
+                    href={`/${event.dj_slug}`}
+                    className={styles.metaDjLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {event.dj_name}
+                  </Link>
+                ) : (
+                  event.dj_name
+                )}
+              </div>
+            )}
+          </div>
+
+          <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </span>
+        </button>
+
+        <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
+          {event.link_url && (
+            <a
+              href={event.link_url}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.linkCta}
+            >
+              {event.link_label?.trim() || 'More Info'}
+            </a>
+          )}
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={() => setShowLinkModal(true)}
+            title={event.link_url ? 'Edit link' : 'Add link'}
+            aria-label={event.link_url ? 'Edit link' : 'Add link'}
+          >
+            <PaperclipIcon />
+          </button>
+          {isManual && (
+            <>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={onEdit}
+                title="Edit details"
+                aria-label="Edit details"
+              >
+                <PencilIcon />
+              </button>
+              <button
+                type="button"
+                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                onClick={handleDelete}
+                title="Delete event"
+                aria-label="Delete event"
+              >
+                <TrashIcon />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className={styles.middle}>
-        <div className={styles.venue}>{venueLine}</div>
-        <div className={styles.meta}>{timeRange}</div>
-        {event.venue_address && (
-          <div className={styles.meta}>
-            {mapUrl ? (
-              <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                {event.venue_address}
-              </a>
-            ) : event.venue_address}
+      {expanded && (
+        <div className={styles.detailsPanel}>
+          <div className={styles.detailsGrid}>
+            {event.venue_address && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Address</div>
+                <div className={styles.detailValue}>
+                  {mapUrl ? (
+                    <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                      {event.venue_address}
+                    </a>
+                  ) : event.venue_address}
+                </div>
+              </div>
+            )}
+            {eventTypeLabel && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Type</div>
+                <div className={styles.detailValue}>{eventTypeLabel}</div>
+              </div>
+            )}
+            {rateText && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Rate</div>
+                <div className={styles.detailValue}>{rateText}</div>
+              </div>
+            )}
+            {event.link_url && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Link</div>
+                <div className={styles.detailValue}>
+                  <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                    {event.link_label?.trim() || event.link_url}
+                  </a>
+                </div>
+              </div>
+            )}
+            {event.flyer_url && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Flyer</div>
+                <div className={styles.detailValue}>
+                  <a
+                    href={event.flyer_url}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className={styles.metaLink}
+                  >
+                    Download flyer
+                  </a>
+                </div>
+              </div>
+            )}
+            {event.notes && (
+              <div className={`${styles.detailItem} ${styles.detailItemFull}`}>
+                <div className={styles.detailLabel}>Notes</div>
+                <div className={styles.detailValue}>{event.notes}</div>
+              </div>
+            )}
           </div>
-        )}
-        {event.dj_name && (
-          <div className={styles.metaDj}>DJ: {event.dj_name}</div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className={styles.actions}>
-        {event.link_url && (
-          <a
-            href={event.link_url}
-            target="_blank"
-            rel="noreferrer"
-            className={styles.linkCta}
-          >
-            {event.link_label?.trim() || 'More Info'}
-          </a>
-        )}
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={() => setShowLinkModal(true)}
-          title={event.link_url ? 'Edit link' : 'Add link'}
-          aria-label={event.link_url ? 'Edit link' : 'Add link'}
+      {/* Flyer lightbox with download link */}
+      {showLightbox && event.flyer_url && (
+        <div
+          className={styles.lightboxOverlay}
+          onClick={() => setShowLightbox(false)}
+          role="dialog"
+          aria-modal="true"
         >
-          <PaperclipIcon />
-        </button>
-        {isManual && (
-          <>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={onEdit}
-              title="Edit details"
-              aria-label="Edit details"
-            >
-              <PencilIcon />
-            </button>
-            <button
-              type="button"
-              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-              onClick={handleDelete}
-              title="Delete event"
-              aria-label="Delete event"
-            >
-              <TrashIcon />
-            </button>
-          </>
-        )}
-      </div>
+          <div className={styles.lightboxInner} onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={event.flyer_url} alt="Event flyer" className={styles.lightboxImg} />
+            <div className={styles.lightboxActions}>
+              <a
+                href={event.flyer_url}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className={styles.lightboxDownload}
+              >
+                Download
+              </a>
+              <button type="button" className={styles.lightboxClose} onClick={() => setShowLightbox(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLinkModal && (
         <LinkModal

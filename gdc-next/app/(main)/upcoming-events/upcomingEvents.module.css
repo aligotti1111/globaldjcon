@@ -95,6 +95,10 @@
   flex-direction: column;
   gap: 6px;
 }
+.rowWrap {
+  display: flex;
+  flex-direction: column;
+}
 .row {
   display: flex;
   align-items: center;
@@ -103,10 +107,67 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
+  transition: background .15s, border-color .15s;
 }
 .row:hover {
   border-color: rgba(255, 255, 255, .15);
 }
+.rowWrapExpanded .row {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+/* The clickable middle area — wraps date pill + venue/meta block. */
+.rowToggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+}
+.rowToggle:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: transform .2s, color .15s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+}
+.rowToggle:hover .chevron {
+  color: var(--white);
+}
+
+/* Flyer button wrapper — keeps the existing thumbnail layout but makes
+   it clickable to open the lightbox. */
+.flyerBtn {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.flyerBtn:hover { opacity: .9; }
 
 .flyer {
   width: 64px;
@@ -210,6 +271,118 @@
   color: var(--white);
   margin-top: 2px;
   opacity: .8;
+}
+.metaDjLink {
+  color: var(--neon);
+  text-decoration: none;
+  font-weight: 600;
+}
+.metaDjLink:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--neon);
+}
+
+/* Expanded details panel that slides under the row. */
+.detailsPanel {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 14px 18px 16px;
+}
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+}
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.detailItemFull {
+  grid-column: 1 / -1;
+}
+.detailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.detailValue {
+  font-size: 13px;
+  color: var(--white);
+  line-height: 1.4;
+  word-break: break-word;
+}
+@media (max-width: 520px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Flyer lightbox */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .85);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.lightboxInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.lightboxImg {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.lightboxActions {
+  display: flex;
+  gap: 10px;
+}
+.lightboxDownload {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 9px 16px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lightboxDownload:hover { background: #00d4a9; }
+.lightboxClose {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 5px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+.lightboxClose:hover {
+  border-color: var(--white);
 }
 
 .actions {
