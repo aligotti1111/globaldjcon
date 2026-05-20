@@ -1012,6 +1012,9 @@ function AddManualBookingModal({
                 <option value="AUD">AUD</option>
               </select>
             </div>
+            <span className={styles.fieldHint}>
+              Rate will only be visible to you and the host.
+            </span>
           </label>
 
           {/* ── Host invitation section ─────────────────────────────────
