@@ -377,6 +377,18 @@ function EventRow({
       {expanded && (
         <div className={styles.detailsPanel}>
           <div className={styles.detailsGrid}>
+            {timeRange && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Time</div>
+                <div className={styles.detailValue}>{timeRange}</div>
+              </div>
+            )}
+            {event.venue_name?.trim() && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Venue Name</div>
+                <div className={styles.detailValue}>{event.venue_name.trim()}</div>
+              </div>
+            )}
             {event.venue_address && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Address</div>
@@ -401,19 +413,29 @@ function EventRow({
                 <div className={styles.detailValue}>{rateText}</div>
               </div>
             )}
-            {event.link_url && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Link</div>
-                <div className={styles.detailValue}>
-                  <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                    {event.link_url}
-                  </a>
-                  {event.link_label?.trim() && (
-                    <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
-                  )}
-                </div>
+            <div className={styles.detailItem}>
+              <div className={styles.detailLabel}>Link</div>
+              <div className={styles.detailValue}>
+                {event.link_url ? (
+                  <>
+                    <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                      {event.link_url}
+                    </a>
+                    {event.link_label?.trim() && (
+                      <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkModal(true)}
+                    className={styles.linkLikeBtn}
+                  >
+                    + Add link
+                  </button>
+                )}
               </div>
-            )}
+            </div>
             {event.flyer_url && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Flyer</div>
