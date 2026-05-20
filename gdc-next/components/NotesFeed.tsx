@@ -155,6 +155,8 @@ export default function NotesFeed({ bookingId, currentUserId }: Props) {
 
   return (
     <div className={styles.feed}>
+      <div className={styles.feedHeader}>Notes About Event</div>
+
       {loading && <div className={styles.empty}>Loading notes…</div>}
 
       {!loading && notes.length > 0 && (
