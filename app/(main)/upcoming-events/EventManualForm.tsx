@@ -136,6 +136,7 @@ export default function EventManualForm({
       let djLookupResult: {
         found: boolean;
         id?: string;
+        role?: string | null;
         dj_type?: string | null;
         name?: string | null;
         isDj?: boolean;
@@ -148,6 +149,18 @@ export default function EventManualForm({
           );
           if (res.ok) {
             djLookupResult = await res.json();
+            // Block: the entered email belongs to an existing account that
+            // is NOT a DJ (host or venue). They can't accept DJ bookings,
+            // so we abort the submit and surface an inline error rather
+            // than silently routing a booking they can't action.
+            if (djLookupResult?.found && !djLookupResult.isDj) {
+              const roleLabel = djLookupResult.role === 'venue' ? 'venue' : 'host';
+              setError(
+                `This email is registered as a ${roleLabel} account, which can't accept DJ bookings. Enter a DJ's email or leave the field blank.`,
+              );
+              setSaving(false);
+              return;
+            }
             if (djLookupResult?.found && djLookupResult.isDj) {
               djId = djLookupResult.id || null;
               // Capacity warning — only blocks if the host confirms NO.
