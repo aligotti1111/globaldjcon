@@ -1,0 +1,722 @@
+/* Upcoming Bookings page — DJ schedule view */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  color: var(--white);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  line-height: 1;
+  margin: 0 0 .35rem;
+}
+.backLink {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.backLink:hover { color: var(--white); }
+
+.addBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: .7rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background .15s, transform .1s;
+}
+.addBtn:hover { background: #00d4a9; }
+.addBtn:active { transform: scale(0.97); }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty {
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.empty p { margin: 0 0 .5rem; }
+.emptyHint { font-size: .85rem; max-width: 480px; margin: .5rem auto 0; }
+
+/* ── Month groups ───────────────────────────────────────────────────── */
+.monthList {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.month { }
+.monthLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .08em;
+  color: var(--white);
+  margin: 0 0 .85rem;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid var(--border);
+}
+.monthItems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Row content cells (used by the new clickable .row in expand section) ── */
+.rowDate {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .05em;
+  color: var(--neon);
+  font-weight: 700;
+}
+.rowTime {
+  font-family: 'Space Mono', monospace;
+  font-size: .8rem;
+  color: var(--white);
+}
+.rowContext {
+  font-size: .9rem;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.manualPill {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .25rem .5rem;
+  border: 1px solid rgba(247, 201, 72, .4);
+  background: rgba(247, 201, 72, .08);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+/* Inline pill shown next to the booking context when the booking type
+   doesn't match the DJ's registered type (e.g. a club/bar booking on a
+   mobile DJ's account). */
+.typeMismatchPill {
+  display: inline-block;
+  margin-left: .5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .2rem .45rem;
+  border: 1px solid rgba(247, 201, 72, .45);
+  background: rgba(247, 201, 72, .1);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Yellow callout shown at the top of the expanded details panel when the
+   booking type doesn't match the DJ's profile type. Explains that the
+   booking is still valid but won't appear on the public profile. */
+.typeMismatchNote {
+  margin: 0 0 1rem;
+  padding: .65rem .85rem;
+  background: rgba(247, 201, 72, .08);
+  border-left: 3px solid var(--amber, #f7c948);
+  border-radius: 4px;
+  color: var(--white);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.typeMismatchNote strong {
+  color: var(--amber, #f7c948);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  margin: 0;
+}
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 .3rem;
+}
+.modalClose:hover { color: var(--white); }
+
+.modalBody {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.fieldRow3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: .45rem;
+}
+.fieldRow3 > .field {
+  min-width: 0;
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 4px;
+  font-family: inherit;
+}
+.fieldRow3 .input,
+.fieldRow3 .dateInput,
+.fieldRow3 .dateWrap {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 420px) {
+  .fieldRow3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fieldRow3 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+.fieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+/* Address row — input grows; country chip takes its natural width. */
+.addrRow {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+}
+.addrRow .addrWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.countrySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 0 .55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 88px;
+  flex-shrink: 0;
+}
+.countrySelect:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.input {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Date field: wrap the native input in a clickable box so any click on
+   the field surface opens the system date picker. The native input is
+   stretched to fill the wrapper so clicks don't fall through. */
+.dateWrap {
+  position: relative;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+}
+.dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
+.dateWrap:focus-within { border-color: var(--neon); }
+.dateInput {
+  background: transparent;
+  border: none;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+  cursor: pointer;
+  /* On webkit, the native picker icon takes a small area on the right; we
+     want the entire input area to be clickable, so suppress the icon styling. */
+  appearance: none;
+}
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(1);
+}
+.datePlaceholder {
+  position: absolute;
+  left: .8rem;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* Address autocomplete dropdown — same UX as the booking forms. */
+.addrWrap { position: relative; }
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.addrSuggestion {
+  padding: .65rem .85rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child { border-bottom: none; }
+.addrSuggestion:hover {
+  background: var(--deep);
+  color: var(--neon);
+}
+.errorBox {
+  padding: .65rem .8rem;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .4);
+  color: var(--error, #ff5577);
+  font-size: .82rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: .65rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--deep);
+}
+.cancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+}
+.cancelBtn:hover { color: var(--white); border-color: rgba(255, 255, 255, .25); }
+.saveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: .65rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:disabled { opacity: .6; cursor: wait; }
+
+/* ── Mobile (header / addBtn only — row mobile rules are below in the
+       expand block) ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: stretch; }
+  .addBtn { width: 100%; }
+}
+
+/* ── Inline expand on click ────────────────────────────────────────── */
+/* Wrap around each row + its (conditional) details panel. Lets us
+   reset the row's border-radius so the panel reads as joined. */
+.rowWrap {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rowWrapExpanded { }
+
+/* The clickable summary row. Same look as the previous static .row, but
+   now actually a <button> for proper a11y. */
+.row {
+  display: grid;
+  grid-template-columns: 130px 150px 1fr auto auto auto 16px;
+  gap: 1rem;
+  align-items: center;
+  padding: .85rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.row:hover {
+  background: var(--deep);
+  border-color: rgba(255, 255, 255, .2);
+}
+.rowWrapExpanded .row {
+  /* When expanded, join the row's bottom edge to the panel. */
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+/* Down chevron at the end of the row; rotates 180° when expanded. */
+.rowChevron {
+  color: var(--muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.rowChevronOpen { transform: rotate(180deg); }
+
+/* The details panel that drops down below the row when expanded. */
+.detailsPanel {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 1rem 1.1rem 1.25rem;
+}
+.detailsStack {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+.detailPairRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+.detailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.detailValue {
+  margin: 0;
+  font-size: .9rem;
+  color: var(--white);
+  word-break: break-word;
+}
+.addressLink {
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 3px;
+}
+.addressLink:hover {
+  text-decoration-color: var(--neon);
+}
+.detailLongBlock {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.detailLongValue {
+  margin-top: .35rem;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--white);
+  word-break: break-word;
+}
+.detailLongValue :global(p) { margin: 0 0 .5rem; }
+.detailLongValue :global(p:last-child) { margin-bottom: 0; }
+.notesFeedWrap {
+  margin-top: 1rem;
+}
+
+/* Delete button inside the clickable row — needs to look like a button
+   even though it's a <span> (avoid nesting button-in-button). */
+.deleteBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+  user-select: none;
+}
+.deleteBtn:hover {
+  color: var(--error, #ff5577);
+  border-color: rgba(255, 85, 119, .5);
+  background: rgba(255, 85, 119, .08);
+}
+
+/* Edit pencil button — same shape as delete, neon hover color. */
+.editBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+  user-select: none;
+}
+.editBtn:hover {
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .5);
+  background: rgba(0, 245, 196, .08);
+}
+
+/* Mobile — collapse details to single column. */
+@media (max-width: 600px) {
+  .detailPairRow {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+  }
+  .row {
+    grid-template-columns: 1fr auto auto auto;
+    grid-template-areas:
+      "date     pill   pill    pill"
+      "time     time   time    time"
+      "context  context context context"
+      ".        edit   delete  chevron";
+    gap: .35rem;
+  }
+  .rowChevron { grid-area: chevron; justify-self: end; }
+  .editBtn { grid-area: edit; }
+  .deleteBtn { grid-area: delete; }
+  .manualPill { grid-area: pill; justify-self: end; }
+}
+
+/* ── Host invite block in modal ─────────────────────────────────────── */
+/* Rate row: currency prefix + numeric input + currency selector. */
+.rateRow {
+  display: flex;
+  align-items: stretch;
+  gap: .35rem;
+}
+.rateCurrencyPrefix {
+  display: flex;
+  align-items: center;
+  padding: 0 .65rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+.rateInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: .65rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+}
+.rateInput:focus { outline: none; border-color: var(--neon); }
+.rateCurrencySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 0 .55rem;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  min-width: 64px;
+}
+.rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
+
+.hostInviteBlock {
+  margin-top: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.inviteCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  user-select: none;
+}
+.inviteCheckRow input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--neon);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.inviteCheckRow input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+.checkHint {
+  color: var(--muted);
+  font-size: .75rem;
+}
+/* Banner shown when the email has already been sent — locks the input
+   from triggering a double-send and offers an explicit Resend button. */
+.sentBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .65rem .8rem;
+  background: rgba(0, 245, 196, .06);
+  border: 1px solid rgba(0, 245, 196, .25);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.sentBannerText {
+  font-size: .8rem;
+  color: var(--white);
+  flex: 1 1 auto;
+}
+.resendBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: 1px solid var(--neon);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.resendBtn:hover:not(:disabled) {
+  background: var(--neon);
+  color: #000;
+}
+.resendBtn:disabled {
+  opacity: .6;
+  cursor: wait;
+}
