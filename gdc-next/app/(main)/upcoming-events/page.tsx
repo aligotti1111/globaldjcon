@@ -42,6 +42,13 @@ export interface UpcomingEvent {
   notes?: string | null;
   status?: string | null;
   created_at?: string;
+  // Rate fields (visible only to DJ + host who created the booking).
+  offer_amount?: number | null;
+  currency?: string | null;
+  // Source flag — when present, this booking originated from a DJ-side
+  // manual entry. Hosts viewing it can edit detail fields but can't
+  // attach a different DJ (the DJ is already locked).
+  requester_id?: string | null;
 }
 
 interface ProfileRow {
@@ -73,7 +80,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
