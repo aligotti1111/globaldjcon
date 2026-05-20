@@ -1,0 +1,793 @@
+/* Upcoming Events page (host/venue view). Styling mirrors the DJ-side
+   /upcoming-bookings page but stripped down. */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  color: var(--white);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+.title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .04em;
+  color: var(--neon);
+  margin: 0;
+}
+.subtitle {
+  font-size: .9rem;
+  color: var(--muted);
+  margin: .35rem 0 0;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.linkBack {
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  padding: .5rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  transition: color .15s, border-color .15s;
+}
+.linkBack:hover {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .25);
+}
+.addBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+  transition: background .15s;
+}
+.addBtn:hover { background: #00d4a9; }
+
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+}
+.emptyHint {
+  font-size: .85rem;
+  margin-top: .5rem;
+}
+
+/* ── Month grouping ──────────────────────────────────────────────────── */
+.monthGroup {
+  margin-bottom: 2rem;
+}
+.monthHeading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  margin: 0 0 .9rem;
+  padding-bottom: .35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Event list ─────────────────────────────────────────────────────── */
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rowWrap {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: background .15s, border-color .15s;
+}
+.row:hover {
+  border-color: rgba(255, 255, 255, .15);
+}
+.rowWrapExpanded .row {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+/* The clickable middle area — wraps date pill + venue/meta block. */
+.rowToggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+}
+.rowToggle:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: transform .2s, color .15s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+}
+.rowToggle:hover .chevron {
+  color: var(--white);
+}
+
+/* Flyer button wrapper — keeps the existing thumbnail layout but makes
+   it clickable to open the lightbox. */
+.flyerBtn {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.flyerBtn:hover { opacity: .9; }
+
+.flyer {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.flyerSlot {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border: 1px dashed var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 4px;
+  transition: color .15s, border-color .15s;
+}
+.flyerSlot:hover:not(:disabled) {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.flyerSlot:disabled { opacity: .6; cursor: wait; }
+.flyerEmpty {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+.datePill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 76px;
+}
+.dayNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--neon);
+  line-height: 1;
+}
+.dayMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.dow {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--neon);
+  font-weight: 700;
+}
+.mo {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.venue {
+  font-size: 15px;
+  color: var(--white);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.metaLink {
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 2px;
+}
+.metaLink:hover { text-decoration-color: var(--neon); }
+.linkLikeBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 2px;
+}
+.linkLikeBtn:hover { text-decoration-color: var(--neon); }
+.linkLabelHint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.notesFeedWrap {
+  margin-top: 14px;
+}
+.metaDj {
+  font-size: 12px;
+  color: var(--white);
+  margin-top: 2px;
+  opacity: .8;
+}
+.metaDjLink {
+  color: var(--neon);
+  text-decoration: none;
+  font-weight: 600;
+}
+.metaDjLink:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--neon);
+}
+
+/* Expanded details panel that slides under the row. */
+.detailsPanel {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 14px 18px 16px;
+}
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+}
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.detailItemFull {
+  grid-column: 1 / -1;
+}
+.detailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.detailValue {
+  font-size: 13px;
+  color: var(--white);
+  line-height: 1.4;
+  word-break: break-word;
+}
+@media (max-width: 520px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Flyer lightbox */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .85);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.lightboxInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.lightboxImg {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.lightboxActions {
+  display: flex;
+  gap: 10px;
+}
+.lightboxDownload {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 9px 16px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lightboxDownload:hover { background: #00d4a9; }
+.lightboxClose {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 5px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+.lightboxClose:hover {
+  border-color: var(--white);
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.linkCta {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: 1px solid var(--neon);
+  border-radius: 4px;
+  padding: 7px 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.linkCta:hover { background: #00d4a9; color: #000; }
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.iconBtn:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.iconBtnDanger:hover {
+  color: var(--error, #ff5577);
+  border-color: var(--error, #ff5577);
+}
+
+/* ── Modals ─────────────────────────────────────────────────────────── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .7);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
+}
+.modalSmall {
+  width: 100%;
+  max-width: 460px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
+  overflow: hidden;
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: .04em;
+  color: var(--neon);
+  margin: 0;
+}
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.modalClose:hover { color: var(--white); }
+.modalBody {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.fieldRow3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: .45rem;
+}
+.fieldRow3 > .field {
+  min-width: 0;
+}
+.fieldRow3 .input,
+.fieldRow3 .dateInput,
+.fieldRow3 .dateWrap {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 420px) {
+  .fieldRow3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fieldRow3 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+.fieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+.fieldOptional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.required {
+  color: var(--neon);
+  margin-left: 2px;
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.rateRow {
+  display: flex;
+  align-items: stretch;
+  gap: .35rem;
+  min-height: 42px;
+}
+.rateCurrencyPrefix {
+  display: flex;
+  align-items: center;
+  padding: 0 .65rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+.rateInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 9px 12px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 14px;
+}
+.rateInput:focus { outline: none; border-color: var(--neon); }
+.rateCurrencySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 0 .55rem;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  min-width: 64px;
+}
+.rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
+.input,
+.textarea {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+}
+.input:focus,
+.textarea:focus { outline: none; border-color: var(--neon); }
+.textarea { resize: vertical; min-height: 60px; }
+
+.dateWrap {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  color-scheme: dark;
+}
+.dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
+.dateWrap:focus-within { border-color: var(--neon); }
+.dateInput {
+  background: transparent;
+  border: none;
+  padding: 9px 12px;
+  color: var(--white);
+  -webkit-text-fill-color: var(--white);
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  color-scheme: dark;
+}
+.dateInput::-webkit-datetime-edit,
+.dateInput::-webkit-datetime-edit-text,
+.dateInput::-webkit-datetime-edit-month-field,
+.dateInput::-webkit-datetime-edit-day-field,
+.dateInput::-webkit-datetime-edit-year-field {
+  color: var(--white);
+}
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(1);
+}
+
+.addrRow {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+}
+.addrRow .addrWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.addrWrap { position: relative; }
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.addrSuggestion {
+  padding: .65rem .85rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child { border-bottom: none; }
+.addrSuggestion:hover {
+  background: var(--deep);
+  color: var(--neon);
+}
+.countrySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 0 .55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 88px;
+  flex-shrink: 0;
+}
+.countrySelect:focus { outline: none; border-color: var(--neon); }
+
+.error {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .35);
+  color: var(--error, #ff5577);
+  font-size: 13px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.actionsRight {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+.removeBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--error, #ff5577);
+  border: 1px solid var(--error, #ff5577);
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.removeBtn:hover:not(:disabled) {
+  background: var(--error, #ff5577);
+  color: #fff;
+}
+.cancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.cancelBtn:hover:not(:disabled) {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .3);
+}
+.saveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:disabled { opacity: .6; cursor: wait; }

@@ -442,11 +442,11 @@ export default function EventManualForm({
                   <option value="AUD">AUD</option>
                 </select>
               </div>
+              <span className={styles.fieldHint}>
+                Rate will only be visible to you and the DJ.
+              </span>
             </label>
           </div>
-          <span className={styles.fieldHint}>
-            Rate will only be visible to you and the DJ.
-          </span>
 
           {/* Optional recipient DJ. Email-based: looked up against the user
               base on save. If found, the DJ gets a pending booking they
