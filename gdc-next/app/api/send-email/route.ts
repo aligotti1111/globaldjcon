@@ -36,7 +36,8 @@ type EmailType =
   | 'quote_sent'
   | 'booking_approved'
   | 'manual_booking_invite'
-  | 'event_invite_from_host';
+  | 'event_invite_from_host'
+  | 'booking_activity';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -949,6 +950,105 @@ export async function POST(req: Request) {
         ${rateLine ? `<div style="margin:14px 0;">${rateLine}</div>` : ''}
         ${ctaButton(ctaHref, ctaLabel)}
         <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
+      `),
+    };
+
+  } else if (type === 'booking_activity') {
+    // Fired by the client whenever a user adds a note or uploads a flyer
+    // on a booking that's shared with another party. Server figures out
+    // the other party's email (the DJ if actor is the host, or vice versa)
+    // and sends a short notification with a link to the booking.
+    //
+    // Required fields: bookingId, actorId, activity ('note' | 'flyer').
+    const bookingId = body.bookingId as string | undefined;
+    const actorId = body.actorId as string | undefined;
+    const activity = body.activity as 'note' | 'flyer' | undefined;
+    if (!bookingId || !actorId || !activity) {
+      return NextResponse.json(
+        { error: 'booking_activity requires bookingId, actorId, activity' },
+        { status: 400 },
+      );
+    }
+
+    // Look up the booking (admin) to find both parties.
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data: booking } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, booking_type')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        id: string;
+        dj_id: string | null;
+        requester_id: string | null;
+        event_date: string | null;
+        start_time: string | null;
+        end_time: string | null;
+        venue_name: string | null;
+        venue_address: string | null;
+        booking_type: string | null;
+      }>();
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+    // Only club/bar bookings have notes/flyers visible to both sides.
+    if (booking.booking_type !== 'club') {
+      return NextResponse.json({ ok: true, skipped: 'not club booking' });
+    }
+
+    // The "other party" is whichever side ISN'T the actor.
+    let recipientId: string | null = null;
+    if (booking.dj_id === actorId) recipientId = booking.requester_id;
+    else if (booking.requester_id === actorId) recipientId = booking.dj_id;
+    if (!recipientId) {
+      // No counterparty (e.g., manual event with no DJ yet) — skip silently.
+      return NextResponse.json({ ok: true, skipped: 'no counterparty' });
+    }
+
+    // Look up the recipient's email via auth.users, and both parties' names.
+    const { data: { user: recipUser } } = await admin.auth.admin.getUserById(recipientId);
+    const recipientEmail = recipUser?.email || null;
+    if (!recipientEmail) {
+      return NextResponse.json({ ok: true, skipped: 'no recipient email' });
+    }
+    const { data: actorProfile } = await admin
+      .from('users')
+      .select('name')
+      .eq('id', actorId)
+      .maybeSingle<{ name: string | null }>();
+    const actorName = actorProfile?.name || 'Someone';
+
+    // Recipient's CTA path — DJ goes to upcoming-bookings, host to upcoming-events.
+    const recipientIsRequester = recipientId === booking.requester_id;
+    const ctaPath = recipientIsRequester ? '/upcoming-events' : '/upcoming-bookings';
+    const ctaUrl = `${SITE_URL}${ctaPath}`;
+
+    // Compose copy.
+    const fmtDate = (d: string | null | undefined) => {
+      if (!d) return '';
+      const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
+      const dt = new Date(y, m - 1, day);
+      return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+    const dateStr = fmtDate(booking.event_date);
+    const venueStr = (booking.venue_name || '').trim() || (booking.venue_address || '').split(',')[0].trim();
+    const eventDescriptor = [dateStr, venueStr].filter(Boolean).join(' at ');
+
+    const actionLabel = activity === 'note' ? 'added a note' : 'uploaded a flyer';
+    const subject = `${actorName} ${actionLabel} on your booking`;
+    const h2 = activity === 'note' ? 'New note on your booking' : 'New flyer on your booking';
+
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [recipientEmail],
+      subject,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${h2}</h2>
+        <p style="color:#666666;margin-bottom:20px;">
+          <strong>${escHtml(actorName)}</strong> ${actionLabel} on your booking${eventDescriptor ? ` for ${escHtml(eventDescriptor)}` : ''}.
+        </p>
+        ${ctaButton(ctaUrl, 'View Booking')}
       `),
     };
 
