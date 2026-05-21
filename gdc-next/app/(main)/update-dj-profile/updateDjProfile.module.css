@@ -153,11 +153,10 @@
 /* ── Specialization (mobile-events / club-genres) ──────────── */
 .specBox {
   margin-top: .5rem;
-  margin-left: 1.5rem;
-  padding: .8rem 1rem 1rem 1.2rem;
+  padding: .8rem 1rem 1rem;
   background: rgba(10, 10, 16, .6);
-  border-left: 2px solid var(--border);
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 .checkboxGrid {
   display: grid;

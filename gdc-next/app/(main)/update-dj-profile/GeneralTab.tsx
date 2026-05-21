@@ -205,14 +205,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           className={styles.input}
         />
 
-        {/* Nested URL field — visually a sub-row inside the name group.
-            The URL is derived from the name on signup, so keeping them
-            together here mirrors that mental model.
-            We use the same SlugInput component as signup for full visual
-            consistency (red border + alternatives when taken). The
-            excludeUserId + originalSlug props make it skip the user's
-            own row when checking availability. */}
-        <div style={{ marginTop: '.85rem', paddingLeft: '.85rem', borderLeft: '2px solid rgba(0, 245, 196, .2)' }}>
+        {/* Nested URL field — keeps the slug input visually grouped under
+            the name field. Border-left/indent removed so the input box
+            aligns flush with the other fields above and below. */}
+        <div style={{ marginTop: '.85rem' }}>
           <SlugInput
             value={state.slug}
             onChange={(s) => onChange('slug', s)}
