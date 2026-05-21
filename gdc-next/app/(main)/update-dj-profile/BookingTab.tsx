@@ -440,53 +440,10 @@ export default function BookingTab({
                   reportCardDirty={reportCardDirty}
                 />
               )}
-              {/* Master Save All — saves every dirty package card at once.
-                  Each card receives the trigger via masterSaveTrigger and
-                  attempts its own save (with its own validation). If a
-                  card has invalid data, IT shows the error inline. */}
-              {activeCats.length > 0 && renderedCount > 0 && (
-                <div
-                  style={{
-                    paddingTop: '1rem',
-                    marginTop: '.4rem',
-                    borderTop: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '.75rem',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '.7rem',
-                      color: 'var(--muted)',
-                      fontFamily: "'Space Mono', monospace",
-                      letterSpacing: '.05em',
-                    }}
-                  >
-                    Saves every package above
-                  </span>
-                  <button
-                    type="button"
-                    onClick={triggerMasterSave}
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.7rem',
-                      letterSpacing: '.07em',
-                      textTransform: 'uppercase',
-                      padding: '.65rem 1.2rem',
-                      borderRadius: '6px',
-                      border: '1px solid var(--neon)',
-                      background: 'var(--neon-dim)',
-                      color: 'var(--neon)',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                    }}
-                  >
-                    Save All Packages
-                  </button>
-                </div>
-              )}
+              {/* The internal "Save All Packages" button was removed —
+                  individual package cards each have their own Save button,
+                  and the top-level page Save still triggers the master
+                  save via externalMasterSaveTrigger. */}
             </div>
           </div>
 
