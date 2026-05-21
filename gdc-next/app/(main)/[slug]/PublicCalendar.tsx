@@ -775,7 +775,7 @@ function SingleMonthView({
         ))}
       </div>
 
-      <div className={styles.cellsGrid}>{cells}</div>
+      <div className={`${styles.cellsGrid} ${isOwnProfile ? styles.cellsGridCompact : ''}`}>{cells}</div>
 
       <div className={styles.legend}>
         <div className={`${styles.legendItem} ${styles.legendOpen}`}>
