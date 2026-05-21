@@ -741,7 +741,7 @@ function DjListRow({ dj }: { dj: HomeDj }) {
           )}
         </div>
       </div>
-      {bookingEnabled && (
+      {bookingEnabled ? (
         <span
           style={{
             fontFamily: "'Space Mono', monospace",
@@ -754,10 +754,13 @@ function DjListRow({ dj }: { dj: HomeDj }) {
             color: 'var(--black)',
             fontWeight: 700,
             whiteSpace: 'nowrap',
+            justifySelf: 'end',
           }}
         >
           Book
         </span>
+      ) : (
+        <span aria-hidden="true" />
       )}
       <span className={`dll-type ${typeClass}`}>{typeLabel}</span>
       <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
