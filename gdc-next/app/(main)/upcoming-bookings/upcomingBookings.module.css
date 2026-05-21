@@ -624,12 +624,12 @@
      the right when it's a manual booking. */
   .row {
     display: grid;
-    grid-template-columns: 78px auto auto 1fr auto;
+    grid-template-columns: 78px 1fr auto;
     grid-template-areas:
-      "date    time     time     time     chev"
-      "date    context  context  context  chev"
-      "edit    delete   .        .        pill";
-    column-gap: .4rem;
+      "date    time     chev"
+      "date    context  chev"
+      "actions actions  pill";
+    column-gap: .5rem;
     row-gap: .35rem;
     padding: .65rem .85rem;
     align-items: center;
@@ -659,16 +659,20 @@
     align-self: center;
   }
 
-  /* Row 3 actions — only present on manual bookings. Edit and delete
-     sit tight together on the left, MANUAL ADD on the right. */
-  .editBtn    {
-    grid-area: edit;
+  /* Row 3: edit + delete sit on the LEFT spanning the actions area, with
+     just 4px between them (no grid gap interfering because they share
+     one grid cell via the same grid-area). Absolute-position both inside
+     a wrapper isn't an option since they're direct grid children — but
+     using grid-column-start with `start` justification + a fixed gap
+     via translate gives clean alignment. */
+  .editBtn   {
+    grid-area: actions;
     justify-self: start;
   }
-  .deleteBtn  {
-    grid-area: delete;
+  .deleteBtn {
+    grid-area: actions;
     justify-self: start;
-    margin-left: -1.5rem;
+    transform: translateX(36px);
   }
   .manualPill {
     grid-area: pill;
