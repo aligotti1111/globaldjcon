@@ -299,7 +299,7 @@
 
   /* ── PUBLIC LIST VIEW ── */
   .dj-list { display:flex; flex-direction:column; gap:.4rem; }
-  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
+  .dj-list-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.7rem 1.2rem; display:grid; grid-template-columns: 36px 1fr auto 90px 100px; align-items:center; gap:1rem; transition:border-color .2s; }
   .dj-list-row:hover { border-color:var(--neon); }
   .dj-list-row.club { border-left:3px solid var(--pink); }
   .dj-list-row.mobile { border-left:3px solid var(--neon); }
@@ -313,7 +313,7 @@
   .dll-type.none { background:transparent; color:var(--muted); border:1px solid var(--border); }
   @media(max-width:900px) {
     /* List view on mobile */
-    .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto !important; gap:.5rem !important; padding:.6rem .75rem !important; }
+    .dj-list-row { grid-template-columns: 30px minmax(0,1fr) auto auto auto !important; gap:.5rem !important; padding:.6rem .75rem !important; }
     .dll-avatar { width:30px !important; height:30px !important; font-size:.8rem !important; }
     .dll-name-wrap { min-width:0; }
     .dll-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
