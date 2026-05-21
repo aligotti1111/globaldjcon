@@ -1053,19 +1053,61 @@
 }
 
 @media (max-width: 600px) {
+  /* Match the upcoming-bookings closed-row layout. Date pill is locked
+     to a fixed-width left column and spans both info rows so it stays
+     vertically centered. Time + context share the same left edge in the
+     middle column — context wraps below time when long. Chevron pinned
+     right, also spanning both rows. Status pill (when present) sits on
+     row 1, right side, before the chevron. */
   .collapsedBanner {
-    grid-template-columns: 1fr auto auto;
-    gap: .6rem;
+    grid-template-columns: 78px 1fr auto auto;
+    grid-template-areas:
+      "date    time     status   chev"
+      "date    context  context  chev";
+    column-gap: .75rem;
+    row-gap: .25rem;
+    padding: .65rem .85rem;
+    align-items: center;
   }
-  .collapsedBannerTime,
-  .collapsedBannerContext {
-    grid-column: 1 / -3;
+  .collapsedBannerDate {
+    grid-area: date;
+    grid-column: auto;
+    align-self: center;
+    justify-content: flex-start;
+    min-width: 0;
   }
-  .collapsedBannerContext {
+  .collapsedBannerTime {
+    grid-area: time;
+    grid-column: auto;
+    justify-self: start;
     font-size: .85rem;
   }
-  .statusPill { grid-column: auto; }
-  .collapsedBannerChevron { grid-column: auto; }
+  .collapsedBannerContext {
+    grid-area: context;
+    grid-column: auto;
+    white-space: normal;
+    font-size: .9rem;
+    line-height: 1.3;
+    text-align: left;
+    justify-self: start;
+  }
+  .statusPill {
+    grid-area: status;
+    grid-column: auto;
+    justify-self: end;
+    align-self: center;
+  }
+  .collapsedBannerChevron {
+    grid-area: chev;
+    grid-column: auto;
+    justify-self: end;
+    align-self: center;
+  }
+  /* Bigger, prominent date pill on mobile. */
+  .dayNum { font-size: 30px; }
+  .dow    { font-size: 10px; }
+  .mo     { font-size: 10px; }
+  .collapsedBannerDate { gap: 6px; }
 }
 
 /* Status pill on the right side of a collapsed banner. Only rendered on
