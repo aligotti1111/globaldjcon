@@ -103,28 +103,51 @@
   flex: 1 1 0;
   justify-content: flex-end;
 }
-.shareInlineBtn,
+/* Owner-only "Embed Calendar" button — white pill, black text, matches
+   the mobile profile design. */
 .embedInlineBtn {
   display: inline-flex;
   align-items: center;
-  gap: .35rem;
+  gap: .4rem;
+  padding: .42rem .85rem;
+  background: #fff;
+  border: 1px solid #fff;
+  border-radius: 100px;
+  color: #050507;
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .12em;
+  font-size: .55rem;
+  letter-spacing: .08em;
   text-transform: uppercase;
   font-weight: 700;
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .4rem .65rem;
   cursor: pointer;
-  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  transition: all .15s;
 }
-.shareInlineBtn:hover,
 .embedInlineBtn:hover {
-  color: var(--neon);
+  background: var(--neon);
   border-color: var(--neon);
+}
+/* Share Calendar — transparent neon-outlined pill. */
+.shareInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .42rem .85rem;
+  background: transparent;
+  border: 1px solid var(--neon);
+  border-radius: 100px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.shareInlineBtn:hover {
+  background: rgba(0, 245, 196, .12);
 }
 .monthHeader {
   text-align: center;
