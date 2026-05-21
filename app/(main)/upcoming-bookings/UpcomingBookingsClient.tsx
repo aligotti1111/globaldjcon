@@ -278,9 +278,10 @@ function BookingRow({
 
   let context = '';
   if (djType === 'club') {
-    const venue = booking.venue_name?.trim() || '—';
-    const type = booking.venue_type ? ` (${booking.venue_type})` : '';
-    context = `${venue}${type}`;
+    // Venue type is shown in the expanded details panel — omit from the
+    // row header to keep it clean. Club DJ accounts only ever book
+    // club/bar gigs, so the parenthetical is redundant noise here.
+    context = booking.venue_name?.trim() || '—';
   } else {
     const ev = booking.event_type || '';
     const found = MOBILE_EVENT_TYPES.find((e) => e.value === ev);
