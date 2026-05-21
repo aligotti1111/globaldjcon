@@ -289,15 +289,9 @@ function BookingRow({
     if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
 
-  // Type-mismatch tag — flags when a booking's type doesn't match the DJ's
-  // registered type (e.g. a club/bar event booked with a mobile DJ). The
-  // booking is still valid but it won't display on the DJ's public profile.
-  const bt = booking.booking_type;
-  const mismatchLabel = (djType === 'mobile' && bt === 'club')
-    ? 'CLUB / BAR BOOKING'
-    : (djType === 'club' && bt === 'mobile')
-      ? 'MOBILE / PRIVATE BOOKING'
-      : null;
+  // The type-mismatch info is now shown only in the expanded details
+  // panel's callout banner (see BookingDetails below) — keeping the row
+  // header clean. The row no longer renders a CLUB/BAR pill.
 
   // Both edit and delete must stop propagation so they don't also toggle
   // the row's expand/collapse state (the row is itself a <button>).
@@ -328,11 +322,6 @@ function BookingRow({
         <div className={styles.rowTime}>{timeRange}</div>
         <div className={styles.rowContext}>
           {context}
-          {mismatchLabel && (
-            <span className={styles.typeMismatchPill} title="This booking type doesn't match your DJ profile type. It won't appear on your public profile.">
-              {mismatchLabel}
-            </span>
-          )}
         </div>
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
