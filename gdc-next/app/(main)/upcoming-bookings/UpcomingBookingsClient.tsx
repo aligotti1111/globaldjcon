@@ -278,15 +278,26 @@ function BookingRow({
 
   let context = '';
   if (djType === 'club') {
-    const venue = booking.venue_name?.trim() || '—';
-    const type = booking.venue_type ? ` (${booking.venue_type})` : '';
-    context = `${venue}${type}`;
+    // Venue type is shown in the expanded details panel — omit from the
+    // row header to keep it clean. Club DJ accounts only ever book
+    // club/bar gigs, so the parenthetical is redundant noise here.
+    context = booking.venue_name?.trim() || '—';
   } else {
     const ev = booking.event_type || '';
     const found = MOBILE_EVENT_TYPES.find((e) => e.value === ev);
     context = found ? found.label : (ev || 'Event');
     if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
+
+  // Type-mismatch tag — flags when a booking's type doesn't match the DJ's
+  // registered type (e.g. a club/bar event booked with a mobile DJ). The
+  // booking is still valid but it won't display on the DJ's public profile.
+  const bt = booking.booking_type;
+  const mismatchLabel = (djType === 'mobile' && bt === 'club')
+    ? 'CLUB / BAR BOOKING'
+    : (djType === 'club' && bt === 'mobile')
+      ? 'MOBILE / PRIVATE BOOKING'
+      : null;
 
   // Both edit and delete must stop propagation so they don't also toggle
   // the row's expand/collapse state (the row is itself a <button>).
@@ -309,7 +320,14 @@ function BookingRow({
       >
         <div className={styles.rowDate}>{dateLabel}</div>
         <div className={styles.rowTime}>{timeRange}</div>
-        <div className={styles.rowContext}>{context}</div>
+        <div className={styles.rowContext}>
+          {context}
+          {mismatchLabel && (
+            <span className={styles.typeMismatchPill} title="This booking type doesn't match your DJ profile type. It won't appear on your public profile.">
+              {mismatchLabel}
+            </span>
+          )}
+        </div>
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
         )}
@@ -476,8 +494,23 @@ function BookingDetails({
   const hasNotes = booking.notes && booking.notes.trim().length > 0;
   const hasPackageDetails = booking.package_details && booking.package_details.trim().length > 0;
 
+  // Type-mismatch callout — surface a friendly note in the expanded panel
+  // when the booking's type differs from the DJ's registered type. This
+  // matches the same warning shown to hosts in the invite email.
+  const bt = booking.booking_type;
+  const typeMismatchNote = (djType === 'mobile' && bt === 'club')
+    ? 'This is a Club / Bar booking. Your profile is registered as a Mobile DJ — the booking will still appear here in your upcoming bookings, but it won\u2019t be displayed publicly on your profile event list.'
+    : (djType === 'club' && bt === 'mobile')
+      ? 'This is a Mobile / Private booking. Your profile is registered as a Club / Bar DJ — the booking will still appear here in your upcoming bookings, but it won\u2019t be displayed publicly on your profile event list.'
+      : null;
+
   return (
     <div className={styles.detailsPanel}>
+      {typeMismatchNote && (
+        <div className={styles.typeMismatchNote}>
+          <strong>Note:</strong> {typeMismatchNote}
+        </div>
+      )}
       <div className={styles.detailsStack}>
         {visibleRows.map((row, i) => (
           <div key={i} className={styles.detailPairRow}>
@@ -668,6 +701,26 @@ function AddManualBookingModal({
       setResendBusy(false);
       return;
     }
+
+    // Same guard as handleSave — never send a host invite to a DJ account.
+    try {
+      const lookupRes = await fetch(
+        `/api/lookup-dj-by-email?email=${encodeURIComponent(recipientEmail)}`,
+      );
+      if (lookupRes.ok) {
+        const lookup = await lookupRes.json() as { found?: boolean; isDj?: boolean };
+        if (lookup?.found && lookup.isDj) {
+          setError(
+            'This email is registered as a DJ account, which can\u2019t be added as the host of a booking. Update the email before resending.',
+          );
+          setResendBusy(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[upcoming-bookings] resend host email lookup failed', e);
+    }
+
     const result = await sendHostInviteEmail({
       bookingId: existing.id,
       recipientEmail,
@@ -732,6 +785,38 @@ function AddManualBookingModal({
       const coords = venueCoordsRef.current;
       // Shared payload for both insert and update.
       const trimmedEmail = hostEmail.trim();
+
+      // Block: the host_email field is for the booking's HOST (the person
+      // who hired the DJ). It must not point to another DJ account — a DJ
+      // can't accept their own gig as the host. Look the email up against
+      // the user base and reject if it resolves to a DJ. Hosts and venues
+      // are both valid as host-side accounts.
+      if (trimmedEmail && trimmedEmail.includes('@')) {
+        try {
+          const lookupRes = await fetch(
+            `/api/lookup-dj-by-email?email=${encodeURIComponent(trimmedEmail)}`,
+          );
+          if (lookupRes.ok) {
+            const lookup = await lookupRes.json() as {
+              found?: boolean;
+              isDj?: boolean;
+              name?: string | null;
+            };
+            if (lookup?.found && lookup.isDj) {
+              setError(
+                'This email is registered as a DJ account, which can\u2019t be added as the host of a booking. Enter a host or venue email, or leave the field blank.',
+              );
+              setSaving(false);
+              return;
+            }
+          }
+        } catch (e) {
+          // Network failure on lookup — don't hard-block, just log. The
+          // host-side has the same forgiving behavior.
+          console.error('[upcoming-bookings] host email lookup failed', e);
+        }
+      }
+
       // Parse rate. Empty → null; invalid → error.
       const rateTrimmed = rate.trim();
       let rateNum: number | null = null;

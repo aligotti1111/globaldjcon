@@ -93,11 +93,13 @@
   letter-spacing: .05em;
   color: var(--neon);
   font-weight: 700;
+  white-space: nowrap;
 }
 .rowTime {
   font-family: 'Space Mono', monospace;
   font-size: .8rem;
   color: var(--white);
+  white-space: nowrap;
 }
 .rowContext {
   font-size: .9rem;
@@ -117,6 +119,43 @@
   color: var(--amber, #f7c948);
   border-radius: 4px;
   font-weight: 700;
+}
+
+/* Inline pill shown next to the booking context when the booking type
+   doesn't match the DJ's registered type (e.g. a club/bar booking on a
+   mobile DJ's account). */
+.typeMismatchPill {
+  display: inline-block;
+  margin-left: .5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .2rem .45rem;
+  border: 1px solid rgba(247, 201, 72, .45);
+  background: rgba(247, 201, 72, .1);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Yellow callout shown at the top of the expanded details panel when the
+   booking type doesn't match the DJ's profile type. Explains that the
+   booking is still valid but won't appear on the public profile. */
+.typeMismatchNote {
+  margin: 0 0 1rem;
+  padding: .65rem .85rem;
+  background: rgba(247, 201, 72, .08);
+  border-left: 3px solid var(--amber, #f7c948);
+  border-radius: 4px;
+  color: var(--white);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.typeMismatchNote strong {
+  color: var(--amber, #f7c948);
 }
 
 /* ── Modal ──────────────────────────────────────────────────────────── */
@@ -549,19 +588,32 @@
     grid-template-columns: 1fr;
     gap: .75rem;
   }
+  /* On mobile, switch the row to a flex stack so the optional pill / edit
+     / delete cells can wrap without leaving holes. Date + time sit on
+     line 1, context on line 2, then optional actions on line 3. The
+     chevron is absolutely positioned in the top-right corner. */
   .row {
-    grid-template-columns: 1fr auto auto auto;
-    grid-template-areas:
-      "date     pill   pill    pill"
-      "time     time   time    time"
-      "context  context context context"
-      ".        edit   delete  chevron";
-    gap: .35rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem .6rem;
+    padding: .75rem 2.25rem .75rem .85rem;
+    position: relative;
   }
-  .rowChevron { grid-area: chevron; justify-self: end; }
-  .editBtn { grid-area: edit; }
-  .deleteBtn { grid-area: delete; }
-  .manualPill { grid-area: pill; justify-self: end; }
+  .rowDate { flex: 0 0 auto; }
+  .rowTime { flex: 1 1 auto; }
+  .rowContext {
+    flex: 0 0 100%;
+    white-space: normal;
+  }
+  .manualPill { order: 1; margin-left: auto; }
+  .editBtn,
+  .deleteBtn { order: 2; }
+  .rowChevron {
+    position: absolute;
+    top: .85rem;
+    right: .85rem;
+  }
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
