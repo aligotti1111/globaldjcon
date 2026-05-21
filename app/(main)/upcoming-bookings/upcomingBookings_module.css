@@ -93,11 +93,13 @@
   letter-spacing: .05em;
   color: var(--neon);
   font-weight: 700;
+  white-space: nowrap;
 }
 .rowTime {
   font-family: 'Space Mono', monospace;
   font-size: .8rem;
   color: var(--white);
+  white-space: nowrap;
 }
 .rowContext {
   font-size: .9rem;
@@ -586,19 +588,32 @@
     grid-template-columns: 1fr;
     gap: .75rem;
   }
+  /* On mobile, switch the row to a flex stack so the optional pill / edit
+     / delete cells can wrap without leaving holes. Date + time sit on
+     line 1, context on line 2, then optional actions on line 3. The
+     chevron is absolutely positioned in the top-right corner. */
   .row {
-    grid-template-columns: 1fr auto auto auto;
-    grid-template-areas:
-      "date     pill   pill    pill"
-      "time     time   time    time"
-      "context  context context context"
-      ".        edit   delete  chevron";
-    gap: .35rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem .6rem;
+    padding: .75rem 2.25rem .75rem .85rem;
+    position: relative;
   }
-  .rowChevron { grid-area: chevron; justify-self: end; }
-  .editBtn { grid-area: edit; }
-  .deleteBtn { grid-area: delete; }
-  .manualPill { grid-area: pill; justify-self: end; }
+  .rowDate { flex: 0 0 auto; }
+  .rowTime { flex: 1 1 auto; }
+  .rowContext {
+    flex: 0 0 100%;
+    white-space: normal;
+  }
+  .manualPill { order: 1; margin-left: auto; }
+  .editBtn,
+  .deleteBtn { order: 2; }
+  .rowChevron {
+    position: absolute;
+    top: .85rem;
+    right: .85rem;
+  }
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
