@@ -109,9 +109,9 @@
 .saveBtn {
   width: 100%;
   padding: .9rem;
-  background: rgba(0, 245, 196, .12);
+  background: var(--neon);
   border: 1px solid var(--neon);
-  color: var(--neon);
+  color: #050507;
   border-radius: 6px;
   font-family: 'Space Mono', monospace;
   font-size: .72rem;
@@ -123,7 +123,8 @@
   margin-top: .5rem;
 }
 .saveBtn:hover:not(:disabled) {
-  background: rgba(0, 245, 196, .22);
+  background: #00d4a9;
+  border-color: #00d4a9;
 }
 .saveBtn:disabled {
   opacity: .5;
