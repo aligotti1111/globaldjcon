@@ -273,7 +273,7 @@ function BookingRow({
   onEdit?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const dateLabel = formatDayLabel(booking.event_date);
+  const { day, dow, mo } = getDateParts(booking.event_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
 
   let context = '';
@@ -318,7 +318,13 @@ function BookingRow({
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        <div className={styles.rowDate}>{dateLabel}</div>
+        <div className={styles.rowDate}>
+          <div className={styles.dayNum}>{day}</div>
+          <div className={styles.dayMeta}>
+            <div className={styles.dow}>{dow}</div>
+            <div className={styles.mo}>{mo}</div>
+          </div>
+        </div>
         <div className={styles.rowTime}>{timeRange}</div>
         <div className={styles.rowContext}>
           {context}
@@ -1198,6 +1204,20 @@ function formatDayLabel(d: string | null): string {
   const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   const md = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${weekday} · ${md}`;
+}
+
+// Stacked-pill date parts used by the row date display: a big day number,
+// with a short day-of-week and month stacked beside it. Matches the
+// public club/bar profile event list aesthetic.
+function getDateParts(d: string | null): { day: string; dow: string; mo: string } {
+  if (!d) return { day: '—', dow: '', mo: '' };
+  const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
+  const date = new Date(y, m - 1, day);
+  return {
+    day: String(day),
+    dow: date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+    mo: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+  };
 }
 
 function formatTimeRange(s: string | null, e: string | null): string {

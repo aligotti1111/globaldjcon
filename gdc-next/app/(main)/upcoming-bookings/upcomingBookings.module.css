@@ -87,13 +87,40 @@
 }
 
 /* ── Row content cells (used by the new clickable .row in expand section) ── */
+/* Stacked date pill: big day number with day-of-week + month stacked
+   beside it. Mirrors the public profile event-list aesthetic. */
 .rowDate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 76px;
+}
+.dayNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  color: var(--neon);
+  line-height: 1;
+}
+.dayMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.dow {
   font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  letter-spacing: .05em;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
   color: var(--neon);
   font-weight: 700;
-  white-space: nowrap;
+}
+.mo {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .rowTime {
   font-family: 'Space Mono', monospace;
