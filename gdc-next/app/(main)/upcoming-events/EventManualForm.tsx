@@ -136,6 +136,7 @@ export default function EventManualForm({
       let djLookupResult: {
         found: boolean;
         id?: string;
+        role?: string | null;
         dj_type?: string | null;
         name?: string | null;
         isDj?: boolean;
@@ -148,6 +149,18 @@ export default function EventManualForm({
           );
           if (res.ok) {
             djLookupResult = await res.json();
+            // Block: the entered email belongs to an existing account that
+            // is NOT a DJ (host or venue). They can't accept DJ bookings,
+            // so we abort the submit and surface an inline error rather
+            // than silently routing a booking they can't action.
+            if (djLookupResult?.found && !djLookupResult.isDj) {
+              const roleLabel = djLookupResult.role === 'venue' ? 'venue' : 'host';
+              setError(
+                `This email is registered as a ${roleLabel} account, which can't accept DJ bookings. Enter a DJ's email or leave the field blank.`,
+              );
+              setSaving(false);
+              return;
+            }
             if (djLookupResult?.found && djLookupResult.isDj) {
               djId = djLookupResult.id || null;
               // Capacity warning — only blocks if the host confirms NO.
@@ -229,7 +242,10 @@ export default function EventManualForm({
               type: 'event_invite_from_host',
               recipientEmail: trimmedEmail,
               hostName: userName,
-              djFound: !!djLookupResult?.found && !!djLookupResult?.isDj,
+              // Any existing account (DJ, host, or venue) should get the
+              // "add booking to my account" CTA. Only send the create-account
+              // version when no account is found at all.
+              djFound: !!djLookupResult?.found,
               djName: djLookupResult?.name || null,
               djType: djLookupResult?.dj_type || null,
               bookingId: inserted.id,
@@ -426,11 +442,11 @@ export default function EventManualForm({
                   <option value="AUD">AUD</option>
                 </select>
               </div>
+              <span className={styles.fieldHint}>
+                Rate will only be visible to you and the DJ.
+              </span>
             </label>
           </div>
-          <span className={styles.fieldHint}>
-            Rate will only be visible to you and the DJ.
-          </span>
 
           {/* Optional recipient DJ. Email-based: looked up against the user
               base on save. If found, the DJ gets a pending booking they

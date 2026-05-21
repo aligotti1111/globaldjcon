@@ -571,6 +571,7 @@
   display: flex;
   align-items: stretch;
   gap: .35rem;
+  min-height: 42px;
 }
 .rateCurrencyPrefix {
   display: flex;
@@ -621,6 +622,8 @@
   font-family: inherit;
   font-size: 14px;
   width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
 }
 .input:focus,
 .textarea:focus { outline: none; border-color: var(--neon); }
@@ -634,6 +637,7 @@
   min-height: 42px;
   display: flex;
   align-items: center;
+  color-scheme: dark;
 }
 .dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
 .dateWrap:focus-within { border-color: var(--neon); }
@@ -642,11 +646,20 @@
   border: none;
   padding: 9px 12px;
   color: var(--white);
+  -webkit-text-fill-color: var(--white);
   font-family: inherit;
   font-size: 14px;
   width: 100%;
   cursor: pointer;
   appearance: none;
+  color-scheme: dark;
+}
+.dateInput::-webkit-datetime-edit,
+.dateInput::-webkit-datetime-edit-text,
+.dateInput::-webkit-datetime-edit-month-field,
+.dateInput::-webkit-datetime-edit-day-field,
+.dateInput::-webkit-datetime-edit-year-field {
+  color: var(--white);
 }
 .dateInput::-webkit-calendar-picker-indicator {
   cursor: pointer;

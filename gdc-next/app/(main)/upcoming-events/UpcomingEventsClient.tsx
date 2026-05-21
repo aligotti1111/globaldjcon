@@ -377,6 +377,12 @@ function EventRow({
       {expanded && (
         <div className={styles.detailsPanel}>
           <div className={styles.detailsGrid}>
+            {event.booking_type === 'club' && event.event_date && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Date</div>
+                <div className={styles.detailValue}>{formatLongDate(event.event_date)}</div>
+              </div>
+            )}
             {timeRange && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Time</div>
@@ -663,6 +669,19 @@ function parseDateParts(d: string | null): { day: string; dow: string; mo: strin
     dow: date.toLocaleDateString('en-US', { weekday: 'short' }),
     mo: date.toLocaleDateString('en-US', { month: 'short' }),
   };
+}
+
+// Long-form date used in the expanded details panel (e.g. "Wednesday,
+// May 27, 2026"). The top-left badge keeps the compact day/dow/mo split.
+function formatLongDate(d: string): string {
+  const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
+  const date = new Date(y, m - 1, day);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatTimeRange(s: string | null, e: string | null): string {
