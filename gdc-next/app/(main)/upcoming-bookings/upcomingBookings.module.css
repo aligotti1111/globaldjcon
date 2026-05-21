@@ -615,32 +615,40 @@
     grid-template-columns: 1fr;
     gap: .75rem;
   }
-  /* On mobile, switch the row to a flex stack so the optional pill / edit
-     / delete cells can wrap without leaving holes. Date + time sit on
-     line 1, context on line 2, then optional actions on line 3. The
-     chevron is absolutely positioned in the top-right corner. */
+  /* Compact card: date pill + time inline (chevron pinned right), context
+     on its own line, optional actions on a tight third line only if any
+     of MANUAL/edit/delete are rendered. Grid auto-flow places each
+     action into the next column of row 3. */
   .row {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    grid-template-areas:
+      "date    time     time     time     chev"
+      "context context  context  context  context";
+    column-gap: .5rem;
+    row-gap: .35rem;
+    padding: .65rem .85rem;
     align-items: center;
-    gap: .35rem .6rem;
-    padding: .75rem 2.25rem .75rem .85rem;
-    position: relative;
   }
-  .rowDate { flex: 0 0 auto; }
-  .rowTime { flex: 1 1 auto; }
+  .rowDate    { grid-area: date; }
+  .rowTime    { grid-area: time; justify-self: start; font-size: .75rem; }
   .rowContext {
-    flex: 0 0 100%;
+    grid-area: context;
     white-space: normal;
+    font-size: .85rem;
+    line-height: 1.3;
   }
-  .manualPill { order: 1; margin-left: auto; }
-  .editBtn,
-  .deleteBtn { order: 2; }
-  .rowChevron {
-    position: absolute;
-    top: .85rem;
-    right: .85rem;
-  }
+  .rowChevron { grid-area: chev; justify-self: end; }
+
+  /* Actions sit explicitly on row 3 in source order (MANUAL, edit, delete).
+     justify-self pushes the pill left and the buttons right of one another. */
+  .manualPill { grid-row: 3; grid-column: 1 / span 2; justify-self: start; }
+  .editBtn    { grid-row: 3; grid-column: 4; justify-self: end; }
+  .deleteBtn  { grid-row: 3; grid-column: 5; justify-self: end; }
+
+  /* Compact the day pill itself a touch on mobile. */
+  .dayNum { font-size: 22px; }
+  .rowDate { min-width: 62px; gap: 6px; }
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
