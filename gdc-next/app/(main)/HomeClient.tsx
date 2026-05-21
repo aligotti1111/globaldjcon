@@ -741,26 +741,26 @@ function DjListRow({ dj }: { dj: HomeDj }) {
           )}
         </div>
       </div>
+      {bookingEnabled && (
+        <span
+          style={{
+            fontFamily: "'Space Mono', monospace",
+            fontSize: '.6rem',
+            letterSpacing: '.06em',
+            textTransform: 'uppercase',
+            padding: '.3rem .5rem',
+            borderRadius: '3px',
+            background: 'var(--neon)',
+            color: 'var(--black)',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Book
+        </span>
+      )}
       <span className={`dll-type ${typeClass}`}>{typeLabel}</span>
       <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
-        {bookingEnabled && (
-          <span
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.6rem',
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              padding: '.3rem .5rem',
-              borderRadius: '3px',
-              background: 'var(--neon)',
-              color: 'var(--black)',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Book
-          </span>
-        )}
         <span
           style={{
             fontFamily: "'Space Mono', monospace",
