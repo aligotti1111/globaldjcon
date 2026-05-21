@@ -906,7 +906,7 @@ export async function POST(req: Request) {
       : '';
 
     const rateLine = (rate != null && Number.isFinite(rate) && rate > 0)
-      ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Offered Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
+      ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
       : '';
 
     // Compose a one-line "shared event details for {date} at {venue}"
