@@ -658,13 +658,15 @@
   }
 
   /* Actions on row 3. On manual bookings only: edit/delete sit bottom-LEFT
-     and the MANUAL ADD pill sits bottom-RIGHT. */
+     together with no gap; the MANUAL ADD pill sits bottom-RIGHT, single
+     line (no wrap). */
   .editBtn    { grid-row: 3; grid-column: 1; justify-self: start; }
-  .deleteBtn  { grid-row: 3; grid-column: 2; justify-self: start; }
+  .deleteBtn  { grid-row: 3; grid-column: 2; justify-self: start; margin-left: -.25rem; }
   .manualPill {
     grid-row: 3;
     grid-column: 3;
     justify-self: end;
+    white-space: nowrap;
   }
 
   /* Bigger, prominent date pill on mobile. */
