@@ -324,7 +324,7 @@ function BookingRow({
           {context}
         </div>
         {booking.is_manual && (
-          <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+          <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
         )}
         {onEdit && (
           <span

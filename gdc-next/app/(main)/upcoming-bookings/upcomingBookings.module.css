@@ -615,47 +615,58 @@
     grid-template-columns: 1fr;
     gap: .75rem;
   }
-  /* Compact card: date pill + time inline (chevron pinned right), context
-     on its own line, optional actions on a tight third line only if any
-     of MANUAL/edit/delete are rendered. Grid auto-flow places each
-     action into the next column of row 3. */
+  /* Compact mobile card. The date pill is locked to a fixed-width left
+     column and spans both info rows so it stays vertically centered no
+     matter how tall the card grows. Time and context share the same left
+     edge in the middle column — context wraps below time when it gets
+     long. Chevron pinned right, also spanning both rows. */
   .row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto auto;
+    grid-template-columns: 78px 1fr auto;
     grid-template-areas:
-      "date    time     time     time     chev"
-      "context context  context  context  context";
-    column-gap: .5rem;
-    row-gap: .35rem;
+      "date    time     chev"
+      "date    context  chev"
+      "actions actions  actions";
+    column-gap: .75rem;
+    row-gap: .25rem;
     padding: .65rem .85rem;
     align-items: center;
   }
-  .rowDate    {
+  .rowDate {
     grid-area: date;
-    justify-content: center;
-    min-width: 78px;
+    align-self: center;
+    justify-content: flex-start;
+    min-width: 0;
   }
-  .rowTime    {
+  .rowTime {
     grid-area: time;
-    justify-self: center;
+    justify-self: start;
     font-size: .85rem;
   }
   .rowContext {
     grid-area: context;
+    justify-self: start;
     white-space: normal;
     font-size: .9rem;
     line-height: 1.3;
-    text-align: center;
+    text-align: left;
   }
-  .rowChevron { grid-area: chev; justify-self: end; }
+  .rowChevron {
+    grid-area: chev;
+    justify-self: end;
+    align-self: center;
+  }
 
-  /* Actions sit explicitly on row 3 in source order (MANUAL, edit, delete).
-     justify-self pushes the pill left and the buttons right of one another. */
-  .manualPill { grid-row: 3; grid-column: 1 / span 2; justify-self: start; }
-  .editBtn    { grid-row: 3; grid-column: 4; justify-self: end; }
-  .deleteBtn  { grid-row: 3; grid-column: 5; justify-self: end; }
+  /* Actions on row 3. MANUAL pill centers itself; edit/delete sit right. */
+  .manualPill {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+  .editBtn   { grid-row: 3; grid-column: 2; justify-self: end; }
+  .deleteBtn { grid-row: 3; grid-column: 3; justify-self: end; }
 
-  /* Bigger, more prominent date pill on mobile. */
+  /* Bigger, prominent date pill on mobile. */
   .dayNum { font-size: 30px; }
   .dow    { font-size: 10px; }
   .mo     { font-size: 10px; }
