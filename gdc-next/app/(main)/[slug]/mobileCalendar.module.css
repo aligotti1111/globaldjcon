@@ -766,25 +766,28 @@
 }
 
 /* ── OWNER COMPACT GRID — mobile only ─────────────────────────────────
-   When the owner views their own single-month calendar, mirror the
-   compact tile look of the 12-month overview: square aspect, tight 1px
-   gap, smaller padding. Owner controls and number rendering stay
-   intact; only the cell geometry tightens up. Public view unchanged. */
-.cellsGridCompact {
-  gap: 1px;
-}
-.cellsGridCompact .cell {
-  aspect-ratio: 1;
-  min-height: 0;
-  border-radius: 3px;
-  padding: .25rem .1rem;
-  gap: 1px;
-}
-.cellsGridCompact .emptyCell {
-  min-height: 0;
-  aspect-ratio: 1;
-}
-.cellsGridCompact .cellNum {
-  font-size: clamp(.65rem, 2.5vw, .8rem);
-  margin-bottom: 1px;
+   When the owner views their own single-month calendar on mobile, mirror
+   the compact tile look of the 12-month overview: square aspect, tight
+   1px gap, smaller padding. Owner controls and number rendering stay
+   intact; only the cell geometry tightens up. Public view unchanged.
+   Desktop owner view stays as the normal larger-cell layout. */
+@media (max-width: 700px) {
+  .cellsGridCompact {
+    gap: 1px;
+  }
+  .cellsGridCompact .cell {
+    aspect-ratio: 1;
+    min-height: 0;
+    border-radius: 3px;
+    padding: .25rem .1rem;
+    gap: 1px;
+  }
+  .cellsGridCompact .emptyCell {
+    min-height: 0;
+    aspect-ratio: 1;
+  }
+  .cellsGridCompact .cellNum {
+    font-size: clamp(.65rem, 2.5vw, .8rem);
+    margin-bottom: 1px;
+  }
 }
