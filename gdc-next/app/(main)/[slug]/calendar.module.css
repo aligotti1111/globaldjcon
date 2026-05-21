@@ -526,6 +526,37 @@
 .monthCardLabelYear {
   color: var(--neon);
 }
+
+/* ── Year divider — sits between Dec and Jan in the rolling 12-month
+   grid. MUST span the full grid width or it eats a single card slot
+   and breaks the 3-column layout. */
+.yearDivider {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0 .5rem;
+}
+.yearDividerLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.2rem;
+  letter-spacing: .08em;
+  color: var(--neon);
+  line-height: 1;
+}
+/* Per-year legend — closes out each year inside the 12-month overview.
+   Also spans the full grid row. */
+.yearLegend {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: .25rem 0 .5rem;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--border);
+}
 .miniDayHeader {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
