@@ -668,6 +668,7 @@
   .deleteBtn  {
     grid-area: delete;
     justify-self: start;
+    margin-left: -.5rem;
   }
   .manualPill {
     grid-area: pill;
