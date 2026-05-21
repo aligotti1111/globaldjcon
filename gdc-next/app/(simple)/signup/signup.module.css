@@ -551,9 +551,11 @@
     flex-wrap: wrap;
   }
   .urlPreviewInput {
-    /* Force a min width so prefix + input share the first line, then
-       status wraps to its own line below. */
-    flex: 1 1 140px;
+    /* Sit alongside the "globaldjconnect.com/" prefix on the same line.
+       The prefix is ~140px on mobile — leave the input flexible but with
+       a small basis so it doesn't push the prefix to its own row. */
+    flex: 1 1 80px;
+    min-width: 80px;
   }
   .urlStatus {
     /* Push status to its own line on mobile */
