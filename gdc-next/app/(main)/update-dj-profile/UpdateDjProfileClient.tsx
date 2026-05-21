@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 import BookingTab from './BookingTab';
@@ -294,24 +295,18 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // which the DJ should be warned about.
   const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete;
 
-  // Native browser warning on tab close / refresh / external nav.
-  // Custom message text is ignored by modern browsers (they show their
-  // own generic "Leave site?" prompt for security), but the prompt only
-  // appears at all if we set `event.returnValue` to a truthy string.
-  // We trigger this on `needsLeaveWarn` rather than `isPageDirty` so the
-  // prompt also fires when the booking toggle is on but no equipment
-  // is picked — leaving in that state means booking isn't live publicly,
-  // which the inline banner inside ClubBookingTab also warns about.
+  // Register this page's dirty state with the global UnsavedChangesProvider.
+  // The provider handles:
+  //   - beforeunload (tab close / refresh / external nav)
+  //   - intercepting in-app <a> clicks (burger menu, header logo, back link)
+  //   - browser back button via popstate
+  // …and prompts the user via ConfirmModal before letting them leave.
+  const { setDirty: setGlobalDirty } = useUnsavedChanges();
   useEffect(() => {
-    if (!needsLeaveWarn) return;
-    function handler(e: BeforeUnloadEvent) {
-      e.preventDefault();
-      // Required for some browsers to actually trigger the prompt.
-      e.returnValue = '';
-    }
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [needsLeaveWarn]);
+    setGlobalDirty(needsLeaveWarn);
+    // Clear on unmount so we don't leave the guard armed after navigation.
+    return () => setGlobalDirty(false);
+  }, [needsLeaveWarn, setGlobalDirty]);
 
   // ── Generic helpers ─────────────────────────────────────────────
   function updateGeneral<K extends keyof GeneralFormState>(field: K, val: GeneralFormState[K]) {
