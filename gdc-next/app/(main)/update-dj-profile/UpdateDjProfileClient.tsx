@@ -257,6 +257,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // After a successful submit, this snapshot updates so the dirty flag
   // clears.
   const initialGeneralRef = useRef<string>(JSON.stringify(general));
+  // Bumped after a successful save so the `isGeneralDirty` memo below
+  // re-evaluates against the freshly-updated snapshot ref. Mutating a
+  // ref alone won't trigger memo recomputation — React only re-runs the
+  // memo when its dep array changes, so we add this counter to the deps.
+  const [savedVersion, setSavedVersion] = useState(0);
 
   // BookingTab tells us when ANY of its package cards has draft edits
   // not yet committed via per-card Save / master Save All. We don't know
@@ -285,7 +290,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // Are general fields different from snapshot?
   const isGeneralDirty = useMemo(
     () => JSON.stringify(general) !== initialGeneralRef.current,
-    [general]
+    [general, savedVersion]
   );
 
   const isPageDirty = isGeneralDirty || hasDirtyPackages || hasDirtyClubRates;
@@ -437,8 +442,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       // re-trigger after a manual save.
       initialBookingRef.current = bookingSettings;
       // Reset the general dirty snapshot so the unsaved-changes warning
-      // clears (until the user makes new edits).
+      // clears (until the user makes new edits). Bumping savedVersion is
+      // what actually causes the isGeneralDirty memo to re-evaluate — the
+      // ref mutation alone wouldn't trigger React.
       initialGeneralRef.current = JSON.stringify(general);
+      setSavedVersion((n) => n + 1);
     } catch (e) {
       // Detect Supabase/Postgres unique-violation on slug. The DB rejects
       // duplicates with code '23505' (Postgres unique_violation) and the
