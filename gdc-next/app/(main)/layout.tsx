@@ -13,6 +13,7 @@ import MobileMenu from '@/components/MobileMenu';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 import EmailVerifiedBanner from '@/components/EmailVerifiedBanner';
 import BookingClaimedBanner from '@/components/BookingClaimedBanner';
+import { UnsavedChangesProvider } from '@/components/UnsavedChangesProvider';
 
 export default function MainLayout({
   children,
@@ -20,14 +21,16 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div id="view-public" className="view active">
-      <EmailVerifiedBanner />
-      <BookingClaimedBanner />
-      <VerifyEmailBanner />
-      <Header />
-      <MobileMenu />
-      {children}
-      <Footer />
-    </div>
+    <UnsavedChangesProvider>
+      <div id="view-public" className="view active">
+        <EmailVerifiedBanner />
+        <BookingClaimedBanner />
+        <VerifyEmailBanner />
+        <Header />
+        <MobileMenu />
+        {children}
+        <Footer />
+      </div>
+    </UnsavedChangesProvider>
   );
 }
