@@ -657,14 +657,15 @@
     align-self: center;
   }
 
-  /* Actions on row 3. MANUAL pill centers itself; edit/delete sit right. */
+  /* Actions on row 3. On manual bookings only: edit/delete sit bottom-LEFT
+     and the MANUAL ADD pill sits bottom-RIGHT. */
+  .editBtn    { grid-row: 3; grid-column: 1; justify-self: start; }
+  .deleteBtn  { grid-row: 3; grid-column: 2; justify-self: start; }
   .manualPill {
     grid-row: 3;
-    grid-column: 1 / -1;
-    justify-self: center;
+    grid-column: 3;
+    justify-self: end;
   }
-  .editBtn   { grid-row: 3; grid-column: 2; justify-self: end; }
-  .deleteBtn { grid-row: 3; grid-column: 3; justify-self: end; }
 
   /* Bigger, prominent date pill on mobile. */
   .dayNum { font-size: 30px; }
