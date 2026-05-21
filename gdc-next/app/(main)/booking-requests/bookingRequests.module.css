@@ -1060,7 +1060,7 @@
      right, also spanning both rows. Status pill (when present) sits on
      row 1, right side, before the chevron. */
   .collapsedBanner {
-    grid-template-columns: 78px 1fr auto auto;
+    grid-template-columns: 78px minmax(0, 1fr) auto auto;
     grid-template-areas:
       "date    time     status   chev"
       "date    context  context  chev";
@@ -1081,6 +1081,7 @@
     grid-column: auto;
     justify-self: start;
     font-size: .85rem;
+    white-space: nowrap;
   }
   .collapsedBannerContext {
     grid-area: context;
