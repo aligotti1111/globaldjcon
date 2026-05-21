@@ -278,15 +278,15 @@ function BookingRow({
 
   let context = '';
   if (djType === 'club') {
-    // Venue type is shown in the expanded details panel — omit from the
-    // row header to keep it clean. Club DJ accounts only ever book
-    // club/bar gigs, so the parenthetical is redundant noise here.
-    context = booking.venue_name?.trim() || '—';
+    // Club DJ rows: venue is shown only in the expanded details panel
+    // — the row header stays minimal (date + time). No context line.
+    context = '';
   } else {
+    // Mobile DJ rows: show the event type only (e.g. "Wedding"). Venue
+    // is shown in the expanded details panel.
     const ev = booking.event_type || '';
     const found = MOBILE_EVENT_TYPES.find((e) => e.value === ev);
     context = found ? found.label : (ev || 'Event');
-    if (booking.venue_name) context = `${context} · ${booking.venue_name}`;
   }
 
   // The type-mismatch info is now shown only in the expanded details
@@ -320,9 +320,11 @@ function BookingRow({
           </div>
         </div>
         <div className={styles.rowTime}>{timeRange}</div>
-        <div className={styles.rowContext}>
-          {context}
-        </div>
+        {context && (
+          <div className={styles.rowContext}>
+            {context}
+          </div>
+        )}
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
         )}
