@@ -1237,7 +1237,19 @@ function CollapsibleBanner({
   currentTab: string;
   onClick: () => void;
 }) {
-  const date = formatShortDate(booking.event_date).toUpperCase();
+  // Stacked-pill date parts (big day, stacked DOW + month) — matches
+  // the upcoming-bookings row and the public-profile event list.
+  const dateParts = (() => {
+    const d = booking.event_date;
+    if (!d) return { day: '—', dow: '', mo: '' };
+    const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
+    const dt = new Date(y, m - 1, day);
+    return {
+      day: String(day),
+      dow: dt.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+      mo: dt.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+    };
+  })();
   const startTime = formatTime(booking.start_time);
   const endTime = formatTime(booking.end_time);
   const timeStr = endTime ? `${startTime}–${endTime}` : startTime;
@@ -1275,7 +1287,8 @@ function CollapsibleBanner({
     '';
 
   // Build aria-label that flattens the columns for screen readers.
-  const ariaLabel = `Expand booking: ${[date, timeStr, context].filter(Boolean).join(' · ')}`;
+  const ariaDate = [dateParts.dow, dateParts.day, dateParts.mo].filter(Boolean).join(' ');
+  const ariaLabel = `Expand booking: ${[ariaDate, timeStr, context].filter(Boolean).join(' · ')}`;
 
   return (
     <button
@@ -1284,7 +1297,13 @@ function CollapsibleBanner({
       className={styles.collapsedBanner}
       aria-label={ariaLabel}
     >
-      <span className={styles.collapsedBannerDate}>{date}</span>
+      <span className={styles.collapsedBannerDate}>
+        <span className={styles.dayNum}>{dateParts.day}</span>
+        <span className={styles.dayMeta}>
+          <span className={styles.dow}>{dateParts.dow}</span>
+          <span className={styles.mo}>{dateParts.mo}</span>
+        </span>
+      </span>
       {timeStr && <span className={styles.collapsedBannerTime}>{timeStr}</span>}
       {context && <span className={styles.collapsedBannerContext}>{context}</span>}
       {showStatus && statusRaw && (

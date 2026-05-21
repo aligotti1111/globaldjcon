@@ -986,11 +986,37 @@
   outline-offset: 2px;
 }
 .collapsedBannerDate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 76px;
+}
+.dayNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  color: var(--neon);
+  line-height: 1;
+}
+.dayMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.dow {
   font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  letter-spacing: .05em;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
   color: var(--neon);
   font-weight: 700;
+}
+.mo {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .collapsedBannerTime {
   font-family: 'Space Mono', monospace;
