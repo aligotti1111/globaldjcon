@@ -1089,7 +1089,7 @@ function SmsNotificationsBlock({ userId }: { userId: string }) {
             letterSpacing: '.1em',
             textTransform: 'uppercase',
             background: 'var(--neon)',
-            color: 'var(--bg)',
+            color: '#050507',
             border: 'none',
             padding: '.6rem 1.1rem',
             borderRadius: '6px',
