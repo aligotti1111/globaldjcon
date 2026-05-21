@@ -620,16 +620,16 @@
      matter how tall the card grows. Time and context share the same left
      edge in the middle column — context wraps below time when it gets
      long. Chevron pinned right, also spanning both rows. Row 3 holds
-     edit/delete on the left and the MANUAL ADD pill on the right when
-     it's a manual booking. */
+     edit+delete tight together on the left and the MANUAL ADD pill on
+     the right when it's a manual booking. */
   .row {
     display: grid;
-    grid-template-columns: 78px 1fr 1fr auto;
+    grid-template-columns: 78px auto auto 1fr auto;
     grid-template-areas:
-      "date    time     time      chev"
-      "date    context  context   chev"
-      "edit    delete   .         pill";
-    column-gap: .5rem;
+      "date    time     time     time     chev"
+      "date    context  context  context  chev"
+      "edit    delete   .        .        pill";
+    column-gap: .4rem;
     row-gap: .35rem;
     padding: .65rem .85rem;
     align-items: center;
@@ -659,9 +659,16 @@
     align-self: center;
   }
 
-  /* Row 3 actions — only present on manual bookings. */
-  .editBtn    { grid-area: edit;   justify-self: start; }
-  .deleteBtn  { grid-area: delete; justify-self: start; margin-left: -.25rem; }
+  /* Row 3 actions — only present on manual bookings. Edit and delete
+     sit tight together on the left, MANUAL ADD on the right. */
+  .editBtn    {
+    grid-area: edit;
+    justify-self: start;
+  }
+  .deleteBtn  {
+    grid-area: delete;
+    justify-self: start;
+  }
   .manualPill {
     grid-area: pill;
     justify-self: end;
