@@ -161,16 +161,24 @@
 }
 
 @media (max-width: 700px) {
+  /* Keep the month label and Share/Embed actions on a single line — the
+     month shrinks instead of grabbing the full row, so Share sits to the
+     RIGHT of the month rather than wrapping centered underneath it. */
   .monthHeaderRow {
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-wrap: nowrap;
+    justify-content: space-between;
     gap: .5rem;
   }
   .monthHeaderSpacer { display: none; }
+  .monthHeader {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+  }
   .monthHeaderActions {
     flex: 0 0 auto;
-    width: 100%;
-    justify-content: center;
+    width: auto;
+    justify-content: flex-end;
   }
   .shareInlineBtn,
   .embedInlineBtn {
