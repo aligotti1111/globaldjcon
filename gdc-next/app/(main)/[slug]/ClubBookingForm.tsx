@@ -504,6 +504,11 @@ export default function ClubBookingForm({
             setType,
             startTime,
             endTime,
+            equipment,
+            offerAmount: insertPayload.offer_amount,
+            quotedRate: insertPayload.quoted_rate,
+            totalHours: rateInfo.hours,
+            currency: rateInfo.currency,
           }),
         });
       } catch {

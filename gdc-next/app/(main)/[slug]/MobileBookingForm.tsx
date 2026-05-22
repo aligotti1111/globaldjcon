@@ -331,6 +331,7 @@ export default function MobileBookingForm({
             venueAddress: venueAddress.trim(),
             startTime,
             endTime: endTime || null,
+            quotedRate: insertPayload.quoted_rate,
           }),
         });
       } catch {
