@@ -1654,6 +1654,13 @@
 @media (max-width: 700px) {
   .tabsNav {
     overflow-x: auto;
+    /* Slimmer top-to-bottom on mobile — tighter wrapper padding. */
+    padding: 4px;
+  }
+  .tabBtn {
+    /* Reduce vertical padding so the whole pill bar is shorter. */
+    padding-top: .42rem;
+    padding-bottom: .42rem;
   }
   .infoGrid {
     grid-template-columns: 1fr;
