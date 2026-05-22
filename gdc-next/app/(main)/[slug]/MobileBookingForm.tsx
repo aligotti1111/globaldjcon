@@ -299,6 +299,10 @@ export default function MobileBookingForm({
             packageTitle: selectedPkg?.title || null,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
+            // Computed package price for this gig (null for is_quote
+            // bookings). The email route reads quotedRate to show the
+            // rate box instead of the "respond with a quote" prompt.
+            quotedRate: insertPayload.quoted_rate,
           }),
         });
       } catch (e) {
