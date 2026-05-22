@@ -170,10 +170,23 @@
     gap: .5rem;
   }
   .monthHeaderSpacer { display: none; }
+  /* On mobile, restyle the single-month header to match the 12-month
+     view's per-month label: small Space Mono caps, top-left, month in
+     white + year in neon. Desktop keeps the big centered Bebas heading. */
   .monthHeader {
     flex: 1 1 auto;
     min-width: 0;
     text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--white);
+    text-shadow: none;
+  }
+  .monthHeaderYear {
+    color: var(--neon);
   }
   .monthHeaderActions {
     flex: 0 0 auto;

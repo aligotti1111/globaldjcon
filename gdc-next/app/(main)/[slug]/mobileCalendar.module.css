@@ -170,13 +170,23 @@
   .monthHeaderSpacer {
     display: none;
   }
-  /* Month label shrinks instead of grabbing the full row, so the Share /
-     Embed actions stay on the same line to the RIGHT of the month rather
-     than wrapping underneath it. */
+  /* Restyle the single-month header to match the 12-month view's
+     per-month label: small Space Mono caps, top-left, month in white +
+     year in neon. (This file is mobile-context only.) */
   .monthHeader {
     flex: 1 1 auto;
     min-width: 0;
     text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--white);
+    text-shadow: none;
+  }
+  .monthHeaderYear {
+    color: var(--neon);
   }
   .monthHeaderActions {
     flex: 0 0 auto;

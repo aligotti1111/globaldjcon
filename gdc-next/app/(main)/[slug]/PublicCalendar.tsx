@@ -732,7 +732,8 @@ function SingleMonthView({
       <div className={styles.monthHeaderRow}>
         {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
         <div className={styles.monthHeader}>
-          {MONTH_NAMES[month]} {year}
+          {MONTH_NAMES[month]}{' '}
+          <span className={styles.monthHeaderYear}>{year}</span>
         </div>
         <div className={styles.monthHeaderActions}>
           {/* Share button removed — the share-calendar action now lives
