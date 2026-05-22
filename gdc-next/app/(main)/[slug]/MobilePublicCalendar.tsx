@@ -749,7 +749,7 @@ function SingleMonthView({
         ))}
       </div>
 
-      <div className={`${styles.cellsGrid} ${isOwnProfile ? styles.cellsGridCompact : ''}`}>{cells}</div>
+      <div className={`${styles.cellsGrid} ${styles.cellsGridCompact}`}>{cells}</div>
     </div>
   );
 }
