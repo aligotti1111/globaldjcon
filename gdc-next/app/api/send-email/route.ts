@@ -192,20 +192,25 @@ function bookingInfoBox(opts: {
   venueTypeText?: string;       // pre-formatted, e.g. "Bar"
   venueName?: string;
   venueAddress?: string;
+  equipmentText?: string;       // club only — pre-formatted equipment label
   rateLabel?: string;           // e.g. "Quoted Rate" / "Counter Offer"
   rateValue?: string;           // e.g. "$300 USD"
   message?: string;
 }): string {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   const rows: string[] = [];
-  if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}</p>`);
-  if (opts.setTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Set Type:</strong> ${escHtml(opts.setTypeText)}</p>`);
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>`);
+  if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}</p>`);
   if (opts.venueTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(opts.venueTypeText)}</p>`);
+  if (opts.setTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Set Type:</strong> ${escHtml(opts.setTypeText)}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
-  if (opts.venueAddress) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(opts.venueAddress)}</p>`);
+  if (opts.equipmentText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Equipment:</strong> ${escHtml(opts.equipmentText)}</p>`);
+  if (opts.venueAddress) {
+    const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
+    rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> <a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(opts.venueAddress)}</a></p>`);
+  }
   if (opts.rateLabel && opts.rateValue) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${escHtml(opts.rateLabel)}:</strong> ${escHtml(opts.rateValue)}</p>`);
   if (opts.message) rows.push(`<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(opts.message)}</p>`);
   // Trim the trailing margin on the last row for a tight look
@@ -394,6 +399,7 @@ export async function POST(req: Request) {
     // Club-specific fields (kept for backward compat with that flow).
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
+    const equipment = body.equipment as string | undefined;
     // Optional rate fields. A host request carries a price in one of two
     // ways depending on the DJ's rate type:
     //   • offers mode  → offerAmount  (the booker's own offer)
@@ -414,7 +420,24 @@ export async function POST(req: Request) {
 
     const dateStr = fmtDate(eventDate);
     const timeStr = fmtTimeRange(startTime, endTime);
-    const typeLabel = eventTypeLabel(eventType) || (setType ? setType : '');
+    // Set type (club) — "Event Type" labelling belongs to mobile bookings.
+    const setTypeLabel = setType ? setType : '';
+    // Equipment — booker picks which gear the DJ supplies. Maps the stored
+    // code to the same wording shown in the booking form.
+    const equipmentLabel = ({
+      sound_system: 'DJ provides system + decks',
+      decks_only: 'DJ provides decks',
+      venue_provides: 'Venue provides all',
+    } as Record<string, string>)[equipment || ''] || '';
+    // Address row — link to Google Maps so the DJ/host can tap straight
+    // through to directions.
+    const mapsHref = venueAddress
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`
+      : '';
+    const row = (label: string, value: string) =>
+      `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
+    const lastRow = (label: string, value: string) =>
+      `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
 
     emailPayload = {
       from: FROM,
@@ -425,13 +448,15 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          ${typeLabel ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(typeLabel)}</p>` : ''}
-          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
-          ${timeStr !== '—' ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(timeStr)}</p>` : ''}
-          ${packageTitle ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p>` : ''}
-          ${venueType ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(venueType)}</p>` : ''}
-          ${venueName ? `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
-          ${venueAddress ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(venueAddress)}</p>` : ''}
+          ${row('Date', dateStr)}
+          ${timeStr !== '—' ? row('Time', escHtml(timeStr)) : ''}
+          ${packageTitle ? row('Package', escHtml(packageTitle)) : ''}
+          ${eventTypeLabel(eventType) ? row('Event Type', escHtml(eventTypeLabel(eventType))) : ''}
+          ${venueType ? row('Venue Type', escHtml(venueType)) : ''}
+          ${setTypeLabel ? row('Set Type', escHtml(setTypeLabel)) : ''}
+          ${venueName ? row('Venue', escHtml(venueName)) : ''}
+          ${equipmentLabel ? row('Equipment', escHtml(equipmentLabel)) : ''}
+          ${venueAddress ? lastRow('Address', `<a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(venueAddress)}</a>`) : ''}
         </div>
         ${
           rateValueNum != null && !isNaN(rateValueNum)
@@ -491,6 +516,24 @@ export async function POST(req: Request) {
     const packageTitle = body.packageTitle as string | undefined;
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
+    const equipment = body.equipment as string | undefined;
+    // Rate fields — mirror the DJ-side request email so the booker keeps
+    // a record of the price they requested at.
+    const offerAmount = body.offerAmount as number | string | undefined;
+    const quotedRate = body.quotedRate as number | string | undefined;
+    const confCurrency = (body.offerCurrency as string | undefined)
+      || (body.currency as string | undefined) || 'USD';
+    const confTotalHours = body.totalHours as number | string | undefined;
+    const confHasOffer = offerAmount != null && String(offerAmount).trim() !== '';
+    const confHasQuoted = quotedRate != null && String(quotedRate).trim() !== '';
+    const confRateNum = confHasOffer ? Number(offerAmount)
+      : confHasQuoted ? Number(quotedRate)
+      : null;
+    const confEquipmentLabel = ({
+      sound_system: 'DJ provides system + decks',
+      decks_only: 'DJ provides decks',
+      venue_provides: 'Venue provides all',
+    } as Record<string, string>)[equipment || ''] || '';
     const dateStr = fmtDate(eventDate);
     emailPayload = {
       from: FROM,
@@ -509,6 +552,16 @@ export async function POST(req: Request) {
           venueTypeText: venueTypeLabel(venueType),
           venueName,
           venueAddress,
+          equipmentText: confEquipmentLabel,
+          rateLabel: confRateNum != null && !isNaN(confRateNum)
+            ? (confHasOffer ? 'Offered Rate' : 'Quoted Rate')
+            : undefined,
+          rateValue: confRateNum != null && !isNaN(confRateNum)
+            ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}${
+                confTotalHours != null && String(confTotalHours).trim() !== '' && !confHasOffer
+                  ? ` (${confTotalHours} hr total)` : ''
+              }`
+            : undefined,
         })}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Your Request')}
       `),
