@@ -369,16 +369,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       .map(p => COUNTRY_ABBR[p] || p)
       .join(', ');
   })();
-  const yearsText = data.dj_start_year
-    ? (() => {
-        const yrs = new Date().getFullYear() - data.dj_start_year!;
-        const isMobile = data.dj_type === 'mobile';
-        if (isMobile) {
-          return yrs <= 1 ? '1+ Year of Experience' : `${yrs}+ Years of Experience`;
-        }
-        return yrs <= 1 ? '1+ Year as a DJ' : `${yrs}+ Years as a DJ`;
-      })()
-    : null;
+  // Years-of-experience pill removed — no longer shown on profiles.
 
   // Hero tags — event types (mobile DJs only, as a popup) vs separate tags
   const isMobileDJ = data.dj_type === 'mobile';
@@ -720,11 +711,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {location && (
               <div className={styles.heroLocation}>
                 <LocationPinIcon /> {location}
-              </div>
-            )}
-            {yearsText && (
-              <div className={styles.heroYears} style={{ display: 'inline-flex' }}>
-                {yearsText}
               </div>
             )}
 
