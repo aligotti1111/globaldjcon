@@ -478,6 +478,9 @@ export default function ClubBookingForm({
             offerAmount: insertPayload.offer_amount,
             quotedRate: insertPayload.quoted_rate,
             totalHours: rateInfo.hours,
+            // Per-hour rate — only meaningful for hourly bookings; lets the
+            // email show "$330/hr × 3 hr" alongside the total.
+            hourlyRate: rateInfo.rateType === 'hourly' ? rateInfo.rate : null,
             currency: rateInfo.currency,
           }),
         });
@@ -508,6 +511,7 @@ export default function ClubBookingForm({
             offerAmount: insertPayload.offer_amount,
             quotedRate: insertPayload.quoted_rate,
             totalHours: rateInfo.hours,
+            hourlyRate: rateInfo.rateType === 'hourly' ? rateInfo.rate : null,
             currency: rateInfo.currency,
           }),
         });
