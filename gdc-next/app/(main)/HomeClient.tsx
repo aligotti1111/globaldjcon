@@ -425,12 +425,13 @@ export default function HomeClient({ initialDjs }: Props) {
   return (
     <>
       <div className="controls">
-        {/* Search row: search box + country flag inside it, with Find Near Me
-            button sitting immediately to its right on the same line. The
-            previous version had Near Me on a row of its own pushed to the
-            right, which Anthony noted should be tighter. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-          <div className="search-wrap" style={{ flex: '1 1 240px' }}>
+        {/* Search row: search box + country flag inside it, with a compact
+            icon-only Find Near Me button to its right. All three sit on a
+            single line (no wrap) — the search box shrinks to make room. The
+            location button is one tap; its status is conveyed via the icon
+            color/state and the title/aria-label rather than inline text. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: 1, minWidth: 0, flexWrap: 'nowrap' }}>
+          <div className="search-wrap" style={{ flex: '1 1 0', minWidth: 0 }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
@@ -474,35 +475,46 @@ export default function HomeClient({ initialDjs }: Props) {
             type="button"
             onClick={findNearMe}
             disabled={nearMeStatus === 'getting' || nearMeStatus === 'geocoding'}
+            aria-label={
+              nearMeStatus === 'getting' ? 'Getting your location'
+                : nearMeStatus === 'geocoding' ? 'Finding DJs near you'
+                : nearMeStatus === 'found' ? 'Showing DJs near you'
+                : 'Find DJs near me'
+            }
+            title={
+              nearMeStatus === 'getting' ? 'Getting location…'
+                : nearMeStatus === 'geocoding' ? (geocodeProgress
+                    ? `Loading ${geocodeProgress.done}/${geocodeProgress.total}…`
+                    : 'Loading…')
+                : nearMeStatus === 'found' ? 'Near Me ✓'
+                : 'Find DJs Near Me'
+            }
             style={{
               background: nearMeStatus === 'found' ? 'var(--neon-dim)' : 'transparent',
               border: '1px solid var(--neon)',
               color: 'var(--neon)',
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.62rem',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
               cursor: (nearMeStatus === 'getting' || nearMeStatus === 'geocoding') ? 'wait' : 'pointer',
-              padding: '.55rem .85rem',
-              borderRadius: '6px',
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
               transition: 'all .2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '.35rem',
-              whiteSpace: 'nowrap',
+              justifyContent: 'center',
               flexShrink: 0,
+              padding: 0,
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            {nearMeStatus === 'getting' && 'Getting location…'}
-            {nearMeStatus === 'geocoding' && geocodeProgress &&
-              `Loading ${geocodeProgress.done}/${geocodeProgress.total}…`}
-            {nearMeStatus === 'geocoding' && !geocodeProgress && 'Loading…'}
-            {nearMeStatus === 'found' && 'Near Me ✓'}
-            {(nearMeStatus === 'idle' || nearMeStatus === 'error') && 'Find DJs Near Me'}
+            {(nearMeStatus === 'getting' || nearMeStatus === 'geocoding') ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            )}
           </button>
         </div>
 
