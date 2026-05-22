@@ -115,10 +115,11 @@ export default function BookingRequestsClient({
     const s = b.status as keyof typeof outCounts;
     if (s in outCounts) outCounts[s]++;
   });
-  // Show counter bookings under pending for the requester (awaiting their response)
-  // Mirror of DJ Pending count rule: only bookings actually waiting on
-  // the viewing user. status='pending' on outgoing = DJ is acting, not
-  // the booker — those don't belong in the Pending tab/badge count.
+  // Outgoing "Pending" tab shows everything unresolved (counters + still
+  // awaiting the DJ), but the COUNT only reflects bookings that need the
+  // booker to act — i.e. DJ counters. Awaiting-DJ pending bookings appear
+  // in the tab for tracking but don't inflate the badge, since the badge
+  // signals "your move".
   const outPendingCount = outCounts.counter;
   const outAll = outCounts.pending + outCounts.counter + outCounts.approved + outCounts.denied;
 
@@ -130,11 +131,11 @@ export default function BookingRequestsClient({
 
   const filteredOutgoing = (() => {
     if (outgoingTab === 'all') return outgoing.filter((b) => b.status !== 'cancelled');
-    // Mirror of the DJ Pending rule: "Pending" = bookings waiting on
-    // the viewing user. Booker is waiting to act when DJ has countered
-    // (status='counter'); status='pending' means the DJ is the one
-    // who has to act, so those bookings live in All only.
-    if (outgoingTab === 'pending') return outgoing.filter((b) => b.status === 'counter');
+    // Outgoing "Pending" = everything not yet resolved: bookings the DJ
+    // has countered (booker's move) AND bookings still awaiting the DJ's
+    // first response (status='pending'). Both show here so the booker
+    // can track anything in progress without digging through "All".
+    if (outgoingTab === 'pending') return outgoing.filter((b) => b.status === 'counter' || b.status === 'pending');
     return outgoing.filter((b) => b.status === outgoingTab);
   })();
 
