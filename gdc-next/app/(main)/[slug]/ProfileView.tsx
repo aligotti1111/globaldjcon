@@ -24,7 +24,7 @@ import { createClient } from '@/lib/supabase/client';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
-  FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon, CopyIcon,
+  FacebookIcon, TwitchIcon, MessageIcon, CalendarIcon,
   LocationPinIcon, ClaimAlertIcon,
 } from './icons';
 
@@ -4481,13 +4481,36 @@ function UnderBannerSocials({ data, effectiveSlug, isOwnProfile }: { data: DjPro
 
   function copyShareUrl() {
     const url = `${window.location.origin}/${effectiveSlug}`;
-    navigator.clipboard.writeText(url).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => { /* clipboard write failed — silently ignore */ },
-    );
+    const markCopied = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+    // Primary path: async clipboard API (needs a secure context).
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(markCopied, () => {
+        legacyCopy(url, markCopied);
+      });
+    } else {
+      legacyCopy(url, markCopied);
+    }
+  }
+  // Fallback for browsers where navigator.clipboard is unavailable or
+  // blocked — uses a hidden textarea + execCommand('copy').
+  function legacyCopy(text: string, onDone: () => void) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      onDone();
+    } catch {
+      /* copy failed — nothing more we can do */
+    }
   }
 
   function n(s: string, prefix: string): string {
@@ -4592,16 +4615,36 @@ function UnderBannerSocials({ data, effectiveSlug, isOwnProfile }: { data: DjPro
           setOpenField={setOpenSocialField}
         />
       )}
-      {/* Share / Copy Link button — sits at the end of the socials row.
-          Moved here from the banner so the banner stays clean and hero
-          heights match across profile types. */}
+      {/* Share / Copy Link button — sits at the end of the socials row,
+          set apart from the social icons by a small divider gap. Shows a
+          checkmark + "Copied" state on success so the action is visible
+          (a title tooltip alone isn't visible on mobile). */}
       <button
         type="button"
-        className={`${styles.underBannerSocialBtn} ${styles.underBannerShareBtn}`}
-        title={copied ? 'Copied!' : 'Copy profile link'}
+        className={`${styles.underBannerShareBtn} ${copied ? styles.underBannerShareBtnCopied : ''}`}
+        title={copied ? 'Link copied!' : 'Copy profile link'}
+        aria-label={copied ? 'Profile link copied' : 'Copy profile link'}
         onClick={copyShareUrl}
       >
-        <CopyIcon />
+        {copied ? (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Copied</span>
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            <span>Share</span>
+          </>
+        )}
       </button>
     </div>
   );

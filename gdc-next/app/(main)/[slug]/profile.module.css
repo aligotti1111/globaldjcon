@@ -1953,9 +1953,42 @@
 .underBannerSocialTiktok { color: #fff; }
 .underBannerSocialTwitch { color: #9146ff; }
 .underBannerSocialWebsite { color: var(--neon); }
-/* Share / Copy-Link button at the end of the row — neon to match the
-   site accent and read as the primary "share this profile" action. */
-.underBannerShareBtn { color: var(--neon); }
+/* Share / Copy-Link button at the end of the row. Set apart from the
+   social icon cluster by a margin-left + a thin divider line, and styled
+   as a labelled pill (not a bare icon square) so it reads as the primary
+   "share this profile" action. Flips to a filled neon "Copied" state on
+   click so the feedback is visible on mobile. */
+.underBannerShareBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-left: .65rem;
+  padding-left: .85rem;
+  border-left: 1px solid rgba(255, 255, 255, .14);
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s;
+}
+.underBannerShareBtn svg { display: block; }
+.underBannerShareBtn:hover { color: #fff; }
+.underBannerShareBtnCopied { color: var(--neon); }
+@media (max-width: 700px) {
+  .underBannerShareBtn {
+    margin-left: .5rem;
+    padding-left: .6rem;
+    font-size: .55rem;
+  }
+}
 /* SocialAddButton inside the under-banner strip: shrink to match the
    34px existing social icons, override actionBtnEmpty's dashed border
    so add buttons visually match the populated ones. */
