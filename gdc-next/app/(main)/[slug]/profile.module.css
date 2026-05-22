@@ -1604,6 +1604,14 @@
     gap: 0;
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
+    /* Lock the hero (and therefore the absolutely-positioned .banner that
+       fills it) to a consistent height on mobile. Without this the hero
+       is purely content-driven, so a club profile — which renders extra
+       pills (years-as-DJ, format/genre tags) the mobile-DJ profile lacks
+       — ends up visibly taller. This min-height matches the natural
+       mobile-DJ hero height; content centers within it. */
+    min-height: 280px;
+    justify-content: center;
   }
   .heroTopRow {
     display: flex;
