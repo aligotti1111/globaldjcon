@@ -1953,6 +1953,9 @@
 .underBannerSocialTiktok { color: #fff; }
 .underBannerSocialTwitch { color: #9146ff; }
 .underBannerSocialWebsite { color: var(--neon); }
+/* Share / Copy-Link button at the end of the row — neon to match the
+   site accent and read as the primary "share this profile" action. */
+.underBannerShareBtn { color: var(--neon); }
 /* SocialAddButton inside the under-banner strip: shrink to match the
    34px existing social icons, override actionBtnEmpty's dashed border
    so add buttons visually match the populated ones. */

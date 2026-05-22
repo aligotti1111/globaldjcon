@@ -745,7 +745,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </span>
                   ))
                 )}
-                {genres.map(g => (
+                {genres
+                  .filter(g => g !== 'open-format')
+                  .map(g => (
                   <span
                     key={`genre-${g}`}
                     className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallPink}`}
@@ -760,7 +762,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Socials are rendered separately as UnderBannerSocials. */}
             <HeroActions
               data={data}
-              effectiveSlug={effectiveSlug}
               isLoggedIn={isLoggedIn}
               isOwnProfile={isOwnProfile}
               hideSocials={true}
@@ -780,7 +781,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         </div>
         {/* Under-banner socials strip — full-width row sitting snug
             against the bottom of the hero/banner. Centered. */}
-        <UnderBannerSocials data={data} isOwnProfile={isOwnProfile} />
+        <UnderBannerSocials data={data} effectiveSlug={effectiveSlug} isOwnProfile={isOwnProfile} />
 
         {/* BODY */}
         <div className={styles.body}>
@@ -1592,39 +1593,23 @@ function EventsServicedBadge({ events }: { events: string[] }) {
 
 function HeroActions({
   data,
-  effectiveSlug,
   isLoggedIn,
   isOwnProfile,
   onClickMessage,
   hideSocials,
 }: {
   data: DjProfileData;
-  effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
   onClickMessage: () => void;
   hideSocials?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
   // Tracks which SocialAddButton (if any) is expanded. Lifted here so
   // opening one auto-closes any other that was open — only one inline
   // social-add input can be active at a time across the row.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
 
-  // Build the canonical share URL. Vanilla uses window.location.origin + '/' + slug.
-  // We do that on click since it needs the runtime origin.
-  function copyShareUrl() {
-    const url = `${window.location.origin}/${effectiveSlug}`;
-    navigator.clipboard.writeText(url).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => {
-        /* clipboard write failed — silently ignore */
-      },
-    );
-  }
+  // (Copy-link / share moved to UnderBannerSocials.)
 
   // Normalize social URLs the way vanilla does (handle "@username" inputs)
   function normalizedWebsite(s: string): string {
@@ -1829,15 +1814,10 @@ function HeroActions({
         </span>
       )}
 
-      {/* Copy Link button — vanilla-style ghost button */}
-      <button
-        type="button"
-        className={`${styles.actionBtn} ${styles.actionBtnGhost}`}
-        title={copied ? 'Copied!' : 'Copy Link'}
-        onClick={copyShareUrl}
-      >
-        <CopyIcon />
-      </button>
+      {/* Copy Link / share button moved out of the hero — it now lives at
+          the end of the UnderBannerSocials row (below the banner) so the
+          banner stays clean and the hero height matches across profile
+          types. */}
 
       {/* Calendar icon kept hidden for now — the booking calendar lives in
           the tabs below, not in the hero. Keeping the import wired so we
@@ -4493,9 +4473,22 @@ function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-function UnderBannerSocials({ data, isOwnProfile }: { data: DjProfileData; isOwnProfile: boolean }) {
+function UnderBannerSocials({ data, effectiveSlug, isOwnProfile }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
+  // Copy-link state for the share button at the end of the row.
+  const [copied, setCopied] = useState(false);
+
+  function copyShareUrl() {
+    const url = `${window.location.origin}/${effectiveSlug}`;
+    navigator.clipboard.writeText(url).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      () => { /* clipboard write failed — silently ignore */ },
+    );
+  }
 
   function n(s: string, prefix: string): string {
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
@@ -4508,9 +4501,8 @@ function UnderBannerSocials({ data, isOwnProfile }: { data: DjProfileData; isOwn
   if (data.facebook) links.push({ key: 'fb', href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', cls: styles.underBannerSocialFacebook, icon: <FacebookIcon /> });
   if (data.twitch) links.push({ key: 'tw', href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', cls: styles.underBannerSocialTwitch, icon: <TwitchIcon /> });
 
-  // Owner sees the strip even with no socials yet, so they can use the
-  // + add buttons. Visitors see nothing if there are no socials.
-  if (!links.length && !isOwnProfile) return null;
+  // The row always renders now — even with no socials — because it hosts
+  // the share button at the end.
 
   return (
     <div className={styles.underBannerSocials}>
@@ -4600,6 +4592,17 @@ function UnderBannerSocials({ data, isOwnProfile }: { data: DjProfileData; isOwn
           setOpenField={setOpenSocialField}
         />
       )}
+      {/* Share / Copy Link button — sits at the end of the socials row.
+          Moved here from the banner so the banner stays clean and hero
+          heights match across profile types. */}
+      <button
+        type="button"
+        className={`${styles.underBannerSocialBtn} ${styles.underBannerShareBtn}`}
+        title={copied ? 'Copied!' : 'Copy profile link'}
+        onClick={copyShareUrl}
+      >
+        <CopyIcon />
+      </button>
     </div>
   );
 }
