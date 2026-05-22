@@ -21,7 +21,6 @@ import {
   CLUB_GENRES,
   COUNTRIES,
   TRAVEL_DISTANCES,
-  DJ_START_YEARS,
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
@@ -361,23 +360,8 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </select>
       </div>
 
-      {/* DJ start year */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-start-year">The Year I Started DJing</label>
-        <select
-          id="ud-start-year"
-          value={state.djStartYear}
-          onChange={(e) => onChange('djStartYear', e.target.value)}
-          className={styles.select}
-        >
-          {DJ_START_YEARS.map((y) => (
-            <option key={y.val || 'empty'} value={y.val}>{y.label}</option>
-          ))}
-        </select>
-        <p className={styles.fieldHint}>
-          Used to calculate years of experience on your profile
-        </p>
-      </div>
+      {/* DJ start year field removed — years-of-experience is no longer
+          shown on profiles, so the input is no longer needed. */}
 
       {/* Phone */}
       <div className={styles.formGroup}>
