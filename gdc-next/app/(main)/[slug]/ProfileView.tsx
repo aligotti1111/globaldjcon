@@ -767,7 +767,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         </div>
         {/* Under-banner socials strip — full-width row sitting snug
             against the bottom of the hero/banner. Centered. */}
-        <UnderBannerSocials data={data} isOwnProfile={isOwnProfile} onShareClick={() => setShareModalOpen(true)} />
+        <UnderBannerSocials data={data} effectiveSlug={effectiveSlug} isOwnProfile={isOwnProfile} bookingEnabled={bookingEnabled} onShareClick={() => setShareModalOpen(true)} />
 
         {/* BODY */}
         <div className={styles.body}>
@@ -4459,9 +4459,45 @@ function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-function UnderBannerSocials({ data, isOwnProfile, onShareClick }: { data: DjProfileData; isOwnProfile: boolean; onShareClick: () => void }) {
+function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
+  // Copy-link feedback state — used only when booking is NOT active, in
+  // which case the Share button copies the profile link instead of
+  // opening the share-calendar modal (there's no calendar to share).
+  const [copied, setCopied] = useState(false);
+
+  function copyProfileLink() {
+    const url = `${window.location.origin}/${effectiveSlug}`;
+    const markCopied = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(markCopied, () => legacyCopy(url, markCopied));
+    } else {
+      legacyCopy(url, markCopied);
+    }
+  }
+  function legacyCopy(text: string, onDone: () => void) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      onDone();
+    } catch {
+      /* copy failed — nothing more we can do */
+    }
+  }
+  // When booking is active the Share button opens the share-calendar
+  // modal; otherwise it just copies the general profile link.
+  const handleShare = bookingEnabled ? onShareClick : copyProfileLink;
 
   function n(s: string, prefix: string): string {
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
@@ -4566,23 +4602,42 @@ function UnderBannerSocials({ data, isOwnProfile, onShareClick }: { data: DjProf
         />
       )}
       {/* Share button — sits at the end of the socials row, set apart
-          from the social icons by a divider gap. Opens the share-calendar
-          modal (moved here from the calendar month header). */}
+          from the social icons by a divider gap. When booking is active
+          it opens the share-calendar modal; when booking is off there's
+          no calendar to share, so it just copies the profile link (with
+          a brief "Copied" confirmation). */}
       <button
         type="button"
         className={styles.underBannerShareBtn}
-        title="Share calendar"
-        aria-label="Share calendar"
-        onClick={onShareClick}
+        title={
+          bookingEnabled ? 'Share calendar'
+            : copied ? 'Link copied!' : 'Copy profile link'
+        }
+        aria-label={
+          bookingEnabled ? 'Share calendar'
+            : copied ? 'Profile link copied' : 'Copy profile link'
+        }
+        onClick={handleShare}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="18" cy="5" r="3" />
-          <circle cx="6" cy="12" r="3" />
-          <circle cx="18" cy="19" r="3" />
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-        </svg>
-        <span>Share</span>
+        {!bookingEnabled && copied ? (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Copied</span>
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            <span>Share</span>
+          </>
+        )}
       </button>
     </div>
   );
