@@ -164,11 +164,22 @@
 }
 @media (max-width: 700px) {
   .monthHeaderRow {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: .5rem;
   }
   .monthHeaderSpacer {
     display: none;
+  }
+  /* Month label shrinks instead of grabbing the full row, so the Share /
+     Embed actions stay on the same line to the RIGHT of the month rather
+     than wrapping underneath it. */
+  .monthHeader {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+  }
+  .monthHeaderActions {
+    flex: 0 0 auto;
   }
 }
 
