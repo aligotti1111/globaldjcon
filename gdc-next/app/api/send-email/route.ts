@@ -394,11 +394,23 @@ export async function POST(req: Request) {
     // Club-specific fields (kept for backward compat with that flow).
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
-    // Optional offered rate — most host requests don't include one (the
-    // DJ is expected to respond with a quote), but if a booker ever
-    // supplies a budget/offer it's shown instead of the prompt note.
+    // Optional rate fields. A host request carries a price in one of two
+    // ways depending on the DJ's rate type:
+    //   • offers mode  → offerAmount  (the booker's own offer)
+    //   • flat/hourly  → quotedRate   (the DJ's computed price for the gig)
+    // Quote-mode bookings (DJ hasn't set a rate) have neither. We show the
+    // rate when EITHER is present and only fall back to the prompt note
+    // when there's genuinely no price on the request.
     const offerAmount = body.offerAmount as number | string | undefined;
-    const offerCurrency = (body.offerCurrency as string | undefined) || 'USD';
+    const quotedRate = body.quotedRate as number | string | undefined;
+    const offerCurrency = (body.offerCurrency as string | undefined)
+      || (body.currency as string | undefined) || 'USD';
+    const totalHours = body.totalHours as number | string | undefined;
+    const hasOffer = offerAmount != null && String(offerAmount).trim() !== '';
+    const hasQuoted = quotedRate != null && String(quotedRate).trim() !== '';
+    const rateValueNum = hasOffer ? Number(offerAmount)
+      : hasQuoted ? Number(quotedRate)
+      : null;
 
     const dateStr = fmtDate(eventDate);
     const timeStr = fmtTimeRange(startTime, endTime);
@@ -422,12 +434,16 @@ export async function POST(req: Request) {
           ${venueAddress ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> ${escHtml(venueAddress)}</p>` : ''}
         </div>
         ${
-          offerAmount != null && String(offerAmount).trim() !== ''
+          rateValueNum != null && !isNaN(rateValueNum)
             ? `<div style="background:#eafaf4;border:1px solid #b6e8d6;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-                 <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>Offered Rate:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(Number(offerAmount).toLocaleString()))} ${escHtml(offerCurrency)}</p>
+                 <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))} ${escHtml(offerCurrency)}${
+                   totalHours != null && String(totalHours).trim() !== '' && !hasOffer
+                     ? ` <span style="color:#666;">(${escHtml(String(totalHours))} hr total)</span>`
+                     : ''
+                 }</p>
                </div>`
             : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-                 <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include an offered rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
+                 <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
                </div>`
         }
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Request')}
