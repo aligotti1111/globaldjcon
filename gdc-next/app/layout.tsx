@@ -36,7 +36,7 @@
 // Pages inside (simple) get a stripped-down layout instead.
 
 import type { Metadata } from 'next';
-import { Bebas_Neue, DM_Sans, Space_Mono } from 'next/font/google';
+import { Bebas_Neue, DM_Sans, Space_Mono, Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/server';
 import type { CurrentUser, UserProfile } from '@/types/db';
@@ -65,6 +65,15 @@ const spaceMono = Space_Mono({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-space-mono',
+});
+
+// Inter — modern UI font for small form labels. Designed for legibility
+// at small sizes, which monospace (Space Mono) handles poorly.
+const inter = Inter({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -101,7 +110,7 @@ export default async function RootLayout({
   // registers the actual family name (e.g. "Bebas Neue"), so existing
   // font-family declarations in CSS modules / global CSS keep working
   // unchanged.
-  const fontClasses = `${bebasNeue.variable} ${dmSans.variable} ${spaceMono.variable}`;
+  const fontClasses = `${bebasNeue.variable} ${dmSans.variable} ${spaceMono.variable} ${inter.variable}`;
 
   return (
     <html lang="en" className={fontClasses}>
