@@ -239,33 +239,41 @@ export async function searchAddresses(
       lon?: string;
       address?: Record<string, string>;
     }) => {
-      // Prefer Nominatim's structured address object (addressdetails=1) so
-      // we can build a clean line: "<house no> <road>, <city>, <ST> <zip>".
-      // The country is dropped (it's shown in the country picker) and the
-      // state is abbreviated from the ISO 3166-2 code (e.g. US-NY → NY).
-      const a = r.address || {};
-      const stateCode = (a['ISO3166-2-lvl4'] || '').split('-')[1] || '';
-      const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
-      const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
-      const stateAbbr = stateCode || a.state || '';
-      const cityState = [city, [stateAbbr, a.postcode].filter(Boolean).join(' ').trim()]
-        .filter(Boolean)
-        .join(', ');
-      const built = [street, cityState].filter(Boolean).join(', ').trim();
+      // Original behaviour: full display_name minus county-level parts.
+      // This is the guaranteed-safe fallback if structured formatting
+      // can't produce a usable line.
+      const rawClean = (r.display_name || '')
+        .split(',')
+        .filter((p) => !/county/i.test(p))
+        .join(',')
+        .trim();
 
-      let display = built;
-      if (!display) {
-        // Fallback when the structured address is sparse: use display_name
-        // but strip county-level parts and the trailing country.
-        const parts = (r.display_name || '').split(',');
-        const noCounty = parts.filter((p) => !/county/i.test(p));
-        // Drop the last segment (country) if there's more than one part.
-        if (noCounty.length > 1) noCounty.pop();
-        display = noCounty.join(',').trim();
+      // Preferred: build a clean line from Nominatim's structured address
+      // (addressdetails=1) — "<house no> <road>, <city>, <ST> <zip>" with
+      // the country dropped and the state abbreviated (e.g. US-NY → NY).
+      let display = rawClean;
+      try {
+        const a = r.address || {};
+        const stateCode = (a['ISO3166-2-lvl4'] || '').split('-')[1] || '';
+        const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
+        const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
+        const stateAbbr = stateCode || a.state || '';
+        const cityState = [
+          city,
+          [stateAbbr, a.postcode].filter(Boolean).join(' ').trim(),
+        ]
+          .filter(Boolean)
+          .join(', ');
+        const built = [street, cityState].filter(Boolean).join(', ').trim();
+        // Only use the built line when it actually has content; otherwise
+        // keep the safe full-address fallback so suggestions never go blank.
+        if (built) display = built;
+      } catch {
+        // Keep rawClean fallback.
       }
 
       return {
-        display,
+        display: display || rawClean,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
