@@ -165,7 +165,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
           <div className={styles.modalTitle}>
             {isClubBooking
               ? (isEditMode ? 'Edit Custom Rate' : 'Add Custom Rate')
-              : (isEditMode ? 'Edit Price' : 'Send Price')}
+              : (isEditMode ? 'Edit Offer' : 'Add Offer')}
           </div>
           <button
             type="button"
@@ -177,10 +177,125 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
           </button>
         </div>
 
-        {/* Mobile DJ context — package title (clubs don't have packages). */}
-        {!isClubBooking && booking.package_title && (
-          <div className={styles.quotePkgLine}>
-            Package: <strong>{booking.package_title}</strong>
+        {/* Mobile DJ context — package title + details, date, and event
+            times so the DJ has full event context while pricing. */}
+        {!isClubBooking && (booking.package_title || booking.package_details
+          || booking.event_date || booking.start_time || booking.end_time) && (
+          <div
+            style={{
+              padding: '.7rem .85rem',
+              marginBottom: '.9rem',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: 'rgba(255,255,255,.02)',
+            }}
+          >
+            {/* Package title + details */}
+            {booking.package_title && (
+              <div style={{ marginBottom: '.5rem' }}>
+                <div
+                  style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '.5rem',
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--muted)',
+                    marginBottom: '.15rem',
+                  }}
+                >
+                  Package
+                </div>
+                <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: '.85rem' }}>
+                  {booking.package_title}
+                </div>
+                {booking.package_details && booking.package_details.trim() && (
+                  <div
+                    style={{
+                      marginTop: '.35rem',
+                      fontSize: '.75rem',
+                      lineHeight: 1.5,
+                      color: 'rgba(255,255,255,.7)',
+                    }}
+                    // Trusted HTML — package details authored by the DJ in
+                    // their own profile editor (same source the booking
+                    // form renders).
+                    // eslint-disable-next-line react/no-danger
+                    dangerouslySetInnerHTML={{ __html: booking.package_details }}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Date + time row */}
+            {(booking.event_date || booking.start_time || booking.end_time) && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '1.25rem',
+                  paddingTop: booking.package_title ? '.4rem' : 0,
+                  borderTop: booking.package_title ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                {booking.event_date && (
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.5rem',
+                        letterSpacing: '.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--muted)',
+                        marginBottom: '.15rem',
+                      }}
+                    >
+                      Date
+                    </div>
+                    <div style={{ color: 'var(--neon)', fontWeight: 600, fontSize: '.78rem' }}>
+                      {formatLongDate(booking.event_date)}
+                    </div>
+                  </div>
+                )}
+                {booking.start_time && (
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.5rem',
+                        letterSpacing: '.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--muted)',
+                        marginBottom: '.15rem',
+                      }}
+                    >
+                      Start
+                    </div>
+                    <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                      {formatTime12(booking.start_time)}
+                    </div>
+                  </div>
+                )}
+                {booking.end_time && (
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.5rem',
+                        letterSpacing: '.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--muted)',
+                        marginBottom: '.15rem',
+                      }}
+                    >
+                      End
+                    </div>
+                    <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
+                      {formatTime12(booking.end_time)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -410,7 +525,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               ? 'Saving…'
               : isClubBooking
                 ? (isEditMode ? 'Update Draft' : 'Save Draft')
-                : (isEditMode ? 'Update Price' : 'Send Price')}
+                : (isEditMode ? 'Update Offer' : 'Add Offer')}
           </button>
         </div>
       </div>

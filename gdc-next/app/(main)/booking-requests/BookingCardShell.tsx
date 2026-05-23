@@ -256,7 +256,7 @@ export default function BookingCardShell({
                 </button>
               )}
 
-              {/* Send Offer — DJ enters a price on a quote-mode booking
+              {/* Add Offer — DJ enters a price on a quote-mode booking
                   that has no rate yet (the booker chose "DJ replies with
                   an offer"). Opens the QuoteModal. Without this the DJ has
                   no way to price a mobile quote request. */}
@@ -270,7 +270,7 @@ export default function BookingCardShell({
                     <line x1="22" y1="2" x2="11" y2="13" />
                     <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
-                  {' '}Send Offer
+                  {' '}Add Offer
                 </button>
               )}
 
