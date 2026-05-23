@@ -233,47 +233,45 @@ export async function searchAddresses(
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
-    return results.map((r: {
-      display_name?: string;
-      lat?: string;
-      lon?: string;
-      address?: Record<string, string>;
-    }) => {
-      // Original behaviour: full display_name minus county-level parts.
-      // This is the guaranteed-safe fallback if structured formatting
-      // can't produce a usable line.
-      const rawClean = (r.display_name || '')
-        .split(',')
-        .filter((p) => !/county/i.test(p))
-        .join(',')
-        .trim();
 
-      // Preferred: build a clean line from Nominatim's structured address
-      // (addressdetails=1) — "<house no> <road>, <city>, <ST> <zip>" with
-      // the country dropped and the state abbreviated (e.g. US-NY → NY).
-      let display = rawClean;
-      try {
-        const a = r.address || {};
-        const stateCode = (a['ISO3166-2-lvl4'] || '').split('-')[1] || '';
-        const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
-        const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
-        const stateAbbr = stateCode || a.state || '';
-        const cityState = [
-          city,
-          [stateAbbr, a.postcode].filter(Boolean).join(' ').trim(),
-        ]
-          .filter(Boolean)
-          .join(', ');
-        const built = [street, cityState].filter(Boolean).join(', ').trim();
-        // Only use the built line when it actually has content; otherwise
-        // keep the safe full-address fallback so suggestions never go blank.
-        if (built) display = built;
-      } catch {
-        // Keep rawClean fallback.
-      }
+    // US state name → USPS abbreviation. Used to shorten the state segment
+    // of an address line. Non-US states are left as-is.
+    const US_STATE_ABBR: Record<string, string> = {
+      alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR',
+      california: 'CA', colorado: 'CO', connecticut: 'CT', delaware: 'DE',
+      'district of columbia': 'DC', florida: 'FL', georgia: 'GA', hawaii: 'HI',
+      idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS',
+      kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+      massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS',
+      missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+      'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM',
+      'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
+      ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA',
+      'rhode island': 'RI', 'south carolina': 'SC', 'south dakota': 'SD',
+      tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+      virginia: 'VA', washington: 'WA', 'west virginia': 'WV',
+      wisconsin: 'WI', wyoming: 'WY',
+    };
+
+    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
+      // Parse the comma-ordered display_name string. Nominatim orders it
+      // roughly: number, road, locality, county, state, postcode, country.
+      // We drop county + country, abbreviate any US state, and rejoin.
+      const segments = (r.display_name || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        // Drop county-level admin parts.
+        .filter((s) => !/county/i.test(s));
+      // Drop the trailing country segment (last part) when there's more
+      // than one — the picker already shows the country.
+      if (segments.length > 1) segments.pop();
+      // Abbreviate any segment that matches a US state name.
+      const cleaned = segments.map((s) => US_STATE_ABBR[s.toLowerCase()] || s);
+      const display = cleaned.join(', ');
 
       return {
-        display: display || rawClean,
+        display,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
