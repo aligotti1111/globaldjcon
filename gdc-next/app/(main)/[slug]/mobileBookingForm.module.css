@@ -142,6 +142,15 @@
   height: auto;
   min-height: 80px;
 }
+
+/* Validation highlight — applied to a required field the booker left
+   empty when they hit Request Booking. Red ring stays red even on
+   focus so it's obvious which field needs attention. */
+.fieldError,
+.fieldError:focus {
+  border-color: #ff5f5f !important;
+  box-shadow: 0 0 0 3px rgba(255, 95, 95, .18);
+}
 .smallNumberInput {
   width: 120px;
 }

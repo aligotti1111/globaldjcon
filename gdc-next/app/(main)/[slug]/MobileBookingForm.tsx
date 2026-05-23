@@ -136,6 +136,9 @@ export default function MobileBookingForm({
   // Submit state
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Id of the field that failed validation — drives scroll-to + a red
+  // highlight ring so the booker is taken straight to what they missed.
+  const [errorFieldId, setErrorFieldId] = useState<string | null>(null);
   const [successState, setSuccessState] = useState<{ isQuote: boolean } | null>(null);
 
   // ── Address autocomplete ─────────────────────────────────────────
@@ -209,6 +212,23 @@ export default function MobileBookingForm({
     startTime &&
     cocktailStart >= startTime;
 
+  // Clear the validation highlight once the booker fixes the flagged
+  // field — keeps the red ring from lingering after they've filled it.
+  useEffect(() => {
+    if (!errorFieldId) return;
+    const fixed =
+      (errorFieldId === 'mpf-phone' && phone.trim()) ||
+      (errorFieldId === 'mpf-event-type' && eventType) ||
+      (errorFieldId === 'mpf-venue-name' && venueName.trim()) ||
+      (errorFieldId === 'mpf-venue-address' && venueAddress.trim()) ||
+      (errorFieldId === 'mpf-start-time' && startTime) ||
+      (errorFieldId === 'mpf-cocktail-start' && !cocktailWarn);
+    if (fixed) {
+      setErrorFieldId(null);
+      setErrorMsg(null);
+    }
+  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailWarn]);
+
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
     setPhone(formatUSPhone(e.target.value));
@@ -231,22 +251,38 @@ export default function MobileBookingForm({
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit() {
     setErrorMsg(null);
+    setErrorFieldId(null);
 
-    // Validation
-    if (!phone.trim()) { setErrorMsg('Please enter your phone number.'); return; }
-    if (!eventType) { setErrorMsg('Please select an event type.'); return; }
-    if (!venueName.trim()) { setErrorMsg('Please enter the venue name.'); return; }
-    if (!venueAddress.trim()) { setErrorMsg('Please enter the venue address.'); return; }
-    if (!startTime) { setErrorMsg('Please select a start time.'); return; }
-    if (cocktailWarn) {
-      setErrorMsg('Cocktail hour start time must be before the reception start time.');
-      return;
-    }
+    // Validation. fail() sets the message, then scrolls the offending
+    // field into view and focuses it — errorFieldId drives a red ring
+    // highlight via the .fieldError class.
+    const fail = (msg: string, fieldId?: string): true => {
+      setErrorMsg(msg);
+      if (fieldId) {
+        setErrorFieldId(fieldId);
+        // Defer so the highlight class is applied before we scroll/focus.
+        setTimeout(() => {
+          const el = document.getElementById(fieldId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            (el as HTMLElement).focus({ preventScroll: true });
+          }
+        }, 0);
+      }
+      return true;
+    };
+
+    if (!phone.trim() && fail('Please enter your phone number.', 'mpf-phone')) return;
+    if (!eventType && fail('Please select an event type.', 'mpf-event-type')) return;
+    if (!venueName.trim() && fail('Please enter the venue name.', 'mpf-venue-name')) return;
+    if (!venueAddress.trim() && fail('Please enter the venue address.', 'mpf-venue-address')) return;
+    if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
+    if (cocktailWarn && fail('Cocktail hour start time must be before the reception start time.', 'mpf-cocktail-start')) return;
     // Package validation only applies when the DJ has packages defined.
     // No-packages mode → fall through and submit as a quote-style request.
     if (hasAnyPackages) {
-      if (selectedPkgIdx == null) { setErrorMsg('Please select a package.'); return; }
-      if (!selectedPkg) { setErrorMsg('Invalid package selected.'); return; }
+      if (selectedPkgIdx == null && fail('Please select a package.')) return;
+      if (!selectedPkg && fail('Invalid package selected.')) return;
     }
 
     // Compute final price. In no-packages mode there's nothing to price —
@@ -434,6 +470,13 @@ export default function MobileBookingForm({
     : 'Request Booking';
 
   if (!mounted) return null;
+
+  // Appends the red-ring highlight class to whichever field failed
+  // validation. The highlight clears as soon as errorFieldId is reset
+  // (on the next submit attempt or when that field is edited).
+  const fieldClass = (id: string, base: string): string =>
+    errorFieldId === id ? `${base} ${styles.fieldError}` : base;
+
   return createPortal(
     <div className={styles.formWrap}>
       <div ref={rootRef} className={styles.formCard}>
@@ -464,7 +507,7 @@ export default function MobileBookingForm({
             placeholder="(555) 555-5555"
             value={phone}
             onChange={handlePhoneChange}
-            className={styles.input}
+            className={fieldClass('mpf-phone', styles.input)}
             autoComplete="tel"
           />
         </div>
@@ -476,7 +519,7 @@ export default function MobileBookingForm({
             id="mpf-event-type"
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
-            className={styles.select}
+            className={fieldClass('mpf-event-type', styles.select)}
           >
             <option value="">Select event type...</option>
             {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
@@ -506,7 +549,7 @@ export default function MobileBookingForm({
             placeholder="The Grand Ballroom"
             value={venueName}
             onChange={(e) => setVenueName(e.target.value)}
-            className={styles.input}
+            className={fieldClass('mpf-venue-name', styles.input)}
           />
         </div>
 
@@ -566,7 +609,7 @@ export default function MobileBookingForm({
                 onFocus={() => {
                   if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
                 }}
-                className={styles.input}
+                className={fieldClass('mpf-venue-address', styles.input)}
                 autoComplete="off"
               />
               {showAddrSuggestions && addrSuggestions.length > 0 && (
@@ -637,7 +680,7 @@ export default function MobileBookingForm({
               id="mpf-start-time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className={styles.select}
+              className={fieldClass('mpf-start-time', styles.select)}
             >
               <option value="">Select time...</option>
               {MOB_TIME_OPTIONS.map(o => (
@@ -709,7 +752,7 @@ export default function MobileBookingForm({
                     id="mpf-cocktail-start"
                     value={cocktailStart}
                     onChange={(e) => setCocktailStart(e.target.value)}
-                    className={styles.select}
+                    className={fieldClass('mpf-cocktail-start', styles.select)}
                   >
                     <option value="">Select time...</option>
                     {MOB_TIME_OPTIONS.map(o => (
