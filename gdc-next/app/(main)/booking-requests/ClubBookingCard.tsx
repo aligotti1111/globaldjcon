@@ -15,6 +15,7 @@ import {
   hasFiniteTravelLimit,
   cleanAddress,
   lookupZipCoords,
+  drivingMiles,
 } from './helpers';
 import BookingCardShell, { SectionFrame, StatusBadge, type BookingCardShellProps } from './BookingCardShell';
 import {
@@ -66,6 +67,19 @@ export default function ClubBookingCard(props: Props) {
     async function compute() {
       if (b.venue_lat == null || b.venue_lon == null) return;
       if (!djZip && !djCity) return;
+      // Primary: Google driving distance via the /api/distance route.
+      const driving = await drivingMiles(
+        { zip: djZip, city: djCity, state: djState },
+        b.venue_lat!,
+        b.venue_lon!,
+      );
+      if (cancelled) return;
+      if (driving != null) {
+        setMilesNum(driving);
+        setMilesDisplay(driving.toFixed(1));
+        return;
+      }
+      // Fallback: straight-line distance if the driving lookup failed.
       const djCoords = await lookupZipCoords({ zip: djZip, city: djCity, state: djState });
       if (cancelled || !djCoords) return;
       const miles = haversineMiles(djCoords.lat, djCoords.lon, b.venue_lat!, b.venue_lon!);
@@ -179,9 +193,9 @@ export default function ClubBookingCard(props: Props) {
                 <span style={{ color: distColor }}>{milesDisplay} mi to venue</span>
               </div>
             )}
-            {showRangeWarning && limitMiles != null && (
+            {showRangeWarning && limitMiles != null && milesNum != null && (
               <div className={styles.rangeWarn}>
-                ⚠ Outside your {limitMiles} mi travel range
+                ⚠ {(milesNum - limitMiles).toFixed(1)} mi beyond your {limitMiles} mi travel range
               </div>
             )}
           </div>

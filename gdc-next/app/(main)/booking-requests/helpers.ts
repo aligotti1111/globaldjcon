@@ -169,3 +169,40 @@ export async function lookupZipCoords(
   zipCoordsCache.set(cacheKey, null);
   return null;
 }
+
+// Driving distance in miles between the DJ's home base and a venue.
+// Calls the /api/distance server route (which holds the Google Maps key
+// server-side and queries the Distance Matrix API). Returns road-network
+// driving miles — the meaningful measure for a DJ's travel range.
+//
+// `dj` is the DJ's stored location parts; `venueLat`/`venueLon` are the
+// coords captured on the booking row. Returns null on any failure so the
+// caller can fall back (e.g. to haversineMiles) or simply hide the
+// distance — a failed lookup must never break the card.
+export async function drivingMiles(
+  dj: { zip?: string | null; city?: string | null; state?: string | null },
+  venueLat: number,
+  venueLon: number,
+): Promise<number | null> {
+  const zip = (dj.zip || '').trim();
+  const stateRaw = (dj.state || '').trim();
+  let city = (dj.city || '').trim();
+  // Same county/parish guard as lookupZipCoords — a county name geocodes
+  // to the wrong place; drop it so the origin falls back to state + ZIP.
+  if (/\b(county|parish)\b/i.test(city)) city = '';
+  const origin = [city, stateRaw, zip].filter(Boolean).join(', ');
+  if (!origin) return null;
+  if (!Number.isFinite(venueLat) || !Number.isFinite(venueLon)) return null;
+  try {
+    const res = await fetch('/api/distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin, destLat: venueLat, destLon: venueLon }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.miles === 'number' ? data.miles : null;
+  } catch {
+    return null;
+  }
+}

@@ -16,6 +16,7 @@ import {
   hasFiniteTravelLimit,
   cleanAddress,
   lookupZipCoords,
+  drivingMiles,
 } from './helpers';
 import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
 import type { BookingRow } from './page';
@@ -47,8 +48,10 @@ export default function MobileBookingCard(props: Props) {
 
   // ── Distance + outside-range warning ─────────────────────────────
   // venue_lat/lon are captured at submit time from the booker's address
-  // pick. The DJ's home base is geocoded from city + state + zip — a
-  // free-text query, since a bare ZIP geocodes imprecisely.
+  // pick. Distance is the DRIVING distance (road network) from the DJ's
+  // home base — the meaningful measure for a travel range. If the
+  // driving lookup fails, fall back to straight-line haversine so the
+  // card still shows something.
   const [milesDisplay, setMilesDisplay] = useState<string | null>(null);
   const [milesNum, setMilesNum] = useState<number | null>(null);
 
@@ -57,6 +60,19 @@ export default function MobileBookingCard(props: Props) {
     async function compute() {
       if (b.venue_lat == null || b.venue_lon == null) return;
       if (!djZip && !djCity) return;
+      // Primary: Google driving distance via the /api/distance route.
+      const driving = await drivingMiles(
+        { zip: djZip, city: djCity, state: djState },
+        b.venue_lat!,
+        b.venue_lon!,
+      );
+      if (cancelled) return;
+      if (driving != null) {
+        setMilesNum(driving);
+        setMilesDisplay(driving.toFixed(1));
+        return;
+      }
+      // Fallback: straight-line distance if the driving lookup failed.
       const djCoords = await lookupZipCoords({ zip: djZip, city: djCity, state: djState });
       if (cancelled || !djCoords) return;
       const miles = haversineMiles(djCoords.lat, djCoords.lon, b.venue_lat!, b.venue_lon!);
@@ -209,9 +225,9 @@ export default function MobileBookingCard(props: Props) {
                 <span style={{ color: distColor }}>{milesDisplay} mi to venue</span>
               </div>
             )}
-            {showRangeWarning && limitMiles != null && (
+            {showRangeWarning && limitMiles != null && milesNum != null && (
               <div className={styles.rangeWarn}>
-                ⚠ Outside your {limitMiles} mi travel range
+                ⚠ {(milesNum - limitMiles).toFixed(1)} mi beyond your {limitMiles} mi travel range
               </div>
             )}
           </div>
