@@ -235,6 +235,25 @@ export default function MobileBookingCard(props: Props) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
         <span className={`${styles.statusBadge} ${statusBadgeClass}`}>{statusLabel}</span>
       </div>
+      {/* Offer-sent confirmation — shown on the DJ's card once they've
+          sent their offer on a mobile quote booking (status='counter').
+          Reassures the DJ the booker now has the offer and it's their move. */}
+      {isIncoming && isQuote && status === 'counter' && (
+        <div
+          style={{
+            marginBottom: '0.7rem',
+            padding: '.55rem .75rem',
+            background: 'rgba(0, 245, 196, 0.08)',
+            border: '1px solid rgba(0, 245, 196, 0.3)',
+            borderRadius: 5,
+            fontSize: '.74rem',
+            lineHeight: 1.4,
+            color: 'rgba(255,255,255,.85)',
+          }}
+        >
+          ✓ Your offer has been sent to {b.requester_name || 'the booker'}. Awaiting their response.
+        </div>
+      )}
       {hasPrice ? (
         <div className={styles.priceRow}>
           <div className={styles.priceCol}>
