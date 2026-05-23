@@ -535,10 +535,10 @@ function BookingDetails({
           <div className={styles.detailLongValue}>{booking.notes}</div>
         </div>
       )}
-      {/* Shared notes feed — both DJ and host can read + post. Currently
-          scoped to club/bar bookings; mobile (private) bookings don't get
-          this feed. */}
-      {djType === 'club' && (
+      {/* Shared notes feed — both DJ and host can read + post. Shown for
+          club/bar AND mobile (private) bookings — any real two-party
+          booking. Manual events with no counterparty are excluded. */}
+      {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap}>
           <NotesFeed bookingId={booking.id} currentUserId={userId} />
         </div>
