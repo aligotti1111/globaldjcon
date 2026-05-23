@@ -30,6 +30,7 @@ type EmailType =
   | 'contact_us'
   | 'booking_request'
   | 'booking_request_confirmation'
+  | 'booking_cancelled'
   | 'booking_status'
   | 'mob_booking_status'
   | 'booking_counter'
@@ -776,7 +777,136 @@ export async function POST(req: Request) {
       `),
     };
 
-  // ── 6. BOOKING STATUS (DJ approved/denied a CLUB booking) ─────────
+  // ── BOOKING CANCELLED (booker cancelled a pending request) ────────
+  // Fired when a booker cancels their own booking request before the DJ
+  // has responded. Emails BOTH parties — the DJ (so they know the date
+  // is freed up) and the booker (a confirmation copy). The route looks
+  // up the booking + both parties server-side from just the bookingId.
+  //
+  // Required fields: bookingId, cancelledByName.
+  } else if (type === 'booking_cancelled') {
+    const bookingId = body.bookingId as string | undefined;
+    const cancelledByName = (body.cancelledByName as string | undefined) || 'The booker';
+    if (!bookingId) {
+      return NextResponse.json(
+        { error: 'booking_cancelled requires bookingId' },
+        { status: 400 },
+      );
+    }
+
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data: booking } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, booking_type, event_type, package_title, set_type, venue_type')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        id: string;
+        dj_id: string | null;
+        requester_id: string | null;
+        event_date: string | null;
+        start_time: string | null;
+        end_time: string | null;
+        venue_name: string | null;
+        venue_address: string | null;
+        booking_type: string | null;
+        event_type: string | null;
+        package_title: string | null;
+        set_type: string | null;
+        venue_type: string | null;
+      }>();
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    // Resolve both parties' emails + names.
+    const djId = booking.dj_id;
+    const requesterId = booking.requester_id;
+    const djEmail = djId ? await resolveUserEmail(djId) : null;
+    const requesterEmail = requesterId ? await resolveUserEmail(requesterId) : null;
+    let djName = 'the DJ';
+    let requesterName = 'the booker';
+    if (djId) {
+      const { data: p } = await admin
+        .from('users').select('name').eq('id', djId)
+        .maybeSingle<{ name: string | null }>();
+      if (p?.name) djName = p.name;
+    }
+    if (requesterId) {
+      const { data: p } = await admin
+        .from('users').select('name').eq('id', requesterId)
+        .maybeSingle<{ name: string | null }>();
+      if (p?.name) requesterName = p.name;
+    }
+
+    // Shared booking-info card — club vs mobile picks the right helper,
+    // same as the request emails so the cancelled booking is recognisable.
+    const isMobile = booking.booking_type !== 'club';
+    const infoCard = isMobile
+      ? mobileBookingRequestBox({
+          eventTypeText: eventTypeLabel(booking.event_type),
+          date: booking.event_date,
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+          venueName: booking.venue_name || undefined,
+          venueAddress: booking.venue_address || undefined,
+          packageTitle: booking.package_title || undefined,
+        })
+      : bookingInfoBox({
+          setTypeText: setTypeLabel(booking.set_type),
+          date: booking.event_date,
+          timeRange: fmtTimeRange(booking.start_time, booking.end_time),
+          venueTypeText: venueTypeLabel(booking.venue_type),
+          venueName: booking.venue_name || undefined,
+          venueAddress: booking.venue_address || undefined,
+        });
+
+    const dateStr = fmtDate(booking.event_date);
+    const subject = `Booking request cancelled by ${cancelledByName} – ${dateStr}`;
+
+    // Build a recipient-specific email body. "you" wording differs per side.
+    const buildHtml = (intro: string): string => emailTemplate(`
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Cancelled</h2>
+      <p style="color:#666;margin-bottom:20px;">${intro}</p>
+      ${infoCard}
+      ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Requests')}
+    `);
+
+    // Send to the DJ.
+    if (djEmail) {
+      try {
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [djEmail],
+          subject,
+          html: buildHtml(
+            `Hi ${escHtml(djName)}, <strong>${escHtml(cancelledByName)}</strong> has cancelled their booking request. The date is no longer being held — no action is needed.`,
+          ),
+        });
+      } catch (e) {
+        console.error('booking_cancelled DJ email failed:', e);
+      }
+    }
+    // Send the confirmation copy to the booker.
+    if (requesterEmail) {
+      try {
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [requesterEmail],
+          subject,
+          html: buildHtml(
+            `Hi ${escHtml(requesterName)}, your booking request with <strong>${escHtml(djName)}</strong> has been cancelled. If this was a mistake, you can send a new request anytime.`,
+          ),
+        });
+      } catch (e) {
+        console.error('booking_cancelled booker email failed:', e);
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+
   } else if (type === 'booking_status') {
     const requesterEmail = await pickEmail(
       body.requesterEmail as string | undefined,
