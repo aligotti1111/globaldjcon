@@ -88,7 +88,26 @@ export default function MobileBookingCard(props: Props) {
     : hasPrice
     ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price')
     : '';
-  const bigPriceVal = hasCounter ? b.counter_rate! : b.quoted_rate;
+  // Agreed price for an approved booking. The negotiation_log holds the
+  // full back-and-forth; its LAST entry's amount is what both sides
+  // settled on — authoritative regardless of which column stored it.
+  // When there's no log we fall back to the same precedence the approval
+  // email uses (counter_rate → quoted_rate → offer_amount) so the card
+  // and the email never disagree.
+  const agreedPrice = (() => {
+    const log = b.negotiation_log;
+    if (log && log.length > 0) {
+      const amt = log[log.length - 1].amount;
+      if (typeof amt === 'number' && !Number.isNaN(amt)) return amt;
+    }
+    return (b.counter_rate as number | null | undefined)
+      ?? (b.quoted_rate as number | null | undefined)
+      ?? (b.offer_amount as number | null | undefined)
+      ?? null;
+  })();
+  const bigPriceVal = hasCounter
+    ? b.counter_rate!
+    : (isApproved && agreedPrice != null ? agreedPrice : b.quoted_rate);
 
   // ── Date + Time + Event Info slot ───────────────────────────────
   // Wrapping div adds top margin only — gives the first SectionFrame's
