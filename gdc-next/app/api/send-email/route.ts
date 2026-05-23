@@ -97,14 +97,21 @@ function fmtTimeRange(start: string | null | undefined, end: string | null | und
 // labels gracefully.
 function eventTypeLabel(t: string | null | undefined): string {
   if (!t) return '';
+  // Mirror of MOB_EVENT_TYPE_LABELS in mobileBookingForm.ts — the mobile
+  // booking form's canonical event-type slugs (note 'weddings' is plural).
+  // Kept in sync so emails show the same label the booker picked.
   const map: Record<string, string> = {
-    wedding: 'Wedding',
-    mitzvah: 'Bar/Bat Mitzvah',
-    corporate: 'Corporate Event',
+    weddings: 'Wedding',
     birthday: 'Birthday Party',
+    corporate: 'Corporate Event',
     anniversary: 'Anniversary',
-    'house-party': 'House Party',
+    graduation: 'Graduation',
+    sweet16: 'Sweet 16 / Quinceañera',
+    mitzvah: 'Bar/Bat Mitzvah',
+    reunion: 'Reunion',
+    holiday: 'Holiday Party',
     school: 'School Event',
+    community: 'Community Event',
     other: 'Other Event',
   };
   if (map[t]) return map[t];
