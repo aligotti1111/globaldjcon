@@ -225,6 +225,93 @@ function bookingInfoBox(opts: {
   return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
 }
 
+// Mobile booking-request card. Used by booking_request (DJ-facing) and
+// booking_request_confirmation (booker-facing) so both parties see an
+// identical card. Field order is fixed:
+//   Event Type, Date, Time, Venue, Address, Package (+ details), Quoted Rate
+//
+// Weddings: the time row is labelled "Reception Start Time / Reception End
+// Time" and, when cocktail-hour music was requested, two extra rows show
+// the cocktail start time and whether it shares the reception room.
+//
+// packageDetails is trusted HTML from the DJ's profile editor (same source
+// the public booking form renders) — rendered inline under the Package row.
+function mobileBookingRequestBox(opts: {
+  eventTypeText?: string;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  venueName?: string;
+  venueAddress?: string;
+  packageTitle?: string;
+  packageDetails?: string;
+  rateLabel?: string;
+  rateValue?: string;
+  isWedding?: boolean;
+  cocktailNeeded?: boolean | null;
+  cocktailStart?: string | null;
+  cocktailSameRoom?: boolean | null;
+}): string {
+  const rows: string[] = [];
+  const row = (label: string, value: string) =>
+    `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
+
+  if (opts.eventTypeText) rows.push(row('Event Type', escHtml(opts.eventTypeText)));
+
+  const dateStr = opts.date ? fmtDate(opts.date) : '';
+  if (dateStr) rows.push(row('Date', dateStr));
+
+  // Wedding bookings call the slot a reception. When both times are
+  // present we render two separate labelled rows; otherwise a single
+  // range row keeps non-wedding bookings unchanged.
+  const startStr = fmtTime(opts.startTime);
+  const endStr = fmtTime(opts.endTime);
+  if (opts.isWedding) {
+    if (startStr) rows.push(row('Reception Start Time', escHtml(startStr)));
+    if (endStr) rows.push(row('Reception End Time', escHtml(endStr)));
+  } else {
+    const range = fmtTimeRange(opts.startTime, opts.endTime);
+    if (range !== '—') rows.push(row('Time', escHtml(range)));
+  }
+
+  // Cocktail-hour rows — only when this is a wedding AND the booker
+  // requested music for cocktail hour.
+  if (opts.isWedding && opts.cocktailNeeded) {
+    const ckStart = fmtTime(opts.cocktailStart);
+    if (ckStart) rows.push(row('Cocktail Hour Start', escHtml(ckStart)));
+    rows.push(row(
+      'Cocktail Hour Room',
+      opts.cocktailSameRoom
+        ? 'Same room as reception'
+        : 'Separate room from reception',
+    ));
+  }
+
+  if (opts.venueName) rows.push(row('Venue', escHtml(opts.venueName)));
+  if (opts.venueAddress) {
+    const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
+    rows.push(row('Address', `<a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(opts.venueAddress)}</a>`));
+  }
+
+  if (opts.packageTitle) {
+    rows.push(row('Package', escHtml(opts.packageTitle)));
+    // Package details are trusted HTML authored by the DJ. Render inline,
+    // indented under the Package row.
+    if (opts.packageDetails && opts.packageDetails.trim()) {
+      rows.push(`<div style="margin:0 0 8px 0;padding:8px 12px;background:#ffffff;border:1px solid #e6e6e6;border-radius:6px;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`);
+    }
+  }
+
+  if (opts.rateLabel && opts.rateValue) {
+    rows.push(row(opts.rateLabel, escHtml(opts.rateValue)));
+  }
+
+  if (rows.length > 0) {
+    rows[rows.length - 1] = rows[rows.length - 1].replace('margin:0 0 8px', 'margin:0');
+  }
+  return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
+}
+
 // ── POST handler ───────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -403,10 +490,20 @@ export async function POST(req: Request) {
     const endTime = body.endTime as string | undefined;
     const eventType = body.eventType as string | undefined;
     const packageTitle = body.packageTitle as string | undefined;
+    // Mobile-only: HTML package details + wedding cocktail-hour context.
+    const packageDetails = body.packageDetails as string | undefined;
+    const isWedding = body.isWedding === true;
+    const cocktailNeeded = body.cocktailNeeded === true;
+    const cocktailStart = body.cocktailStart as string | undefined;
+    const cocktailSameRoom = body.cocktailSameRoom === true;
     // Club-specific fields (kept for backward compat with that flow).
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
     const equipment = body.equipment as string | undefined;
+    // Mobile vs club: the club booking form always sends a setType; the
+    // mobile form never does. Mobile bookings render via the shared
+    // mobileBookingRequestBox; club keeps its existing inline card.
+    const isMobileBooking = !setType;
     // Optional rate fields. A host request carries a price in one of two
     // ways depending on the DJ's rate type:
     //   • offers mode  → offerAmount  (the booker's own offer)
@@ -453,15 +550,56 @@ export async function POST(req: Request) {
     const lastRow = (label: string, value: string) =>
       `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
 
-    emailPayload = {
-      from: FROM,
-      replyTo: REPLY_TO,
-      to: [djEmail],
-      subject: `New Booking Request from ${requesterName || 'a booker'} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+    // DJ-facing rate box. Mobile and club share this — for mobile it
+    // renders the "respond with your quote" prompt when no rate is set.
+    const djRateBox = rateValueNum != null && !isNaN(rateValueNum)
+      ? `<div style="background:#eafaf4;border:1px solid #b6e8d6;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+           <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))} ${escHtml(offerCurrency)}${
+             totalHours != null && String(totalHours).trim() !== '' && !hasOffer
+               ? ` <span style="color:#666;">(${escHtml(String(totalHours))} hr total)</span>`
+               : ''
+           }</p>${
+             hourlyRateNum != null && !isNaN(hourlyRateNum) && totalHours != null && String(totalHours).trim() !== ''
+               ? `<p style="margin:6px 0 0;color:#666;font-size:13px;">${currencySymbol(offerCurrency)}${escHtml(String(hourlyRateNum.toLocaleString()))}/hr × ${escHtml(String(totalHours))} hr</p>`
+               : ''
+           }
+         </div>`
+      : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+           <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
+         </div>`;
+
+    // Mobile bookings: card built by the shared helper with the fixed
+    // field order, package details, and wedding/cocktail rows. The Quoted
+    // Rate row is folded into the card; the prompt box only shows when
+    // there's no rate. Club bookings keep their original inline card.
+    const mobileCard = mobileBookingRequestBox({
+      eventTypeText: eventTypeLabel(eventType),
+      date: eventDate,
+      startTime,
+      endTime,
+      venueName,
+      venueAddress,
+      packageTitle,
+      packageDetails,
+      rateLabel: rateValueNum != null && !isNaN(rateValueNum) ? 'Quoted Rate' : undefined,
+      rateValue: rateValueNum != null && !isNaN(rateValueNum)
+        ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()} ${offerCurrency}`
+        : undefined,
+      isWedding,
+      cocktailNeeded,
+      cocktailStart,
+      cocktailSameRoom,
+    });
+
+    const djBody = isMobileBooking
+      ? `${mobileCard}${
+          rateValueNum != null && !isNaN(rateValueNum)
+            ? ''
+            : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+                 <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
+               </div>`
+        }`
+      : `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           ${row('Date', dateStr)}
           ${timeStr !== '—' ? row('Time', escHtml(timeStr)) : ''}
           ${packageTitle ? row('Package', escHtml(packageTitle)) : ''}
@@ -472,23 +610,17 @@ export async function POST(req: Request) {
           ${setTypeText ? row('Set Type', escHtml(setTypeText)) : ''}
           ${equipmentLabel ? lastRow('Equipment', escHtml(equipmentLabel)) : ''}
         </div>
-        ${
-          rateValueNum != null && !isNaN(rateValueNum)
-            ? `<div style="background:#eafaf4;border:1px solid #b6e8d6;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-                 <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))} ${escHtml(offerCurrency)}${
-                   totalHours != null && String(totalHours).trim() !== '' && !hasOffer
-                     ? ` <span style="color:#666;">(${escHtml(String(totalHours))} hr total)</span>`
-                     : ''
-                 }</p>${
-                   hourlyRateNum != null && !isNaN(hourlyRateNum) && totalHours != null && String(totalHours).trim() !== ''
-                     ? `<p style="margin:6px 0 0;color:#666;font-size:13px;">${currencySymbol(offerCurrency)}${escHtml(String(hourlyRateNum.toLocaleString()))}/hr × ${escHtml(String(totalHours))} hr</p>`
-                     : ''
-                 }
-               </div>`
-            : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-                 <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
-               </div>`
-        }
+        ${djRateBox}`;
+
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [djEmail],
+      subject: `New Booking Request from ${requesterName || 'a booker'} – ${dateStr}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
+        ${djBody}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Request')}
       `),
     };
@@ -532,9 +664,17 @@ export async function POST(req: Request) {
     const endTime = body.endTime as string | undefined;
     const eventType = body.eventType as string | undefined;
     const packageTitle = body.packageTitle as string | undefined;
+    // Mobile-only: HTML package details + wedding cocktail-hour context.
+    const packageDetails = body.packageDetails as string | undefined;
+    const isWedding = body.isWedding === true;
+    const cocktailNeeded = body.cocktailNeeded === true;
+    const cocktailStart = body.cocktailStart as string | undefined;
+    const cocktailSameRoom = body.cocktailSameRoom === true;
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
     const equipment = body.equipment as string | undefined;
+    // Mobile vs club — same discriminator the DJ-side email uses.
+    const isMobileBooking = !setType;
     // Rate fields — mirror the DJ-side request email so the booker keeps
     // a record of the price they requested at.
     const offerAmount = body.offerAmount as number | string | undefined;
@@ -556,15 +696,28 @@ export async function POST(req: Request) {
       venue_provides: 'Venue provides all',
     } as Record<string, string>)[equipment || ''] || '';
     const dateStr = fmtDate(eventDate);
-    emailPayload = {
-      from: FROM,
-      replyTo: REPLY_TO,
-      to: [requesterEmail],
-      subject: `Booking request sent to ${djName || 'your DJ'} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
-        ${bookingInfoBox({
+    // Mobile bookings render the identical card the DJ receives, via the
+    // shared helper. Club bookings keep the existing bookingInfoBox layout.
+    const confCard = isMobileBooking
+      ? mobileBookingRequestBox({
+          eventTypeText: eventTypeLabel(eventType),
+          date: eventDate,
+          startTime,
+          endTime,
+          venueName,
+          venueAddress,
+          packageTitle,
+          packageDetails,
+          rateLabel: confRateNum != null && !isNaN(confRateNum) ? 'Quoted Rate' : undefined,
+          rateValue: confRateNum != null && !isNaN(confRateNum)
+            ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}`
+            : undefined,
+          isWedding,
+          cocktailNeeded,
+          cocktailStart,
+          cocktailSameRoom,
+        })
+      : bookingInfoBox({
           eventTypeText: eventTypeLabel(eventType),
           setTypeText: setTypeLabel(setType),
           date: eventDate,
@@ -587,7 +740,24 @@ export async function POST(req: Request) {
             && confTotalHours != null && String(confTotalHours).trim() !== ''
             ? `${currencySymbol(confCurrency)}${confHourlyNum.toLocaleString()}/hr × ${confTotalHours} hr`
             : undefined,
-        })}
+        });
+    // Mobile quote-style requests: tell the booker the DJ will reply with
+    // an offer, matching the prompt the DJ sees on their side.
+    const confQuoteNote = isMobileBooking && (confRateNum == null || isNaN(confRateNum))
+      ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+           <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate — the DJ will <strong>respond with an offer</strong>.</p>
+         </div>`
+      : '';
+    emailPayload = {
+      from: FROM,
+      replyTo: REPLY_TO,
+      to: [requesterEmail],
+      subject: `Booking request sent to ${djName || 'your DJ'} – ${dateStr}`,
+      html: emailTemplate(`
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
+        ${confCard}
+        ${confQuoteNote}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Your Request')}
       `),
     };
