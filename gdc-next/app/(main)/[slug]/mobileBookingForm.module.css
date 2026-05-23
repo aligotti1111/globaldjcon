@@ -550,17 +550,23 @@
 .addressRow {
   display: flex;
   gap: .5rem;
-  align-items: flex-start;
+  align-items: stretch;
 }
 .countrySelect {
   width: auto;
   flex: 0 0 auto;
   padding-right: 1.6rem;
+  /* Match the address input's box exactly so the two fields line up. */
+  height: auto;
+  line-height: 1.2;
 }
 .addressInputWrap {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
+}
+.addressInputWrap .input {
+  height: 100%;
 }
 
 .addrSuggestions {
