@@ -282,8 +282,19 @@ export async function searchAddresses(
         if (a.road) {
           const stateRaw = a.state || '';
           const stateAbbr = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
-          // City: prefer the proper city/town, NOT suburb/neighbourhood.
-          const city = a.city || a.town || a.municipality || a.village || '';
+          // City: prefer the most specific municipality-level name. For
+          // NYC-style addresses Nominatim returns city="New York" with the
+          // borough (e.g. "Staten Island") under city_district / borough —
+          // we want the borough shown. We do NOT use `suburb`, which holds
+          // sub-city neighborhoods (e.g. "Tottenville") we want excluded.
+          const city =
+            a.city_district ||
+            a.borough ||
+            a.city ||
+            a.town ||
+            a.municipality ||
+            a.village ||
+            '';
           const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
           const tail = [stateAbbr, a.postcode].filter(Boolean).join(' ').trim();
           const built = [street, city, tail].filter(Boolean).join(', ').trim();
