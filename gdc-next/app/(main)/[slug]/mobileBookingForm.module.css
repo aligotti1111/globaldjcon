@@ -124,6 +124,9 @@
   outline: none;
   transition: border-color .2s;
   box-sizing: border-box;
+  /* Shared height so text inputs and native <select> dropdowns line up —
+     native selects render shorter than inputs without an explicit height. */
+  min-height: 2.6rem;
 }
 .input:focus,
 .select:focus,
