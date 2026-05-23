@@ -117,28 +117,45 @@ export function cleanAddress(addr: string | null): string {
   return addr.replace(/,\s*[^,]+ County/i, '');
 }
 
-// One-shot Nominatim postal-code lookup → {lat, lon} | null. Used to find
-// the DJ's home base if we can't derive coords from a zip-only column.
-// Cached at module level so we don't hammer Nominatim on every render.
+// One-shot Nominatim lookup for the DJ's home base → {lat, lon} | null.
+//
+// IMPORTANT: a bare `postalcode=` query is unreliable — Nominatim does
+// not resolve postal codes to a single precise point and can return a
+// location far from the real one (a ZIP like "10307" was resolving
+// ~1290 miles off). Instead we run a free-text `q=` search built from
+// the DJ's city + state + ZIP, which pins the location accurately.
+//
+// Pass whatever location parts are available; ZIP alone still works as a
+// fallback but is the least precise. countryCode defaults to 'us'.
+// Cached at module level (keyed on the full query) so we don't hammer
+// Nominatim on every render.
 const zipCoordsCache = new Map<string, { lat: number; lon: number } | null>();
 export async function lookupZipCoords(
-  zip: string
+  location: { zip?: string | null; city?: string | null; state?: string | null },
+  countryCode: string = 'us',
 ): Promise<{ lat: number; lon: number } | null> {
-  if (!zip) return null;
-  if (zipCoordsCache.has(zip)) return zipCoordsCache.get(zip)!;
+  const zip = (location.zip || '').trim();
+  const city = (location.city || '').trim();
+  const state = (location.state || '').trim();
+  const queryParts = [city, state, zip].filter(Boolean);
+  if (queryParts.length === 0) return null;
+  const q = queryParts.join(', ');
+  const cc = (countryCode || 'us').trim().toLowerCase();
+  const cacheKey = `${cc}|${q}`;
+  if (zipCoordsCache.has(cacheKey)) return zipCoordsCache.get(cacheKey)!;
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&limit=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${encodeURIComponent(cc)}&limit=1`
     );
     const data = await res.json();
     if (data && data[0]) {
       const result = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      zipCoordsCache.set(zip, result);
+      zipCoordsCache.set(cacheKey, result);
       return result;
     }
   } catch {
     // network/parse fail
   }
-  zipCoordsCache.set(zip, null);
+  zipCoordsCache.set(cacheKey, null);
   return null;
 }
