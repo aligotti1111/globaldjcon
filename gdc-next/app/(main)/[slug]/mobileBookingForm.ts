@@ -188,13 +188,21 @@ export function haversineMiles(
 
 // One-shot Nominatim postal-code lookup → {lat, lon} | null. Used to find
 // the DJ's home base for the distance check.
+//
+// `countrycodes` is REQUIRED in practice: a bare postalcode query is not
+// globally unique (e.g. "10307" exists in the US, Germany, and elsewhere),
+// and Nominatim's first result can land in the wrong country — producing
+// wildly wrong distances. Defaults to 'us'; pass the DJ's country code
+// when available.
 export async function lookupZipCoords(
-  zip: string
+  zip: string,
+  countryCode: string = 'us',
 ): Promise<{ lat: number; lon: number } | null> {
   if (!zip) return null;
   try {
+    const cc = (countryCode || 'us').trim().toLowerCase();
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&limit=1`
+      `https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&countrycodes=${encodeURIComponent(cc)}&limit=1`
     );
     const data = await res.json();
     if (data && data[0]) {
@@ -233,80 +241,12 @@ export async function searchAddresses(
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
-
-    // US state name → USPS abbreviation. Used to shorten the state segment
-    // of an address line. Non-US states are left as-is.
-    const US_STATE_ABBR: Record<string, string> = {
-      alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR',
-      california: 'CA', colorado: 'CO', connecticut: 'CT', delaware: 'DE',
-      'district of columbia': 'DC', florida: 'FL', georgia: 'GA', hawaii: 'HI',
-      idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS',
-      kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
-      massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS',
-      missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
-      'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM',
-      'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
-      ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA',
-      'rhode island': 'RI', 'south carolina': 'SC', 'south dakota': 'SD',
-      tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
-      virginia: 'VA', washington: 'WA', 'west virginia': 'WV',
-      wisconsin: 'WI', wyoming: 'WY',
-    };
-
-    return results.map((r: {
-      display_name?: string;
-      lat?: string;
-      lon?: string;
-      address?: Record<string, string>;
-    }) => {
-      const a = r.address || {};
-
-      // Split the comma-ordered display_name. Nominatim orders it
-      // most-specific → least-specific, e.g.:
-      //   "536, Craig Avenue, Tottenville, Staten Island, Richmond County,
-      //    New York, 10307, United States"
-      const segs = (r.display_name || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      // Structured fields give us the canonical state / postcode / country
-      // so we can locate them in the segment list reliably.
-      const stateRaw = a.state || '';
-      const postcode = a.postcode || '';
-      const country = a.country || '';
-      const stateAbbr = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
-
-      let display = '';
-      // Find the state segment; the segment immediately before it (skipping
-      // any county segment) is the city/borough. Everything before the city
-      // back to the road is dropped — that's the neighborhood clutter.
-      const stateIdx = stateRaw
-        ? segs.findIndex((s) => s.toLowerCase() === stateRaw.toLowerCase())
-        : -1;
-      if (stateIdx > 0) {
-        // Walk left from the state past any county segment to the city.
-        let cityIdx = stateIdx - 1;
-        while (cityIdx > 0 && /county/i.test(segs[cityIdx])) cityIdx--;
-        const city = segs[cityIdx] || '';
-        // Street = house number + road, taken from structured fields when
-        // present, else the first one or two segments before the city.
-        const street = [a.house_number, a.road].filter(Boolean).join(' ').trim()
-          || segs.slice(0, Math.max(1, cityIdx - 1)).join(' ').trim();
-        const tail = [stateAbbr, postcode].filter(Boolean).join(' ').trim();
-        display = [street, city, tail].filter(Boolean).join(', ').trim();
-      }
-
-      // Fallback: drop county + country segments, abbreviate any US state.
-      if (!display) {
-        const seg = segs
-          .filter((s) => !/county/i.test(s))
-          .filter((s) => !country || s.toLowerCase() !== country.toLowerCase());
-        display = seg.map((s) => US_STATE_ABBR[s.toLowerCase()] || s).join(', ');
-      }
-
+    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
+      const parts = (r.display_name || '').split(',');
+      // Strip county-level admin divisions per Anthony's signup preference
+      const clean = parts.filter((p) => !/county/i.test(p)).join(',').trim();
       return {
-        display,
+        display: clean,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
