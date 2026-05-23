@@ -411,13 +411,31 @@ export default function BookingRequestsClient({
   async function acceptCounter(bookingId: string) {
     const supabase = createClient();
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
-        .eq('id', bookingId)
-        .eq('requester_id', currentUser.id);
-      if (error) throw error;
       const b = outgoing.find((x) => x.id === bookingId);
+      // Mobile quote-mode offers: the booker approving means the date
+      // must be marked on the DJ's calendar — a write the booker can't
+      // do under RLS. Route it through /api/booking-approve, which sets
+      // status='approved' AND updates the DJ's calendar server-side.
+      // Club counters and offers-mode counters keep the direct update.
+      const isMobileQuote = !!b && b.booking_type !== 'club' && !!b.is_quote;
+      if (isMobileQuote) {
+        const res = await fetch('/api/booking-approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'Approval failed');
+        }
+      } else {
+        const { error } = await supabase
+          .from('bookings')
+          .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
+          .eq('id', bookingId)
+          .eq('requester_id', currentUser.id);
+        if (error) throw error;
+      }
       setOutgoing((prev) =>
         prev.map((x) => (x.id === bookingId ? { ...x, status: 'approved' } : x))
       );

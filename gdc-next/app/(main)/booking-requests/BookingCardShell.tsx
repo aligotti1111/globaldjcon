@@ -59,7 +59,7 @@ export default function BookingCardShell({
   eventLabel,
   detailsSlot,
   pricingSlot,
-  onApprove, onDeny, onCancel, onCancelIncoming: _onCancelIncoming, onBlock, onUnblock,
+  onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
@@ -118,15 +118,25 @@ export default function BookingCardShell({
   const showIncomingActions = isIncoming && status === 'pending';
   const hasActivePrice = b.quoted_rate != null || b.offer_amount != null || b.counter_rate != null;
   const showOutgoingCancel = !isIncoming && status === 'pending';
-  const showOutgoingCounterResponse = !isIncoming && status === 'counter';
+  const showOutgoingCounterResponse = !isIncoming && status === 'counter'
+    && !(!isClub && isQuote);
   // Counter button gate — used in the DJ action row below.
   const showIncomingCounter = hasActivePrice;
-  // "Send Offer" — DJ responds with a price on a quote-mode booking that
+  // "Add Offer" — DJ responds with a price on a quote-mode booking that
   // has no rate yet. This is the mobile-quote path: without it the DJ has
   // no Approve (Approve is hidden until a rate exists) and no Counter
   // (nothing to counter), leaving only Decline. Opens the QuoteModal.
   const showSendOffer = isIncoming && status === 'pending'
     && isQuote && !hasRateSent;
+
+  // Mobile quote-mode booking where the DJ has sent their offer — status
+  // is 'counter' (DJ made a priced response, awaiting the booker).
+  //   - DJ side: only "Cancel Offer" (pull the offer back before the
+  //     booker acts). No approve/decline/counter — it's the booker's move.
+  //   - Booker side: "Approve" + "Decline" only (no counter-back).
+  const isMobileQuoteOffer = !isClub && isQuote && status === 'counter';
+  const showMobileQuoteDjCancel = isIncoming && isMobileQuoteOffer;
+  const showMobileQuoteBookerActions = !isIncoming && isMobileQuoteOffer;
 
   return (
     <div className={`${styles.card} ${styles[`card_${status}`]}`}>
@@ -353,6 +363,45 @@ export default function BookingCardShell({
                 className={`${styles.actBtn} ${styles.actBtnDanger}`}
               >
                 Decline
+              </button>
+            </>
+          )}
+          {/* Mobile quote offer sent — DJ side. The DJ has sent their
+              offer; their only action is to pull it back before the
+              booker responds. */}
+          {showMobileQuoteDjCancel && (
+            <button
+              type="button"
+              onClick={() => onCancelIncoming(b.id)}
+              className={`${styles.actBtn} ${styles.actBtnDanger}`}
+            >
+              Cancel Offer
+            </button>
+          )}
+          {/* Mobile quote offer sent — booker side. The DJ's offer is in;
+              the booker simply approves or declines it (no counter-back). */}
+          {showMobileQuoteBookerActions && (
+            <>
+              <button
+                type="button"
+                onClick={() => onAcceptCounter(b.id)}
+                className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {' '}Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeclineCounter(b.id)}
+                className={`${styles.actBtn} ${styles.actBtnDanger}`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                {' '}Decline
               </button>
             </>
           )}

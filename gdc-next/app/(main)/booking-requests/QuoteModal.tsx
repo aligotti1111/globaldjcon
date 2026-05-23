@@ -119,6 +119,12 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         ? overtimeNum
         : null;
 
+      // Status after sending. For a mobile quote-mode booking, sending the
+      // offer hands the decision to the booker → 'counter' (DJ has made a
+      // priced response, awaiting booker approve/decline). Club bookings
+      // keep their existing draft→send flow and stay 'pending' here.
+      const nextStatus = (!isClubBooking && !!booking.is_quote) ? 'counter' : 'pending';
+
       const updatePayload = {
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
@@ -128,7 +134,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
-        status: 'pending',
+        status: nextStatus,
         updated_at: new Date().toISOString(),
       };
 
@@ -147,7 +153,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
-        status: 'pending',
+        status: nextStatus,
         updated_at: new Date().toISOString(),
       });
       onClose();
@@ -547,7 +553,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               ? 'Saving…'
               : isClubBooking
                 ? (isEditMode ? 'Update Draft' : 'Save Draft')
-                : (isEditMode ? 'Update Offer' : 'Add Offer')}
+                : (isEditMode ? 'Update Offer' : 'Send Offer')}
           </button>
         </div>
       </div>
