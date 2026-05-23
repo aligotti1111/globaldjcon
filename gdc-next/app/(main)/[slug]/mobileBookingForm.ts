@@ -253,25 +253,48 @@ export async function searchAddresses(
       wisconsin: 'WI', wyoming: 'WY',
     };
 
-    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
-      // Parse the comma-ordered display_name string. Nominatim orders it
-      // roughly: number, road, locality, county, state, postcode, country.
-      // We drop county + country, abbreviate any US state, and rejoin.
-      const segments = (r.display_name || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        // Drop county-level admin parts.
-        .filter((s) => !/county/i.test(s));
-      // Drop the trailing country segment (last part) when there's more
-      // than one — the picker already shows the country.
-      if (segments.length > 1) segments.pop();
-      // Abbreviate any segment that matches a US state name.
-      const cleaned = segments.map((s) => US_STATE_ABBR[s.toLowerCase()] || s);
-      const display = cleaned.join(', ');
+    return results.map((r: {
+      display_name?: string;
+      lat?: string;
+      lon?: string;
+      address?: Record<string, string>;
+    }) => {
+      // ── Fallback: parse the comma-ordered display_name string. ───────
+      // Drops county + country, abbreviates US states. Used only when the
+      // structured address object isn't usable.
+      const fallbackDisplay = (() => {
+        const seg = (r.display_name || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((s) => !/county/i.test(s));
+        if (seg.length > 1) seg.pop();
+        return seg.map((s) => US_STATE_ABBR[s.toLowerCase()] || s).join(', ');
+      })();
+
+      // ── Preferred: build from Nominatim's structured address object. ─
+      // This lets us pick the actual city (a.city) and skip neighborhood
+      // / suburb segments (e.g. "Tottenville") that clutter the line.
+      // Result shape: "<house no> <road>, <city>, <ST> <zip>".
+      let display = fallbackDisplay;
+      try {
+        const a = r.address || {};
+        if (a.road) {
+          const stateRaw = a.state || '';
+          const stateAbbr = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
+          // City: prefer the proper city/town, NOT suburb/neighbourhood.
+          const city = a.city || a.town || a.municipality || a.village || '';
+          const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
+          const tail = [stateAbbr, a.postcode].filter(Boolean).join(' ').trim();
+          const built = [street, city, tail].filter(Boolean).join(', ').trim();
+          if (built) display = built;
+        }
+      } catch {
+        // Keep the string-parse fallback.
+      }
 
       return {
-        display,
+        display: display || fallbackDisplay,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
