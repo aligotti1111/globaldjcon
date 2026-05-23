@@ -81,10 +81,10 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   const isEditMode = booking.quoted_rate != null;
 
   const eventHours = eventHoursFromTimes(booking.start_time, booking.end_time);
-  const hoursLabel = eventHours ? `${eventHours} Hour Event Price` : 'Event Price';
-  // For club, use simpler "Set Rate" wording rather than tying to hours
-  // (a flat per-set price reads more naturally for a club gig).
-  const priceLabel = isClubBooking ? 'Set Rate' : hoursLabel;
+  // Mobile: plain "Event Price" label — the hour count is shown as a soft
+  // sub-hint next to it rather than crammed into the uppercase label,
+  // which read awkwardly (e.g. "6 HOUR EVENT PRICE").
+  const priceLabel = isClubBooking ? 'Set Rate' : 'Event Price';
 
   // Live deposit preview — recomputes as user types
   const priceNum = parseFloat(price);
@@ -177,8 +177,8 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
           </button>
         </div>
 
-        {/* Mobile DJ context — package title + details, date, and event
-            times so the DJ has full event context while pricing. */}
+        {/* Mobile DJ context — date + event times first, then the package
+            title + details so the DJ has full event context while pricing. */}
         {!isClubBooking && (booking.package_title || booking.package_details
           || booking.event_date || booking.start_time || booking.end_time) && (
           <div
@@ -190,42 +190,6 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               background: 'rgba(255,255,255,.02)',
             }}
           >
-            {/* Package title + details */}
-            {booking.package_title && (
-              <div style={{ marginBottom: '.5rem' }}>
-                <div
-                  style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: '.5rem',
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    marginBottom: '.15rem',
-                  }}
-                >
-                  Package
-                </div>
-                <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: '.85rem' }}>
-                  {booking.package_title}
-                </div>
-                {booking.package_details && booking.package_details.trim() && (
-                  <div
-                    style={{
-                      marginTop: '.35rem',
-                      fontSize: '.75rem',
-                      lineHeight: 1.5,
-                      color: 'rgba(255,255,255,.7)',
-                    }}
-                    // Trusted HTML — package details authored by the DJ in
-                    // their own profile editor (same source the booking
-                    // form renders).
-                    // eslint-disable-next-line react/no-danger
-                    dangerouslySetInnerHTML={{ __html: booking.package_details }}
-                  />
-                )}
-              </div>
-            )}
-
             {/* Date + time row */}
             {(booking.event_date || booking.start_time || booking.end_time) && (
               <div
@@ -233,8 +197,6 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: '1.25rem',
-                  paddingTop: booking.package_title ? '.4rem' : 0,
-                  borderTop: booking.package_title ? '1px solid var(--border)' : 'none',
                 }}
               >
                 {booking.event_date && (
@@ -293,6 +255,51 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
                       {formatTime12(booking.end_time)}
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Package title + details — below the date/time row. */}
+            {booking.package_title && (
+              <div
+                style={{
+                  marginTop: (booking.event_date || booking.start_time || booking.end_time)
+                    ? '.5rem' : 0,
+                  paddingTop: (booking.event_date || booking.start_time || booking.end_time)
+                    ? '.45rem' : 0,
+                  borderTop: (booking.event_date || booking.start_time || booking.end_time)
+                    ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '.5rem',
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--muted)',
+                    marginBottom: '.15rem',
+                  }}
+                >
+                  Package
+                </div>
+                <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: '.85rem' }}>
+                  {booking.package_title}
+                </div>
+                {booking.package_details && booking.package_details.trim() && (
+                  <div
+                    style={{
+                      marginTop: '.35rem',
+                      fontSize: '.75rem',
+                      lineHeight: 1.5,
+                      color: 'rgba(255,255,255,.7)',
+                    }}
+                    // Trusted HTML — package details authored by the DJ in
+                    // their own profile editor (same source the booking
+                    // form renders).
+                    // eslint-disable-next-line react/no-danger
+                    dangerouslySetInnerHTML={{ __html: booking.package_details }}
+                  />
                 )}
               </div>
             )}
@@ -404,7 +411,22 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
 
         {/* Event price */}
         <div className={styles.counterFormGroup}>
-          <label className={styles.counterFormLabel}>{priceLabel}</label>
+          <label className={styles.counterFormLabel}>
+            {priceLabel}
+            {!isClubBooking && eventHours != null && (
+              <span
+                style={{
+                  textTransform: 'none',
+                  letterSpacing: 0,
+                  color: 'var(--muted)',
+                  fontWeight: 400,
+                  marginLeft: '.4rem',
+                }}
+              >
+                · for {eventHours} hr{eventHours !== 1 ? 's' : ''}
+              </span>
+            )}
+          </label>
           <div className={styles.counterAmountRow}>
             <span className={styles.counterCurrencySym}>$</span>
             <input
