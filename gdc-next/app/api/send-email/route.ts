@@ -31,6 +31,7 @@ type EmailType =
   | 'booking_request'
   | 'booking_request_confirmation'
   | 'booking_cancelled'
+  | 'offer_sent'
   | 'booking_status'
   | 'mob_booking_status'
   | 'booking_counter'
@@ -902,6 +903,156 @@ export async function POST(req: Request) {
         });
       } catch (e) {
         console.error('booking_cancelled booker email failed:', e);
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+
+  // ── OFFER SENT (DJ sent a price on a mobile quote-mode booking) ───
+  // Fired when the DJ submits their offer via the QuoteModal. Emails
+  // BOTH parties: the booker gets the offer so they can approve/decline,
+  // and the DJ gets a copy reiterating the details they sent. The route
+  // looks up the booking + both parties server-side from the bookingId.
+  //
+  // Required fields: bookingId.
+  } else if (type === 'offer_sent') {
+    const bookingId = body.bookingId as string | undefined;
+    if (!bookingId) {
+      return NextResponse.json(
+        { error: 'offer_sent requires bookingId' },
+        { status: 400 },
+      );
+    }
+
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data: booking } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        id: string;
+        dj_id: string | null;
+        requester_id: string | null;
+        event_date: string | null;
+        start_time: string | null;
+        end_time: string | null;
+        venue_name: string | null;
+        venue_address: string | null;
+        event_type: string | null;
+        package_title: string | null;
+        package_details: string | null;
+        quoted_rate: number | null;
+        counter_rate: number | null;
+        counter_message: string | null;
+        currency: string | null;
+        cocktail_needed: boolean | null;
+        cocktail_included: boolean | null;
+        cocktail_price: number | null;
+      }>();
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    // Resolve both parties' emails + names.
+    const djId = booking.dj_id;
+    const requesterId = booking.requester_id;
+    const djEmail = djId ? await resolveUserEmail(djId) : null;
+    const requesterEmail = requesterId ? await resolveUserEmail(requesterId) : null;
+    let djName = 'the DJ';
+    let requesterName = 'the booker';
+    if (djId) {
+      const { data: p } = await admin
+        .from('users').select('name').eq('id', djId)
+        .maybeSingle<{ name: string | null }>();
+      if (p?.name) djName = p.name;
+    }
+    if (requesterId) {
+      const { data: p } = await admin
+        .from('users').select('name').eq('id', requesterId)
+        .maybeSingle<{ name: string | null }>();
+      if (p?.name) requesterName = p.name;
+    }
+
+    const currency = booking.currency || 'USD';
+    const sym = currencySymbol(currency);
+    const dateStr = fmtDate(booking.event_date);
+    const rateValue = booking.quoted_rate != null
+      ? `${sym}${Number(booking.quoted_rate).toLocaleString()} ${currency}`
+      : '—';
+    // Overtime is stored in counter_rate for mobile quote bookings.
+    const overtimeLine = booking.counter_rate != null
+      ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(booking.counter_rate).toLocaleString()} ${currency}/hr</p>`
+      : '';
+    // Cocktail-hour pricing line (wedding bookings with cocktail hour).
+    const cocktailLine = booking.cocktail_needed
+      ? (booking.cocktail_included
+          ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour:</strong> Included in price</p>`
+          : (booking.cocktail_price != null
+              ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour:</strong> ${sym}${Number(booking.cocktail_price).toLocaleString()} ${currency} add-on</p>`
+              : ''))
+      : '';
+    const messageLine = booking.counter_message
+      ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(booking.counter_message)}</p>`
+      : '';
+
+    const infoCard = mobileBookingRequestBox({
+      eventTypeText: eventTypeLabel(booking.event_type),
+      date: booking.event_date,
+      startTime: booking.start_time,
+      endTime: booking.end_time,
+      venueName: booking.venue_name || undefined,
+      venueAddress: booking.venue_address || undefined,
+      packageTitle: booking.package_title || undefined,
+      packageDetails: booking.package_details || undefined,
+      rateLabel: 'Offer',
+      rateValue,
+    });
+    // Extra detail rows appended below the card (overtime, cocktail, message).
+    const extraRows = (overtimeLine || cocktailLine || messageLine)
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${cocktailLine}${messageLine}</div>`
+      : '';
+
+    const subject = `Offer sent for your event – ${dateStr}`;
+
+    const buildHtml = (intro: string): string => emailTemplate(`
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">DJ Offer Sent</h2>
+      <p style="color:#666;margin-bottom:20px;">${intro}</p>
+      ${infoCard}
+      ${extraRows}
+      ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Requests')}
+    `);
+
+    // To the booker — they need this to decide.
+    if (requesterEmail) {
+      try {
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [requesterEmail],
+          subject: `Offer received from ${djName} – ${dateStr}`,
+          html: buildHtml(
+            `Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent you an offer for your event. Review the details below, then approve or decline from your booking requests.`,
+          ),
+        });
+      } catch (e) {
+        console.error('offer_sent booker email failed:', e);
+      }
+    }
+    // To the DJ — a copy reiterating what they sent.
+    if (djEmail) {
+      try {
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [djEmail],
+          subject,
+          html: buildHtml(
+            `Hi ${escHtml(djName)}, your offer has been sent to <strong>${escHtml(requesterName)}</strong>. Here's a copy of what you sent — you'll be notified when they respond.`,
+          ),
+        });
+      } catch (e) {
+        console.error('offer_sent DJ email failed:', e);
       }
     }
 
