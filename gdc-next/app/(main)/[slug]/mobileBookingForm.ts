@@ -259,53 +259,54 @@ export async function searchAddresses(
       lon?: string;
       address?: Record<string, string>;
     }) => {
-      // ── Fallback: parse the comma-ordered display_name string. ───────
-      // Drops county + country, abbreviates US states. Used only when the
-      // structured address object isn't usable.
-      const fallbackDisplay = (() => {
-        const seg = (r.display_name || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .filter((s) => !/county/i.test(s));
-        if (seg.length > 1) seg.pop();
-        return seg.map((s) => US_STATE_ABBR[s.toLowerCase()] || s).join(', ');
-      })();
+      const a = r.address || {};
 
-      // ── Preferred: build from Nominatim's structured address object. ─
-      // This lets us pick the actual city (a.city) and skip neighborhood
-      // / suburb segments (e.g. "Tottenville") that clutter the line.
-      // Result shape: "<house no> <road>, <city>, <ST> <zip>".
-      let display = fallbackDisplay;
-      try {
-        const a = r.address || {};
-        if (a.road) {
-          const stateRaw = a.state || '';
-          const stateAbbr = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
-          // City: prefer the most specific municipality-level name. For
-          // NYC-style addresses Nominatim returns city="New York" with the
-          // borough (e.g. "Staten Island") under city_district / borough —
-          // we want the borough shown. We do NOT use `suburb`, which holds
-          // sub-city neighborhoods (e.g. "Tottenville") we want excluded.
-          const city =
-            a.city_district ||
-            a.borough ||
-            a.city ||
-            a.town ||
-            a.municipality ||
-            a.village ||
-            '';
-          const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
-          const tail = [stateAbbr, a.postcode].filter(Boolean).join(' ').trim();
-          const built = [street, city, tail].filter(Boolean).join(', ').trim();
-          if (built) display = built;
-        }
-      } catch {
-        // Keep the string-parse fallback.
+      // Split the comma-ordered display_name. Nominatim orders it
+      // most-specific → least-specific, e.g.:
+      //   "536, Craig Avenue, Tottenville, Staten Island, Richmond County,
+      //    New York, 10307, United States"
+      const segs = (r.display_name || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // Structured fields give us the canonical state / postcode / country
+      // so we can locate them in the segment list reliably.
+      const stateRaw = a.state || '';
+      const postcode = a.postcode || '';
+      const country = a.country || '';
+      const stateAbbr = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
+
+      let display = '';
+      // Find the state segment; the segment immediately before it (skipping
+      // any county segment) is the city/borough. Everything before the city
+      // back to the road is dropped — that's the neighborhood clutter.
+      const stateIdx = stateRaw
+        ? segs.findIndex((s) => s.toLowerCase() === stateRaw.toLowerCase())
+        : -1;
+      if (stateIdx > 0) {
+        // Walk left from the state past any county segment to the city.
+        let cityIdx = stateIdx - 1;
+        while (cityIdx > 0 && /county/i.test(segs[cityIdx])) cityIdx--;
+        const city = segs[cityIdx] || '';
+        // Street = house number + road, taken from structured fields when
+        // present, else the first one or two segments before the city.
+        const street = [a.house_number, a.road].filter(Boolean).join(' ').trim()
+          || segs.slice(0, Math.max(1, cityIdx - 1)).join(' ').trim();
+        const tail = [stateAbbr, postcode].filter(Boolean).join(' ').trim();
+        display = [street, city, tail].filter(Boolean).join(', ').trim();
+      }
+
+      // Fallback: drop county + country segments, abbreviate any US state.
+      if (!display) {
+        const seg = segs
+          .filter((s) => !/county/i.test(s))
+          .filter((s) => !country || s.toLowerCase() !== country.toLowerCase());
+        display = seg.map((s) => US_STATE_ABBR[s.toLowerCase()] || s).join(', ');
       }
 
       return {
-        display: display || fallbackDisplay,
+        display,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
