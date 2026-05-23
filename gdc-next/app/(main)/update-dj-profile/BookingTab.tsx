@@ -283,12 +283,13 @@ export default function BookingTab({
     const newLimit = Math.max(1, v);
     const recomputed: MobileBookingDays = {};
     for (const [date, day] of Object.entries(bookingDays) as [string, MobileBookingDays[string]][]) {
-      // Manual blocks — leave entirely as-is:
-      //  - unavailable: the DJ explicitly closed the day
-      //  - booked + eventName: the DJ marked their own event on the day
-      //    (owner-set events always carry an eventName; a day filled by
-      //    real bookings does not).
-      if (day.unavailable || (day.booked && day.eventName)) {
+      // Leave manual blocks untouched:
+      //  - `unavailable`: the DJ explicitly closed the day.
+      //  - `booked` with NO `bookings_available` field: a day the DJ
+      //    marked as their own event. Accepted-booking days always carry
+      //    `bookings_available` (the approve flow writes it), so the
+      //    absence of that field means this is a manual owner mark.
+      if (day.unavailable || (day.booked && day.bookings_available == null)) {
         recomputed[date] = day;
         continue;
       }
