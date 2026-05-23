@@ -120,13 +120,14 @@
   padding: .6rem .85rem;
   color: var(--white);
   font-size: .9rem;
+  line-height: 1.3;
   font-family: 'DM Sans', sans-serif;
   outline: none;
   transition: border-color .2s;
   box-sizing: border-box;
-  /* Shared height so text inputs and native <select> dropdowns line up —
-     native selects render shorter than inputs without an explicit height. */
-  min-height: 2.6rem;
+  /* Shared explicit height so text inputs and native <select> dropdowns
+     line up — native selects render shorter than inputs otherwise. */
+  height: 2.7rem;
 }
 .input:focus,
 .select:focus,
@@ -138,6 +139,7 @@
 }
 .textarea {
   resize: vertical;
+  height: auto;
   min-height: 80px;
 }
 .smallNumberInput {
