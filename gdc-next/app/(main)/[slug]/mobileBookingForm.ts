@@ -224,6 +224,75 @@ export interface AddressSuggestion {
   lon: number | null;
 }
 
+// USPS two-letter abbreviations for US states / territories. Nominatim
+// returns the full state name ("New York") — we abbreviate it ("NY") so
+// suggestions read like a normal mailing address.
+const US_STATE_ABBR: Record<string, string> = {
+  'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+  'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+  'district of columbia': 'DC', 'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI',
+  'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+  'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+  'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+  'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+  'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI',
+  'south carolina': 'SC', 'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX',
+  'utah': 'UT', 'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA',
+  'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY',
+  'puerto rico': 'PR',
+};
+
+// Nominatim "address" object — only the fields we use. addressdetails=1
+// must be set on the request for this to be populated.
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  borough?: string;
+  city_district?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  hamlet?: string;
+  municipality?: string;
+  county?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+}
+
+// Build a clean "Street, City, ST ZIP" line from Nominatim's structured
+// address object. County and country are dropped; the US state is
+// abbreviated. For NYC-style results the borough/locality is preferred
+// over the legal city so e.g. "Staten Island" shows, not "New York".
+function formatStructuredAddress(addr: NominatimAddress): string | null {
+  if (!addr) return null;
+  const street = [addr.house_number, addr.road].filter(Boolean).join(' ').trim();
+  // City: prefer the most specific locality. NYC's five boroughs come
+  // through as `suburb`/`borough`/`city_district` while the `city` field
+  // says "New York" / "City of New York" — for those we want the borough
+  // name (Staten Island, Brooklyn, etc.), not the legal city.
+  const legalCity = (addr.city || '').trim();
+  const isNycLegalCity = /^(city of )?new york$/i.test(legalCity);
+  const borough = (addr.borough || addr.suburb || addr.city_district || '').trim();
+  const city = (
+    (isNycLegalCity && borough)
+      ? borough
+      : (legalCity || addr.town || addr.village ||
+         addr.suburb || addr.borough || addr.city_district ||
+         addr.municipality || addr.hamlet || '')
+  ).trim();
+  const stateRaw = (addr.state || '').trim();
+  const state = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
+  const zip = (addr.postcode || '').trim();
+  const stateZip = [state, zip].filter(Boolean).join(' ').trim();
+  const segs = [street, city, stateZip].filter(Boolean);
+  return segs.length ? segs.join(', ') : null;
+}
+
 export async function searchAddresses(
   query: string,
   // Optional ISO 3166-1 alpha-2 country code (e.g. "US", "GB"). When
@@ -241,12 +310,24 @@ export async function searchAddresses(
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
-    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
-      const parts = (r.display_name || '').split(',');
-      // Strip county-level admin divisions per Anthony's signup preference
-      const clean = parts.filter((p) => !/county/i.test(p)).join(',').trim();
+    return results.map((r: { display_name?: string; lat?: string; lon?: string; address?: NominatimAddress }) => {
+      // Prefer the structured address object — abbreviates state, drops
+      // county + country, picks the right locality. Fall back to a
+      // string parse of display_name so a suggestion never goes blank.
+      let display = formatStructuredAddress(r.address || {});
+      if (!display) {
+        const parts = (r.display_name || '').split(',').map((p) => p.trim());
+        // Drop county-level segments and a trailing country segment.
+        const filtered = parts.filter((p, i) => {
+          if (/county/i.test(p)) return false;
+          if (/planning region/i.test(p)) return false;
+          if (i === parts.length - 1 && /united states|usa/i.test(p)) return false;
+          return true;
+        });
+        display = filtered.join(', ').trim();
+      }
       return {
-        display: clean,
+        display,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
