@@ -297,8 +297,19 @@ export default function MobileBookingForm({
             // selected without opening the booking. Null for is_quote
             // bookings where no package is involved.
             packageTitle: selectedPkg?.title || null,
+            // HTML-formatted package details (bullets / checklists from the
+            // DJ's profile editor). Shown under the Package row in the email
+            // so the DJ sees exactly what tier was requested.
+            packageDetails: selectedPkg?.details || null,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
+            // Wedding cocktail-hour context. isWedding drives the
+            // "Reception Start/End Time" labelling in the email. The
+            // cocktail fields are only meaningful when isWedding is true.
+            isWedding,
+            cocktailNeeded: isWedding ? !!cocktailNeeded : null,
+            cocktailStart: isWedding && cocktailNeeded ? cocktailStart : null,
+            cocktailSameRoom: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
             // rate box instead of the "respond with a quote" prompt.
@@ -327,10 +338,15 @@ export default function MobileBookingForm({
               ? (eventTypeOther.trim() || 'other')
               : eventType,
             packageTitle: selectedPkg?.title || null,
+            packageDetails: selectedPkg?.details || null,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
             startTime,
             endTime: endTime || null,
+            isWedding,
+            cocktailNeeded: isWedding ? !!cocktailNeeded : null,
+            cocktailStart: isWedding && cocktailNeeded ? cocktailStart : null,
+            cocktailSameRoom: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
             quotedRate: insertPayload.quoted_rate,
           }),
         });
