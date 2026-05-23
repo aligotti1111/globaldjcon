@@ -158,6 +158,11 @@ function EventRow({
   // Mobile (private-party) bookings don't get flyer slots — those aren't
   // public-facing promotional events.
   const canUploadFlyer = isManual || event.booking_type === 'club';
+  // Mobile / private bookings: no external-link feature (those events
+  // aren't public-facing), and they get the full booking-detail panel
+  // plus the shared notes feed, mirroring the club/bar layout.
+  const isMobile = event.booking_type === 'mobile';
+  const isWedding = event.event_type === 'weddings';
 
   const dateParts = parseDateParts(event.event_date);
   const timeRange = formatTimeRange(event.start_time, event.end_time);
@@ -340,15 +345,18 @@ function EventRow({
               {event.link_label?.trim() || 'More Info'}
             </a>
           )}
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => setShowLinkModal(true)}
-            title={event.link_url ? 'Edit link' : 'Add link'}
-            aria-label={event.link_url ? 'Edit link' : 'Add link'}
-          >
-            <PaperclipIcon />
-          </button>
+          {/* External-link button — not shown for mobile/private events. */}
+          {!isMobile && (
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => setShowLinkModal(true)}
+              title={event.link_url ? 'Edit link' : 'Add link'}
+              aria-label={event.link_url ? 'Edit link' : 'Add link'}
+            >
+              <PaperclipIcon />
+            </button>
+          )}
           {isManual && (
             <>
               <button
@@ -419,29 +427,73 @@ function EventRow({
                 <div className={styles.detailValue}>{rateText}</div>
               </div>
             )}
-            <div className={styles.detailItem}>
-              <div className={styles.detailLabel}>Link</div>
-              <div className={styles.detailValue}>
-                {event.link_url ? (
-                  <>
-                    <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                      {event.link_url}
-                    </a>
-                    {event.link_label?.trim() && (
-                      <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowLinkModal(true)}
-                    className={styles.linkLikeBtn}
-                  >
-                    + Add link
-                  </button>
-                )}
+            {/* Mobile / private booking details — package, room, guests,
+                phone, and (for weddings) cocktail-hour info. Mirrors the
+                detail set on the DJ-side booking card. */}
+            {isMobile && event.package_title?.trim() && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Package</div>
+                <div className={styles.detailValue}>{event.package_title.trim()}</div>
               </div>
-            </div>
+            )}
+            {isMobile && event.room_details?.trim() && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Room</div>
+                <div className={styles.detailValue}>{event.room_details.trim()}</div>
+              </div>
+            )}
+            {isMobile && event.guest_count != null && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Guests</div>
+                <div className={styles.detailValue}>{event.guest_count}</div>
+              </div>
+            )}
+            {isMobile && event.phone?.trim() && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Phone</div>
+                <div className={styles.detailValue}>{event.phone.trim()}</div>
+              </div>
+            )}
+            {isMobile && isWedding && event.cocktail_needed != null && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Cocktail Hour</div>
+                <div className={styles.detailValue}>
+                  {event.cocktail_needed
+                    ? `Yes${event.cocktail_start_time
+                        ? ` · starts ${formatTime12(event.cocktail_start_time)}` : ''}${
+                        event.cocktail_same_room != null
+                          ? ` · ${event.cocktail_same_room ? 'same room as reception' : 'separate room'}`
+                          : ''}`
+                    : 'No'}
+                </div>
+              </div>
+            )}
+            {/* External link — not shown for mobile/private events. */}
+            {!isMobile && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Link</div>
+                <div className={styles.detailValue}>
+                  {event.link_url ? (
+                    <>
+                      <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                        {event.link_url}
+                      </a>
+                      {event.link_label?.trim() && (
+                        <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowLinkModal(true)}
+                      className={styles.linkLikeBtn}
+                    >
+                      + Add link
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {event.flyer_url && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Flyer</div>
@@ -466,9 +518,9 @@ function EventRow({
               </div>
             )}
           </div>
-          {/* Shared notes feed for club/bar bookings — both DJ and host
-              can read + post. Mobile (private) bookings don't get this. */}
-          {event.booking_type === 'club' && (
+          {/* Shared notes feed — both DJ and host can read + post. Shown
+              for club/bar AND mobile (private) bookings. */}
+          {(event.booking_type === 'club' || event.booking_type === 'mobile') && (
             <div className={styles.notesFeedWrap}>
               <NotesFeed bookingId={event.id} currentUserId={userId} />
             </div>
