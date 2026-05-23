@@ -135,8 +135,18 @@ export async function lookupZipCoords(
   countryCode: string = 'us',
 ): Promise<{ lat: number; lon: number } | null> {
   const zip = (location.zip || '').trim();
-  const city = (location.city || '').trim();
-  const state = (location.state || '').trim();
+  const stateRaw = (location.state || '').trim();
+  let city = (location.city || '').trim();
+  // A county/parish name in the `city` field (e.g. "Richmond County")
+  // geocodes to the county centroid, not the actual town — throwing the
+  // distance off. Drop any city value that's really a county so the
+  // query falls back to state + ZIP, which resolves accurately. Note:
+  // "borough" is intentionally NOT stripped — NYC's boroughs (Staten
+  // Island, Brooklyn, etc.) are valid, specific localities.
+  if (/\b(county|parish)\b/i.test(city)) {
+    city = '';
+  }
+  const state = stateRaw;
   const queryParts = [city, state, zip].filter(Boolean);
   if (queryParts.length === 0) return null;
   const q = queryParts.join(', ');
