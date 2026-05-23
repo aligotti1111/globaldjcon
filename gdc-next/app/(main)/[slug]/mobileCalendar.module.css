@@ -326,6 +326,19 @@
   transition: all 0.15s;
 }
 
+/* Pending booking pill — shown only to the viewer who has a pending
+   request on this date. Muted amber distinguishes it from the green
+   "Book" pill so the viewer knows their request awaits a DJ response. */
+.bookBadgePending {
+  background: rgba(255, 184, 0, .14);
+  color: #ffb800;
+  border-color: rgba(255, 184, 0, .55);
+  cursor: default;
+}
+.bookBadgePending:hover {
+  background: rgba(255, 184, 0, .14);
+}
+
 /* Booked event-name display inside booked cells */
 .bookedEventName {
   font-size: clamp(.42rem, .9vw, .55rem);
@@ -487,6 +500,12 @@
   border-radius: 3px;
   pointer-events: none;
   white-space: nowrap;
+}
+/* 12-month pending pill — amber variant of .miniBookLabel. */
+.miniBookLabelPending {
+  background: rgba(255, 184, 0, .14);
+  color: #ffb800;
+  border-color: rgba(255, 184, 0, .55);
 }
 .miniOwnerControls {
   position: absolute;

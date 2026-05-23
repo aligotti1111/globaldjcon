@@ -546,6 +546,23 @@
 /* ─────────────────────────────────────────────────────────── */
 /* Address autocomplete dropdown                               */
 /* ─────────────────────────────────────────────────────────── */
+/* ── Venue address row: country dropdown + address input ──────────── */
+.addressRow {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+}
+.countrySelect {
+  width: auto;
+  flex: 0 0 auto;
+  padding-right: 1.6rem;
+}
+.addressInputWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .addrSuggestions {
   position: absolute;
   top: calc(100% + 4px);

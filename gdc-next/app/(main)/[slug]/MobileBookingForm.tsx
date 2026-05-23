@@ -44,6 +44,35 @@ import {
   type AddressSuggestion,
 } from './mobileBookingForm';
 
+// Country list for the venue-address autocomplete scope — same set the
+// homepage DJ search uses (idx-filters.js parity). Each entry pairs an
+// ISO 3166-1 alpha-2 code (passed to Nominatim's countrycodes= param)
+// with a flag emoji + display name. Dropdown shows "🇺🇸 US"; the booker
+// picks the country first so address suggestions stay scoped to it.
+const BOOKING_COUNTRIES: { code: string; flag: string; name: string }[] = [
+  { code: 'us', flag: '🇺🇸', name: 'United States' },
+  { code: 'gb', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: 'ca', flag: '🇨🇦', name: 'Canada' },
+  { code: 'au', flag: '🇦🇺', name: 'Australia' },
+  { code: 'de', flag: '🇩🇪', name: 'Germany' },
+  { code: 'fr', flag: '🇫🇷', name: 'France' },
+  { code: 'nl', flag: '🇳🇱', name: 'Netherlands' },
+  { code: 'es', flag: '🇪🇸', name: 'Spain' },
+  { code: 'it', flag: '🇮🇹', name: 'Italy' },
+  { code: 'br', flag: '🇧🇷', name: 'Brazil' },
+  { code: 'mx', flag: '🇲🇽', name: 'Mexico' },
+  { code: 'jp', flag: '🇯🇵', name: 'Japan' },
+  { code: 'za', flag: '🇿🇦', name: 'South Africa' },
+  { code: 'nz', flag: '🇳🇿', name: 'New Zealand' },
+  { code: 'ie', flag: '🇮🇪', name: 'Ireland' },
+  { code: 'se', flag: '🇸🇪', name: 'Sweden' },
+  { code: 'no', flag: '🇳🇴', name: 'Norway' },
+  { code: 'dk', flag: '🇩🇰', name: 'Denmark' },
+  { code: 'be', flag: '🇧🇪', name: 'Belgium' },
+  { code: 'ch', flag: '🇨🇭', name: 'Switzerland' },
+  { code: 'pt', flag: '🇵🇹', name: 'Portugal' },
+];
+
 interface DjLite {
   id: string;
   name: string | null;
@@ -65,6 +94,9 @@ interface Props {
   bookingSettings: BookingSettings;
   currentUser: CurrentUser;
   onClose: () => void;
+  // Fired once the booking row is successfully inserted — lets the parent
+  // calendar refresh its pending-dates set so this date flips to "Pending".
+  onSubmitted?: () => void;
 }
 
 export default function MobileBookingForm({
@@ -73,6 +105,7 @@ export default function MobileBookingForm({
   bookingSettings,
   currentUser,
   onClose,
+  onSubmitted,
 }: Props) {
   // ── Form state ────────────────────────────────────────────────────
   const [phone, setPhone] = useState('');
@@ -80,6 +113,9 @@ export default function MobileBookingForm({
   const [eventTypeOther, setEventTypeOther] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
+  // ISO alpha-2 country code scoping the venue-address autocomplete.
+  // Defaults to 'us'; Nominatim suggestions are restricted to this country.
+  const [venueCountry, setVenueCountry] = useState('us');
   const [room, setRoom] = useState('');
   const [guests, setGuests] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -355,6 +391,9 @@ export default function MobileBookingForm({
       }
 
       setSuccessState({ isQuote: finalPrice.isQuote });
+      // Notify the parent so the calendar can refresh pending dates — the
+      // just-requested date should immediately render a "Pending" pill.
+      onSubmitted?.();
       // Auto-dismiss the form after a short delay (matches ClubBookingForm)
       setTimeout(() => onClose(), 2500);
     } catch (e) {
@@ -471,67 +510,90 @@ export default function MobileBookingForm({
           />
         </div>
 
-        {/* Venue Address — Nominatim autocomplete dropdown */}
+        {/* Venue Address — country dropdown + Nominatim autocomplete.
+            The country select scopes suggestions; the booker picks it
+            first so addresses only populate for the selected country. */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-venue-address">Venue Address</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              id="mpf-venue-address"
-              type="text"
-              placeholder="123 Main St, City, State"
-              value={venueAddress}
+          <div className={styles.addressRow}>
+            <select
+              aria-label="Venue country"
+              className={`${styles.select} ${styles.countrySelect}`}
+              value={venueCountry}
               onChange={(e) => {
-                const val = e.target.value;
-                setVenueAddress(val);
-                // User started typing again — invalidate previously picked coords
+                setVenueCountry(e.target.value);
+                // Country changed — existing suggestions no longer valid.
+                setAddrSuggestions([]);
+                setShowAddrSuggestions(false);
                 venueCoordsRef.current = null;
-                // Debounce the Nominatim fetch; vanilla uses 350ms
-                if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
-                if (val.trim().length < 3) {
-                  setAddrSuggestions([]);
-                  setShowAddrSuggestions(false);
-                  return;
-                }
-                addrTimerRef.current = setTimeout(async () => {
-                  const results = await searchAddresses(val.trim());
-                  setAddrSuggestions(results);
-                  setShowAddrSuggestions(results.length > 0);
-                }, 350);
               }}
-              onBlur={() => {
-                // Delay so click on a suggestion can fire before we hide
-                setTimeout(() => setShowAddrSuggestions(false), 150);
-              }}
-              onFocus={() => {
-                if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
-              }}
-              className={styles.input}
-              autoComplete="off"
-            />
-            {showAddrSuggestions && addrSuggestions.length > 0 && (
-              <div className={styles.addrSuggestions}>
-                {addrSuggestions.map((s, i) => (
-                  <div
-                    key={i}
-                    className={styles.addrSuggestion}
-                    // Use onMouseDown not onClick — fires before the input's
-                    // onBlur, so the suggestion list isn't dismissed first.
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setVenueAddress(s.display);
-                      if (s.lat != null && s.lon != null) {
-                        venueCoordsRef.current = { lat: s.lat, lon: s.lon };
-                      } else {
-                        venueCoordsRef.current = null;
-                      }
-                      setShowAddrSuggestions(false);
-                    }}
-                  >
-                    {s.display}
-                  </div>
-                ))}
-              </div>
-            )}
+            >
+              {BOOKING_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            <div className={styles.addressInputWrap}>
+              <input
+                id="mpf-venue-address"
+                type="text"
+                placeholder="123 Main St, City, State"
+                value={venueAddress}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setVenueAddress(val);
+                  // User started typing again — invalidate previously picked coords
+                  venueCoordsRef.current = null;
+                  // Debounce the Nominatim fetch; vanilla uses 350ms
+                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                  if (val.trim().length < 3) {
+                    setAddrSuggestions([]);
+                    setShowAddrSuggestions(false);
+                    return;
+                  }
+                  addrTimerRef.current = setTimeout(async () => {
+                    // Scope suggestions to the selected country.
+                    const results = await searchAddresses(val.trim(), venueCountry);
+                    setAddrSuggestions(results);
+                    setShowAddrSuggestions(results.length > 0);
+                  }, 350);
+                }}
+                onBlur={() => {
+                  // Delay so click on a suggestion can fire before we hide
+                  setTimeout(() => setShowAddrSuggestions(false), 150);
+                }}
+                onFocus={() => {
+                  if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
+                }}
+                className={styles.input}
+                autoComplete="off"
+              />
+              {showAddrSuggestions && addrSuggestions.length > 0 && (
+                <div className={styles.addrSuggestions}>
+                  {addrSuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={styles.addrSuggestion}
+                      // Use onMouseDown not onClick — fires before the input's
+                      // onBlur, so the suggestion list isn't dismissed first.
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setVenueAddress(s.display);
+                        if (s.lat != null && s.lon != null) {
+                          venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                        } else {
+                          venueCoordsRef.current = null;
+                        }
+                        setShowAddrSuggestions(false);
+                      }}
+                    >
+                      {s.display}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

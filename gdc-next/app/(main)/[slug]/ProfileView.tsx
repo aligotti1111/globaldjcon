@@ -918,6 +918,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 force12mo={forceCalendar12mo}
+                pendingDates={clubPendingDates}
+                onBookingSubmitted={() => setClubPendingRefreshKey((k) => k + 1)}
               />
             </div>
           )}
