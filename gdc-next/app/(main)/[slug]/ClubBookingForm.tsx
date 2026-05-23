@@ -657,9 +657,18 @@ export default function ClubBookingForm({
             className={styles.input}
             style={hasError('venueName') ? { borderColor: '#ff5f5f' } : undefined}
           />
-          {/* Address with compact country picker pill on the right.
+          {/* Address with compact country picker pill on the left.
               Picking a country first scopes the address autocomplete. */}
           <div className={styles.addrRow} style={{ marginTop: '.5rem' }}>
+            <CountryPicker
+              value={country}
+              onChange={(code) => {
+                setCountry(code);
+                setAddrSuggestions([]);
+                setShowAddrSuggestions(false);
+                venueCoordsRef.current = null;
+              }}
+            />
             <div className={styles.addrInputWrap}>
               <input
                 type="text"
@@ -716,15 +725,6 @@ export default function ClubBookingForm({
                 </div>
               )}
             </div>
-            <CountryPicker
-              value={country}
-              onChange={(code) => {
-                setCountry(code);
-                setAddrSuggestions([]);
-                setShowAddrSuggestions(false);
-                venueCoordsRef.current = null;
-              }}
-            />
           </div>
         </FormSection>
 

@@ -419,6 +419,9 @@
   flex: 0 0 auto;
   white-space: nowrap;
   transition: border-color .15s;
+  /* Fill the row height so the pill matches the address input exactly. */
+  height: 100%;
+  box-sizing: border-box;
 }
 .countryPill:hover {
   border-color: var(--neon);

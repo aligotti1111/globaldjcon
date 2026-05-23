@@ -233,12 +233,39 @@ export async function searchAddresses(
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
-    return results.map((r: { display_name?: string; lat?: string; lon?: string }) => {
-      const parts = (r.display_name || '').split(',');
-      // Strip county-level admin divisions per Anthony's signup preference
-      const clean = parts.filter((p) => !/county/i.test(p)).join(',').trim();
+    return results.map((r: {
+      display_name?: string;
+      lat?: string;
+      lon?: string;
+      address?: Record<string, string>;
+    }) => {
+      // Prefer Nominatim's structured address object (addressdetails=1) so
+      // we can build a clean line: "<house no> <road>, <city>, <ST> <zip>".
+      // The country is dropped (it's shown in the country picker) and the
+      // state is abbreviated from the ISO 3166-2 code (e.g. US-NY → NY).
+      const a = r.address || {};
+      const stateCode = (a['ISO3166-2-lvl4'] || '').split('-')[1] || '';
+      const street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
+      const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
+      const stateAbbr = stateCode || a.state || '';
+      const cityState = [city, [stateAbbr, a.postcode].filter(Boolean).join(' ').trim()]
+        .filter(Boolean)
+        .join(', ');
+      const built = [street, cityState].filter(Boolean).join(', ').trim();
+
+      let display = built;
+      if (!display) {
+        // Fallback when the structured address is sparse: use display_name
+        // but strip county-level parts and the trailing country.
+        const parts = (r.display_name || '').split(',');
+        const noCounty = parts.filter((p) => !/county/i.test(p));
+        // Drop the last segment (country) if there's more than one part.
+        if (noCounty.length > 1) noCounty.pop();
+        display = noCounty.join(',').trim();
+      }
+
       return {
-        display: clean,
+        display,
         lat: r.lat ? parseFloat(r.lat) : null,
         lon: r.lon ? parseFloat(r.lon) : null,
       };
