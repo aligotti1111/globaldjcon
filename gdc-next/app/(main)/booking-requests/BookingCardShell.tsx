@@ -59,7 +59,7 @@ export default function BookingCardShell({
   eventLabel,
   detailsSlot,
   pricingSlot,
-  onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
+  onApprove, onDeny, onCancel, onCancelIncoming: _onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
@@ -104,13 +104,11 @@ export default function BookingCardShell({
   }[status];
 
   // Action visibility — DJ-side (incoming) vs booker-side (outgoing).
-  // Approve/Deny/Counter/Send Quote → DJ when status is 'pending'.
+  // Approve/Deny/Counter/Send Offer → DJ when status is 'pending'.
   // Cancel rules:
-  //   - DJ side: shows on truly fresh requests (no offer, no counter,
-  //     no quote in flight) and on quotes the DJ has sent (status='counter').
-  //     HIDDEN whenever there's an active price to respond to — booker's
-  //     offer_amount, an in-flight counter_rate, or a quoted_rate. In
-  //     those cases Deny is the action that ends the negotiation.
+  //   - DJ side: NEVER. A DJ acts on an incoming request with Decline,
+  //     never Cancel — Decline is the single action that ends an incoming
+  //     request at any stage (fresh, quoted, or countered).
   //   - Booker side: only on pending (Decline replaces Cancel when
   //     status='counter').
   // Counter button (DJ side) — visible whenever there's an established
@@ -119,14 +117,16 @@ export default function BookingCardShell({
   // Accept/Decline counter → booker when DJ has countered.
   const showIncomingActions = isIncoming && status === 'pending';
   const hasActivePrice = b.quoted_rate != null || b.offer_amount != null || b.counter_rate != null;
-  const showIncomingCancel = isIncoming && (
-    (status === 'pending' && !hasActivePrice) ||
-    status === 'counter'
-  );
   const showOutgoingCancel = !isIncoming && status === 'pending';
   const showOutgoingCounterResponse = !isIncoming && status === 'counter';
   // Counter button gate — used in the DJ action row below.
   const showIncomingCounter = hasActivePrice;
+  // "Send Offer" — DJ responds with a price on a quote-mode booking that
+  // has no rate yet. This is the mobile-quote path: without it the DJ has
+  // no Approve (Approve is hidden until a rate exists) and no Counter
+  // (nothing to counter), leaving only Decline. Opens the QuoteModal.
+  const showSendOffer = isIncoming && status === 'pending'
+    && isQuote && !hasRateSent;
 
   return (
     <div className={`${styles.card} ${styles[`card_${status}`]}`}>
@@ -256,6 +256,24 @@ export default function BookingCardShell({
                 </button>
               )}
 
+              {/* Send Offer — DJ enters a price on a quote-mode booking
+                  that has no rate yet (the booker chose "DJ replies with
+                  an offer"). Opens the QuoteModal. Without this the DJ has
+                  no way to price a mobile quote request. */}
+              {showSendOffer && (
+                <button
+                  type="button"
+                  onClick={() => onSendQuote(b)}
+                  className={`${styles.actBtn} ${styles.actBtnPrimary}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  {' '}Send Offer
+                </button>
+              )}
+
               {/* Phase 3 (and the only Approve path for non-quote / mobile):
                   Approve directly. Hidden when we're still in the
                   draft/no-rate-yet phase of a quote booking. */}
@@ -301,18 +319,6 @@ export default function BookingCardShell({
                 </button>
               )}
             </>
-          )}
-          {/* DJ-side Cancel — separate from showIncomingActions because
-              the DJ can also cancel a booking they've already sent a
-              quote on (status='counter', waiting on booker). */}
-          {showIncomingCancel && (
-            <button
-              type="button"
-              onClick={() => onCancelIncoming(b.id)}
-              className={`${styles.actBtn} ${styles.actBtnDanger}`}
-            >
-              Cancel
-            </button>
           )}
           {showOutgoingCancel && (
             <button
