@@ -27,12 +27,14 @@ import type { BookingRow } from './page';
 
 type Props = Omit<BookingCardShellProps, 'eventLabel' | 'detailsSlot' | 'pricingSlot'> & {
   djZip: string | null;
+  djCity: string | null;
+  djState: string | null;
   djTravelDistance: string | null;
 };
 
 export default function ClubBookingCard(props: Props) {
   const {
-    booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
+    booking: b, isIncoming, djZip, djCity, djState, djTravelDistance, ...shellProps
   } = props;
   // Pull onSendQuote so the in-card "Add Custom Rate" / "Edit Quote"
   // buttons can open the QuoteModal directly. The shellProps spread
@@ -62,8 +64,9 @@ export default function ClubBookingCard(props: Props) {
   useEffect(() => {
     let cancelled = false;
     async function compute() {
-      if (b.venue_lat == null || b.venue_lon == null || !djZip) return;
-      const djCoords = await lookupZipCoords(djZip);
+      if (b.venue_lat == null || b.venue_lon == null) return;
+      if (!djZip && !djCity) return;
+      const djCoords = await lookupZipCoords({ zip: djZip, city: djCity, state: djState });
       if (cancelled || !djCoords) return;
       const miles = haversineMiles(djCoords.lat, djCoords.lon, b.venue_lat!, b.venue_lon!);
       setMilesNum(miles);
@@ -71,7 +74,7 @@ export default function ClubBookingCard(props: Props) {
     }
     compute();
     return () => { cancelled = true; };
-  }, [b.venue_lat, b.venue_lon, djZip]);
+  }, [b.venue_lat, b.venue_lon, djZip, djCity, djState]);
 
   const distColor = milesNum == null
     ? 'var(--muted)'

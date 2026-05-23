@@ -25,12 +25,14 @@ import { isPackageEdited } from './packageDiff';
 // pricingSlot are derived inside this component.
 type Props = Omit<BookingCardShellProps, 'eventLabel' | 'detailsSlot' | 'pricingSlot'> & {
   djZip: string | null;          // current user's zip (DJ when isIncoming)
+  djCity: string | null;         // current user's city — used with zip for
+  djState: string | null;        // an accurate home-base geocode
   djTravelDistance: string | null;
 };
 
 export default function MobileBookingCard(props: Props) {
   const {
-    booking: b, isIncoming, djZip, djTravelDistance, ...shellProps
+    booking: b, isIncoming, djZip, djCity, djState, djTravelDistance, ...shellProps
   } = props;
   // Pull onViewHistory so the in-card "View History" link can open
   // the read-only HistoryModal. shellProps still passes it through.
@@ -44,19 +46,18 @@ export default function MobileBookingCard(props: Props) {
   const cleanedAddr = cleanAddress(b.venue_address);
 
   // ── Distance + outside-range warning ─────────────────────────────
-  // Strategy: prefer venue_lat/lon stored on the booking row (captured at
-  // submit time when the booker picked a Nominatim suggestion). If we don't
-  // have those AND we have djZip, we'd need to geocode the address — but
-  // that's expensive and many older bookings won't have coords. For now,
-  // skip the distance display when coords are missing.
+  // venue_lat/lon are captured at submit time from the booker's address
+  // pick. The DJ's home base is geocoded from city + state + zip — a
+  // free-text query, since a bare ZIP geocodes imprecisely.
   const [milesDisplay, setMilesDisplay] = useState<string | null>(null);
   const [milesNum, setMilesNum] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function compute() {
-      if (b.venue_lat == null || b.venue_lon == null || !djZip) return;
-      const djCoords = await lookupZipCoords(djZip);
+      if (b.venue_lat == null || b.venue_lon == null) return;
+      if (!djZip && !djCity) return;
+      const djCoords = await lookupZipCoords({ zip: djZip, city: djCity, state: djState });
       if (cancelled || !djCoords) return;
       const miles = haversineMiles(djCoords.lat, djCoords.lon, b.venue_lat!, b.venue_lon!);
       setMilesNum(miles);
@@ -64,7 +65,7 @@ export default function MobileBookingCard(props: Props) {
     }
     compute();
     return () => { cancelled = true; };
-  }, [b.venue_lat, b.venue_lon, djZip]);
+  }, [b.venue_lat, b.venue_lon, djZip, djCity, djState]);
 
   const distColor = milesNum == null
     ? 'var(--muted)'

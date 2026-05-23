@@ -109,7 +109,7 @@ export default async function BookingRequestsPage() {
   // booking_settings so we can extract depositPct for the Quote modal.
   const { data: me } = await supabase
     .from('users')
-    .select('id, name, role, dj_type, zip, travel_distance, blocked_users, booking_settings')
+    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings')
     .eq('id', authUser.id)
     .single<{
       id: string;
@@ -117,6 +117,8 @@ export default async function BookingRequestsPage() {
       role: string;
       dj_type: 'mobile' | 'club' | null;
       zip: string | null;
+      city: string | null;
+      state: string | null;
       travel_distance: string | null;
       blocked_users: string[] | null;
       booking_settings: string | null;
@@ -234,6 +236,8 @@ export default async function BookingRequestsPage() {
         role: me.role,
         djType: me.dj_type,
         zip: me.zip,
+        city: me.city,
+        state: me.state,
         travelDistance: me.travel_distance,
         depositPct,
       }}

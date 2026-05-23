@@ -32,6 +32,10 @@ interface CurrentUser {
   role: string;
   djType: 'mobile' | 'club' | null;
   zip: string | null;
+  // City + state are used alongside zip to geocode the DJ's home base
+  // accurately for the venue-distance check (zip alone is imprecise).
+  city: string | null;
+  state: string | null;
   travelDistance: string | null;
   // Deposit percentage from DJ's booking_settings (0-100). Used for the
   // Quote modal's live deposit preview. 0 means DJ doesn't take a deposit.
@@ -1073,6 +1077,8 @@ function FlatList({
               orderNum={null}
               isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
               djZip={currentUser.zip}
+              djCity={currentUser.city}
+              djState={currentUser.state}
               djTravelDistance={currentUser.travelDistance}
               onApprove={onApprove}
               onDeny={onDeny}
@@ -1220,6 +1226,8 @@ function SameDayGrouped({
               orderNum={hasMultiple ? idx + 1 : null}
               isBlocked={blocked.includes(b.requester_id)}
               djZip={currentUser.zip}
+              djCity={currentUser.city}
+              djState={currentUser.state}
               djTravelDistance={currentUser.travelDistance}
               onApprove={onApprove}
               onDeny={onDeny}
