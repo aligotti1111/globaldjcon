@@ -231,11 +231,30 @@ function EventRow({
     }
   }
 
-  // Helper to format event type for the details panel.
+  // Type row. For mobile/private bookings show the actual event type
+  // (Wedding, Birthday Party, etc.); club bookings keep the Club / Bar
+  // label since they have no mobile event-type.
+  const MOB_EVENT_TYPE_LABELS: Record<string, string> = {
+    weddings: 'Wedding',
+    birthday: 'Birthday Party',
+    corporate: 'Corporate Event',
+    anniversary: 'Anniversary',
+    graduation: 'Graduation',
+    sweet16: 'Sweet 16 / Quinceañera',
+    mitzvah: 'Bar/Bat Mitzvah',
+    reunion: 'Reunion',
+    holiday: 'Holiday Party',
+    school: 'School Event',
+    community: 'Community Event',
+    other: 'Other Event',
+  };
   const eventTypeLabel = event.booking_type === 'club'
     ? 'Club / Bar'
     : event.booking_type === 'mobile'
-      ? 'Mobile / Private'
+      ? (event.event_type
+          ? (MOB_EVENT_TYPE_LABELS[event.event_type]
+              || event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1))
+          : 'Mobile / Private')
       : null;
 
   // Helper for the rate line (uses non-public offer_amount + currency).
