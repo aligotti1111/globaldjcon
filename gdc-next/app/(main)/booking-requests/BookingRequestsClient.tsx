@@ -829,7 +829,12 @@ export default function BookingRequestsClient({
       {/* OUTGOING — all roles */}
       {showOutgoing && (
         <div className={styles.section}>
-          <div className={styles.sectionLabelOut}>Outgoing Booking Requests</div>
+          {/* The "Outgoing" label only adds meaning alongside an Incoming
+              section (DJ accounts). Host/venue accounts only ever have
+              outgoing requests, so the label is redundant — hide it. */}
+          {showIncoming && (
+            <div className={styles.sectionLabelOut}>Outgoing Booking Requests</div>
+          )}
           <div className={styles.tabs}>
             <TabButton active={outgoingTab === 'respond'} onClick={() => setOutgoingTab('respond')}>
               Response Required ({outCounts.respond})
