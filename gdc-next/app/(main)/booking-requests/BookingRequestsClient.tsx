@@ -348,6 +348,22 @@ export default function BookingRequestsClient({
         .eq('requester_id', currentUser.id);
       if (error) throw error;
       updateOutgoingStatus(bookingId, 'cancelled');
+      // Notify BOTH parties by email that the booker cancelled. The route
+      // resolves the booking + both emails server-side from the bookingId.
+      // Best-effort — a failed email never undoes the cancellation.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_cancelled',
+            bookingId,
+            cancelledByName: currentUser.name || 'The booker',
+          }),
+        });
+      } catch (e) {
+        console.warn('Cancellation email failed:', e);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       alert('Error: ' + msg);
