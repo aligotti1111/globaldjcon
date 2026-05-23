@@ -45,8 +45,32 @@ interface Props {
   initialBlocked: string[];
 }
 
-type IncomingFilter = 'pending' | 'approved' | 'denied' | 'all';
-type OutgoingFilter = 'pending' | 'counter' | 'approved' | 'denied' | 'all';
+// Tab filters for both sections. 'respond' = bookings the viewer must
+// act on; 'awaiting' = bookings the viewer is waiting on the other side
+// for. The split is computed per-booking from whose move it is.
+type BookingFilter = 'respond' | 'awaiting' | 'approved' | 'denied' | 'all';
+
+// Whose move is it on a booking? Reads negotiation_log (last entry's
+// `from`) as the authority — that's set whenever either side counters or
+// the DJ sends a mobile offer. Falls back to status when the log is
+// empty (a fresh request that's never been countered).
+//   Returns 'dj' if the DJ owes the next response, 'booker' if the
+//   booker does, or null for terminal states (approved/denied/cancelled).
+function whoseMove(b: BookingRow): 'dj' | 'booker' | null {
+  const status = b.status || 'pending';
+  if (status === 'approved' || status === 'denied' || status === 'cancelled') {
+    return null;
+  }
+  const log = b.negotiation_log;
+  if (log && log.length > 0) {
+    // Last actor made the most recent move → the OTHER side owes a reply.
+    return log[log.length - 1].from === 'dj' ? 'booker' : 'dj';
+  }
+  // No negotiation history. A fresh 'pending' request is the booker's
+  // submission awaiting the DJ; a bare 'counter' (shouldn't normally
+  // happen without a log) is treated as the DJ having made the move.
+  return status === 'counter' ? 'booker' : 'dj';
+}
 
 export default function BookingRequestsClient({
   currentUser,
@@ -57,8 +81,8 @@ export default function BookingRequestsClient({
   const [incoming, setIncoming] = useState<BookingRow[]>(initialIncoming);
   const [outgoing, setOutgoing] = useState<BookingRow[]>(initialOutgoing);
   const [blocked, setBlocked] = useState<string[]>(initialBlocked);
-  const [incomingTab, setIncomingTab] = useState<IncomingFilter>('pending');
-  const [outgoingTab, setOutgoingTab] = useState<OutgoingFilter>('pending');
+  const [incomingTab, setIncomingTab] = useState<BookingFilter>('respond');
+  const [outgoingTab, setOutgoingTab] = useState<BookingFilter>('respond');
 
   // Modal state — only one is ever open at a time.
   // counterModal: which booking we're countering, and from which side
@@ -103,41 +127,56 @@ export default function BookingRequestsClient({
   const showOutgoing = !isDj || outgoing.length > 0;
 
   // ── Tab counts (recomputed on each render) ─────────────────────
-  const inCounts = { pending: 0, approved: 0, denied: 0, counter: 0, cancelled: 0 };
+  // For each section a booking falls into exactly one of:
+  //   respond  — the viewer owes the next move
+  //   awaiting — the viewer is waiting on the other side
+  //   approved / denied — terminal
+  // Incoming = DJ's view, so "respond" = DJ's move. Outgoing = booker's
+  // view, so "respond" = booker's move. cancelled rows are excluded
+  // everywhere except they simply never match a tab.
+  const inCounts = { respond: 0, awaiting: 0, approved: 0, denied: 0 };
   incoming.forEach((b) => {
-    const s = b.status as keyof typeof inCounts;
-    if (s in inCounts) inCounts[s]++;
+    const s = b.status || 'pending';
+    if (s === 'approved') { inCounts.approved++; return; }
+    if (s === 'denied') { inCounts.denied++; return; }
+    if (s === 'cancelled') return;
+    const mv = whoseMove(b);
+    if (mv === 'dj') inCounts.respond++;
+    else if (mv === 'booker') inCounts.awaiting++;
   });
-  const inAll = inCounts.pending + inCounts.approved + inCounts.denied + inCounts.counter;
+  const inAll = inCounts.respond + inCounts.awaiting + inCounts.approved + inCounts.denied;
 
-  const outCounts = { pending: 0, counter: 0, approved: 0, denied: 0, cancelled: 0 };
+  const outCounts = { respond: 0, awaiting: 0, approved: 0, denied: 0 };
   outgoing.forEach((b) => {
-    const s = b.status as keyof typeof outCounts;
-    if (s in outCounts) outCounts[s]++;
+    const s = b.status || 'pending';
+    if (s === 'approved') { outCounts.approved++; return; }
+    if (s === 'denied') { outCounts.denied++; return; }
+    if (s === 'cancelled') return;
+    const mv = whoseMove(b);
+    if (mv === 'booker') outCounts.respond++;
+    else if (mv === 'dj') outCounts.awaiting++;
   });
-  // Outgoing "Pending" tab shows everything unresolved (counters + still
-  // awaiting the DJ), but the COUNT only reflects bookings that need the
-  // booker to act — i.e. DJ counters. Awaiting-DJ pending bookings appear
-  // in the tab for tracking but don't inflate the badge, since the badge
-  // signals "your move".
-  const outPendingCount = outCounts.counter;
-  const outAll = outCounts.pending + outCounts.counter + outCounts.approved + outCounts.denied;
+  const outAll = outCounts.respond + outCounts.awaiting + outCounts.approved + outCounts.denied;
 
   // ── Filtered lists ─────────────────────────────────────────────
-  const filteredIncoming = (() => {
-    if (incomingTab === 'all') return incoming.filter((b) => b.status !== 'cancelled');
-    return incoming.filter((b) => b.status === incomingTab);
-  })();
+  // matchesTab decides if a booking belongs in the chosen tab. `mySide`
+  // is whichever role owes a 'respond' for this section ('dj' for the
+  // incoming list, 'booker' for the outgoing list).
+  function matchesTab(b: BookingRow, tab: BookingFilter, mySide: 'dj' | 'booker'): boolean {
+    const s = b.status || 'pending';
+    if (s === 'cancelled') return false;
+    if (tab === 'all') return true;
+    if (tab === 'approved') return s === 'approved';
+    if (tab === 'denied') return s === 'denied';
+    if (s === 'approved' || s === 'denied') return false;
+    const mv = whoseMove(b);
+    if (tab === 'respond') return mv === mySide;
+    if (tab === 'awaiting') return mv !== null && mv !== mySide;
+    return false;
+  }
 
-  const filteredOutgoing = (() => {
-    if (outgoingTab === 'all') return outgoing.filter((b) => b.status !== 'cancelled');
-    // Outgoing "Pending" = everything not yet resolved: bookings the DJ
-    // has countered (booker's move) AND bookings still awaiting the DJ's
-    // first response (status='pending'). Both show here so the booker
-    // can track anything in progress without digging through "All".
-    if (outgoingTab === 'pending') return outgoing.filter((b) => b.status === 'counter' || b.status === 'pending');
-    return outgoing.filter((b) => b.status === outgoingTab);
-  })();
+  const filteredIncoming = incoming.filter((b) => matchesTab(b, incomingTab, 'dj'));
+  const filteredOutgoing = outgoing.filter((b) => matchesTab(b, outgoingTab, 'booker'));
 
   // ── Mutators (optimistic updates + DB write) ───────────────────
   function updateIncomingStatus(bookingId: string, status: string) {
@@ -719,22 +758,25 @@ export default function BookingRequestsClient({
         <div className={styles.section}>
           <div className={styles.sectionLabelIn}>Incoming Booking Requests</div>
           <div className={styles.tabs}>
-            <TabButton active={incomingTab === 'pending'} onClick={() => setIncomingTab('pending')}>
-              Pending ({inCounts.pending})
+            <TabButton active={incomingTab === 'respond'} onClick={() => setIncomingTab('respond')}>
+              Response Required ({inCounts.respond})
+            </TabButton>
+            <TabButton active={incomingTab === 'awaiting'} onClick={() => setIncomingTab('awaiting')}>
+              Awaiting Response ({inCounts.awaiting})
             </TabButton>
             <TabButton active={incomingTab === 'approved'} onClick={() => setIncomingTab('approved')}>
               Approved ({inCounts.approved})
             </TabButton>
             <TabButton active={incomingTab === 'denied'} onClick={() => setIncomingTab('denied')}>
-              Denied ({inCounts.denied})
+              Declined ({inCounts.denied})
             </TabButton>
             <TabButton active={incomingTab === 'all'} onClick={() => setIncomingTab('all')}>
               All ({inAll})
             </TabButton>
           </div>
           <div>
-            {/* Same-day grouping for incoming pending only */}
-            {incomingTab === 'pending' ? (
+            {/* Same-day grouping for the action tab (Response Required) only */}
+            {incomingTab === 'respond' ? (
               <SameDayGrouped
                 bookings={filteredIncoming}
                 isIncoming={true}
@@ -778,7 +820,7 @@ export default function BookingRequestsClient({
               />
             )}
             {filteredIncoming.length === 0 && (
-              <EmptyState>No {incomingTab} requests.</EmptyState>
+              <EmptyState>{emptyLabel(incomingTab)}</EmptyState>
             )}
           </div>
         </div>
@@ -789,17 +831,17 @@ export default function BookingRequestsClient({
         <div className={styles.section}>
           <div className={styles.sectionLabelOut}>Outgoing Booking Requests</div>
           <div className={styles.tabs}>
-            <TabButton active={outgoingTab === 'pending'} onClick={() => setOutgoingTab('pending')}>
-              Pending ({outPendingCount})
+            <TabButton active={outgoingTab === 'respond'} onClick={() => setOutgoingTab('respond')}>
+              Response Required ({outCounts.respond})
             </TabButton>
-            <TabButton active={outgoingTab === 'counter'} onClick={() => setOutgoingTab('counter')}>
-              Counter ({outCounts.counter})
+            <TabButton active={outgoingTab === 'awaiting'} onClick={() => setOutgoingTab('awaiting')}>
+              Awaiting Response ({outCounts.awaiting})
             </TabButton>
             <TabButton active={outgoingTab === 'approved'} onClick={() => setOutgoingTab('approved')}>
               Approved ({outCounts.approved})
             </TabButton>
             <TabButton active={outgoingTab === 'denied'} onClick={() => setOutgoingTab('denied')}>
-              Denied ({outCounts.denied})
+              Declined ({outCounts.denied})
             </TabButton>
             <TabButton active={outgoingTab === 'all'} onClick={() => setOutgoingTab('all')}>
               All ({outAll})
@@ -827,7 +869,7 @@ export default function BookingRequestsClient({
               onMessage={openComposeModal}
             />
             {filteredOutgoing.length === 0 && (
-              <EmptyState>No {outgoingTab} bookings.</EmptyState>
+              <EmptyState>{emptyLabel(outgoingTab)}</EmptyState>
             )}
           </div>
         </div>
@@ -910,6 +952,18 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className={styles.emptyState}>{children}</div>;
 }
 
+// Empty-state copy per tab — reads naturally for each filter name.
+function emptyLabel(tab: BookingFilter): string {
+  switch (tab) {
+    case 'respond': return 'Nothing needs your response right now.';
+    case 'awaiting': return 'Nothing is awaiting a response.';
+    case 'approved': return 'No approved bookings.';
+    case 'denied': return 'No declined bookings.';
+    case 'all': return 'No bookings yet.';
+    default: return 'No bookings.';
+  }
+}
+
 interface ListProps {
   bookings: BookingRow[];
   isIncoming: boolean;
@@ -949,7 +1003,9 @@ function FlatList({
   // switch tabs (the useEffect below resets on tab change).
   const firstId = bookings[0]?.id;
   function defaultExpanded(tab: string, list: BookingRow[]): Set<string> {
-    if (tab === 'pending') return new Set(list.map((b) => b.id));
+    // Response Required is the action tab — expand every card so the DJ
+    // / booker sees all items needing attention at once.
+    if (tab === 'respond') return new Set(list.map((b) => b.id));
     return new Set(list[0] ? [list[0].id] : []);
   }
   const [expandedIds, setExpandedIds] = useState<Set<string>>(

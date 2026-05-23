@@ -125,6 +125,29 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
       // keep their existing draft→send flow and stay 'pending' here.
       const nextStatus = (!isClubBooking && !!booking.is_quote) ? 'counter' : 'pending';
 
+      // For a mobile quote offer, append a negotiation_log entry marking
+      // the DJ as the last actor — the Response Required / Awaiting
+      // Response tabs read this to decide whose move it is. Re-read the
+      // log first so concurrent updates aren't clobbered.
+      let negotiationLog = booking.negotiation_log || [];
+      if (nextStatus === 'counter') {
+        const { data: current } = await supabase
+          .from('bookings')
+          .select('negotiation_log')
+          .eq('id', booking.id)
+          .single<{ negotiation_log: typeof negotiationLog }>();
+        negotiationLog = current?.negotiation_log || [];
+        negotiationLog = [
+          ...negotiationLog,
+          {
+            from: 'dj' as const,
+            amount: priceNum,
+            message: message.trim(),
+            created_at: new Date().toISOString(),
+          },
+        ];
+      }
+
       const updatePayload = {
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
@@ -135,6 +158,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
         status: nextStatus,
+        ...(nextStatus === 'counter' ? { negotiation_log: negotiationLog } : {}),
         updated_at: new Date().toISOString(),
       };
 
@@ -154,6 +178,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
         status: nextStatus,
+        negotiation_log: negotiationLog,
         updated_at: new Date().toISOString(),
       });
 
