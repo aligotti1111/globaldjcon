@@ -186,31 +186,39 @@ export function haversineMiles(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// One-shot Nominatim postal-code lookup → {lat, lon} | null. Used to find
-// the DJ's home base for the distance check.
+// One-shot Nominatim lookup for the DJ's home base → {lat, lon} | null.
 //
-// `countrycodes` is REQUIRED in practice: a bare postalcode query is not
-// globally unique (e.g. "10307" exists in the US, Germany, and elsewhere),
-// and Nominatim's first result can land in the wrong country — producing
-// wildly wrong distances. Defaults to 'us'; pass the DJ's country code
-// when available.
+// IMPORTANT: a bare `postalcode=` query is unreliable — Nominatim does
+// not resolve postal codes to a single precise point and can return a
+// location far from the real one (a ZIP like "10307" was resolving
+// ~1290 miles off). Instead we run a free-text `q=` search built from
+// the DJ's city + state + ZIP, which pins the location accurately.
+//
+// Pass whatever location parts are available; ZIP alone still works as a
+// fallback but is the least precise. countryCode defaults to 'us'.
 export async function lookupZipCoords(
-  zip: string,
+  location: { zip?: string | null; city?: string | null; state?: string | null },
   countryCode: string = 'us',
 ): Promise<{ lat: number; lon: number } | null> {
-  if (!zip) return null;
+  const zip = (location.zip || '').trim();
+  const city = (location.city || '').trim();
+  const state = (location.state || '').trim();
+  // Build the most specific query we can. City + state + ZIP is precise;
+  // ZIP alone is the weak fallback.
+  const queryParts = [city, state, zip].filter(Boolean);
+  if (queryParts.length === 0) return null;
+  const q = queryParts.join(', ');
   try {
     const cc = (countryCode || 'us').trim().toLowerCase();
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&postalcode=${encodeURIComponent(zip)}&countrycodes=${encodeURIComponent(cc)}&limit=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${encodeURIComponent(cc)}&limit=1`
     );
     const data = await res.json();
     if (data && data[0]) {
       return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
     }
   } catch {
-    // Network or parse fail — silently skip the warning. Submission will
-    // proceed without the distance check, matching vanilla behavior.
+    // Network or parse fail — silently skip; distance check is optional.
   }
   return null;
 }
