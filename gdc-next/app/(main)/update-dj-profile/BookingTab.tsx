@@ -271,7 +271,45 @@ export default function BookingTab({
   // SavedHint component can show its status next to the right field.
   function setEnabled(v: boolean) { setLastChangedField('settings'); patch({ booking_enabled: v }); }
   function setWindow(v: number) { setLastChangedField('settings'); patch({ mob_booking_window: v }); }
-  function setPerDay(v: number) { setLastChangedField('settings'); patch({ mob_bookings_per_day: v }); }
+  // Changing the per-day limit re-evaluates every day's remaining
+  // capacity. A day that filled up under the OLD limit should reopen if
+  // the NEW limit leaves free slots — and vice versa. We derive each
+  // day's existing booking count from (oldLimit - oldRemaining), then
+  // recompute remaining against the new limit. Days the DJ MANUALLY
+  // marked unavailable are left untouched — those blocks are intentional.
+  function setPerDay(v: number) {
+    setLastChangedField('settings');
+    const oldLimit = perDay;
+    const newLimit = Math.max(1, v);
+    const recomputed: MobileBookingDays = {};
+    for (const [date, day] of Object.entries(bookingDays) as [string, MobileBookingDays[string]][]) {
+      // Manual blocks — leave entirely as-is:
+      //  - unavailable: the DJ explicitly closed the day
+      //  - booked + eventName: the DJ marked their own event on the day
+      //    (owner-set events always carry an eventName; a day filled by
+      //    real bookings does not).
+      if (day.unavailable || (day.booked && day.eventName)) {
+        recomputed[date] = day;
+        continue;
+      }
+      // How many bookings already sit on this day. Under the old limit,
+      // remaining = bookings_available (defaulting to the old limit when
+      // the field was never written). count = oldLimit - remaining.
+      const oldRemaining = day.bookings_available != null
+        ? day.bookings_available
+        : oldLimit;
+      const count = Math.max(0, oldLimit - oldRemaining);
+      const newRemaining = Math.max(0, newLimit - count);
+      recomputed[date] = {
+        ...day,
+        bookings_available: newRemaining,
+        // booked is true only when the day is genuinely full now. When
+        // capacity reopens, drop the flag so the date is bookable again.
+        booked: newRemaining <= 0,
+      };
+    }
+    patch({ mob_bookings_per_day: newLimit, mob_booking_days: recomputed });
+  }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
   function setBookingDays(next: MobileBookingDays) {
     // Don't tag a specific field here — MobileOwnerCalendar will fire
