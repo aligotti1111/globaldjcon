@@ -274,17 +274,24 @@ function mobileBookingRequestBox(opts: {
     if (range !== '—') rows.push(row('Time', escHtml(range)));
   }
 
-  // Cocktail-hour rows — only when this is a wedding AND the booker
-  // requested music for cocktail hour.
-  if (opts.isWedding && opts.cocktailNeeded) {
-    const ckStart = fmtTime(opts.cocktailStart);
-    if (ckStart) rows.push(row('Cocktail Hour Start', escHtml(ckStart)));
+  // Cocktail-hour rows — weddings only. The Yes/No row always shows for a
+  // wedding so the DJ/booker see the answer either way; the start time and
+  // room rows only appear when the booker requested cocktail-hour music.
+  if (opts.isWedding) {
     rows.push(row(
-      'Cocktail Hour Room',
-      opts.cocktailSameRoom
-        ? 'Same room as reception'
-        : 'Separate room from reception',
+      'Music for Cocktail Hour',
+      opts.cocktailNeeded ? 'Yes' : 'No',
     ));
+    if (opts.cocktailNeeded) {
+      const ckStart = fmtTime(opts.cocktailStart);
+      if (ckStart) rows.push(row('Cocktail Hour Start', escHtml(ckStart)));
+      rows.push(row(
+        'Cocktail Hour Room',
+        opts.cocktailSameRoom
+          ? 'Same room as reception'
+          : 'Separate room from reception',
+      ));
+    }
   }
 
   if (opts.venueName) rows.push(row('Venue', escHtml(opts.venueName)));
