@@ -156,6 +156,22 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         status: nextStatus,
         updated_at: new Date().toISOString(),
       });
+
+      // Mobile quote offer just went to the booker — email both parties
+      // (booker gets the offer to decide, DJ gets a copy of the details).
+      // Best-effort: a failed email never undoes the saved offer.
+      if (nextStatus === 'counter') {
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'offer_sent', bookingId: booking.id }),
+          });
+        } catch (e) {
+          console.warn('offer_sent email failed:', e);
+        }
+      }
+
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');
