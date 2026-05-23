@@ -272,19 +272,33 @@ export default function BookingTab({
   // SavedHint component can show its status next to the right field.
   function setEnabled(v: boolean) { setLastChangedField('settings'); patch({ booking_enabled: v }); }
   function setWindow(v: number) { setLastChangedField('settings'); patch({ mob_booking_window: v }); }
-  // Changing the per-day limit re-evaluates every day's capacity. The
-  // stored `bookings_available` numbers can't be trusted to derive a
-  // booking count (older approvals decremented them inconsistently), so
-  // we count the DJ's ACTUAL approved bookings per date straight from
-  // the bookings table — the real source of truth — and rebuild
-  // mob_booking_days from that. Days the DJ manually marked unavailable
-  // are preserved untouched.
-  async function setPerDay(v: number) {
+  // Changing the per-day limit: save the NUMBER immediately (synchronous,
+  // never races), then debounce the calendar recompute so rapid keystrokes
+  // ("1" then "10") only trigger ONE recompute with the final value. The
+  // recompute counts the DJ's ACTUAL approved bookings per date from the
+  // bookings table (the stored bookings_available numbers are unreliable)
+  // and rebuilds mob_booking_days from that. Manual `unavailable` blocks
+  // are preserved.
+  const perDayRecomputeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function setPerDay(v: number) {
     setLastChangedField('settings');
     const newLimit = Math.max(1, v);
+    // 1. Persist the number right away — synchronous, no async race.
+    patch({ mob_bookings_per_day: newLimit });
+    // 2. Debounce the day recompute. Cancels any pending recompute so a
+    //    stale earlier value can't land after a newer one.
+    if (perDayRecomputeTimer.current) clearTimeout(perDayRecomputeTimer.current);
+    perDayRecomputeTimer.current = setTimeout(() => {
+      void recomputeBookingDays(newLimit);
+    }, 500);
+  }
+
+  // Recompute mob_booking_days against `limit` from real booking counts.
+  // Uses the functional onChange form so it merges against the freshest
+  // settings state (the number patch above may not have flushed yet).
+  async function recomputeBookingDays(limit: number) {
     try {
       const supabase = createClient();
-      // Tally this DJ's approved bookings by event_date.
       const { data: rows, error } = await supabase
         .from('bookings')
         .select('event_date')
@@ -298,44 +312,36 @@ export default function BookingTab({
         countByDate[r.event_date] = (countByDate[r.event_date] || 0) + 1;
       }
 
-      // Rebuild the day map. Start from existing days so manual
-      // `unavailable` blocks and owner-marked events (booked + eventName,
-      // no real bookings) are preserved, then overlay real booking counts.
-      const recomputed: MobileBookingDays = {};
-      for (const [date, day] of Object.entries(bookingDays) as [string, MobileBookingDays[string]][]) {
-        // Manual unavailable block — keep exactly as-is.
-        if (day.unavailable) {
-          recomputed[date] = day;
-          continue;
-        }
-        // Owner-marked event with no actual approved bookings on the day
-        // — keep as-is (it's the DJ's own calendar entry, not a booking).
-        if (day.eventName && !countByDate[date]) {
-          recomputed[date] = day;
-          continue;
-        }
-        // Otherwise drop it here; days with real bookings are re-added
-        // below from the authoritative count. Empty leftover entries are
-        // intentionally not carried over.
-      }
-      // Apply the real per-date booking counts against the new limit.
-      for (const [date, count] of Object.entries(countByDate)) {
-        const existing = recomputed[date] || bookingDays[date] || {};
-        // Don't override a manual unavailable block.
-        if (existing.unavailable) continue;
-        const remaining = Math.max(0, newLimit - count);
-        recomputed[date] = {
-          ...existing,
-          bookings_available: remaining,
-          booked: remaining <= 0,
-        };
-      }
-
-      patch({ mob_bookings_per_day: newLimit, mob_booking_days: recomputed });
+      // Merge against the latest settings so we don't clobber concurrent
+      // edits and so we read the current day map fresh.
+      (onChange as unknown as (fn: (prev: BookingSettings) => BookingSettings) => void)(
+        (prev) => {
+          const prevDays = (prev.mob_booking_days || {}) as MobileBookingDays;
+          const recomputed: MobileBookingDays = {};
+          // Preserve manual unavailable blocks and owner-marked events
+          // (eventName set, no real bookings on that date).
+          for (const [date, day] of Object.entries(prevDays) as [string, MobileBookingDays[string]][]) {
+            if (day.unavailable) { recomputed[date] = day; continue; }
+            if (day.eventName && !countByDate[date]) { recomputed[date] = day; continue; }
+            // else: dropped; re-added below if it has real bookings.
+          }
+          // Apply real per-date counts against the limit.
+          for (const [date, count] of Object.entries(countByDate)) {
+            const existing = recomputed[date] || prevDays[date] || {};
+            if (existing.unavailable) continue;
+            const remaining = Math.max(0, limit - count);
+            recomputed[date] = {
+              ...existing,
+              bookings_available: remaining,
+              booked: remaining <= 0,
+            };
+          }
+          return { ...prev, mob_booking_days: recomputed };
+        },
+      );
     } catch {
-      // If the booking lookup fails, still save the new limit so the
-      // setting isn't lost — the calendar just won't be recomputed.
-      patch({ mob_bookings_per_day: newLimit });
+      // Recompute failed — the number was already saved above, so the
+      // setting isn't lost; the calendar just isn't rebuilt this time.
     }
   }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
