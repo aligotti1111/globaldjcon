@@ -25,6 +25,13 @@ import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
 
+// Render fresh on every request. The DJ's booking_settings (deposit %,
+// per-day limits, calendar, packages) can change at any time, and a
+// booker must always see the current values — a statically cached page
+// would let them submit a request against a stale deposit % or an
+// out-of-date calendar.
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
