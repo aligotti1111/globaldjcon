@@ -24,7 +24,7 @@
   font-weight: 500;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--white);
 }
 .optional {
   font-weight: 400;
@@ -43,6 +43,35 @@
   width: 100%;
 }
 .input:focus { outline: none; border-color: var(--neon); }
+
+/* ── Field validity checkmark ──────────────────────────────────────
+   Green ✓ at the right edge of a field once its value is valid.
+   .fieldCheckWrap is the positioning context; the control gets
+   .hasCheck (text inputs) or .hasCheckSelect (native selects). */
+.fieldCheckWrap {
+  position: relative;
+  width: 100%;
+}
+.fieldCheckMark {
+  position: absolute;
+  right: .65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--neon);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.hasCheck {
+  padding-right: 2.1rem;
+}
+.hasCheckSelect {
+  padding-right: 3.3rem;
+}
+.hasCheckSelect + .fieldCheckMark {
+  right: 1.95rem;
+}
 
 .dateWrap {
   position: relative;

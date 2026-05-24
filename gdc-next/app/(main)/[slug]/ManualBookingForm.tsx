@@ -155,6 +155,20 @@ export default function ManualBookingForm({
   const dateInputRef = useRef<HTMLInputElement>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  // True once an address is picked from the autocomplete dropdown — used
+  // (with a 10-char minimum) to drive the address field's checkmark.
+  const [addressPicked, setAddressPicked] = useState(
+    existing?.venue_lat != null && existing?.venue_lon != null,
+  );
+
+  // ── Per-field "valid → show checkmark" flags ───────────────────────
+  // A green ✓ shows in a field once its value is valid, matching the
+  // mobile/club booking forms.
+  const startTimeValid = startTime !== '';
+  const venueNameValid = venueName.trim() !== '';
+  const venueAddressValid = addressPicked || venueAddress.trim().length >= 10;
+  const hostEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail.trim());
+
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
 
   function openDatePicker() {
@@ -406,12 +420,14 @@ export default function ManualBookingForm({
       <div className={styles.fieldRow}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Start Time</span>
-          <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
-            <option value="">Select…</option>
-            {TIME_OPTIONS.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+          <FieldCheck valid={startTimeValid}>
+            <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
+              <option value="">Select…</option>
+              {TIME_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </FieldCheck>
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>
@@ -431,13 +447,15 @@ export default function ManualBookingForm({
         <span className={styles.fieldLabel}>
           Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
         </span>
-        <input
-          type="text"
-          value={venueName}
-          onChange={(e) => setVenueName(e.target.value)}
-          placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-          className={styles.input}
-        />
+        <FieldCheck valid={venueNameValid}>
+          <input
+            type="text"
+            value={venueName}
+            onChange={(e) => setVenueName(e.target.value)}
+            placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+            className={`${styles.input} ${styles.hasCheck}`}
+          />
+        </FieldCheck>
       </label>
 
       {/* Venue location (address + country) */}
@@ -452,6 +470,7 @@ export default function ManualBookingForm({
                 const val = e.target.value;
                 setVenueAddress(val);
                 venueCoordsRef.current = null;
+                setAddressPicked(false);
                 if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
                 if (val.trim().length < 3) {
                   setAddrSuggestions([]);
@@ -468,9 +487,12 @@ export default function ManualBookingForm({
               onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
               onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
               placeholder="Start typing address…"
-              className={styles.input}
+              className={`${styles.input} ${styles.hasCheck}`}
               autoComplete="off"
             />
+            {venueAddressValid && (
+              <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+            )}
             {showAddrSuggestions && addrSuggestions.length > 0 && (
               <div className={styles.addrSuggestions}>
                 {addrSuggestions.map((s, i) => (
@@ -480,6 +502,7 @@ export default function ManualBookingForm({
                     onMouseDown={(e) => {
                       e.preventDefault();
                       setVenueAddress(s.display);
+                      setAddressPicked(true);
                       if (s.lat != null && s.lon != null) {
                         venueCoordsRef.current = { lat: s.lat, lon: s.lon };
                       } else {
@@ -585,14 +608,16 @@ export default function ManualBookingForm({
       <div className={styles.hostInviteBlock}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
-          <input
-            type="email"
-            value={hostEmail}
-            onChange={(e) => setHostEmail(e.target.value)}
-            placeholder="host@example.com"
-            className={styles.input}
-            autoComplete="off"
-          />
+          <FieldCheck valid={hostEmailValid}>
+            <input
+              type="email"
+              value={hostEmail}
+              onChange={(e) => setHostEmail(e.target.value)}
+              placeholder="host@example.com"
+              className={`${styles.input} ${styles.hasCheck}`}
+              autoComplete="off"
+            />
+          </FieldCheck>
         </label>
         {hostEmailAlreadySent ? (
           <div className={styles.sentBanner}>
@@ -649,4 +674,24 @@ function formatSentDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+// FieldCheck — wraps a control and shows a green ✓ at its right edge once
+// `valid` is true. Matches the mobile/club booking forms. The control
+// gets .hasCheck (text inputs) or .hasCheckSelect (native selects).
+function FieldCheck({
+  valid,
+  children,
+}: {
+  valid: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.fieldCheckWrap}>
+      {children}
+      {valid && (
+        <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+      )}
+    </div>
+  );
 }
