@@ -633,6 +633,7 @@ export default function ClubBookingForm({
           fieldKey="venueType"
           hasError={hasError('venueType')}
           errorText="Please select Bar or Club."
+          showCheck={venueType !== ''}
         >
           <div className={styles.pillRow}>
             {(['bar', 'club'] as const).map((v) => (
@@ -655,6 +656,7 @@ export default function ClubBookingForm({
             fieldKey="setType"
             hasError={hasError('setType')}
             errorText="Please select a set type."
+            showCheck={setType !== ''}
           >
             <div className={styles.pillCol}>
               {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
@@ -934,59 +936,25 @@ export default function ClubBookingForm({
                 </div>
               );
             }
-            // Path 4 — calculating placeholder. Required fields aren't
-            // all filled yet; show a neutral "we're waiting on you"
-            // message so the booker knows the price will appear here.
+            // Path 4 — required fields aren't all filled yet. Show a
+            // calm, static "we're waiting on you" message so the booker
+            // knows the price will appear here. No animation.
             return (
               <div className={styles.rateBox}>
                 <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '.75rem',
-                  padding: '1.25rem .5rem',
+                  padding: '1.1rem .5rem',
+                  textAlign: 'center',
                 }}>
-                  <div style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: '.75rem',
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase',
-                    color: 'var(--neon)',
-                  }}>
-                    Calculating…
-                  </div>
-                  {/* Shimmer bar — horizontal sweep across a faint
-                      neon-tinted track. Reads as "loading" without
-                      being noisy. The gradient slides via background-
-                      position; setting background-size to 200% gives
-                      the sweep room to travel. */}
-                  <div style={{
-                    width: '100%',
-                    maxWidth: '20rem',
-                    height: 22,
-                    borderRadius: 4,
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(0, 245, 196, 0.18) 50%, transparent 100%)',
-                    backgroundSize: '200% 100%',
-                    animation: 'gdj-rate-shimmer 1.6s ease-in-out infinite',
-                  }} />
                   <div style={{
                     color: 'var(--muted)',
                     fontSize: '.8rem',
-                    textAlign: 'center',
                     lineHeight: 1.5,
                     fontFamily: 'DM Sans, sans-serif',
-                    maxWidth: '24rem',
                   }}>
                     Once all required fields are populated, the estimated
                     price will display here.
                   </div>
                 </div>
-                <style jsx>{`
-                  @keyframes gdj-rate-shimmer {
-                    0% { background-position: 200% 0; }
-                    100% { background-position: -200% 0; }
-                  }
-                `}</style>
               </div>
             );
           })()}
@@ -1048,7 +1016,7 @@ export default function ClubBookingForm({
 // row + label. Mirrors the look of the vanilla form.
 // ─────────────────────────────────────────────────────────────────────────
 function FormSection({
-  label, children, hasError, fieldKey, errorText,
+  label, children, hasError, fieldKey, errorText, showCheck,
 }: {
   label: string;
   children: React.ReactNode;
@@ -1058,6 +1026,9 @@ function FormSection({
   fieldKey?: string;
   // Optional inline message rendered below children when hasError is true.
   errorText?: string;
+  // When true, a green ✓ shows on the label line — used for pill-based
+  // sections (Event Type, Set Type) where the check can't sit in a field.
+  showCheck?: boolean;
 }) {
   return (
     <div className={styles.section} data-field={fieldKey}>
@@ -1066,6 +1037,9 @@ function FormSection({
         style={hasError ? { color: '#ff5f5f' } : undefined}
       >
         {label}{hasError && ' *'}
+        {showCheck && !hasError && (
+          <span className={styles.labelCheckMark} aria-hidden="true">✓</span>
+        )}
       </div>
       {children}
       {hasError && errorText && (

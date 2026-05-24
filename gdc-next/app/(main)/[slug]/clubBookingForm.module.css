@@ -90,13 +90,13 @@
 }
 .pillCol {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: .4rem;
 }
 .pillCol .pillWide {
   flex: 0 0 auto;
-  text-align: center;
+  width: 100%;
+  text-align: left;
 }
 .pill,
 .pillWide {
@@ -170,6 +170,15 @@
 }
 .hasCheckSelect + .fieldCheckMark {
   right: 1.95rem;
+}
+
+/* Inline ✓ shown on a section label line (Event Type / Set Type) once a
+   pill is selected — sits right after the label text. */
+.labelCheckMark {
+  color: var(--neon);
+  font-weight: 700;
+  margin-left: .4rem;
+  font-size: .85rem;
 }
 .textarea {
   width: 100%;
