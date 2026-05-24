@@ -141,6 +141,36 @@
 .input:focus {
   border-color: var(--neon);
 }
+
+/* ── Field validity checkmark ──────────────────────────────────────
+   A green ✓ appears at the right edge of a field once its value is
+   valid. .fieldCheckWrap is the positioning context; the control gets
+   .hasCheck (text inputs) or .hasCheckSelect (native selects, which
+   already carry a dropdown arrow) so text clears the mark. */
+.fieldCheckWrap {
+  position: relative;
+  width: 100%;
+}
+.fieldCheckMark {
+  position: absolute;
+  right: .65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--neon);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.hasCheck {
+  padding-right: 2.1rem;
+}
+.hasCheckSelect {
+  padding-right: 3.3rem;
+}
+.hasCheckSelect + .fieldCheckMark {
+  right: 1.95rem;
+}
 .textarea {
   width: 100%;
   background: var(--deep);

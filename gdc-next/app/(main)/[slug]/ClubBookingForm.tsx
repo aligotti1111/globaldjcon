@@ -223,6 +223,9 @@ export default function ClubBookingForm({
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+  // True once an address is chosen from the autocomplete dropdown — used
+  // (with a 10-char minimum) to decide when the address checkmark shows.
+  const [addressPicked, setAddressPicked] = useState(false);
 
   // Submit
   const [submitting, setSubmitting] = useState(false);
@@ -247,6 +250,38 @@ export default function ClubBookingForm({
   function hasError(field: string): boolean {
     return missingFields.has(field);
   }
+
+  // ── Per-field "valid → show checkmark" flags ───────────────────────
+  // Mirrors the mobile booking form: a green ✓ appears in a field once
+  // its value is valid. Phone needs a real 10–15 digit number; text
+  // fields need content (address needs 10+ chars or a dropdown pick);
+  // time selects need a non-placeholder choice.
+  const phoneValid = (() => {
+    const d = phone.replace(/\D/g, '');
+    return d.length >= 10 && d.length <= 15;
+  })();
+  const venueNameValid = venueName.trim() !== '';
+  const venueAddressValid = addressPicked || venueAddress.trim().length >= 10;
+  const startTimeValid = startTime !== '';
+  const endTimeValid = endTime !== '';
+
+  // Set duration — computed straight from the picked times so it shows
+  // whenever both are selected, regardless of rate type. Times are
+  // "HH:MM" 24h; an end at/before start wraps past midnight.
+  const setDurationLabel = (() => {
+    if (!startTime || !endTime) return null;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const hPart = h > 0 ? `${h} hr${h !== 1 ? 's' : ''}` : '';
+    const mPart = m > 0 ? `${m} min` : '';
+    return [hPart, mPart].filter(Boolean).join(' ');
+  })();
+
   const [success, setSuccess] = useState(false);
 
   // Per-day data (rate overrides etc) — read once at mount
@@ -649,14 +684,16 @@ export default function ClubBookingForm({
                 : 'Please enter the venue address.'
           }
         >
-          <input
-            type="text"
-            placeholder="Venue name"
-            value={venueName}
-            onChange={(e) => { setVenueName(e.target.value); clearMissing('venueName'); }}
-            className={styles.input}
-            style={hasError('venueName') ? { borderColor: '#ff5f5f' } : undefined}
-          />
+          <FieldCheck valid={venueNameValid}>
+            <input
+              type="text"
+              placeholder="Venue name"
+              value={venueName}
+              onChange={(e) => { setVenueName(e.target.value); clearMissing('venueName'); }}
+              className={`${styles.input} ${styles.hasCheck}`}
+              style={hasError('venueName') ? { borderColor: '#ff5f5f' } : undefined}
+            />
+          </FieldCheck>
           {/* Address with compact country picker pill on the right.
               Picking a country first scopes the address autocomplete. */}
           <div className={styles.addrRow} style={{ marginTop: '.5rem' }}>
@@ -670,6 +707,7 @@ export default function ClubBookingForm({
                   setVenueAddress(val);
                   clearMissing('venueAddress');
                   venueCoordsRef.current = null;
+                  setAddressPicked(false);
                   if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
                   if (val.trim().length < 3) {
                     setAddrSuggestions([]);
@@ -688,10 +726,13 @@ export default function ClubBookingForm({
                 onFocus={() => {
                   if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
                 }}
-                className={styles.input}
+                className={`${styles.input} ${styles.hasCheck}`}
                 style={hasError('venueAddress') ? { borderColor: '#ff5f5f' } : undefined}
                 autoComplete="off"
               />
+              {venueAddressValid && (
+                <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+              )}
               {showAddrSuggestions && addrSuggestions.length > 0 && (
                 <div className={styles.addrSuggestions}>
                   {addrSuggestions.map((s, i) => (
@@ -701,6 +742,7 @@ export default function ClubBookingForm({
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setVenueAddress(s.display);
+                        setAddressPicked(true);
                         if (s.lat != null && s.lon != null) {
                           venueCoordsRef.current = { lat: s.lat, lon: s.lon };
                         } else {
@@ -744,37 +786,41 @@ export default function ClubBookingForm({
           <div className={styles.timeRow}>
             <div className={styles.timeCol}>
               <label className={styles.timeLabel}>Set Start</label>
-              <select
-                value={startTime}
-                onChange={(e) => { setStartTime(e.target.value); clearMissing('startTime'); }}
-                className={styles.input}
-                style={hasError('startTime') ? { borderColor: '#ff5f5f' } : undefined}
-              >
-                <option value="">Select…</option>
-                {MOB_TIME_OPTIONS.map((t) => (
-                  <option key={t.val} value={t.val}>{t.label}</option>
-                ))}
-              </select>
+              <FieldCheck valid={startTimeValid}>
+                <select
+                  value={startTime}
+                  onChange={(e) => { setStartTime(e.target.value); clearMissing('startTime'); }}
+                  className={`${styles.input} ${styles.hasCheckSelect}`}
+                  style={hasError('startTime') ? { borderColor: '#ff5f5f' } : undefined}
+                >
+                  <option value="">Select…</option>
+                  {MOB_TIME_OPTIONS.map((t) => (
+                    <option key={t.val} value={t.val}>{t.label}</option>
+                  ))}
+                </select>
+              </FieldCheck>
             </div>
             <div className={styles.timeCol}>
               <label className={styles.timeLabel}>Set End</label>
-              <select
-                value={endTime}
-                onChange={(e) => { setEndTime(e.target.value); clearMissing('endTime'); }}
-                className={styles.input}
-                style={hasError('endTime') ? { borderColor: '#ff5f5f' } : undefined}
-              >
-                <option value="">Select…</option>
-                {MOB_TIME_OPTIONS.map((t) => (
-                  <option key={t.val} value={t.val}>{t.label}</option>
-                ))}
-              </select>
+              <FieldCheck valid={endTimeValid}>
+                <select
+                  value={endTime}
+                  onChange={(e) => { setEndTime(e.target.value); clearMissing('endTime'); }}
+                  className={`${styles.input} ${styles.hasCheckSelect}`}
+                  style={hasError('endTime') ? { borderColor: '#ff5f5f' } : undefined}
+                >
+                  <option value="">Select…</option>
+                  {MOB_TIME_OPTIONS.map((t) => (
+                    <option key={t.val} value={t.val}>{t.label}</option>
+                  ))}
+                </select>
+              </FieldCheck>
             </div>
           </div>
-          {/* Set duration hint */}
-          {startTime && endTime && rateInfo.hours != null && (
+          {/* Set duration — shows as soon as both times are picked. */}
+          {setDurationLabel && (
             <div className={styles.durationHint}>
-              {formatTime12(startTime)} → {formatTime12(endTime)} ({rateInfo.hours} hr{rateInfo.hours !== 1 ? 's' : ''})
+              {formatTime12(startTime)} → {formatTime12(endTime)} ({setDurationLabel})
             </div>
           )}
         </FormSection>
@@ -954,17 +1000,19 @@ export default function ClubBookingForm({
           hasError={hasError('phone')}
           errorText="Please enter your phone number."
         >
-          <input
-            id="cbf-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={phone}
-            onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
-            className={styles.input}
-            style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
-            autoComplete="tel"
-          />
+          <FieldCheck valid={phoneValid}>
+            <input
+              id="cbf-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(555) 555-5555"
+              value={phone}
+              onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
+              className={`${styles.input} ${styles.hasCheck}`}
+              style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
+              autoComplete="tel"
+            />
+          </FieldCheck>
         </FormSection>
 
         {/* Notes */}
@@ -1229,6 +1277,27 @@ function CountryPicker({ value, onChange }: { value: string; onChange: (code: st
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// FieldCheck — wraps a form control and shows a green ✓ at its right edge
+// once `valid` is true. Matches the mobile booking form's checkmark. The
+// wrapper is position:relative; the control gets .hasCheck (text inputs)
+// or .hasCheckSelect (native selects) so its text clears the mark.
+function FieldCheck({
+  valid,
+  children,
+}: {
+  valid: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.fieldCheckWrap}>
+      {children}
+      {valid && (
+        <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
       )}
     </div>
   );
