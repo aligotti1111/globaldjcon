@@ -101,6 +101,19 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
   return out;
 })();
 
+// Convert a 2-letter ISO country code to its flag emoji. A flag emoji is
+// just the country's two letters expressed as Unicode regional-indicator
+// symbols, so no lookup table is needed.
+function flagEmoji(code: string): string {
+  const cc = (code || '').trim().toUpperCase();
+  if (cc.length !== 2 || !/^[A-Z]{2}$/.test(cc)) return '';
+  const base = 0x1f1e6; // regional indicator 'A'
+  return String.fromCodePoint(
+    base + (cc.charCodeAt(0) - 65),
+    base + (cc.charCodeAt(1) - 65),
+  );
+}
+
 export default function ManualBookingForm({
   userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
   existing, prefillDate, lockDate, onSaved, onCancel,
@@ -168,6 +181,23 @@ export default function ManualBookingForm({
   const venueNameValid = venueName.trim() !== '';
   const venueAddressValid = addressPicked || venueAddress.trim().length >= 10;
   const hostEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail.trim());
+
+  // Set duration — computed from the picked times so it shows whenever
+  // both are selected. Times are "HH:MM" 24h; an end at/before start
+  // wraps past midnight.
+  const setDurationLabel = (() => {
+    if (!startTime || !endTime) return null;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const hPart = h > 0 ? `${h} hr${h !== 1 ? 's' : ''}` : '';
+    const mPart = m > 0 ? `${m} min` : '';
+    return [hPart, mPart].filter(Boolean).join(' ');
+  })();
 
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
 
@@ -441,6 +471,10 @@ export default function ManualBookingForm({
           </select>
         </label>
       </div>
+      {/* Set duration — shows once both times are picked. */}
+      {setDurationLabel && (
+        <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
+      )}
 
       {/* Venue name */}
       <label className={styles.field}>
@@ -528,11 +562,15 @@ export default function ManualBookingForm({
             className={styles.countrySelect}
             aria-label="Country for address search"
           >
-            {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
-              <option key={c} value={c}>
-                {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
-              </option>
-            ))}
+            {COUNTRIES.filter((c) => c !== 'Other').map((c) => {
+              const code = (COUNTRY_CODES_ADDR[c] || '').toUpperCase();
+              const flag = flagEmoji(code);
+              return (
+                <option key={c} value={c}>
+                  {flag ? `${flag} ` : ''}{code || '??'}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -601,6 +639,10 @@ export default function ManualBookingForm({
             <option value="CAD">CAD</option>
             <option value="AUD">AUD</option>
           </select>
+        </div>
+        <div className={styles.rateNote}>
+          This rate is not shown publicly. It is only included in the
+          booking details sent to the host if you add their email below.
         </div>
       </label>
 

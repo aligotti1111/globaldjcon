@@ -32,6 +32,21 @@
   text-transform: none;
   letter-spacing: 0;
 }
+/* Duration line shown under the start/end time row. */
+.durationHint {
+  margin: -.35rem 0 .25rem;
+  font-size: .78rem;
+  color: var(--neon);
+  font-family: 'DM Sans', sans-serif;
+}
+/* Explanatory note under the rate field. */
+.rateNote {
+  margin-top: .4rem;
+  font-size: .75rem;
+  line-height: 1.45;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+}
 .input {
   background: var(--deep);
   border: 1px solid var(--border);
