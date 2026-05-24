@@ -149,6 +149,10 @@ export default function MobileBookingForm({
   const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+  // True once the booker selects an address from the autocomplete
+  // dropdown. Used (alongside a 10-char minimum) to decide when the
+  // address field's validity checkmark shows. Reset when they edit.
+  const [addressPicked, setAddressPicked] = useState(false);
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── SSR-safe portal flag — Next.js renders on server where document
@@ -497,7 +501,10 @@ export default function MobileBookingForm({
   })();
   const guestsValid = guests.trim() !== '' && Number(guests) > 0;
   const venueNameValid = venueName.trim() !== '';
-  const venueAddressValid = venueAddress.trim() !== '';
+  // Address is valid for the checkmark once it's a substantial entry —
+  // either 10+ characters typed, or selected from the autocomplete
+  // dropdown (a real picked address is inherently complete).
+  const venueAddressValid = addressPicked || venueAddress.trim().length >= 10;
   const roomValid = room.trim() !== '';
   const eventTypeValid = eventType !== ''
     && (eventType !== 'other' || eventTypeOther.trim() !== '');
@@ -621,6 +628,8 @@ export default function MobileBookingForm({
                   setVenueAddress(val);
                   // User started typing again — invalidate previously picked coords
                   venueCoordsRef.current = null;
+                  // No longer a dropdown-selected address.
+                  setAddressPicked(false);
                   // Debounce the Nominatim fetch; vanilla uses 350ms
                   if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
                   if (val.trim().length < 3) {
@@ -659,6 +668,7 @@ export default function MobileBookingForm({
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setVenueAddress(s.display);
+                        setAddressPicked(true);
                         if (s.lat != null && s.lon != null) {
                           venueCoordsRef.current = { lat: s.lat, lon: s.lon };
                         } else {
