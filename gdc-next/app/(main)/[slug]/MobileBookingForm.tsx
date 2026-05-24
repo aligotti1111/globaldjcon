@@ -319,6 +319,9 @@ export default function MobileBookingForm({
         cocktail_start_time: isWedding && cocktailNeeded ? cocktailStart : null,
         cocktail_same_room: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
         package_title: selectedPkg?.title || null,
+        // HTML package details — snapshotted onto the booking so the DJ's
+        // quote modal and emails can show what the booker actually selected.
+        package_details: selectedPkg?.details || null,
         package_category: cat,
         package_index: selectedPkgIdx,
         quoted_rate: finalPrice.price,
@@ -477,6 +480,30 @@ export default function MobileBookingForm({
   const fieldClass = (id: string, base: string): string =>
     errorFieldId === id ? `${base} ${styles.fieldError}` : base;
 
+  // ── Per-field "valid → show checkmark" flags ───────────────────────
+  // A green check appears in a field once its value is valid. Rules vary
+  // by field (per Anthony): Phone needs a real number; text fields just
+  // need content; selects need a non-placeholder choice.
+  //   - Phone: 10–15 digits once formatting is stripped (covers US/CA
+  //     and international; rejects half-typed numbers).
+  //   - Guests: a real positive number.
+  //   - Text fields (venue name/address/room): any non-empty text.
+  //   - Selects (event type, times): any value other than the
+  //     "Select…" placeholder.
+  // The Message box is intentionally excluded.
+  const phoneValid = (() => {
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 15;
+  })();
+  const guestsValid = guests.trim() !== '' && Number(guests) > 0;
+  const venueNameValid = venueName.trim() !== '';
+  const venueAddressValid = venueAddress.trim() !== '';
+  const roomValid = room.trim() !== '';
+  const eventTypeValid = eventType !== ''
+    && (eventType !== 'other' || eventTypeOther.trim() !== '');
+  const startTimeValid = startTime !== '';
+  const endTimeValid = endTime !== '';
+
   return createPortal(
     <div className={styles.formWrap}>
       <div ref={rootRef} className={styles.formCard}>
@@ -500,34 +527,38 @@ export default function MobileBookingForm({
         {/* Phone */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-phone">Phone Number</label>
-          <input
-            id="mpf-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={phone}
-            onChange={handlePhoneChange}
-            className={fieldClass('mpf-phone', styles.input)}
-            autoComplete="tel"
-          />
+          <FieldCheck valid={phoneValid}>
+            <input
+              id="mpf-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(555) 555-5555"
+              value={phone}
+              onChange={handlePhoneChange}
+              className={`${fieldClass('mpf-phone', styles.input)} ${styles.hasCheck}`}
+              autoComplete="tel"
+            />
+          </FieldCheck>
         </div>
 
         {/* Event Type */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-event-type">Type of Event</label>
-          <select
-            id="mpf-event-type"
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value)}
-            className={fieldClass('mpf-event-type', styles.select)}
-          >
-            <option value="">Select event type...</option>
-            {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
-              eventTypesAllowed.includes(val) ? (
-                <option key={val} value={val}>{lbl}</option>
-              ) : null
-            )}
-          </select>
+          <FieldCheck valid={eventTypeValid}>
+            <select
+              id="mpf-event-type"
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              className={`${fieldClass('mpf-event-type', styles.select)} ${styles.hasCheckSelect}`}
+            >
+              <option value="">Select event type...</option>
+              {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
+                eventTypesAllowed.includes(val) ? (
+                  <option key={val} value={val}>{lbl}</option>
+                ) : null
+              )}
+            </select>
+          </FieldCheck>
           {eventType === 'other' && (
             <input
               type="text"
@@ -543,14 +574,16 @@ export default function MobileBookingForm({
         {/* Venue Name */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-venue-name">Venue Name</label>
-          <input
-            id="mpf-venue-name"
-            type="text"
-            placeholder="The Grand Ballroom"
-            value={venueName}
-            onChange={(e) => setVenueName(e.target.value)}
-            className={fieldClass('mpf-venue-name', styles.input)}
-          />
+          <FieldCheck valid={venueNameValid}>
+            <input
+              id="mpf-venue-name"
+              type="text"
+              placeholder="The Grand Ballroom"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+              className={`${fieldClass('mpf-venue-name', styles.input)} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
         </div>
 
         {/* Venue Address — country dropdown + Nominatim autocomplete.
@@ -609,9 +642,12 @@ export default function MobileBookingForm({
                 onFocus={() => {
                   if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
                 }}
-                className={fieldClass('mpf-venue-address', styles.input)}
+                className={`${fieldClass('mpf-venue-address', styles.input)} ${styles.hasCheck}`}
                 autoComplete="off"
               />
+              {venueAddressValid && (
+                <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+              )}
               {showAddrSuggestions && addrSuggestions.length > 0 && (
                 <div className={styles.addrSuggestions}>
                   {addrSuggestions.map((s, i) => (
@@ -645,28 +681,32 @@ export default function MobileBookingForm({
           <label htmlFor="mpf-room">
             Room Details <span className={styles.optional}>(optional)</span>
           </label>
-          <input
-            id="mpf-room"
-            type="text"
-            placeholder="e.g. Grand Ballroom, 3rd Floor Terrace"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            className={styles.input}
-          />
+          <FieldCheck valid={roomValid}>
+            <input
+              id="mpf-room"
+              type="text"
+              placeholder="e.g. Grand Ballroom, 3rd Floor Terrace"
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              className={`${styles.input} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
         </div>
 
         {/* Guests */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-guests">Estimated Number of Guests</label>
-          <input
-            id="mpf-guests"
-            type="number"
-            min={1}
-            placeholder="150"
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            className={`${styles.input} ${styles.smallNumberInput}`}
-          />
+          <FieldCheck valid={guestsValid}>
+            <input
+              id="mpf-guests"
+              type="number"
+              min={1}
+              placeholder="150"
+              value={guests}
+              onChange={(e) => setGuests(e.target.value)}
+              className={`${styles.input} ${styles.smallNumberInput} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
         </div>
 
         {/* Times */}
@@ -676,33 +716,37 @@ export default function MobileBookingForm({
             <label htmlFor="mpf-start-time">
               {isWedding ? 'Reception Start Time' : 'Event Start Time'}
             </label>
-            <select
-              id="mpf-start-time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className={fieldClass('mpf-start-time', styles.select)}
-            >
-              <option value="">Select time...</option>
-              {MOB_TIME_OPTIONS.map(o => (
-                <option key={o.val} value={o.val}>{o.label}</option>
-              ))}
-            </select>
+            <FieldCheck valid={startTimeValid}>
+              <select
+                id="mpf-start-time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={`${fieldClass('mpf-start-time', styles.select)} ${styles.hasCheckSelect}`}
+              >
+                <option value="">Select time...</option>
+                {MOB_TIME_OPTIONS.map(o => (
+                  <option key={o.val} value={o.val}>{o.label}</option>
+                ))}
+              </select>
+            </FieldCheck>
           </div>
           <div className={styles.timeCol}>
             <label htmlFor="mpf-end-time">
               {isWedding ? 'Reception End Time' : 'Event End Time'}
             </label>
-            <select
-              id="mpf-end-time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className={styles.select}
-            >
-              <option value="">Select time...</option>
-              {MOB_TIME_OPTIONS.map(o => (
-                <option key={o.val} value={o.val}>{o.label}</option>
-              ))}
-            </select>
+            <FieldCheck valid={endTimeValid}>
+              <select
+                id="mpf-end-time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={`${styles.select} ${styles.hasCheckSelect}`}
+              >
+                <option value="">Select time...</option>
+                {MOB_TIME_OPTIONS.map(o => (
+                  <option key={o.val} value={o.val}>{o.label}</option>
+                ))}
+              </select>
+            </FieldCheck>
           </div>
         </div>
 
@@ -1056,5 +1100,26 @@ function PackagesSection({
         })}
       </div>
     </>
+  );
+}
+
+// FieldCheck — wraps a form control and shows a green ✓ at its right edge
+// once `valid` is true. The wrapper is position:relative so the check can
+// be absolutely positioned; the control inside keeps extra right-padding
+// (via the .hasCheck class) so long text never runs under the mark.
+function FieldCheck({
+  valid,
+  children,
+}: {
+  valid: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.fieldCheckWrap}>
+      {children}
+      {valid && (
+        <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+      )}
+    </div>
   );
 }

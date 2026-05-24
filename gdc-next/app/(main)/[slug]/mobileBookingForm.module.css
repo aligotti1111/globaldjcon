@@ -138,6 +138,42 @@
 .select {
   cursor: pointer;
 }
+
+/* ── Field validity checkmark ──────────────────────────────────────
+   A green ✓ appears at the right edge of a field once its value is
+   valid. .fieldCheckWrap is the relative positioning context; the
+   control inside gets .hasCheck (or .hasCheckSelect for native
+   selects, which already have a dropdown arrow on the right) so its
+   text is padded clear of the mark. */
+.fieldCheckWrap {
+  position: relative;
+  width: 100%;
+}
+.fieldCheckMark {
+  position: absolute;
+  right: .7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--neon);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+/* Text inputs: reserve space at the right so content clears the ✓. */
+.hasCheck {
+  padding-right: 2.1rem;
+}
+/* Native selects already pad ~1.8rem for the dropdown arrow; the ✓
+   sits just left of that arrow, so give a little more room and nudge
+   the mark itself left via its own offset. */
+.hasCheckSelect {
+  padding-right: 3.4rem;
+}
+.hasCheckSelect ~ .fieldCheckMark,
+.hasCheckSelect + .fieldCheckMark {
+  right: 2rem;
+}
 /* Browser autofill (Chrome/Safari) paints a pale background and dark
    text on fields it fills — Phone, Venue Name, etc. went white. Browsers
    block a direct `background` override on autofilled fields, but an inset
