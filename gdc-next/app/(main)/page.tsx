@@ -11,7 +11,12 @@
 import { createClient } from '@/lib/supabase/server';
 import HomeClient, { type HomeDj } from './HomeClient';
 
-export const dynamic = 'force-dynamic';
+// The DJ directory changes slowly — there's no need to rebuild it on
+// every request. `revalidate` caches the rendered page and refreshes it
+// at most once every 5 minutes (in the background), so visitors are
+// served the cached page instantly instead of waiting for a fresh DB
+// query + render each time. A newly-signed-up DJ appears within ~5 min.
+export const revalidate = 300;
 
 export default async function HomePage() {
   const supabase = await createClient();
