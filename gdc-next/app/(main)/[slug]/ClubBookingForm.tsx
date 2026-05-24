@@ -833,6 +833,7 @@ export default function ClubBookingForm({
           fieldKey="equipment"
           hasError={hasError('equipment')}
           errorText="Please select an equipment option."
+          showCheck={equipment !== ''}
         >
           <div className={styles.equipCol}>
             {equipmentOptions.map((opt) => {
@@ -1034,9 +1035,15 @@ function FormSection({
     <div className={styles.section} data-field={fieldKey}>
       <div
         className={styles.sectionLabel}
-        style={hasError ? { color: '#ff5f5f' } : undefined}
+        style={
+          hasError
+            ? { color: '#ff5f5f' }
+            : showCheck
+              ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }
+              : undefined
+        }
       >
-        {label}{hasError && ' *'}
+        <span>{label}{hasError && ' *'}</span>
         {showCheck && !hasError && (
           <span className={styles.labelCheckMark} aria-hidden="true">✓</span>
         )}

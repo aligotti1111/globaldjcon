@@ -172,12 +172,11 @@
   right: 1.95rem;
 }
 
-/* Inline ✓ shown on a section label line (Event Type / Set Type) once a
-   pill is selected — sits right after the label text. */
+/* Inline ✓ shown at the far-right end of a section label line
+   (Event Type / Set Type / Equipment) once a selection is made. */
 .labelCheckMark {
   color: var(--neon);
   font-weight: 700;
-  margin-left: .4rem;
   font-size: .85rem;
 }
 .textarea {
