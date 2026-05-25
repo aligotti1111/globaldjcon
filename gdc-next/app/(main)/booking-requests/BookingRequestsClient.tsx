@@ -198,6 +198,35 @@ export default function BookingRequestsClient({
     // in the confirm dialog rather than the generic "the booker".
     const bookingRef = incoming.find((x) => x.id === bookingId);
     const requesterName = bookingRef?.requester_name?.trim() || 'the booker';
+
+    // Club/bar conflict warning — if the DJ already manually added a
+    // booking for this same date, warn before approving. They can still
+    // continue (approve) or cancel. Club/bar DJs are one-per-day.
+    if (
+      isApprove
+      && bookingRef?.booking_type === 'club'
+      && bookingRef?.event_date
+    ) {
+      const supabaseChk = createClient();
+      const { data: manualSameDay } = await supabaseChk
+        .from('bookings')
+        .select('id')
+        .eq('dj_id', currentUser.id)
+        .eq('event_date', bookingRef.event_date)
+        .eq('is_manual', true)
+        .eq('status', 'approved')
+        .neq('id', bookingId);
+      if (manualSameDay && manualSameDay.length > 0) {
+        const proceed = await confirm({
+          title: 'Booking already exists for this day',
+          message: `You manually added a booking for ${bookingRef.event_date}. Approving this request will book the same day. Continue?`,
+          confirmLabel: 'Continue',
+          variant: 'primary',
+        });
+        if (!proceed) return;
+      }
+    }
+
     const ok = await confirm({
       title: isApprove ? 'Approve this booking?' : 'Decline this booking?',
       message: isApprove
