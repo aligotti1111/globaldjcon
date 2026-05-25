@@ -516,18 +516,20 @@ export default function ManualBookingForm({
             Rate <span className={styles.optional}>(optional)</span>
           </span>
           <div className={styles.rateRow}>
-            <span className={styles.rateCurrencyPrefix}>
-              {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              placeholder="0"
-              className={styles.rateInput}
-            />
+            <div className={styles.rateInputWrap}>
+              <span className={styles.rateSymbol}>
+                {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                placeholder="0"
+                className={styles.rateInput}
+              />
+            </div>
             <select
               value={rateCurrency}
               onChange={(e) => setRateCurrency(e.target.value)}
@@ -544,8 +546,7 @@ export default function ManualBookingForm({
         </label>
       </div>
       <div className={styles.rateNote}>
-        This rate is not shown publicly. It is only included in the
-        booking details sent to the host if you add their email below.
+        The rate is not shown publicly.
       </div>
 
       {/* Venue location (address + country) */}
