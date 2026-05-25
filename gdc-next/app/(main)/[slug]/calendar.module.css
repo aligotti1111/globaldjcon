@@ -948,6 +948,32 @@
 }
 .add2ndLink:hover { color: #00d4a9; }
 
+/* Per-day booking-capacity selector inside the owner day-edit popup. */
+.dayCapRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: .25rem 0 .75rem;
+}
+.dayCapLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dayCapSelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .4rem .6rem;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  cursor: pointer;
+}
+
 /* When a manual booking already exists for this date, show its key
    details inline above the Edit button. Compact label/value rows so
    the owner can see what's on file without opening the full edit form. */

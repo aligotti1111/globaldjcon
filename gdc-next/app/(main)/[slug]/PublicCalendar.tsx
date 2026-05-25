@@ -144,6 +144,40 @@ export default function PublicCalendar({
   // write happens in the background. Public visitors get the prop value
   // straight through (no edits possible).
   const [bookingDays, setBookingDays] = useState<BookingDays>(initialBookingDays);
+  // Approved-bookings count per date (YYYY-MM-DD → count). Drives the
+  // diagonal partial-fill on club calendars: a day's red fraction is
+  // count / capacity. Only APPROVED bookings count — pending/countered
+  // requests don't occupy a slot. Fetched once on mount.
+  const [countByDate, setCountByDate] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from('bookings')
+        .select('event_date')
+        .eq('dj_id', djId)
+        .eq('status', 'approved')
+        .gte('event_date', todayStr);
+      if (!mounted || !data) return;
+      const counts: Record<string, number> = {};
+      for (const row of data as Array<{ event_date: string | null }>) {
+        if (!row.event_date) continue;
+        counts[row.event_date] = (counts[row.event_date] || 0) + 1;
+      }
+      setCountByDate(counts);
+    })();
+    return () => { mounted = false; };
+  }, [djId]);
+  // Effective capacity for a date: per-day override wins, else the DJ's
+  // global club_bookings_per_day, else 1. Clamped to 1–3.
+  const dayCapacity = (key: string): number => {
+    const override = bookingDays[key]?.day_capacity;
+    const global = bookingSettings?.club_bookings_per_day;
+    const cap = override != null ? override : (global != null ? global : 1);
+    return Math.min(3, Math.max(1, cap));
+  };
   // Owner edit modal — null when closed; the dateKey when open.
   const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
   const [year, setYear] = useState(today.getFullYear());
@@ -438,6 +472,8 @@ export default function PublicCalendar({
           month={month}
           today={today}
           bookingDays={bookingDays}
+          countByDate={countByDate}
+          globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           onBookedCellClick={handleBookedCellClick}
@@ -469,6 +505,8 @@ export default function PublicCalendar({
         <RollingMonthsView
           today={today}
           bookingDays={bookingDays}
+          countByDate={countByDate}
+          globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
           bookingWindowMonths={bookingWindowMonths}
           selectedDate={selectedDate}
           isLoggedIn={isLoggedIn}
@@ -516,6 +554,8 @@ function SingleMonthView({
   month,
   today,
   bookingDays,
+  countByDate,
+  globalCapacity,
   selectedDate,
   onBookClick,
   onBookedCellClick,
@@ -530,6 +570,8 @@ function SingleMonthView({
   month: number;
   today: Date;
   bookingDays: BookingDays;
+  countByDate: Record<string, number>;
+  globalCapacity: number;
   selectedDate: string | null;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   onBookedCellClick: (d: DayData, key: string) => void;
@@ -567,7 +609,21 @@ function SingleMonthView({
     const cellDate = new Date(year, month, d);
     const isPast = cellDate < todayMidnight;
     const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
-    const isBooked = !!dayData.booked;
+    // Capacity-aware booked state. A day's capacity is its per-day
+    // override or the DJ's global setting. count = approved bookings.
+    //   count >= capacity        → fully booked (solid red)
+    //   0 < count < capacity     → partially booked (diagonal fill,
+    //                              still bookable by the public)
+    // dayData.booked is the legacy flag; a day is treated as having at
+    // least 1 booking if either the flag is set or a count exists.
+    const dayCap = Math.min(3, Math.max(1,
+      dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
+    const rawCount = countByDate[key] || 0;
+    const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
+    const isFull = bookedCount >= dayCap && bookedCount > 0;
+    const isPartial = bookedCount > 0 && bookedCount < dayCap;
+    const isBooked = isFull; // "booked" cell styling = fully booked only
+    const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
     const isUnavail = !!dayData.unavailable;
     const isPrivate = dayData.location === 'Private';
     const isSelected = selectedDate === key;
@@ -705,10 +761,19 @@ function SingleMonthView({
       ? () => onBookedCellClick(dayData, key)
       : undefined;
 
+    // Diagonal partial-fill — when a day has some bookings but capacity
+    // remains, fill that fraction of the cell red along a 135° diagonal.
+    const cellStyle: React.CSSProperties | undefined = isPartial
+      ? {
+          background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+        }
+      : undefined;
+
     cells.push(
       <div
         key={key}
         className={cellClasses.join(' ')}
+        style={cellStyle}
         onClick={cellClickHandler}
       >
         <div className={numClasses.join(' ')}>{d}</div>
@@ -785,6 +850,8 @@ function SingleMonthView({
 function RollingMonthsView({
   today,
   bookingDays,
+  countByDate,
+  globalCapacity,
   bookingWindowMonths,
   selectedDate,
   isLoggedIn,
@@ -796,6 +863,8 @@ function RollingMonthsView({
 }: {
   today: Date;
   bookingDays: BookingDays;
+  countByDate: Record<string, number>;
+  globalCapacity: number;
   bookingWindowMonths: number;
   selectedDate: string | null;
   isLoggedIn: boolean;
@@ -826,7 +895,15 @@ function RollingMonthsView({
       const key = dateKey(yr, mo, d);
       const dayData: DayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const isBooked = !!dayData.booked;
+      // Capacity-aware: full = count>=capacity, partial = some but not full.
+      const dayCap = Math.min(3, Math.max(1,
+        dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
+      const rawCount = countByDate[key] || 0;
+      const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
+      const isFull = bookedCount >= dayCap && bookedCount > 0;
+      const isPartial = bookedCount > 0 && bookedCount < dayCap;
+      const isBooked = isFull;
+      const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
       const isUnavail = !!dayData.unavailable;
       const isToday = key === todayKey;
       const isSelected = selectedDate === key;
@@ -857,10 +934,17 @@ function RollingMonthsView({
       else if (isUnavail) numClasses.push(styles.miniNumUnavail);
       else if (isToday) numClasses.push(styles.miniNumToday);
 
+      const miniCellStyle: React.CSSProperties | undefined = isPartial
+        ? {
+            background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+          }
+        : undefined;
+
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
+          style={miniCellStyle}
           onClick={onCellClick}
         >
           <div className={numClasses.join(' ')}>{d}</div>
@@ -1176,6 +1260,11 @@ function OwnerDayEditPopup({
   // True once the DJ clicks "Manually add 2nd booking" on a day already
   // booked by a customer request — swaps the read-only info for the form.
   const [adding2nd, setAdding2nd] = useState(false);
+  // Per-day capacity override (1–3). Initialised from the day's existing
+  // override; null shown as the DJ's global default. Saved via onSave.
+  const [dayCapOverride, setDayCapOverride] = useState<number>(
+    dayData.day_capacity != null ? dayData.day_capacity : 1,
+  );
   useEffect(() => {
     if (!bookingDetailsLoading && !formInitialized) {
       setFormExpanded(!!existingBooking);
@@ -1407,6 +1496,26 @@ function OwnerDayEditPopup({
                 <p className={styles.requestBookingNote}>
                   This booking was made through a request and can&rsquo;t be edited here.
                 </p>
+                {/* Per-day capacity — lets the DJ accept more bookings on
+                    this specific date. Raising it keeps the existing
+                    booking and re-opens the day (shown partially filled). */}
+                <div className={styles.dayCapRow}>
+                  <span className={styles.dayCapLabel}>Bookings accepted this day</span>
+                  <select
+                    value={dayCapOverride}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setDayCapOverride(v);
+                      // Persist immediately onto the day's calendar data.
+                      onSave({ ...dayData, booked: true, day_capacity: v });
+                    }}
+                    className={styles.dayCapSelect}
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                  </select>
+                </div>
                 <button
                   type="button"
                   className={styles.add2ndLink}
