@@ -18,6 +18,20 @@
   grid-template-columns: 1fr 1fr;
   gap: .75rem;
 }
+/* Venue Name (flexible) + Rate (narrow) on one line. Wraps on very
+   narrow screens so the rate box never gets crushed. */
+.venueRateRow {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.venueRateRow > label:first-child {
+  flex: 1 1 60%;
+  min-width: 11rem;
+}
+.venueRateRow > label:last-child {
+  flex: 0 0 auto;
+}
 .fieldLabel {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: .72rem;
@@ -51,7 +65,7 @@
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: .65rem .8rem;
+  padding: .52rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -94,7 +108,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
-  min-height: 42px;
+  min-height: 34px;
   display: flex;
   align-items: center;
 }
@@ -103,7 +117,7 @@
 .dateInput {
   background: transparent;
   border: none;
-  padding: .65rem .8rem;
+  padding: .52rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -191,12 +205,13 @@
   font-size: 14px;
 }
 .rateInput {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  width: 4.5rem;
   min-width: 0;
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 0;
-  padding: .65rem .8rem;
+  padding: .52rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;

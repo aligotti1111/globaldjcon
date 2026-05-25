@@ -494,21 +494,59 @@ export default function ManualBookingForm({
         <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
       )}
 
-      {/* Venue name */}
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>
-          Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
-        </span>
-        <FieldCheck valid={venueNameValid}>
-          <input
-            type="text"
-            value={venueName}
-            onChange={(e) => setVenueName(e.target.value)}
-            placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-            className={`${styles.input} ${styles.hasCheck}`}
-          />
-        </FieldCheck>
-      </label>
+      {/* Venue name + Rate on one line. Venue name takes the remaining
+          width; the rate box is narrow (~5 chars). */}
+      <div className={styles.venueRateRow}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+          </span>
+          <FieldCheck valid={venueNameValid}>
+            <input
+              type="text"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+              className={`${styles.input} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Rate <span className={styles.optional}>(optional)</span>
+          </span>
+          <div className={styles.rateRow}>
+            <span className={styles.rateCurrencyPrefix}>
+              {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              placeholder="0"
+              className={styles.rateInput}
+            />
+            <select
+              value={rateCurrency}
+              onChange={(e) => setRateCurrency(e.target.value)}
+              className={styles.rateCurrencySelect}
+              aria-label="Currency"
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="CAD">CAD</option>
+              <option value="AUD">AUD</option>
+            </select>
+          </div>
+        </label>
+      </div>
+      <div className={styles.rateNote}>
+        This rate is not shown publicly. It is only included in the
+        booking details sent to the host if you add their email below.
+      </div>
 
       {/* Venue location (address + country) */}
       <div className={styles.field}>
@@ -625,44 +663,6 @@ export default function ManualBookingForm({
           </select>
         </label>
       )}
-
-      {/* Rate — optional flat amount for your own bookkeeping. Not shown
-          publicly; just stored on the booking row. */}
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>
-          Rate <span className={styles.optional}>(optional)</span>
-        </span>
-        <div className={styles.rateRow}>
-          <span className={styles.rateCurrencyPrefix}>
-            {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-            placeholder="0"
-            className={styles.rateInput}
-          />
-          <select
-            value={rateCurrency}
-            onChange={(e) => setRateCurrency(e.target.value)}
-            className={styles.rateCurrencySelect}
-            aria-label="Currency"
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-            <option value="CAD">CAD</option>
-            <option value="AUD">AUD</option>
-          </select>
-        </div>
-        <div className={styles.rateNote}>
-          This rate is not shown publicly. It is only included in the
-          booking details sent to the host if you add their email below.
-        </div>
-      </label>
 
       {/* Host invite section */}
       <div className={styles.hostInviteBlock}>
