@@ -1237,6 +1237,8 @@ function OwnerDayEditPopup({
   //   - Existing booking on file → form open by default (edit mode)
   //   - No existing booking → form closed; user clicks "Add Booking Details"
   // We initialize once when bookingDetailsLoading flips false so re-renders
+  // Toggles the explanatory help text under the capacity selector.
+  const [showCapHelp, setShowCapHelp] = useState(false);
   // True once the DJ clicks "Manually add booking" — shows the manual
   // booking form for a new booking on this date.
   const [addingBooking, setAddingBooking] = useState(false);
@@ -1468,7 +1470,17 @@ function OwnerDayEditPopup({
                 {/* Per-day capacity — how many bookings the DJ accepts on
                     this date. Sits at the top of the booked panel. */}
                 <div className={styles.dayCapBox}>
-                  <span className={styles.dayCapBoxLabel}>Bookings Accepted This Day</span>
+                  <span className={styles.dayCapBoxLabel}>
+                    Bookings Accepted This Day
+                    <button
+                      type="button"
+                      className={styles.dayCapHelpBtn}
+                      onClick={() => setShowCapHelp((v) => !v)}
+                      aria-label="What does this mean?"
+                    >
+                      ?
+                    </button>
+                  </span>
                   <select
                     value={dayCapOverride}
                     onChange={(e) => {
@@ -1483,6 +1495,16 @@ function OwnerDayEditPopup({
                     <option value={3}>3</option>
                   </select>
                 </div>
+                {showCapHelp && (
+                  <p className={styles.dayCapHelp}>
+                    This sets how many separate bookings you&rsquo;ll take on
+                    this date. With 1, the day shows fully booked after one
+                    booking. With 2 or 3, the day stays open for more — the
+                    calendar shows it partly filled until it reaches this
+                    number, then it&rsquo;s fully booked. This only affects
+                    this specific date.
+                  </p>
+                )}
 
                 {/* Accordion — every booking on this day. Each row shows a
                     compact header (time · venue); click to expand. One

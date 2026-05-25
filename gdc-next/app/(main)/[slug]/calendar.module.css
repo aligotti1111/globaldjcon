@@ -996,6 +996,39 @@
   font-size: .82rem;
   font-weight: 600;
   color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+/* Small "?" help button next to the capacity label. */
+.dayCapHelpBtn {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dayCapHelpBtn:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+/* Explanatory text shown when the "?" is tapped. */
+.dayCapHelp {
+  margin: -.4rem 0 .75rem;
+  font-size: .76rem;
+  line-height: 1.5;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
 }
 
 /* Accordion of the day's bookings in the owner day-edit popup. Each row
