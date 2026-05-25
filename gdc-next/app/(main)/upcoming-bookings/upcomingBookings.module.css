@@ -146,6 +146,28 @@
   color: var(--amber, #f7c948);
   border-radius: 4px;
   font-weight: 700;
+  /* Sit at natural size at the start of the grid cell — without this the
+     pill stretches across the full 1fr column. */
+  justify-self: start;
+  align-self: center;
+  white-space: nowrap;
+}
+/* Time-overlap warning — shown when a booking's time intersects another
+   booking on the same date. */
+.overlapPill {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .25rem .5rem;
+  margin-left: .5rem;
+  border: 1px solid rgba(255, 95, 95, .5);
+  background: rgba(255, 95, 95, .1);
+  color: #ff7676;
+  border-radius: 4px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* Inline pill shown next to the booking context when the booking type

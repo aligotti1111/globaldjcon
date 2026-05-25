@@ -148,6 +148,46 @@ export default function UpcomingBookingsClient({
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [bookings]);
 
+  // IDs of bookings whose time range overlaps another booking on the SAME
+  // date. Two same-day bookings aren't a problem on their own — only when
+  // their times actually intersect (a DJ can't be two places at once).
+  // Times are "HH:MM"; an end at/before start wraps past midnight.
+  const overlapIds = useMemo(() => {
+    const toRange = (b: UpcomingBooking): [number, number] | null => {
+      if (!b.start_time || !b.end_time) return null;
+      const [sh, sm] = b.start_time.split(':').map(Number);
+      const [eh, em] = b.end_time.split(':').map(Number);
+      if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+      const start = sh * 60 + sm;
+      let end = eh * 60 + em;
+      if (end <= start) end += 24 * 60; // wraps past midnight
+      return [start, end];
+    };
+    const byDate = new Map<string, UpcomingBooking[]>();
+    for (const b of bookings) {
+      if (!b.event_date) continue;
+      if (!byDate.has(b.event_date)) byDate.set(b.event_date, []);
+      byDate.get(b.event_date)!.push(b);
+    }
+    const ids = new Set<string>();
+    for (const sameDay of byDate.values()) {
+      if (sameDay.length < 2) continue;
+      for (let i = 0; i < sameDay.length; i++) {
+        for (let j = i + 1; j < sameDay.length; j++) {
+          const r1 = toRange(sameDay[i]);
+          const r2 = toRange(sameDay[j]);
+          if (!r1 || !r2) continue;
+          // Overlap when one starts before the other ends, both ways.
+          if (r1[0] < r2[1] && r2[0] < r1[1]) {
+            ids.add(sameDay[i].id);
+            ids.add(sameDay[j].id);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [bookings]);
+
   function monthLabel(key: string): string {
     const [y, m] = key.split('-').map((s) => parseInt(s, 10));
     const date = new Date(y, m - 1, 1);
@@ -230,6 +270,7 @@ export default function UpcomingBookingsClient({
                     booking={b}
                     djType={djType}
                     userId={userId}
+                    overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={b.is_manual ? () => setEditing(b) : undefined}
                   />
@@ -264,11 +305,12 @@ export default function UpcomingBookingsClient({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingRow({
-  booking, djType, userId, onDelete, onEdit,
+  booking, djType, userId, overlaps, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
+  overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
 }) {
@@ -320,10 +362,20 @@ function BookingRow({
           </div>
         </div>
         <div className={styles.rowTime}>{timeRange}</div>
-        {context && (
+        {(context || overlaps) ? (
           <div className={styles.rowContext}>
             {context}
+            {overlaps && (
+              <span
+                className={styles.overlapPill}
+                title="This booking's time overlaps another booking on the same day"
+              >
+                ⚠ Time overlap
+              </span>
+            )}
           </div>
+        ) : (
+          <div />
         )}
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
