@@ -1072,7 +1072,7 @@ function OwnerDayEditPopup({
   const [djCountry, setDjCountry] = useState<string>('United States');
   // All existing manual bookings — needed by the form's daily-cap check.
   // We only need {id, event_date} but fetch lightly.
-  const [allBookings, setAllBookings] = useState<Array<{ id: string; event_date: string | null }>>([]);
+  const [allBookings, setAllBookings] = useState<Array<{ id: string; event_date: string | null; status: string | null }>>([]);
   const [bookingDetailsLoading, setBookingDetailsLoading] = useState(true);
 
   useEffect(() => {
@@ -1094,12 +1094,17 @@ function OwnerDayEditPopup({
         .select('country')
         .eq('id', djId)
         .maybeSingle<{ country: string | null }>();
-      // Fetch all future bookings (just the dates) for daily-cap check.
+      // Fetch future bookings for the daily-conflict check. We include
+      // approved (confirmed) plus pending/countered (live requests) — all
+      // count as a conflict worth warning about. denied/cancelled are
+      // dead and excluded. Status comes through so the form can show the
+      // right message (confirmed booking vs. pending request).
       const today = new Date().toISOString().slice(0, 10);
       const allBookingsPromise = supabase
         .from('bookings')
-        .select('id, event_date')
+        .select('id, event_date, status')
         .eq('dj_id', djId)
+        .in('status', ['approved', 'pending', 'countered'])
         .gte('event_date', today);
       const [bookingRes, profileRes, allRes] = await Promise.all([
         bookingPromise, profilePromise, allBookingsPromise,
@@ -1107,7 +1112,7 @@ function OwnerDayEditPopup({
       if (!mounted) return;
       if (bookingRes.data) setExistingBooking(bookingRes.data);
       if (profileRes.data?.country) setDjCountry(profileRes.data.country);
-      setAllBookings((allRes.data as Array<{ id: string; event_date: string | null }>) || []);
+      setAllBookings((allRes.data as Array<{ id: string; event_date: string | null; status: string | null }>) || []);
       setBookingDetailsLoading(false);
     })();
     return () => { mounted = false; };

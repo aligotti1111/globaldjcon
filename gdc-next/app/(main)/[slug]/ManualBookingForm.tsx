@@ -51,7 +51,7 @@ interface Props {
   bookingsPerDay: number;
   // All bookings on this DJ's schedule. Used for daily-cap conflict check.
   // Caller should pass minimum: { id, event_date } for each row.
-  existingBookings: Array<{ id: string; event_date: string | null }>;
+  existingBookings: Array<{ id: string; event_date: string | null; status: string | null }>;
   existing: ManualBookingRow | null;
   prefillDate?: string;
   // Lock the date input — used when this form is rendered inside a calendar
@@ -294,15 +294,33 @@ export default function ManualBookingForm({
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
-    const sameDay = existingBookings.filter(
-      (b) => b.event_date === eventDate && (!isEdit || b.id !== existing.id),
-    ).length;
-    const cap = djType === 'club' ? 1 : Math.max(1, bookingsPerDay || 1);
-    if (sameDay >= cap) {
-      const msg = djType === 'club'
-        ? `You already have a booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
-        : `You already have ${sameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
-      if (!confirm(msg)) return;
+    // Conflict check. Club/bar DJs are one-per-day: warn if the date
+    // already has an active booking — approved (a confirmed booking) or
+    // pending/countered (a live request) — with a message matching which.
+    // Mobile DJs use their configured per-day cap instead.
+    const sameDayActive = existingBookings.filter(
+      (b) =>
+        b.event_date === eventDate
+        && (!isEdit || b.id !== existing.id)
+        && (b.status === 'approved' || b.status === 'pending' || b.status === 'countered'),
+    );
+    if (djType === 'club') {
+      const hasApproved = sameDayActive.some((b) => b.status === 'approved');
+      const hasPending = sameDayActive.some(
+        (b) => b.status === 'pending' || b.status === 'countered',
+      );
+      if (hasApproved || hasPending) {
+        const msg = hasApproved
+          ? `You already have a confirmed booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
+          : `You have a pending booking request for ${eventDate} that hasn't been confirmed yet. Adding this booking won't cancel it. Save anyway?`;
+        if (!confirm(msg)) return;
+      }
+    } else {
+      const cap = Math.max(1, bookingsPerDay || 1);
+      if (sameDayActive.length >= cap) {
+        const msg = `You already have ${sameDayActive.length} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
+        if (!confirm(msg)) return;
+      }
     }
 
     setSaving(true);
