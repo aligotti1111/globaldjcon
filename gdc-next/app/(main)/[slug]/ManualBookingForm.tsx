@@ -543,10 +543,8 @@ export default function ManualBookingForm({
               <option value="AUD">AUD</option>
             </select>
           </div>
+          <span className={styles.rateNote}>The rate is not shown publicly.</span>
         </label>
-      </div>
-      <div className={styles.rateNote}>
-        The rate is not shown publicly.
       </div>
 
       {/* Venue location (address + country) */}
