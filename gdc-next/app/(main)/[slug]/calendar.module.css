@@ -974,6 +974,37 @@
   cursor: pointer;
 }
 
+/* Accordion of the day's bookings in the owner day-edit popup. Each row
+   is a compact header (time · venue); clicking expands its details. */
+.bkAccItem {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: .5rem;
+  overflow: hidden;
+}
+.bkAccHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  background: var(--deep);
+  border: none;
+  padding: .65rem .8rem;
+  cursor: pointer;
+  text-align: left;
+}
+.bkAccHeaderText {
+  font-family: 'DM Sans', sans-serif;
+  font-size: .85rem;
+  color: var(--white);
+}
+.bkAccChevron {
+  color: var(--muted);
+  font-size: .8rem;
+  flex-shrink: 0;
+}
+
 /* When a manual booking already exists for this date, show its key
    details inline above the Edit button. Compact label/value rows so
    the owner can see what's on file without opening the full edit form. */
