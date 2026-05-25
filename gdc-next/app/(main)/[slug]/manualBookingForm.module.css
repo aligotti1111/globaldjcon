@@ -18,16 +18,17 @@
   grid-template-columns: 1fr 1fr;
   gap: .75rem;
 }
-/* Venue Name (flexible) + Rate (narrow) on one line. Wraps on very
-   narrow screens so the rate box never gets crushed. */
+/* Venue Name (flexible) + Rate (narrow, fixed) on one line. The venue
+   field shrinks to fill whatever width is left rather than wrapping —
+   the accordion popup is narrow, so wrapping would always stack them. */
 .venueRateRow {
   display: flex;
-  gap: .75rem;
-  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: flex-start;
 }
 .venueRateRow > label:first-child {
-  flex: 1 1 60%;
-  min-width: 11rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .venueRateRow > label:last-child {
   flex: 0 0 auto;
