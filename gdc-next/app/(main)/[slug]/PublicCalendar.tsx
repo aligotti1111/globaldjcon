@@ -1585,7 +1585,7 @@ function OwnerDayEditPopup({
                     className={styles.add2ndLink}
                     onClick={() => setAddingBooking(true)}
                   >
-                    Manually add booking
+                    Manually Add Booking
                   </button>
                 )}
               </>
