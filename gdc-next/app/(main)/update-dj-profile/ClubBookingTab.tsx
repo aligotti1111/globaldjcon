@@ -149,6 +149,8 @@ export default function ClubBookingTab({
     rate_hourly_with_system: string;
     rate_hourly_with_decks: string;
     rate_hourly_no_equip: string;
+    // Club daily capacity — how many bookings accepted per day (1-3).
+    club_bookings_per_day: number;
   };
 
   function snapshotRates(bs: BookingSettings): RatesDraft {
@@ -165,6 +167,7 @@ export default function ClubBookingTab({
       rate_hourly_with_system: bs.rate_hourly_with_system != null ? String(bs.rate_hourly_with_system) : '',
       rate_hourly_with_decks: bs.rate_hourly_with_decks != null ? String(bs.rate_hourly_with_decks) : '',
       rate_hourly_no_equip: bs.rate_hourly_no_equip != null ? String(bs.rate_hourly_no_equip) : '',
+      club_bookings_per_day: bs.club_bookings_per_day != null ? bs.club_bookings_per_day : 1,
     };
   }
 
@@ -188,6 +191,7 @@ export default function ClubBookingTab({
     bookingSettings.rate_hourly_with_system,
     bookingSettings.rate_hourly_with_decks,
     bookingSettings.rate_hourly_no_equip,
+    bookingSettings.club_bookings_per_day,
   ]);
 
   // Bubble dirty state up to parent (powers the page-leave warning AND
@@ -221,6 +225,7 @@ export default function ClubBookingTab({
       rate_hourly_with_system: ratesDraft.rate_hourly_with_system,
       rate_hourly_with_decks: ratesDraft.rate_hourly_with_decks,
       rate_hourly_no_equip: ratesDraft.rate_hourly_no_equip,
+      club_bookings_per_day: ratesDraft.club_bookings_per_day,
     });
     setRatesSaveStatus('saved');
     setTimeout(() => {
@@ -241,7 +246,7 @@ export default function ClubBookingTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterSaveTrigger]);
 
-  function setRateField(field: keyof RatesDraft, value: string) {
+  function setRateField(field: keyof RatesDraft, value: string | number) {
     setRatesDraft((prev) => ({ ...prev, [field]: value }));
     if (ratesSaveStatus !== 'idle') setRatesSaveStatus('idle');
   }
@@ -471,6 +476,27 @@ export default function ClubBookingTab({
                   ))}
                 </div>
               </div>
+
+              {/* Bookings-per-day sub-setting — how many bookings the DJ
+                  will accept on a single date. A specific date can be
+                  raised independently from the calendar pencil editor. */}
+              <div className={styles.rateTypeRow}>
+                <div className={styles.rateTypeLabel}>Bookings Per Day</div>
+                <select
+                  value={ratesDraft.club_bookings_per_day}
+                  onChange={(e) => setRateField('club_bookings_per_day', Number(e.target.value))}
+                  className={styles.rateSelect}
+                  style={{ width: 'auto', minWidth: 90 }}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+              </div>
+              <p className={styles.bodyHint} style={{ marginTop: '-.25rem' }}>
+                How many bookings you&rsquo;ll accept on a single day. You can
+                also raise this for a specific date from the calendar.
+              </p>
 
               {ratesDraft.global_rate_type === 'offers' && (
                 <p className={styles.rateOffersHint}>
