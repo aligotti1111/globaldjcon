@@ -25,6 +25,11 @@ export interface DayData {
   rate_hourly_with_system?: number | string; // hourly
   rate_hourly_with_decks?: number | string;
   rate_hourly_no_equip?: number | string;
+  // Per-day booking-capacity override (club DJs). When set (1–3), it
+  // wins over booking_settings.club_bookings_per_day for this date —
+  // letting a DJ accept more bookings on a specific day. The calendar
+  // cell fills diagonally in proportion to bookings / capacity.
+  day_capacity?: number;
 }
 
 export type BookingDays = Record<string, DayData>;
@@ -93,6 +98,11 @@ export interface BookingSettings {
   mob_bookings_per_day?: number;    // default 1 — capacity per date
   mob_packages?: Record<string, MobilePackage[]>;  // 'general' | 'wedding' | 'mitzvah'
   mob_deposit_pct?: number;
+
+  // Club DJ daily capacity — how many bookings the DJ will accept on a
+  // single date (1–3, default 1). A specific date can override this via
+  // the per-day calendar editor (DayData.day_capacity).
+  club_bookings_per_day?: number;
 }
 
 // Mobile DJ package — used by the booking form (Session B) but declared
