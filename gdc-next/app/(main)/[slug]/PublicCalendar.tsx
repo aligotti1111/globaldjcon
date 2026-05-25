@@ -1465,6 +1465,25 @@ function OwnerDayEditPopup({
               />
             ) : (
               <>
+                {/* Per-day capacity — how many bookings the DJ accepts on
+                    this date. Sits at the top of the booked panel. */}
+                <div className={styles.dayCapBox}>
+                  <span className={styles.dayCapBoxLabel}>Bookings Accepted This Day</span>
+                  <select
+                    value={dayCapOverride}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setDayCapOverride(v);
+                      onSave({ ...dayData, booked: true, day_capacity: v });
+                    }}
+                    className={styles.dayCapSelect}
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                  </select>
+                </div>
+
                 {/* Accordion — every booking on this day. Each row shows a
                     compact header (time · venue); click to expand. One
                     open at a time. Request bookings expand read-only;
@@ -1483,7 +1502,7 @@ function OwnerDayEditPopup({
                         onClick={() => setExpandedIdx(isOpen ? -1 : idx)}
                       >
                         <span className={styles.bkAccHeaderText}>
-                          {hdrTime}{bk.venue_name ? ` · ${bk.venue_name}` : ''}
+                          {isOpen ? '' : `${hdrTime}${bk.venue_name ? ` · ${bk.venue_name}` : ''}`}
                         </span>
                         <span className={styles.bkAccChevron}>{isOpen ? '▾' : '▸'}</span>
                       </button>
@@ -1534,25 +1553,6 @@ function OwnerDayEditPopup({
                     </div>
                   );
                 })}
-
-                {/* Per-day capacity — how many bookings the DJ accepts
-                    on this specific date. */}
-                <div className={styles.dayCapRow}>
-                  <span className={styles.dayCapLabel}>Bookings accepted this day</span>
-                  <select
-                    value={dayCapOverride}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setDayCapOverride(v);
-                      onSave({ ...dayData, booked: true, day_capacity: v });
-                    }}
-                    className={styles.dayCapSelect}
-                  >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                  </select>
-                </div>
 
                 {/* "Manually add booking" — shown unless the day already
                     has the hard maximum of 3 bookings. */}
