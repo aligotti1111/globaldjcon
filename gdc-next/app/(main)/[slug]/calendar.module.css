@@ -448,6 +448,12 @@
   background: rgba(107, 107, 136, .1);
   border: 1px solid rgba(107, 107, 136, .3);
 }
+/* Partly-booked legend entry — diagonal half-fill matching the cell. */
+.legendPartial { color: #ff5f5f; }
+.legendPartial .legendDot {
+  background: linear-gradient(135deg, #ff5f5f 0%, #ff5f5f 50%, transparent 50%, transparent 100%);
+  border: 1px solid rgba(255, 95, 95, .3);
+}
 
 /* ── EVENTS-THIS-MONTH LIST (below the grid) ───────────────────────── */
 .eventsList {

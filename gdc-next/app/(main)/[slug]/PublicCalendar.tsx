@@ -839,6 +839,12 @@ function SingleMonthView({
         <div className={`${styles.legendItem} ${styles.legendBooked}`}>
           <span className={styles.legendDot} />Booked
         </div>
+        {globalCapacity > 1 && (
+          <div className={`${styles.legendItem} ${styles.legendPartial}`}>
+            <span className={styles.legendDot} />
+            Booked — accepting additional set times around current booking
+          </div>
+        )}
         <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
           <span className={styles.legendDot} />Unavailable
         </div>
@@ -1042,6 +1048,12 @@ function RollingMonthsView({
           <div className={`${styles.legendItem} ${styles.legendBooked}`}>
             <span className={styles.legendDot} />Booked
           </div>
+          {globalCapacity > 1 && (
+            <div className={`${styles.legendItem} ${styles.legendPartial}`}>
+              <span className={styles.legendDot} />
+              Booked — accepting additional set times around current booking
+            </div>
+          )}
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
