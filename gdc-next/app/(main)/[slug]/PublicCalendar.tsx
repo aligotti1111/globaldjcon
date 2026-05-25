@@ -1069,6 +1069,11 @@ function OwnerDayEditPopup({
   // row's data. Also fetches the DJ's profile country so the form's
   // address-search country picker defaults sensibly.
   const [existingBooking, setExistingBooking] = useState<ManualBookingRow | null>(null);
+  // A request-based (non-manual) booking on this date, if any. When this
+  // exists the day was booked by a customer through a booking request —
+  // its details are shown read-only; the DJ can't edit a customer's
+  // booking, but can still manually add a 2nd booking for the day.
+  const [requestBooking, setRequestBooking] = useState<ManualBookingRow | null>(null);
   const [djCountry, setDjCountry] = useState<string>('United States');
   // All existing manual bookings — needed by the form's daily-cap check.
   // We only need {id, event_date} but fetch lightly.
@@ -1086,6 +1091,17 @@ function OwnerDayEditPopup({
         .eq('dj_id', djId)
         .eq('event_date', dateKey)
         .eq('is_manual', true)
+        .limit(1)
+        .maybeSingle<ManualBookingRow>();
+      // Fetch a request-based (non-manual) approved booking for this date.
+      // If present, the day was booked by a customer — shown read-only.
+      const requestBookingPromise = supabase
+        .from('bookings')
+        .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at')
+        .eq('dj_id', djId)
+        .eq('event_date', dateKey)
+        .eq('is_manual', false)
+        .eq('status', 'approved')
         .limit(1)
         .maybeSingle<ManualBookingRow>();
       // Fetch profile country for address-search default.
@@ -1106,11 +1122,12 @@ function OwnerDayEditPopup({
         .eq('dj_id', djId)
         .in('status', ['approved', 'pending', 'countered'])
         .gte('event_date', today);
-      const [bookingRes, profileRes, allRes] = await Promise.all([
-        bookingPromise, profilePromise, allBookingsPromise,
+      const [bookingRes, requestRes, profileRes, allRes] = await Promise.all([
+        bookingPromise, requestBookingPromise, profilePromise, allBookingsPromise,
       ]);
       if (!mounted) return;
       if (bookingRes.data) setExistingBooking(bookingRes.data);
+      if (requestRes.data) setRequestBooking(requestRes.data);
       if (profileRes.data?.country) setDjCountry(profileRes.data.country);
       setAllBookings((allRes.data as Array<{ id: string; event_date: string | null; status: string | null }>) || []);
       setBookingDetailsLoading(false);
@@ -1156,6 +1173,9 @@ function OwnerDayEditPopup({
   // don't reset the user's toggle.
   const [formExpanded, setFormExpanded] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
+  // True once the DJ clicks "Manually add 2nd booking" on a day already
+  // booked by a customer request — swaps the read-only info for the form.
+  const [adding2nd, setAdding2nd] = useState(false);
   useEffect(() => {
     if (!bookingDetailsLoading && !formInitialized) {
       setFormExpanded(!!existingBooking);
@@ -1355,7 +1375,47 @@ function OwnerDayEditPopup({
           <div className={styles.ownerEditBookedFields}>
             {bookingDetailsLoading ? (
               <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
-            ) : formExpanded ? (
+            ) : requestBooking && !adding2nd ? (
+              /* Day booked by a customer through a booking request — show
+                 the details read-only (the DJ can't edit a customer's
+                 booking) plus a link to manually add a 2nd booking. */
+              <div className={styles.requestBookingInfo}>
+                <div className={styles.requestBookingTag}>Booked via booking request</div>
+                <dl className={styles.requestBookingDl}>
+                  {(requestBooking.start_time || requestBooking.end_time) && (
+                    <div>
+                      <dt>Time</dt>
+                      <dd>
+                        {formatTime12(requestBooking.start_time)}
+                        {requestBooking.end_time ? ` – ${formatTime12(requestBooking.end_time)}` : ''}
+                      </dd>
+                    </div>
+                  )}
+                  {requestBooking.venue_name && (
+                    <div><dt>Venue</dt><dd>{requestBooking.venue_name}</dd></div>
+                  )}
+                  {requestBooking.venue_address && (
+                    <div><dt>Address</dt><dd>{requestBooking.venue_address}</dd></div>
+                  )}
+                  {requestBooking.venue_type && (
+                    <div><dt>Venue Type</dt><dd>{requestBooking.venue_type}</dd></div>
+                  )}
+                  {requestBooking.set_type && (
+                    <div><dt>Set Type</dt><dd>{requestBooking.set_type}</dd></div>
+                  )}
+                </dl>
+                <p className={styles.requestBookingNote}>
+                  This booking was made through a request and can&rsquo;t be edited here.
+                </p>
+                <button
+                  type="button"
+                  className={styles.add2ndLink}
+                  onClick={() => { setAdding2nd(true); setExistingBooking(null); }}
+                >
+                  Manually add 2nd booking
+                </button>
+              </div>
+            ) : formExpanded || adding2nd ? (
               <ManualBookingForm
                 userId={djId}
                 djType="club"
@@ -1363,7 +1423,7 @@ function OwnerDayEditPopup({
                 djName=""
                 bookingsPerDay={1}
                 existingBookings={allBookings}
-                existing={existingBooking}
+                existing={adding2nd ? null : existingBooking}
                 prefillDate={dateKey}
                 lockDate={true}
                 onCancel={onClose}
@@ -1395,7 +1455,7 @@ function OwnerDayEditPopup({
         {/* Outer modal's Save/Cancel row. Hidden when the inline booking
             form is expanded (the form provides its own Add Booking / Save
             Changes button so a separate Save would be redundant). */}
-        {!(status === 'booked' && formExpanded) && (
+        {!(status === 'booked' && (formExpanded || adding2nd)) && (
           <div className={styles.ownerEditActions}>
             <button type="button" onClick={onClose} className={styles.ownerEditCancelBtn}>
               Cancel
