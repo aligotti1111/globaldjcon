@@ -1040,19 +1040,56 @@ function AddManualBookingModal({
             </label>
           </div>
 
-          {/* Venue name + address — applies to both DJ types, address required field name is the same */}
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
-            </span>
-            <input
-              type="text"
-              value={venueName}
-              onChange={(e) => setVenueName(e.target.value)}
-              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-              className={styles.input}
-            />
-          </label>
+          {/* Venue name + Rate on one line. Venue name takes the
+              remaining width; the rate box is narrow (~5 chars). */}
+          <div className={styles.venueRateRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+              </span>
+              <input
+                type="text"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+                className={styles.input}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Rate <span className={styles.optional}>(optional)</span>
+              </span>
+              <div className={styles.rateRow}>
+                <span className={styles.rateCurrencyPrefix}>
+                  {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  placeholder="0"
+                  className={styles.rateInput}
+                />
+                <select
+                  value={rateCurrency}
+                  onChange={(e) => setRateCurrency(e.target.value)}
+                  className={styles.rateCurrencySelect}
+                  aria-label="Currency"
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                </select>
+              </div>
+            </label>
+          </div>
+          <span className={styles.fieldHint}>
+            Rate will only be visible to you and the host.
+          </span>
 
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Venue Location</span>
@@ -1137,43 +1174,6 @@ function AddManualBookingModal({
               </select>
             </label>
           )}
-
-          {/* Rate — optional flat amount for the DJ's bookkeeping. Not
-              shown publicly anywhere. */}
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Rate <span className={styles.optional}>(optional)</span>
-            </span>
-            <div className={styles.rateRow}>
-              <span className={styles.rateCurrencyPrefix}>
-                {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
-              </span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                placeholder="0"
-                className={styles.rateInput}
-              />
-              <select
-                value={rateCurrency}
-                onChange={(e) => setRateCurrency(e.target.value)}
-                className={styles.rateCurrencySelect}
-                aria-label="Currency"
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="CAD">CAD</option>
-                <option value="AUD">AUD</option>
-              </select>
-            </div>
-            <span className={styles.fieldHint}>
-              Rate will only be visible to you and the host.
-            </span>
-          </label>
 
           {/* ── Host invitation section ─────────────────────────────────
               DJ can email the host with booking details. After the email
