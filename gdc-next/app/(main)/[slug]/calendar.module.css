@@ -274,6 +274,15 @@
 .cellOpen:hover .cellNum {
   color: #050507;
 }
+/* Partially-booked days keep .cellOpen for the Book interaction but
+   their inline diagonal fill stays on hover — keep the day number
+   white so it doesn't vanish against the red/dark gradient. */
+.cellPartial:hover .cellNum {
+  color: var(--white);
+}
+.cellPartial:hover {
+  border-color: var(--neon);
+}
 /* Pill inverts on hover */
 .cellOpen:hover .bookBadge {
   background: #050507;
@@ -613,6 +622,13 @@
 }
 .miniCellOpen:hover .miniNum {
   color: #050507;
+}
+/* Partial mini cells: keep the number visible on hover. */
+.miniCellPartial:hover .miniNum {
+  color: var(--white);
+}
+.miniCellPartial:hover {
+  border-color: var(--neon);
 }
 .miniCellToday {
   background: rgba(0, 245, 196, .18);

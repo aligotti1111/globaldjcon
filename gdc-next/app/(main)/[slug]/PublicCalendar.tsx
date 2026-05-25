@@ -639,6 +639,10 @@ function SingleMonthView({
     else if (isUnavail) cellClasses.push(styles.cellUnavail);
     else if (isToday) cellClasses.push(styles.cellToday);
     else if (!isPast) cellClasses.push(styles.cellOpen);
+    // Partially-booked days keep .cellOpen (still bookable) but also get
+    // .cellPartial so hover styling doesn't darken the day number against
+    // the red diagonal fill.
+    if (isPartial) cellClasses.push(styles.cellPartial);
 
     // Day number color class — same priority order
     const numClasses = [styles.cellNum];
@@ -925,6 +929,7 @@ function RollingMonthsView({
       else if (isUnavail) cellClasses.push(styles.miniCellUnavail);
       else if (isToday) cellClasses.push(styles.miniCellToday);
       else if (!isPast) cellClasses.push(styles.miniCellOpen);
+      if (isPartial) cellClasses.push(styles.miniCellPartial);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
 
       const numClasses = [styles.miniNum];
