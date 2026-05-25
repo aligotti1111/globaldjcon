@@ -842,7 +842,7 @@ function SingleMonthView({
         {globalCapacity > 1 && (
           <div className={`${styles.legendItem} ${styles.legendPartial}`}>
             <span className={styles.legendDot} />
-            Booked — accepting additional set times around current booking
+            Accepting set times around current booking
           </div>
         )}
         <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
@@ -1051,7 +1051,7 @@ function RollingMonthsView({
           {globalCapacity > 1 && (
             <div className={`${styles.legendItem} ${styles.legendPartial}`}>
               <span className={styles.legendDot} />
-              Booked — accepting additional set times around current booking
+              Accepting set times around current booking
             </div>
           )}
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
