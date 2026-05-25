@@ -1060,18 +1060,20 @@ function AddManualBookingModal({
                 Rate <span className={styles.optional}>(optional)</span>
               </span>
               <div className={styles.rateRow}>
-                <span className={styles.rateCurrencyPrefix}>
-                  {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency}
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                  placeholder="0"
-                  className={styles.rateInput}
-                />
+                <div className={styles.rateInputWrap}>
+                  <span className={styles.rateSymbol}>
+                    {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    placeholder="0"
+                    className={styles.rateInput}
+                  />
+                </div>
                 <select
                   value={rateCurrency}
                   onChange={(e) => setRateCurrency(e.target.value)}
@@ -1088,7 +1090,7 @@ function AddManualBookingModal({
             </label>
           </div>
           <span className={styles.fieldHint}>
-            Rate will only be visible to you and the host.
+            The rate is not shown publicly.
           </span>
 
           <div className={styles.field}>

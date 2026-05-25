@@ -708,32 +708,43 @@
   align-items: stretch;
   gap: .35rem;
 }
-.rateCurrencyPrefix {
-  display: flex;
-  align-items: center;
-  padding: 0 .65rem;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-right: none;
-  border-radius: 6px 0 0 6px;
+/* Currency symbol sits INSIDE the rate input — saves horizontal space. */
+.rateInputWrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.rateSymbol {
+  position: absolute;
+  left: .6rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--muted);
   font-family: 'Space Mono', monospace;
   font-weight: 700;
   font-size: 14px;
+  pointer-events: none;
 }
 .rateInput {
-  flex: 0 0 auto;
-  width: 4.5rem;
+  width: 5.5rem;
   min-width: 0;
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 0;
-  padding: .65rem .8rem;
+  border-radius: 6px;
+  padding: .52rem .8rem .52rem 1.5rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
 }
 .rateInput:focus { outline: none; border-color: var(--neon); }
+.rateInput::-webkit-outer-spin-button,
+.rateInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rateInput {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 .rateCurrencySelect {
   background: var(--deep);
   border: 1px solid var(--border);
