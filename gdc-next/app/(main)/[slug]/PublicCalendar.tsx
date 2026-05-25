@@ -1498,11 +1498,12 @@ function OwnerDayEditPopup({
                 {showCapHelp && (
                   <p className={styles.dayCapHelp}>
                     This sets how many separate bookings you&rsquo;ll take on
-                    this date. With 1, the day shows fully booked after one
-                    booking. With 2 or 3, the day stays open for more — the
-                    calendar shows it partly filled until it reaches this
-                    number, then it&rsquo;s fully booked. This only affects
-                    this specific date.
+                    this date. With 1 booking set for the day, the day will
+                    display as fully booked after the one booking is obtained
+                    or manually added. With 2 or 3, the day stays open for
+                    more — the calendar shows it partly filled until it
+                    reaches this number, then it&rsquo;s fully booked. This
+                    only affects this specific date.
                   </p>
                 )}
 
