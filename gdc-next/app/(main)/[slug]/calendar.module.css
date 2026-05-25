@@ -893,7 +893,12 @@
 /* Read-only info shown when a day was booked by a customer through a
    booking request — the DJ can view but not edit it. */
 .requestBookingInfo {
-  padding: .25rem 0;
+  padding: .9rem 1rem 1rem;
+}
+/* Wrapper around the manual booking form inside an expanded accordion
+   row — gives the form breathing room from the accordion border. */
+.bkAccBody {
+  padding: .9rem 1rem 1rem;
 }
 .requestBookingTag {
   font-family: 'Space Mono', monospace;

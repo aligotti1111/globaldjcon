@@ -1489,25 +1489,28 @@ function OwnerDayEditPopup({
                       </button>
                       {isOpen && (
                         bk.is_manual ? (
-                          <ManualBookingForm
-                            userId={djId}
-                            djType="club"
-                            djCountry={djCountry}
-                            djName=""
-                            bookingsPerDay={1}
-                            existingBookings={allBookings}
-                            existing={bk}
-                            prefillDate={dateKey}
-                            lockDate={true}
-                            onCancel={onClose}
-                            onSaved={(_row, mode) => {
-                              onSave({ ...dayData, booked: true });
-                              if (mode === 'added' || mode === 'updated') onClose();
-                            }}
-                          />
+                          <div className={styles.bkAccBody}>
+                            <div className={styles.requestBookingTag}>Booking Added Manually</div>
+                            <ManualBookingForm
+                              userId={djId}
+                              djType="club"
+                              djCountry={djCountry}
+                              djName=""
+                              bookingsPerDay={1}
+                              existingBookings={allBookings}
+                              existing={bk}
+                              prefillDate={dateKey}
+                              lockDate={true}
+                              onCancel={onClose}
+                              onSaved={(_row, mode) => {
+                                onSave({ ...dayData, booked: true });
+                                if (mode === 'added' || mode === 'updated') onClose();
+                              }}
+                            />
+                          </div>
                         ) : (
                           <div className={styles.requestBookingInfo}>
-                            <div className={styles.requestBookingTag}>Booked via booking request</div>
+                            <div className={styles.requestBookingTag}>Booked via Global DJ Connect</div>
                             <dl className={styles.requestBookingDl}>
                               {bk.venue_name && (
                                 <div><dt>Venue</dt><dd>{bk.venue_name}</dd></div>
