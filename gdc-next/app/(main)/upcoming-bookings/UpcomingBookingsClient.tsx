@@ -1087,11 +1087,9 @@ function AddManualBookingModal({
                   <option value="AUD">AUD</option>
                 </select>
               </div>
+              <span className={styles.rateNote}>The rate is not shown publicly.</span>
             </label>
           </div>
-          <span className={styles.fieldHint}>
-            The rate is not shown publicly.
-          </span>
 
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Venue Location</span>

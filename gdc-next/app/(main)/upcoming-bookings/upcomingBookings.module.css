@@ -278,6 +278,16 @@
   margin-top: 4px;
   font-family: inherit;
 }
+/* Snug, small note directly under the rate box. */
+.rateNote {
+  display: block;
+  margin-top: .25rem;
+  font-size: .62rem;
+  line-height: 1.3;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
 .fieldRow3 .input,
 .fieldRow3 .dateInput,
 .fieldRow3 .dateWrap {
@@ -331,7 +341,7 @@
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: .65rem .8rem;
+  padding: .42rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -357,7 +367,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
-  min-height: 42px;
+  min-height: 27px;
   display: flex;
   align-items: center;
 }
@@ -366,7 +376,7 @@
 .dateInput {
   background: transparent;
   border: none;
-  padding: .65rem .8rem;
+  padding: .42rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -730,7 +740,7 @@
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: .52rem .8rem .52rem 1.5rem;
+  padding: .42rem .8rem .42rem 1.5rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
