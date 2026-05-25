@@ -1521,7 +1521,7 @@ function OwnerDayEditPopup({
                     <div key={bk.id} className={styles.bkAccItem}>
                       <button
                         type="button"
-                        className={styles.bkAccHeader}
+                        className={`${styles.bkAccHeader} ${isOpen ? styles.bkAccHeaderOpen : ''}`}
                         onClick={() => setExpandedIdx(isOpen ? -1 : idx)}
                       >
                         <span className={styles.bkAccHeaderText}>

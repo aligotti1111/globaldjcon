@@ -893,12 +893,12 @@
 /* Read-only info shown when a day was booked by a customer through a
    booking request — the DJ can view but not edit it. */
 .requestBookingInfo {
-  padding: .9rem 1rem 1rem;
+  padding: .35rem 1rem 1rem;
 }
 /* Wrapper around the manual booking form inside an expanded accordion
    row — gives the form breathing room from the accordion border. */
 .bkAccBody {
-  padding: .9rem 1rem 1rem;
+  padding: .35rem 1rem 1rem;
 }
 .requestBookingTag {
   font-family: 'Space Mono', monospace;
@@ -1057,9 +1057,15 @@
   color: var(--white);
 }
 .bkAccChevron {
-  color: var(--muted);
+  color: var(--white);
   font-size: .8rem;
   flex-shrink: 0;
+}
+/* When the row is expanded the header shows only the arrow — slim it
+   down so there's no large empty band above the details. */
+.bkAccHeaderOpen {
+  padding-top: .35rem;
+  padding-bottom: .35rem;
 }
 
 /* When a manual booking already exists for this date, show its key
