@@ -1098,14 +1098,17 @@
 }
 /* Green hero banner heading the manual-add form. */
 .bkAddHero {
+  display: inline-block;
   background: var(--neon);
   color: #050507;
   font-family: 'Bebas Neue', sans-serif;
   font-size: .8rem;
   letter-spacing: .04em;
-  text-align: center;
+  text-align: left;
   line-height: 1;
-  padding: .27rem 1rem;
+  padding: .27rem .7rem;
+  margin: .55rem 0 0 .7rem;
+  border-radius: 4px;
 }
 .bkAddFormBody {
   padding: .9rem 1rem 1rem;
