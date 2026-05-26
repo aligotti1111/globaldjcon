@@ -305,24 +305,26 @@ export default function UpcomingBookingsClient({
 // ───────────────────────────────────────────────────────────────────────
 
 // ───────────────────────────────────────────────────────────────────────
-// FlyerSlot — add / view / remove / download an event flyer on a club
-// booking. Same flyer + storage as the host-side flyer on the Upcoming
-// Events page (bookings.flyer_url, 'avatars' bucket) — this is just the
-// DJ-side place to manage it. A host can download it from here too and
-// reuse it on their own event listing.
+// FlyerSlot — add / view / remove / replace / download an event flyer on a
+// club booking. Same flyer + storage as the host-side flyer on the
+// Upcoming Events page (bookings.flyer_url, 'avatars' bucket). Controlled:
+// the parent owns flyerUrl so the row slot and the in-card thumbnail stay
+// in sync. `size` switches between the row slot and the smaller in-card one.
 // ───────────────────────────────────────────────────────────────────────
 
 function FlyerSlot({
-  bookingId, userId, initialUrl,
+  bookingId, userId, flyerUrl, onChange, size = 'row',
 }: {
   bookingId: string;
   userId: string;
-  initialUrl: string | null;
+  flyerUrl: string | null;
+  onChange: (url: string | null) => void;
+  size?: 'row' | 'card';
 }) {
-  const [flyerUrl, setFlyerUrl] = useState<string | null>(initialUrl);
   const [uploading, setUploading] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const boxClass = size === 'card' ? styles.flyerBoxCard : styles.flyerBoxRow;
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -345,7 +347,7 @@ function FlyerSlot({
         .eq('id', bookingId)
         .eq('dj_id', userId);
       if (updErr) throw updErr;
-      setFlyerUrl(publicUrl);
+      onChange(publicUrl);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -364,7 +366,7 @@ function FlyerSlot({
         .eq('id', bookingId)
         .eq('dj_id', userId);
       if (error) throw error;
-      setFlyerUrl(null);
+      onChange(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Remove failed');
     }
@@ -393,19 +395,60 @@ function FlyerSlot({
   return (
     <div className={styles.flyerInline}>
       {flyerUrl ? (
-        <button
-          type="button"
-          className={styles.flyerThumbBtn}
-          onClick={() => setShowLightbox(true)}
-          title="View flyer"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumb} />
-        </button>
+        <div className={styles.flyerWithActions}>
+          <div className={`${styles.flyerThumbWrap} ${boxClass}`}>
+            <button
+              type="button"
+              className={styles.flyerThumbBtn}
+              onClick={() => setShowLightbox(true)}
+              title="View flyer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumbImg} />
+            </button>
+            {/* Overlaid controls — pencil replaces the flyer, ✕ removes it. */}
+            <button
+              type="button"
+              className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayEdit}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Replace flyer"
+              aria-label="Replace flyer"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayDelete}`}
+              onClick={handleRemove}
+              title="Remove flyer"
+              aria-label="Remove flyer"
+            >
+              ✕
+            </button>
+          </div>
+          {/* Download icon next to the thumbnail. */}
+          <button
+            type="button"
+            className={styles.flyerDownloadIcon}
+            onClick={handleDownload}
+            title="Download flyer"
+            aria-label="Download flyer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
+        </div>
       ) : (
         <button
           type="button"
-          className={styles.flyerAddBtn}
+          className={`${styles.flyerAddBtn} ${boxClass}`}
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           title="Upload flyer"
@@ -467,6 +510,9 @@ function BookingRow({
   onEdit?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Flyer URL owned here so the row slot and the in-card thumbnail
+  // (both rendered for the same booking) stay in sync.
+  const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
   const { day, dow, mo } = getDateParts(booking.event_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
 
@@ -515,7 +561,9 @@ function BookingRow({
           <FlyerSlot
             bookingId={booking.id}
             userId={userId}
-            initialUrl={booking.flyer_url ?? null}
+            flyerUrl={flyerUrl}
+            onChange={setFlyerUrl}
+            size="row"
           />
         )}
         {/* Clickable area — toggles the expand/collapse. */}
@@ -585,7 +633,15 @@ function BookingRow({
           </svg>
         </button>
       </div>
-      {expanded && <BookingDetails booking={booking} djType={djType} userId={userId} />}
+      {expanded && (
+        <BookingDetails
+          booking={booking}
+          djType={djType}
+          userId={userId}
+          flyerUrl={flyerUrl}
+          onFlyerChange={setFlyerUrl}
+        />
+      )}
     </div>
   );
 }
@@ -598,11 +654,13 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId,
+  booking, djType, userId, flyerUrl, onFlyerChange,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
+  flyerUrl: string | null;
+  onFlyerChange: (url: string | null) => void;
 }) {
   // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
@@ -645,21 +703,23 @@ function BookingDetails({
 
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
-    // Row 1: Event Date + Venue/Event Type
+    // Row 1: Event Date + Venue Name (Event Type for mobile)
     [
       { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
       djType === 'club'
-        ? { label: 'Venue Type', value: booking.venue_type ? capitalize(booking.venue_type) : null }
+        ? { label: 'Venue Name', value: booking.venue_name }
         : { label: 'Event Type', value: eventTypeLabel },
     ],
-    // Row 2: Start Time + End Time
+    // Row 2: Set Start Time + Set End Time
     [
-      { label: 'Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
-      { label: 'End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
+      { label: 'Set Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
+      { label: 'Set End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
     ],
-    // Row 3: Venue Name + Venue Address (linkified to Google Maps)
+    // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
-      { label: 'Venue Name', value: booking.venue_name },
+      djType === 'club'
+        ? { label: 'Venue Type', value: booking.venue_type ? capitalize(booking.venue_type) : null }
+        : { label: 'Venue Name', value: booking.venue_name },
       {
         label: 'Venue Address',
         value: addressUrl ? (
@@ -744,6 +804,20 @@ function BookingDetails({
           </div>
         ))}
       </div>
+      {/* Event flyer inside the card — small thumbnail with download icon,
+          plus replace/remove overlay controls. Club/bar bookings only. */}
+      {djType === 'club' && (
+        <div className={styles.flyerCardSection}>
+          <div className={styles.detailLabel}>Event Flyer</div>
+          <FlyerSlot
+            bookingId={booking.id}
+            userId={userId}
+            flyerUrl={flyerUrl}
+            onChange={onFlyerChange}
+            size="card"
+          />
+        </div>
+      )}
       {hasPackageDetails && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Package Details</div>

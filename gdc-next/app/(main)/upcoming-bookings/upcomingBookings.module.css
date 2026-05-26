@@ -863,30 +863,85 @@
   cursor: wait;
 }
 
-/* ── Event flyer (club bookings, inline on the row right of the date) ─ */
+/* ── Event flyer (club bookings — row slot + in-card thumbnail) ──────── */
 .flyerInline {
   flex-shrink: 0;
 }
+/* Size variants — applied to both the dashed empty box and the thumb. */
+.flyerBoxRow  { width: 56px; height: 56px; }
+.flyerBoxCard { width: 48px; height: 48px; }
+
+.flyerWithActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+/* Thumbnail wrapper — positioning context for the overlay controls. */
+.flyerThumbWrap {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 5px;
+  overflow: hidden;
+}
 .flyerThumbBtn {
+  display: block;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 5px;
   background: var(--deep);
   cursor: pointer;
   overflow: hidden;
-  flex-shrink: 0;
 }
-.flyerThumb {
+.flyerThumbImg {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
-.flyerActions {
+/* Overlay ✕ / pencil on the flyer thumbnail. */
+.flyerOverlayBtn {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.flyerOverlayEdit   { top: 2px; left: 2px; }
+.flyerOverlayDelete { top: 2px; right: 2px; }
+.flyerOverlayEdit:hover   { background: var(--neon); color: #050507; }
+.flyerOverlayDelete:hover { background: #ff5f5f; }
+.flyerOverlayBtn:disabled { opacity: .5; cursor: wait; }
+/* Download icon next to the thumbnail. */
+.flyerDownloadIcon {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--neon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.flyerDownloadIcon:hover { color: #00d4a9; }
+/* In-card flyer section. */
+.flyerCardSection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: .4rem;
-  padding-top: .15rem;
+  gap: .5rem;
 }
 .flyerLink {
   background: none;
@@ -913,8 +968,6 @@
 }
 .flyerLinkMuted:hover { color: var(--white); }
 .flyerAddBtn {
-  width: 56px;
-  height: 56px;
   flex-shrink: 0;
   border: 1px dashed var(--border);
   border-radius: 5px;
