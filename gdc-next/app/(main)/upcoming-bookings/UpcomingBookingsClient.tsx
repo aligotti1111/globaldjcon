@@ -304,6 +304,161 @@ export default function UpcomingBookingsClient({
 // BookingRow — single-line summary for one booking in the month list.
 // ───────────────────────────────────────────────────────────────────────
 
+// ───────────────────────────────────────────────────────────────────────
+// FlyerSlot — add / view / remove / download an event flyer on a club
+// booking. Same flyer + storage as the host-side flyer on the Upcoming
+// Events page (bookings.flyer_url, 'avatars' bucket) — this is just the
+// DJ-side place to manage it. A host can download it from here too and
+// reuse it on their own event listing.
+// ───────────────────────────────────────────────────────────────────────
+
+function FlyerSlot({
+  bookingId, userId, initialUrl,
+}: {
+  bookingId: string;
+  userId: string;
+  initialUrl: string | null;
+}) {
+  const [flyerUrl, setFlyerUrl] = useState<string | null>(initialUrl);
+  const [uploading, setUploading] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${userId}/flyers/${bookingId}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadErr) throw uploadErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
+      // DJ-side update — this view belongs to the DJ, so key on dj_id.
+      const { error: updErr } = await supabase
+        .from('bookings')
+        .update({ flyer_url: publicUrl } as unknown as never)
+        .eq('id', bookingId)
+        .eq('dj_id', userId);
+      if (updErr) throw updErr;
+      setFlyerUrl(publicUrl);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handleRemove() {
+    if (!confirm('Remove this flyer?')) return;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('bookings')
+        .update({ flyer_url: null } as unknown as never)
+        .eq('id', bookingId)
+        .eq('dj_id', userId);
+      if (error) throw error;
+      setFlyerUrl(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Remove failed');
+    }
+  }
+
+  async function handleDownload() {
+    if (!flyerUrl) return;
+    try {
+      const res = await fetch(flyerUrl);
+      const blob = await res.blob();
+      const ext = flyerUrl.split('?')[0].split('.').pop() || 'jpg';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flyer-${bookingId}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback — open in a new tab if the blob download fails.
+      window.open(flyerUrl, '_blank');
+    }
+  }
+
+  return (
+    <div className={styles.flyerSection}>
+      <div className={styles.flyerSectionLabel}>Event Flyer</div>
+      {flyerUrl ? (
+        <div className={styles.flyerRow}>
+          <button
+            type="button"
+            className={styles.flyerThumbBtn}
+            onClick={() => setShowLightbox(true)}
+            title="View flyer"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumb} />
+          </button>
+          <div className={styles.flyerActions}>
+            <button type="button" className={styles.flyerLink} onClick={handleDownload}>
+              Download flyer
+            </button>
+            <button type="button" className={styles.flyerLinkMuted} onClick={handleRemove}>
+              Remove
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={styles.flyerAddBtn}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading…' : '+ Add flyer'}
+        </button>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFile}
+      />
+      {showLightbox && flyerUrl && (
+        <div
+          className={styles.flyerLightbox}
+          onClick={() => setShowLightbox(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.flyerLightboxInner} onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={flyerUrl} alt="Event flyer" className={styles.flyerLightboxImg} />
+            <div className={styles.flyerLightboxActions}>
+              <button type="button" className={styles.flyerLink} onClick={handleDownload}>
+                Download
+              </button>
+              <button
+                type="button"
+                className={styles.flyerLinkMuted}
+                onClick={() => setShowLightbox(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BookingRow({
   booking, djType, userId, overlaps, onDelete, onEdit,
 }: {
@@ -572,6 +727,16 @@ function BookingDetails({
           </div>
         ))}
       </div>
+      {/* Event flyer — club/bar bookings only. Same flyer the host can
+          manage on their Upcoming Events page; this is the DJ-side spot
+          to add, view, remove, or download it. */}
+      {djType === 'club' && (
+        <FlyerSlot
+          bookingId={booking.id}
+          userId={userId}
+          initialUrl={booking.flyer_url ?? null}
+        />
+      )}
       {hasPackageDetails && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Package Details</div>
@@ -893,7 +1058,7 @@ function AddManualBookingModal({
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
