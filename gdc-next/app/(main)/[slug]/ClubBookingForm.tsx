@@ -704,7 +704,6 @@ export default function ClubBookingForm({
             fieldKey="setType"
             hasError={hasError('setType')}
             errorText="Please select a set type."
-            showCheck={setType !== ''}
           >
             <FieldCheck valid={setType !== ''}>
               <select
