@@ -1615,23 +1615,25 @@ function OwnerDayEditPopup({
                     bookings rather than replacing them. */}
                 {addingBooking ? (
                   <div className={styles.bkAddFormWrap}>
-                    <div className={styles.requestBookingTag}>New Manual Booking</div>
-                    <ManualBookingForm
-                      userId={djId}
-                      djType="club"
-                      djCountry={djCountry}
-                      djName=""
-                      bookingsPerDay={1}
-                      existingBookings={allBookings}
-                      existing={null}
-                      prefillDate={dateKey}
-                      lockDate={true}
-                      onCancel={() => setAddingBooking(false)}
-                      onSaved={(_row, mode) => {
-                        onSave({ ...dayData, booked: true });
-                        if (mode === 'added' || mode === 'updated') onClose();
-                      }}
-                    />
+                    <div className={styles.bkAddHero}>Add Booking Manually</div>
+                    <div className={styles.bkAddFormBody}>
+                      <ManualBookingForm
+                        userId={djId}
+                        djType="club"
+                        djCountry={djCountry}
+                        djName=""
+                        bookingsPerDay={1}
+                        existingBookings={allBookings}
+                        existing={null}
+                        prefillDate={dateKey}
+                        lockDate={true}
+                        onCancel={() => setAddingBooking(false)}
+                        onSaved={(_row, mode) => {
+                          onSave({ ...dayData, booked: true });
+                          if (mode === 'added' || mode === 'updated') onClose();
+                        }}
+                      />
+                    </div>
                   </div>
                 ) : (
                   dayBookings.length < 3 && (
