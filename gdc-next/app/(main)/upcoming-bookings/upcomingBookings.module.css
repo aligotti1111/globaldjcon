@@ -492,19 +492,14 @@
 /* The clickable summary row. Same look as the previous static .row, but
    now actually a <button> for proper a11y. */
 .row {
-  display: grid;
-  grid-template-columns: 130px 150px 1fr auto auto auto 16px;
-  gap: 1rem;
+  display: flex;
   align-items: center;
+  gap: 1rem;
   padding: .85rem 1rem;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   width: 100%;
-  text-align: left;
-  color: inherit;
-  font-family: inherit;
-  cursor: pointer;
   transition: background .15s, border-color .15s;
 }
 .row:hover {
@@ -515,6 +510,35 @@
   /* When expanded, join the row's bottom edge to the panel. */
   border-radius: 8px 8px 0 0;
   border-bottom-color: transparent;
+}
+/* Clickable middle area of the row — toggles expand/collapse. Holds the
+   date pill, time, and context. Button-reset so it blends into the row. */
+.rowToggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 130px 150px 1fr;
+  gap: 1rem;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+/* Chevron button at the end of the row. */
+.rowChevronBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 /* Down chevron at the end of the row; rotates 180° when expanded. */
@@ -843,24 +867,9 @@
   cursor: wait;
 }
 
-/* ── Event flyer section (club bookings, in the expanded details) ──── */
-.flyerSection {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-.flyerSectionLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .6rem;
-}
-.flyerRow {
-  display: flex;
-  gap: .9rem;
-  align-items: flex-start;
+/* ── Event flyer (club bookings, inline on the row right of the date) ─ */
+.flyerInline {
+  flex-shrink: 0;
 }
 .flyerThumbBtn {
   padding: 0;

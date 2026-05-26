@@ -391,28 +391,17 @@ function FlyerSlot({
   }
 
   return (
-    <div className={styles.flyerSection}>
-      <div className={styles.flyerSectionLabel}>Event Flyer</div>
+    <div className={styles.flyerInline}>
       {flyerUrl ? (
-        <div className={styles.flyerRow}>
-          <button
-            type="button"
-            className={styles.flyerThumbBtn}
-            onClick={() => setShowLightbox(true)}
-            title="View flyer"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumb} />
-          </button>
-          <div className={styles.flyerActions}>
-            <button type="button" className={styles.flyerLink} onClick={handleDownload}>
-              Download flyer
-            </button>
-            <button type="button" className={styles.flyerLinkMuted} onClick={handleRemove}>
-              Remove
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          className={styles.flyerThumbBtn}
+          onClick={() => setShowLightbox(true)}
+          title="View flyer"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumb} />
+        </button>
       ) : (
         <button
           type="button"
@@ -444,6 +433,13 @@ function FlyerSlot({
             <div className={styles.flyerLightboxActions}>
               <button type="button" className={styles.flyerLink} onClick={handleDownload}>
                 Download
+              </button>
+              <button
+                type="button"
+                className={styles.flyerLinkMuted}
+                onClick={async () => { await handleRemove(); setShowLightbox(false); }}
+              >
+                Remove
               </button>
               <button
                 type="button"
@@ -504,35 +500,48 @@ function BookingRow({
 
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
-      <button
-        type="button"
-        className={styles.row}
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
-        <div className={styles.rowDate}>
-          <div className={styles.dayNum}>{day}</div>
-          <div className={styles.dayMeta}>
-            <div className={styles.dow}>{dow}</div>
-            <div className={styles.mo}>{mo}</div>
-          </div>
-        </div>
-        <div className={styles.rowTime}>{timeRange}</div>
-        {(context || overlaps) ? (
-          <div className={styles.rowContext}>
-            {context}
-            {overlaps && (
-              <span
-                className={styles.overlapPill}
-                title="This booking's time overlaps another booking on the same day"
-              >
-                ⚠ Time overlap
-              </span>
-            )}
-          </div>
-        ) : (
-          <div />
+      <div className={styles.row}>
+        {/* Event flyer — club/bar bookings only. Sits inline on the row,
+            right of the date. Same flyer the host can manage on the
+            Upcoming Events page. */}
+        {djType === 'club' && (
+          <FlyerSlot
+            bookingId={booking.id}
+            userId={userId}
+            initialUrl={booking.flyer_url ?? null}
+          />
         )}
+        {/* Clickable area — toggles the expand/collapse. */}
+        <button
+          type="button"
+          className={styles.rowToggle}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          <div className={styles.rowDate}>
+            <div className={styles.dayNum}>{day}</div>
+            <div className={styles.dayMeta}>
+              <div className={styles.dow}>{dow}</div>
+              <div className={styles.mo}>{mo}</div>
+            </div>
+          </div>
+          <div className={styles.rowTime}>{timeRange}</div>
+          {(context || overlaps) ? (
+            <div className={styles.rowContext}>
+              {context}
+              {overlaps && (
+                <span
+                  className={styles.overlapPill}
+                  title="This booking's time overlaps another booking on the same day"
+                >
+                  ⚠ Time overlap
+                </span>
+              )}
+            </div>
+          ) : (
+            <div />
+          )}
+        </button>
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
         )}
@@ -561,14 +570,21 @@ function BookingRow({
             ✕
           </span>
         )}
-        <svg
-          className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
-          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        <button
+          type="button"
+          className={styles.rowChevronBtn}
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? 'Collapse' : 'Expand'}
         >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+          <svg
+            className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
       {expanded && <BookingDetails booking={booking} djType={djType} userId={userId} />}
     </div>
   );
@@ -728,16 +744,6 @@ function BookingDetails({
           </div>
         ))}
       </div>
-      {/* Event flyer — club/bar bookings only. Same flyer the host can
-          manage on their Upcoming Events page; this is the DJ-side spot
-          to add, view, remove, or download it. */}
-      {djType === 'club' && (
-        <FlyerSlot
-          bookingId={booking.id}
-          userId={userId}
-          initialUrl={booking.flyer_url ?? null}
-        />
-      )}
       {hasPackageDetails && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Package Details</div>
