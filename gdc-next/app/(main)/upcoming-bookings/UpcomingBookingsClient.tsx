@@ -419,8 +419,9 @@ function FlyerSlot({
           className={styles.flyerAddBtn}
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
+          title="Upload flyer"
         >
-          {uploading ? 'Uploading…' : '+ Add flyer'}
+          {uploading ? '…' : '+ Flyer'}
         </button>
       )}
       <input

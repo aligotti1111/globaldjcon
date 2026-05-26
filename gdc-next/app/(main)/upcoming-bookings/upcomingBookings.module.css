@@ -873,8 +873,8 @@
 }
 .flyerThumb {
   display: block;
-  width: 96px;
-  height: 96px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
 }
 .flyerActions {
@@ -908,16 +908,31 @@
 }
 .flyerLinkMuted:hover { color: var(--white); }
 .flyerAddBtn {
-  background: var(--deep);
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
   border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: .7rem 1.1rem;
-  color: var(--neon);
-  font-family: 'DM Sans', sans-serif;
-  font-size: .85rem;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
   cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 4px;
+  transition: color .15s, border-color .15s;
 }
-.flyerAddBtn:hover { border-color: var(--neon); }
+.flyerAddBtn:hover:not(:disabled) {
+  color: var(--neon);
+  border-color: var(--neon);
+}
 .flyerAddBtn:disabled { opacity: .6; cursor: wait; }
 /* Flyer lightbox */
 .flyerLightbox {
