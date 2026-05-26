@@ -211,24 +211,25 @@ export default function ClubBookingForm({
 
   // Approved bookings already on this date for this DJ. Shown in red
   // under Set Times so the customer can see what's already booked.
-  // Pending requests are excluded — they don't hold a slot.
+  // Fetched via /api/dj-booked-sets — a customer's anon session can't
+  // read another user's bookings directly (RLS), so the server route
+  // returns just the time ranges. Pending requests are excluded.
   const [bookedSets, setBookedSets] = useState<Array<{ start: string | null; end: string | null }>>([]);
   useEffect(() => {
     if (!dateKey || !dj?.id) { setBookedSets([]); return; }
     let active = true;
     (async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('bookings')
-        .select('start_time, end_time')
-        .eq('dj_id', dj.id)
-        .eq('event_date', dateKey)
-        .eq('status', 'approved');
-      if (!active) return;
-      setBookedSets(
-        ((data as Array<{ start_time: string | null; end_time: string | null }>) || [])
-          .map((b) => ({ start: b.start_time, end: b.end_time })),
-      );
+      try {
+        const res = await fetch(
+          `/api/dj-booked-sets?djId=${encodeURIComponent(dj.id)}&date=${encodeURIComponent(dateKey)}`,
+        );
+        if (!res.ok) { if (active) setBookedSets([]); return; }
+        const json = await res.json();
+        if (!active) return;
+        setBookedSets(Array.isArray(json.sets) ? json.sets : []);
+      } catch {
+        if (active) setBookedSets([]);
+      }
     })();
     return () => { active = false; };
   }, [dateKey, dj?.id]);
