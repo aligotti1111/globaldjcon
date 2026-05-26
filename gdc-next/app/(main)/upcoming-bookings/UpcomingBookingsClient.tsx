@@ -37,6 +37,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 import NotesFeed from '@/components/NotesFeed';
+import { useConfirm } from '@/components/ConfirmModal';
 
 interface Props {
   userId: string;
@@ -95,6 +96,8 @@ export default function UpcomingBookingsClient({
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   const [showAddModal, setShowAddModal] = useState(false);
+  // Site-uniform confirm dialog — replaces window.confirm() for delete.
+  const { confirm, confirmDialog } = useConfirm();
   // When set, the modal opens in edit mode prefilled with this booking's data.
   // Mutually exclusive with showAddModal — opening one closes the other.
   const [editing, setEditing] = useState<UpcomingBooking | null>(null);
@@ -231,7 +234,14 @@ export default function UpcomingBookingsClient({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this manual booking? This cannot be undone.')) return;
+    const ok = await confirm({
+      title: 'Delete this manual booking?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const supabase = createClient();
     const { error } = await supabase.from('bookings').delete().eq('id', id).eq('dj_id', userId);
     if (error) { alert('Delete failed: ' + error.message); return; }
@@ -240,6 +250,7 @@ export default function UpcomingBookingsClient({
 
   return (
     <div className={styles.page}>
+      {confirmDialog}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Upcoming Bookings</h1>
@@ -324,6 +335,7 @@ function FlyerSlot({
   const [uploading, setUploading] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { confirm, confirmDialog } = useConfirm();
   const boxClass = size === 'card' ? styles.flyerBoxCard : styles.flyerBoxRow;
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -357,7 +369,14 @@ function FlyerSlot({
   }
 
   async function handleRemove() {
-    if (!confirm('Remove this flyer?')) return;
+    const ok = await confirm({
+      title: 'Remove this flyer?',
+      message: 'The flyer will be removed from this booking.',
+      confirmLabel: 'Remove',
+      cancelLabel: 'Keep',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -497,6 +516,7 @@ function FlyerSlot({
           </div>
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }
