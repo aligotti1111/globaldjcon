@@ -501,9 +501,16 @@ function BookingRow({
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
       <div className={styles.row}>
-        {/* Event flyer — club/bar bookings only. Sits inline on the row,
-            right of the date. Same flyer the host can manage on the
-            Upcoming Events page. */}
+        {/* Date pill — first on the row. */}
+        <div className={styles.rowDate}>
+          <div className={styles.dayNum}>{day}</div>
+          <div className={styles.dayMeta}>
+            <div className={styles.dow}>{dow}</div>
+            <div className={styles.mo}>{mo}</div>
+          </div>
+        </div>
+        {/* Event flyer — club/bar bookings only. Sits right of the date.
+            Same flyer the host can manage on the Upcoming Events page. */}
         {djType === 'club' && (
           <FlyerSlot
             bookingId={booking.id}
@@ -518,13 +525,6 @@ function BookingRow({
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
         >
-          <div className={styles.rowDate}>
-            <div className={styles.dayNum}>{day}</div>
-            <div className={styles.dayMeta}>
-              <div className={styles.dow}>{dow}</div>
-              <div className={styles.mo}>{mo}</div>
-            </div>
-          </div>
           <div className={styles.rowTime}>{timeRange}</div>
           {(context || overlaps) ? (
             <div className={styles.rowContext}>

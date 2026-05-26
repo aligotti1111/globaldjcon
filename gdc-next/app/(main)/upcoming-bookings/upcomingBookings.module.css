@@ -517,7 +517,7 @@
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: 130px 150px 1fr;
+  grid-template-columns: 150px 1fr;
   gap: 1rem;
   align-items: center;
   background: none;
