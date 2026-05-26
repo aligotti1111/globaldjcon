@@ -876,14 +876,18 @@ export default function ClubBookingForm({
           )}
           {/* Sets already booked on this date — shown so the customer
               knows what's taken. Club/bar DJs can take more than one
-              booking a day, so this is informational, not a block. */}
-          {bookedSets.length > 0 && (
+              booking a day, so this is informational, not a block. A set
+              that overlaps the chosen time is omitted here — it's covered
+              by the overlap warning below instead, to avoid duplication. */}
+          {bookedSets.filter((b) => !overlappingSets.includes(b)).length > 0 && (
             <div className={styles.bookedSets}>
-              {bookedSets.map((b, i) => (
-                <div key={i} className={styles.bookedSetLine}>
-                  {formatTime12(b.start || '')} – {formatTime12(b.end || '')} booked
-                </div>
-              ))}
+              {bookedSets
+                .filter((b) => !overlappingSets.includes(b))
+                .map((b, i) => (
+                  <div key={i} className={styles.bookedSetLine}>
+                    {formatTime12(b.start || '')} – {formatTime12(b.end || '')} booked
+                  </div>
+                ))}
             </div>
           )}
           {/* Overlap warning — chosen times collide with a booked set.
