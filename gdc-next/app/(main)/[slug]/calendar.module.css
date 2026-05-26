@@ -1104,7 +1104,8 @@
   font-size: 1.15rem;
   letter-spacing: .04em;
   text-align: center;
-  padding: .55rem 1rem;
+  line-height: 1;
+  padding: .38rem 1rem;
 }
 .bkAddFormBody {
   padding: .9rem 1rem 1rem;
