@@ -1264,6 +1264,10 @@ function OwnerDayEditPopup({
   const [dayCapOverride, setDayCapOverride] = useState<number>(
     dayData.day_capacity != null ? dayData.day_capacity : 1,
   );
+  // Tab within the booked-day popup: 'bookings' (capacity + accordion)
+  // or 'rates' (per-day rate override). The Rates tab is only offered
+  // while the day still has capacity for more bookings.
+  const [popupTab, setPopupTab] = useState<'bookings' | 'rates'>('bookings');
 
   // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
   const formatted = useMemo(() => {
@@ -1380,11 +1384,13 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {/* ── Per-day rate override (Available status only) ─────────
-            Mirror of the universal rate panel + the update-dj-profile
-            calendar's day-edit modal. Empty fields fall back to the
-            DJ's universal rates; non-empty fields win for that date. */}
-        {status === 'available' && bookingSettings && (
+        {/* ── Per-day rate override ─────────────────────────────────
+            Shown for an Available day, OR inside the booked-day popup's
+            "Rates" tab. Changing the override edits only this date's
+            calendar config — it never touches existing booking rows, so
+            confirmed/pending bookings keep the rate they were booked at. */}
+        {((status === 'available') || (status === 'booked' && popupTab === 'rates'))
+          && bookingSettings && (
           <div className={styles.ownerEditBookedFields}>
             <div className={styles.ownerEditFieldGroup}>
               <label className={styles.ownerEditFieldLabel}>
@@ -1484,6 +1490,34 @@ function OwnerDayEditPopup({
               />
             ) : (
               <>
+                {/* Tab bar — Bookings / Rates. The Rates tab is only
+                    offered while the day still has open capacity; once
+                    the day is full there's no point editing rates. */}
+                {(() => {
+                  const atMax = dayBookings.length >= dayCapOverride;
+                  const showRatesTab = !atMax && !!bookingSettings;
+                  return showRatesTab ? (
+                    <div className={styles.dayTabBar}>
+                      <button
+                        type="button"
+                        className={`${styles.dayTab} ${popupTab === 'bookings' ? styles.dayTabActive : ''}`}
+                        onClick={() => setPopupTab('bookings')}
+                      >
+                        Bookings
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.dayTab} ${popupTab === 'rates' ? styles.dayTabActive : ''}`}
+                        onClick={() => setPopupTab('rates')}
+                      >
+                        Rates
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
+
+                {popupTab === 'bookings' && (
+                <>
                 {/* Per-day capacity — how many bookings the DJ accepts on
                     this date. Sits at the top of the booked panel. */}
                 <div className={styles.dayCapBox}>
@@ -1604,6 +1638,8 @@ function OwnerDayEditPopup({
                   >
                     Manually Add Booking
                   </button>
+                )}
+                </>
                 )}
               </>
             )}

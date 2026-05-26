@@ -1250,3 +1250,29 @@
     margin-bottom: 1px;
   }
 }
+
+/* ── Booked-day popup tab bar (Bookings / Rates) ──────────────────── */
+.dayTabBar {
+  display: flex;
+  gap: .35rem;
+  margin-bottom: .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.dayTab {
+  flex: 1 1 auto;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: .5rem .25rem .6rem;
+  color: var(--muted);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.dayTab:hover { color: var(--white); }
+.dayTabActive {
+  color: var(--neon);
+  border-bottom-color: var(--neon);
+}
