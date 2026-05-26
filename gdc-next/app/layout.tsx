@@ -84,7 +84,14 @@ export const metadata: Metadata = {
 async function getInitialUser(): Promise<CurrentUser | null> {
   try {
     const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    // Use getSession() (local cookie decode) instead of getUser() (network
+    // round trip to Supabase Auth). Middleware already calls getUser() on
+    // every request — it validates and refreshes the session cookie before
+    // this layout runs — so the session here is already trustworthy. Calling
+    // getUser() again would be a second, redundant network hop on every page
+    // load. getSession() reads the same answer from the cookie in memory.
+    const { data: { session } } = await supabase.auth.getSession();
+    const authUser = session?.user;
     if (!authUser || !authUser.email) return null;
     const { data: profile } = await supabase
       .from('users')
