@@ -663,23 +663,20 @@
     grid-template-columns: 1fr;
     gap: .75rem;
   }
-  /* Compact mobile card. The date pill is locked to a fixed-width left
-     column and spans both info rows so it stays vertically centered no
-     matter how tall the card grows. Time and context share the same left
-     edge in the middle column — context wraps below time when it gets
-     long. Chevron pinned right, also spanning both rows. Row 3 holds
-     edit+delete tight together on the left and the MANUAL ADD pill on
-     the right when it's a manual booking. */
+  /* Compact mobile card. Row 1: date pill, flyer, the toggle area
+     (time + context), and the chevron. Row 2 (manual bookings only):
+     edit + delete on the left, MANUAL ADD pill on the right. The
+     toggle area is a single-column grid on mobile so time and context
+     stack instead of fighting for horizontal space. */
   .row {
     display: grid;
-    grid-template-columns: 78px 1fr auto;
+    grid-template-columns: 64px auto 1fr auto;
     grid-template-areas:
-      "date    time     chev"
-      "date    context  chev"
-      "actions actions  pill";
+      "date  flyer  toggle  chev"
+      "acts  acts   acts    pill";
     column-gap: .5rem;
-    row-gap: .35rem;
-    padding: .65rem .85rem;
+    row-gap: .4rem;
+    padding: .6rem .7rem;
     align-items: center;
   }
   .rowDate {
@@ -688,37 +685,36 @@
     justify-content: flex-start;
     min-width: 0;
   }
+  .flyerInline { grid-area: flyer; }
+  .rowToggle {
+    grid-area: toggle;
+    grid-template-columns: 1fr;
+    gap: .15rem;
+    min-width: 0;
+  }
   .rowTime {
-    grid-area: time;
     justify-self: start;
-    font-size: .85rem;
+    font-size: .82rem;
   }
   .rowContext {
-    grid-area: context;
     justify-self: start;
     white-space: normal;
-    font-size: .9rem;
+    font-size: .82rem;
     line-height: 1.3;
     text-align: left;
   }
-  .rowChevron {
+  .rowChevronBtn {
     grid-area: chev;
     justify-self: end;
     align-self: center;
   }
-
-  /* Row 3: edit + delete sit on the LEFT spanning the actions area, with
-     just 4px between them (no grid gap interfering because they share
-     one grid cell via the same grid-area). Absolute-position both inside
-     a wrapper isn't an option since they're direct grid children — but
-     using grid-column-start with `start` justification + a fixed gap
-     via translate gives clean alignment. */
-  .editBtn   {
-    grid-area: actions;
+  /* Row 2: edit + delete tight together on the left. */
+  .editBtn {
+    grid-area: acts;
     justify-self: start;
   }
   .deleteBtn {
-    grid-area: actions;
+    grid-area: acts;
     justify-self: start;
     transform: translateX(36px);
   }
@@ -729,7 +725,7 @@
   }
 
   /* Bigger, prominent date pill on mobile. */
-  .dayNum { font-size: 30px; }
+  .dayNum { font-size: 28px; }
   .dow    { font-size: 10px; }
   .mo     { font-size: 10px; }
   .rowDate { gap: 6px; }
