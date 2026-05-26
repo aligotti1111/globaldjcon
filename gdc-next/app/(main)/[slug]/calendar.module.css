@@ -1056,10 +1056,45 @@
 /* Accordion of the day's bookings in the owner day-edit popup. Each row
    is a compact header (time · venue); clicking expands its details. */
 .bkAccItem {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: .5rem;
   overflow: hidden;
+}
+/* Small number badge (1/2/3) in the top-left of each booking row. */
+.bkAccNumber {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 .25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neon);
+  color: #050507;
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  border-bottom-right-radius: 6px;
+}
+/* Push the header text clear of the number badge. */
+.bkAccItem .bkAccHeader { padding-left: 1.7rem; }
+/* Divider between the capacity box and the booking list. */
+.bkListDivider {
+  height: 1px;
+  background: var(--border);
+  margin: .9rem 0;
+}
+/* Wrapper for the manual-add form when it opens below the list. */
+.bkAddFormWrap {
+  margin-top: .5rem;
+  padding: .9rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 .bkAccHeader {
   width: 100%;

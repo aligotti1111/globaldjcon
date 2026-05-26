@@ -1344,6 +1344,30 @@ function OwnerDayEditPopup({
           <button type="button" onClick={onClose} className={styles.ownerEditClose}>✕</button>
         </div>
 
+        {/* Booked-day tab bar — pinned at the top, always visible once
+            the day has a booking. Switches between the bookings panel
+            and the per-day rate override. Rates stay relevant even at
+            max capacity (a cancellation could free a slot for a new
+            booking at the updated rate). */}
+        {!bookingDetailsLoading && status === 'booked' && dayBookings.length > 0 && !addingBooking && (
+          <div className={styles.dayTabBar}>
+            <button
+              type="button"
+              className={`${styles.dayTab} ${popupTab === 'bookings' ? styles.dayTabActive : ''}`}
+              onClick={() => setPopupTab('bookings')}
+            >
+              Bookings
+            </button>
+            <button
+              type="button"
+              className={`${styles.dayTab} ${popupTab === 'rates' ? styles.dayTabActive : ''}`}
+              onClick={() => setPopupTab('rates')}
+            >
+              Rates
+            </button>
+          </div>
+        )}
+
         {/* Status radios — only when the day has NO bookings. Once a
             booking exists, the day is committed; the DJ can't flip it to
             Available/Unavailable. (A manual booking can be removed from
@@ -1466,60 +1490,14 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {status === 'booked' && (
+        {status === 'booked' && popupTab === 'bookings' && (
           <div className={styles.ownerEditBookedFields}>
             {bookingDetailsLoading ? (
               <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
-            ) : addingBooking ? (
-              /* Manual booking form — adding a new booking to this day. */
-              <ManualBookingForm
-                userId={djId}
-                djType="club"
-                djCountry={djCountry}
-                djName=""
-                bookingsPerDay={1}
-                existingBookings={allBookings}
-                existing={null}
-                prefillDate={dateKey}
-                lockDate={true}
-                onCancel={() => setAddingBooking(false)}
-                onSaved={(_row, mode) => {
-                  onSave({ ...dayData, booked: true });
-                  if (mode === 'added' || mode === 'updated') onClose();
-                }}
-              />
             ) : (
               <>
-                {/* Tab bar — Bookings / Rates. The Rates tab is only
-                    offered while the day still has open capacity; once
-                    the day is full there's no point editing rates. */}
-                {(() => {
-                  const atMax = dayBookings.length >= dayCapOverride;
-                  const showRatesTab = !atMax && !!bookingSettings;
-                  return showRatesTab ? (
-                    <div className={styles.dayTabBar}>
-                      <button
-                        type="button"
-                        className={`${styles.dayTab} ${popupTab === 'bookings' ? styles.dayTabActive : ''}`}
-                        onClick={() => setPopupTab('bookings')}
-                      >
-                        Bookings
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.dayTab} ${popupTab === 'rates' ? styles.dayTabActive : ''}`}
-                        onClick={() => setPopupTab('rates')}
-                      >
-                        Rates
-                      </button>
-                    </div>
-                  ) : null;
-                })()}
-
-                {popupTab === 'bookings' && (
-                <>
                 {/* Per-day capacity — how many bookings the DJ accepts on
-                    this date. Sits at the top of the booked panel. */}
+                    this date. Sits at the top of the bookings panel. */}
                 <div className={styles.dayCapBox}>
                   <span className={styles.dayCapBoxLabel}>
                     Bookings Accepted This Day
@@ -1558,10 +1536,14 @@ function OwnerDayEditPopup({
                   </p>
                 )}
 
-                {/* Accordion — every booking on this day. Each row shows a
-                    compact header (time · venue); click to expand. One
-                    open at a time. Request bookings expand read-only;
-                    manual bookings expand into the editable form. */}
+                {/* Separator between the capacity setting and the list
+                    of bookings below it. */}
+                <div className={styles.bkListDivider} />
+
+                {/* Accordion — every booking on this day, numbered 1/2/3.
+                    Each row shows a compact header (time · venue); click
+                    to expand. One open at a time. Request bookings expand
+                    read-only; manual bookings expand into the form. */}
                 {dayBookings.map((bk, idx) => {
                   const isOpen = expandedIdx === idx;
                   const hdrTime = bk.start_time
@@ -1570,6 +1552,7 @@ function OwnerDayEditPopup({
                     : 'Time TBD';
                   return (
                     <div key={bk.id} className={styles.bkAccItem}>
+                      <span className={styles.bkAccNumber}>{idx + 1}</span>
                       <button
                         type="button"
                         className={`${styles.bkAccHeader} ${isOpen ? styles.bkAccHeaderOpen : ''}`}
@@ -1628,18 +1611,38 @@ function OwnerDayEditPopup({
                   );
                 })}
 
-                {/* "Manually add booking" — shown unless the day already
-                    has the hard maximum of 3 bookings. */}
-                {dayBookings.length < 3 && (
-                  <button
-                    type="button"
-                    className={styles.add2ndLink}
-                    onClick={() => setAddingBooking(true)}
-                  >
-                    Manually Add Booking
-                  </button>
-                )}
-                </>
+                {/* Manual add — the form opens BELOW the existing
+                    bookings rather than replacing them. */}
+                {addingBooking ? (
+                  <div className={styles.bkAddFormWrap}>
+                    <div className={styles.requestBookingTag}>New Manual Booking</div>
+                    <ManualBookingForm
+                      userId={djId}
+                      djType="club"
+                      djCountry={djCountry}
+                      djName=""
+                      bookingsPerDay={1}
+                      existingBookings={allBookings}
+                      existing={null}
+                      prefillDate={dateKey}
+                      lockDate={true}
+                      onCancel={() => setAddingBooking(false)}
+                      onSaved={(_row, mode) => {
+                        onSave({ ...dayData, booked: true });
+                        if (mode === 'added' || mode === 'updated') onClose();
+                      }}
+                    />
+                  </div>
+                ) : (
+                  dayBookings.length < 3 && (
+                    <button
+                      type="button"
+                      className={styles.add2ndLink}
+                      onClick={() => setAddingBooking(true)}
+                    >
+                      Manually Add Booking
+                    </button>
+                  )
                 )}
               </>
             )}
