@@ -209,6 +209,53 @@ export default function ClubBookingForm({
   const [offerAmount, setOfferAmount] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Approved bookings already on this date for this DJ. Shown in red
+  // under Set Times so the customer can see what's already booked.
+  // Pending requests are excluded — they don't hold a slot.
+  const [bookedSets, setBookedSets] = useState<Array<{ start: string | null; end: string | null }>>([]);
+  useEffect(() => {
+    if (!dateKey || !dj?.id) { setBookedSets([]); return; }
+    let active = true;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('dj_id', dj.id)
+        .eq('event_date', dateKey)
+        .eq('status', 'approved');
+      if (!active) return;
+      setBookedSets(
+        ((data as Array<{ start_time: string | null; end_time: string | null }>) || [])
+          .map((b) => ({ start: b.start_time, end: b.end_time })),
+      );
+    })();
+    return () => { active = false; };
+  }, [dateKey, dj?.id]);
+
+  // Booked sets whose time range overlaps the customer's chosen Set
+  // Start/End. Times are "HH:MM"; an end at/before start wraps midnight.
+  const overlappingSets = useMemo(() => {
+    if (!startTime || !endTime || bookedSets.length === 0) return [];
+    const toRange = (s: string | null, e: string | null): [number, number] | null => {
+      if (!s || !e) return null;
+      const [sh, sm] = s.split(':').map(Number);
+      const [eh, em] = e.split(':').map(Number);
+      if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+      const start = sh * 60 + sm;
+      let end = eh * 60 + em;
+      if (end <= start) end += 24 * 60;
+      return [start, end];
+    };
+    const mine = toRange(startTime, endTime);
+    if (!mine) return [];
+    return bookedSets.filter((b) => {
+      const r = toRange(b.start, b.end);
+      if (!r) return false;
+      return mine[0] < r[1] && r[0] < mine[1];
+    });
+  }, [startTime, endTime, bookedSets]);
+
   // ── SSR-safe portal flag — Next.js renders on server where document
   // doesn't exist. Render null until mounted, then portal to body so
   // the modal escapes any parent stacking context. ──────────────────
@@ -658,18 +705,19 @@ export default function ClubBookingForm({
             errorText="Please select a set type."
             showCheck={setType !== ''}
           >
-            <div className={styles.pillCol}>
-              {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => { setSetType(val); clearMissing('setType'); }}
-                  className={`${styles.pillWide} ${setType === val ? styles.pillActive : ''}`}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
+            <FieldCheck valid={setType !== ''}>
+              <select
+                value={setType}
+                onChange={(e) => { setSetType(e.target.value); clearMissing('setType'); }}
+                className={`${styles.input} ${styles.hasCheckSelect}`}
+                style={hasError('setType') ? { borderColor: '#ff5f5f' } : undefined}
+              >
+                <option value="">Select…</option>
+                {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
+            </FieldCheck>
           </FormSection>
         )}
 
@@ -825,6 +873,25 @@ export default function ClubBookingForm({
               {formatTime12(startTime)} → {formatTime12(endTime)} ({setDurationLabel})
             </div>
           )}
+          {/* Sets already booked on this date — shown so the customer
+              knows what's taken. Club/bar DJs can take more than one
+              booking a day, so this is informational, not a block. */}
+          {bookedSets.length > 0 && (
+            <div className={styles.bookedSets}>
+              {bookedSets.map((b, i) => (
+                <div key={i} className={styles.bookedSetLine}>
+                  {formatTime12(b.start || '')} – {formatTime12(b.end || '')} booked
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Overlap warning — chosen times collide with a booked set.
+              Heads-up only; the booking is still allowed to go through. */}
+          {overlappingSets.map((b, i) => (
+            <div key={`ov-${i}`} className={styles.overlapWarn}>
+              Chosen Time Overlaps {formatTime12(b.start || '')} – {formatTime12(b.end || '')} Booking
+            </div>
+          ))}
         </FormSection>
 
         {/* Equipment */}

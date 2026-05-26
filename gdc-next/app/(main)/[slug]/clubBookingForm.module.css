@@ -141,6 +141,24 @@
 .input:focus {
   border-color: var(--neon);
 }
+/* Native <select> elements render with extra internal padding/height
+   vs text inputs. Normalize so a select.input matches an input.input. */
+select.input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  height: 2.45rem;
+  line-height: 1.2;
+  box-sizing: border-box;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .85rem center;
+}
+/* On checkmark-bearing selects the ✓ sits at right 1.95rem — push the
+   dropdown chevron further out so the two don't overlap. */
+.hasCheckSelect.input {
+  background-position: right .85rem center;
+}
 
 /* ── Field validity checkmark ──────────────────────────────────────
    A green ✓ appears at the right edge of a field once its value is
@@ -551,4 +569,27 @@
   background: var(--neon-dim);
   border-color: var(--neon);
   color: var(--neon);
+}
+
+/* ── Sets already booked on the chosen date ───────────────────────── */
+.bookedSets {
+  margin-top: .65rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.bookedSetLine {
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .03em;
+  color: #ff5f5f;
+}
+/* Overlap warning — chosen times collide with a booked set. */
+.overlapWarn {
+  margin-top: .4rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .03em;
+  color: #ff5f5f;
+  font-weight: 700;
 }
