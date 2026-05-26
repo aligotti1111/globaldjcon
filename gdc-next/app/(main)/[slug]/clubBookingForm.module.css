@@ -587,6 +587,7 @@ select.input {
 /* Overlap warning — chosen times collide with a booked set. */
 .overlapWarn {
   margin-top: .4rem;
+  text-align: center;
   font-family: 'Space Mono', monospace;
   font-size: .68rem;
   letter-spacing: .03em;
