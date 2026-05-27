@@ -234,6 +234,10 @@ select.input {
   color: var(--muted);
   margin-bottom: .35rem;
 }
+/* Highlights just the word "Set" within the Set Start / Set End labels. */
+.timeLabelHl {
+  color: var(--neon);
+}
 .durationHint {
   margin-top: .65rem;
   text-align: center;

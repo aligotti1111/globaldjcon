@@ -835,7 +835,7 @@ export default function ClubBookingForm({
         >
           <div className={styles.timeRow}>
             <div className={styles.timeCol}>
-              <label className={styles.timeLabel}>Set Start</label>
+              <label className={styles.timeLabel}><span className={styles.timeLabelHl}>Set</span> Start</label>
               <FieldCheck valid={startTimeValid}>
                 <select
                   value={startTime}
@@ -851,7 +851,7 @@ export default function ClubBookingForm({
               </FieldCheck>
             </div>
             <div className={styles.timeCol}>
-              <label className={styles.timeLabel}>Set End</label>
+              <label className={styles.timeLabel}><span className={styles.timeLabelHl}>Set</span> End</label>
               <FieldCheck valid={endTimeValid}>
                 <select
                   value={endTime}
@@ -871,22 +871,6 @@ export default function ClubBookingForm({
           {setDurationLabel && (
             <div className={styles.durationHint}>
               {formatTime12(startTime)} → {formatTime12(endTime)} ({setDurationLabel})
-            </div>
-          )}
-          {/* Sets already booked on this date — shown so the customer
-              knows what's taken. Club/bar DJs can take more than one
-              booking a day, so this is informational, not a block. A set
-              that overlaps the chosen time is omitted here — it's covered
-              by the overlap warning below instead, to avoid duplication. */}
-          {bookedSets.filter((b) => !overlappingSets.includes(b)).length > 0 && (
-            <div className={styles.bookedSets}>
-              {bookedSets
-                .filter((b) => !overlappingSets.includes(b))
-                .map((b, i) => (
-                  <div key={i} className={styles.bookedSetLine}>
-                    {formatTime12(b.start || '')} – {formatTime12(b.end || '')} booked
-                  </div>
-                ))}
             </div>
           )}
           {/* Overlap warning — chosen times collide with a booked set.
