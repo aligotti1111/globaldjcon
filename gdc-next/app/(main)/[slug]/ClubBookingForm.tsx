@@ -351,17 +351,17 @@ export default function ClubBookingForm({
     return [
       {
         value: 'sound_system',
-        label: 'DJ provides system + decks',
+        label: 'DJ Provides System + Decks',
         supported: !!bookingSettings.equip_full,
       },
       {
         value: 'decks_only',
-        label: 'DJ provides decks',
+        label: 'DJ Provides Decks',
         supported: !!(bookingSettings.equip_full || bookingSettings.equip_decks),
       },
       {
         value: 'venue_provides',
-        label: 'Venue provides all',
+        label: 'Venue Provides All',
         supported: true,
       },
     ];
@@ -1002,7 +1002,7 @@ export default function ClubBookingForm({
                   textAlign: 'center',
                 }}>
                   <div style={{
-                    color: 'var(--muted)',
+                    color: 'var(--neon)',
                     fontSize: '.8rem',
                     lineHeight: 1.5,
                     fontFamily: 'DM Sans, sans-serif',
