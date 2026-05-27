@@ -1107,7 +1107,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: var(--card);
+  background: #000000;
   box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .65);
 }
 /* Full-width header bar at the top of the manual-add form. */
