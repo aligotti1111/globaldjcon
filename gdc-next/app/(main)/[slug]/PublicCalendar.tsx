@@ -1254,19 +1254,11 @@ function OwnerDayEditPopup({
   //   - Existing booking on file → form open by default (edit mode)
   //   - No existing booking → form closed; user clicks "Add Booking Details"
   // We initialize once when bookingDetailsLoading flips false so re-renders
-  // Toggles the explanatory help text under the capacity selector.
-  const [showCapHelp, setShowCapHelp] = useState(false);
   // True once the DJ clicks "Manually add booking" — shows the manual
   // booking form for a new booking on this date.
   const [addingBooking, setAddingBooking] = useState(false);
-  // Per-day capacity override (1–3). Initialised from the day's existing
-  // override; saved via onSave.
-  const [dayCapOverride, setDayCapOverride] = useState<number>(
-    dayData.day_capacity != null ? dayData.day_capacity : 1,
-  );
-  // Tab within the booked-day popup: 'bookings' (capacity + accordion)
-  // or 'rates' (per-day rate override). The Rates tab is only offered
-  // while the day still has capacity for more bookings.
+  // Tab within the booked-day popup: 'bookings' (accordion list)
+  // or 'rates' (per-day rate override).
   const [popupTab, setPopupTab] = useState<'bookings' | 'rates'>('bookings');
 
   // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
@@ -1496,49 +1488,10 @@ function OwnerDayEditPopup({
               <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
             ) : (
               <>
-                {/* Per-day capacity — how many bookings the DJ accepts on
-                    this date. Sits at the top of the bookings panel. */}
-                <div className={styles.dayCapBox}>
-                  <span className={styles.dayCapBoxLabel}>
-                    Bookings Accepted This Day
-                    <button
-                      type="button"
-                      className={styles.dayCapHelpBtn}
-                      onClick={() => setShowCapHelp((v) => !v)}
-                      aria-label="What does this mean?"
-                    >
-                      ?
-                    </button>
-                  </span>
-                  <select
-                    value={dayCapOverride}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setDayCapOverride(v);
-                      onSave({ ...dayData, booked: true, day_capacity: v });
-                    }}
-                    className={styles.dayCapSelect}
-                  >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                  </select>
-                </div>
-                {showCapHelp && (
-                  <p className={styles.dayCapHelp}>
-                    This sets how many separate bookings you&rsquo;ll take on
-                    this date. With 1 booking set for the day, the day will
-                    display as fully booked after the one booking is obtained
-                    or manually added. With 2 or 3, the day stays open for
-                    more — the calendar shows it partly filled until it
-                    reaches this number, then it&rsquo;s fully booked. This
-                    only affects this specific date.
-                  </p>
-                )}
-
-                {/* Separator between the capacity setting and the list
-                    of bookings below it. */}
-                <div className={styles.bkListDivider} />
+                {/* Per-day capacity selector is intentionally hidden on the
+                    individual day card — it lives in the Booking area of
+                    update-dj-profile for club/bar DJs. dayCapOverride state
+                    is still tracked/saved; only the UI is hidden here. */}
 
                 <div className={styles.bkListHeading}>Bookings</div>
 
@@ -1617,7 +1570,10 @@ function OwnerDayEditPopup({
                     bookings rather than replacing them. */}
                 {addingBooking ? (
                   <div className={styles.bkAddFormWrap}>
-                    <div className={styles.bkAddHero}>Add Booking Manually</div>
+                    <div className={styles.bkAddHero}>
+                      <span className={styles.bkAddHeroNum}>{dayBookings.length + 1}</span>
+                      Add Booking Manually
+                    </div>
                     <div className={styles.bkAddFormBody}>
                       <ManualBookingForm
                         userId={djId}

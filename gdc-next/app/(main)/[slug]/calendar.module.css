@@ -1097,6 +1097,7 @@
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
+  text-align: center;
   color: var(--muted);
   margin: 0 0 .55rem;
 }
@@ -1109,7 +1110,9 @@
 }
 /* Green hero banner heading the manual-add form. */
 .bkAddHero {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
   background: var(--neon);
   color: #050507;
   font-family: 'Bebas Neue', sans-serif;
@@ -1120,6 +1123,21 @@
   padding: .27rem .7rem;
   margin: .55rem 0 0 .7rem;
   border-radius: 4px;
+}
+/* Number badge inside the manual-add hero — dark on neon for contrast. */
+.bkAddHeroNum {
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 .22rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #050507;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  border-radius: 3px;
 }
 .bkAddFormBody {
   padding: .9rem 1rem 1rem;
