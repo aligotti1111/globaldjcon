@@ -813,7 +813,7 @@
   backdrop-filter: blur(3px);
 }
 .ownerEditBox {
-  background: var(--card);
+  background: #000000;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.75rem;
