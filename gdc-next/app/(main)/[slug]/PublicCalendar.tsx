@@ -1349,7 +1349,7 @@ function OwnerDayEditPopup({
             and the per-day rate override. Rates stay relevant even at
             max capacity (a cancellation could free a slot for a new
             booking at the updated rate). */}
-        {!bookingDetailsLoading && status === 'booked' && dayBookings.length > 0 && !addingBooking && (
+        {!bookingDetailsLoading && status === 'booked' && dayBookings.length > 0 && (
           <div className={styles.dayTabBar}>
             <button
               type="button"
@@ -1363,7 +1363,7 @@ function OwnerDayEditPopup({
               className={`${styles.dayTab} ${popupTab === 'rates' ? styles.dayTabActive : ''}`}
               onClick={() => setPopupTab('rates')}
             >
-              Rates
+              Update Rates
             </button>
           </div>
         )}
@@ -1640,7 +1640,10 @@ function OwnerDayEditPopup({
                     <button
                       type="button"
                       className={styles.add2ndLink}
-                      onClick={() => setAddingBooking(true)}
+                      onClick={() => {
+                        setExpandedIdx(-1);
+                        setAddingBooking(true);
+                      }}
                     >
                       Manually Add Booking
                     </button>
