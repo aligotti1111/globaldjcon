@@ -6,17 +6,17 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: .9rem;
+  gap: 1.15rem;
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: .35rem;
+  gap: .4rem;
 }
 .fieldRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: .75rem;
+  gap: .85rem;
 }
 /* Venue Name (flexible) + Rate (narrow, fixed) on one line. The venue
    field shrinks to fill whatever width is left rather than wrapping —
@@ -35,9 +35,9 @@
 }
 .fieldLabel {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: .72rem;
-  font-weight: 500;
-  letter-spacing: .04em;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .07em;
   text-transform: uppercase;
   color: var(--white);
 }
@@ -67,14 +67,20 @@
 .input {
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .42rem .8rem;
+  border-radius: 8px;
+  padding: .6rem .85rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
   width: 100%;
+  transition: border-color .15s, box-shadow .15s;
 }
-.input:focus { outline: none; border-color: var(--neon); }
+.input:hover { border-color: rgba(255, 255, 255, .2); }
+.input:focus {
+  outline: none;
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
+}
 
 /* ── Field validity checkmark ──────────────────────────────────────
    Green ✓ at the right edge of a field once its value is valid.
@@ -109,18 +115,22 @@
   position: relative;
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   min-height: 27px;
   display: flex;
   align-items: center;
+  transition: border-color .15s, box-shadow .15s;
 }
 .dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
-.dateWrap:focus-within { border-color: var(--neon); }
+.dateWrap:focus-within {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
+}
 .dateInput {
   background: transparent;
   border: none;
-  padding: .42rem .8rem;
+  padding: .6rem .85rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -180,7 +190,7 @@
   font-weight: 700;
   letter-spacing: .1em;
   padding: 0 .55rem;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   min-width: 78px;
   flex-shrink: 0;
@@ -216,14 +226,19 @@
   min-width: 0;
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px 0 0 8px;
   /* extra left padding so the value clears the currency symbol */
-  padding: .42rem .8rem .42rem 1.5rem;
+  padding: .6rem .8rem .6rem 1.5rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
+  transition: border-color .15s, box-shadow .15s;
 }
-.rateInput:focus { outline: none; border-color: var(--neon); }
+.rateInput:focus {
+  outline: none;
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
+}
 /* Remove the number-input up/down spinner. */
 .rateInput::-webkit-outer-spin-button,
 .rateInput::-webkit-inner-spin-button {
@@ -243,19 +258,21 @@
   font-weight: 700;
   letter-spacing: .1em;
   padding: 0 .55rem;
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 8px 8px 0;
   cursor: pointer;
   min-width: 64px;
 }
 .rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
 
 .hostInviteBlock {
-  margin-top: .5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  margin-top: .35rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .015);
   display: flex;
   flex-direction: column;
-  gap: .65rem;
+  gap: .75rem;
 }
 .inviteCheckRow {
   display: flex;
@@ -322,7 +339,7 @@
   display: flex;
   justify-content: flex-end;
   gap: .65rem;
-  padding-top: .5rem;
+  padding-top: .35rem;
 }
 .cancelBtn {
   font-family: 'Space Mono', monospace;
@@ -332,9 +349,10 @@
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .65rem 1rem;
+  border-radius: 8px;
+  padding: .7rem 1.15rem;
   cursor: pointer;
+  transition: color .15s, border-color .15s;
 }
 .cancelBtn:hover { color: var(--white); border-color: rgba(255, 255, 255, .25); }
 .saveBtn {
@@ -345,10 +363,16 @@
   background: var(--neon);
   color: #000;
   border: none;
-  border-radius: 6px;
-  padding: .65rem 1.1rem;
+  border-radius: 8px;
+  padding: .7rem 1.3rem;
   cursor: pointer;
   font-weight: 700;
+  box-shadow: 0 4px 14px -4px rgba(0, 245, 196, .5);
+  transition: background .15s, box-shadow .15s, transform .1s;
 }
-.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:hover:not(:disabled) {
+  background: #00d4a9;
+  box-shadow: 0 6px 18px -4px rgba(0, 245, 196, .6);
+}
+.saveBtn:active:not(:disabled) { transform: translateY(1px); }
 .saveBtn:disabled { opacity: .6; cursor: wait; }

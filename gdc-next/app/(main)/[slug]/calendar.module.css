@@ -1103,44 +1103,46 @@
 }
 /* Wrapper for the manual-add form when it opens below the list. */
 .bkAddFormWrap {
-  margin-top: .5rem;
+  margin-top: .65rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   overflow: hidden;
+  background: var(--card);
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .65);
 }
-/* Green hero banner heading the manual-add form. */
+/* Full-width header bar at the top of the manual-add form. */
 .bkAddHero {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: .4rem;
-  background: var(--neon);
-  color: #050507;
+  gap: .55rem;
+  width: 100%;
+  background: linear-gradient(180deg, rgba(0,245,196,0.12), rgba(0,245,196,0.05));
+  border-bottom: 1px solid rgba(0,245,196,0.25);
+  color: var(--neon);
   font-family: 'Bebas Neue', sans-serif;
-  font-size: .8rem;
-  letter-spacing: .04em;
-  text-align: left;
+  font-size: 1rem;
+  letter-spacing: .06em;
   line-height: 1;
-  padding: .27rem .7rem;
-  margin: .55rem 0 0 .7rem;
-  border-radius: 4px;
+  padding: .7rem .95rem;
+  margin: 0;
 }
-/* Number badge inside the manual-add hero — dark on neon for contrast. */
+/* Number badge inside the manual-add header. */
 .bkAddHeroNum {
-  min-width: 1.05rem;
-  height: 1.05rem;
-  padding: 0 .22rem;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 .3rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #050507;
-  color: var(--neon);
+  background: var(--neon);
+  color: #050507;
   font-family: 'Space Mono', monospace;
-  font-size: .62rem;
+  font-size: .68rem;
   font-weight: 700;
-  border-radius: 3px;
+  border-radius: 5px;
 }
 .bkAddFormBody {
-  padding: .9rem 1rem 1rem;
+  padding: 1.1rem 1.1rem 1.15rem;
 }
 .bkAccHeader {
   width: 100%;
