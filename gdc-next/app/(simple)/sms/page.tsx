@@ -102,8 +102,12 @@ export default function SmsPage() {
               Text Notifications
             </div>
             <p style={{ fontSize: '.85rem', margin: '0 0 .9rem' }}>
-              Get a text message when something happens. Standard message and
-              data rates may apply. We&rsquo;ll never share your number.
+              By entering your mobile number, checking &ldquo;Send me text
+              notifications,&rdquo; and clicking Save, you consent to receive
+              recurring SMS booking and account notifications from Global DJ
+              Connect. Message frequency varies. Msg &amp; data rates may
+              apply. Reply STOP to opt out, HELP for help. We&rsquo;ll never
+              share your number.
             </p>
             <div
               style={{
