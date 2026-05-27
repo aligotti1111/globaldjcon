@@ -1540,6 +1540,8 @@ function OwnerDayEditPopup({
                     of bookings below it. */}
                 <div className={styles.bkListDivider} />
 
+                <div className={styles.bkListHeading}>Bookings</div>
+
                 {/* Accordion — every booking on this day, numbered 1/2/3.
                     Each row shows a compact header (time · venue); click
                     to expand. One open at a time. Request bookings expand
