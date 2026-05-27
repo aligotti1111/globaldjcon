@@ -56,7 +56,7 @@
   .admin-link:hover { opacity:1; border-color:var(--admin); color:var(--admin); }
 
   /* controls */
-  .controls { padding:1.5rem 4rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:#000000; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:500; isolation:isolate; }
+  .controls { padding:1.5rem 4rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:#FFE936; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:500; isolation:isolate; }
   .search-wrap { position:relative; flex:1; min-width:220px; max-width:380px; }
   .country-indicator { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--deep); border:1px solid var(--border); border-radius:5px; padding:.15rem .4rem; transition:all .2s; line-height:1; z-index:2; }
   .country-indicator:hover { border-color:var(--neon); }
