@@ -919,10 +919,12 @@ function SmsNotificationsBlock({ userId }: { userId: string }) {
           margin: '0 0 1rem',
         }}
       >
-        Get a text when a booking request comes in, a booking status
-        changes, or you receive an inbox message. Standard message and
-        data rates may apply. This number stays private and is separate
-        from your public profile phone.
+        By entering your mobile number, checking &ldquo;Send me text
+        notifications,&rdquo; and clicking Save, you consent to receive
+        recurring SMS booking and account notifications from Global DJ
+        Connect. Message frequency varies. Msg &amp; data rates may apply.
+        Reply STOP to opt out, HELP for help. This number stays private and
+        is separate from your public profile phone.
       </p>
 
       {/* SMS phone — private, separate from users.phone (the public
