@@ -346,6 +346,15 @@
   font-family: inherit;
   font-size: .9rem;
   width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+}
+/* Native <select> renders taller than <input> for the same padding;
+   the explicit height + border-box above normalizes them. This keeps
+   vertical centering of the select's text. */
+select.input {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .input:focus {
   outline: none;
@@ -367,7 +376,8 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
-  min-height: 27px;
+  height: 36px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
 }
