@@ -179,9 +179,12 @@ export default function HomeClient({ initialDjs }: Props) {
   const [showCountryMenu, setShowCountryMenu] = useState(false);
   const [nearMeStatus, setNearMeStatus] = useState<'idle' | 'getting' | 'geocoding' | 'found' | 'error'>('idle');
 
-  // How many cards to show. Defaults to 100 — Show More adds another 100.
-  // Reset to 100 whenever filters/search change.
-  const [visibleCount, setVisibleCount] = useState(100);
+  // How many cards to show. Defaults to 5 (the newest DJs — the homepage
+  // query orders by created_at desc) so the initial load only renders and
+  // image-optimizes 5 avatars. Show More reveals the rest; search and
+  // filters still run against the full DJ list. Reset to 5 whenever
+  // filters/search change.
+  const [visibleCount, setVisibleCount] = useState(5);
 
   // Progress while geocoding DJ zips after Near Me / zip search.
   // Format: { done, total } so we can show "Loaded 12/87".
@@ -324,7 +327,7 @@ export default function HomeClient({ initialDjs }: Props) {
   // Reset pagination whenever filters/search/country change so users don't
   // get stuck looking at a paginated subset of stale results.
   useEffect(() => {
-    setVisibleCount(100);
+    setVisibleCount(5);
   }, [searchTerm, activeFilters, activeCountry]);
 
   // ─── Pill filter toggle ───────────────────────────────────────────
@@ -356,7 +359,7 @@ export default function HomeClient({ initialDjs }: Props) {
         setLocationSource('near-me');
         setSortMode('nearest');
         setNearMeStatus('geocoding');
-        setVisibleCount(100);
+        setVisibleCount(5);
       },
       () => {
         alert('Could not get your location. Please search by zip code instead.');
@@ -603,7 +606,8 @@ export default function HomeClient({ initialDjs }: Props) {
             )}
 
             {/* Show More — appears when there are more results than the
-                current visibleCount allows. Each click adds 100 more. */}
+                current visibleCount allows. The homepage starts at 5; this
+                reveals the rest of the matching DJs. */}
             {visibleDjs.length > visibleCount && (
               <div style={{ textAlign: 'center', marginTop: '2.5rem', marginBottom: '1rem' }}>
                 <button
