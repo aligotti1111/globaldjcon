@@ -647,8 +647,12 @@ export default function AccountSettingsClient({
       <div className={styles.card}>
         <h2>Text Notifications</h2>
         <p className={styles.cardHint}>
-          Get a text message when something happens. Standard message and
-          data rates may apply. We&apos;ll never share your number.
+          By entering your mobile number, checking &ldquo;Send me text
+          notifications,&rdquo; and clicking Save, you consent to receive
+          recurring SMS booking and account notifications from Global DJ
+          Connect. Message frequency varies. Msg &amp; data rates may apply.
+          Reply STOP to opt out, HELP for help. We&apos;ll never share your
+          number.
         </p>
 
         <div className={styles.smsToggleRow}>
