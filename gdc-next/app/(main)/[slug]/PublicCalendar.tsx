@@ -1419,9 +1419,18 @@ function OwnerDayEditPopup({
           && bookingSettings && (
           <div className={styles.ownerEditBookedFields}>
             <div className={styles.ownerEditFieldGroup}>
-              <label className={styles.ownerEditFieldLabel}>
-                Rate Override (optional — leave blank to use your default rates)
+              <label className={styles.ownerEditFieldLabel} style={{ color: '#ff5a5a' }}>
+                Rate Override (for this day only)
               </label>
+              <p style={{
+                fontSize: '.72rem',
+                color: 'var(--muted)',
+                lineHeight: 1.5,
+                margin: '-.3rem 0 .6rem',
+              }}>
+                Changing the rate will not alter previously approved bookings
+                for this day.
+              </p>
               {/* Rate type tabs */}
               <div style={{
                 display: 'flex',
