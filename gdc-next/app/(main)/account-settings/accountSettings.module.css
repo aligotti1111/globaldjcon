@@ -25,8 +25,8 @@
 }
 
 .card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
   border-radius: 10px;
   padding: 2rem;
   margin-bottom: 1.5rem;
@@ -46,7 +46,7 @@
 .formGroup label {
   display: block;
   font-size: .78rem;
-  color: var(--muted);
+  color: var(--white);
   margin-bottom: .4rem;
   font-family: 'Space Mono', monospace;
   letter-spacing: .06em;
