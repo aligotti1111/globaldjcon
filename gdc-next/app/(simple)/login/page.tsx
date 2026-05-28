@@ -108,8 +108,10 @@ function LoginForm() {
     const timer = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Already logged in — send them home so they can keep using the site
-        window.location.href = '/';
+        // Already logged in — honor an explicit ?redirect= (e.g. a booking
+        // continuation magic link points here with the booking path). Falls
+        // back to homepage when there's no meaningful destination.
+        window.location.href = (destination && destination !== '/') ? destination : '/';
         return;
       }
       // No session — leave the banner showing so they can log in
