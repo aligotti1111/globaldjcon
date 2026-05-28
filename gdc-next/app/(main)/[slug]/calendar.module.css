@@ -774,6 +774,7 @@
   padding: 0;
   line-height: 1;
   z-index: 2;
+  transition: color .15s, transform .15s;
 }
 .ownerCornerBtnBottomLeft {
   bottom: 4px;
@@ -791,10 +792,11 @@
   filter: brightness(1.3);
 }
 .ownerCornerBtnX {
-  color: rgba(255, 255, 255, .3);
+  color: rgba(255, 255, 255, .45);
 }
 .ownerCornerBtnX:hover {
-  color: rgba(255, 255, 255, .7);
+  color: #ff5a5a;
+  transform: scale(1.2);
 }
 .ownerCornerBtnCheck {
   color: var(--neon);
