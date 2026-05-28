@@ -290,7 +290,13 @@ export async function GET(request: Request) {
         if (data?.name) djName = data.name;
       } catch { /* non-fatal — fall back to generic */ }
 
-      const bookingUrl = `${origin}${bookingRedirect}`;
+      // Use an auto-login magic link so clicking from the email
+      // re-establishes the session and lands on the booking — works even
+      // if the verify-time session cookie was lost or the email is opened
+      // in a different browser/device. Falls back to a plain link if the
+      // magic link can't be generated.
+      const magicBookingUrl = await generateAutoLoginUrl(toEmail, bookingRedirect);
+      const bookingUrl = magicBookingUrl || `${origin}${bookingRedirect}`;
       const greeting = toName ? `Hi ${toName},` : 'Hi,';
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:0;background:#050507;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f0f0f8;}
