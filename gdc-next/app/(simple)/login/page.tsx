@@ -37,8 +37,32 @@ function LoginForm() {
   // Determine the destination after login. Support both ?redirect= (set by
   // our middleware when it bounces unauth'd users) and ?return= (legacy from
   // vanilla site links). Default to homepage.
-  const destination =
-    searchParams.get('redirect') || searchParams.get('return') || '/';
+  //
+  // SECURITY: only allow relative, same-origin paths. Without this, a
+  // crafted ?redirect=https://evil.com (or //evil.com) would send the user
+  // to an external site after login — a classic open-redirect usable for
+  // phishing. We require a leading "/" that is NOT "//" (protocol-relative)
+  // and contains no scheme. Anything else falls back to the homepage.
+  function sanitizeRedirect(raw: string | null): string {
+    if (!raw) return '/';
+    // Must be a relative path beginning with a single slash.
+    if (!raw.startsWith('/')) return '/';
+    if (raw.startsWith('//')) return '/';          // protocol-relative → external
+    if (raw.startsWith('/\\')) return '/';         // backslash trick
+    // Reject anything that smuggles a scheme/host (e.g. "/\t/evil", encoded).
+    try {
+      // Resolve against a dummy origin; if the resulting origin changes,
+      // it wasn't actually relative.
+      const u = new URL(raw, 'https://gdc.local');
+      if (u.origin !== 'https://gdc.local') return '/';
+      return u.pathname + u.search + u.hash;
+    } catch {
+      return '/';
+    }
+  }
+  const destination = sanitizeRedirect(
+    searchParams.get('redirect') || searchParams.get('return')
+  );
 
   // ── Already-signed-in redirect ──────────────────────────────────────────
   // If the user is already logged in, redirect them to the destination —
