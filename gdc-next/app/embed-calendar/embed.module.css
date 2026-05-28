@@ -2,8 +2,8 @@
    stylesheets except the CSS variables from index.css. */
 
 .wrap {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
   border-radius: 8px;
   padding: 14px;
   /* Sane max-width when the page is viewed directly in a browser at full
