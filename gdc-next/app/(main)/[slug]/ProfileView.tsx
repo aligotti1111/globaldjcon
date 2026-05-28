@@ -309,6 +309,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     setClubSelectedDate(dateParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, showClubAvailabilityTab, isLoggedIn, currentUser?.id]);
+  // Logged-OUT visitor arriving from the embed with ?date= : open the
+  // login gate for that date automatically so they don't have to re-click.
+  // The gate's Log In / Sign Up buttons carry a redirect back here with
+  // the same date, so the booking flow resumes after auth.
+  useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (!dateParam) return;
+    if (!showClubAvailabilityTab) return;
+    if (isLoggedIn) return;
+    setClubLoginGateDate(dateParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, showClubAvailabilityTab, isLoggedIn]);
   // If the visitor lands with ?date=, also scroll the tab area into view
   // so they don't have to hunt for the booking calendar. Only fires once
   // on mount.
