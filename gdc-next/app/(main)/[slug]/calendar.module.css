@@ -630,6 +630,11 @@
 .miniCellOpen:hover .miniNum {
   color: #050507;
 }
+/* Match single-month: on hover only the mini Book label's frame turns
+   black; neon fill and dark text stay. */
+.miniCellOpen:hover .miniBookLabel {
+  border-color: #000000;
+}
 /* Partial mini cells: keep the number visible on hover. */
 .miniCellPartial:hover .miniNum {
   color: var(--white);
