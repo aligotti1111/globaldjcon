@@ -193,7 +193,7 @@
   font-family: 'Space Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.15em;
-  color: var(--muted);
+  color: var(--white);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -275,7 +275,7 @@
   font-size: 10px;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--neon);
 }
 .urlPreviewRow {
   display: flex;
