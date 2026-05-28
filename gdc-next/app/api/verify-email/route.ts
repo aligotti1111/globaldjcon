@@ -293,9 +293,18 @@ export async function GET(request: Request) {
       // Use an auto-login magic link so clicking from the email
       // re-establishes the session and lands on the booking — works even
       // if the verify-time session cookie was lost or the email is opened
-      // in a different browser/device. Falls back to a plain link if the
-      // magic link can't be generated.
-      const magicBookingUrl = await generateAutoLoginUrl(toEmail, bookingRedirect);
+      // in a different browser/device.
+      //
+      // IMPORTANT: Supabase's generateLink mangles/drops a query string in
+      // redirectTo when it appends its own auth fragment, so a direct
+      // redirectTo of "/<slug>?date=...&book=1" lands the user logged-in but
+      // WITHOUT the date/book params (i.e. on the bare profile/home). To
+      // preserve them, we point the magic link at /login with the booking
+      // path as a single encoded ?redirect= param. The login page already
+      // honors ?redirect= (now same-origin sanitized) and does a clean
+      // client-side navigation that keeps the full path + query intact.
+      const loginLanding = `/login?redirect=${encodeURIComponent(bookingRedirect)}`;
+      const magicBookingUrl = await generateAutoLoginUrl(toEmail, loginLanding);
       const bookingUrl = magicBookingUrl || `${origin}${bookingRedirect}`;
       const greeting = toName ? `Hi ${toName},` : 'Hi,';
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
