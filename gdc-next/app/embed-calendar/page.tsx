@@ -44,10 +44,11 @@ export default async function EmbedCalendarPage({ searchParams }: Props) {
   const supabase = await createClient();
   const { data: dj } = await supabase
     .from('users')
-    .select('slug, name, dj_type, booking_settings')
+    .select('id, slug, name, dj_type, booking_settings')
     .eq('slug', slug)
     .eq('role', 'dj')
     .maybeSingle<{
+      id: string;
       slug: string;
       name: string | null;
       dj_type: 'mobile' | 'club' | null;
@@ -73,6 +74,25 @@ export default async function EmbedCalendarPage({ searchParams }: Props) {
     ? (bs.mob_booking_window || 12)
     : (bs.booking_window_months || bs.mob_booking_window || 12);
 
+  // Per-day approved-booking counts, so the embed can show "partially
+  // booked" days (club/bar DJs accept more than one booking per day).
+  // Mirrors the count logic in the main PublicCalendar.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: bookingRows } = await supabase
+    .from('bookings')
+    .select('event_date')
+    .eq('dj_id', dj.id)
+    .eq('status', 'approved')
+    .gte('event_date', todayStr);
+  const countByDate: Record<string, number> = {};
+  for (const row of (bookingRows || []) as Array<{ event_date: string | null }>) {
+    if (!row.event_date) continue;
+    countByDate[row.event_date] = (countByDate[row.event_date] || 0) + 1;
+  }
+  // Global per-day capacity (club setting), clamped 1–3. Per-day overrides
+  // live in each day's data and are applied client-side.
+  const globalCapacity = Math.min(3, Math.max(1, bs.club_bookings_per_day ?? 1));
+
   return (
     <EmbedClient
       djSlug={dj.slug}
@@ -81,6 +101,8 @@ export default async function EmbedCalendarPage({ searchParams }: Props) {
       windowMonths={windowMonths}
       theme={theme}
       months={months}
+      countByDate={countByDate}
+      globalCapacity={globalCapacity}
     />
   );
 }

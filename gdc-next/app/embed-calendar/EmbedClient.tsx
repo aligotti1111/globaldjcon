@@ -22,6 +22,8 @@ interface Props {
   windowMonths: number;
   theme: 'light' | 'dark';
   months: 1 | 3;
+  countByDate: Record<string, number>;
+  globalCapacity: number;
 }
 
 const MONTHS = [
@@ -39,6 +41,7 @@ function dateKey(y: number, m: number, d: number): string {
 
 export default function EmbedClient({
   djSlug, djName, bookingDays, windowMonths, theme, months,
+  countByDate, globalCapacity,
 }: Props) {
   // Apply theme to <body> via a side effect — data-theme is read by the
   // CSS module to swap colors.
@@ -174,12 +177,13 @@ export default function EmbedClient({
             todayMidnight={todayMidnight}
             bookingDays={bookingDays}
             onClickDay={openDate}
+            countByDate={countByDate}
+            globalCapacity={globalCapacity}
           />
         ))}
       </div>
 
-      {/* Status legend — three small swatches showing what each color
-          means. Helps visitors interpret the calendar at a glance. */}
+      {/* Status legend — swatches showing what each color means. */}
       <div className={styles.legend}>
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.legendSwatchAvailable}`} />
@@ -193,6 +197,12 @@ export default function EmbedClient({
           <span className={`${styles.legendSwatch} ${styles.legendSwatchUnavailable}`} />
           Unavailable
         </span>
+        {globalCapacity > 1 && (
+          <span className={styles.legendItem}>
+            <span className={`${styles.legendSwatch} ${styles.legendSwatchPartial}`} />
+            Accepting set times around current booking
+          </span>
+        )}
       </div>
 
       <div className={styles.footer}>
@@ -215,12 +225,15 @@ export default function EmbedClient({
 // ─────────────────────────────────────────────────────────────────────────
 function MonthGrid({
   year, month, todayMidnight, bookingDays, onClickDay,
+  countByDate, globalCapacity,
 }: {
   year: number;
   month: number;
   todayMidnight: Date;
   bookingDays: MobileBookingDays;
   onClickDay: (dKey: string | null) => void;
+  countByDate: Record<string, number>;
+  globalCapacity: number;
 }) {
   // Build the 6×7 grid: leading blanks for the weekday offset of day 1,
   // then days 1..N, padded with trailing blanks if needed.
@@ -237,16 +250,33 @@ function MonthGrid({
     const isPast = cellDate < todayMidnight;
     const dKey = dateKey(year, month, d);
     const dayData: MobileDayData | undefined = bookingDays[dKey];
-    const isBooked = !!dayData?.booked;
     const isUnavailable = !!dayData?.unavailable;
-    // Available unless explicitly booked / unavailable / past
-    const isClickable = !isPast && !isBooked && !isUnavailable;
+
+    // day_capacity exists on club DayData (not MobileDayData); read it
+    // defensively since the embed types days as MobileDayData.
+    const perDayCap = (dayData as { day_capacity?: number } | undefined)?.day_capacity;
+
+    // Capacity-aware booked state (mirrors the main PublicCalendar):
+    //   count >= capacity     → fully booked (red, not clickable)
+    //   0 < count < capacity  → partially booked (still clickable)
+    // Per-day override wins over the DJ's global capacity; clamp 1–3.
+    const dayCap = Math.min(3, Math.max(1,
+      perDayCap != null ? perDayCap : globalCapacity));
+    const rawCount = countByDate[dKey] || 0;
+    const bookedCount = rawCount > 0 ? rawCount : (dayData?.booked ? 1 : 0);
+    const isFull = bookedCount > 0 && bookedCount >= dayCap;
+    const isPartial = bookedCount > 0 && bookedCount < dayCap;
+
+    // Partial days remain bookable (the public can still request the
+    // open set times around the existing booking).
+    const isClickable = !isPast && !isFull && !isUnavailable;
 
     let cls = styles.cell;
     if (isPast) cls += ` ${styles.cellPast}`;
-    else if (isBooked) cls += ` ${styles.cellBooked}`;
+    else if (isFull) cls += ` ${styles.cellBooked}`;
     else if (isUnavailable) cls += ` ${styles.cellUnavailable}`;
     else cls += ` ${styles.cellAvailable}`;
+    if (isPartial) cls += ` ${styles.cellPartial}`;
 
     cells.push(
       <button

@@ -187,6 +187,19 @@
   cursor: not-allowed;
 }
 
+/* Partially booked — a club/bar day with a booking but still under
+   capacity. Stays clickable (.cellAvailable handles that); the diagonal
+   red fill signals "some set times taken, more available." */
+.cellPartial {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(255, 95, 95, .35) 5px,
+    rgba(255, 95, 95, .35) 10px
+  );
+}
+
 /* Unavailable — DJ marked the date off. Strikethrough effect via diagonal
    gradient so it's distinct from "booked" without needing color. */
 .cellUnavailable {
@@ -261,6 +274,16 @@
 .legendSwatchBooked {
   background: #ff5f5f;
   border-color: #ff5f5f;
+}
+.legendSwatchPartial {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 95, 95, .6) 2px,
+    rgba(255, 95, 95, .6) 3px
+  );
+  border-color: rgba(255, 95, 95, .6);
 }
 .legendSwatchUnavailable {
   background: repeating-linear-gradient(
