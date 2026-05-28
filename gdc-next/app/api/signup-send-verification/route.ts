@@ -145,14 +145,22 @@ export async function POST(request: Request) {
   // so verification works on staging (gdc-next-staging.netlify.app) AND
   // production (globaldjconnect.com) without env-var juggling.
   const requestUrl = new URL(request.url);
-  const origin = requestUrl.origin;
-  const verifyUrl = `${origin}/api/verify-email?token=${encodeURIComponent(token)}`;
+  const requestOrigin = requestUrl.origin;
+  // Verify URL MUST use the request origin so the token lookup happens on
+  // the same deployment that issued it (a token from staging won't exist
+  // in prod's DB and vice versa).
+  const verifyUrl = `${requestOrigin}/api/verify-email?token=${encodeURIComponent(token)}`;
+  // Outbound user-facing links (e.g. "Continue booking" in the email) use
+  // the canonical site origin when configured, so production emails never
+  // leak a staging hostname into the inbox. Falls back to request origin
+  // when NEXT_PUBLIC_SITE_URL isn't set (e.g. local dev).
+  const publicOrigin = (process.env.NEXT_PUBLIC_SITE_URL || requestOrigin).replace(/\/$/, '');
   const roleDisplay = role === 'dj' ? 'DJ' : (role === 'venue' ? 'Venue' : 'Host');
 
   // Full "Continue booking" URL for the confirmation email (Stage 1).
   // Built from the same booking intent stored on the token above; this
   // is a SEPARATE link from Verify — it doesn't change the Verify button.
-  const bookingUrl = bookingRedirectPath ? `${origin}${bookingRedirectPath}` : null;
+  const bookingUrl = bookingRedirectPath ? `${publicOrigin}${bookingRedirectPath}` : null;
   const niceDate = validDate
     ? new Date(`${bookingDate}T12:00:00`).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
