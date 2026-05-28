@@ -40,6 +40,16 @@ const MONTH_NAMES = [
 const DAY_LABEL_LONG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+// Turns stored values like "bar" or "opening_and_closing" into
+// "Bar" / "Opening And Closing" for display.
+function capitalizeWords(s: string): string {
+  return s
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
 interface Props {
   bookingDays: BookingDays;
   bookingWindowMonths: number;
@@ -1514,7 +1524,7 @@ function OwnerDayEditPopup({
                         onClick={() => setExpandedIdx(isOpen ? -1 : idx)}
                       >
                         <span className={styles.bkAccHeaderText}>
-                          {isOpen ? '' : `${hdrTime}${bk.venue_name ? ` · ${bk.venue_name}` : ''}`}
+                          {hdrTime}{!isOpen && bk.venue_name ? ` · ${bk.venue_name}` : ''}
                         </span>
                         <span className={styles.bkAccChevron}>{isOpen ? '▾' : '▸'}</span>
                       </button>
@@ -1541,7 +1551,7 @@ function OwnerDayEditPopup({
                           </div>
                         ) : (
                           <div className={styles.requestBookingInfo}>
-                            <div className={styles.requestBookingTag}>Booked via Global DJ Connect</div>
+                            <div className={styles.requestBookingTag}>This booking was made through a request and can&rsquo;t be edited here.</div>
                             <dl className={styles.requestBookingDl}>
                               {bk.venue_name && (
                                 <div><dt>Venue</dt><dd>{bk.venue_name}</dd></div>
@@ -1550,15 +1560,12 @@ function OwnerDayEditPopup({
                                 <div><dt>Address</dt><dd>{bk.venue_address}</dd></div>
                               )}
                               {bk.venue_type && (
-                                <div><dt>Venue Type</dt><dd>{bk.venue_type}</dd></div>
+                                <div><dt>Venue Type</dt><dd>{capitalizeWords(bk.venue_type)}</dd></div>
                               )}
                               {bk.set_type && (
-                                <div><dt>Set Type</dt><dd>{bk.set_type}</dd></div>
+                                <div><dt>Set Type</dt><dd>{capitalizeWords(bk.set_type)}</dd></div>
                               )}
                             </dl>
-                            <p className={styles.requestBookingNote}>
-                              This booking was made through a request and can&rsquo;t be edited here.
-                            </p>
                           </div>
                         )
                       )}
