@@ -192,6 +192,22 @@ export default function PublicCalendar({
   const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-11
+  // When a date is pre-selected (e.g. a visitor arrives from the embed or
+  // an email "Continue booking" link with ?date=YYYY-MM-DD), jump the
+  // calendar view to that date's month/year so the day is actually
+  // visible — otherwise the view stays on the current month and the
+  // selected day is off-screen. Keyed on selectedDate, so it only fires
+  // when the selection changes, never fighting manual prev/next nav.
+  useEffect(() => {
+    if (!selectedDate) return;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(selectedDate);
+    if (!m) return;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1; // 0-indexed
+    setYear(y);
+    setMonth(mo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
   // rollingActive can be initialized from a `?view=12mo` URL param so
   // the calendar opens directly in 12-month mode when someone shares
   // that link. Subsequent user toggles also update the URL so they can
