@@ -94,6 +94,15 @@ export async function POST(request: Request) {
   const token = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + TOKEN_TTL_HOURS * 60 * 60 * 1000).toISOString();
 
+  // Booking intent (slug + valid date) → a relative redirect path stored
+  // on the token row. The verify route reads it after a successful confirm
+  // to send the dedicated "continue your booking" follow-up email.
+  const { bookingDjSlug, bookingDate } = body;
+  const validDate = !!bookingDate && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate);
+  const bookingRedirectPath = (bookingDjSlug && validDate)
+    ? `/${encodeURIComponent(bookingDjSlug)}?date=${encodeURIComponent(bookingDate!)}&book=1`
+    : null;
+
   try {
     const { error } = await admin
       .from('email_verification_tokens')
@@ -102,6 +111,7 @@ export async function POST(request: Request) {
         user_id,
         email,
         expires_at: expiresAt,
+        booking_redirect: bookingRedirectPath,
       } as unknown as never);
     if (error) throw error;
   } catch (e) {
@@ -120,16 +130,10 @@ export async function POST(request: Request) {
   const verifyUrl = `${origin}/api/verify-email?token=${encodeURIComponent(token)}`;
   const roleDisplay = role === 'dj' ? 'DJ' : (role === 'venue' ? 'Venue' : 'Host');
 
-  // Optional "Continue booking" link — only when the signup carried a
-  // booking intent (slug + a valid YYYY-MM-DD date). Lands the verified
-  // user back on the DJ profile with the date pre-selected and the
-  // booking form opening (book=1). This is a SEPARATE link from Verify —
-  // it does not change what the Verify button does.
-  const { bookingDjSlug, bookingDate } = body;
-  const validDate = !!bookingDate && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate);
-  const bookingUrl = (bookingDjSlug && validDate)
-    ? `${origin}/${encodeURIComponent(bookingDjSlug)}?date=${encodeURIComponent(bookingDate!)}&book=1`
-    : null;
+  // Full "Continue booking" URL for the confirmation email (Stage 1).
+  // Built from the same booking intent stored on the token above; this
+  // is a SEPARATE link from Verify — it doesn't change the Verify button.
+  const bookingUrl = bookingRedirectPath ? `${origin}${bookingRedirectPath}` : null;
   const niceDate = validDate
     ? new Date(`${bookingDate}T12:00:00`).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
