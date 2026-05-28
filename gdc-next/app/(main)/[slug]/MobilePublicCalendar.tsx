@@ -206,6 +206,9 @@ export default function MobilePublicCalendar({
     if (dayData?.booked || dayData?.unavailable) return;
 
     if (isLoggedIn && currentUser) {
+      // Unverified users can't book — leave the form closed (the verify
+      // banner explains what to do). No alert: this is a mount effect.
+      if (!currentUser.email_verified) return;
       // Jump the visible month to that date so the form opens in context
       setYear(y);
       setMonth(m - 1);
@@ -364,6 +367,14 @@ export default function MobilePublicCalendar({
       setLoginGateForDate(key);
       return;
     }
+    // Logged in but email not verified — block booking and point them at
+    // the persistent verify banner (which has a Resend link).
+    if (!currentUser.email_verified) {
+      alert(
+        'Please verify your email to continue. Use the "Resend Email" link in the banner at the top of the page, then click the link we send you.'
+      );
+      return;
+    }
     setSelectedDate(key);
   }
 
@@ -498,7 +509,7 @@ export default function MobilePublicCalendar({
           remounts the form (clearing any in-progress input). */}
       {/* Owner never sees the booker form — they manage dates via the
           ✓/✗ quick-mark and ✏️ edit pencil instead. */}
-      {!isOwnProfile && selectedDate && currentUser && (
+      {!isOwnProfile && selectedDate && currentUser && currentUser.email_verified && (
         <MobileBookingForm
           key={selectedDate}
           dateKey={selectedDate}
