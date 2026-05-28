@@ -220,17 +220,45 @@ function BackButton({ onClick }: { onClick: () => void }) {
 // Calls our /api/signup-send-verification route which generates a token,
 // stores it in email_verification_tokens, and emails the user a link.
 // ──────────────────────────────────────────────────────────────────────────
+// Parses a booking intent out of the ?redirect= param, if present.
+// BookingLoginGate sends users to signup with
+//   ?redirect=/<slug>?date=YYYY-MM-DD&book=1
+// We pull the slug + date so the confirmation email can include a
+// "Continue your booking" link. Returns nulls when there's no booking
+// redirect (normal signups).
+function parseBookingIntent(): { bookingDjSlug: string | null; bookingDate: string | null } {
+  if (typeof window === 'undefined') return { bookingDjSlug: null, bookingDate: null };
+  try {
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    if (!redirect) return { bookingDjSlug: null, bookingDate: null };
+    // redirect looks like "/<slug>?date=YYYY-MM-DD&book=1" (possibly encoded)
+    const decoded = decodeURIComponent(redirect);
+    const qIndex = decoded.indexOf('?');
+    if (qIndex === -1) return { bookingDjSlug: null, bookingDate: null };
+    const path = decoded.slice(0, qIndex);
+    const query = new URLSearchParams(decoded.slice(qIndex + 1));
+    const date = query.get('date');
+    const slug = path.replace(/^\//, '').split('/')[0] || null;
+    const validDate = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date);
+    if (!slug || !validDate) return { bookingDjSlug: null, bookingDate: null };
+    return { bookingDjSlug: slug, bookingDate: date };
+  } catch {
+    return { bookingDjSlug: null, bookingDate: null };
+  }
+}
+
 async function triggerSignupVerification(
   userId: string,
   email: string,
   role: AccountType,
   slug: string | null
 ) {
+  const { bookingDjSlug, bookingDate } = parseBookingIntent();
   try {
     const res = await fetch('/api/signup-send-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, email, role, slug }),
+      body: JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate }),
     });
     if (!res.ok) {
       console.warn('[signup] verification email request failed:', res.status);
@@ -894,6 +922,7 @@ function SuccessScreen({ info }: { info: SuccessInfo }) {
       // Hit our own endpoint. We pass user_id when we have it (always do
       // here since the success screen comes right after a successful signUp);
       // the API route also supports lookup-by-email as a fallback.
+      const { bookingDjSlug, bookingDate } = parseBookingIntent();
       const res = await fetch('/api/signup-send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -902,6 +931,8 @@ function SuccessScreen({ info }: { info: SuccessInfo }) {
           email: info.email,
           role: info.role,
           slug: info.slug,
+          bookingDjSlug,
+          bookingDate,
         }),
       });
       if (!res.ok) {
