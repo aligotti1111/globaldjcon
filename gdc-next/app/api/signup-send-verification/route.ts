@@ -97,10 +97,29 @@ export async function POST(request: Request) {
   // Booking intent (slug + valid date) → a relative redirect path stored
   // on the token row. The verify route reads it after a successful confirm
   // to send the dedicated "continue your booking" follow-up email.
+  // SECURITY: validate the date format AND that the slug maps to a real DJ
+  // before storing it, so a crafted signup can't get a link to a junk or
+  // arbitrary slug placed inside an email sent from our domain. The slug is
+  // also URL-encoded so it can't break out of the same-origin path.
   const { bookingDjSlug, bookingDate } = body;
   const validDate = !!bookingDate && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate);
-  const bookingRedirectPath = (bookingDjSlug && validDate)
-    ? `/${encodeURIComponent(bookingDjSlug)}?date=${encodeURIComponent(bookingDate!)}&book=1`
+  const validSlug = !!bookingDjSlug && /^[a-zA-Z0-9_-]{1,64}$/.test(bookingDjSlug);
+  let slugExists = false;
+  if (validSlug && validDate) {
+    try {
+      const { data: djRow } = await admin
+        .from('users')
+        .select('id')
+        .eq('slug', bookingDjSlug)
+        .eq('role', 'dj')
+        .maybeSingle<{ id: string }>();
+      slugExists = !!djRow;
+    } catch {
+      slugExists = false;
+    }
+  }
+  const bookingRedirectPath = (slugExists && validSlug && validDate)
+    ? `/${encodeURIComponent(bookingDjSlug!)}?date=${encodeURIComponent(bookingDate!)}&book=1`
     : null;
 
   try {
