@@ -279,16 +279,29 @@ export async function GET(request: Request) {
           })
         : '';
 
-      // Look up the DJ's display name from the slug (best-effort).
+      // Look up the DJ's display details from the slug (best-effort) so the
+      // email can show a clear, traceable card: who + where + when.
       let djName = 'your DJ';
+      let djAvatar: string | null = null;
+      let djCity: string | null = null;
+      let djState: string | null = null;
       try {
         const { data } = await admin
           .from('users')
-          .select('name')
+          .select('name, avatar_url, city, state')
           .eq('slug', slug)
-          .maybeSingle<{ name: string | null }>();
+          .maybeSingle<{
+            name: string | null;
+            avatar_url: string | null;
+            city: string | null;
+            state: string | null;
+          }>();
         if (data?.name) djName = data.name;
+        djAvatar = data?.avatar_url ?? null;
+        djCity = data?.city ?? null;
+        djState = data?.state ?? null;
       } catch { /* non-fatal — fall back to generic */ }
+      const djLocation = [djCity, djState].filter(Boolean).join(', ');
 
       // Plain link to the booking page. No magic link needed: a user who
       // has just verified stays logged in (durable cookie session), so the
@@ -301,7 +314,27 @@ export async function GET(request: Request) {
       // (If the email is opened in a different browser with no session, the
       // booking gate simply asks them to log in once — acceptable.)
       const bookingUrl = `${origin}${bookingRedirect}`;
+      // A "view calendar" link to the DJ's profile with the date
+      // pre-selected but WITHOUT &book=1 — so it lands on the calendar
+      // rather than opening the booking form. Gives the user a way to
+      // navigate the DJ's availability freely if anything's off.
+      const calendarUrl = `${origin}/${encodeURIComponent(slug)}?date=${encodeURIComponent(dateStr)}`;
       const greeting = toName ? `Hi ${toName},` : 'Hi,';
+      const avatarHtml = djAvatar
+        ? `<img src="${djAvatar}" alt="${djName}" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #00f5c4;display:block;">`
+        : `<div style="width:64px;height:64px;border-radius:50%;background:#00f5c4;color:#000;font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:64px;text-align:center;">${(djName[0] || 'D').toUpperCase()}</div>`;
+      // Traceable DJ card: photo + name + location + the requested date.
+      const djCard = `
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#0c0c16;border:1px solid #1e1e30;border-radius:10px;margin:8px 0 24px;">
+          <tr>
+            <td style="padding:16px;width:80px;vertical-align:middle;">${avatarHtml}</td>
+            <td style="padding:16px 16px 16px 0;vertical-align:middle;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;color:#f0f0f8;">${djName}</div>
+              ${djLocation ? `<div style="font-size:13px;color:#8a8a9e;margin-top:2px;">📍 ${djLocation}</div>` : ''}
+              ${niceDate ? `<div style="font-size:13px;color:#00f5c4;margin-top:6px;">🗓 ${niceDate}</div>` : ''}
+            </td>
+          </tr>
+        </table>`;
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:0;background:#050507;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f0f0f8;}
         .wrap{max-width:560px;margin:0 auto;padding:40px 24px;}
@@ -309,6 +342,7 @@ export async function GET(request: Request) {
         h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.05em;color:#00f5c4;margin:0 0 16px;}
         p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
         .btn{display:inline-block;background:#00f5c4;color:#000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
+        .btn2{display:inline-block;background:transparent;color:#00f5c4;border:1px solid #00f5c4;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:13px;margin:0 0 8px;}
         .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
         .logo{text-align:center;margin-bottom:24px;}
         .logo img{max-width:220px;height:auto;}
@@ -318,8 +352,10 @@ export async function GET(request: Request) {
           <div class="card">
             <h1>Finish Your Booking</h1>
             <p>${greeting}</p>
-            <p>Your email is verified and your account is ready. Pick up where you left off and request to book <strong>${djName}</strong>${niceDate ? ` for <strong>${niceDate}</strong>` : ''}.</p>
-            <p style="text-align:center;"><a href="${bookingUrl}" class="btn">Continue Your Booking</a></p>
+            <p>Your email is verified and your account is ready. Pick up where you left off:</p>
+            ${djCard}
+            <p style="text-align:center;margin:0;"><a href="${bookingUrl}" class="btn">Continue Your Booking</a></p>
+            <p style="text-align:center;margin:0 0 16px;"><a href="${calendarUrl}" class="btn2">View ${djName}'s Calendar</a></p>
             <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${bookingUrl}</span></p>
           </div>
           <div class="footer">Global DJ Connect · globaldjconnect.com</div>
