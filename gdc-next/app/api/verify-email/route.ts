@@ -290,22 +290,17 @@ export async function GET(request: Request) {
         if (data?.name) djName = data.name;
       } catch { /* non-fatal — fall back to generic */ }
 
-      // Use an auto-login magic link so clicking from the email
-      // re-establishes the session and lands on the booking — works even
-      // if the verify-time session cookie was lost or the email is opened
-      // in a different browser/device.
-      //
-      // IMPORTANT: Supabase's generateLink mangles/drops a query string in
-      // redirectTo when it appends its own auth fragment, so a direct
-      // redirectTo of "/<slug>?date=...&book=1" lands the user logged-in but
-      // WITHOUT the date/book params (i.e. on the bare profile/home). To
-      // preserve them, we point the magic link at /login with the booking
-      // path as a single encoded ?redirect= param. The login page already
-      // honors ?redirect= (now same-origin sanitized) and does a clean
-      // client-side navigation that keeps the full path + query intact.
-      const loginLanding = `/login?redirect=${encodeURIComponent(bookingRedirect)}`;
-      const magicBookingUrl = await generateAutoLoginUrl(toEmail, loginLanding);
-      const bookingUrl = magicBookingUrl || `${origin}${bookingRedirect}`;
+      // Plain link to the booking page. No magic link needed: a user who
+      // has just verified stays logged in (durable cookie session), so the
+      // booking link only needs to navigate them to the right page — they
+      // already have a session. Using a magic link here was fragile: those
+      // OTPs are one-time-use and short-lived, so by the time the user
+      // clicked it from their inbox it often returned otp_expired and
+      // dumped them on the homepage with an auth error. A plain link can't
+      // expire and "just works" because the session is already present.
+      // (If the email is opened in a different browser with no session, the
+      // booking gate simply asks them to log in once — acceptable.)
+      const bookingUrl = `${origin}${bookingRedirect}`;
       const greeting = toName ? `Hi ${toName},` : 'Hi,';
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:0;background:#050507;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f0f0f8;}
