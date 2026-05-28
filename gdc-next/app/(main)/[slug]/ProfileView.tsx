@@ -153,6 +153,24 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // shows the login gate for unauthenticated visitors. Mirror of the
   // pattern in MobilePublicCalendar (which holds these internally).
   const { user: currentUser } = useAuth();
+  // Gate for actions that require a verified email (booking, messaging).
+  // Returns true if the action may proceed. Logged-out users are sent to
+  // login; logged-in-but-unverified users are blocked with a prompt that
+  // points them at the persistent verify banner (which has Resend).
+  // `redirectAfterLogin` is the path to return to after logging in.
+  function requireVerified(redirectAfterLogin: string): boolean {
+    if (!isLoggedIn || !currentUser) {
+      window.location.href = `/login?redirect=${encodeURIComponent(redirectAfterLogin)}`;
+      return false;
+    }
+    if (!currentUser.email_verified) {
+      alert(
+        'Please verify your email to continue. Use the "Resend Email" link in the banner at the top of the page, then click the link we send you.'
+      );
+      return false;
+    }
+    return true;
+  }
   const [clubSelectedDate, setClubSelectedDate] = useState<string | null>(null);
   const [clubLoginGateDate, setClubLoginGateDate] = useState<string | null>(null);
   // ── Pending bookings for the logged-in viewer with THIS DJ.
@@ -306,6 +324,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!dateParam) return;
     if (!showClubAvailabilityTab) return;
     if (!isLoggedIn || !currentUser) return;
+    // Unverified users can't book — leave the form closed; the persistent
+    // verify banner tells them what to do. (No alert here: this fires on
+    // mount, so an alert would be intrusive.)
+    if (!currentUser.email_verified) return;
     setClubSelectedDate(dateParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, showClubAvailabilityTab, isLoggedIn, currentUser?.id]);
@@ -613,11 +635,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 type="button"
                 className={styles.bannerMessageUsBtn}
                 onClick={() => {
-                  if (!isLoggedIn) {
-                    window.location.href =
-                      `/login?redirect=${encodeURIComponent(`/${effectiveSlug}`)}`;
-                    return;
-                  }
+                  if (!requireVerified(`/${effectiveSlug}`)) return;
                   setComposeOpen(true);
                 }}
               >
@@ -767,11 +785,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 // Owner can't message themselves; logged-out visitors are
                 // sent to /login first, returning to the same profile.
                 if (isOwnProfile) return;
-                if (!isLoggedIn) {
-                  window.location.href =
-                    `/login?redirect=${encodeURIComponent(`/${effectiveSlug}`)}`;
-                  return;
-                }
+                if (!requireVerified(`/${effectiveSlug}`)) return;
                 setComposeOpen(true);
               }}
             />
@@ -874,14 +888,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 isLoggedIn={isLoggedIn}
                 isOwnProfile={isOwnProfile}
                 selectedDate={clubSelectedDate}
-                onBookDate={(key) => setClubSelectedDate(key)}
+                onBookDate={(key) => {
+                  if (!requireVerified(`/${effectiveSlug}?date=${key}&book=1`)) return;
+                  setClubSelectedDate(key);
+                }}
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 force12mo={forceCalendar12mo}
                 pendingDates={clubPendingDates}
               />
-              {!isOwnProfile && clubSelectedDate && currentUser && (
+              {!isOwnProfile && clubSelectedDate && currentUser && currentUser.email_verified && (
                 <ClubBookingForm
                   key={clubSelectedDate}
                   dateKey={clubSelectedDate}
