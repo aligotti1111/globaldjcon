@@ -283,12 +283,11 @@
 .cellPartial:hover {
   border-color: var(--neon);
 }
-/* On hover the whole cell turns neon, so the Book pill becomes a solid
-   black pill with neon text. A black border keeps a crisp edge against
-   the green cell. */
+/* On hover, only the pill's frame turns black — the neon fill and dark
+   text stay, so the pill reads consistently on both dark and neon cells. */
 .cellOpen:hover .bookBadge {
-  background: #000000;
-  color: var(--neon);
+  background: var(--neon);
+  color: #050507;
   border-color: #000000;
 }
 .cellToday {
