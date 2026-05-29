@@ -117,7 +117,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
           <span className="hdr-dj-menu-avatar hdr-dj-menu-avatar-fallback">{initials}</span>
         )}
         <span className="hdr-dj-menu-name">{name}</span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="hdr-dj-menu-chev" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="hdr-dj-menu-chev" aria-hidden="true">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
