@@ -252,6 +252,26 @@ function EventRow({
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
       <div className={styles.row}>
+        {/* Date pill — first element in the row. Clickable: toggles
+            expansion just like the middle area, so the date acts as part
+            of the toggle hit-zone visually but lives outside the flyer
+            slot so the row order reads date → flyer → middle. */}
+        <button
+          type="button"
+          className={styles.datePillBtn}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse event' : 'Expand event'}
+        >
+          <div className={styles.datePill}>
+            <div className={styles.dayNum}>{dateParts.day}</div>
+            <div className={styles.dayMeta}>
+              <div className={styles.dow}>{dateParts.dow}</div>
+              <div className={styles.mo}>{dateParts.mo}</div>
+            </div>
+          </div>
+        </button>
+
         {/* Flyer / upload slot. Manual events + approved club/bar bookings
             can have flyers uploaded by the host/venue. Mobile bookings are
             PRIVATE EVENTS (weddings, birthdays, etc.) — they don't have
@@ -297,14 +317,6 @@ function EventRow({
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
         >
-          <div className={styles.datePill}>
-            <div className={styles.dayNum}>{dateParts.day}</div>
-            <div className={styles.dayMeta}>
-              <div className={styles.dow}>{dateParts.dow}</div>
-              <div className={styles.mo}>{dateParts.mo}</div>
-            </div>
-          </div>
-
           <div className={styles.middle}>
             {isMobile ? (
               <>
