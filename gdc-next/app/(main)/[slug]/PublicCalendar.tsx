@@ -488,6 +488,7 @@ export default function PublicCalendar({
       <div className={styles.navRow}>
         {!rollingActive && (
           <>
+            <div className={styles.monthPickerCluster}>
             <button
               type="button"
               className={styles.navBtn}
@@ -548,6 +549,7 @@ export default function PublicCalendar({
             >
               ›
             </button>
+            </div>
           </>
         )}
         <button
@@ -896,10 +898,8 @@ function SingleMonthView({
     <div>
       <div className={styles.monthHeaderRow}>
         {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
-        <div className={styles.monthHeader}>
-          {MONTH_NAMES[month]}{' '}
-          <span className={styles.monthHeaderYear}>{year}</span>
-        </div>
+        {/* Gray month/year label removed — the picker button in the nav
+            row above now serves as the calendar's month header. */}
         <div className={styles.monthHeaderActions}>
           {/* Share button removed — the share-calendar action now lives
               in the under-banner social row (see UnderBannerSocials). */}
