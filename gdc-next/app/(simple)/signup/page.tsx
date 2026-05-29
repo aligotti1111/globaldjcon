@@ -14,7 +14,8 @@
 //                              the booking id in localStorage so AuthProvider
 //                              can link the booking to the user once verified.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -41,6 +42,101 @@ interface SuccessInfo {
   role: AccountType;
   slug: string | null;
   userId: string | null;
+}
+
+// Account-type badge that doubles as a subtle dropdown for switching to a
+// different account type within signup. Shows the current type with a small
+// down-arrow; clicking reveals the other two types in a tiny menu. Used
+// inside each role-specific form so the user can hop between DJ / Host /
+// Venue signups without going back to the choice screen.
+function TypeBadge({
+  current,
+  onSwitch,
+}: {
+  current: 'dj' | 'host' | 'venue';
+  onSwitch: (next: 'dj' | 'host' | 'venue') => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const labels: Record<'dj' | 'host' | 'venue', string> = {
+    dj: 'DJ Account',
+    host: 'Party / Event Host Account',
+    venue: 'Venue Account',
+  };
+  const icons: Record<'dj' | 'host' | 'venue', React.ReactNode> = {
+    dj: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
+    ),
+    host: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+      </svg>
+    ),
+    venue: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 21h18M5 21V7l8-4 8 4v14M9 9v.01M13 9v.01M17 9v.01M9 13v.01M13 13v.01M17 13v.01M9 17v.01M13 17v.01M17 17v.01" />
+      </svg>
+    ),
+  };
+  const variantClass =
+    current === 'host' ? styles.formTypeLabelHost
+    : current === 'venue' ? styles.formTypeLabelVenue
+    : '';
+  const others = (['dj', 'host', 'venue'] as const).filter((t) => t !== current);
+
+  return (
+    <div ref={wrapRef} className={styles.typeBadgeWrap}>
+      <button
+        type="button"
+        className={`${styles.formTypeLabel} ${variantClass} ${styles.typeBadgeBtn}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {icons[current]}
+        {labels[current]}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.typeBadgeChev} aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className={styles.typeBadgeMenu} role="listbox">
+          {others.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={styles.typeBadgeOption}
+              onClick={() => { setOpen(false); onSwitch(t); }}
+            >
+              {icons[t]}
+              <span>{labels[t]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SignupPage() {
@@ -94,12 +190,14 @@ export default function SignupPage() {
         {screen === 'dj' && (
           <DjForm
             onBack={() => setScreen('type-select')}
+            onSwitchType={(t) => setScreen(t)}
             onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
           />
         )}
         {screen === 'host' && (
           <HostForm
             onBack={() => setScreen('type-select')}
+            onSwitchType={(t) => setScreen(t)}
             onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
             prefillEmail={prefillEmail}
             lockedEmail={lockedEmail}
@@ -108,6 +206,7 @@ export default function SignupPage() {
         {screen === 'venue' && (
           <VenueForm
             onBack={() => setScreen('type-select')}
+            onSwitchType={(t) => setScreen(t)}
             onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
           />
         )}
@@ -172,7 +271,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
             </svg>
           </div>
           <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>Party Host <span className={styles.acctTypeFree}>FREE</span></div>
+            <div className={styles.acctTypeName}>Party / Event Host <span className={styles.acctTypeFree}>FREE</span></div>
             <div className={styles.acctTypeDesc}>Find &amp; book DJs for your events</div>
           </div>
           <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -272,8 +371,9 @@ async function triggerSignupVerification(
 // DJ FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function DjForm({ onBack, onSuccess }: {
+function DjForm({ onBack, onSwitchType, onSuccess }: {
   onBack: () => void;
+  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   onSuccess: (info: SuccessInfo) => void;
 }) {
   const supabase = createClient();
@@ -415,14 +515,7 @@ function DjForm({ onBack, onSuccess }: {
   return (
     <form onSubmit={handleSubmit}>
       <BackButton onClick={onBack} />
-      <div className={styles.formTypeLabel}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M9 18V5l12-2v13" />
-          <circle cx="6" cy="18" r="3" />
-          <circle cx="18" cy="16" r="3" />
-        </svg>
-        DJ Account
-      </div>
+      <TypeBadge current="dj" onSwitch={onSwitchType} />
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
 
@@ -558,8 +651,9 @@ function DjForm({ onBack, onSuccess }: {
 // HOST FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function HostForm({ onBack, onSuccess, prefillEmail, lockedEmail }: {
+function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }: {
   onBack: () => void;
+  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   onSuccess: (info: SuccessInfo) => void;
   // Email prefilled from URL (booking-invite flow). When `lockedEmail` is
   // true the email field is readOnly — used when the user arrived via a
@@ -632,13 +726,7 @@ function HostForm({ onBack, onSuccess, prefillEmail, lockedEmail }: {
   return (
     <form onSubmit={handleSubmit}>
       <BackButton onClick={onBack} />
-      <div className={`${styles.formTypeLabel} ${styles.formTypeLabelHost}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-        </svg>
-        Party Host Account
-      </div>
+      <TypeBadge current="host" onSwitch={onSwitchType} />
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
 
@@ -698,7 +786,7 @@ function HostForm({ onBack, onSuccess, prefillEmail, lockedEmail }: {
       </div>
 
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
-        {submitting ? 'Creating Account...' : 'Create Host Account'}
+        {submitting ? 'Creating Account...' : 'Create Party / Event Host Account'}
       </button>
     </form>
   );
@@ -708,8 +796,9 @@ function HostForm({ onBack, onSuccess, prefillEmail, lockedEmail }: {
 // VENUE FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function VenueForm({ onBack, onSuccess }: {
+function VenueForm({ onBack, onSwitchType, onSuccess }: {
   onBack: () => void;
+  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   onSuccess: (info: SuccessInfo) => void;
 }) {
   const supabase = createClient();
@@ -824,12 +913,7 @@ function VenueForm({ onBack, onSuccess }: {
   return (
     <form onSubmit={handleSubmit}>
       <BackButton onClick={onBack} />
-      <div className={`${styles.formTypeLabel} ${styles.formTypeLabelVenue}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        </svg>
-        Venue Account
-      </div>
+      <TypeBadge current="venue" onSwitch={onSwitchType} />
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
 
