@@ -269,31 +269,34 @@ function EventRow({
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
       <div className={styles.row}>
         {/* Flyer / upload slot. Manual events + approved club/bar bookings
-            can have flyers uploaded by the host/venue. Mobile bookings stay
-            read-only (private events, no flyer). Clicking the existing
-            flyer opens a lightbox with a download link. */}
-        {event.flyer_url ? (
-          <button
-            type="button"
-            className={styles.flyerBtn}
-            onClick={(e) => { e.stopPropagation(); setShowLightbox(true); }}
-            aria-label="View flyer"
-            title="View flyer"
-          >
-            <img src={event.flyer_url} alt="Event flyer" className={styles.flyer} />
-          </button>
-        ) : canUploadFlyer ? (
-          <button
-            type="button"
-            className={styles.flyerSlot}
-            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            disabled={uploading}
-            title="Upload flyer"
-          >
-            {uploading ? '…' : '+ Flyer'}
-          </button>
-        ) : (
-          <div className={styles.flyerEmpty} />
+            can have flyers uploaded by the host/venue. Mobile bookings are
+            PRIVATE EVENTS (weddings, birthdays, etc.) — they don't have
+            flyers, so the entire flyer column is omitted to match how the
+            mobile DJ sees the event on their side. */}
+        {!isMobile && (
+          event.flyer_url ? (
+            <button
+              type="button"
+              className={styles.flyerBtn}
+              onClick={(e) => { e.stopPropagation(); setShowLightbox(true); }}
+              aria-label="View flyer"
+              title="View flyer"
+            >
+              <img src={event.flyer_url} alt="Event flyer" className={styles.flyer} />
+            </button>
+          ) : canUploadFlyer ? (
+            <button
+              type="button"
+              className={styles.flyerSlot}
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              disabled={uploading}
+              title="Upload flyer"
+            >
+              {uploading ? '…' : '+ Flyer'}
+            </button>
+          ) : (
+            <div className={styles.flyerEmpty} />
+          )
         )}
         <input
           ref={fileInputRef}
