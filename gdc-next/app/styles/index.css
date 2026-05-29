@@ -328,7 +328,7 @@
 
 
 /* Inbox nav icon */
-.inbox-nav-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:none; color:var(--white); cursor:pointer; background:transparent; transition:all .2s; text-decoration:none; flex-shrink:0; }
+.inbox-nav-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:45px; height:45px; border-radius:8px; border:none; color:var(--white); cursor:pointer; background:transparent; transition:all .2s; text-decoration:none; flex-shrink:0; }
 .inbox-nav-btn:hover { color:var(--neon); }
 .inbox-nav-btn--book { color: var(--neon); }
 .inbox-nav-btn--book:hover { opacity: .8; color: var(--neon); }
@@ -343,11 +343,11 @@
 .hdr-dj-menu-trigger {
   display: inline-flex;
   align-items: center;
-  gap: .55rem;
+  gap: .7rem;
   background: transparent;
   border: none;
   border-radius: 100px;
-  padding: .25rem .8rem .25rem .25rem;
+  padding: .3rem 1rem .3rem .3rem;
   cursor: pointer;
   color: var(--white);
   transition: border-color .2s ease, color .2s ease;
@@ -355,8 +355,8 @@
 }
 .hdr-dj-menu-trigger:hover { color: var(--neon); }
 .hdr-dj-menu-avatar {
-  width: 28px;
-  height: 28px;
+  width: 35px;
+  height: 35px;
   border-radius: 50%;
   object-fit: cover;
   display: inline-flex;
@@ -368,15 +368,15 @@
   background: var(--neon);
   color: var(--black);
   font-family: 'Space Mono', monospace;
-  font-size: .65rem;
+  font-size: .8rem;
   font-weight: 700;
   letter-spacing: .04em;
 }
 .hdr-dj-menu-name {
-  font-size: .7rem;
+  font-size: .875rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  max-width: 140px;
+  max-width: 175px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
