@@ -118,6 +118,7 @@ export default function UpcomingBookingsClient({
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const addManual = params.get('addManual');
+    const addOne = params.get('add');
     const returnTo = params.get('returnTo');
     if (returnTo) setReturnToUrl(returnTo);
     if (addManual) {
@@ -133,6 +134,13 @@ export default function UpcomingBookingsClient({
       const url = new URL(window.location.href);
       url.searchParams.delete('addManual');
       url.searchParams.delete('returnTo');
+      window.history.replaceState(null, '', url.toString());
+    } else if (addOne === '1') {
+      // ?add=1 — fired from the header DJ-menu's "Add Booking Manually"
+      // option. No prefill date; just open the modal blank.
+      setShowAddModal(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('add');
       window.history.replaceState(null, '', url.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -732,18 +740,10 @@ function BookingDetails({
         ? { label: 'Venue Name', value: booking.venue_name }
         : { label: 'Event Type', value: eventTypeLabel },
     ],
-    // Row 2: Start / End time. Labeled as "Event" for mobile (private gigs
-    // are an event, not a set) and "Set" for club/bar (DJs play a set at a
-    // venue's event).
+    // Row 2: Set Start Time + Set End Time
     [
-      {
-        label: djType === 'club' ? 'Set Start Time' : 'Event Start Time',
-        value: booking.start_time ? formatTime12(booking.start_time) : null,
-      },
-      {
-        label: djType === 'club' ? 'Set End Time' : 'Event End Time',
-        value: booking.end_time ? formatTime12(booking.end_time) : null,
-      },
+      { label: 'Set Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
+      { label: 'Set End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
     ],
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
