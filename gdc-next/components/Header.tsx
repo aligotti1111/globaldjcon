@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
+import HeaderDjMenu from './HeaderDjMenu';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
@@ -100,33 +101,17 @@ export default function Header() {
                 </>
               ) : (
                 <>
-                  {/* DJ-only: View My Profile + Update Profile (NO settings gear).
-                      View My Profile is hidden when the DJ is already on their
-                      own slug page — would be a self-link otherwise. */}
-                  {isDj && user.slug && !onOwnProfile && (
-                    <Link
-                      href={`/${user.slug}`}
-                      className="btn btn-outline"
-                      style={{ textDecoration: 'none', padding: '.7rem 1.1rem' }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      <span className="btn-text">View My Profile</span>
-                    </Link>
-                  )}
-                  {isDj && !onUpdateProfile && (
-                    <Link
-                      href="/update-dj-profile"
-                      className="btn btn-primary"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M15.232 5.232l3.536 3.536M9 13l-4 4 4-4zm6.364-6.364A2 2 0 0118.2 9.4L8 19.6H4v-4L14.2 5.4a2 2 0 012.164-.532z" strokeLinejoin="round" strokeLinecap="round" />
-                      </svg>
-                      <span className="btn-text">Update Profile</span>
-                    </Link>
+                  {/* DJ accounts get the avatar+name dropdown menu in
+                      place of the standalone View My Profile / Update
+                      Profile / Log Out buttons. The dropdown handles all
+                      three actions plus Upcoming Bookings + Add Booking
+                      Manually. Sits to the left of the booking icon. */}
+                  {isDj && (
+                    <HeaderDjMenu
+                      name={user.name}
+                      slug={user.slug}
+                      avatarUrl={user.avatar_url}
+                    />
                   )}
 
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
@@ -169,13 +154,17 @@ export default function Header() {
                 </>
               )}
 
-              {/* Log Out — shown for both admin and non-admin */}
-              <button onClick={handleSignOut} className="btn btn-outline" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-                </svg>
-                <span className="btn-text">Log Out</span>
-              </button>
+              {/* Log Out — shown for everyone EXCEPT non-admin DJ accounts,
+                  who reach Sign Out via the avatar dropdown above. Admins
+                  keep the standalone button regardless of their stored role. */}
+              {(!isDj || isAdmin) && (
+                <button onClick={handleSignOut} className="btn btn-outline" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                  </svg>
+                  <span className="btn-text">Log Out</span>
+                </button>
+              )}
             </>
           ) : (
             <>
