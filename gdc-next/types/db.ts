@@ -30,6 +30,7 @@ export interface UserProfile {
   state: string | null;
   country: string | null;
   dj_type: DjType | null;
+  avatar_url: string | null;
   email_verified: boolean;
   blocked_users: string[] | null;
   booking_settings: string | null; // JSON-stringified
