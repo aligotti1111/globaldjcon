@@ -166,6 +166,10 @@ export async function POST(request: Request) {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
       })
     : '';
+  // Step labels only make sense when there are TWO steps to walk through
+  // (verify + then continue booking). For a normal signup with no booking
+  // intent, the email has just one button — no "Step 1" label needed.
+  const verifyStepLabel = bookingUrl ? '<span class="step">Step 1</span>' : '';
   const bookingBlock = bookingUrl
     ? `<p style="margin-top:28px;">Once your email is verified, continue the booking you started:</p>
        <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
@@ -179,7 +183,7 @@ export async function POST(request: Request) {
     p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
     .btn{display:inline-block;background:#00f5c4;color:#000000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
     .btn2{background:transparent;color:#00f5c4;border:1px solid #00f5c4;}
-    .step{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#8a8a9e;text-transform:uppercase;margin-right:10px;vertical-align:middle;}
+    .step{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#ffffff;text-transform:uppercase;margin:18px 0 6px;text-align:left;}
     .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
     .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
   </style></head><body>
@@ -189,7 +193,7 @@ export async function POST(request: Request) {
         <h1>Confirm Your Email</h1>
         <p>Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
         <p>Click the button below to verify your email and unlock messaging, booking, and all features:</p>
-        <p style="text-align:center;"><span class="step">Step 1</span><a href="${verifyUrl}" class="btn" style="color:#000000;">Verify Email</a></p>
+        <p style="text-align:center;">${verifyStepLabel}<a href="${verifyUrl}" class="btn" style="color:#000000;">Verify Email</a></p>
         <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${verifyUrl}</span></p>
         ${bookingBlock}
         <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>
