@@ -205,17 +205,21 @@ export default function MobilePublicCalendar({
     const dayData = bookingDays[dateParam];
     if (dayData?.booked || dayData?.unavailable) return;
 
+    // Always jump the visible month to the picked date so the visitor
+    // sees the right context regardless of auth state — this lets
+    // logged-out visitors from the embed see the DJ's calendar at their
+    // selected day, where they can click BOOK themselves to trigger the
+    // login gate (we no longer auto-open the gate on mount).
+    setYear(y);
+    setMonth(m - 1);
     if (isLoggedIn && currentUser) {
       // Unverified users can't book — leave the form closed (the verify
       // banner explains what to do). No alert: this is a mount effect.
       if (!currentUser.email_verified) return;
-      // Jump the visible month to that date so the form opens in context
-      setYear(y);
-      setMonth(m - 1);
       setSelectedDate(dateParam);
-    } else {
-      setLoginGateForDate(dateParam);
     }
+    // Logged-out: no auto-gate. The visitor lands on the calendar at the
+    // picked month/day and clicks BOOK themselves to proceed.
     // Run only once on mount — disabled exhaustive-deps because we don't
     // want the effect re-firing when state changes (e.g. user closes the
     // modal). They'd need a fresh page load.
