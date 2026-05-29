@@ -155,6 +155,11 @@
   .monthPickerCluster {
     gap: .5rem;
   }
+  /* The 12-month rolling view is too cramped to be useful on a phone
+     screen — hide it on mobile, keep it on desktop. */
+  .viewToggle {
+    display: none;
+  }
 }
 
 .viewToggle {
