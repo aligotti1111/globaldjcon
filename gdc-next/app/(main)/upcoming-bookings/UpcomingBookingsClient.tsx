@@ -732,10 +732,18 @@ function BookingDetails({
         ? { label: 'Venue Name', value: booking.venue_name }
         : { label: 'Event Type', value: eventTypeLabel },
     ],
-    // Row 2: Set Start Time + Set End Time
+    // Row 2: Start / End time. Labeled as "Event" for mobile (private gigs
+    // are an event, not a set) and "Set" for club/bar (DJs play a set at a
+    // venue's event).
     [
-      { label: 'Set Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
-      { label: 'Set End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
+      {
+        label: djType === 'club' ? 'Set Start Time' : 'Event Start Time',
+        value: booking.start_time ? formatTime12(booking.start_time) : null,
+      },
+      {
+        label: djType === 'club' ? 'Set End Time' : 'Event End Time',
+        value: booking.end_time ? formatTime12(booking.end_time) : null,
+      },
     ],
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
