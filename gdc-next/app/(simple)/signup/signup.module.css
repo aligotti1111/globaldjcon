@@ -172,7 +172,10 @@
   text-transform: uppercase;
   color: var(--neon);
   margin-bottom: 18px;
+  float: right;
+  margin-top: -4px; /* align vertically with BackButton */
 }
+.formTypeLabel + * { clear: both; }
 .formTypeLabelHost {
   color: #ffb347;
   border-color: rgba(255, 179, 71, .3);
