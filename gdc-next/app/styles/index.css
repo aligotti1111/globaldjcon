@@ -387,11 +387,12 @@
 .hdr-dj-menu-trigger[aria-expanded="true"] .hdr-dj-menu-chev {
   transform: rotate(180deg);
 }
+/* Position is fixed (not absolute) so the dropdown escapes the
+   header's overflow:hidden. JavaScript sets the right/top inline based
+   on the trigger's rect — see HeaderDjMenu.tsx. */
 .hdr-dj-menu-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 60;
+  position: fixed;
+  z-index: 1000;
   min-width: 220px;
   background: var(--card, #0c0c16);
   border: 1px solid rgba(255, 255, 255, .25);
