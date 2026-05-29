@@ -8,12 +8,105 @@
 
 /* ── TOP NAV ROW (prev / month / year / next / view-toggle) ────────── */
 .navRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: .5rem;
   margin-bottom: 1rem;
-  flex-wrap: nowrap;
 }
+.monthPickerCluster {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  justify-self: center;
+}
+/* Arrows inside the cluster — no box, just bigger chevrons, matched size. */
+.monthPickerCluster .navBtn {
+  border: none;
+  padding: 0;
+  font-size: 1.6rem;
+  line-height: 1;
+  background: transparent;
+}
+.monthPickerCluster .navBtn:hover:not(:disabled) {
+  border: none;
+  color: var(--neon);
+}
+/* ── Month/Year picker (combined dropdown) ─────────────────────────
+   Replaces the two <select>s. */
+.monthPickerWrap {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+}
+.monthPickerBtn {
+  background: transparent;
+  border: none;
+  padding: .25rem .5rem;
+  color: var(--neon);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: .06em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  line-height: 1;
+  /* Fixed min-width so the cluster width stays constant across months —
+     arrows don't slide inward for "JUNE 2026" or outward for
+     "SEPTEMBER 2026". Sized for the widest month-name. */
+  min-width: 12rem;
+}
+.monthPickerBtn:hover { opacity: .85; }
+.monthPickerChev {
+  transition: transform .15s ease;
+  opacity: .8;
+}
+.monthPickerBtn[aria-expanded="true"] .monthPickerChev {
+  transform: rotate(180deg);
+}
+.monthPickerMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--card, #0c0c16);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.monthPickerOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 9px 12px;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.monthPickerOption:hover { background: rgba(255, 255, 255, .06); }
+.monthPickerOptionSelected {
+  background: rgba(0, 245, 196, .12);
+  color: var(--neon);
+}
+.monthPickerOptionSelected:hover { background: rgba(0, 245, 196, .18); }
 /* Owner-only "Embed Calendar" button — sits inline at the start of
    the nav row. White pill, black text. */
 .embedInlineBtn {
@@ -113,6 +206,8 @@
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 245, 196, .35);
   transition: all .2s;
+  grid-column: 3;
+  justify-self: end;
 }
 .viewToggle:hover {
   filter: brightness(1.1);
