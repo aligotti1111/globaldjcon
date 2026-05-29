@@ -133,6 +133,26 @@
   font: inherit;
   min-width: 0;
 }
+/* Date-pill click wrapper — sits first in the row, separate from the
+   flyer slot, so visual order reads date → flyer → middle. Visually
+   identical to having the pill bare (no button chrome); same hit-zone
+   behavior as the middle .rowToggle. */
+.datePillBtn {
+  display: inline-flex;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: inherit;
+  font: inherit;
+}
+.datePillBtn:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .rowToggle:focus-visible {
   outline: 2px solid var(--neon);
   outline-offset: 2px;
