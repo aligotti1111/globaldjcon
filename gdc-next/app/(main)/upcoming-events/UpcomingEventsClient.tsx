@@ -586,23 +586,6 @@ function EventRow({
                 </div>
               </div>
             )}
-            {event.flyer_url && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Flyer</div>
-                <div className={styles.detailValue}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ext = (event.flyer_url || '').split('?')[0].split('.').pop() || 'jpg';
-                      downloadFlyer(event.flyer_url!, `flyer-${event.id}.${ext}`);
-                    }}
-                    className={styles.linkLikeBtn}
-                  >
-                    Download flyer
-                  </button>
-                </div>
-              </div>
-            )}
             {event.notes && (
               <div className={`${styles.detailItem} ${styles.detailItemFull}`}>
                 <div className={styles.detailLabel}>Original Notes</div>
@@ -610,6 +593,43 @@ function EventRow({
               </div>
             )}
           </div>
+          {/* Event flyer block — mirrors the DJ-side card. View-only on the
+              host side (the DJ uploads/edits flyers, the host downloads).
+              Club/bar bookings only; mobile bookings don't have flyers. */}
+          {!isMobile && event.flyer_url && (
+            <div className={styles.flyerCardSection}>
+              <div className={styles.detailLabel}>Event Flyer</div>
+              <div className={styles.flyerInline}>
+                <div className={styles.flyerWithActions}>
+                  <button
+                    type="button"
+                    className={styles.flyerThumbBtn}
+                    onClick={() => setShowLightbox(true)}
+                    title="View flyer"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={event.flyer_url} alt="Event flyer" className={styles.flyerThumbImg} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.flyerDownloadIcon}
+                    onClick={() => {
+                      const ext = (event.flyer_url || '').split('?')[0].split('.').pop() || 'jpg';
+                      downloadFlyer(event.flyer_url!, `flyer-${event.id}.${ext}`);
+                    }}
+                    title="Download flyer"
+                    aria-label="Download flyer"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Shared notes feed — both DJ and host can read + post. Shown
               for club/bar AND mobile (private) bookings. */}
           {(event.booking_type === 'club' || event.booking_type === 'mobile') && (
