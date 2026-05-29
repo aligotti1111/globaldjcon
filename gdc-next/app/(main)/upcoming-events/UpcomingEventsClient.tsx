@@ -548,7 +548,7 @@ function EventRow({
                 </div>
               </div>
             )}
-            {isMobile && !isManual && rateText && (
+            {isMobile && rateText && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Rate</div>
                 <div className={styles.detailValue}>{rateText}</div>
