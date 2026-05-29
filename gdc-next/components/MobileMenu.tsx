@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
+import { useUpcomingBookingCount } from './useUpcomingBookingCount';
 
 // Shared stroke attributes for the inline icon set. Icons are sized and
 // colored via the .mm-icon CSS class (16px, neon by default).
@@ -125,6 +126,13 @@ export default function MobileMenu() {
 
   const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
   const isDj = user?.role === 'dj';
+  // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
+  // so the user can see at a glance how many events they have queued.
+  const upcomingCount = useUpcomingBookingCount(
+    (user?.role === 'dj' || user?.role === 'host' || user?.role === 'venue')
+      ? user.role
+      : null
+  );
 
   return (
     <div
@@ -204,11 +212,11 @@ export default function MobileMenu() {
             </Link>
             {isDj ? (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
-                <IconClock />Upcoming Bookings
+                <IconClock />Upcoming Bookings{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             ) : (
               <Link href="/upcoming-events" onClick={close} className="mobile-menu-item">
-                <IconClock />Upcoming Events
+                <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
 
