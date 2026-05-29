@@ -324,11 +324,6 @@ export async function GET(request: Request) {
       // (If the email is opened in a different browser with no session, the
       // booking gate simply asks them to log in once — acceptable.)
       const bookingUrl = `${publicOrigin}${bookingRedirect}`;
-      // A "view calendar" link to the DJ's profile with the date
-      // pre-selected but WITHOUT &book=1 — so it lands on the calendar
-      // rather than opening the booking form. Gives the user a way to
-      // navigate the DJ's availability freely if anything's off.
-      const calendarUrl = `${publicOrigin}/${encodeURIComponent(slug)}?date=${encodeURIComponent(dateStr)}`;
       const greeting = toName ? `Hi ${toName},` : 'Hi,';
       const avatarHtml = djAvatar
         ? `<img src="${djAvatar}" alt="${djName}" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #00f5c4;display:block;">`
@@ -339,7 +334,7 @@ export async function GET(request: Request) {
           <tr>
             <td style="padding:16px;width:80px;vertical-align:middle;">${avatarHtml}</td>
             <td style="padding:16px 16px 16px 0;vertical-align:middle;">
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;color:#f0f0f8;">${djName}</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;"><a href="${publicOrigin}/${encodeURIComponent(slug)}" style="color:#f0f0f8;text-decoration:none;">${djName}</a></div>
               ${djLocation ? `<div style="font-size:13px;color:#8a8a9e;margin-top:2px;">📍 ${djLocation}</div>` : ''}
               ${niceDate ? `<div style="font-size:13px;color:#00f5c4;margin-top:6px;">🗓 ${niceDate}</div>` : ''}
             </td>
@@ -354,18 +349,16 @@ export async function GET(request: Request) {
         .btn{display:inline-block;background:#00f5c4;color:#000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
         .btn2{display:inline-block;background:transparent;color:#00f5c4;border:1px solid #00f5c4;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:13px;margin:0 0 8px;}
         .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
-        .logo{text-align:center;margin-bottom:24px;}
-        .logo img{max-width:220px;height:auto;}
+        .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
       </style></head><body>
         <div class="wrap">
-          <div class="logo"><img src="${LOGO_URL}" alt="Global DJ Connect"></div>
+          <div class="logo">GLOBAL DJ CONNECT</div>
           <div class="card">
             <h1>Finish Your Booking</h1>
             <p>${greeting}</p>
             <p>Your email is verified and your account is ready. Pick up where you left off:</p>
             ${djCard}
-            <p style="text-align:center;margin:0;"><a href="${bookingUrl}" class="btn">Continue Your Booking</a></p>
-            <p style="text-align:center;margin:0 0 16px;"><a href="${calendarUrl}" class="btn2">View ${djName}'s Calendar</a></p>
+            <p style="text-align:center;margin:0 0 16px;"><a href="${bookingUrl}" class="btn" style="color:#ffffff;">Continue Your Booking</a></p>
             <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${bookingUrl}</span></p>
           </div>
           <div class="footer">Global DJ Connect · globaldjconnect.com</div>
