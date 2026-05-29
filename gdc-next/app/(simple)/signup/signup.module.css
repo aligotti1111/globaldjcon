@@ -213,10 +213,21 @@
   float: none !important;
   cursor: pointer;
   font: inherit;
+  /* Smaller than the original static badge — more compact pill */
+  padding: 5px 10px !important;
+  gap: 6px !important;
+  font-size: 10px !important;
+  letter-spacing: .1em !important;
+}
+.typeBadgeBtn svg:first-of-type {
+  width: 11px !important;
+  height: 11px !important;
 }
 .typeBadgeChev {
+  width: 8px;
+  height: 8px;
   opacity: .7;
-  margin-left: 4px;
+  margin-left: 2px;
   transition: transform .15s ease;
 }
 .typeBadgeBtn[aria-expanded="true"] .typeBadgeChev {
