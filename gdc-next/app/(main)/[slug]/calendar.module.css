@@ -48,10 +48,19 @@
    ‹  MAY 2026 ▾  ›  …  12 MONTHS. The menu is absolutely positioned
    below the button with a fixed max-height — scrolls when the
    booking window is large. */
+/* Cluster wrapping ‹ picker › so they sit together. margin:0 auto on
+   the cluster absorbs equal space on both sides; viewToggle still has
+   margin-left:auto so it claims the right edge. Result: cluster is
+   centered between the row's left edge and the toggle. */
+.monthPickerCluster {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 auto;
+}
 .monthPickerWrap {
-  flex: 1 1 auto;
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
+  align-items: center;
   position: relative;
   min-width: 0;
 }
