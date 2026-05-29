@@ -150,7 +150,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
             </svg>
           </div>
           <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>DJ</div>
+            <div className={styles.acctTypeName}>DJ <span className={styles.acctTypeFree}>FREE</span></div>
             <div className={styles.acctTypeDesc}>Get listed in the directory &amp; accept bookings</div>
           </div>
           <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -172,7 +172,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
             </svg>
           </div>
           <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>Party Host</div>
+            <div className={styles.acctTypeName}>Party Host <span className={styles.acctTypeFree}>FREE</span></div>
             <div className={styles.acctTypeDesc}>Find &amp; book DJs for your events</div>
           </div>
           <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -192,7 +192,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
             </svg>
           </div>
           <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>Venue</div>
+            <div className={styles.acctTypeName}>Venue <span className={styles.acctTypeFree}>FREE</span></div>
             <div className={styles.acctTypeDesc}>Add your venue, list opening spots, &amp; book DJs</div>
           </div>
           <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
