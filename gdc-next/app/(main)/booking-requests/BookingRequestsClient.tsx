@@ -148,7 +148,6 @@ export default function BookingRequestsClient({
     if (mv === 'dj') inCounts.respond++;
     else if (mv === 'booker') inCounts.awaiting++;
   });
-  const inAll = inCounts.respond + inCounts.awaiting + inCounts.approved + inCounts.denied;
 
   const outCounts = { respond: 0, awaiting: 0, approved: 0, denied: 0 };
   outgoing.forEach((b) => {
@@ -160,7 +159,6 @@ export default function BookingRequestsClient({
     if (mv === 'booker') outCounts.respond++;
     else if (mv === 'dj') outCounts.awaiting++;
   });
-  const outAll = outCounts.respond + outCounts.awaiting + outCounts.approved + outCounts.denied;
 
   // ── Filtered lists ─────────────────────────────────────────────
   // matchesTab decides if a booking belongs in the chosen tab. `mySide`
@@ -803,9 +801,6 @@ export default function BookingRequestsClient({
             <TabButton active={incomingTab === 'denied'} onClick={() => setIncomingTab('denied')}>
               Declined ({inCounts.denied})
             </TabButton>
-            <TabButton active={incomingTab === 'all'} onClick={() => setIncomingTab('all')}>
-              All ({inAll})
-            </TabButton>
           </div>
           <div>
             {/* Same-day grouping for the action tab (Response Required) only */}
@@ -880,9 +875,6 @@ export default function BookingRequestsClient({
             </TabButton>
             <TabButton active={outgoingTab === 'denied'} onClick={() => setOutgoingTab('denied')}>
               Declined ({outCounts.denied})
-            </TabButton>
-            <TabButton active={outgoingTab === 'all'} onClick={() => setOutgoingTab('all')}>
-              All ({outAll})
             </TabButton>
           </div>
           <div>
