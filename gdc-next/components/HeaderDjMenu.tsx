@@ -43,7 +43,9 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [popPos, setPopPos] = useState<{ top: number; right: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   // Close on outside click + Escape.
   useEffect(() => {
@@ -64,6 +66,30 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
     };
   }, [open]);
 
+  // Position the dropdown using fixed coords based on the trigger's rect.
+  // Required because the header is `overflow: hidden` (for the scanline
+  // pseudo-element), so an absolutely-positioned dropdown would get clipped.
+  // Recompute on scroll/resize while open so it stays anchored.
+  useEffect(() => {
+    if (!open) { setPopPos(null); return; }
+    function compute() {
+      const el = triggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPopPos({
+        top: r.bottom + 8,
+        right: window.innerWidth - r.right,
+      });
+    }
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [open]);
+
   async function handleSignOut() {
     setOpen(false);
     await signOut();
@@ -76,6 +102,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
   return (
     <div ref={wrapRef} className="hdr-dj-menu-wrap">
       <button
+        ref={triggerRef}
         type="button"
         className="hdr-dj-menu-trigger"
         onClick={() => setOpen((v) => !v)}
@@ -94,8 +121,12 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {open && (
-        <div className="hdr-dj-menu-pop" role="menu">
+      {open && popPos && (
+        <div
+          className="hdr-dj-menu-pop"
+          role="menu"
+          style={{ top: popPos.top, right: popPos.right }}
+        >
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               View My Profile
