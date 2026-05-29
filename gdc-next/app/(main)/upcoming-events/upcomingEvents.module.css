@@ -283,6 +283,31 @@
   color: var(--muted);
   margin-left: 4px;
 }
+/* Row that keeps the saved link and its inline Edit button together. The
+   gap is small but visible; the row wraps to a new line on narrow widths. */
+.linkRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.linkEditInlineBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+.linkEditInlineBtn:hover {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, .5);
+}
 .notesFeedWrap {
   margin-top: 14px;
 }
@@ -468,16 +493,16 @@
   max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, .6);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
 }
 .modalSmall {
   width: 100%;
   max-width: 460px;
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, .6);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
   overflow: hidden;
