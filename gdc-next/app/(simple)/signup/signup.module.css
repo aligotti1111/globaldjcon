@@ -197,6 +197,67 @@
   background: rgba(167, 139, 250, .08);
 }
 
+/* ── Type-switch dropdown (inside each form) ─────────────────────────
+   The badge becomes a button with a small down-arrow; clicking opens a
+   tiny menu listing the OTHER two account types. Visually identical to
+   the static badge so it doesn't alter the existing design. */
+.typeBadgeWrap {
+  position: relative;
+  float: right;
+  margin-top: -4px;
+  margin-bottom: 18px;
+}
+.typeBadgeBtn {
+  /* override .formTypeLabel's margin so the wrap controls layout */
+  margin: 0 !important;
+  float: none !important;
+  cursor: pointer;
+  font: inherit;
+}
+.typeBadgeChev {
+  opacity: .7;
+  margin-left: 4px;
+  transition: transform .15s ease;
+}
+.typeBadgeBtn[aria-expanded="true"] .typeBadgeChev {
+  transform: rotate(180deg);
+}
+.typeBadgeMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 220px;
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.typeBadgeOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.typeBadgeOption:hover {
+  background: rgba(255, 255, 255, .06);
+}
+
 /* ── Form fields ─────────────────────────────────────── */
 .formGroup {
   margin-bottom: 20px;
