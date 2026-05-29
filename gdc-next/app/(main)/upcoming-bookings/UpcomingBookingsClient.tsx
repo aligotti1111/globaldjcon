@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
@@ -114,11 +115,12 @@ export default function UpcomingBookingsClient({
   // that date already populated. If a booking already exists on that date,
   // we open the EDIT modal for it instead so the owner sees their previously
   // entered details. ?returnTo=/path sends them back to that URL after save.
+  // Existing mount-only flow: ?addManual=<date> + ?returnTo=. Kept as a
+  // one-shot effect because it depends on `initialBookings` snapshot.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const addManual = params.get('addManual');
-    const addOne = params.get('add');
     const returnTo = params.get('returnTo');
     if (returnTo) setReturnToUrl(returnTo);
     if (addManual) {
@@ -135,16 +137,25 @@ export default function UpcomingBookingsClient({
       url.searchParams.delete('addManual');
       url.searchParams.delete('returnTo');
       window.history.replaceState(null, '', url.toString());
-    } else if (addOne === '1') {
-      // ?add=1 — fired from the header DJ-menu's "Add Booking Manually"
-      // option. No prefill date; just open the modal blank.
-      setShowAddModal(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('add');
-      window.history.replaceState(null, '', url.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ?add=1 — fired from the header DJ-menu's "Add Booking Manually" option.
+  // Watches the URL via Next's useSearchParams so it fires on EVERY URL
+  // change, including when the user is already on /upcoming-bookings and
+  // taps the dropdown again (which doesn't remount the component).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get('add') === '1') {
+      setShowAddModal(true);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('add');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [searchParams]);
 
   // Group by month (YYYY-MM); keys sorted descending (most recent month first).
   const grouped = useMemo(() => {
