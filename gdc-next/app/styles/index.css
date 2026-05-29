@@ -394,8 +394,8 @@
   position: fixed;
   z-index: 1000;
   min-width: 220px;
-  background: var(--card, #0c0c16);
-  border: 1px solid rgba(255, 255, 255, .25);
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
   border-radius: 10px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
   padding: 4px;
