@@ -355,8 +355,8 @@
 }
 .hdr-dj-menu-trigger:hover { color: var(--neon); }
 .hdr-dj-menu-avatar {
-  width: 35px;
-  height: 35px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   display: inline-flex;
