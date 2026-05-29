@@ -428,6 +428,12 @@
 .hdr-dj-menu-item-danger { color: #ff6b6b; }
 .hdr-dj-menu-item-danger:hover { background: rgba(255, 107, 107, .1); }
 
+/* Hide the DJ avatar dropdown on mobile — the hamburger MobileMenu is
+   the navigation entry point at narrow widths. */
+@media(max-width: 900px) {
+  .hdr-dj-menu-wrap { display: none; }
+}
+
 .hamburger-btn{display:none;position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--border,#1e1e30);border-radius:6px;color:var(--white,#f0f0f8);cursor:pointer;padding:.4rem .5rem;z-index:20;line-height:1;}
 .mobile-menu{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);}
 .mobile-menu.open{display:flex;flex-direction:column;}
