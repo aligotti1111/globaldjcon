@@ -35,20 +35,11 @@ export default function UpcomingEventsClient({
   userId, userCountry, userName, initialEvents,
 }: Props) {
   const [events, setEvents] = useState<UpcomingEvent[]>(initialEvents);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [editing, setEditing] = useState<UpcomingEvent | null>(null);
 
   // Group events by year-month for "Aug 2026" / "Sep 2026" section headers.
   const grouped = groupByMonth(events);
 
-  async function handleAdded(newEvent: UpcomingEvent) {
-    setEvents((prev) => {
-      const next = [...prev, newEvent];
-      next.sort(sortByDateTimeAsc);
-      return next;
-    });
-    setShowAddModal(false);
-  }
   async function handleUpdated(updated: UpcomingEvent) {
     setEvents((prev) => {
       const next = prev.map((e) => (e.id === updated.id ? updated : e));
@@ -70,13 +61,6 @@ export default function UpcomingEventsClient({
         </div>
         <div className={styles.headerActions}>
           <Link href="/booking-requests" className={styles.linkBack}>← Back to bookings</Link>
-          <button
-            type="button"
-            className={styles.addBtn}
-            onClick={() => setShowAddModal(true)}
-          >
-            + Add Event
-          </button>
         </div>
       </div>
 
@@ -84,7 +68,7 @@ export default function UpcomingEventsClient({
         <div className={styles.empty}>
           <p>You don&apos;t have any upcoming events yet.</p>
           <p className={styles.emptyHint}>
-            Click <strong>Add Event</strong> to record one manually.
+            Approved booking requests will appear here automatically.
           </p>
         </div>
       ) : (
@@ -116,15 +100,15 @@ export default function UpcomingEventsClient({
         ))
       )}
 
-      {(showAddModal || editing) && (
+      {editing && (
         <EventManualForm
           userId={userId}
           userCountry={userCountry}
           userName={userName}
           existing={editing}
           existingEvents={events}
-          onClose={() => { setShowAddModal(false); setEditing(null); }}
-          onAdded={handleAdded}
+          onClose={() => setEditing(null)}
+          onAdded={() => { /* unused — Add Event flow removed */ }}
           onUpdated={handleUpdated}
         />
       )}
