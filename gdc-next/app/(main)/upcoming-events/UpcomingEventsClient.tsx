@@ -322,30 +322,39 @@ function EventRow({
           </div>
 
           <div className={styles.middle}>
-            <div className={styles.venue}>{venueLine}</div>
-            <div className={styles.meta}>{timeRange}</div>
-            {event.venue_address && (
-              <div className={styles.meta}>
-                {event.venue_address}
-              </div>
-            )}
-            {event.dj_name && (
-              <div className={styles.metaDj}>
-                DJ:{' '}
-                {event.dj_slug ? (
-                  <Link
-                    href={`/${event.dj_slug}`}
-                    className={styles.metaDjLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {event.dj_name}
-                  </Link>
-                ) : (
-                  event.dj_name
+            {isMobile ? (
+              <>
+                <div className={styles.venue}>{eventTypeLabel || 'Event'}</div>
+                {timeRange && <div className={styles.meta}>{timeRange}</div>}
+              </>
+            ) : (
+              <>
+                <div className={styles.venue}>{venueLine}</div>
+                <div className={styles.meta}>{timeRange}</div>
+                {event.venue_address && (
+                  <div className={styles.meta}>
+                    {event.venue_address}
+                  </div>
                 )}
-              </div>
+                {event.dj_name && (
+                  <div className={styles.metaDj}>
+                    DJ:{' '}
+                    {event.dj_slug ? (
+                      <Link
+                        href={`/${event.dj_slug}`}
+                        className={styles.metaDjLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {event.dj_name}
+                      </Link>
+                    ) : (
+                      event.dj_name
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -407,25 +416,88 @@ function EventRow({
       {expanded && (
         <div className={styles.detailsPanel}>
           <div className={styles.detailsGrid}>
-            {event.booking_type === 'club' && event.event_date && (
+            {isMobile && (
+              <>
+                {event.dj_name && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>DJ</div>
+                    <div className={styles.detailValue}>
+                      {event.dj_slug ? (
+                        <Link
+                          href={`/${event.dj_slug}`}
+                          className={styles.metaLink}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {event.dj_name}
+                        </Link>
+                      ) : event.dj_name}
+                    </div>
+                  </div>
+                )}
+                {event.event_date && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Date</div>
+                    <div className={styles.detailValue}>{formatLongDate(event.event_date)}</div>
+                  </div>
+                )}
+                {eventTypeLabel && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Event Type</div>
+                    <div className={styles.detailValue}>{eventTypeLabel}</div>
+                  </div>
+                )}
+                {event.start_time && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Event Start Time</div>
+                    <div className={styles.detailValue}>{formatTime12(event.start_time)}</div>
+                  </div>
+                )}
+                {event.end_time && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Event End Time</div>
+                    <div className={styles.detailValue}>{formatTime12(event.end_time)}</div>
+                  </div>
+                )}
+                {event.venue_name?.trim() && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Venue Name</div>
+                    <div className={styles.detailValue}>{event.venue_name.trim()}</div>
+                  </div>
+                )}
+                {event.venue_address && (
+                  <div className={styles.detailItem}>
+                    <div className={styles.detailLabel}>Venue Address</div>
+                    <div className={styles.detailValue}>
+                      {mapUrl ? (
+                        <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
+                          {event.venue_address}
+                        </a>
+                      ) : event.venue_address}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {!isMobile && event.booking_type === 'club' && event.event_date && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Date</div>
                 <div className={styles.detailValue}>{formatLongDate(event.event_date)}</div>
               </div>
             )}
-            {timeRange && (
+            {!isMobile && timeRange && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Time</div>
                 <div className={styles.detailValue}>{timeRange}</div>
               </div>
             )}
-            {event.venue_name?.trim() && (
+            {!isMobile && event.venue_name?.trim() && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Venue Name</div>
                 <div className={styles.detailValue}>{event.venue_name.trim()}</div>
               </div>
             )}
-            {event.venue_address && (
+            {!isMobile && event.venue_address && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Address</div>
                 <div className={styles.detailValue}>
@@ -437,46 +509,48 @@ function EventRow({
                 </div>
               </div>
             )}
-            {eventTypeLabel && (
+            {!isMobile && eventTypeLabel && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Type</div>
                 <div className={styles.detailValue}>{eventTypeLabel}</div>
               </div>
             )}
-            {rateText && (
+            {!isMobile && rateText && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Rate</div>
                 <div className={styles.detailValue}>{rateText}</div>
               </div>
             )}
-            {/* Mobile / private booking details — package, room, guests,
-                phone, and (for weddings) cocktail-hour info. Mirrors the
-                detail set on the DJ-side booking card. */}
-            {isMobile && event.package_title?.trim() && (
+            {/* Mobile BOOKING-REQUEST extras (not shown for manual events,
+                whose richer fields would never have been collected). These
+                mirror what the DJ collected during the booking flow:
+                package selection, room details, guest count, contact phone,
+                and (for weddings) cocktail-hour info. */}
+            {isMobile && !isManual && event.package_title?.trim() && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Package</div>
                 <div className={styles.detailValue}>{event.package_title.trim()}</div>
               </div>
             )}
-            {isMobile && event.room_details?.trim() && (
+            {isMobile && !isManual && event.room_details?.trim() && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Room</div>
                 <div className={styles.detailValue}>{event.room_details.trim()}</div>
               </div>
             )}
-            {isMobile && event.guest_count != null && (
+            {isMobile && !isManual && event.guest_count != null && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Guests</div>
                 <div className={styles.detailValue}>{event.guest_count}</div>
               </div>
             )}
-            {isMobile && event.phone?.trim() && (
+            {isMobile && !isManual && event.phone?.trim() && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Phone</div>
                 <div className={styles.detailValue}>{event.phone.trim()}</div>
               </div>
             )}
-            {isMobile && isWedding && event.cocktail_needed != null && (
+            {isMobile && !isManual && isWedding && event.cocktail_needed != null && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Cocktail Hour</div>
                 <div className={styles.detailValue}>
@@ -488,6 +562,12 @@ function EventRow({
                           : ''}`
                     : 'No'}
                 </div>
+              </div>
+            )}
+            {isMobile && !isManual && rateText && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Rate</div>
+                <div className={styles.detailValue}>{rateText}</div>
               </div>
             )}
             {/* External link — not shown for mobile/private events. */}
