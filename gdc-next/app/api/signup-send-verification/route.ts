@@ -168,7 +168,7 @@ export async function POST(request: Request) {
     : '';
   const bookingBlock = bookingUrl
     ? `<p style="margin-top:28px;">Once your email is verified, continue the booking you started:</p>
-       <p style="text-align:center;"><a href="${bookingUrl}" class="btn btn2">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
+       <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
     : '';
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -177,19 +177,19 @@ export async function POST(request: Request) {
     .card{background:#13131e;border:1px solid #1e1e30;border-radius:12px;padding:40px 32px;}
     h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.05em;color:#00f5c4;margin:0 0 16px;}
     p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
-    .btn{display:inline-block;background:#00f5c4;color:#000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
+    .btn{display:inline-block;background:#00f5c4;color:#000000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
     .btn2{background:transparent;color:#00f5c4;border:1px solid #00f5c4;}
+    .step{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#8a8a9e;text-transform:uppercase;margin-right:10px;vertical-align:middle;}
     .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
-    .logo{text-align:center;margin-bottom:24px;}
-    .logo img{max-width:220px;height:auto;}
+    .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
   </style></head><body>
     <div class="wrap">
-      <div class="logo"><img src="${LOGO_URL}" alt="Global DJ Connect"></div>
+      <div class="logo">GLOBAL DJ CONNECT</div>
       <div class="card">
         <h1>Confirm Your Email</h1>
         <p>Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
         <p>Click the button below to verify your email and unlock messaging, booking, and all features:</p>
-        <p style="text-align:center;"><a href="${verifyUrl}" class="btn">Verify Email</a></p>
+        <p style="text-align:center;"><span class="step">Step 1</span><a href="${verifyUrl}" class="btn" style="color:#000000;">Verify Email</a></p>
         <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${verifyUrl}</span></p>
         ${bookingBlock}
         <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>
