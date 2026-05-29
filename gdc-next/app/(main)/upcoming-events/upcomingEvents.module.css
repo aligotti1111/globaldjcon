@@ -310,6 +310,55 @@
   color: var(--white);
   text-decoration-color: rgba(255, 255, 255, .6);
 }
+/* In-card "Event Flyer" section — mirrors the DJ-side display. Sits
+   between the detail grid and the notes feed. View-only (no upload /
+   replace / remove): clicking the thumb opens the lightbox, and the
+   download icon next to it pulls the file. */
+.flyerCardSection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.flyerInline {
+  flex-shrink: 0;
+}
+.flyerWithActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.flyerThumbBtn {
+  display: block;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--deep);
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.flyerThumbImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.flyerDownloadIcon {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--neon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.flyerDownloadIcon:hover { color: #00d4a9; }
 .notesFeedWrap {
   margin-top: 14px;
 }
