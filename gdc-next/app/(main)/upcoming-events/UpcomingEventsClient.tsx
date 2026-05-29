@@ -560,14 +560,20 @@ function EventRow({
                 <div className={styles.detailLabel}>Link</div>
                 <div className={styles.detailValue}>
                   {event.link_url ? (
-                    <>
+                    <span className={styles.linkRow}>
                       <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
                         {event.link_url}
                       </a>
-                      {event.link_label?.trim() && (
-                        <span className={styles.linkLabelHint}> · &ldquo;{event.link_label.trim()}&rdquo;</span>
-                      )}
-                    </>
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkModal(true)}
+                        className={styles.linkEditInlineBtn}
+                        title="Edit link & label"
+                        aria-label="Edit link & label"
+                      >
+                        Edit
+                      </button>
+                    </span>
                   ) : (
                     <button
                       type="button"
