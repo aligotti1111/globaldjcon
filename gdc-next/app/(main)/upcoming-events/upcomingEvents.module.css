@@ -139,14 +139,18 @@
    behavior as the middle .rowToggle. */
 .datePillBtn {
   display: inline-flex;
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   margin: 0;
   cursor: pointer;
   flex-shrink: 0;
   color: inherit;
   font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: none;
 }
 .datePillBtn:focus-visible {
   outline: 2px solid var(--neon);
