@@ -3,11 +3,18 @@
 
 /* ── TOP NAV ROW (prev / month / year / next / view-toggle) ────────────── */
 .navRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: .5rem;
   margin-bottom: 1rem;
-  flex-wrap: nowrap;
+}
+.monthPickerCluster {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  justify-self: center;
 }
 .navBtn {
   background: transparent;
@@ -48,16 +55,7 @@
    ‹  MAY 2026 ▾  ›  …  12 MONTHS. The menu is absolutely positioned
    below the button with a fixed max-height — scrolls when the
    booking window is large. */
-/* Cluster wrapping ‹ picker › so they sit together. margin:0 auto on
-   the cluster absorbs equal space on both sides; viewToggle still has
-   margin-left:auto so it claims the right edge. Result: cluster is
-   centered between the row's left edge and the toggle. */
-.monthPickerCluster {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  margin: 0 auto;
-}
+/* Cluster wrapping ‹ picker › is defined in .navRow grid setup above. */
 .monthPickerWrap {
   display: inline-flex;
   align-items: center;
@@ -139,7 +137,8 @@
   text-transform: uppercase;
   white-space: nowrap;
   transition: all .2s;
-  margin-left: auto;
+  grid-column: 3;
+  justify-self: end;
 }
 .viewToggle:hover {
   border-color: var(--neon);
