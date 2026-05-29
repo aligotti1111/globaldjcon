@@ -122,6 +122,11 @@
   .monthPickerCluster {
     gap: .5rem;
   }
+  /* The 12-month rolling view is too cramped to be useful on a phone
+     screen — hide it on mobile, keep it on desktop. */
+  .viewToggle {
+    display: none;
+  }
 }
 /* Owner-only "Embed Calendar" button — sits inline at the start of
    the nav row. White pill, black text. */
