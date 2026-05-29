@@ -13,8 +13,20 @@
   grid-column: 2;
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
+  gap: .75rem;
   justify-self: center;
+}
+/* Arrows inside the cluster — no box, just bigger chevrons, matched size. */
+.monthPickerCluster .navBtn {
+  border: none;
+  padding: 0;
+  font-size: 2rem;
+  line-height: 1;
+  background: transparent;
+}
+.monthPickerCluster .navBtn:hover:not(:disabled) {
+  border: none;
+  color: var(--neon);
 }
 .navBtn {
   background: transparent;
@@ -68,7 +80,7 @@
   padding: .25rem .5rem;
   color: var(--neon);
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.4rem;
+  font-size: 1.85rem;
   letter-spacing: .06em;
   cursor: pointer;
   display: inline-flex;
