@@ -172,7 +172,7 @@ export async function POST(request: Request) {
   const verifyStepLabel = bookingUrl ? '<span class="step">Step 1</span>' : '';
   const bookingBlock = bookingUrl
     ? `<p style="margin-top:28px;">Once your email is verified, continue the booking you started:</p>
-       <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
+       <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2" style="color:#000000;">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
     : '';
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.05em;color:#00f5c4;margin:0 0 16px;}
     p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
     .btn{display:inline-block;background:#00f5c4;color:#000000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
-    .btn2{background:transparent;color:#00f5c4;border:1px solid #00f5c4;}
+    .btn2{background:#ffffff;color:#000000;border:1px solid #ffffff;}
     .step{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#ffffff;text-transform:uppercase;margin:18px 0 6px;text-align:left;}
     .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
     .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
