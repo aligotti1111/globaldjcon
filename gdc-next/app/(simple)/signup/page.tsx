@@ -166,6 +166,17 @@ export default function SignupPage() {
         // localStorage unavailable (private mode etc.) — fall back to losing
         // the claim. The DJ can resend the email if needed.
       }
+    } else {
+      // Booking-flow signup: when the user arrived from BookingLoginGate
+      // (?redirect=/<slug>?date=YYYY-MM-DD&book=1), the intent is obvious —
+      // they're trying to book a DJ, so they're a host. Skip the choice
+      // screen and drop them straight on the host form. The TypeBadge
+      // dropdown inside the form is the escape hatch if they actually want
+      // a DJ or Venue account instead.
+      const intent = parseBookingIntent();
+      if (intent.bookingDjSlug && intent.bookingDate) {
+        setScreen('host');
+      }
     }
   }, []);
 
