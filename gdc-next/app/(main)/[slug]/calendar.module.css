@@ -90,8 +90,9 @@
   line-height: 1;
   /* Fixed min-width so the cluster width stays constant across months —
      arrows don't slide inward for "JUNE 2026" or outward for
-     "SEPTEMBER 2026". Sized for the widest month-name ("SEPTEMBER"). */
-  min-width: 220px;
+     "SEPTEMBER 2026". Sized for the widest month-name ("SEPTEMBER 2026")
+     with breathing room. */
+  min-width: 16rem;
 }
 .monthPickerBtn:hover { opacity: .85; }
 .monthPickerChev {
@@ -140,6 +141,21 @@
   color: var(--neon);
 }
 .monthPickerOptionSelected:hover { background: rgba(0, 245, 196, .18); }
+
+/* On narrow viewports (phones) shrink the month picker so it fits
+   comfortably in a small width. */
+@media (max-width: 600px) {
+  .monthPickerBtn {
+    font-size: 1.25rem;
+    min-width: 11rem;
+  }
+  .monthPickerCluster .navBtn {
+    font-size: 1.4rem;
+  }
+  .monthPickerCluster {
+    gap: .5rem;
+  }
+}
 
 .viewToggle {
   background: transparent;
