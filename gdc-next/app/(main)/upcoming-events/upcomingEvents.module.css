@@ -287,26 +287,28 @@
    gap is small but visible; the row wraps to a new line on narrow widths. */
 .linkRow {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 14px;
   flex-wrap: wrap;
 }
 .linkEditInlineBtn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, .25);
-  border-radius: 4px;
-  padding: 2px 8px;
+  border: none;
+  padding: 0;
   font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  letter-spacing: .12em;
+  font-size: 11px;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--muted);
   cursor: pointer;
-  transition: color .15s ease, border-color .15s ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, .2);
+  text-underline-offset: 3px;
+  transition: color .15s ease, text-decoration-color .15s ease;
 }
 .linkEditInlineBtn:hover {
   color: var(--white);
-  border-color: rgba(255, 255, 255, .5);
+  text-decoration-color: rgba(255, 255, 255, .6);
 }
 .notesFeedWrap {
   margin-top: 14px;
