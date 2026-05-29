@@ -319,18 +319,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // logged in, auto-open the booking form for that date. Mirrors the
   // MobilePublicCalendar behavior so embed-calendar links land on the
   // form regardless of DJ type.
+  // When the visitor arrives with ?date= (typically from the embed
+  // calendar), pre-select that date on the calendar. We do this for
+  // EVERYONE (logged-in or out) so the calendar navigates to the right
+  // month and the day is highlighted. The booking form itself still
+  // requires being logged-in + verified, gated below at render time;
+  // a logged-out visitor sees the highlighted day and clicks BOOK on
+  // it to trigger the login gate.
   useEffect(() => {
     const dateParam = searchParams.get('date');
     if (!dateParam) return;
     if (!showClubAvailabilityTab) return;
-    if (!isLoggedIn || !currentUser) return;
-    // Unverified users can't book — leave the form closed; the persistent
-    // verify banner tells them what to do. (No alert here: this fires on
-    // mount, so an alert would be intrusive.)
-    if (!currentUser.email_verified) return;
     setClubSelectedDate(dateParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, showClubAvailabilityTab, isLoggedIn, currentUser?.id]);
+  }, [searchParams, showClubAvailabilityTab]);
   // Logged-OUT visitor arriving from the embed with ?date= used to have
   // the login gate auto-open here. That's been removed by design — we now
   // want them to land on the DJ's profile and see the calendar first; the
