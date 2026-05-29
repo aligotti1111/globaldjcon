@@ -85,8 +85,13 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: .4rem;
   line-height: 1;
+  /* Fixed min-width so the cluster width stays constant across months —
+     arrows don't slide inward for "JUNE 2026" or outward for
+     "SEPTEMBER 2026". Sized for the widest month-name ("SEPTEMBER"). */
+  min-width: 220px;
 }
 .monthPickerBtn:hover { opacity: .85; }
 .monthPickerChev {
