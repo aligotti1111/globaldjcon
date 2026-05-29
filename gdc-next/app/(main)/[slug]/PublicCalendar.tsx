@@ -523,11 +523,14 @@ export default function PublicCalendar({
                         className={`${styles.monthPickerOption} ${isSelected ? styles.monthPickerOptionSelected : ''}`}
                         data-selected={isSelected ? 'true' : undefined}
                         onClick={() => {
-                          // Jump year FIRST (won't change month), then jump month.
-                          // jumpToYear / jumpToMonth each clamp internally so the
-                          // pair stays in-window.
-                          if (opt.year !== year) jumpToYear(opt.year);
-                          jumpToMonth(opt.month);
+                          // Picker options were generated from min→max so
+                          // every entry is guaranteed in-range. Set both
+                          // values atomically — calling jumpToYear /
+                          // jumpToMonth sequentially could put the
+                          // intermediate state (new year + old month)
+                          // out-of-range and trip a false warning.
+                          setYear(opt.year);
+                          setMonth(opt.month);
                           setShowMonthPicker(false);
                         }}
                         role="option"
