@@ -353,10 +353,9 @@
 .packageHead {
   padding: .75rem .9rem;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .35rem;
+  gap: .75rem;
   background: var(--white);
   position: relative;
 }
@@ -372,7 +371,10 @@
   text-align: center;
 }
 .packagePriceWrap {
-  text-align: center;
+  position: absolute;
+  right: .9rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 .packagePrice {
   font-family: 'Bebas Neue', sans-serif;
