@@ -192,6 +192,7 @@ export interface Database {
           // Pricing
           quoted_rate: number | null;
           counter_rate: number | null;
+          overtime_rate: number | null;
           counter_message: string | null;
           deposit_pct: number | null;
           deposit_amount: number | null;
@@ -242,6 +243,7 @@ export interface Database {
           offer_amount?: number | null;
           quoted_rate?: number | null;
           counter_rate?: number | null;
+          overtime_rate?: number | null;
           counter_message?: string | null;
           deposit_pct?: number | null;
           deposit_amount?: number | null;
@@ -288,6 +290,7 @@ export interface Database {
           offer_amount?: number | null;
           quoted_rate?: number | null;
           counter_rate?: number | null;
+          overtime_rate?: number | null;
           counter_message?: string | null;
           deposit_pct?: number | null;
           deposit_amount?: number | null;

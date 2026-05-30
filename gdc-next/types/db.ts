@@ -62,6 +62,7 @@ export interface Booking {
   offer_amount: number | null;
   quoted_rate: number | null;
   counter_rate: number | null;
+  overtime_rate: number | null;
   currency: Currency | null;
   status: BookingStatus;
   // Mobile-specific
