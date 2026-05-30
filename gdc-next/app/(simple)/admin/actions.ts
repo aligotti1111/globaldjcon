@@ -173,6 +173,13 @@ export async function createUserAction(input: CreateUserInput): Promise<CreateUs
     address: input.address || null,
     claimed: false,
     email_verified: true, // admin-created accounts skip email verification
+    // Mobile DJs default to ALL 12 party types selected so they're bookable
+    // for every event type immediately. Persisted to the DB (not just a UI
+    // default) so the public booking form's event-type dropdown is populated.
+    // Club DJs get none. Order matches the editor default in UpdateDjProfileClient.
+    event_types: input.dj_type === 'mobile'
+      ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,mitzvah,reunion,holiday,school,community,other'
+      : null,
   };
 
   const { error: profErr } = await admin
