@@ -22,7 +22,7 @@
 // Booking form opening is DEFERRED to a later session. Clicking an available
 // date currently shows an alert. Same placeholder pattern as Session 4.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
@@ -155,41 +155,6 @@ export default function MobilePublicCalendar({
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('view') === '12mo';
   });
-
-  // ── Month/Year picker — combined dropdown replacing the two <select>s.
-  // Renders a fixed-height, scrollable list of every Month×Year combo in
-  // the booking window. Tap the "MAY 2026 ▾" header to open; tap a row
-  // to jump and close. Closes on outside click or Escape.
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const monthPickerWrapRef = useRef<HTMLDivElement | null>(null);
-  const monthPickerListRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!showMonthPicker) return;
-    function onClick(e: MouseEvent) {
-      if (monthPickerWrapRef.current && !monthPickerWrapRef.current.contains(e.target as Node)) {
-        setShowMonthPicker(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setShowMonthPicker(false);
-    }
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [showMonthPicker]);
-  useEffect(() => {
-    if (!showMonthPicker) return;
-    const list = monthPickerListRef.current;
-    if (!list) return;
-    const selected = list.querySelector<HTMLElement>('[data-selected="true"]');
-    if (selected) {
-      list.scrollTop = selected.offsetTop - (list.clientHeight / 2) + (selected.clientHeight / 2);
-    }
-  }, [showMonthPicker]);
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
@@ -420,19 +385,10 @@ export default function MobilePublicCalendar({
   const atMin = cur <= (min.year * 12 + min.month);
   const atMax = cur >= (max.year * 12 + max.month);
 
-  // ── All Month×Year combos in the booking window ────────────────────
-  // Flat list for the picker. From min.year/month up to max.year/month
-  // inclusive — same range the prev/next buttons can reach.
-  const monthPickerOptions = useMemo(() => {
-    const opts: { year: number; month: number; label: string }[] = [];
-    let y = min.year;
-    let m = min.month;
-    const endVal = max.year * 12 + max.month;
-    while ((y * 12 + m) <= endVal) {
-      opts.push({ year: y, month: m, label: `${MONTH_NAMES[m].toUpperCase()} ${y}` });
-      m++;
-      if (m > 11) { m = 0; y++; }
-    }
+  // ── Year options for the dropdown ────────────────────────────────
+  const yearOptions = useMemo(() => {
+    const opts: number[] = [];
+    for (let y = today.getFullYear(); y <= max.year; y++) opts.push(y);
     return opts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today, bookingWindowMonths]);
@@ -446,7 +402,6 @@ export default function MobilePublicCalendar({
       <div className={styles.navRow}>
         {!rollingActive && (
           <>
-            <div className={styles.monthPickerCluster}>
             <button
               type="button"
               className={styles.navBtn}
@@ -456,45 +411,26 @@ export default function MobilePublicCalendar({
             >
               ‹
             </button>
-            <div ref={monthPickerWrapRef} className={styles.monthPickerWrap}>
-              <button
-                type="button"
-                className={styles.monthPickerBtn}
-                onClick={() => setShowMonthPicker((v) => !v)}
-                aria-haspopup="listbox"
-                aria-expanded={showMonthPicker}
-                aria-label="Select month and year"
-              >
-                {MONTH_NAMES[month].toUpperCase()} {year}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.monthPickerChev} aria-hidden="true">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {showMonthPicker && (
-                <div ref={monthPickerListRef} className={styles.monthPickerMenu} role="listbox">
-                  {monthPickerOptions.map((opt) => {
-                    const isSelected = opt.year === year && opt.month === month;
-                    return (
-                      <button
-                        key={`${opt.year}-${opt.month}`}
-                        type="button"
-                        className={`${styles.monthPickerOption} ${isSelected ? styles.monthPickerOptionSelected : ''}`}
-                        data-selected={isSelected ? 'true' : undefined}
-                        onClick={() => {
-                          if (opt.year !== year) jumpToYear(opt.year);
-                          jumpToMonth(opt.month);
-                          setShowMonthPicker(false);
-                        }}
-                        role="option"
-                        aria-selected={isSelected}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <select
+              className={`${styles.navSelect} ${styles.navSelectMonth}`}
+              value={month}
+              onChange={(e) => jumpToMonth(parseInt(e.target.value, 10))}
+              aria-label="Month"
+            >
+              {MONTH_NAMES.map((name, i) => (
+                <option key={i} value={i}>{name}</option>
+              ))}
+            </select>
+            <select
+              className={`${styles.navSelect} ${styles.navSelectYear}`}
+              value={year}
+              onChange={(e) => jumpToYear(parseInt(e.target.value, 10))}
+              aria-label="Year"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
             <button
               type="button"
               className={styles.navBtn}
@@ -504,13 +440,13 @@ export default function MobilePublicCalendar({
             >
               ›
             </button>
-            </div>
           </>
         )}
         <button
           type="button"
           className={`${styles.viewToggle} ${rollingActive ? styles.viewToggleActive : ''}`}
           onClick={() => setRollingActive(v => !v)}
+          style={{ marginLeft: 'auto' }}
         >
           {rollingActive ? '← Month View' : '12 Months'}
         </button>
@@ -769,7 +705,7 @@ function SingleMonthView({
       ) : (
         <div
           className={styles.bookBadge}
-          onClick={(e) => onBookClick(key, e)}
+          onClick={(e) => { e.stopPropagation(); onBookClick(key, e); }}
           role="button"
         >
           Book
@@ -788,8 +724,23 @@ function SingleMonthView({
       );
     }
 
+    // Whole-cell click target for public visitors: clicking anywhere on an
+    // open available date opens the booking window (not just the Book pill
+    // inside). Pending-for-this-viewer cells stay inert to prevent
+    // double-booking. Past, fully-booked, unavailable cells: no handler.
+    const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
+    const cellClickHandler =
+      !isOwnProfile && isAvail && !isPendingForViewerCell
+        ? (e: React.MouseEvent) => onBookClick(key, e)
+        : undefined;
+
     cells.push(
-      <div key={key} className={cellClasses.join(' ')}>
+      <div
+        key={key}
+        className={cellClasses.join(' ')}
+        onClick={cellClickHandler}
+        style={cellClickHandler ? { cursor: 'pointer' } : undefined}
+      >
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
       </div>
@@ -809,8 +760,10 @@ function SingleMonthView({
     <div>
       <div className={styles.monthHeaderRow}>
         {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
-        {/* Gray month/year label removed — the picker button in the nav
-            row above now serves as the calendar's month header. */}
+        <div className={styles.monthHeader}>
+          {MONTH_NAMES[month]}{' '}
+          <span className={styles.monthHeaderYear}>{year}</span>
+        </div>
         <div className={styles.monthHeaderActions}>
           {/* Share button removed — the share-calendar action now lives
               in the under-banner social row (see UnderBannerSocials). */}
