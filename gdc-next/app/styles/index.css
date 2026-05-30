@@ -373,13 +373,15 @@
   letter-spacing: .04em;
 }
 .hdr-dj-menu-name {
-  font-size: .875rem;
-  letter-spacing: .08em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  max-width: 175px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1;
 }
 .hdr-dj-menu-chev {
   opacity: .6;
