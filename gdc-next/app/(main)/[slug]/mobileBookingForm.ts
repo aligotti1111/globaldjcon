@@ -268,9 +268,23 @@ export interface NominatimAddress {
 //     where the structured object only carries the county).
 //   - County/parish is NEVER used as the city. If the only locality we can
 //     find looks like a county ("Richmond County"), we return an empty city
-//     rather than show the county.
+//     rather than show the county — EXCEPT the five NYC counties, which map
+//     1:1 to a borough (Richmond → Staten Island, etc.). A postal-code
+//     lookup of an NYC ZIP often returns only the county, so this recovers
+//     the borough instead of leaving the city blank.
 //   - `state` is the full state name as returned by Nominatim (callers that
 //     want a 2-letter abbreviation apply US_STATE_ABBR themselves).
+//
+// The five NYC counties map 1:1 onto boroughs. Used as a last resort when a
+// postal-code lookup returns the county but no borough/city field.
+const NYC_COUNTY_BOROUGH: Record<string, string> = {
+  'richmond county': 'Staten Island',
+  'kings county': 'Brooklyn',
+  'queens county': 'Queens',
+  'bronx county': 'The Bronx',
+  'new york county': 'Manhattan',
+};
+
 export function pickLocality(
   addr: NominatimAddress | undefined | null,
   displayName?: string,
@@ -297,6 +311,13 @@ export function pickLocality(
   }
   // Never let a county/parish slip through as the city.
   if (/\b(county|parish)\b/i.test(city)) city = '';
+
+  // Last resort: a bare NYC-county result (common from ZIP lookups) maps to
+  // its borough so the city isn't left blank (e.g. 10307 → Staten Island).
+  if (!city && addr.county) {
+    const borough = NYC_COUNTY_BOROUGH[addr.county.trim().toLowerCase()];
+    if (borough) city = borough;
+  }
 
   return { city, state: (addr.state || '').trim() };
 }
