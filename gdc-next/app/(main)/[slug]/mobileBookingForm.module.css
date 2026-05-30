@@ -380,7 +380,7 @@
   font-family: 'Bebas Neue', sans-serif;
   font-size: 2rem;
   letter-spacing: .04em;
-  color: var(--neon-dark);
+  color: var(--neon-dark, #0a6f61);
   line-height: 1;
   white-space: nowrap;
 }
@@ -389,9 +389,21 @@
   font-size: .6rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--neon-dark);
+  color: var(--neon-dark, #0a6f61);
   white-space: nowrap;
   font-weight: 700;
+}
+.packageOvertime {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--neon-dark, #0a6f61);
+  white-space: nowrap;
+  font-weight: 700;
+  text-align: right;
+  margin-top: 3px;
+  opacity: .85;
 }
 .packageBody {
   padding: .75rem .9rem;
