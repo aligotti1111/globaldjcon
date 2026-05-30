@@ -896,11 +896,15 @@ export default function MobileBookingForm({
             {priceResult.price != null && depositPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
             )}
-            {priceResult.overtimeHours > 0 && selectedPkg?.overtime && (
+            {priceResult.overtimeHours > 0 && Number(selectedPkg?.overtime) > 0 ? (
               <div className={styles.overtimeNote}>
-                Includes {priceResult.overtimeHours}hr overtime at ${selectedPkg.overtime}/hr
+                Includes {priceResult.overtimeHours}hr overtime at ${Number(selectedPkg?.overtime).toLocaleString()}/hr
               </div>
-            )}
+            ) : Number(selectedPkg?.overtime) > 0 ? (
+              <div className={styles.overtimeNote}>
+                Overtime rate: ${Number(selectedPkg?.overtime).toLocaleString()}/hr
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -1007,7 +1011,6 @@ function PackagesSection({
         title,
         details: pkg.details ?? fallback.details,
         photo: pkg.photo ?? fallback.photo,
-        overtime: pkg.overtime ?? fallback.overtime,
       };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
@@ -1024,7 +1027,7 @@ function PackagesSection({
     <>
       <div className={styles.packagesLabel}>Select a Package</div>
       <div className={styles.packagesGrid}>
-        {usablePackages.map(({ idx, pkg, title, details, photo, overtime }) => {
+        {usablePackages.map(({ idx, pkg, title, details, photo }) => {
           const isSelected = selectedPkgIdx === idx;
 
           // Price preview on the card head
@@ -1066,15 +1069,8 @@ function PackagesSection({
                 className={`${styles.packageHead} ${hasBody ? styles.packageHeadHasBody : ''}`}
               >
                 <div className={styles.packageTitle}>{title}</div>
-                {(priceEl || Number(overtime) > 0) && (
-                  <div className={styles.packagePriceWrap}>
-                    {priceEl}
-                    {Number(overtime) > 0 && (
-                      <div className={styles.packageOvertime}>
-                        ${Number(overtime).toLocaleString()}/hr OT
-                      </div>
-                    )}
-                  </div>
+                {priceEl && (
+                  <div className={styles.packagePriceWrap}>{priceEl}</div>
                 )}
               </div>
 
