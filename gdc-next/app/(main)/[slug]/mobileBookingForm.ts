@@ -309,13 +309,19 @@ export function pickLocality(
       addr.borough || addr.city_district || addr.municipality || addr.hamlet || ''
     ).trim();
   }
+  // Capture a county-like value from EITHER the structured county field OR
+  // the locality we just picked (Nominatim sometimes returns "Richmond
+  // County" in the city/city_district field rather than `county`).
+  const countyCandidate =
+    (/\b(county|parish)\b/i.test(city) ? city : '') || (addr.county || '');
   // Never let a county/parish slip through as the city.
   if (/\b(county|parish)\b/i.test(city)) city = '';
 
-  // Last resort: a bare NYC-county result (common from ZIP lookups) maps to
-  // its borough so the city isn't left blank (e.g. 10307 → Staten Island).
-  if (!city && addr.county) {
-    const borough = NYC_COUNTY_BOROUGH[addr.county.trim().toLowerCase()];
+  // Last resort: an NYC-county result (common from ZIP lookups, wherever the
+  // county name landed) maps to its borough so the city isn't left blank
+  // (e.g. 10307 → Staten Island).
+  if (!city && countyCandidate) {
+    const borough = NYC_COUNTY_BOROUGH[countyCandidate.trim().toLowerCase()];
     if (borough) city = borough;
   }
 
