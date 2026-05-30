@@ -792,14 +792,11 @@ function BookingDetails({
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
       { label: 'Contact Phone', value: booking.phone },
     ],
-    // Row 6: Package + Agreed Rate
+    // Row 6: Agreed Rate + Overtime Rate. (Package name moved to the package
+    // details area below.) Mobile always shows an overtime cell with a
+    // placeholder when the DJ set none; club hides it when unset.
     [
-      { label: 'Package', value: booking.package_title },
       { label: 'Agreed Rate', value: money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount) },
-    ],
-    // Row 6b: Overtime Rate. Mobile always shows the row (with a placeholder
-    // when the DJ didn't set one on the package); club hides it when unset.
-    [
       {
         label: 'Overtime Rate',
         value: booking.overtime_rate != null
@@ -807,7 +804,7 @@ function BookingDetails({
           : (djType === 'club' ? null : 'DJ has not listed overtime rate'),
       },
     ],
-    // Row 7: Deposit + Status
+    // Row 7: Deposit
     [
       {
         label: 'Deposit',
@@ -817,7 +814,6 @@ function BookingDetails({
             ? `${booking.deposit_pct}%`
             : null,
       },
-      { label: 'Status', value: booking.status ? booking.status.toUpperCase() : null },
     ],
   ];
 
@@ -872,13 +868,18 @@ function BookingDetails({
           />
         </div>
       )}
-      {hasPackageDetails && (
+      {(hasPackageDetails || booking.package_title) && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Package Details</div>
-          <div
-            className={styles.detailLongValue}
-            dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
-          />
+          {booking.package_title && (
+            <div className={styles.packageName}>{booking.package_title}</div>
+          )}
+          {hasPackageDetails && (
+            <div
+              className={styles.detailLongValue}
+              dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
+            />
+          )}
         </div>
       )}
       {booking.created_at && (
