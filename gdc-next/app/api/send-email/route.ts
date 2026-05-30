@@ -1314,6 +1314,7 @@ export async function POST(req: Request) {
     const recipientRole = body.recipientRole as string | undefined; // 'dj' | 'booker'
     const otherPartyName = body.otherPartyName as string | undefined;
     const agreedPrice = body.agreedPrice as number | undefined;
+    const overtimeRate = body.overtimeRate as number | undefined;
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const venueAddress = body.venueAddress as string | undefined;
@@ -1349,6 +1350,9 @@ export async function POST(req: Request) {
           rateLabel: 'Agreed Price',
           rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
         })}
+        ${overtimeRate != null
+          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
+          : ''}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
