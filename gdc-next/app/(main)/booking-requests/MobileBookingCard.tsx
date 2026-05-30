@@ -99,7 +99,15 @@ export default function MobileBookingCard(props: Props) {
   // ── Counter price view ──────────────────────────────────────────
   const hasPrice = !!b.quoted_rate;
   const isApproved = status === 'approved';
-  const hasCounter = !!b.counter_rate && !isApproved;
+  // NOTE: on a mobile QUOTE booking, counter_rate is overloaded to store the
+  // hourly OVERTIME rate (see QuoteModal) — it is NOT a counter offer. The
+  // quote flow is request → DJ offer → booker approve/decline, with no
+  // counter-back, so we must never render counter_rate as the price here.
+  // Exclude quote bookings so the offer (quoted_rate) shows as the price and
+  // counter_rate is rendered separately as overtime below.
+  const hasCounter = !!b.counter_rate && !isApproved && !isQuote;
+  // Overtime rate to display on quote bookings (the overloaded counter_rate).
+  const overtimeRate = (isQuote && b.counter_rate != null) ? Number(b.counter_rate) : null;
   const labelText = hasCounter
     ? 'New Offer'
     : hasPrice
@@ -307,6 +315,11 @@ export default function MobileBookingCard(props: Props) {
             {!hasCounter && b.deposit_amount != null && (
               <div className={styles.priceDeposit}>
                 Deposit ({b.deposit_pct}%): ${Number(b.deposit_amount).toLocaleString()}
+              </div>
+            )}
+            {overtimeRate != null && (
+              <div className={styles.priceSub}>
+                Overtime: <span>${overtimeRate.toLocaleString()}/hr</span>
               </div>
             )}
           </div>
