@@ -368,9 +368,11 @@ export async function POST(req: Request) {
     const recipientName = body.name as string | undefined;
     const recipientRole = body.role as string | undefined;
     const recipientSlug = body.slug as string | undefined;
+    const isDj = recipientRole === 'dj';
+
     // For DJs only: include their shareable public profile link so they
     // can drop it into bios, socials, etc. right out of the gate.
-    const profileShareBlock = (recipientRole === 'dj' && recipientSlug)
+    const profileShareBlock = (isDj && recipientSlug)
       ? `
         <div style="margin:24px 0 24px;padding:16px 20px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;">
           <p style="margin:0 0 6px;color:#1a1a2e;font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Your Profile Link</p>
@@ -379,18 +381,30 @@ export async function POST(req: Request) {
           ${ctaButton(`${SITE_URL}/${encodeURIComponent(recipientSlug)}`, 'View My Profile')}
         </div>`
       : '';
+
+    // DJs get a dedicated welcome: DJ-focused copy + their profile link box,
+    // and NO dashboard button. Hosts/venues keep the generic welcome with the
+    // "Open Dashboard" CTA.
+    const welcomeBody = isDj
+      ? `
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
+        <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
+        <p style="color:#666666;margin-bottom:24px;">Build your profile, manage &amp; automate booking requests, share your availability calendar, organize your schedule — everything you need in one place.</p>
+        ${profileShareBlock}
+      `
+      : `
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
+        <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
+        <p style="color:#666666;margin-bottom:24px;">Browse DJs, send booking requests, manage gigs — everything you need is in your dashboard.</p>
+        ${ctaButton(`${SITE_URL}`, 'Open Dashboard')}
+      `;
+
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: 'Welcome to Global DJ Connect 🎧',
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
-        <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
-        <p style="color:#666666;margin-bottom:24px;">Browse DJs, send booking requests, manage gigs — everything you need is in your dashboard.</p>
-        ${profileShareBlock}
-        ${ctaButton(`${SITE_URL}`, 'Open Dashboard')}
-      `),
+      html: emailTemplate(welcomeBody),
     };
 
   // ── 2. INBOX NOTIFICATION (new message arrived in user's inbox) ────
