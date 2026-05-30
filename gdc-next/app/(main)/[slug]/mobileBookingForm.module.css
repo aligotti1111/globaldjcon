@@ -353,9 +353,10 @@
 .packageHead {
   padding: .75rem .9rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .75rem;
+  gap: .35rem;
   background: var(--white);
   position: relative;
 }
@@ -371,10 +372,7 @@
   text-align: center;
 }
 .packagePriceWrap {
-  position: absolute;
-  right: .9rem;
-  top: 50%;
-  transform: translateY(-50%);
+  text-align: center;
 }
 .packagePrice {
   font-family: 'Bebas Neue', sans-serif;
@@ -392,18 +390,6 @@
   color: var(--neon-dark, #0a6f61);
   white-space: nowrap;
   font-weight: 700;
-}
-.packageOvertime {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--neon-dark, #0a6f61);
-  white-space: nowrap;
-  font-weight: 700;
-  text-align: right;
-  margin-top: 3px;
-  opacity: .85;
 }
 .packageBody {
   padding: .75rem .9rem;
