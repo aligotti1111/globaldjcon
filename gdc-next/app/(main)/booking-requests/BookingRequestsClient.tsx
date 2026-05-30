@@ -76,6 +76,22 @@ function whoseMove(b: BookingRow): 'dj' | 'booker' | null {
   return status === 'counter' ? 'booker' : 'dj';
 }
 
+// Agreed price for a confirmed booking. The negotiation_log's LAST entry
+// amount is authoritative — it's the DJ's offer on a mobile quote booking
+// (where counter_rate holds the OVERTIME rate, NOT a price) or the latest
+// counter amount on a priced/club booking. Only when there's no log do we
+// fall back to counter_rate → quoted_rate → offer_amount. Mirrors the
+// agreedPrice logic in MobileBookingCard so the card and emails never
+// disagree.
+function agreedPriceOf(b: BookingRow): number | null {
+  const log = b.negotiation_log;
+  if (log && log.length > 0) {
+    const amt = log[log.length - 1].amount;
+    if (typeof amt === 'number' && !Number.isNaN(amt)) return amt;
+  }
+  return b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
+}
+
 export default function BookingRequestsClient({
   currentUser,
   initialIncoming,
@@ -254,12 +270,11 @@ export default function BookingRequestsClient({
       // Failures are swallowed so the DB update isn't undone.
       if (b) {
         if (status === 'approved') {
-          // Agreed price: prefer counter_rate (most-recent active offer)
-          // then fall back to quoted_rate then offer_amount.
-          const agreedPrice = (b.counter_rate as number | null | undefined)
-            ?? (b.quoted_rate as number | null | undefined)
-            ?? (b.offer_amount as number | null | undefined)
-            ?? null;
+          // Agreed price: negotiation_log's last amount is authoritative
+          // (the DJ's offer on a mobile quote, or the latest counter on a
+          // priced/club booking). counter_rate must NOT be used directly —
+          // on a mobile quote it holds the overtime rate, not the price.
+          const agreedPrice = agreedPriceOf(b);
           const sharedFields = {
             type: 'booking_approved',
             agreedPrice,
@@ -510,12 +525,10 @@ export default function BookingRequestsClient({
         prev.map((x) => (x.id === bookingId ? { ...x, status: 'approved' } : x))
       );
       // Fire booking_approved to BOTH parties — same as DJ-side approve.
-      // booker accepting a counter = booking confirmed at counter_rate.
+      // Agreed price comes from agreedPriceOf (negotiation_log last amount),
+      // not counter_rate directly — see helper note.
       if (b) {
-        const agreedPrice = (b.counter_rate as number | null | undefined)
-          ?? (b.quoted_rate as number | null | undefined)
-          ?? (b.offer_amount as number | null | undefined)
-          ?? null;
+        const agreedPrice = agreedPriceOf(b);
         const sharedFields = {
           type: 'booking_approved',
           agreedPrice,
