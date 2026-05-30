@@ -508,6 +508,14 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
           travel_distance: travelVal,
           zip,
           email_verified: false,
+          // Mobile DJs default to ALL 12 party types selected so they're
+          // bookable for every event type out of the gate. Persisted to the
+          // DB (not just a UI default) so the public booking form's event-type
+          // dropdown is populated immediately. Club DJs get none (genres are
+          // opt-in). Order matches the editor default in UpdateDjProfileClient.
+          event_types: djType === 'mobile'
+            ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,mitzvah,reunion,holiday,school,community,other'
+            : null,
         } as unknown as never, { onConflict: 'id' });
 
         // Fire-and-forget the verification email — we don't block the
