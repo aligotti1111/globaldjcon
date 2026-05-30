@@ -331,6 +331,12 @@ export default function MobileBookingForm({
         quoted_rate: finalPrice.price,
         deposit_pct: depositPct || null,
         deposit_amount: finalPrice.depositAmount,
+        // Snapshot the selected package's overtime rate onto the booking so
+        // the DJ's upcoming/approved views + emails can show it. Quote
+        // bookings leave this null here — the DJ sets it via the quote modal.
+        overtime_rate: selectedPkg && Number(selectedPkg.overtime) > 0
+          ? Number(selectedPkg.overtime)
+          : null,
         is_quote: finalPrice.isQuote,
         notes: message.trim() || null,
         status: 'pending',
