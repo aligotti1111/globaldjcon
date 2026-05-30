@@ -107,7 +107,10 @@ export default function MobileBookingCard(props: Props) {
   // counter_rate is rendered separately as overtime below.
   const hasCounter = !!b.counter_rate && !isApproved && !isQuote;
   // Overtime rate to display on quote bookings (the overloaded counter_rate).
-  const overtimeRate = (isQuote && b.counter_rate != null) ? Number(b.counter_rate) : null;
+  // Overtime rate now lives in its own column. Fall back to the legacy
+  // overloaded counter_rate for quote bookings not yet backfilled.
+  const overtimeRaw = b.overtime_rate ?? (isQuote ? b.counter_rate : null);
+  const overtimeRate = overtimeRaw != null ? Number(overtimeRaw) : null;
   const labelText = hasCounter
     ? 'New Offer'
     : hasPrice

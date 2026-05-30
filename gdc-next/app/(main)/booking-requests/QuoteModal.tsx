@@ -6,7 +6,7 @@
 //
 // Inputs:
 //   - Event Price (required) — the all-in price for the event hours
-//   - Hourly Overtime Rate (optional) — stored in counter_rate column
+//   - Hourly Overtime Rate (optional) — stored in overtime_rate column
 //     (vanilla overloads this field; works because there's no real "counter"
 //     until a quote-mode booking has its initial price set)
 //   - Cocktail hour pricing (only when booking has cocktail_needed) —
@@ -58,7 +58,9 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
     booking.quoted_rate != null ? String(booking.quoted_rate) : ''
   );
   const [overtime, setOvertime] = useState(
-    booking.counter_rate != null ? String(booking.counter_rate) : ''
+    booking.overtime_rate != null
+      ? String(booking.overtime_rate)
+      : (booking.counter_rate != null ? String(booking.counter_rate) : '')
   );
   const [message, setMessage] = useState(booking.counter_message || '');
   const hasCocktail = !!booking.cocktail_needed;
@@ -151,9 +153,10 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
       const updatePayload = {
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
-        // Vanilla stores overtime in counter_rate (overloaded field); we
-        // do the same so the existing read paths work. Always null for clubs.
-        counter_rate: overtimeFinal,
+        // Overtime now has its own dedicated column (no longer overloaded onto
+        // counter_rate, which is reserved for genuine counter offers). Always
+        // null for clubs — overtime is mobile-only per spec.
+        overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
@@ -173,7 +176,7 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         ...booking,
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
-        counter_rate: overtimeFinal,
+        overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,

@@ -55,6 +55,7 @@ interface BookingRow {
   package_details: string | null;
   quoted_rate: number | null;
   counter_rate: number | null;
+  overtime_rate: number | null;
   // ── Club-DJ specific fields ─────────────────────────────────────
   // Vanilla writes these on club bookings only; null for mobile.
   venue_type: string | null;          // 'bar' | 'club'
