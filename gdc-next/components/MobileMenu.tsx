@@ -53,6 +53,14 @@ function IconEdit() {
     </svg>
   );
 }
+function IconPlus() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
 function IconSettings() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
@@ -217,6 +225,11 @@ export default function MobileMenu() {
             ) : (
               <Link href="/upcoming-events" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
+              </Link>
+            )}
+            {isDj && (
+              <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
+                <IconPlus />Add Booking Manually
               </Link>
             )}
 
