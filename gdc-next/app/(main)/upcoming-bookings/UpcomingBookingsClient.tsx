@@ -790,6 +790,10 @@ function BookingDetails({
       { label: 'Package', value: booking.package_title },
       { label: 'Agreed Rate', value: money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount) },
     ],
+    // Row 6b: Overtime Rate (mobile quote bookings only; hidden when unset)
+    [
+      { label: 'Overtime Rate', value: booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : null },
+    ],
     // Row 7: Deposit + Status
     [
       {
