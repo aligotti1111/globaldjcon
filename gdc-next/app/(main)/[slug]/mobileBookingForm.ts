@@ -238,7 +238,7 @@ const US_STATE_ABBR: Record<string, string> = {
 
 // Nominatim "address" object — only the fields we use. addressdetails=1
 // must be set on the request for this to be populated.
-interface NominatimAddress {
+export interface NominatimAddress {
   house_number?: string;
   road?: string;
   neighbourhood?: string;
@@ -256,6 +256,51 @@ interface NominatimAddress {
   country?: string;
 }
 
+// Pick the correct { city, state } from a Nominatim address object — the
+// single source of truth for locality resolution shared by the booking
+// address autocomplete AND the signup ZIP lookup.
+//
+// Rules (per Anthony's preference — NO county anywhere):
+//   - NYC's five boroughs come through as `borough`/`suburb`/`city_district`
+//     while `city` says "New York" / "City of New York". For those we want
+//     the borough name (Staten Island, Brooklyn, …), not the legal city.
+//   - A borough name detected in display_name wins (handles ZIP lookups
+//     where the structured object only carries the county).
+//   - County/parish is NEVER used as the city. If the only locality we can
+//     find looks like a county ("Richmond County"), we return an empty city
+//     rather than show the county.
+//   - `state` is the full state name as returned by Nominatim (callers that
+//     want a 2-letter abbreviation apply US_STATE_ABBR themselves).
+export function pickLocality(
+  addr: NominatimAddress | undefined | null,
+  displayName?: string,
+): { city: string; state: string } {
+  if (!addr) return { city: '', state: '' };
+  const nycBoroughs = ['Staten Island', 'Brooklyn', 'Queens', 'The Bronx', 'Manhattan'];
+  const boroughFromDisplay = displayName
+    ? nycBoroughs.find((b) => displayName.includes(b))
+    : undefined;
+  const legalCity = (addr.city || '').trim();
+  const isNycLegalCity = /^(city of )?new york$/i.test(legalCity);
+  const boroughField = (addr.borough || addr.suburb || addr.city_district || '').trim();
+
+  let city: string;
+  if (boroughFromDisplay) {
+    city = boroughFromDisplay;
+  } else if (isNycLegalCity && boroughField) {
+    city = boroughField;
+  } else {
+    city = (
+      legalCity || addr.town || addr.village || addr.suburb ||
+      addr.borough || addr.city_district || addr.municipality || addr.hamlet || ''
+    ).trim();
+  }
+  // Never let a county/parish slip through as the city.
+  if (/\b(county|parish)\b/i.test(city)) city = '';
+
+  return { city, state: (addr.state || '').trim() };
+}
+
 // Build a clean "Street, City, ST ZIP" line from Nominatim's structured
 // address object. County and country are dropped; the US state is
 // abbreviated. For NYC-style results the borough/locality is preferred
@@ -263,21 +308,7 @@ interface NominatimAddress {
 function formatStructuredAddress(addr: NominatimAddress): string | null {
   if (!addr) return null;
   const street = [addr.house_number, addr.road].filter(Boolean).join(' ').trim();
-  // City: prefer the most specific locality. NYC's five boroughs come
-  // through as `suburb`/`borough`/`city_district` while the `city` field
-  // says "New York" / "City of New York" — for those we want the borough
-  // name (Staten Island, Brooklyn, etc.), not the legal city.
-  const legalCity = (addr.city || '').trim();
-  const isNycLegalCity = /^(city of )?new york$/i.test(legalCity);
-  const borough = (addr.borough || addr.suburb || addr.city_district || '').trim();
-  const city = (
-    (isNycLegalCity && borough)
-      ? borough
-      : (legalCity || addr.town || addr.village ||
-         addr.suburb || addr.borough || addr.city_district ||
-         addr.municipality || addr.hamlet || '')
-  ).trim();
-  const stateRaw = (addr.state || '').trim();
+  const { city, state: stateRaw } = pickLocality(addr);
   const state = US_STATE_ABBR[stateRaw.toLowerCase()] || stateRaw;
   const zip = (addr.postcode || '').trim();
   const stateZip = [state, zip].filter(Boolean).join(' ').trim();
