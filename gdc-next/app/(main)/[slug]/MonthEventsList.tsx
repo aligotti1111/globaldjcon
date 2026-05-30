@@ -480,24 +480,38 @@ function EventListItem({
             style={{ cursor: event.flyer_url ? 'pointer' : 'default' }}
           />
           {isOwnProfile && (
-            <div className={styles.flyerActions}>
+            <>
+              {/* Pencil = replace flyer (opens file picker). ✕ = remove
+                  flyer. Both float over the flyer image with transparent
+                  backgrounds so they read as overlays, not boxes. */}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className={styles.flyerAction}
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayEdit}`}
                 disabled={uploading}
+                title="Replace flyer"
+                aria-label="Replace flyer"
               >
-                {uploading ? '…' : 'Replace'}
+                {uploading ? (
+                  <span style={{ fontSize: '8px' }}>…</span>
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                )}
               </button>
               <button
                 type="button"
-                onClick={handleRemoveFlyer}
-                className={`${styles.flyerAction} ${styles.flyerActionDanger}`}
+                onClick={(e) => { e.stopPropagation(); handleRemoveFlyer(); }}
+                className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayDelete}`}
                 disabled={uploading}
+                title="Remove flyer"
+                aria-label="Remove flyer"
               >
-                Remove
+                ✕
               </button>
-            </div>
+            </>
           )}
         </div>
       ) : isOwnProfile ? (
