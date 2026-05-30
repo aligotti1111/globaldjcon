@@ -611,6 +611,21 @@ select.input {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
+.bookedOnFooter {
+  margin-top: 1rem;
+  text-align: right;
+}
+.bookedOnLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bookedOnValue {
+  font-size: .8rem;
+  color: var(--white);
+}
 .detailLongValue {
   margin-top: .35rem;
   font-size: .9rem;
