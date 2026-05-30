@@ -439,7 +439,7 @@ export default function PublicCalendar({
       {/* TOP NAV ROW (always visible — toggle hides month/year selectors itself) */}
       <div className={styles.navRow}>
         {!rollingActive && (
-          <>
+          <div className={styles.monthPickerCluster}>
             <button
               type="button"
               className={styles.navBtn}
@@ -478,7 +478,7 @@ export default function PublicCalendar({
             >
               ›
             </button>
-          </>
+          </div>
         )}
         <button
           type="button"

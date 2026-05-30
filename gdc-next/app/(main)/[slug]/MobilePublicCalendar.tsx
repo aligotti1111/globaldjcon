@@ -401,7 +401,7 @@ export default function MobilePublicCalendar({
       {/* TOP NAV ROW */}
       <div className={styles.navRow}>
         {!rollingActive && (
-          <>
+          <div className={styles.monthPickerCluster}>
             <button
               type="button"
               className={styles.navBtn}
@@ -440,7 +440,7 @@ export default function MobilePublicCalendar({
             >
               ›
             </button>
-          </>
+          </div>
         )}
         <button
           type="button"
