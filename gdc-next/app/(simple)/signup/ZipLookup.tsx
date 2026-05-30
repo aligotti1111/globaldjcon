@@ -12,7 +12,6 @@
 
 import { useEffect, useState } from 'react';
 import { COUNTRIES } from './helpers';
-import { pickLocality } from '@/app/(main)/[slug]/mobileBookingForm';
 
 interface ZipLookupProps {
   zip: string;
@@ -35,6 +34,9 @@ export function ZipLookup({
   inputId = 'zip-input',
 }: ZipLookupProps) {
   const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null);
+  // Placeholder example matches the selected country's postal-code format
+  // (e.g. "10001" for US, "SW1A 1AA" for UK). Falls back to the US example.
+  const zipExample = COUNTRIES.find((c) => c.name === country)?.zipExample || '10001';
 
   useEffect(() => {
     if (!zip || zip.trim().length < 4) {
@@ -55,10 +57,20 @@ export function ZipLookup({
         if (data && data[0]) {
           const addr = data[0].address || {};
           const displayName = data[0].display_name || '';
-          // Use the SAME locality resolver as the DJ-request/booking page so
-          // the result is county-free and NYC boroughs are handled correctly
-          // (e.g. ZIP 10307 → "Staten Island", never "Richmond County").
-          const { city: foundCity, state: foundState } = pickLocality(addr, displayName);
+          // NYC boroughs come back from Nominatim as "New York" — substitute
+          // the borough name from the display string when we can find it.
+          const nycBoroughs = ['Staten Island', 'Brooklyn', 'Queens', 'The Bronx', 'Manhattan'];
+          const boroughMatch = nycBoroughs.find(b => displayName.includes(b));
+          const foundCity = boroughMatch
+            || addr.city_district
+            || (addr.suburb && addr.city && addr.suburb !== addr.city ? addr.suburb : null)
+            || addr.town
+            || addr.city
+            || addr.municipality
+            || addr.village
+            || addr.hamlet
+            || '';
+          const foundState = addr.state || '';
           onLocationResolved(foundCity, foundState);
           const summary = [foundCity, foundState, country].filter(Boolean).join(', ');
           setStatus({ msg: summary, ok: true });
@@ -82,7 +94,7 @@ export function ZipLookup({
       <input
         id={inputId}
         type="text"
-        placeholder="e.g. 10001"
+        placeholder={zipExample ? `e.g. ${zipExample}` : 'e.g. 10001'}
         value={zip}
         onChange={(e) => onZipChange(e.target.value)}
         required={required}

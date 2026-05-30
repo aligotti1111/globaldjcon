@@ -9,31 +9,34 @@ export type DjType = 'mobile' | 'club';
 export interface Country {
   name: string;
   code: string;
+  // Example postal code for this country — shown as the ZIP field
+  // placeholder so the format hint matches the selected country.
+  zipExample: string;
 }
 
 export const COUNTRIES: Country[] = [
-  { name: 'United States', code: 'us' },
-  { name: 'United Kingdom', code: 'gb' },
-  { name: 'Canada', code: 'ca' },
-  { name: 'Australia', code: 'au' },
-  { name: 'Germany', code: 'de' },
-  { name: 'France', code: 'fr' },
-  { name: 'Netherlands', code: 'nl' },
-  { name: 'Spain', code: 'es' },
-  { name: 'Italy', code: 'it' },
-  { name: 'Brazil', code: 'br' },
-  { name: 'Mexico', code: 'mx' },
-  { name: 'Japan', code: 'jp' },
-  { name: 'South Africa', code: 'za' },
-  { name: 'New Zealand', code: 'nz' },
-  { name: 'Ireland', code: 'ie' },
-  { name: 'Sweden', code: 'se' },
-  { name: 'Norway', code: 'no' },
-  { name: 'Denmark', code: 'dk' },
-  { name: 'Belgium', code: 'be' },
-  { name: 'Switzerland', code: 'ch' },
-  { name: 'Portugal', code: 'pt' },
-  { name: 'Other', code: '' },
+  { name: 'United States', code: 'us', zipExample: '10001' },
+  { name: 'United Kingdom', code: 'gb', zipExample: 'SW1A 1AA' },
+  { name: 'Canada', code: 'ca', zipExample: 'M5V 2T6' },
+  { name: 'Australia', code: 'au', zipExample: '2000' },
+  { name: 'Germany', code: 'de', zipExample: '10115' },
+  { name: 'France', code: 'fr', zipExample: '75001' },
+  { name: 'Netherlands', code: 'nl', zipExample: '1011 AB' },
+  { name: 'Spain', code: 'es', zipExample: '28001' },
+  { name: 'Italy', code: 'it', zipExample: '00184' },
+  { name: 'Brazil', code: 'br', zipExample: '01310-100' },
+  { name: 'Mexico', code: 'mx', zipExample: '06000' },
+  { name: 'Japan', code: 'jp', zipExample: '100-0001' },
+  { name: 'South Africa', code: 'za', zipExample: '8001' },
+  { name: 'New Zealand', code: 'nz', zipExample: '6011' },
+  { name: 'Ireland', code: 'ie', zipExample: 'D02 AF30' },
+  { name: 'Sweden', code: 'se', zipExample: '111 29' },
+  { name: 'Norway', code: 'no', zipExample: '0150' },
+  { name: 'Denmark', code: 'dk', zipExample: '1050' },
+  { name: 'Belgium', code: 'be', zipExample: '1000' },
+  { name: 'Switzerland', code: 'ch', zipExample: '8001' },
+  { name: 'Portugal', code: 'pt', zipExample: '1100-148' },
+  { name: 'Other', code: '', zipExample: '' },
 ];
 
 // Distance options for DJ travel range (vanilla parity)
