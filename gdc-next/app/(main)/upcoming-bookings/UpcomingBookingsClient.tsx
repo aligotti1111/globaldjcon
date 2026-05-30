@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { searchAddresses } from '../[slug]/mobileBookingForm';
+import { searchAddresses, MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 
 // Country flag emojis — matches the homepage country picker so the look
@@ -566,8 +566,8 @@ function BookingRow({
     // Mobile DJ rows: show the event type only (e.g. "Wedding"). Venue
     // is shown in the expanded details panel.
     const ev = booking.event_type || '';
-    const found = MOBILE_EVENT_TYPES.find((e) => e.value === ev);
-    context = found ? found.label : (ev || 'Event');
+    const label = MOB_EVENT_TYPE_LABELS[ev] || MOBILE_EVENT_TYPES.find((e) => e.value === ev)?.label;
+    context = label || (ev || 'Event');
   }
 
   // The type-mismatch info is now shown only in the expanded details
@@ -712,7 +712,8 @@ function BookingDetails({
     : null;
 
   const eventTypeLabel = booking.event_type
-    ? (MOBILE_EVENT_TYPES.find((e) => e.value === booking.event_type)?.label
+    ? (MOB_EVENT_TYPE_LABELS[booking.event_type]
+        || MOBILE_EVENT_TYPES.find((e) => e.value === booking.event_type)?.label
         || booking.event_type)
     : null;
 
@@ -818,10 +819,6 @@ function BookingDetails({
       },
       { label: 'Status', value: booking.status ? booking.status.toUpperCase() : null },
     ],
-    // Row 8: Booked On (alone)
-    [
-      { label: 'Booked On', value: booking.created_at ? formatLongDate(booking.created_at) : null },
-    ],
   ];
 
   // Filter empty cells from each row; drop rows that become entirely empty.
@@ -882,6 +879,12 @@ function BookingDetails({
             className={styles.detailLongValue}
             dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
           />
+        </div>
+      )}
+      {booking.created_at && (
+        <div className={styles.bookedOnFooter}>
+          <span className={styles.bookedOnLabel}>Booked On</span>{' '}
+          <span className={styles.bookedOnValue}>{formatLongDate(booking.created_at)}</span>
         </div>
       )}
       {hasNotes && (
