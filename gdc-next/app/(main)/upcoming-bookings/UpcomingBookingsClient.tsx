@@ -742,6 +742,11 @@ function BookingDetails({
   type Cell = { label: string; value: React.ReactNode | string | null | undefined };
   type DetailRow = Cell[];
 
+  // Time-row label prefix: club bookings = "Set", weddings = "Reception",
+  // all other mobile event types = "Event".
+  const timeLabelPrefix =
+    djType === 'club' ? 'Set' : (booking.event_type === 'weddings' ? 'Reception' : 'Event');
+
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
     // Row 1: Event Date + Venue Name (Event Type for mobile)
@@ -751,10 +756,11 @@ function BookingDetails({
         ? { label: 'Venue Name', value: booking.venue_name }
         : { label: 'Event Type', value: eventTypeLabel },
     ],
-    // Row 2: Set Start Time + Set End Time
+    // Row 2: Time labels — clubs use "Set", mobile uses "Event", except
+    // weddings which use "Reception" (matches the booking form + emails).
     [
-      { label: 'Set Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
-      { label: 'Set End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
+      { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
+      { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
     ],
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
@@ -790,9 +796,15 @@ function BookingDetails({
       { label: 'Package', value: booking.package_title },
       { label: 'Agreed Rate', value: money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount) },
     ],
-    // Row 6b: Overtime Rate (mobile quote bookings only; hidden when unset)
+    // Row 6b: Overtime Rate. Mobile always shows the row (with a placeholder
+    // when the DJ didn't set one on the package); club hides it when unset.
     [
-      { label: 'Overtime Rate', value: booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : null },
+      {
+        label: 'Overtime Rate',
+        value: booking.overtime_rate != null
+          ? `${money(booking.overtime_rate)}/hr`
+          : (djType === 'club' ? null : 'DJ has not listed overtime rate'),
+      },
     ],
     // Row 7: Deposit + Status
     [
