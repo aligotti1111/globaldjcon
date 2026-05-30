@@ -1007,6 +1007,7 @@ function PackagesSection({
         title,
         details: pkg.details ?? fallback.details,
         photo: pkg.photo ?? fallback.photo,
+        overtime: pkg.overtime ?? fallback.overtime,
       };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
@@ -1023,7 +1024,7 @@ function PackagesSection({
     <>
       <div className={styles.packagesLabel}>Select a Package</div>
       <div className={styles.packagesGrid}>
-        {usablePackages.map(({ idx, pkg, title, details, photo }) => {
+        {usablePackages.map(({ idx, pkg, title, details, photo, overtime }) => {
           const isSelected = selectedPkgIdx === idx;
 
           // Price preview on the card head
@@ -1065,8 +1066,15 @@ function PackagesSection({
                 className={`${styles.packageHead} ${hasBody ? styles.packageHeadHasBody : ''}`}
               >
                 <div className={styles.packageTitle}>{title}</div>
-                {priceEl && (
-                  <div className={styles.packagePriceWrap}>{priceEl}</div>
+                {(priceEl || Number(overtime) > 0) && (
+                  <div className={styles.packagePriceWrap}>
+                    {priceEl}
+                    {Number(overtime) > 0 && (
+                      <div className={styles.packageOvertime}>
+                        ${Number(overtime).toLocaleString()}/hr OT
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
