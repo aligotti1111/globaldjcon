@@ -192,6 +192,8 @@ export default function PublicCalendar({
   const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-11
+  // Month-jump dropdown (the neon "MAY 2026" button between the arrows).
+  const [pickerOpen, setPickerOpen] = useState(false);
   // When a date is pre-selected (e.g. a visitor arrives from the embed or
   // an email "Continue booking" link with ?date=YYYY-MM-DD), jump the
   // calendar view to that date's month/year so the day is actually
@@ -349,38 +351,6 @@ export default function PublicCalendar({
     setMonth(newM);
   }
 
-  function jumpToMonth(m: number) {
-    if (!isInRange(year, m, bookingWindowMonths)) {
-      // Snap to nearest in-range month — vanilla pubCalJumpSplit logic
-      const min = calcMinYM();
-      const max = calcMaxYM(bookingWindowMonths);
-      const v = year * 12 + m;
-      const minV = min.year * 12 + min.month;
-      const maxV = max.year * 12 + max.month;
-      const clamped = Math.max(minV, Math.min(maxV, v));
-      setYear(Math.floor(clamped / 12));
-      setMonth(clamped % 12);
-      showRangeMsg();
-      return;
-    }
-    setMonth(m);
-  }
-
-  function jumpToYear(y: number) {
-    if (!isInRange(y, month, bookingWindowMonths)) {
-      const min = calcMinYM();
-      const max = calcMaxYM(bookingWindowMonths);
-      const v = y * 12 + month;
-      const minV = min.year * 12 + min.month;
-      const maxV = max.year * 12 + max.month;
-      const clamped = Math.max(minV, Math.min(maxV, v));
-      setYear(Math.floor(clamped / 12));
-      setMonth(clamped % 12);
-      showRangeMsg();
-      return;
-    }
-    setYear(y);
-  }
 
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -423,10 +393,15 @@ export default function PublicCalendar({
   const atMin = cur <= (min.year * 12 + min.month);
   const atMax = cur >= (max.year * 12 + max.month);
 
-  // ── Year options for the dropdown ─────────────────────────────────
-  const yearOptions = useMemo(() => {
-    const opts: number[] = [];
-    for (let y = today.getFullYear(); y <= max.year; y++) opts.push(y);
+  // ── Every (year, month) inside the booking window — feeds the neon
+  //    month-jump dropdown so the user can skip straight to any month. ──
+  const monthJumpOptions = useMemo(() => {
+    const mn = calcMinYM();
+    const mx = calcMaxYM(bookingWindowMonths);
+    const minV = mn.year * 12 + mn.month;
+    const maxV = mx.year * 12 + mx.month;
+    const opts: { y: number; m: number }[] = [];
+    for (let v = minV; v <= maxV; v++) opts.push({ y: Math.floor(v / 12), m: v % 12 });
     return opts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today, bookingWindowMonths]);
@@ -449,26 +424,48 @@ export default function PublicCalendar({
             >
               ‹
             </button>
-            <select
-              className={`${styles.navSelect} ${styles.navSelectMonth}`}
-              value={month}
-              onChange={(e) => jumpToMonth(parseInt(e.target.value, 10))}
-              aria-label="Month"
-            >
-              {MONTH_NAMES.map((name, i) => (
-                <option key={i} value={i}>{name}</option>
-              ))}
-            </select>
-            <select
-              className={`${styles.navSelect} ${styles.navSelectYear}`}
-              value={year}
-              onChange={(e) => jumpToYear(parseInt(e.target.value, 10))}
-              aria-label="Year"
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            <div className={styles.monthPickerWrap}>
+              <button
+                type="button"
+                className={styles.monthPickerBtn}
+                aria-expanded={pickerOpen}
+                aria-haspopup="listbox"
+                onClick={() => setPickerOpen((o) => !o)}
+              >
+                {MONTH_NAMES[month]} {year}
+                <span className={styles.monthPickerChev} aria-hidden="true">▾</span>
+              </button>
+              {pickerOpen && (
+                <>
+                  <div
+                    onClick={() => setPickerOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 55 }}
+                    aria-hidden="true"
+                  />
+                  <div className={styles.monthPickerMenu} role="listbox">
+                    {monthJumpOptions.map(({ y, m }) => {
+                      const sel = y === year && m === month;
+                      return (
+                        <button
+                          key={`${y}-${m}`}
+                          type="button"
+                          role="option"
+                          aria-selected={sel}
+                          className={`${styles.monthPickerOption} ${sel ? styles.monthPickerOptionSelected : ''}`}
+                          onClick={() => {
+                            setYear(y);
+                            setMonth(m);
+                            setPickerOpen(false);
+                          }}
+                        >
+                          {MONTH_NAMES[m]} {y}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
             <button
               type="button"
               className={styles.navBtn}
@@ -839,16 +836,9 @@ function SingleMonthView({
 
   return (
     <div>
-      <div className={styles.monthHeaderRow}>
-        {onEmbedClick && <div className={styles.monthHeaderSpacer} />}
-        <div className={styles.monthHeader}>
-          {MONTH_NAMES[month]}{' '}
-          <span className={styles.monthHeaderYear}>{year}</span>
-        </div>
-        <div className={styles.monthHeaderActions}>
-          {/* Share button removed — the share-calendar action now lives
-              in the under-banner social row (see UnderBannerSocials). */}
-          {onEmbedClick && (
+      {onEmbedClick && (
+        <div className={styles.monthHeaderRow}>
+          <div className={styles.monthHeaderActions}>
             <button
               type="button"
               className={styles.embedInlineBtn}
@@ -861,9 +851,9 @@ function SingleMonthView({
               </svg>
               Embed Calendar
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={styles.dayHeaderRow}>
         {DAY_LABEL_LONG.map((name) => (
