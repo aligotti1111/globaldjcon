@@ -103,6 +103,29 @@ export default async function UpcomingBookingsPage() {
     .order('start_time', { ascending: true })
     .limit(200);
 
+  // Backfill the booker (host) name from requester_id when not already
+  // denormalized on the row, so the "Booked By" field shows a name.
+  let bookingRows = (rows || []) as UpcomingBooking[];
+  const missingRequesterIds = [
+    ...new Set(
+      bookingRows
+        .filter((b) => !b.requester_name && b.requester_id)
+        .map((b) => b.requester_id as string)
+    ),
+  ];
+  if (missingRequesterIds.length > 0) {
+    const { data: rRows } = await supabase
+      .from('users')
+      .select('id, name')
+      .in('id', missingRequesterIds);
+    const rMap = Object.fromEntries(
+      (((rRows as { id: string; name: string | null }[] | null) || []).map((r) => [r.id, r.name]))
+    );
+    bookingRows = bookingRows.map((b) =>
+      b.requester_name ? b : { ...b, requester_name: rMap[b.requester_id as string] || null }
+    );
+  }
+
   return (
     <UpcomingBookingsClient
       userId={user.id}
@@ -110,7 +133,7 @@ export default async function UpcomingBookingsPage() {
       djCountry={djCountry}
       djName={djName}
       bookingsPerDay={bookingsPerDay}
-      initialBookings={(rows || []) as UpcomingBooking[]}
+      initialBookings={bookingRows}
     />
   );
 }
