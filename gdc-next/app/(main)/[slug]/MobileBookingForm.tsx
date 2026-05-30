@@ -864,6 +864,9 @@ export default function MobileBookingForm({
               selectedPkgIdx={selectedPkgIdx}
               onSelect={(idx) => setSelectedPkgIdx(idx)}
               onPhotoClick={(url) => setPhotoLightboxUrl(url)}
+              startTime={startTime}
+              endTime={endTime}
+              depositPct={depositPct}
             />
           </div>
         ) : (
@@ -980,6 +983,9 @@ function PackagesSection({
   selectedPkgIdx,
   onSelect,
   onPhotoClick,
+  startTime,
+  endTime,
+  depositPct,
 }: {
   formReady: boolean;
   eventType: string;
@@ -988,6 +994,9 @@ function PackagesSection({
   selectedPkgIdx: number | null;
   onSelect: (idx: number) => void;
   onPhotoClick: (url: string) => void;
+  startTime: string;
+  endTime: string;
+  depositPct: number;
 }) {
   if (!formReady) {
     return (
