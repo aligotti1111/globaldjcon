@@ -954,7 +954,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -970,6 +970,7 @@ export async function POST(req: Request) {
         package_details: string | null;
         quoted_rate: number | null;
         counter_rate: number | null;
+        overtime_rate: number | null;
         counter_message: string | null;
         currency: string | null;
         cocktail_needed: boolean | null;
@@ -1006,9 +1007,11 @@ export async function POST(req: Request) {
     const rateValue = booking.quoted_rate != null
       ? `${sym}${Number(booking.quoted_rate).toLocaleString()} ${currency}`
       : '—';
-    // Overtime is stored in counter_rate for mobile quote bookings.
-    const overtimeLine = booking.counter_rate != null
-      ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(booking.counter_rate).toLocaleString()} ${currency}/hr</p>`
+    // Overtime now has its own column. Fall back to the legacy overloaded
+    // counter_rate for mobile quote bookings not yet backfilled.
+    const overtimeVal = booking.overtime_rate ?? booking.counter_rate;
+    const overtimeLine = overtimeVal != null
+      ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeVal).toLocaleString()} ${currency}/hr</p>`
       : '';
     // Cocktail-hour pricing line (wedding bookings with cocktail hour).
     const cocktailLine = booking.cocktail_needed
