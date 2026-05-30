@@ -896,15 +896,11 @@ export default function MobileBookingForm({
             {priceResult.price != null && depositPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
             )}
-            {priceResult.overtimeHours > 0 && Number(selectedPkg?.overtime) > 0 ? (
-              <div className={styles.overtimeNote}>
-                Includes {priceResult.overtimeHours}hr overtime at ${Number(selectedPkg?.overtime).toLocaleString()}/hr
-              </div>
-            ) : Number(selectedPkg?.overtime) > 0 ? (
+            {Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
                 Overtime rate: ${Number(selectedPkg?.overtime).toLocaleString()}/hr
               </div>
-            ) : null}
+            )}
           </div>
         )}
 
