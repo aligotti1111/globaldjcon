@@ -1032,19 +1032,26 @@ function PackagesSection({
         {usablePackages.map(({ idx, pkg, title, details, photo }) => {
           const isSelected = selectedPkgIdx === idx;
 
-          // Price preview on the card head
+          // Price preview on the card head. Dynamic: reflects the actual
+          // selected event duration using the same tier logic as the
+          // Estimated Price (calcPrice picks 4/5/6hr rate + overtime). Before
+          // start/end times are chosen, calcPrice falls back to the base rate.
           let priceEl: React.ReactNode = null;
           if (pkg.reqAll) {
             priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
           } else {
-            const has4 = pkg.price4 != null && pkg.price4 !== '';
-            const has5 = pkg.price5 != null && pkg.price5 !== '';
-            const has6 = pkg.price6 != null && pkg.price6 !== '';
-            if (has4 || has5 || has6) {
-              const previewPrice = has4 ? pkg.price4 : has5 ? pkg.price5 : pkg.price6;
+            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct);
+            if (cardPrice.isQuote || cardPrice.price == null) {
+              const has4 = pkg.price4 != null && pkg.price4 !== '';
+              const has5 = pkg.price5 != null && pkg.price5 !== '';
+              const has6 = pkg.price6 != null && pkg.price6 !== '';
+              if (has4 || has5 || has6) {
+                priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
+              }
+            } else {
               priceEl = (
                 <div className={styles.packagePrice}>
-                  ${Number(previewPrice).toLocaleString()}
+                  ${cardPrice.price.toLocaleString()}
                 </div>
               );
             }
