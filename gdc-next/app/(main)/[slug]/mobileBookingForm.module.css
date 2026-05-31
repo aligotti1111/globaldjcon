@@ -225,6 +225,41 @@
   color: var(--neon, #00f5c4);
   margin: -.5rem 0 1rem;
 }
+.durationNoteRight {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  margin: -.5rem 0 1rem;
+  text-align: right;
+}
+.cocktailDurationNote {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  margin: .4rem 0 0;
+}
+.addCocktailLink {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.addCocktailLink:hover {
+  opacity: .8;
+}
 .timesRow {
   display: flex;
   gap: .75rem;
