@@ -52,6 +52,11 @@ export interface UpcomingBooking {
   package_details?: string | null;
   package_category?: string | null;
   package_index?: number | null;
+  cocktail_needed?: boolean | null;
+  cocktail_start_time?: string | null;
+  cocktail_same_room?: boolean | null;
+  cocktail_price?: number | null;
+  cocktail_included?: boolean | null;
   quoted_rate?: number | null;
   counter_rate?: number | null;
   overtime_rate?: number | null;
@@ -100,7 +105,7 @@ export default async function UpcomingBookingsPage() {
   // Fetch future approved-or-manual bookings for this DJ.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, quoted_rate, counter_rate, overtime_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, quoted_rate, counter_rate, overtime_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')

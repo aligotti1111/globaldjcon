@@ -748,6 +748,19 @@ function BookingDetails({
   const timeLabelPrefix =
     djType === 'club' ? 'Set' : (booking.event_type === 'weddings' ? 'Reception' : 'Event');
 
+  // Agreed-rate breakdown. The stored agreed rate is the cocktail-INCLUSIVE
+  // total. When there's a separately-charged cocktail price, show
+  // "base + cocktail = total"; otherwise just the total.
+  const agreedTotal = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+  const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
+  const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
+  const agreedBase = hasSeparateCocktail ? (Number(agreedTotal) - cocktailCharge) : null;
+  const agreedRateValue = hasSeparateCocktail ? (
+    <span>
+      {money(agreedBase)} + <span className={styles.cocktailHighlight}>{money(cocktailCharge)} cocktail</span> = {money(agreedTotal)}
+    </span>
+  ) : money(agreedTotal);
+
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
     // Row 1: Event Date + Venue Name (Event Type for mobile)
@@ -762,6 +775,15 @@ function BookingDetails({
     [
       { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
       { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
+    ],
+    // Row 2b: Cocktail Hour time (wedding bookings where the booker opted in).
+    [
+      {
+        label: 'Cocktail Hour Time',
+        value: booking.cocktail_needed && booking.cocktail_start_time
+          ? formatTime12(booking.cocktail_start_time)
+          : null,
+      },
     ],
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
@@ -796,7 +818,7 @@ function BookingDetails({
     // details area below.) Mobile always shows an overtime cell with a
     // placeholder when the DJ set none; club hides it when unset.
     [
-      { label: 'Agreed Rate', value: money(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount) },
+      { label: 'Agreed Rate', value: agreedRateValue },
       {
         label: 'Overtime Rate',
         value: booking.overtime_rate != null
