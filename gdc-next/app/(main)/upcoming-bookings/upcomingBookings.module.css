@@ -141,6 +141,14 @@
   margin-right: .55rem;
   margin-left: .15rem;
 }
+/* Event type uses the display font, larger than the monospace time, so it
+   reads as a distinct heading on the row. */
+.rowEventType {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: .02em;
+  color: var(--white);
+}
 .overlapPill {
   margin-left: .6rem;
   color: var(--amber, #ffb347);
