@@ -765,8 +765,8 @@ select.input {
     line-height: 1.3;
     text-align: left;
   }
-  /* Mobile: no overlap warning, no pipe separator. */
-  .overlapPill { display: none; }
+  /* Mobile: hide the desktop pipe separator. Overlap warning is club-only
+     (gated in the component), so it can still show on small screens. */
   .rowContextSep { display: none; }
   .rowChevronBtn {
     grid-area: chev;
