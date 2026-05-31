@@ -194,6 +194,9 @@ export default function MobileBookingCard(props: Props) {
           </div>
         )}
         <div className={styles.timeBlock}>
+          {b.cocktail_needed && (
+            <div className={styles.cocktailIncludesNote}>Includes cocktail hour</div>
+          )}
           <div className={styles.tinyLabel}>
             {b.event_type === 'weddings' ? 'Reception Start' : 'Event Start'}
           </div>
