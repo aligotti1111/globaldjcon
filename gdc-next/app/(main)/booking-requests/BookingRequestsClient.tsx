@@ -40,6 +40,10 @@ interface CurrentUser {
   // Deposit percentage from DJ's booking_settings (0-100). Used for the
   // Quote modal's live deposit preview. 0 means DJ doesn't take a deposit.
   depositPct: number;
+  // DJ's mobile packages keyed by category — used to resolve a booking's
+  // overtime rate (by package_category + package_index) when it wasn't
+  // snapshotted onto the booking row, so the approval email can include it.
+  mobPackages?: Record<string, Array<{ overtime?: number | string | null }>> | null;
 }
 
 interface Props {
@@ -74,6 +78,24 @@ function whoseMove(b: BookingRow): 'dj' | 'booker' | null {
   // submission awaiting the DJ; a bare 'counter' (shouldn't normally
   // happen without a log) is treated as the DJ having made the move.
   return status === 'counter' ? 'booker' : 'dj';
+}
+
+// Resolve a booking's overtime rate: prefer the value snapshotted onto the
+// booking row; otherwise look it up live from the DJ's package definition by
+// package_category + package_index (falling back to the general package at
+// the same index). Returns null when there's no overtime rate.
+function resolveBookingOvertime(
+  b: BookingRow,
+  mobPackages?: Record<string, Array<{ overtime?: number | string | null }>> | null,
+): number | null {
+  const stored = (b as BookingRow & { overtime_rate?: number | null }).overtime_rate;
+  if (stored != null) return Number(stored);
+  const pkgIdx = (b as BookingRow & { package_index?: number | null }).package_index;
+  if (pkgIdx == null || !mobPackages) return null;
+  const cat = (b as BookingRow & { package_category?: string | null }).package_category || '';
+  const ot = mobPackages[cat]?.[pkgIdx]?.overtime ?? mobPackages['general']?.[pkgIdx]?.overtime ?? null;
+  const n = ot != null ? Number(ot) : NaN;
+  return n > 0 ? n : null;
 }
 
 export default function BookingRequestsClient({
@@ -263,7 +285,7 @@ export default function BookingRequestsClient({
           const sharedFields = {
             type: 'booking_approved',
             agreedPrice,
-            overtimeRate: (b as BookingRow & { overtime_rate?: number | null }).overtime_rate ?? null,
+            overtimeRate: resolveBookingOvertime(b, currentUser.mobPackages),
             currency: (b as BookingRow & { currency?: string }).currency || 'USD',
             eventDate: b.event_date,
             startTime: b.start_time,
@@ -274,8 +296,11 @@ export default function BookingRequestsClient({
             venueName: b.venue_name,
             venueAddress: (b as BookingRow & { venue_address?: string | null }).venue_address,
             packageTitle: b.package_title,
+            isWedding: (b as BookingRow & { event_type?: string | null }).event_type === 'weddings',
+            cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
+            cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
+            cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
           };
-          // To booker
           try {
             await fetch('/api/send-email', {
               method: 'POST',
@@ -520,7 +545,7 @@ export default function BookingRequestsClient({
         const sharedFields = {
           type: 'booking_approved',
           agreedPrice,
-          overtimeRate: (b as BookingRow & { overtime_rate?: number | null }).overtime_rate ?? null,
+          overtimeRate: resolveBookingOvertime(b, currentUser.mobPackages),
           currency: (b as BookingRow & { currency?: string }).currency || 'USD',
           eventDate: b.event_date,
           startTime: b.start_time,
@@ -531,6 +556,10 @@ export default function BookingRequestsClient({
           venueName: b.venue_name,
           venueAddress: (b as BookingRow & { venue_address?: string | null }).venue_address,
           packageTitle: b.package_title,
+          isWedding: (b as BookingRow & { event_type?: string | null }).event_type === 'weddings',
+          cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
+          cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
+          cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
         };
         // To DJ
         try {
