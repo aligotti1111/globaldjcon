@@ -319,10 +319,10 @@ export default function PackageEditor({
                 checked={!!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered}
                 onChange={(e) => {
                   const off = e.target.checked;
-                  updateExtra('cocktailNotOffered', off);
-                  // Keep cocktailIncluded=false for general/mitzvah so the
-                  // per-hour price applies when offered.
-                  updateExtra('cocktailIncluded', false);
+                  // Set both fields in ONE update — two sequential updateExtra
+                  // calls would both spread from the same stale `pkg`, so the
+                  // second would clobber the first.
+                  onChange({ ...pkg, cocktailNotOffered: off, cocktailIncluded: false } as MobilePackage);
                 }}
               />
               <span className={styles.cocktailPrompt}>
