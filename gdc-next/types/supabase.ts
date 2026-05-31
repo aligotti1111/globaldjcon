@@ -179,6 +179,7 @@ export interface Database {
           cocktail_same_room: boolean | null;
           cocktail_price: number | null;
           cocktail_included: boolean | null;
+          setup_hours: string | null;
           package_title: string | null;
           package_category: string | null;
           package_index: number | null;
@@ -232,6 +233,7 @@ export interface Database {
           cocktail_same_room?: boolean | null;
           cocktail_price?: number | null;
           cocktail_included?: boolean | null;
+          setup_hours?: string | null;
           package_title?: string | null;
           package_category?: string | null;
           package_index?: number | null;
@@ -279,6 +281,7 @@ export interface Database {
           cocktail_same_room?: boolean | null;
           cocktail_price?: number | null;
           cocktail_included?: boolean | null;
+          setup_hours?: string | null;
           package_title?: string | null;
           package_category?: string | null;
           package_index?: number | null;
