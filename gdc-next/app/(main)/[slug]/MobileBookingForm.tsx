@@ -124,8 +124,11 @@ export default function MobileBookingForm({
   const [endTime, setEndTime] = useState('');
   const [message, setMessage] = useState('');
 
-  // Wedding-only cocktail fields
+  // Cocktail-hour fields (all mobile events). For weddings the cocktail
+  // prompt shows by default; for other events it's hidden behind an
+  // "Add Cocktail Hour" link that expands the section.
   const [cocktailNeeded, setCocktailNeeded] = useState<boolean | null>(null);
+  const [showCocktailAddon, setShowCocktailAddon] = useState(false);
   const [cocktailStart, setCocktailStart] = useState('');
   const [cocktailSameRoom, setCocktailSameRoom] = useState<boolean | null>(null);
 
@@ -214,6 +217,8 @@ export default function MobileBookingForm({
   // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
   useEffect(() => {
     setSelectedPkgIdx(null);
+    setShowCocktailAddon(false);
+    setCocktailNeeded(null);
   }, [eventType]);
 
   // Cocktail-time warning: cocktail must start before reception
@@ -786,13 +791,28 @@ export default function MobileBookingForm({
           </div>
         </div>
         {durationLabel(hoursBetween(startTime, endTime)) && (
-          <div className={styles.durationNote}>
+          <div className={styles.durationNoteRight}>
             {isWedding ? 'Reception duration' : 'Event duration'}: {durationLabel(hoursBetween(startTime, endTime))}
           </div>
         )}
 
-        {/* Cocktail-hour subsection — all mobile event types */}
-        {cocktailEligible && (
+        {/* Non-wedding: "Add Cocktail Hour" link under the times. Shown only
+            until the booker opts in; clicking it expands the cocktail section
+            with "music needed" defaulted to Yes. Weddings show the section
+            directly (cocktail hour is a standard wedding question). */}
+        {cocktailEligible && !isWedding && !showCocktailAddon && (
+          <button
+            type="button"
+            className={styles.addCocktailLink}
+            onClick={() => { setShowCocktailAddon(true); setCocktailNeeded(true); }}
+          >
+            + Add Cocktail Hour
+          </button>
+        )}
+
+        {/* Cocktail-hour subsection — weddings always; other events once the
+            "Add Cocktail Hour" link is clicked. */}
+        {cocktailEligible && (isWedding || showCocktailAddon) && (
           <div className={styles.weddingFields}>
             <div className={styles.weddingHeader}>Cocktail Hour</div>
             <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
@@ -850,7 +870,7 @@ export default function MobileBookingForm({
                     </div>
                   )}
                   {!cocktailWarn && durationLabel(hoursBetween(cocktailStart, startTime)) && (
-                    <div className={styles.durationNote}>
+                    <div className={styles.cocktailDurationNote}>
                       Cocktail hour duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
                     </div>
                   )}
