@@ -841,59 +841,72 @@ function PackageCardWithCatTabs({
       </div>
 
       {showInnerTabs && (
-        <div className={styles.catStepper}>
-          {activeCats.map((c, i) => {
-            const isActive = selectedCat === c;
-            const hasError = !!catErrors[c];
-            const isComplete = validatePkg(drafts[c]).ok;
-            return (
-              <div key={c} className={styles.catStep}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCat(c)}
-                  className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
-                >
+        <>
+          {/* Checkmark stepper — sits ABOVE the tab boxes. Each check is
+              transparent until that category's package is complete, then
+              turns green; the connecting line fills as steps complete. */}
+          <div className={styles.catCheckRow}>
+            {activeCats.map((c, i) => {
+              const isComplete = validatePkg(drafts[c]).ok;
+              return (
+                <div key={c} className={styles.catCheckStep}>
                   <span
                     className={`${styles.catCheck} ${isComplete ? styles.catCheckDone : ''}`}
                     aria-hidden="true"
                   >
                     ✓
                   </span>
+                  {i < activeCats.length - 1 && (
+                    <span
+                      className={`${styles.catStepLine} ${isComplete ? styles.catStepLineDone : ''}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tab boxes. */}
+          <div className={styles.innerCatTabs}>
+            {activeCats.map((c) => {
+              const isActive = selectedCat === c;
+              const hasError = !!catErrors[c];
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setSelectedCat(c)}
+                  className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
+                >
                   <span>{catLabels[c]}</span>
                   {hasError && <span className={styles.innerCatBadge}>!</span>}
+                  {c === 'general' && generalCoverageLabels.length > 0 && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className={`${styles.generalCoverageArrow} ${showGeneralCoverage ? styles.generalCoverageArrowOpen : ''}`}
+                      title="Event types this package covers"
+                      onClick={(e) => { e.stopPropagation(); setShowGeneralCoverage((v) => !v); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowGeneralCoverage((v) => !v); } }}
+                    >
+                      ▾
+                    </span>
+                  )}
                 </button>
-                {i < activeCats.length - 1 && (
-                  <span
-                    className={`${styles.catStepLine} ${isComplete ? styles.catStepLineDone : ''}`}
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* General tab: expandable list of which selected party types its
-          pricing covers. */}
-      {selectedCat === 'general' && generalCoverageLabels.length > 0 && (
-        <div className={styles.generalCoverage}>
-          <button
-            type="button"
-            className={styles.generalCoverageToggle}
-            onClick={() => setShowGeneralCoverage((v) => !v)}
-            aria-expanded={showGeneralCoverage}
-          >
-            <span className={`${styles.generalCoverageArrow} ${showGeneralCoverage ? styles.generalCoverageArrowOpen : ''}`}>▸</span>
-            Event types this package covers
-          </button>
-          {showGeneralCoverage && (
-            <div className={styles.generalCoverageList}>
-              {generalCoverageLabels.map((label) => (
-                <span key={label} className={styles.generalCoverageChip}>{label}</span>
-              ))}
-            </div>
-          )}
+      {/* General tab: dropdown list of which selected party types this
+          package's pricing covers — toggled by the arrow in the General box. */}
+      {selectedCat === 'general' && showGeneralCoverage && generalCoverageLabels.length > 0 && (
+        <div className={styles.generalCoverageList}>
+          {generalCoverageLabels.map((label) => (
+            <span key={label} className={styles.generalCoverageChip}>{label}</span>
+          ))}
         </div>
       )}
 
