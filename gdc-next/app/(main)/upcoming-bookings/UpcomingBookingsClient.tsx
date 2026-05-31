@@ -617,6 +617,7 @@ function BookingRow({
           <div className={styles.rowTime}>{timeRange}</div>
           {(context || overlaps) ? (
             <div className={styles.rowContext}>
+              {context && <span className={styles.rowContextSep} aria-hidden="true">|</span>}
               {context}
               {overlaps && (
                 <span
