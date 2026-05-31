@@ -87,7 +87,8 @@ export function calcPrice(
   startTime: string,
   endTime: string,
   depositPct: number,
-  wantsCocktail: boolean = false
+  wantsCocktail: boolean = false,
+  cocktailStart: string = ''
 ): PriceResult {
   if (pkg.reqAll) {
     return { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
@@ -153,8 +154,11 @@ export function calcPrice(
   }
 
   // Wedding cocktail-hour add-on: when the booker opts into cocktail-hour
-  // music and the DJ does NOT bundle it (cocktailIncluded === false), add the
-  // package's cocktailPrice on top. Only applies when there's a real price.
+  // music and the DJ does NOT bundle it (cocktailIncluded === false), charge
+  // the package's per-hour cocktail rate × the cocktail duration. The cocktail
+  // hour runs from cocktailStart up to the reception start (startTime), so the
+  // duration is that gap (rounded up to whole hours, min 1). Only applies when
+  // there's a real package price.
   let cocktailAddon = 0;
   if (
     wantsCocktail &&
@@ -163,10 +167,19 @@ export function calcPrice(
     pkg.cocktailPrice != null &&
     pkg.cocktailPrice !== ''
   ) {
-    const cp = Number(pkg.cocktailPrice);
-    if (cp > 0) {
-      cocktailAddon = cp;
-      price += cp;
+    const rate = Number(pkg.cocktailPrice);
+    if (rate > 0) {
+      // Duration in hours from cocktail start to reception start.
+      let cocktailHours = 1;
+      if (cocktailStart && startTime) {
+        const [csh, csm] = cocktailStart.split(':').map(Number);
+        const [rsh, rsm] = startTime.split(':').map(Number);
+        let mins = (rsh * 60 + rsm) - (csh * 60 + csm);
+        if (mins <= 0) mins += 1440; // guard against overnight wrap
+        cocktailHours = Math.max(1, Math.ceil(mins / 60));
+      }
+      cocktailAddon = rate * cocktailHours;
+      price += cocktailAddon;
     }
   }
 

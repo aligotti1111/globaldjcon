@@ -201,8 +201,8 @@ export default function MobileBookingForm({
   const wantsCocktail = isWedding && cocktailNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
-    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail);
-  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail]);
+    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
+  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart]);
 
   // Reset selected package when event type changes (vanilla parity —
   // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
@@ -294,7 +294,7 @@ export default function MobileBookingForm({
     // the booking is a pure quote request, same shape vanilla uses for
     // is_quote bookings (price null, deposit null, package_title null).
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail)
+      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart)
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
 
     setSubmitting(true);
@@ -876,6 +876,7 @@ export default function MobileBookingForm({
               endTime={endTime}
               depositPct={depositPct}
               wantsCocktail={wantsCocktail}
+              cocktailStart={cocktailStart}
             />
           </div>
         ) : (
@@ -1001,6 +1002,7 @@ function PackagesSection({
   endTime,
   depositPct,
   wantsCocktail,
+  cocktailStart,
 }: {
   formReady: boolean;
   eventType: string;
@@ -1013,6 +1015,7 @@ function PackagesSection({
   endTime: string;
   depositPct: number;
   wantsCocktail: boolean;
+  cocktailStart: string;
 }) {
   if (!formReady) {
     return (
@@ -1065,7 +1068,7 @@ function PackagesSection({
           if (pkg.reqAll) {
             priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
           } else {
-            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail);
+            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
             if (cardPrice.isQuote || cardPrice.price == null) {
               const has4 = pkg.price4 != null && pkg.price4 !== '';
               const has5 = pkg.price5 != null && pkg.price5 !== '';
