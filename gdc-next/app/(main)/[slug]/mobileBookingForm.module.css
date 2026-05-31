@@ -217,6 +217,14 @@
   color: var(--neon);
   margin-bottom: .6rem;
 }
+.durationNote {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  margin: -.5rem 0 1rem;
+}
 .timesRow {
   display: flex;
   gap: .75rem;

@@ -191,6 +191,24 @@ export function calcPrice(
   return { isQuote, price, overtimeHours, depositAmount, cocktailAddon };
 }
 
+// Whole hours between two "HH:MM" times (end - start), rounded up, handling
+// overnight wrap. Returns 0 when either time is missing. Used for the event
+// duration and cocktail-hour duration labels.
+export function hoursBetween(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) mins += 1440;
+  return Math.ceil(mins / 60);
+}
+
+// "5 hrs" / "1 hr" label, or '' when n <= 0.
+export function durationLabel(n: number): string {
+  if (n <= 0) return '';
+  return `${n} ${n === 1 ? 'hr' : 'hrs'}`;
+}
+
 // Format a date string (YYYY-MM-DD) into "Friday, April 24, 2026".
 // Used by the form header. Adds T12:00:00 to avoid TZ shift.
 export function formatLongDate(dateKey: string): string {

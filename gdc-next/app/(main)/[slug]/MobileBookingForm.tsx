@@ -39,6 +39,8 @@ import {
   formatUSPhone,
   getPackageCategory,
   calcPrice,
+  hoursBetween,
+  durationLabel,
   formatLongDate,
   searchAddresses,
   type AddressSuggestion,
@@ -780,6 +782,11 @@ export default function MobileBookingForm({
             </FieldCheck>
           </div>
         </div>
+        {durationLabel(hoursBetween(startTime, endTime)) && (
+          <div className={styles.durationNote}>
+            {isWedding ? 'Reception duration' : 'Event duration'}: {durationLabel(hoursBetween(startTime, endTime))}
+          </div>
+        )}
 
         {/* Wedding cocktail-hour subsection */}
         {isWedding && (
@@ -837,6 +844,11 @@ export default function MobileBookingForm({
                   {cocktailWarn && (
                     <div className={styles.cocktailWarn}>
                       ⚠ Cocktail hour must start before the reception. Please select an earlier time.
+                    </div>
+                  )}
+                  {!cocktailWarn && durationLabel(hoursBetween(cocktailStart, startTime)) && (
+                    <div className={styles.durationNote}>
+                      Cocktail hour duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
                     </div>
                   )}
                 </div>
