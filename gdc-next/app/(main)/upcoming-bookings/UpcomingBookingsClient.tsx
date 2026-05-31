@@ -875,6 +875,16 @@ function BookingDetails({
           { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
           { label: 'Room Details', value: booking.room_details },
         ],
+    djType === 'club'
+      ? []
+      : [
+          {
+            label: 'Setup Time Required',
+            value: booking.setup_hours
+              ? `${booking.setup_hours} hr${booking.setup_hours === '1' ? '' : 's'} before start`
+              : null,
+          },
+        ],
     // Row 5: Booked By + Contact Phone
     [
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
