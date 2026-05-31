@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirm } from '@/components/ConfirmModal';
 import type { MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
 
 const PKG_SETUP_HOURS = ['1', '2', '3', '4', '5'];
@@ -62,6 +63,7 @@ export default function PackageEditor({
 }: Props) {
   const isWedding = cat === 'wedding';
   const reqAll = !!pkg.reqAll;
+  const { confirm, confirmDialog } = useConfirm();
 
   // Rich-text editor — kept uncontrolled (set initial via dangerouslySetInnerHTML
   // then onInput fires onChange with current innerHTML). React doesn't play well
@@ -158,14 +160,20 @@ export default function PackageEditor({
     }
   }
 
-  function removePhoto() {
-    if (typeof window !== 'undefined' && !window.confirm('Delete this package photo?')) return;
+  async function removePhoto() {
+    const ok = await confirm({
+      title: 'Delete this package photo?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     updateField('photo', '');
   }
 
   // Inner content (everything except the card wrapper + header)
   const inner = (
     <>
+      {confirmDialog}
       {/* Title */}
       <div className={styles.pkgFieldGroup}>
         <label className={styles.pkgFieldLabel}>

@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirm } from '@/components/ConfirmModal';
 import {
   type BookingSettings,
   type MobileBookingDays,
@@ -128,6 +129,7 @@ export default function BookingTab({
 }: Props) {
   const enabled = !!bookingSettings.booking_enabled;
   const window = bookingSettings.mob_booking_window || 24;
+  const { confirm, confirmDialog } = useConfirm();
   const perDay = bookingSettings.mob_bookings_per_day || 1;
   const deposit = bookingSettings.mob_deposit_pct || 0;
   const packages = bookingSettings.mob_packages || {};
@@ -170,8 +172,14 @@ export default function BookingTab({
     setPackagesAll(next);
   }
 
-  function removePackage(idx: number) {
-    if (!confirm('Remove this package? Any unsaved changes will be lost.')) return;
+  async function removePackage(idx: number) {
+    const ok = await confirm({
+      title: 'Remove this package?',
+      message: 'Any unsaved changes will be lost.',
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const next = { ...packages };
     activeCats.forEach((c) => {
       if (next[c] && next[c].length > idx) {
@@ -364,6 +372,7 @@ export default function BookingTab({
 
   return (
     <div>
+      {confirmDialog}
       {/* Enable Booking toggle */}
       <div className={styles.bookingEnabledRow}>
         <div>
