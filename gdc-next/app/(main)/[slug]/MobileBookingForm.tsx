@@ -198,10 +198,11 @@ export default function MobileBookingForm({
   const selectedPkg =
     selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
+  const wantsCocktail = isWedding && cocktailNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
-    return calcPrice(selectedPkg, startTime, endTime, depositPct);
-  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages]);
+    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail);
+  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail]);
 
   // Reset selected package when event type changes (vanilla parity —
   // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
@@ -293,8 +294,8 @@ export default function MobileBookingForm({
     // the booking is a pure quote request, same shape vanilla uses for
     // is_quote bookings (price null, deposit null, package_title null).
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct)
-      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null };
+      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail)
+      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
 
     setSubmitting(true);
 
@@ -867,6 +868,7 @@ export default function MobileBookingForm({
               startTime={startTime}
               endTime={endTime}
               depositPct={depositPct}
+              wantsCocktail={wantsCocktail}
             />
           </div>
         ) : (
@@ -904,6 +906,11 @@ export default function MobileBookingForm({
             )}
             {priceResult.price != null && depositPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
+            )}
+            {priceResult.cocktailAddon > 0 && (
+              <div className={styles.overtimeNote}>
+                Includes cocktail hour: +${priceResult.cocktailAddon.toLocaleString()}
+              </div>
             )}
             {Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
@@ -986,6 +993,7 @@ function PackagesSection({
   startTime,
   endTime,
   depositPct,
+  wantsCocktail,
 }: {
   formReady: boolean;
   eventType: string;
@@ -997,6 +1005,7 @@ function PackagesSection({
   startTime: string;
   endTime: string;
   depositPct: number;
+  wantsCocktail: boolean;
 }) {
   if (!formReady) {
     return (
@@ -1049,7 +1058,7 @@ function PackagesSection({
           if (pkg.reqAll) {
             priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
           } else {
-            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct);
+            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail);
             if (cardPrice.isQuote || cardPrice.price == null) {
               const has4 = pkg.price4 != null && pkg.price4 !== '';
               const has5 = pkg.price5 != null && pkg.price5 !== '';

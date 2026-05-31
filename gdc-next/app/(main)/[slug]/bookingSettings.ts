@@ -116,6 +116,11 @@ export interface MobilePackage {
   price6?: number | string;  // 6hr rate
   overtime?: number | string; // per-hour overtime rate
   reqAll?: boolean;          // "Price on request" — no auto-quote
+  // Wedding cocktail-hour add-on. When cocktailIncluded is false, the
+  // cocktailPrice is charged on top of the package price if the booker opts
+  // into cocktail-hour music. When true/undefined, cocktail hour is bundled.
+  cocktailIncluded?: boolean;
+  cocktailPrice?: number | string;
 }
 
 // Vanilla stores booking_settings as a JSON string. This helper parses it

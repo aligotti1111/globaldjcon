@@ -71,6 +71,7 @@ export interface PriceResult {
   price: number | null;      // total price in dollars, or null if quote
   overtimeHours: number;     // overtime hours included in the price (0 if none)
   depositAmount: number | null; // computed when price + depositPct
+  cocktailAddon: number;     // wedding cocktail-hour charge added to price (0 if none)
 }
 
 // Compute total price for a package given event duration.
@@ -85,10 +86,11 @@ export function calcPrice(
   pkg: MobilePackage,
   startTime: string,
   endTime: string,
-  depositPct: number
+  depositPct: number,
+  wantsCocktail: boolean = false
 ): PriceResult {
   if (pkg.reqAll) {
-    return { isQuote: true, price: null, overtimeHours: 0, depositAmount: null };
+    return { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
   }
 
   let totalHours = 0;
@@ -150,12 +152,30 @@ export function calcPrice(
     }
   }
 
+  // Wedding cocktail-hour add-on: when the booker opts into cocktail-hour
+  // music and the DJ does NOT bundle it (cocktailIncluded === false), add the
+  // package's cocktailPrice on top. Only applies when there's a real price.
+  let cocktailAddon = 0;
+  if (
+    wantsCocktail &&
+    price != null &&
+    pkg.cocktailIncluded === false &&
+    pkg.cocktailPrice != null &&
+    pkg.cocktailPrice !== ''
+  ) {
+    const cp = Number(pkg.cocktailPrice);
+    if (cp > 0) {
+      cocktailAddon = cp;
+      price += cp;
+    }
+  }
+
   let depositAmount: number | null = null;
   if (price != null && depositPct > 0) {
     depositAmount = Number((price * depositPct / 100).toFixed(2));
   }
 
-  return { isQuote, price, overtimeHours, depositAmount };
+  return { isQuote, price, overtimeHours, depositAmount, cocktailAddon };
 }
 
 // Format a date string (YYYY-MM-DD) into "Friday, April 24, 2026".
