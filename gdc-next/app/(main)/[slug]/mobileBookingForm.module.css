@@ -260,6 +260,30 @@
 .addCocktailLink:hover {
   opacity: .8;
 }
+.cocktailHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cocktailCloseBtn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--white);
+  width: 24px;
+  height: 24px;
+  font-size: .7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cocktailCloseBtn:hover {
+  border-color: var(--danger, #ff5f5f);
+  color: var(--danger, #ff5f5f);
+}
 .timesRow {
   display: flex;
   gap: .75rem;

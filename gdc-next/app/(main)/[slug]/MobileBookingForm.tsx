@@ -40,7 +40,9 @@ import {
   getPackageCategory,
   calcPrice,
   hoursBetween,
+  halfHoursBetween,
   durationLabel,
+  halfHourLabel,
   formatLongDate,
   searchAddresses,
   type AddressSuggestion,
@@ -814,7 +816,24 @@ export default function MobileBookingForm({
             "Add Cocktail Hour" link is clicked. */}
         {cocktailEligible && (isWedding || showCocktailAddon) && (
           <div className={styles.weddingFields}>
-            <div className={styles.weddingHeader}>Cocktail Hour</div>
+            <div className={styles.cocktailHeaderRow}>
+              <div className={styles.weddingHeader}>Cocktail Hour</div>
+              {!isWedding && (
+                <button
+                  type="button"
+                  className={styles.cocktailCloseBtn}
+                  title="Remove cocktail hour"
+                  onClick={() => {
+                    setShowCocktailAddon(false);
+                    setCocktailNeeded(null);
+                    setCocktailStart('');
+                    setCocktailSameRoom(null);
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
             <div className={styles.radioGroup}>
               <label className={styles.radioPill}>
@@ -869,9 +888,9 @@ export default function MobileBookingForm({
                       ⚠ Cocktail hour must start before the {isWedding ? 'reception' : 'event'}. Please select an earlier time.
                     </div>
                   )}
-                  {!cocktailWarn && durationLabel(hoursBetween(cocktailStart, startTime)) && (
+                  {!cocktailWarn && halfHourLabel(halfHoursBetween(cocktailStart, startTime)) && (
                     <div className={styles.cocktailDurationNote}>
-                      Cocktail hour duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
+                      Cocktail hour duration: {halfHourLabel(halfHoursBetween(cocktailStart, startTime))}
                     </div>
                   )}
                 </div>

@@ -169,14 +169,16 @@ export function calcPrice(
   ) {
     const rate = Number(pkg.cocktailPrice);
     if (rate > 0) {
-      // Duration in hours from cocktail start to reception start.
-      let cocktailHours = 1;
+      // Cocktail duration from cocktail start to event start, billed by the
+      // half hour (not rounded up to a full hour). Times come from 30-min
+      // options so the gap is always a multiple of 0.5 hr.
+      let cocktailHours = 0.5;
       if (cocktailStart && startTime) {
         const [csh, csm] = cocktailStart.split(':').map(Number);
         const [rsh, rsm] = startTime.split(':').map(Number);
         let mins = (rsh * 60 + rsm) - (csh * 60 + csm);
         if (mins <= 0) mins += 1440; // guard against overnight wrap
-        cocktailHours = Math.max(1, Math.ceil(mins / 60));
+        cocktailHours = Math.max(0.5, Math.round(mins / 30) / 2);
       }
       cocktailAddon = rate * cocktailHours;
       price += cocktailAddon;
@@ -206,6 +208,25 @@ export function hoursBetween(start: string, end: string): number {
 // "5 hrs" / "1 hr" label, or '' when n <= 0.
 export function durationLabel(n: number): string {
   if (n <= 0) return '';
+  return `${n} ${n === 1 ? 'hr' : 'hrs'}`;
+}
+
+// Half-hour granularity between two "HH:MM" times (end - start), rounded to
+// the nearest 0.5 hr, handling overnight wrap. Used for cocktail-hour
+// duration where partial hours are billed.
+export function halfHoursBetween(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) mins += 1440;
+  return Math.round(mins / 30) / 2;
+}
+
+// Half-hour-aware duration label: "30 mins", "1 hr", "1.5 hrs", "2 hrs".
+export function halfHourLabel(n: number): string {
+  if (n <= 0) return '';
+  if (n === 0.5) return '30 mins';
   return `${n} ${n === 1 ? 'hr' : 'hrs'}`;
 }
 
