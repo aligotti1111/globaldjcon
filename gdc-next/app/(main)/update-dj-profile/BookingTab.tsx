@@ -848,6 +848,11 @@ function PackageCardWithCatTabs({
           <div className={styles.catCheckRow}>
             {activeCats.map((c, i) => {
               const isComplete = validatePkg(drafts[c]).ok;
+              // The line after this step leads to the NEXT category. It's
+              // solid green only when that next check is complete; otherwise
+              // it's dashed/jagged.
+              const next = activeCats[i + 1];
+              const nextComplete = next ? validatePkg(drafts[next]).ok : false;
               return (
                 <div key={c} className={styles.catCheckStep}>
                   <span
@@ -858,7 +863,7 @@ function PackageCardWithCatTabs({
                   </span>
                   {i < activeCats.length - 1 && (
                     <span
-                      className={`${styles.catStepLine} ${isComplete ? styles.catStepLineDone : ''}`}
+                      className={`${styles.catStepLine} ${nextComplete ? styles.catStepLineDone : ''}`}
                       aria-hidden="true"
                     />
                   )}

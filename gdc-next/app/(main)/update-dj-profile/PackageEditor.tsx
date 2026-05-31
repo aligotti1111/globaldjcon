@@ -319,9 +319,12 @@ export default function PackageEditor({
           <div className={styles.photoPreviewRow}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={pkg.photo} alt="Package photo" className={styles.photoPreviewImg} />
-            <div className={styles.photoActions}>
-              <label className={styles.photoActionLabel}>
-                Replace Photo
+            <div className={styles.photoIconActions}>
+              <label className={styles.photoIconBtn} title="Replace photo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
                 <input
                   type="file"
                   accept="image/*"
@@ -329,8 +332,11 @@ export default function PackageEditor({
                   style={{ display: 'none' }}
                 />
               </label>
-              <button type="button" onClick={removePhoto} className={styles.photoActionRemove}>
-                Remove
+              <button type="button" onClick={removePhoto} className={`${styles.photoIconBtn} ${styles.photoIconBtnDelete}`} title="Delete photo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
           </div>

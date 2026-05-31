@@ -560,21 +560,21 @@
   border-color: var(--neon, #00f5c4);
   color: #050507;
 }
-/* Connecting line: runs between circles, meeting each circle's edge
-   (circle radius ~9px from center). */
+/* Connecting line: runs between circles, meeting each circle's edge.
+   Incomplete segments are dashed (jagged); completed segments solid green. */
 .catStepLine {
   position: absolute;
   top: 50%;
   left: calc(50% + 9px);
   width: calc(100% - 18px);
-  height: 2px;
-  background: var(--border);
+  height: 0;
+  border-top: 2px dashed rgba(255, 255, 255, .22);
   transform: translateY(-50%);
   z-index: 0;
-  transition: background .2s;
+  transition: border-color .2s;
 }
 .catStepLineDone {
-  background: var(--neon, #00f5c4);
+  border-top: 2px solid var(--neon, #00f5c4);
 }
 /* ── General coverage arrow (inside the General tab) + dropdown ──────── */
 .generalCoverageArrow {
@@ -913,6 +913,31 @@
   font-size: .58rem;
   letter-spacing: .06em;
   text-transform: uppercase;
+  color: #ff5f5f;
+}
+.photoIconActions {
+  display: flex;
+  gap: .5rem;
+}
+.photoIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--neon-dim);
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  transition: all .15s;
+}
+.photoIconBtn:hover {
+  filter: brightness(1.15);
+}
+.photoIconBtnDelete {
+  background: transparent;
+  border: 1px solid rgba(255, 95, 95, .4);
   color: #ff5f5f;
 }
 .uploadStatus {
