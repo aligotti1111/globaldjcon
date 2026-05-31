@@ -1,176 +1,127 @@
-// /booking-requests — page where users see incoming + outgoing booking requests.
-// Faithful port of vanilla booking-requests.html + br-core.js + br-load-render.js.
+// /upcoming-bookings — DJ-only page showing all future approved bookings
+// (real + DJ-added manual entries), grouped by month.
 //
-// SCOPE FOR THIS SESSION (mobile DJ flow only):
-//   - Incoming: pending / approved / denied / all  — shown to DJs (mobile)
-//   - Outgoing: pending / counter / approved / denied / all  — shown to all roles
-//   - Full mobile booking card render with date/time, event info, contact,
-//     message, package & price, action buttons
-//   - Distance display from stored venue_lat/venue_lon (no need to geocode!)
-//   - Outside-travel-range warning to DJ when booking exceeds their travel limit
-//   - Approve/Deny + bookings_available decrement
-//   - Cancel (outgoing)
-//   - Block/Unblock buttons
-//   - Same-day grouping for incoming pending
+// Auth/redirect rules:
+//   - Not logged in → /login
+//   - Logged in but role is not 'dj' → /booking-requests
 //
-// DEFERRED TO LATER SESSIONS:
-//   - Counter-offer modal (vanilla br-shared-actions.js openCounter — UI rich)
-//   - Quote response modal (vanilla openMobQuoteModal)
-//   - Message modal (depends on inbox/messaging system)
-//   - Club DJ flow (br-club-flow.js — totally different render path)
-//   - Email notifications (deferred globally; vanilla mob_booking_status etc
-//     don't exist either, fail silently)
-//   - Package edit modal for counters (pkgEditOriginalItems machinery)
+// Data shape sent to the client:
+//   - bookings: future-dated rows where dj_id matches the logged-in user
+//     AND (status = 'approved' OR is_manual = true).
+//   - djType: 'mobile' or 'club' (from users.dj_type).
+//   - bookingsPerDay: mob_bookings_per_day from users.booking_settings JSON
+//     (defaults to 1 if unset). Used only for mobile DJs.
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { resolveUserEmail } from '@/lib/supabase/admin';
-import BookingRequestsClient from './BookingRequestsClient';
+import UpcomingBookingsClient from './UpcomingBookingsClient';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
-interface BookingRow {
+export const metadata: Metadata = {
+  title: 'Upcoming Bookings — Global DJ Connect',
+  description: 'View and manage your upcoming bookings.',
+};
+
+export interface UpcomingBooking {
   id: string;
-  dj_id: string;
-  requester_id: string;
-  dj_slug: string | null;
-  booking_type: string | null;
   event_date: string | null;
-  event_type: string | null;
+  start_time: string | null;
+  end_time: string | null;
   venue_name: string | null;
   venue_address: string | null;
   venue_lat: number | null;
   venue_lon: number | null;
+  venue_type: string | null;
+  set_type: string | null;
+  equipment: string | null;
   room_details: string | null;
   guest_count: number | null;
-  start_time: string | null;
-  end_time: string | null;
-  phone: string | null;
-  cocktail_needed: boolean | null;
-  cocktail_start_time: string | null;
-  cocktail_same_room: boolean | null;
-  package_title: string | null;
-  package_category: string | null;
-  package_index: number | null;
-  package_details: string | null;
-  quoted_rate: number | null;
-  counter_rate: number | null;
-  overtime_rate: number | null;
-  // ── Club-DJ specific fields ─────────────────────────────────────
-  // Vanilla writes these on club bookings only; null for mobile.
-  venue_type: string | null;          // 'bar' | 'club'
-  set_type: string | null;            // 'opening' | 'headliner' | 'closing' | 'opening_close' | 'opening_and_closing'
-  equipment: string | null;           // 'sound_system' | 'decks_only' | 'venue_provides'
-  venue_equip_detail: string | null;  // free text when equipment = 'venue_provides'
-  offer_amount: number | null;        // when DJ accepts offers
-  country: string | null;
-  currency: string | null;
-  // Optional message attached to a counter offer or quote response
-  counter_message: string | null;
-  // Negotiation log: append-only array of { from, amount, message, created_at }
-  // Stored as JSON. Populated when DJ or booker counters; vanilla schema is jsonb.
-  negotiation_log: Array<{
-    from: 'dj' | 'booker';
-    amount: number;
-    message: string;
-    created_at: string;
-  }> | null;
-  deposit_pct: number | null;
-  deposit_amount: number | null;
-  // Cocktail pricing — only for mobile DJ wedding bookings
-  cocktail_price: number | null;
-  cocktail_included: boolean | null;
-  is_quote: boolean | null;
-  // Set when the DJ explicitly sends a drafted quote to the booker.
-  // Null = rate may be drafted (quoted_rate set) but not yet visible to booker.
-  // Non-null = booker can see the price and respond. Club + quote-mode only;
-  // for mobile and non-quote bookings, quoted_rate alone signals "sent".
-  quote_sent_at: string | null;
-  notes: string | null;
-  status: string | null;
-  created_at: string;
-  updated_at: string | null;
-  // Backfilled denormalized name fields (vanilla also backfills these in JS;
-  // we do it server-side instead so the client renders synchronously.)
-  dj_name?: string | null;
+  event_type: string | null;
+  booking_type: string | null;
+  is_manual: boolean;
+  flyer_url?: string | null;
+  // Host invitation fields — only meaningful for manual bookings.
+  host_email?: string | null;
+  host_email_sent_at?: string | null;
   requester_name?: string | null;
-  // DJ contact info — only stitched onto APPROVED outgoing rows so the booker
-  // can reach the DJ to coordinate the gig. Never sent for pending/denied.
-  dj_phone?: string | null;
-  dj_email?: string | null;
+  requester_id?: string | null;
+  phone?: string | null;
+  package_title?: string | null;
+  package_details?: string | null;
+  package_category?: string | null;
+  package_index?: number | null;
+  cocktail_needed?: boolean | null;
+  cocktail_start_time?: string | null;
+  cocktail_same_room?: boolean | null;
+  cocktail_price?: number | null;
+  cocktail_included?: boolean | null;
+  setup_hours?: string | null;
+  quoted_rate?: number | null;
+  counter_rate?: number | null;
+  overtime_rate?: number | null;
+  offer_amount?: number | null;
+  deposit_pct?: number | null;
+  deposit_amount?: number | null;
+  currency?: string | null;
+  notes?: string | null;
+  status?: string | null;
+  created_at?: string;
 }
 
-export default async function BookingRequestsPage() {
+interface ProfileRow {
+  role: string | null;
+  dj_type: string | null;
+  country: string | null;
+  name: string | null;
+  booking_settings: {
+    mob_bookings_per_day?: number;
+    mob_packages?: Record<string, Array<{ overtime?: number | string | null }>>;
+  } | null;
+}
+
+export default async function UpcomingBookingsPage() {
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) redirect('/login?redirect=/booking-requests');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-  // Fetch the current user's profile — we need role + dj_type + zip + travel +
-  // blocked_users for filtering and distance / warning logic. Also pull
-  // booking_settings so we can extract depositPct for the Quote modal.
-  const { data: me } = await supabase
+  const { data: profile } = await supabase
     .from('users')
-    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings')
-    .eq('id', authUser.id)
-    .single<{
-      id: string;
-      name: string | null;
-      role: string;
-      dj_type: 'mobile' | 'club' | null;
-      zip: string | null;
-      city: string | null;
-      state: string | null;
-      travel_distance: string | null;
-      blocked_users: string[] | null;
-      booking_settings: string | null;
-    }>();
+    .select('role, dj_type, country, name, booking_settings')
+    .eq('id', user.id)
+    .maybeSingle<ProfileRow>();
 
-  if (!me) redirect('/login?redirect=/booking-requests');
+  if (profile?.role !== 'dj') redirect('/booking-requests');
 
-  const blockedUsers = me.blocked_users || [];
+  const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
+  const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
+  const djCountry = profile?.country || 'United States';
+  const djName = profile?.name || 'Your DJ';
 
-  // Outgoing: requests this user made (as requester). All roles see this.
-  const { data: outRows } = await supabase
+  // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
+  // a plain date so a string compare works).
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Fetch future approved-or-manual bookings for this DJ.
+  const { data: rows } = await supabase
     .from('bookings')
-    .select('*')
-    .eq('requester_id', authUser.id)
-    .order('created_at', { ascending: false });
-  let outgoing: BookingRow[] = (outRows as BookingRow[] | null) || [];
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, deposit_pct, deposit_amount, currency, notes, status, created_at')
+    .eq('dj_id', user.id)
+    .gte('event_date', today)
+    .or('status.eq.approved,is_manual.eq.true')
+    .order('event_date', { ascending: true })
+    .order('start_time', { ascending: true })
+    .limit(200);
 
-  // Incoming: requests sent TO this user. DJs only.
-  // For mobile DJs, they're the bookings their public profile generated.
-  // For club DJs, vanilla also includes incoming — but we're deferring the
-  // club render; their bookings still load and outgoing still works.
-  let incoming: BookingRow[] = [];
-  if (me.role === 'dj') {
-    const { data: inRows } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('dj_id', authUser.id)
-      .order('created_at', { ascending: false });
-    incoming = ((inRows as BookingRow[] | null) || []).filter(
-      (b) => !blockedUsers.includes(b.requester_id)
-    );
-  }
-
-  // Backfill denormalized names server-side. Vanilla does this in JS after
-  // load; doing it here means the client component renders cleanly without
-  // a second fetch flicker.
-  const missingDjIds = [
-    ...new Set(outgoing.filter((b) => !b.dj_name && b.dj_id).map((b) => b.dj_id)),
-  ];
-  if (missingDjIds.length > 0) {
-    const { data: djRows } = await supabase
-      .from('users')
-      .select('id, name')
-      .in('id', missingDjIds);
-    const djMap = Object.fromEntries(((djRows as { id: string; name: string | null }[] | null) || []).map((d) => [d.id, d.name]));
-    outgoing = outgoing.map((b) => (b.dj_name ? b : { ...b, dj_name: djMap[b.dj_id] || 'DJ' }));
-  }
-
+  // Backfill the booker (host) name from requester_id when not already
+  // denormalized on the row, so the "Booked By" field shows a name.
+  let bookingRows = (rows || []) as UpcomingBooking[];
   const missingRequesterIds = [
     ...new Set(
-      incoming.filter((b) => !b.requester_name && b.requester_id).map((b) => b.requester_id)
+      bookingRows
+        .filter((b) => !b.requester_name && b.requester_id)
+        .map((b) => b.requester_id as string)
     ),
   ];
   if (missingRequesterIds.length > 0) {
@@ -178,75 +129,41 @@ export default async function BookingRequestsPage() {
       .from('users')
       .select('id, name')
       .in('id', missingRequesterIds);
-    const rMap = Object.fromEntries(((rRows as { id: string; name: string | null }[] | null) || []).map((r) => [r.id, r.name]));
-    incoming = incoming.map((b) =>
-      b.requester_name ? b : { ...b, requester_name: rMap[b.requester_id] || 'Unknown' }
+    const rMap = Object.fromEntries(
+      (((rRows as { id: string; name: string | null }[] | null) || []).map((r) => [r.id, r.name]))
+    );
+    bookingRows = bookingRows.map((b) =>
+      b.requester_name ? b : { ...b, requester_name: rMap[b.requester_id as string] || null }
     );
   }
 
-  // For approved outgoing bookings, fetch the DJ's phone + email so the
-  // booker can contact them to coordinate the gig. Email lives in
-  // auth.users (admin lookup); phone is on public.users.
-  // Only approved → no leakage of contact info on pending/denied requests.
-  const approvedDjIds = [
-    ...new Set(
-      outgoing.filter((b) => b.status === 'approved' && b.dj_id).map((b) => b.dj_id)
-    ),
-  ];
-  if (approvedDjIds.length > 0) {
-    const { data: phoneRows } = await supabase
-      .from('users')
-      .select('id, phone')
-      .in('id', approvedDjIds);
-    const phoneMap = Object.fromEntries(
-      ((phoneRows as { id: string; phone: string | null }[] | null) || []).map((r) => [r.id, r.phone])
-    );
-    // Email lookups go through the admin client one at a time. Parallel
-    // resolves so a slow auth call doesn't serialize the others.
-    const emailEntries = await Promise.all(
-      approvedDjIds.map(async (id) => [id, await resolveUserEmail(id)] as const)
-    );
-    const emailMap = Object.fromEntries(emailEntries);
-    outgoing = outgoing.map((b) =>
-      b.status === 'approved' && approvedDjIds.includes(b.dj_id)
-        ? { ...b, dj_phone: phoneMap[b.dj_id] || null, dj_email: emailMap[b.dj_id] || null }
-        : b
-    );
-  }
-
-  // Extract DJ's depositPct from booking_settings — used by the Quote
-  // modal to show a live deposit preview as the DJ types.
-  let depositPct = 0;
-  if (me.booking_settings) {
-    try {
-      const bs = typeof me.booking_settings === 'string'
-        ? JSON.parse(me.booking_settings)
-        : me.booking_settings;
-      depositPct = Number(bs?.depositPct) || 0;
-    } catch {
-      // non-fatal — default to 0
-    }
+  // Resolve each priced booking's overtime rate from the DJ's package
+  // definition when it wasn't snapshotted onto the row (older bookings).
+  // A value stored on the row always wins; otherwise fall back to the live
+  // package (category-specific, then the general package at the same index).
+  const mobPackages = profile?.booking_settings?.mob_packages;
+  if (mobPackages) {
+    bookingRows = bookingRows.map((b) => {
+      if (b.overtime_rate != null || b.package_index == null) return b;
+      const cat = b.package_category || '';
+      const idx = b.package_index;
+      const ot =
+        mobPackages[cat]?.[idx]?.overtime ??
+        mobPackages['general']?.[idx]?.overtime ??
+        null;
+      const otNum = ot != null ? Number(ot) : NaN;
+      return otNum > 0 ? { ...b, overtime_rate: otNum } : b;
+    });
   }
 
   return (
-    <BookingRequestsClient
-      currentUser={{
-        id: me.id,
-        name: me.name || '',
-        email: authUser.email || null,
-        role: me.role,
-        djType: me.dj_type,
-        zip: me.zip,
-        city: me.city,
-        state: me.state,
-        travelDistance: me.travel_distance,
-        depositPct,
-      }}
-      initialIncoming={incoming}
-      initialOutgoing={outgoing}
-      initialBlocked={blockedUsers}
+    <UpcomingBookingsClient
+      userId={user.id}
+      djType={djType}
+      djCountry={djCountry}
+      djName={djName}
+      bookingsPerDay={bookingsPerDay}
+      initialBookings={bookingRows}
     />
   );
 }
-
-export type { BookingRow };

@@ -263,6 +263,14 @@ export default function MobileBookingCard(props: Props) {
             <div className={styles.infoValueBold}>{b.guest_count}</div>
           </div>
         )}
+        {b.setup_hours && (
+          <div className={styles.infoBlock}>
+            <div className={styles.tinyLabel}>Setup Time Required</div>
+            <div className={styles.infoValue}>
+              {b.setup_hours} hr{b.setup_hours === '1' ? '' : 's'} before start
+            </div>
+          </div>
+        )}
       </SectionFrame>
     </div>
   );

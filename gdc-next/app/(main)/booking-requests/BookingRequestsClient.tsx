@@ -300,6 +300,7 @@ export default function BookingRequestsClient({
             cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
             cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
             cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
+            setupHours: (b as BookingRow & { setup_hours?: string | null }).setup_hours ?? null,
           };
           try {
             await fetch('/api/send-email', {
@@ -560,6 +561,7 @@ export default function BookingRequestsClient({
           cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
           cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
           cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
+          setupHours: (b as BookingRow & { setup_hours?: string | null }).setup_hours ?? null,
         };
         // To DJ
         try {
