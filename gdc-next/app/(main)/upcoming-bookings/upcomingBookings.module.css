@@ -135,6 +135,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Pipe separator between time and event type — desktop only. */
+.rowContextSep {
+  color: var(--muted);
+  margin-right: .5rem;
+}
+.overlapPill {
+  margin-left: .6rem;
+  color: var(--amber, #ffb347);
+  font-size: .8rem;
+}
 .manualPill {
   font-family: 'Space Mono', monospace;
   font-size: .55rem;
@@ -636,6 +646,9 @@ select.input {
   letter-spacing: .03em;
   color: var(--white);
 }
+.cocktailHighlight {
+  color: var(--neon);
+}
 .detailLongValue {
   margin-top: .35rem;
   font-size: .9rem;
@@ -743,6 +756,9 @@ select.input {
     line-height: 1.3;
     text-align: left;
   }
+  /* Mobile: no overlap warning, no pipe separator. */
+  .overlapPill { display: none; }
+  .rowContextSep { display: none; }
   .rowChevronBtn {
     grid-area: chev;
     justify-self: end;
