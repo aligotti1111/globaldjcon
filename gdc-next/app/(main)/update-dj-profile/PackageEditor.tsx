@@ -232,18 +232,6 @@ export default function PackageEditor({
           );
         })}
 
-        {/* Req-all toggle */}
-        <label className={styles.reqAllRow}>
-          <input
-            type="checkbox"
-            checked={reqAll}
-            onChange={(e) => updateField('reqAll', e.target.checked)}
-          />
-          <span className={styles.reqAllLabel}>
-            Require event host to request price
-          </span>
-        </label>
-
         {/* Overtime */}
         <div className={styles.priceRow}>
           <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
@@ -263,6 +251,18 @@ export default function PackageEditor({
             Per Hour
           </span>
         </div>
+
+        {/* Req-all toggle */}
+        <label className={styles.reqAllRow}>
+          <input
+            type="checkbox"
+            checked={reqAll}
+            onChange={(e) => updateField('reqAll', e.target.checked)}
+          />
+          <span className={styles.reqAllLabel}>
+            Require event host to request price
+          </span>
+        </label>
       </div>
 
       {/* Cocktail block (wedding only, hidden when reqAll) */}

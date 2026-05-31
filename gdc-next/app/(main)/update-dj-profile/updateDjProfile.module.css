@@ -598,6 +598,14 @@
 .rteEditor:focus {
   border-color: var(--neon);
 }
+.rteEditor :global(ul),
+.rteEditor :global(ol) {
+  padding-left: 1.5rem;
+  margin: 0 0 .5rem;
+}
+.rteEditor :global(li) {
+  margin-bottom: .25rem;
+}
 .rteEditor :global(ul.gdj-check-list) {
   list-style: none;
   padding-left: .25rem;
@@ -627,7 +635,7 @@
 .priceRowLabel {
   font-family: 'Space Mono', monospace;
   font-size: .6rem;
-  color: var(--muted);
+  color: var(--neon, #00f5c4);
   white-space: nowrap;
   min-width: 80px;
 }
