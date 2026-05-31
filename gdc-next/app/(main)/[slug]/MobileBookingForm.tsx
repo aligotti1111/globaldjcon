@@ -208,11 +208,8 @@ export default function MobileBookingForm({
   // Live price calculation when we have a package + times
   const selectedPkg =
     selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
-  // General/Mitzvah packages can opt out of offering a cocktail-hour price.
-  // When the selected package opts out, hide the cocktail option entirely.
-  const cocktailSuppressed = !!(selectedPkg as { cocktailNotOffered?: boolean } | null)?.cocktailNotOffered;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
-  const wantsCocktail = cocktailEligible && !cocktailSuppressed && cocktailNeeded === true;
+  const wantsCocktail = isWedding && cocktailNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
     return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
@@ -343,7 +340,7 @@ export default function MobileBookingForm({
         start_time: startTime,
         end_time: endTime || null,
         phone: phone.trim(),
-        cocktail_needed: wantsCocktail ? true : (cocktailEligible && !cocktailSuppressed ? !!cocktailNeeded : null),
+        cocktail_needed: wantsCocktail ? true : (isWedding ? !!cocktailNeeded : null),
         cocktail_start_time: wantsCocktail ? cocktailStart : null,
         cocktail_same_room: wantsCocktail ? !!cocktailSameRoom : null,
         // Cocktail add-on snapshot: the separately-charged cocktail price
@@ -807,23 +804,9 @@ export default function MobileBookingForm({
           </div>
         )}
 
-        {/* Non-wedding: "Add Cocktail Hour" link under the times. Shown only
-            until the booker opts in; clicking it expands the cocktail section
-            with "music needed" defaulted to Yes. Weddings show the section
-            directly (cocktail hour is a standard wedding question). */}
-        {cocktailEligible && !isWedding && !cocktailSuppressed && !showCocktailAddon && (
-          <button
-            type="button"
-            className={styles.addCocktailLink}
-            onClick={() => { setShowCocktailAddon(true); setCocktailNeeded(true); }}
-          >
-            + Add Cocktail Hour
-          </button>
-        )}
-
-        {/* Cocktail-hour subsection — weddings always; other events once the
-            "Add Cocktail Hour" link is clicked. */}
-        {cocktailEligible && (isWedding || (showCocktailAddon && !cocktailSuppressed)) && (
+        {/* Cocktail-hour subsection — WEDDINGS ONLY. General/Mitzvah and other
+            mobile events no longer offer a cocktail-hour add-on. */}
+        {cocktailEligible && isWedding && (
           <div className={styles.weddingFields}>
             <div className={styles.cocktailHeaderRow}>
               <div className={styles.weddingHeader}>Cocktail Hour</div>
