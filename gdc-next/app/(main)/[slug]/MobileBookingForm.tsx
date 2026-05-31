@@ -323,6 +323,13 @@ export default function MobileBookingForm({
         cocktail_needed: isWedding ? !!cocktailNeeded : null,
         cocktail_start_time: isWedding && cocktailNeeded ? cocktailStart : null,
         cocktail_same_room: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
+        // Cocktail add-on snapshot: the separately-charged cocktail price
+        // (0 when bundled/included) and the package's included flag. Lets the
+        // booking card show "base + cocktail = total" without recomputing.
+        cocktail_price: wantsCocktail && finalPrice.cocktailAddon > 0 ? finalPrice.cocktailAddon : null,
+        cocktail_included: isWedding && cocktailNeeded
+          ? (selectedPkg?.cocktailIncluded !== false)
+          : null,
         package_title: selectedPkg?.title || null,
         // HTML package details — snapshotted onto the booking so the DJ's
         // quote modal and emails can show what the booker actually selected.
@@ -908,7 +915,7 @@ export default function MobileBookingForm({
               <div className={styles.depositText}>No deposit required</div>
             )}
             {priceResult.cocktailAddon > 0 && (
-              <div className={styles.overtimeNote}>
+              <div className={styles.cocktailNote}>
                 Includes cocktail hour: +${priceResult.cocktailAddon.toLocaleString()}
               </div>
             )}

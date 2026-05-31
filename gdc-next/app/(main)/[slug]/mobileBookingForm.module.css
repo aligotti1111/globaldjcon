@@ -527,6 +527,11 @@
   color: var(--amber);
   margin-top: .35rem;
 }
+.cocktailNote {
+  font-size: .72rem;
+  color: var(--neon, #00f5c4);
+  margin-top: .35rem;
+}
 
 /* ── Submit button ──────────────────────────────────── */
 .submitBtn {
