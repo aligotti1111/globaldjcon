@@ -44,6 +44,19 @@ export default function MobileBookingCard(props: Props) {
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
   const eventLabel = MOB_EVENT_LABELS[b.event_type || ''] || b.event_type || '—';
   const durationLabel = calcDurationLabel(b);
+  // Cocktail-hour duration (half-hour granularity) from cocktail start to
+  // event start, for display on the card.
+  const cocktailDurationLabel = (() => {
+    if (!b.cocktail_start_time || !b.start_time) return '';
+    const [csh, csm] = b.cocktail_start_time.split(':').map(Number);
+    const [esh, esm] = b.start_time.split(':').map(Number);
+    let mins = (esh * 60 + esm) - (csh * 60 + csm);
+    if (mins <= 0) mins += 1440;
+    const hrs = Math.round(mins / 30) / 2;
+    if (hrs <= 0) return '';
+    if (hrs === 0.5) return '30 mins';
+    return `${hrs} ${hrs === 1 ? 'hr' : 'hrs'}`;
+  })();
   const cleanedAddr = cleanAddress(b.venue_address);
 
   // ── Distance + outside-range warning ─────────────────────────────
@@ -175,6 +188,7 @@ export default function MobileBookingCard(props: Props) {
             <div className={styles.tinyLabel}>Cocktail Hour</div>
             <div className={styles.cocktailLine}>
               {b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}
+              {cocktailDurationLabel ? ` · ${cocktailDurationLabel}` : ''}
               {b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
             </div>
           </div>
