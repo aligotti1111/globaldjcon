@@ -281,24 +281,25 @@ function mobileBookingRequestBox(opts: {
     if (range !== '—') rows.push(row('Time', escHtml(range)));
   }
 
-  // Cocktail-hour rows — weddings only. The Yes/No row always shows for a
-  // wedding so the DJ/booker see the answer either way; the start time and
-  // room rows only appear when the booker requested cocktail-hour music.
+  // Cocktail-hour rows. Weddings always show the Yes/No (it's a standard
+  // wedding question); other events show cocktail rows only when the booker
+  // added cocktail hour. Start time + room rows appear whenever cocktail-hour
+  // music was requested, for any event type.
   if (opts.isWedding) {
     rows.push(row(
       'Music for Cocktail Hour',
       opts.cocktailNeeded ? 'Yes' : 'No',
     ));
-    if (opts.cocktailNeeded) {
-      const ckStart = fmtTime(opts.cocktailStart);
-      if (ckStart) rows.push(row('Cocktail Hour Start', escHtml(ckStart)));
-      rows.push(row(
-        'Cocktail Hour Room',
-        opts.cocktailSameRoom
-          ? 'Same room as reception'
-          : 'Separate room from reception',
-      ));
-    }
+  }
+  if (opts.cocktailNeeded) {
+    const ckStart = fmtTime(opts.cocktailStart);
+    if (ckStart) rows.push(row('Cocktail Hour Start', escHtml(ckStart)));
+    rows.push(row(
+      'Cocktail Hour Room',
+      opts.cocktailSameRoom
+        ? `Same room as ${opts.isWedding ? 'reception' : 'event'}`
+        : `Separate room from ${opts.isWedding ? 'reception' : 'event'}`,
+    ));
   }
 
   if (opts.venueName) rows.push(row('Venue', escHtml(opts.venueName)));
