@@ -1339,7 +1339,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin:4px 0 8px;">Price Agreed – Booking Confirmed</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
         ${bookingInfoBox({
-          eventTypeText: eventType,
+          eventTypeText: eventType ? eventTypeLabel(eventType) : undefined,
           setTypeText: setTypeLabel(setType),
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
