@@ -52,6 +52,47 @@
 .addBtn:hover { background: #00d4a9; }
 .addBtn:active { transform: scale(0.97); }
 
+/* ── Sort bar ───────────────────────────────────────────────────────── */
+.sortBar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 1.5rem;
+}
+.sortLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: .15rem;
+}
+.sortBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .4rem .75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sortBtn:hover {
+  color: var(--white);
+  border-color: var(--muted);
+}
+.sortBtnActive {
+  background: var(--neon, #00f5c4);
+  border-color: var(--neon, #00f5c4);
+  color: #050507;
+}
+.sortBtnActive:hover {
+  color: #050507;
+}
+
 /* ── Empty state ────────────────────────────────────────────────────── */
 .empty {
   padding: 4rem 1.5rem;
@@ -128,6 +169,19 @@
   color: var(--white);
   white-space: nowrap;
 }
+.rowTimeWrap {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.rowCocktailNote {
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  white-space: nowrap;
+}
 .rowContext {
   font-size: .9rem;
   color: var(--white);
@@ -145,7 +199,7 @@
    reads as a distinct heading on the row. */
 .rowEventType {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.15rem;
+  font-size: 1rem;
   letter-spacing: .02em;
   color: var(--white);
 }
