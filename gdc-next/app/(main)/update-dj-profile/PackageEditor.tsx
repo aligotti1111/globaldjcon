@@ -261,9 +261,8 @@ export default function PackageEditor({
           </span>
         </div>
 
-        {/* Cocktail block — hidden when reqAll. Wedding keeps the
-            "included in reception price?" toggle. General/Mitzvah show the
-            per-hour price by default plus a "do not offer" opt-out. */}
+        {/* Cocktail block — WEDDING ONLY. Hidden when reqAll. General and
+            Mitzvah packages do not offer a cocktail-hour option. */}
         {!reqAll && isWedding && (
           <div className={styles.cocktailBlock}>
             <div className={styles.cocktailBanner}>Cocktail Hour</div>
@@ -292,43 +291,6 @@ export default function PackageEditor({
                 />
               </div>
             )}
-          </div>
-        )}
-
-        {!reqAll && !isWedding && (
-          <div className={styles.cocktailBlock}>
-            <div className={styles.cocktailBanner}>Cocktail Hour</div>
-            {!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered && (
-              <div className={styles.cocktailPriceWrap}>
-                <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
-                <span className={styles.priceCurrency}>$</span>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
-                  onChange={(e) => updateExtra('cocktailPrice', e.target.value)}
-                  className={styles.priceInput}
-                />
-              </div>
-            )}
-            <label className={styles.cocktailRow}>
-              <input
-                type="checkbox"
-                className={styles.cocktailCheckbox}
-                checked={!!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered}
-                onChange={(e) => {
-                  const off = e.target.checked;
-                  // Set both fields in ONE update — two sequential updateExtra
-                  // calls would both spread from the same stale `pkg`, so the
-                  // second would clobber the first.
-                  onChange({ ...pkg, cocktailNotOffered: off, cocktailIncluded: false } as MobilePackage);
-                }}
-              />
-              <span className={styles.cocktailPrompt}>
-                Do not offer separate price for cocktail hour
-              </span>
-            </label>
           </div>
         )}
 
