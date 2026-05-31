@@ -545,14 +545,14 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1px solid var(--muted);
-  color: transparent;
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: rgba(255, 255, 255, .25);
   font-size: .65rem;
   font-weight: 900;
   flex-shrink: 0;
   position: relative;
   z-index: 1;
-  background: var(--card, #0a0a10);
+  background: rgba(255, 255, 255, .06);
   transition: all .2s;
 }
 .catCheckDone {
@@ -810,21 +810,24 @@
 /* Setup hours row */
 .setupRow {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: .75rem;
+  gap: .5rem;
   margin-bottom: .75rem;
-  flex-wrap: wrap;
+  text-align: center;
 }
 .setupSelect {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 5px;
-  padding: .4rem .6rem;
+  padding: .4rem 1.2rem;
   color: var(--white);
   font-family: 'Space Mono', monospace;
   font-size: .7rem;
   cursor: pointer;
   outline: none;
+  text-align: center;
+  min-width: 120px;
 }
 
 /* Photo upload box */
