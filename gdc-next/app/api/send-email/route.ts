@@ -258,6 +258,7 @@ function mobileBookingRequestBox(opts: {
   cocktailNeeded?: boolean | null;
   cocktailStart?: string | null;
   cocktailSameRoom?: boolean | null;
+  setupHours?: string | null;
 }): string {
   const rows: string[] = [];
   const row = (label: string, value: string) =>
@@ -299,6 +300,13 @@ function mobileBookingRequestBox(opts: {
       opts.cocktailSameRoom
         ? `Same room as ${opts.isWedding ? 'reception' : 'event'}`
         : `Separate room from ${opts.isWedding ? 'reception' : 'event'}`,
+    ));
+  }
+
+  if (opts.setupHours) {
+    rows.push(row(
+      'Setup Time Required',
+      `${escHtml(String(opts.setupHours))} hr${opts.setupHours === '1' ? '' : 's'} before start`,
     ));
   }
 
@@ -539,6 +547,7 @@ export async function POST(req: Request) {
     const cocktailNeeded = body.cocktailNeeded === true;
     const cocktailStart = body.cocktailStart as string | undefined;
     const cocktailSameRoom = body.cocktailSameRoom === true;
+    const setupHours = (body.setupHours as string | null | undefined) ?? null;
     // Club-specific fields (kept for backward compat with that flow).
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
@@ -632,6 +641,7 @@ export async function POST(req: Request) {
       cocktailNeeded,
       cocktailStart,
       cocktailSameRoom,
+      setupHours,
     });
 
     const djBody = isMobileBooking
@@ -713,6 +723,7 @@ export async function POST(req: Request) {
     const cocktailNeeded = body.cocktailNeeded === true;
     const cocktailStart = body.cocktailStart as string | undefined;
     const cocktailSameRoom = body.cocktailSameRoom === true;
+    const setupHours = (body.setupHours as string | null | undefined) ?? null;
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
     const equipment = body.equipment as string | undefined;
@@ -759,6 +770,7 @@ export async function POST(req: Request) {
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
+          setupHours,
         })
       : bookingInfoBox({
           eventTypeText: eventTypeLabel(eventType),
