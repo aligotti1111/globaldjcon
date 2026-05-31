@@ -227,12 +227,13 @@ export default function MobileBookingForm({
       (errorFieldId === 'mpf-venue-name' && venueName.trim()) ||
       (errorFieldId === 'mpf-venue-address' && venueAddress.trim()) ||
       (errorFieldId === 'mpf-start-time' && startTime) ||
-      (errorFieldId === 'mpf-cocktail-start' && !cocktailWarn);
+      (errorFieldId === 'mpf-cocktail-start' && !!cocktailStart && !cocktailWarn) ||
+      (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null);
     if (fixed) {
       setErrorFieldId(null);
       setErrorMsg(null);
     }
-  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailWarn]);
+  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn]);
 
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -282,6 +283,12 @@ export default function MobileBookingForm({
     if (!venueName.trim() && fail('Please enter the venue name.', 'mpf-venue-name')) return;
     if (!venueAddress.trim() && fail('Please enter the venue address.', 'mpf-venue-address')) return;
     if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
+    // When cocktail-hour music is needed, both the start time and the
+    // same-room choice are required (weddings only).
+    if (isWedding && cocktailNeeded === true) {
+      if (!cocktailStart && fail('Please select a cocktail hour start time.', 'mpf-cocktail-start')) return;
+      if (cocktailSameRoom == null && fail('Please choose whether the cocktail hour is in the same room as the reception.', 'mpf-cocktail-room')) return;
+    }
     if (cocktailWarn && fail('Cocktail hour start time must be before the reception start time.', 'mpf-cocktail-start')) return;
     // Package validation only applies when the DJ has packages defined.
     // No-packages mode → fall through and submit as a quote-style request.
@@ -833,7 +840,7 @@ export default function MobileBookingForm({
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: '.85rem', color: 'var(--white)', marginBottom: '.5rem' }}>
+                <div id="mpf-cocktail-room" style={{ fontSize: '.85rem', color: errorFieldId === 'mpf-cocktail-room' ? 'var(--danger, #ff5f5f)' : 'var(--white)', marginBottom: '.5rem', scrollMarginTop: '90px' }}>
                   Is the cocktail hour in the same room as the reception?
                 </div>
                 <div className={styles.radioGroup}>
