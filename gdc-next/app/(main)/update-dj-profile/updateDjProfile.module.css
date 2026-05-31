@@ -499,7 +499,7 @@
   cursor: pointer;
   white-space: nowrap;
   background: transparent;
-  color: var(--muted);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
