@@ -625,6 +625,12 @@ function SingleMonthView({
         ? dayData.bookings_available
         : defaultBookingsPerDay;
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
+    // A day that's hit its booking capacity is BOOKED for display purposes
+    // (red), not "unavailable" (gray). Unavailable is reserved for days the
+    // owner explicitly blocked off. A full day can only be reopened by raising
+    // the accepted-bookings count for that day (the edit pencil), never by the
+    // quick available/unavailable toggle.
+    const showsAsBooked = isBooked || isFull;
     const isSelected = selectedDate === key;
     const isAvail = !isPast && !isBeyond && !isBooked && !isUnavail && !isFull;
     const isLastRow =
@@ -632,12 +638,13 @@ function SingleMonthView({
       Math.floor((firstDay + daysInMonth - 1) / 7);
     const isLastCol = (firstDay + d - 1) % 7 === 6;
 
-    // Background — selected wins, then booked, then unavail/full, then today, then avail
+    // Background — selected wins, then booked (incl. capacity-full), then
+    // unavailable, then today, then avail
     const cellClasses = [styles.cell];
     if (isLastRow && !isLastCol) cellClasses.push(styles.cellNoBottomBorder);
     if (isSelected) cellClasses.push(styles.cellSelected);
-    else if (isBooked) cellClasses.push(styles.cellBooked);
-    else if (isUnavail || isFull) cellClasses.push(styles.cellUnavail);
+    else if (showsAsBooked) cellClasses.push(styles.cellBooked);
+    else if (isUnavail) cellClasses.push(styles.cellUnavail);
     else if (isToday) cellClasses.push(styles.cellToday);
     else if (isAvail) cellClasses.push(styles.cellAvail);
 
@@ -646,8 +653,8 @@ function SingleMonthView({
     if (isSelected) numClasses.push(styles.cellNumSelected);
     else if (isPast) numClasses.push(styles.cellNumPast);
     else if (isBeyond) numClasses.push(styles.cellNumBeyond);
-    else if (isBooked) numClasses.push(styles.cellNumBooked);
-    else if (isUnavail || isFull) numClasses.push(styles.cellNumFull);
+    else if (showsAsBooked) numClasses.push(styles.cellNumBooked);
+    else if (isUnavail) numClasses.push(styles.cellNumFull);
     else if (isToday) numClasses.push(styles.cellNumToday);
 
     // Inner content
@@ -658,7 +665,7 @@ function SingleMonthView({
       // can edit/clear the booking. Quick-mark only shown when not booked.
       inner = (
         <div className={styles.ownerControls}>
-          {!isBooked && (
+          {!showsAsBooked && (
             <button
               type="button"
               onClick={(e) => {
