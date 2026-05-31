@@ -96,6 +96,9 @@ export default function UpcomingBookingsClient({
   userId, djType, djCountry, djName, bookingsPerDay, initialBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
+  // Sort mode for the list: 'date' (default — soonest event first, grouped by
+  // month) or 'recent' (most recently booked first, flat list).
+  const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
   const [showAddModal, setShowAddModal] = useState(false);
   // Site-uniform confirm dialog — replaces window.confirm() for delete.
   const { confirm, confirmDialog } = useConfirm();
@@ -168,6 +171,18 @@ export default function UpcomingBookingsClient({
     }
     // Sort ascending: soonest month first.
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [bookings]);
+
+  // Flat list sorted by most recently booked first (created_at desc). Used
+  // when the sort toggle is set to "Recently booked".
+  const recentList = useMemo(() => {
+    return [...bookings]
+      .filter((b) => b.event_date)
+      .sort((a, b) => {
+        const ca = a.created_at || '';
+        const cb = b.created_at || '';
+        return cb.localeCompare(ca);
+      });
   }, [bookings]);
 
   // IDs of bookings whose time range overlaps another booking on the SAME
@@ -281,6 +296,26 @@ export default function UpcomingBookingsClient({
         </button>
       </div>
 
+      {bookings.length > 0 && (
+        <div className={styles.sortBar}>
+          <span className={styles.sortLabel}>Sort:</span>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${sortMode === 'date' ? styles.sortBtnActive : ''}`}
+            onClick={() => setSortMode('date')}
+          >
+            By date
+          </button>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${sortMode === 'recent' ? styles.sortBtnActive : ''}`}
+            onClick={() => setSortMode('recent')}
+          >
+            Recently booked
+          </button>
+        </div>
+      )}
+
       {bookings.length === 0 ? (
         <div className={styles.empty}>
           <p>No upcoming bookings yet.</p>
@@ -288,6 +323,22 @@ export default function UpcomingBookingsClient({
             Approved booking requests show up here automatically. You can also add bookings
             manually using the button above.
           </p>
+        </div>
+      ) : sortMode === 'recent' ? (
+        <div className={styles.monthList}>
+          <div className={styles.monthItems}>
+            {recentList.map((b) => (
+              <BookingRow
+                key={b.id}
+                booking={b}
+                djType={djType}
+                userId={userId}
+                overlaps={overlapIds.has(b.id)}
+                onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
+                onEdit={b.is_manual ? () => setEditing(b) : undefined}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <div className={styles.monthList}>
@@ -622,7 +673,12 @@ function BookingRow({
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
         >
-          <div className={styles.rowTime}>{timeRange}</div>
+          <div className={styles.rowTimeWrap}>
+            {booking.cocktail_needed && (
+              <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
+            )}
+            <div className={styles.rowTime}>{timeRange}</div>
+          </div>
           {(context || overlaps) ? (
             <div className={styles.rowContext}>
               {context && <span className={styles.rowContextSep} aria-hidden="true">|</span>}
