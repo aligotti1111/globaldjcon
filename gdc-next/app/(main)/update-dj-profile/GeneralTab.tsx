@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirm } from '@/components/ConfirmModal';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import {
   MOBILE_EVENT_TYPES,
@@ -43,6 +44,7 @@ interface Props {
 
 export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId }: Props) {
   const slugDisplay = slug || 'your-url';
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── Avatar state ─────────────────────────────────────────────────
   // `pickedFile` is non-null while the AvatarCrop modal is open.
@@ -84,9 +86,14 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     setTimeout(() => setAvatarStatus('idle'), 3000);
   }
 
-  function onAvatarDelete(e: React.MouseEvent) {
+  async function onAvatarDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm('Remove profile photo?')) return;
+    const ok = await confirm({
+      title: 'Remove profile photo?',
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!ok) return;
     // Vanilla parity: clear the form field. The image stays in storage
     // but the users.avatar_url column will be set to null on next save.
     onChange('avatarUrl', '');
@@ -94,6 +101,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
 
   return (
     <div>
+      {confirmDialog}
       {/* Avatar — click to upload, opens AvatarCrop modal */}
       <div
         className={styles.avatarTop}
