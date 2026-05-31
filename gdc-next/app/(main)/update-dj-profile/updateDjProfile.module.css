@@ -794,6 +794,23 @@
   border: 1px solid rgba(0, 245, 196, .12);
   border-radius: 6px;
 }
+.cocktailBanner {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--neon, #00f5c4);
+  margin-bottom: .6rem;
+  padding-bottom: .3rem;
+  border-bottom: 1px solid rgba(0, 245, 196, .25);
+}
+.cocktailCheckbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--neon, #00f5c4);
+}
 .cocktailRow {
   display: flex;
   align-items: center;

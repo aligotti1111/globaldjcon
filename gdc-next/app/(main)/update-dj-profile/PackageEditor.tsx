@@ -266,9 +266,11 @@ export default function PackageEditor({
             per-hour price by default plus a "do not offer" opt-out. */}
         {!reqAll && isWedding && (
           <div className={styles.cocktailBlock}>
+            <div className={styles.cocktailBanner}>Cocktail Hour</div>
             <label className={styles.cocktailRow}>
               <input
                 type="checkbox"
+                className={styles.cocktailCheckbox}
                 checked={(pkg as { cocktailIncluded?: boolean }).cocktailIncluded !== false}
                 onChange={(e) => updateExtra('cocktailIncluded', e.target.checked)}
               />
@@ -295,6 +297,7 @@ export default function PackageEditor({
 
         {!reqAll && !isWedding && (
           <div className={styles.cocktailBlock}>
+            <div className={styles.cocktailBanner}>Cocktail Hour</div>
             {!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered && (
               <div className={styles.cocktailPriceWrap}>
                 <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
@@ -312,6 +315,7 @@ export default function PackageEditor({
             <label className={styles.cocktailRow}>
               <input
                 type="checkbox"
+                className={styles.cocktailCheckbox}
                 checked={!!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered}
                 onChange={(e) => {
                   const off = e.target.checked;
