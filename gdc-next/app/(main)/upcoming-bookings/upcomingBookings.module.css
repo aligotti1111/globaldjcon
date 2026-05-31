@@ -138,7 +138,8 @@
 /* Pipe separator between time and event type — desktop only. */
 .rowContextSep {
   color: var(--muted);
-  margin-right: .5rem;
+  margin-right: .55rem;
+  margin-left: .15rem;
 }
 .overlapPill {
   margin-left: .6rem;
