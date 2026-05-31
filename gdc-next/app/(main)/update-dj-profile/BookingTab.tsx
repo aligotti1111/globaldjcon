@@ -25,6 +25,8 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import {
   getActivePackageCategories,
+  MOBILE_EVENT_TYPES,
+  MOB_CAT_GENERAL_TYPES,
   type PkgCategory,
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
@@ -510,6 +512,7 @@ export default function BookingTab({
                   onAdd={addPackage}
                   masterSaveTrigger={masterSaveTrigger}
                   reportCardDirty={reportCardDirty}
+                  selectedEventTypes={selectedEventTypes}
                 />
               )}
               {/* The internal "Save All Packages" button was removed —
@@ -566,6 +569,7 @@ function PackageList({
   onAdd,
   masterSaveTrigger,
   reportCardDirty,
+  selectedEventTypes,
 }: {
   activeCats: PkgCategory[];
   packages: Record<string, MobilePackage[]>;
@@ -576,6 +580,7 @@ function PackageList({
   onAdd: () => void;
   masterSaveTrigger: number;
   reportCardDirty: (idx: number, dirty: boolean) => void;
+  selectedEventTypes: string[];
 }) {
   const cards: React.ReactNode[] = [];
   const count = Math.max(totalCount, 1);
@@ -592,6 +597,7 @@ function PackageList({
         onRemove={() => onRemove(idx)}
         masterSaveTrigger={masterSaveTrigger}
         reportDirty={(dirty) => reportCardDirty(idx, dirty)}
+        selectedEventTypes={selectedEventTypes}
       />
     );
   }
@@ -634,6 +640,7 @@ function PackageCardWithCatTabs({
   onRemove,
   masterSaveTrigger,
   reportDirty,
+  selectedEventTypes,
 }: {
   idx: number;
   activeCats: PkgCategory[];
@@ -644,6 +651,7 @@ function PackageCardWithCatTabs({
   onRemove: () => void;
   masterSaveTrigger: number;
   reportDirty: (dirty: boolean) => void;
+  selectedEventTypes: string[];
 }) {
   const catLabels: Record<PkgCategory, string> = {
     general: 'General',
@@ -653,6 +661,14 @@ function PackageCardWithCatTabs({
 
   const [selectedCat, setSelectedCat] = useState<PkgCategory>(activeCats[0]);
   const showInnerTabs = activeCats.length > 1;
+  // General-tab expand: shows which selected mobile party types this General
+  // package's pricing covers (everything except Wedding + Mitzvah).
+  const [showGeneralCoverage, setShowGeneralCoverage] = useState(false);
+  const generalCoverageLabels = useMemo(() => {
+    return MOBILE_EVENT_TYPES
+      .filter((t) => MOB_CAT_GENERAL_TYPES.includes(t.val) && selectedEventTypes.includes(t.val))
+      .map((t) => t.label);
+  }, [selectedEventTypes]);
 
   // Local draft state — one MobilePackage per active category. Initialized
   // from the saved values in `packages`. Edits go here, not back up to
@@ -825,22 +841,59 @@ function PackageCardWithCatTabs({
       </div>
 
       {showInnerTabs && (
-        <div className={styles.innerCatTabs}>
-          {activeCats.map((c) => {
+        <div className={styles.catStepper}>
+          {activeCats.map((c, i) => {
             const isActive = selectedCat === c;
             const hasError = !!catErrors[c];
+            const isComplete = validatePkg(drafts[c]).ok;
             return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setSelectedCat(c)}
-                className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
-              >
-                <span>{catLabels[c]}</span>
-                {hasError && <span className={styles.innerCatBadge}>!</span>}
-              </button>
+              <div key={c} className={styles.catStep}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCat(c)}
+                  className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
+                >
+                  <span
+                    className={`${styles.catCheck} ${isComplete ? styles.catCheckDone : ''}`}
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+                  <span>{catLabels[c]}</span>
+                  {hasError && <span className={styles.innerCatBadge}>!</span>}
+                </button>
+                {i < activeCats.length - 1 && (
+                  <span
+                    className={`${styles.catStepLine} ${isComplete ? styles.catStepLineDone : ''}`}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
             );
           })}
+        </div>
+      )}
+
+      {/* General tab: expandable list of which selected party types its
+          pricing covers. */}
+      {selectedCat === 'general' && generalCoverageLabels.length > 0 && (
+        <div className={styles.generalCoverage}>
+          <button
+            type="button"
+            className={styles.generalCoverageToggle}
+            onClick={() => setShowGeneralCoverage((v) => !v)}
+            aria-expanded={showGeneralCoverage}
+          >
+            <span className={`${styles.generalCoverageArrow} ${showGeneralCoverage ? styles.generalCoverageArrowOpen : ''}`}>▸</span>
+            Event types this package covers
+          </button>
+          {showGeneralCoverage && (
+            <div className={styles.generalCoverageList}>
+              {generalCoverageLabels.map((label) => (
+                <span key={label} className={styles.generalCoverageChip}>{label}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
