@@ -350,6 +350,10 @@ export default function MobileBookingForm({
         cocktail_included: cocktailEligible && cocktailNeeded
           ? (selectedPkg?.cocktailIncluded !== false)
           : null,
+        // Setup hours snapshot — the selected package's required setup time.
+        setup_hours: selectedPkg?.setupHours
+          ? String(selectedPkg.setupHours)
+          : null,
         package_title: selectedPkg?.title || null,
         // HTML package details — snapshotted onto the booking so the DJ's
         // quote modal and emails can show what the booker actually selected.
@@ -422,6 +426,7 @@ export default function MobileBookingForm({
             cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
             cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
             cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
+            setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
             // rate box instead of the "respond with a quote" prompt.
@@ -459,6 +464,7 @@ export default function MobileBookingForm({
             cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
             cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
             cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
+            setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             quotedRate: insertPayload.quoted_rate,
           }),
         });

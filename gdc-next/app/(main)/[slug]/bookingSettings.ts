@@ -121,6 +121,8 @@ export interface MobilePackage {
   // into cocktail-hour music. When true/undefined, cocktail hour is bundled.
   cocktailIncluded?: boolean;
   cocktailPrice?: number | string;
+  // Hours the DJ needs to set up before the event start time (per package).
+  setupHours?: string | number;
 }
 
 // Vanilla stores booking_settings as a JSON string. This helper parses it
