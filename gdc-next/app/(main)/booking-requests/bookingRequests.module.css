@@ -459,8 +459,8 @@
 .priceSub {
   margin-top: .45rem;
   font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .08em;
+  font-size: .72rem;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -468,9 +468,9 @@
   color: var(--white);
 }
 .priceDeposit {
-  font-size: .72rem;
+  font-size: .9rem;
   color: var(--muted);
-  margin-top: .35rem;
+  margin-top: .45rem;
 }
 .awaitingQuote {
   padding: .85rem 1rem;

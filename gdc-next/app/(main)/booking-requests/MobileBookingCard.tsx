@@ -170,7 +170,7 @@ export default function MobileBookingCard(props: Props) {
           </svg>
           <span className={styles.dateText}>{formatLongDate(b.event_date)}</span>
         </div>
-        {b.cocktail_needed && b.event_type === 'weddings' && (
+        {b.cocktail_needed && (
           <div className={styles.timeBlock}>
             <div className={styles.tinyLabel}>Cocktail Hour</div>
             <div className={styles.cocktailLine}>
@@ -195,15 +195,6 @@ export default function MobileBookingCard(props: Props) {
           <div className={styles.timeBlock}>
             <div className={styles.tinyLabel}>Duration</div>
             <div className={styles.bigTimeNeon}>{durationLabel}</div>
-          </div>
-        )}
-        {b.cocktail_needed && b.event_type !== 'weddings' && (
-          <div className={styles.timeBlock} style={{ marginTop: '.7rem' }}>
-            <div className={styles.tinyLabel}>Cocktail Hour</div>
-            <div className={styles.cocktailLine}>
-              {b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}
-              {b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
-            </div>
           </div>
         )}
       </SectionFrame>
