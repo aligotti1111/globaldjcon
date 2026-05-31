@@ -555,7 +555,14 @@ function BookingRow({
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
   const { day, dow, mo } = getDateParts(booking.event_date);
-  const timeRange = formatTimeRange(booking.start_time, booking.end_time);
+  // Header time range. When the booker added a cocktail hour, the row's
+  // start reflects the cocktail-hour start (the DJ is engaged from then),
+  // running through the event end. Otherwise it's the plain event window.
+  const headerStart =
+    booking.cocktail_needed && booking.cocktail_start_time
+      ? booking.cocktail_start_time
+      : booking.start_time;
+  const timeRange = formatTimeRange(headerStart, booking.end_time);
 
   let context = '';
   if (djType === 'club') {
