@@ -208,8 +208,11 @@ export default function MobileBookingForm({
   // Live price calculation when we have a package + times
   const selectedPkg =
     selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
+  // General/Mitzvah packages can opt out of offering a cocktail-hour price.
+  // When the selected package opts out, hide the cocktail option entirely.
+  const cocktailSuppressed = !!(selectedPkg as { cocktailNotOffered?: boolean } | null)?.cocktailNotOffered;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
-  const wantsCocktail = cocktailEligible && cocktailNeeded === true;
+  const wantsCocktail = cocktailEligible && !cocktailSuppressed && cocktailNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
     return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
@@ -298,7 +301,7 @@ export default function MobileBookingForm({
     if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
     // When cocktail-hour music is needed, both the start time and the
     // same-room choice are required (weddings only).
-    if (cocktailEligible && cocktailNeeded === true) {
+    if (wantsCocktail) {
       if (!cocktailStart && fail('Please select a cocktail hour start time.', 'mpf-cocktail-start')) return;
       if (cocktailSameRoom == null && fail('Please choose whether the cocktail hour is in the same room as the reception.', 'mpf-cocktail-room')) return;
     }
@@ -340,14 +343,14 @@ export default function MobileBookingForm({
         start_time: startTime,
         end_time: endTime || null,
         phone: phone.trim(),
-        cocktail_needed: cocktailEligible ? !!cocktailNeeded : null,
-        cocktail_start_time: cocktailEligible && cocktailNeeded ? cocktailStart : null,
-        cocktail_same_room: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
+        cocktail_needed: wantsCocktail ? true : (cocktailEligible && !cocktailSuppressed ? !!cocktailNeeded : null),
+        cocktail_start_time: wantsCocktail ? cocktailStart : null,
+        cocktail_same_room: wantsCocktail ? !!cocktailSameRoom : null,
         // Cocktail add-on snapshot: the separately-charged cocktail price
         // (0 when bundled/included) and the package's included flag. Lets the
         // booking card show "base + cocktail = total" without recomputing.
         cocktail_price: wantsCocktail && finalPrice.cocktailAddon > 0 ? finalPrice.cocktailAddon : null,
-        cocktail_included: cocktailEligible && cocktailNeeded
+        cocktail_included: wantsCocktail
           ? (selectedPkg?.cocktailIncluded !== false)
           : null,
         // Setup hours snapshot — the selected package's required setup time.
@@ -423,9 +426,9 @@ export default function MobileBookingForm({
             // isWedding drives the "Reception Start/End Time" labelling in the
             // email. Cocktail hour itself is available for all mobile events.
             isWedding,
-            cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
-            cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
-            cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
+            cocktailNeeded: wantsCocktail ? true : null,
+            cocktailStart: wantsCocktail ? cocktailStart : null,
+            cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
@@ -461,9 +464,9 @@ export default function MobileBookingForm({
             startTime,
             endTime: endTime || null,
             isWedding,
-            cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
-            cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
-            cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
+            cocktailNeeded: wantsCocktail ? true : null,
+            cocktailStart: wantsCocktail ? cocktailStart : null,
+            cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             quotedRate: insertPayload.quoted_rate,
           }),
@@ -808,7 +811,7 @@ export default function MobileBookingForm({
             until the booker opts in; clicking it expands the cocktail section
             with "music needed" defaulted to Yes. Weddings show the section
             directly (cocktail hour is a standard wedding question). */}
-        {cocktailEligible && !isWedding && !showCocktailAddon && (
+        {cocktailEligible && !isWedding && !cocktailSuppressed && !showCocktailAddon && (
           <button
             type="button"
             className={styles.addCocktailLink}
@@ -820,7 +823,7 @@ export default function MobileBookingForm({
 
         {/* Cocktail-hour subsection — weddings always; other events once the
             "Add Cocktail Hour" link is clicked. */}
-        {cocktailEligible && (isWedding || showCocktailAddon) && (
+        {cocktailEligible && (isWedding || (showCocktailAddon && !cocktailSuppressed)) && (
           <div className={styles.weddingFields}>
             <div className={styles.cocktailHeaderRow}>
               <div className={styles.weddingHeader}>Cocktail Hour</div>

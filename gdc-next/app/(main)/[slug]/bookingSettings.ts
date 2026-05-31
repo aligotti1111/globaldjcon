@@ -121,6 +121,9 @@ export interface MobilePackage {
   // into cocktail-hour music. When true/undefined, cocktail hour is bundled.
   cocktailIncluded?: boolean;
   cocktailPrice?: number | string;
+  // General/Mitzvah only: when true, DJ does not offer a separate cocktail-hour
+  // price, and the booking form hides the "Add Cocktail Hour" option.
+  cocktailNotOffered?: boolean;
   // Hours the DJ needs to set up before the event start time (per package).
   setupHours?: string | number;
 }
