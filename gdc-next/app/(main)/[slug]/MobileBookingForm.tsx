@@ -138,7 +138,7 @@ export default function MobileBookingForm({
   const [selectedPkgIdx, setSelectedPkgIdx] = useState<number | null>(null);
 
   // Photo lightbox (when clicking a package thumbnail)
-  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<string | null>(null);
+  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<{ url: string; details: string } | null>(null);
 
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -924,7 +924,7 @@ export default function MobileBookingForm({
               generalPkgs={generalPkgs}
               selectedPkgIdx={selectedPkgIdx}
               onSelect={(idx) => setSelectedPkgIdx(idx)}
-              onPhotoClick={(url) => setPhotoLightboxUrl(url)}
+              onPhotoClick={(url, details) => setPhotoLightboxUrl({ url, details })}
               startTime={startTime}
               endTime={endTime}
               depositPct={depositPct}
@@ -1018,10 +1018,18 @@ export default function MobileBookingForm({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={photoLightboxUrl}
+              src={photoLightboxUrl.url}
               alt="Package preview"
               className={styles.photoLightboxImg}
             />
+            {photoLightboxUrl.details && (
+              <div
+                className={styles.photoLightboxDetails}
+                // Details come from the DJ's profile editor — trusted source.
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: photoLightboxUrl.details }}
+              />
+            )}
             <button
               type="button"
               onClick={() => setPhotoLightboxUrl(null)}
@@ -1063,7 +1071,7 @@ function PackagesSection({
   generalPkgs: MobilePackage[];
   selectedPkgIdx: number | null;
   onSelect: (idx: number) => void;
-  onPhotoClick: (url: string) => void;
+  onPhotoClick: (url: string, details: string) => void;
   startTime: string;
   endTime: string;
   depositPct: number;
@@ -1186,7 +1194,7 @@ function PackagesSection({
                       className={styles.packageThumb}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPhotoClick(photo);
+                        onPhotoClick(photo, details || '');
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -217,74 +217,6 @@
   color: var(--neon);
   margin-bottom: .6rem;
 }
-.durationNote {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--neon, #00f5c4);
-  margin: -.5rem 0 1rem;
-}
-.durationNoteRight {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--amber, #ffb347);
-  margin: -.5rem 0 1rem;
-  text-align: right;
-}
-.cocktailDurationNote {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--amber, #ffb347);
-  margin: .4rem 0 0;
-  text-align: right;
-}
-.addCocktailLink {
-  display: inline-block;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0 0 1rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--neon, #00f5c4);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.addCocktailLink:hover {
-  opacity: .8;
-}
-.cocktailHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.cocktailCloseBtn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--white);
-  width: 24px;
-  height: 24px;
-  font-size: .7rem;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.cocktailCloseBtn:hover {
-  border-color: var(--danger, #ff5f5f);
-  color: var(--danger, #ff5f5f);
-}
 .timesRow {
   display: flex;
   gap: .75rem;
@@ -520,7 +452,7 @@
   background: var(--card);
   border: 1px solid var(--border);
   position: relative;
-  cursor: zoom-in;
+  cursor: pointer;
 }
 .packageThumb img {
   width: 100%;
@@ -595,11 +527,6 @@
   color: var(--amber);
   margin-top: .35rem;
 }
-.cocktailNote {
-  font-size: .72rem;
-  color: var(--neon, #00f5c4);
-  margin-top: .35rem;
-}
 
 /* ── Submit button ──────────────────────────────────── */
 .submitBtn {
@@ -638,35 +565,53 @@
 }
 .photoLightboxInner {
   position: relative;
-  display: inline-block;
+  display: flex;
+  flex-direction: column;
   max-width: min(500px, 90vw);
   max-height: 85vh;
+  background: var(--card, #0a0a10);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
 }
 .photoLightboxImg {
-  max-width: min(500px, 90vw);
-  max-height: 85vh;
-  width: auto;
-  height: auto;
+  width: 100%;
+  max-height: 60vh;
   object-fit: contain;
-  border-radius: 8px;
-  border: 1px solid var(--border);
   display: block;
+  background: #000;
+}
+.photoLightboxDetails {
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+  color: var(--white);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.photoLightboxDetails :global(ul),
+.photoLightboxDetails :global(ol) {
+  padding-left: 1.4rem;
+  margin: 0;
+}
+.photoLightboxDetails :global(li) {
+  margin-bottom: .3rem;
 }
 .photoLightboxClose {
   position: absolute;
-  top: -12px;
-  right: -12px;
-  background: var(--card);
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, .6);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 28px;
   height: 28px;
-  color: var(--white);
+  color: #fff;
   cursor: pointer;
   font-size: .85rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
 }
 
 /* ── Success state (replaces form after submit) ────── */
