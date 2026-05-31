@@ -560,12 +560,13 @@
   border-color: var(--neon, #00f5c4);
   color: #050507;
 }
-/* Connecting line: spans from this step's center to the next step's center. */
+/* Connecting line: runs between circles, stopping at each circle's edge
+   (starts ~13px right of this center, ends ~13px before the next center). */
 .catStepLine {
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 100%;
+  left: calc(50% + 13px);
+  width: calc(100% - 26px);
   height: 2px;
   background: var(--border);
   transform: translateY(-50%);
