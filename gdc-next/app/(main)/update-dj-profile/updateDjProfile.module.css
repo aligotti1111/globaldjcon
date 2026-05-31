@@ -2225,12 +2225,16 @@
     font-size: 1.4rem;
   }
   .innerCatTabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: .2rem;
   }
   .innerCatTab {
-    flex: 1 1 calc(50% - 4px);
-    font-size: .58rem;
-    padding: .45rem .35rem;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: .5rem;
+    letter-spacing: .02em;
+    padding: .45rem .2rem;
+    gap: .15rem;
   }
   .pkgFieldLabel {
     font-size: .6rem;
