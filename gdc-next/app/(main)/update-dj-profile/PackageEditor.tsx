@@ -261,8 +261,10 @@ export default function PackageEditor({
           </span>
         </div>
 
-        {/* Cocktail block — all package categories, hidden when reqAll */}
-        {!reqAll && (
+        {/* Cocktail block — hidden when reqAll. Wedding keeps the
+            "included in reception price?" toggle. General/Mitzvah show the
+            per-hour price by default plus a "do not offer" opt-out. */}
+        {!reqAll && isWedding && (
           <div className={styles.cocktailBlock}>
             <label className={styles.cocktailRow}>
               <input
@@ -271,7 +273,7 @@ export default function PackageEditor({
                 onChange={(e) => updateExtra('cocktailIncluded', e.target.checked)}
               />
               <span className={styles.cocktailPrompt}>
-                Cocktail hour music included in event price?
+                Cocktail hour music included in reception price?
               </span>
             </label>
             {(pkg as { cocktailIncluded?: boolean }).cocktailIncluded === false && (
@@ -288,6 +290,41 @@ export default function PackageEditor({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {!reqAll && !isWedding && (
+          <div className={styles.cocktailBlock}>
+            {!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered && (
+              <div className={styles.cocktailPriceWrap}>
+                <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
+                <span className={styles.priceCurrency}>$</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
+                  onChange={(e) => updateExtra('cocktailPrice', e.target.value)}
+                  className={styles.priceInput}
+                />
+              </div>
+            )}
+            <label className={styles.cocktailRow}>
+              <input
+                type="checkbox"
+                checked={!!(pkg as { cocktailNotOffered?: boolean }).cocktailNotOffered}
+                onChange={(e) => {
+                  const off = e.target.checked;
+                  updateExtra('cocktailNotOffered', off);
+                  // Keep cocktailIncluded=false for general/mitzvah so the
+                  // per-hour price applies when offered.
+                  updateExtra('cocktailIncluded', false);
+                }}
+              />
+              <span className={styles.cocktailPrompt}>
+                Do not offer separate price for cocktail hour
+              </span>
+            </label>
           </div>
         )}
 
