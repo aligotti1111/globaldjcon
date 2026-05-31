@@ -778,9 +778,12 @@
   font-size: .6rem;
   letter-spacing: .06em;
   text-transform: none;
-  color: var(--neon, #00f5c4);
+  color: var(--white);
   cursor: pointer;
   line-height: 1.4;
+}
+.reqAllLabel .reqAllHighlight {
+  color: var(--neon, #00f5c4);
 }
 
 /* Cocktail block (wedding category only) */

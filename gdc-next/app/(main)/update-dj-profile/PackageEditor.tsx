@@ -261,7 +261,7 @@ export default function PackageEditor({
             onChange={(e) => updateField('reqAll', e.target.checked)}
           />
           <span className={styles.reqAllLabel}>
-            Require event host to request price (This will deactivate price fields above)
+            Require event host to <span className={styles.reqAllHighlight}>request price</span> (This will deactivate price fields above)
           </span>
         </label>
       </div>
