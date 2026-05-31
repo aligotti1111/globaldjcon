@@ -167,6 +167,10 @@ export default function MobileBookingForm({
   // ── Derived data ─────────────────────────────────────────────────
   const dateLabel = formatLongDate(dateKey);
   const isWedding = eventType === 'weddings';
+  // Cocktail hour is available for ALL mobile event types (not just weddings),
+  // once an event type is chosen. isWedding is still used only for the
+  // "Reception" vs "Event" time labels.
+  const cocktailEligible = !!eventType;
   const eventTypesAllowed = useMemo(() => {
     return (dj.event_types || '')
       .split(',')
@@ -200,7 +204,7 @@ export default function MobileBookingForm({
   const selectedPkg =
     selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
-  const wantsCocktail = isWedding && cocktailNeeded === true;
+  const wantsCocktail = cocktailEligible && cocktailNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
     return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
@@ -287,11 +291,11 @@ export default function MobileBookingForm({
     if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
     // When cocktail-hour music is needed, both the start time and the
     // same-room choice are required (weddings only).
-    if (isWedding && cocktailNeeded === true) {
+    if (cocktailEligible && cocktailNeeded === true) {
       if (!cocktailStart && fail('Please select a cocktail hour start time.', 'mpf-cocktail-start')) return;
       if (cocktailSameRoom == null && fail('Please choose whether the cocktail hour is in the same room as the reception.', 'mpf-cocktail-room')) return;
     }
-    if (cocktailWarn && fail('Cocktail hour start time must be before the reception start time.', 'mpf-cocktail-start')) return;
+    if (cocktailWarn && fail(`Cocktail hour start time must be before the ${isWedding ? 'reception' : 'event'} start time.`, 'mpf-cocktail-start')) return;
     // Package validation only applies when the DJ has packages defined.
     // No-packages mode → fall through and submit as a quote-style request.
     if (hasAnyPackages) {
@@ -329,14 +333,14 @@ export default function MobileBookingForm({
         start_time: startTime,
         end_time: endTime || null,
         phone: phone.trim(),
-        cocktail_needed: isWedding ? !!cocktailNeeded : null,
-        cocktail_start_time: isWedding && cocktailNeeded ? cocktailStart : null,
-        cocktail_same_room: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
+        cocktail_needed: cocktailEligible ? !!cocktailNeeded : null,
+        cocktail_start_time: cocktailEligible && cocktailNeeded ? cocktailStart : null,
+        cocktail_same_room: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
         // Cocktail add-on snapshot: the separately-charged cocktail price
         // (0 when bundled/included) and the package's included flag. Lets the
         // booking card show "base + cocktail = total" without recomputing.
         cocktail_price: wantsCocktail && finalPrice.cocktailAddon > 0 ? finalPrice.cocktailAddon : null,
-        cocktail_included: isWedding && cocktailNeeded
+        cocktail_included: cocktailEligible && cocktailNeeded
           ? (selectedPkg?.cocktailIncluded !== false)
           : null,
         package_title: selectedPkg?.title || null,
@@ -405,13 +409,12 @@ export default function MobileBookingForm({
             packageDetails: selectedPkg?.details || null,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
-            // Wedding cocktail-hour context. isWedding drives the
-            // "Reception Start/End Time" labelling in the email. The
-            // cocktail fields are only meaningful when isWedding is true.
+            // isWedding drives the "Reception Start/End Time" labelling in the
+            // email. Cocktail hour itself is available for all mobile events.
             isWedding,
-            cocktailNeeded: isWedding ? !!cocktailNeeded : null,
-            cocktailStart: isWedding && cocktailNeeded ? cocktailStart : null,
-            cocktailSameRoom: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
+            cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
+            cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
+            cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
             // rate box instead of the "respond with a quote" prompt.
@@ -446,9 +449,9 @@ export default function MobileBookingForm({
             startTime,
             endTime: endTime || null,
             isWedding,
-            cocktailNeeded: isWedding ? !!cocktailNeeded : null,
-            cocktailStart: isWedding && cocktailNeeded ? cocktailStart : null,
-            cocktailSameRoom: isWedding && cocktailNeeded ? !!cocktailSameRoom : null,
+            cocktailNeeded: cocktailEligible ? !!cocktailNeeded : null,
+            cocktailStart: cocktailEligible && cocktailNeeded ? cocktailStart : null,
+            cocktailSameRoom: cocktailEligible && cocktailNeeded ? !!cocktailSameRoom : null,
             quotedRate: insertPayload.quoted_rate,
           }),
         });
@@ -788,8 +791,8 @@ export default function MobileBookingForm({
           </div>
         )}
 
-        {/* Wedding cocktail-hour subsection */}
-        {isWedding && (
+        {/* Cocktail-hour subsection — all mobile event types */}
+        {cocktailEligible && (
           <div className={styles.weddingFields}>
             <div className={styles.weddingHeader}>Cocktail Hour</div>
             <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
@@ -843,7 +846,7 @@ export default function MobileBookingForm({
                   </select>
                   {cocktailWarn && (
                     <div className={styles.cocktailWarn}>
-                      ⚠ Cocktail hour must start before the reception. Please select an earlier time.
+                      ⚠ Cocktail hour must start before the {isWedding ? 'reception' : 'event'}. Please select an earlier time.
                     </div>
                   )}
                   {!cocktailWarn && durationLabel(hoursBetween(cocktailStart, startTime)) && (
@@ -853,7 +856,7 @@ export default function MobileBookingForm({
                   )}
                 </div>
                 <div id="mpf-cocktail-room" style={{ fontSize: '.85rem', color: errorFieldId === 'mpf-cocktail-room' ? 'var(--danger, #ff5f5f)' : 'var(--white)', marginBottom: '.5rem', scrollMarginTop: '90px' }}>
-                  Is the cocktail hour in the same room as the reception?
+                  Is the cocktail hour in the same room as the {isWedding ? 'reception' : 'event'}?
                 </div>
                 <div className={styles.radioGroup}>
                   <label className={styles.radioPill}>
