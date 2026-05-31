@@ -118,6 +118,10 @@ export default function MobileOwnerCalendar({
       const isUnavail = !!dayData.unavailable;
       const bookingsLeft = dayData.bookings_available != null ? dayData.bookings_available : defaultBookingsPerDay;
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
+      // A capacity-full day is shown as BOOKED (red), same as an explicitly
+      // booked day. It can only be reopened by raising the accepted-bookings
+      // count via the edit pencil — not the quick available/unavailable toggle.
+      const showsAsBooked = isBooked || isFull;
       const isEdited = !isBooked && !isUnavail && bookingDays[key] && Object.keys(bookingDays[key]).length > 0;
 
       const cellCls = [styles.calCell];
@@ -125,15 +129,12 @@ export default function MobileOwnerCalendar({
       if (isPast || isBeyond) {
         cellCls.push(styles.calCellPast);
         numCls.push(styles.calCellNumPast);
-      } else if (isBooked) {
+      } else if (showsAsBooked) {
         cellCls.push(styles.calCellBooked);
         numCls.push(styles.calCellNumBooked);
       } else if (isUnavail) {
         cellCls.push(styles.calCellUnavail);
         numCls.push(styles.calCellNumUnavail);
-      } else if (isFull) {
-        cellCls.push(styles.calCellFull);
-        numCls.push(styles.calCellNumFull);
       }
 
       cells.push(
@@ -141,7 +142,7 @@ export default function MobileOwnerCalendar({
           <div className={numCls.join(' ')}>{d}</div>
           {!isPast && !isBeyond && (
             <>
-              {!isBooked && (
+              {!showsAsBooked && (
                 <button
                   type="button"
                   onClick={() => quickMark(key)}
