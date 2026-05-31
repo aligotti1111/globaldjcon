@@ -866,7 +866,7 @@ function PackageCardWithCatTabs({
                       className={`${styles.catStepLine} ${
                         isComplete && nextComplete
                           ? styles.catStepLineDone
-                          : isComplete
+                          : (isComplete || nextComplete)
                             ? styles.catStepLineFromDone
                             : ''
                       }`}

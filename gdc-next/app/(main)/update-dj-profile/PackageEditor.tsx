@@ -159,6 +159,7 @@ export default function PackageEditor({
   }
 
   function removePhoto() {
+    if (typeof window !== 'undefined' && !window.confirm('Delete this package photo?')) return;
     updateField('photo', '');
   }
 
