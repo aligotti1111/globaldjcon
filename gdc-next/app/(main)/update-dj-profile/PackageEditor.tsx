@@ -261,6 +261,36 @@ export default function PackageEditor({
           </span>
         </div>
 
+        {/* Cocktail block — all package categories, hidden when reqAll */}
+        {!reqAll && (
+          <div className={styles.cocktailBlock}>
+            <label className={styles.cocktailRow}>
+              <input
+                type="checkbox"
+                checked={(pkg as { cocktailIncluded?: boolean }).cocktailIncluded !== false}
+                onChange={(e) => updateExtra('cocktailIncluded', e.target.checked)}
+              />
+              <span className={styles.cocktailPrompt}>
+                Cocktail hour music included in event price?
+              </span>
+            </label>
+            {(pkg as { cocktailIncluded?: boolean }).cocktailIncluded === false && (
+              <div className={styles.cocktailPriceWrap}>
+                <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
+                <span className={styles.priceCurrency}>$</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
+                  onChange={(e) => updateExtra('cocktailPrice', e.target.value)}
+                  className={styles.priceInput}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Req-all toggle */}
         <label className={styles.reqAllRow}>
           <input
@@ -273,36 +303,6 @@ export default function PackageEditor({
           </span>
         </label>
       </div>
-
-      {/* Cocktail block — all package categories, hidden when reqAll */}
-      {!reqAll && (
-        <div className={styles.cocktailBlock}>
-          <label className={styles.cocktailRow}>
-            <input
-              type="checkbox"
-              checked={(pkg as { cocktailIncluded?: boolean }).cocktailIncluded !== false}
-              onChange={(e) => updateExtra('cocktailIncluded', e.target.checked)}
-            />
-            <span className={styles.cocktailPrompt}>
-              Cocktail hour music included in event price?
-            </span>
-          </label>
-          {(pkg as { cocktailIncluded?: boolean }).cocktailIncluded === false && (
-            <div className={styles.cocktailPriceWrap}>
-              <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
-              <span className={styles.priceCurrency}>$</span>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
-                onChange={(e) => updateExtra('cocktailPrice', e.target.value)}
-                className={styles.priceInput}
-              />
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Setup hours */}
       <div className={styles.setupRow}>
