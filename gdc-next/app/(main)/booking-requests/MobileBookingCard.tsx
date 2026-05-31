@@ -320,6 +320,11 @@ export default function MobileBookingCard(props: Props) {
                 Deposit ({b.deposit_pct}%): ${Number(b.deposit_amount).toLocaleString()}
               </div>
             )}
+            {b.cocktail_price != null && Number(b.cocktail_price) > 0 && bigPriceVal != null && (
+              <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
+                ${(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + ${Number(b.cocktail_price).toLocaleString()} cocktail
+              </div>
+            )}
             {overtimeRate != null && (
               <div className={styles.priceSub}>
                 Overtime: <span>${overtimeRate.toLocaleString()}/hr</span>
