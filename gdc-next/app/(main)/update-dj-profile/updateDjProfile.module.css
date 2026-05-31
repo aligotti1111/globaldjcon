@@ -445,7 +445,7 @@
 
 /* ── Package card ─────────────────────────────────────────── */
 .pkgCard {
-  background: rgba(10, 10, 16, .6);
+  background: #000000;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
