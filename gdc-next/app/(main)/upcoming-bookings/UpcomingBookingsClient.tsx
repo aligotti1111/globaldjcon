@@ -770,13 +770,8 @@ function BookingDetails({
         ? { label: 'Venue Name', value: booking.venue_name }
         : { label: 'Event Type', value: eventTypeLabel },
     ],
-    // Row 2: Time labels — clubs use "Set", mobile uses "Event", except
-    // weddings which use "Reception" (matches the booking form + emails).
-    [
-      { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
-      { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
-    ],
-    // Row 2b: Cocktail Hour time (wedding bookings where the booker opted in).
+    // Row 2a: Cocktail Hour time (wedding bookings where the booker opted in),
+    // shown above the reception start/end times.
     [
       {
         label: 'Cocktail Hour Time',
@@ -784,6 +779,12 @@ function BookingDetails({
           ? formatTime12(booking.cocktail_start_time)
           : null,
       },
+    ],
+    // Row 2: Time labels — clubs use "Set", mobile uses "Event", except
+    // weddings which use "Reception" (matches the booking form + emails).
+    [
+      { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
+      { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
     ],
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
