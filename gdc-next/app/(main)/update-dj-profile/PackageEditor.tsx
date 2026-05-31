@@ -265,8 +265,8 @@ export default function PackageEditor({
         </label>
       </div>
 
-      {/* Cocktail block (wedding only, hidden when reqAll) */}
-      {isWedding && !reqAll && (
+      {/* Cocktail block — all package categories, hidden when reqAll */}
+      {!reqAll && (
         <div className={styles.cocktailBlock}>
           <label className={styles.cocktailRow}>
             <input
@@ -275,12 +275,12 @@ export default function PackageEditor({
               onChange={(e) => updateExtra('cocktailIncluded', e.target.checked)}
             />
             <span className={styles.cocktailPrompt}>
-              Cocktail hour music included in reception price?
+              Cocktail hour music included in event price?
             </span>
           </label>
           {(pkg as { cocktailIncluded?: boolean }).cocktailIncluded === false && (
             <div className={styles.cocktailPriceWrap}>
-              <span className={styles.priceRowLabel}>Cocktail Hour Price:</span>
+              <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
               <span className={styles.priceCurrency}>$</span>
               <input
                 type="number"
