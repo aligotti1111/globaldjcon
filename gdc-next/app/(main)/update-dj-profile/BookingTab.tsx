@@ -31,7 +31,6 @@ import {
   type PkgCategory,
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
-import MobileOwnerCalendar from './MobileOwnerCalendar';
 import EmbedCodeSection from './EmbedCodeSection';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -133,7 +132,6 @@ export default function BookingTab({
   const perDay = bookingSettings.mob_bookings_per_day || 1;
   const deposit = bookingSettings.mob_deposit_pct || 0;
   const packages = bookingSettings.mob_packages || {};
-  const bookingDays: MobileBookingDays = bookingSettings.mob_booking_days || {};
 
   const activeCats = useMemo(
     () => getActivePackageCategories(selectedEventTypes),
@@ -355,13 +353,6 @@ export default function BookingTab({
     }
   }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
-  function setBookingDays(next: MobileBookingDays) {
-    // Don't tag a specific field here — MobileOwnerCalendar will fire
-    // onMonthChanged after this with the actual month key, which is more
-    // specific (e.g. 'calendar-2026-04' instead of just 'calendar').
-    patch({ mob_booking_days: next });
-  }
-
   // Top-level wholesale rewrite of all packages (add/remove a row, or
   // commit a save from a single package card). No SavedHint tagging since
   // packages don't autosave anymore — they have their own save buttons
@@ -528,30 +519,6 @@ export default function BookingTab({
                   individual package cards each have their own Save button,
                   and the top-level page Save still triggers the master
                   save via externalMasterSaveTrigger. */}
-            </div>
-          </div>
-
-          {/* ── Availability Calendar ─────────────────────────── */}
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Availability Calendar</div>
-            </div>
-            <div className={styles.sectionBody}>
-              <p className={styles.bodyHint}>
-                All days are available by default. Use{' '}
-                <strong style={{ color: 'rgba(255,255,255,.4)' }}>✕</strong> to mark unavailable,{' '}
-                <strong style={{ color: 'var(--neon)' }}>✓</strong> to restore, or{' '}
-                <strong>✏️</strong> to customize a day.
-              </p>
-              <MobileOwnerCalendar
-                bookingDays={bookingDays}
-                onChange={setBookingDays}
-                bookingWindowMonths={window}
-                defaultBookingsPerDay={perDay}
-                lastChangedField={lastChangedField}
-                autosaveStatus={autosaveStatus}
-                onMonthChanged={(monthKey) => setLastChangedField(monthKey)}
-              />
             </div>
           </div>
 
