@@ -231,11 +231,16 @@ export default function MobilePublicCalendar({
   async function persistBookingDays(nextDays: MobileBookingDays) {
     const supabase = createClient();
     try {
-      const { data: current } = await supabase
+      const { data: current, error: readErr } = await supabase
         .from('users')
         .select('booking_settings')
         .eq('id', djId)
         .single<{ booking_settings: string | null }>();
+      if (readErr) {
+        console.error('persistBookingDays read error:', readErr);
+        alert('Could not save calendar change: ' + readErr.message);
+        return;
+      }
       let bs: BookingSettings = {};
       if (current?.booking_settings) {
         try {
@@ -248,12 +253,17 @@ export default function MobilePublicCalendar({
         }
       }
       bs.mob_booking_days = nextDays;
-      await supabase
+      const { error: writeErr } = await supabase
         .from('users')
         .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
         .eq('id', djId);
+      if (writeErr) {
+        console.error('persistBookingDays write error:', writeErr);
+        alert('Could not save calendar change: ' + writeErr.message);
+      }
     } catch (err) {
       console.error('persistBookingDays error:', err);
+      alert('Could not save calendar change. See console for details.');
     }
   }
 
