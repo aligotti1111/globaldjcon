@@ -2382,3 +2382,66 @@
     padding: .85rem;
   }
 }
+
+/* ── Package photo slots (up to 4; slot 1 is the main card photo) ────── */
+.photoSlotGrid {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.photoSlot {
+  width: 110px;
+  height: 110px;
+}
+.photoSlotImg {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: block;
+}
+.photoMainBadge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .5rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .15rem .35rem;
+  border-radius: 3px;
+  background: var(--neon, #00f5c4);
+  color: #050507;
+  font-weight: 700;
+}
+.photoSlotEmpty {
+  width: 110px;
+  height: 110px;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .02);
+  transition: border-color .15s, background .15s;
+}
+.photoSlotEmpty:hover {
+  border-color: var(--neon, #00f5c4);
+  background: rgba(0, 245, 196, .04);
+}
+.photoSlotPlus {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.photoSlotHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

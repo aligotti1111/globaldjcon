@@ -137,21 +137,47 @@ export default function PackageEditor({
   // ── Photo upload ────────────────────────────────────────────────
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Photo slots: index 0 = main `photo` (shown on card); 1-3 = `photos[0..2]`
+  // (extra sample photos shown as lightbox thumbnails on the booking side).
+  const extraPhotos: string[] = Array.isArray((pkg as { photos?: string[] }).photos)
+    ? (pkg as { photos?: string[] }).photos!
+    : [];
+  function photoAtSlot(slot: number): string | undefined {
+    return slot === 0 ? pkg.photo : extraPhotos[slot - 1];
+  }
+  function setPhotoAtSlot(slot: number, url: string) {
+    if (slot === 0) {
+      onChange({ ...pkg, photo: url } as MobilePackage);
+    } else {
+      const next = [...extraPhotos];
+      next[slot - 1] = url;
+      onChange({ ...pkg, photos: next } as MobilePackage);
+    }
+  }
+  function clearPhotoAtSlot(slot: number) {
+    if (slot === 0) {
+      onChange({ ...pkg, photo: '' } as MobilePackage);
+    } else {
+      const next = extraPhotos.filter((_, i) => i !== slot - 1);
+      onChange({ ...pkg, photos: next } as MobilePackage);
+    }
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>, slot: number) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadStatus({ kind: 'uploading', msg: 'Uploading...' });
     try {
       const supabase = createClient();
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${userId}/packages/pkg_${cat}_${idx}_${Date.now()}.${ext}`;
+      const path = `${userId}/packages/pkg_${cat}_${idx}_${slot}_${Date.now()}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(path);
       const publicUrl = `${pubData.publicUrl}?t=${Date.now()}`;
-      updateField('photo', publicUrl);
+      setPhotoAtSlot(slot, publicUrl);
       setUploadStatus({ kind: 'done', msg: '✓ Uploaded' });
       setTimeout(() => setUploadStatus({ kind: 'idle' }), 3000);
     } catch (err) {
@@ -160,14 +186,14 @@ export default function PackageEditor({
     }
   }
 
-  async function removePhoto() {
+  async function removePhoto(slot: number) {
     const ok = await confirm({
       title: 'Delete this package photo?',
       confirmLabel: 'Delete',
       variant: 'danger',
     });
     if (!ok) return;
-    updateField('photo', '');
+    clearPhotoAtSlot(slot);
   }
 
   // Inner content (everything except the card wrapper + header)
@@ -324,48 +350,48 @@ export default function PackageEditor({
         </select>
       </div>
 
-      {/* Photo */}
+      {/* Photos — up to 4 slots. Slot 1 is the main photo shown on the
+          package card; slots 2-4 are extra samples shown as thumbnails in
+          the booking-form lightbox. */}
       <div className={styles.pkgFieldGroup}>
-        <label className={styles.pkgFieldLabel}>Package Setup Photo</label>
-        {pkg.photo ? (
-          <div className={styles.photoPreviewRow}>
-            <div className={styles.photoPreviewWrap}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pkg.photo} alt="Package photo" className={styles.photoPreviewImg} />
-              <div className={styles.photoIconActions}>
-                <label className={styles.photoIconBtn} title="Replace photo">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-                <button type="button" onClick={removePhoto} className={styles.photoIconBtn} title="Delete photo">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+        <label className={styles.pkgFieldLabel}>Package Setup Photos</label>
+        <div className={styles.photoSlotGrid}>
+          {[0, 1, 2, 3].map((slot) => {
+            const url = photoAtSlot(slot);
+            return (
+              <div key={slot} className={styles.photoSlot}>
+                {url ? (
+                  <div className={styles.photoPreviewWrap}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={slot === 0 ? 'Main package photo' : `Package photo ${slot + 1}`} className={styles.photoSlotImg} />
+                    <div className={styles.photoIconActions}>
+                      <label className={styles.photoIconBtn} title="Replace photo">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                        <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
+                      </label>
+                      <button type="button" onClick={() => removePhoto(slot)} className={styles.photoIconBtn} title="Delete photo">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                    {slot === 0 && <span className={styles.photoMainBadge}>Main</span>}
+                  </div>
+                ) : (
+                  <label className={styles.photoSlotEmpty}>
+                    <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
+                    <span className={styles.photoSlotPlus}>+</span>
+                    <span className={styles.photoSlotHint}>{slot === 0 ? 'Main photo' : 'Add photo'}</span>
+                  </label>
+                )}
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.uploadBox}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className={styles.uploadInput}
-            />
-            <span className={styles.uploadBoxLabel}>Click to upload photo</span>
-            <span className={styles.uploadBoxHint}>JPG, PNG, WebP</span>
-          </div>
-        )}
+            );
+          })}
+        </div>
         {uploadStatus.kind !== 'idle' && (
           <div
             className={`${styles.uploadStatus} ${
