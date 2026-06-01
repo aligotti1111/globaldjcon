@@ -14,7 +14,7 @@ import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, CalendarIcon,
 } from './icons';
-import type { DjProfileData } from './profileTypes';
+import type { DjProfileData, Testimonial } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
 
 export function BannerTypeEventsDropdown({ events }: { events: string[] }) {
