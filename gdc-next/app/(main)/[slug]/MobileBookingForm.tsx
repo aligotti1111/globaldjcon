@@ -130,7 +130,6 @@ export default function MobileBookingForm({
   // prompt shows by default; for other events it's hidden behind an
   // "Add Cocktail Hour" link that expands the section.
   const [cocktailNeeded, setCocktailNeeded] = useState<boolean | null>(null);
-  const [showCocktailAddon, setShowCocktailAddon] = useState(false);
   const [cocktailStart, setCocktailStart] = useState('');
   const [cocktailSameRoom, setCocktailSameRoom] = useState<boolean | null>(null);
 
@@ -219,7 +218,6 @@ export default function MobileBookingForm({
   // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
   useEffect(() => {
     setSelectedPkgIdx(null);
-    setShowCocktailAddon(false);
     setCocktailNeeded(null);
   }, [eventType]);
 
@@ -818,21 +816,6 @@ export default function MobileBookingForm({
           <div className={styles.weddingFields}>
             <div className={styles.cocktailHeaderRow}>
               <div className={styles.weddingHeader}>Cocktail Hour</div>
-              {!isWedding && (
-                <button
-                  type="button"
-                  className={styles.cocktailCloseBtn}
-                  title="Remove cocktail hour"
-                  onClick={() => {
-                    setShowCocktailAddon(false);
-                    setCocktailNeeded(null);
-                    setCocktailStart('');
-                    setCocktailSameRoom(null);
-                  }}
-                >
-                  ✕
-                </button>
-              )}
             </div>
             <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
             <div className={styles.radioGroup}>
