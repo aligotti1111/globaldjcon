@@ -184,6 +184,7 @@ export interface Database {
           package_category: string | null;
           package_index: number | null;
           package_details: string | null;
+          package_photos: string | null;
           // Club-specific
           venue_type: 'bar' | 'club' | null;
           set_type: string | null;
@@ -238,6 +239,7 @@ export interface Database {
           package_category?: string | null;
           package_index?: number | null;
           package_details?: string | null;
+          package_photos?: string | null;
           venue_type?: 'bar' | 'club' | null;
           set_type?: string | null;
           equipment?: 'sound_system' | 'decks_only' | 'venue_provides' | null;
@@ -286,6 +288,7 @@ export interface Database {
           package_category?: string | null;
           package_index?: number | null;
           package_details?: string | null;
+          package_photos?: string | null;
           venue_type?: 'bar' | 'club' | null;
           set_type?: string | null;
           equipment?: 'sound_system' | 'decks_only' | 'venue_provides' | null;
