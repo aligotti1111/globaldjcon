@@ -110,7 +110,9 @@ export interface BookingSettings {
 export interface MobilePackage {
   title?: string;
   details?: string;          // HTML-formatted package details
-  photo?: string;            // sample photo URL
+  photo?: string;            // main sample photo URL (slot 1, shown on card)
+  photos?: string[];         // additional sample photos (slots 2-4), shown as
+                             // thumbnails in the booking-form lightbox
   price4?: number | string;  // 4hr rate
   price5?: number | string;  // 5hr rate
   price6?: number | string;  // 6hr rate

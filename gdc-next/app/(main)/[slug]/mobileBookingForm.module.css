@@ -776,3 +776,42 @@
   color: var(--amber, #ffb347);
   margin: .25rem 0;
 }
+
+/* Lightbox stage: main image with a column of thumbnails on the right. */
+.photoLightboxStage {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+}
+.photoLightboxMain {
+  flex: 1;
+  min-width: 0;
+}
+.photoLightboxThumbs {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .6rem .6rem 0 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.photoLightboxThumb {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+  flex-shrink: 0;
+}
+.photoLightboxThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photoLightboxThumbActive {
+  border-color: var(--neon, #00f5c4);
+}

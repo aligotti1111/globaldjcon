@@ -138,7 +138,7 @@ export default function MobileBookingForm({
   const [selectedPkgIdx, setSelectedPkgIdx] = useState<number | null>(null);
 
   // Photo lightbox (when clicking a package thumbnail)
-  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<{ url: string; details: string } | null>(null);
+  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<{ photos: string[]; details: string; active: number } | null>(null);
 
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -358,6 +358,14 @@ export default function MobileBookingForm({
         // HTML package details — snapshotted onto the booking so the DJ's
         // quote modal and emails can show what the booker actually selected.
         package_details: selectedPkg?.details || null,
+        // Snapshot the selected package's photos (main + extras) so the
+        // booking's photo view doesn't change if the DJ edits the package later.
+        package_photos: JSON.stringify(
+          [
+            selectedPkg?.photo,
+            ...(((selectedPkg as { photos?: string[] } | null)?.photos) ?? []),
+          ].filter((u): u is string => !!u)
+        ),
         package_category: cat,
         package_index: selectedPkgIdx,
         quoted_rate: finalPrice.price,
@@ -924,7 +932,7 @@ export default function MobileBookingForm({
               generalPkgs={generalPkgs}
               selectedPkgIdx={selectedPkgIdx}
               onSelect={(idx) => setSelectedPkgIdx(idx)}
-              onPhotoClick={(url, details) => setPhotoLightboxUrl({ url, details })}
+              onPhotoClick={(photos, details) => setPhotoLightboxUrl({ photos, details, active: 0 })}
               startTime={startTime}
               endTime={endTime}
               depositPct={depositPct}
@@ -1016,12 +1024,31 @@ export default function MobileBookingForm({
             className={styles.photoLightboxInner}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoLightboxUrl.url}
-              alt="Package preview"
-              className={styles.photoLightboxImg}
-            />
+            <div className={styles.photoLightboxStage}>
+              <div className={styles.photoLightboxMain}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoLightboxUrl.photos[photoLightboxUrl.active]}
+                  alt="Package preview"
+                  className={styles.photoLightboxImg}
+                />
+              </div>
+              {photoLightboxUrl.photos.length > 1 && (
+                <div className={styles.photoLightboxThumbs}>
+                  {photoLightboxUrl.photos.map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`${styles.photoLightboxThumb} ${i === photoLightboxUrl.active ? styles.photoLightboxThumbActive : ''}`}
+                      onClick={() => setPhotoLightboxUrl((cur) => cur ? { ...cur, active: i } : cur)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p} alt={`Photo ${i + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {photoLightboxUrl.details && (
               <div
                 className={styles.photoLightboxDetails}
@@ -1071,7 +1098,7 @@ function PackagesSection({
   generalPkgs: MobilePackage[];
   selectedPkgIdx: number | null;
   onSelect: (idx: number) => void;
-  onPhotoClick: (url: string, details: string) => void;
+  onPhotoClick: (photos: string[], details: string) => void;
   startTime: string;
   endTime: string;
   depositPct: number;
@@ -1102,6 +1129,10 @@ function PackagesSection({
         title,
         details: pkg.details ?? fallback.details,
         photo: pkg.photo ?? fallback.photo,
+        photos: [
+          (pkg.photo ?? fallback.photo),
+          ...(((pkg as { photos?: string[] }).photos) ?? ((fallback as { photos?: string[] }).photos) ?? []),
+        ].filter((u): u is string => !!u),
       };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
@@ -1118,7 +1149,7 @@ function PackagesSection({
     <>
       <div className={styles.packagesLabel}>Select a Package</div>
       <div className={styles.packagesGrid}>
-        {usablePackages.map(({ idx, pkg, title, details, photo }) => {
+        {usablePackages.map(({ idx, pkg, title, details, photo, photos }) => {
           const isSelected = selectedPkgIdx === idx;
 
           // Price preview on the card head. Dynamic: reflects the actual
@@ -1194,7 +1225,7 @@ function PackagesSection({
                       className={styles.packageThumb}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPhotoClick(photo, details || '');
+                        onPhotoClick(photos && photos.length ? photos : [photo], details || '');
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
