@@ -1645,15 +1645,6 @@ function AddManualBookingModal({
 
 // ── Display helpers ────────────────────────────────────────────────────
 
-function formatDayLabel(d: string | null): string {
-  if (!d) return '—';
-  const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
-  const date = new Date(y, m - 1, day);
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-  const md = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${weekday} · ${md}`;
-}
-
 // Stacked-pill date parts used by the row date display: a big day number,
 // with a short day-of-week and month stacked beside it. Matches the
 // public club/bar profile event list aesthetic.
