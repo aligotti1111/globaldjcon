@@ -762,3 +762,17 @@
 .distWarnConfirm:hover {
   opacity: .9;
 }
+
+/* Event/Reception duration note — right-aligned amber under the time row. */
+.durationNoteRight {
+  text-align: right;
+  font-size: .82rem;
+  color: var(--amber, #ffb347);
+  margin: .35rem 0 .25rem;
+}
+.cocktailDurationNote {
+  text-align: right;
+  font-size: .82rem;
+  color: var(--amber, #ffb347);
+  margin: .25rem 0;
+}

@@ -800,7 +800,7 @@ export default function MobileBookingForm({
         </div>
         {durationLabel(hoursBetween(startTime, endTime)) && (
           <div className={styles.durationNoteRight}>
-            {isWedding ? 'Reception duration' : 'Event duration'}: {durationLabel(hoursBetween(startTime, endTime))}
+            {isWedding ? 'Reception Duration' : 'Event Duration'}: {durationLabel(hoursBetween(startTime, endTime))}
           </div>
         )}
 
