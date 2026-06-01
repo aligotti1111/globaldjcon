@@ -178,6 +178,7 @@
   align-items: center;
   gap: .5rem;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 .navBtn {
   background: transparent;
@@ -261,6 +262,8 @@
 .monthHeaderRow {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 100%;
   gap: 1rem;
   margin-bottom: .75rem;
 }
