@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import type { Json } from '@/types/supabase';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
@@ -260,7 +261,7 @@ export default function BookingRequestsClient({
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status, updated_at: new Date().toISOString() } as unknown as never)
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', bookingId)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
@@ -415,7 +416,7 @@ export default function BookingRequestsClient({
           }
           await supabase
             .from('users')
-            .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
+            .update({ booking_settings: JSON.stringify(bs) })
             .eq('id', currentUser.id);
         } catch (calErr) {
           console.error('Calendar update on approve failed:', calErr);
@@ -440,7 +441,7 @@ export default function BookingRequestsClient({
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() } as unknown as never)
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', bookingId)
         .eq('requester_id', currentUser.id);
       if (error) throw error;
@@ -483,7 +484,7 @@ export default function BookingRequestsClient({
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() } as unknown as never)
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', bookingId)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
@@ -528,7 +529,7 @@ export default function BookingRequestsClient({
       } else {
         const { error } = await supabase
           .from('bookings')
-          .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
+          .update({ status: 'approved', updated_at: new Date().toISOString() })
           .eq('id', bookingId)
           .eq('requester_id', currentUser.id);
         if (error) throw error;
@@ -615,7 +616,7 @@ export default function BookingRequestsClient({
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'denied', updated_at: new Date().toISOString() } as unknown as never)
+        .update({ status: 'denied', updated_at: new Date().toISOString() })
         .eq('id', bookingId)
         .eq('requester_id', currentUser.id);
       if (error) throw error;
@@ -686,9 +687,12 @@ export default function BookingRequestsClient({
         .update({
           quote_sent_at: nowIso,
           status: 'counter',
-          negotiation_log: log,
+          // Typed object-array into a Json column — TS won't infer the
+          // recursive Json type from the concrete shape, so narrow-cast just
+          // this value (the rest of the payload stays type-checked).
+          negotiation_log: log as unknown as Json,
           updated_at: nowIso,
-        } as unknown as never)
+        })
         .eq('id', b.id)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
@@ -764,7 +768,7 @@ export default function BookingRequestsClient({
       const updated = [...new Set([...blocked, userId])];
       const { error } = await supabase
         .from('users')
-        .update({ blocked_users: updated } as unknown as never)
+        .update({ blocked_users: updated })
         .eq('id', currentUser.id);
       if (error) throw error;
       setBlocked(updated);
@@ -772,7 +776,7 @@ export default function BookingRequestsClient({
       // local list so they vanish from the UI.
       await supabase
         .from('bookings')
-        .update({ status: 'denied', updated_at: new Date().toISOString() } as unknown as never)
+        .update({ status: 'denied', updated_at: new Date().toISOString() })
         .eq('requester_id', userId)
         .eq('dj_id', currentUser.id)
         .eq('status', 'pending');
@@ -793,7 +797,7 @@ export default function BookingRequestsClient({
       const updated = blocked.filter((id) => id !== userId);
       await supabase
         .from('users')
-        .update({ blocked_users: updated } as unknown as never)
+        .update({ blocked_users: updated })
         .eq('id', currentUser.id);
       setBlocked(updated);
     } catch (err) {
