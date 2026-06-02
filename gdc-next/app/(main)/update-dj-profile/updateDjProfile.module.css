@@ -2455,20 +2455,29 @@
   margin: .5rem 0 0;
 }
 
-/* "Use these photos for Wedding & Mitzvah" opt-in checkbox (General only). */
-.usePhotosForAll {
-  display: flex;
-  align-items: flex-start;
-  gap: .5rem;
+
+/* "Use the same photos as my General package" — one-click copy button shown
+   on Wedding/Mitzvah package editors. Fills this package's photo slots with
+   independent copies of the General package's photos. */
+.useGeneralPhotosBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
   margin-top: .65rem;
-  cursor: pointer;
+  padding: .5rem .8rem;
+  border: 1px solid var(--neon, #00f5c4);
+  border-radius: 7px;
+  background: rgba(0, 245, 196, .08);
+  color: var(--neon, #00f5c4);
   font-family: 'Space Mono', monospace;
   font-size: .68rem;
-  line-height: 1.35;
-  color: var(--text);
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: background .15s, transform .05s;
 }
-.usePhotosForAll input {
-  margin-top: .15rem;
-  accent-color: var(--neon, #00f5c4);
-  flex-shrink: 0;
+.useGeneralPhotosBtn:hover {
+  background: rgba(0, 245, 196, .16);
+}
+.useGeneralPhotosBtn:active {
+  transform: translateY(1px);
 }

@@ -768,27 +768,6 @@ function PackageCardWithCatTabs({
 
     setCatErrors(errors);
 
-    // "Use these photos for Wedding & Bar/Bat Mitzvah" — when the DJ checked
-    // this on the General package, copy General's photos (main + extras) into
-    // the Wedding and Mitzvah packages in this same payload, as INDEPENDENT
-    // copies (fresh arrays). They can be edited separately afterward; editing
-    // General later won't change them.
-    const gen = payload.general as (MobilePackage & { copyPhotosToAll?: boolean }) | undefined;
-    if (gen && gen.copyPhotosToAll) {
-      const genExtras = Array.isArray((gen as { photos?: string[] }).photos)
-        ? [...(gen as { photos?: string[] }).photos!]
-        : [];
-      (['wedding', 'mitzvah'] as PkgCategory[]).forEach((c) => {
-        if (!activeCats.includes(c)) return;
-        if (!payload[c]) return;
-        payload[c] = {
-          ...payload[c],
-          photo: gen.photo || '',
-          photos: [...genExtras],
-        } as MobilePackage;
-      });
-    }
-
     if (!anySaved) {
       // Nothing valid + nothing intentionally cleared → don't write
       setSaveStatus('error');
@@ -931,6 +910,12 @@ function PackageCardWithCatTabs({
         onChange={(p) => updateDraftField(selectedCat, p)}
         onRemove={onRemove}
         hideOwnHeader
+        generalPhotos={{
+          photo: drafts.general?.photo || '',
+          photos: Array.isArray((drafts.general as { photos?: string[] } | undefined)?.photos)
+            ? ((drafts.general as { photos?: string[] }).photos as string[])
+            : [],
+        }}
       />
 
       {/* Validation errors: list each invalid cat and what's missing */}

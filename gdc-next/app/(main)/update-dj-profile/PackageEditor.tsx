@@ -32,6 +32,9 @@ interface Props {
   // is expected to provide those instead. Used by the inner-tabs case in
   // BookingTab when multiple package categories are active.
   hideOwnHeader?: boolean;
+  // For wedding/mitzvah editors: the General package's photos at this same
+  // index, so the DJ can one-click copy them into this package's slots.
+  generalPhotos?: { photo: string; photos: string[] };
 }
 
 export function newMobPackage(): MobilePackage & {
@@ -59,7 +62,7 @@ export function newMobPackage(): MobilePackage & {
 }
 
 export default function PackageEditor({
-  cat, idx, pkg, totalCount, userId, onChange, onRemove, hideOwnHeader,
+  cat, idx, pkg, totalCount, userId, onChange, onRemove, hideOwnHeader, generalPhotos,
 }: Props) {
   const isWedding = cat === 'wedding';
   const reqAll = !!pkg.reqAll;
@@ -404,17 +407,24 @@ export default function PackageEditor({
             {uploadStatus.msg}
           </div>
         )}
-        {cat === 'general' && (!!pkg.photo || extraPhotos.length > 0) && (
-          <label className={styles.usePhotosForAll}>
-            <input
-              type="checkbox"
-              checked={!!(pkg as { copyPhotosToAll?: boolean }).copyPhotosToAll}
-              onChange={(e) =>
-                onChange({ ...pkg, copyPhotosToAll: e.target.checked } as MobilePackage)
-              }
-            />
-            <span>Use these photos for Wedding &amp; Bar/Bat Mitzvah packages too</span>
-          </label>
+        {(cat === 'wedding' || cat === 'mitzvah') && generalPhotos && (generalPhotos.photo || generalPhotos.photos.length > 0) && (
+          <button
+            type="button"
+            className={styles.useGeneralPhotosBtn}
+            onClick={() =>
+              onChange({
+                ...pkg,
+                photo: generalPhotos.photo || '',
+                photos: [...generalPhotos.photos],
+              } as MobilePackage)
+            }
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            Use the same photos as my General package
+          </button>
         )}
       </div>
     </>
