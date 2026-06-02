@@ -410,7 +410,7 @@ export default function PackageEditor({
                     <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
                     <span className={styles.photoSlotPlus}>+</span>
                     <span className={styles.photoSlotHint}>{slot === 0 ? 'Main photo' : 'Add photo'}</span>
-                    <span className={styles.photoSlotSize}>1000&times;1000px (1:1)<br />JPG, PNG, or WebP</span>
+                    <span className={styles.photoSlotSize}>1000&times;1000px<br />JPG, PNG, or WebP</span>
                   </label>
                 )}
               </div>
