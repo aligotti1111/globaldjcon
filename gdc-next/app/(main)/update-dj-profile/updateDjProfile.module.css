@@ -2463,16 +2463,21 @@
   display: inline-flex;
   align-items: center;
   gap: .45rem;
-  padding: .4rem .7rem;
-  border: 1px solid var(--neon, #00f5c4);
-  border-radius: 7px;
-  background: rgba(0, 245, 196, .08);
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--neon, #00f5c4);
   font-family: 'Space Mono', monospace;
   font-size: .62rem;
   letter-spacing: .03em;
   cursor: pointer;
-  transition: background .15s, transform .05s;
+  transition: opacity .15s;
+}
+.useGeneralPhotosBtn:hover {
+  opacity: .75;
+}
+.useGeneralPhotosBtn:active {
+  transform: translateY(1px);
 }
 /* Header row: "Package Setup Photos" label left, copy button right. */
 .photoHeaderRow {
@@ -2482,10 +2487,4 @@
   gap: .75rem;
   flex-wrap: wrap;
   margin-bottom: .5rem;
-}
-.useGeneralPhotosBtn:hover {
-  background: rgba(0, 245, 196, .16);
-}
-.useGeneralPhotosBtn:active {
-  transform: translateY(1px);
 }
