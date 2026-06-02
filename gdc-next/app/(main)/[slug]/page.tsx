@@ -98,10 +98,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${djName} — Global DJ Connect`;
   const description = stripHtml(data.bio).slice(0, 200) || `Book ${djName}, a ${kind}, on Global DJ Connect.`;
 
-  // Profile image for the preview thumbnail: avatar first (the DJ's photo),
-  // then banner as a fallback.
-  const previewImage = data.avatar_url || data.banner_url || undefined;
-
+  // NOTE: the preview image itself is produced by opengraph-image.tsx in this
+  // same folder (banner if set, otherwise the avatar centered on black).
+  // Next wires the og:image / twitter:image tags from that file automatically,
+  // so we only set title/description/card here.
   return {
     title,
     description,
@@ -110,13 +110,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: 'profile',
       siteName: 'Global DJ Connect',
-      ...(previewImage ? { images: [{ url: previewImage, alt: `${djName} profile photo` }] } : {}),
     },
     twitter: {
-      card: previewImage ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(previewImage ? { images: [previewImage] } : {}),
     },
   };
 }
