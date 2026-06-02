@@ -717,7 +717,10 @@ function PackageCardWithCatTabs({
     if (!d) return false;
     const hasPhotos = (d.photo || '').trim()
       || (Array.isArray((d as { photos?: string[] }).photos) && (d as { photos?: string[] }).photos!.some((u) => !!u));
-    return !isPkgEmpty(d) || !!hasPhotos;
+    // The "require price on request" toggle is meaningful content too — when
+    // it's on, the package is being configured even if no price is entered.
+    const hasReqAll = !!(d as { reqAll?: boolean }).reqAll;
+    return !isPkgEmpty(d) || !!hasPhotos || hasReqAll;
   }
   // Border color for a category: neutral if empty, yellow if unsaved, green if
   // saved.
