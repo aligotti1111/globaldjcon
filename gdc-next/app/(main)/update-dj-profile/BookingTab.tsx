@@ -675,11 +675,13 @@ function PackageCardWithCatTabs({
     () => ({} as Record<PkgCategory, PkgValidationResult>)
   );
 
-  // Did anything change since last save? Used for the dirty indicator.
-  // Both sides are normalized first so cosmetic shape differences (undefined
-  // vs '' vs absent, empty arrays, key order) don't falsely register as
-  // "unsaved" — only real value changes count.
-  const isDirty = useMemo(() => {
+  // Per-category saved/unsaved state. A category is "dirty" (unsaved) when its
+  // draft differs from what's saved. Both sides are normalized first so
+  // cosmetic shape differences (undefined vs '' vs absent, empty arrays, key
+  // order) don't falsely register as "unsaved" — only real value changes count.
+  // Used to color each category's tab AND the card box independently, so
+  // switching tabs still shows every category's own state.
+  const dirtyByCat = useMemo(() => {
     const norm = (p: MobilePackage | undefined): string => {
       const o = (p || {}) as Record<string, unknown>;
       const out: Record<string, unknown> = {};
@@ -692,12 +694,20 @@ function PackageCardWithCatTabs({
       });
       return JSON.stringify(out);
     };
-    return activeCats.some((c) => {
+    const map = {} as Record<PkgCategory, boolean>;
+    activeCats.forEach((c) => {
       const saved = packages[c]?.[idx] || newMobPackage();
       const draft = drafts[c] || newMobPackage();
-      return norm(saved) !== norm(draft);
+      map[c] = norm(saved) !== norm(draft);
     });
+    return map;
   }, [activeCats, packages, drafts, idx]);
+
+  // Any category unsaved? (used for the Save button enabled/disabled state)
+  const isDirty = useMemo(
+    () => activeCats.some((c) => dirtyByCat[c]),
+    [activeCats, dirtyByCat]
+  );
 
   // Report dirty state to parent (BookingTab aggregates across all cards
   // and bubbles to UpdateDjProfileClient which powers the page-leave
@@ -821,7 +831,10 @@ function PackageCardWithCatTabs({
   const errorCats = activeCats.filter((c) => catErrors[c]);
 
   return (
-    <div className={styles.pkgCard}>
+    <div
+      className={styles.pkgCard}
+      style={{ border: `2px solid ${dirtyByCat[selectedCat] ? 'var(--amber)' : 'var(--neon)'}` }}
+    >
       <div className={styles.pkgHeader}>
         <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
         {totalCount > 1 && (
@@ -879,12 +892,14 @@ function PackageCardWithCatTabs({
             {activeCats.map((c) => {
               const isActive = selectedCat === c;
               const hasError = !!catErrors[c];
+              const stateColor = dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)';
               return (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setSelectedCat(c)}
                   className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
+                  style={{ borderColor: stateColor, boxShadow: `inset 0 0 0 1px ${stateColor}` }}
                 >
                   <span>{catLabels[c]}</span>
                   {hasError && <span className={styles.innerCatBadge}>!</span>}
