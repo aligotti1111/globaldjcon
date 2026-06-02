@@ -2463,17 +2463,25 @@
   display: inline-flex;
   align-items: center;
   gap: .45rem;
-  margin-top: .65rem;
-  padding: .5rem .8rem;
+  padding: .4rem .7rem;
   border: 1px solid var(--neon, #00f5c4);
   border-radius: 7px;
   background: rgba(0, 245, 196, .08);
   color: var(--neon, #00f5c4);
   font-family: 'Space Mono', monospace;
-  font-size: .68rem;
+  font-size: .62rem;
   letter-spacing: .03em;
   cursor: pointer;
   transition: background .15s, transform .05s;
+}
+/* Header row: "Package Setup Photos" label left, copy button right. */
+.photoHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: .5rem;
 }
 .useGeneralPhotosBtn:hover {
   background: rgba(0, 245, 196, .16);
