@@ -402,12 +402,6 @@ export default function HomeClient({ initialDjs }: Props) {
     // Rule: when we have a userLocation (from search OR Near Me), always
     // sort by distance ascending.
     if (userLocation) {
-      // DEBUG: log what we're sorting so Anthony can see in DevTools
-      // console which DJs have _distance set vs missing.
-      console.log('[GDC] sorting by distance, userLocation:', userLocation);
-      list.forEach((dj) => {
-        console.log(`  ${dj.name}: _distance=${dj._distance}, _coords=${dj._coords ? `${dj._coords.lat},${dj._coords.lng}` : 'NONE'}, zip=${dj.zip}`);
-      });
       list.sort((a, b) => (a._distance ?? 9999) - (b._distance ?? 9999));
     } else {
       list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
