@@ -1019,15 +1019,19 @@
   margin-top: .75rem;
   width: 100%;
   padding: .65rem;
-  background: transparent;
-  border: 1px dashed var(--border);
+  background: #ffffff;
+  border: 1px solid #ffffff;
   border-radius: 6px;
-  color: var(--muted);
+  color: #000000;
   font-family: 'Space Mono', monospace;
   font-size: .62rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
+}
+.addPkgBtn:hover {
+  background: #e8e8e8;
+  border-color: #e8e8e8;
 }
 .addPkgBtn:hover {
   border-color: var(--neon);
@@ -2494,6 +2498,6 @@
 
 /* Red outline on a required field that failed validation on save attempt. */
 .pkgFieldError {
-  border: 1px solid #ff5470 !important;
-  box-shadow: 0 0 0 1px #ff5470;
+  border: 1px solid #ff5f5f !important;
+  box-shadow: 0 0 0 1px #ff5f5f;
 }
