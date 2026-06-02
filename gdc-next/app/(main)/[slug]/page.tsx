@@ -24,6 +24,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
+import type { Metadata } from 'next';
 
 // Render fresh on every request. The DJ's booking_settings (deposit %,
 // per-day limits, calendar, packages) can change at any time, and a
@@ -51,6 +52,73 @@ function deriveSlugFromName(name: string | null | undefined): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+// Strip HTML tags from a bio for use in a plain-text meta description.
+function stripHtml(s: string | null | undefined): string {
+  if (!s) return '';
+  return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// generateMetadata runs on the server before render and supplies the
+// Open Graph + Twitter Card tags that messaging apps, social networks, and
+// search engines read to build a link preview. The DJ's profile image
+// (avatar) is set as the preview thumbnail so shared profile links show
+// their photo. Falls back to the banner image, then to no image.
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const isUUID = UUID_REGEX.test(slug);
+  const cols = 'name, bio, dj_type, role, avatar_url, banner_url, profile_private';
+  const builder = isUUID
+    ? supabase.from('users').select(cols).eq('id', slug)
+    : supabase.from('users').select(cols).eq('slug', slug);
+
+  const { data } = await builder.maybeSingle<{
+    name: string | null;
+    bio: string | null;
+    dj_type: 'mobile' | 'club' | null;
+    role: string | null;
+    avatar_url: string | null;
+    banner_url: string | null;
+    profile_private: boolean | null;
+  }>();
+
+  // No profile, not a DJ, or private → generic metadata, no image leak.
+  if (!data || data.role !== 'dj' || data.profile_private) {
+    return {
+      title: 'Global DJ Connect',
+      description: 'Connecting party hosts and venues to premium DJs.',
+    };
+  }
+
+  const djName = data.name || 'DJ';
+  const kind = data.dj_type === 'club' ? 'Club/Bar DJ' : 'Mobile/Event DJ';
+  const title = `${djName} — Global DJ Connect`;
+  const description = stripHtml(data.bio).slice(0, 200) || `Book ${djName}, a ${kind}, on Global DJ Connect.`;
+
+  // Profile image for the preview thumbnail: avatar first (the DJ's photo),
+  // then banner as a fallback.
+  const previewImage = data.avatar_url || data.banner_url || undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      siteName: 'Global DJ Connect',
+      ...(previewImage ? { images: [{ url: previewImage, alt: `${djName} profile photo` }] } : {}),
+    },
+    twitter: {
+      card: previewImage ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(previewImage ? { images: [previewImage] } : {}),
+    },
+  };
 }
 
 export default async function DjProfilePage({ params }: PageProps) {
