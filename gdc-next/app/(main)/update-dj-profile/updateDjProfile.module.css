@@ -2446,14 +2446,6 @@
   color: var(--muted);
 }
 
-/* Ideal-size hint under the Package Setup Photos label. */
-.photoSizeHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .03em;
-  color: var(--muted);
-  margin: .5rem 0 0;
-}
 
 
 /* "Use the same photos as my General package" — one-click copy button shown
@@ -2487,4 +2479,15 @@
   gap: .75rem;
   flex-wrap: wrap;
   margin-bottom: .5rem;
+}
+
+/* Tiny size/format hint shown inside empty photo slots. */
+.photoSlotSize {
+  font-family: 'Space Mono', monospace;
+  font-size: .46rem;
+  line-height: 1.3;
+  letter-spacing: .02em;
+  color: var(--muted);
+  text-align: center;
+  margin-top: .15rem;
 }
