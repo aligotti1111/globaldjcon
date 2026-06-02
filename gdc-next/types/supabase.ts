@@ -1,22 +1,7 @@
-// Database types for Global DJ Connect.
-//
-// HAND-WRITTEN to mirror the format `supabase gen types typescript` produces.
-// When you eventually run that command, it'll overwrite this file with the
-// authoritative version pulled from the live schema. Until then, this is
-// the source of truth for the typed Supabase clients.
-//
-// Regenerate with:
-//   npx supabase gen types typescript --project-id hwqvzuusquruhwguqole > types/supabase.ts
-//
-// HOW TO USE:
-//   import type { Database } from '@/types/supabase';
-//   const supabase = createBrowserClient<Database>(...);
-//   const { data } = await supabase.from('users').select('id,name'); // typed!
-//
-// Pattern: every table has Row / Insert / Update variants:
-//   - Row    = the shape returned from .select()
-//   - Insert = required fields when calling .insert() (server defaults can be null)
-//   - Update = all fields are optional, partial updates allowed
+// Auto-generated from the live database schema via the Supabase dashboard
+// (Data API -> Docs -> "Generate and download types"). Do not hand-edit;
+// regenerate after schema changes. Exports `Database` plus Tables/TablesInsert/
+// TablesUpdate helpers used by the typed Supabase clients.
 
 export type Json =
   | string
@@ -24,481 +9,816 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      // ── public.users ────────────────────────────────────────────
-      // Mirror of auth.users at the application level. Email LIVES IN
-      // auth.users only — it is NOT replicated here. To get email for
-      // a user id, use the admin client (lib/supabase/admin.ts).
-      users: {
+      booking_drafts: {
         Row: {
-          id: string;
-          name: string;
-          role: 'dj' | 'venue' | 'host' | 'admin';
-          slug: string | null;
-          dj_type: 'mobile' | 'club' | null;
-          // Address fields used for distance + display
-          zip: string | null;
-          city: string | null;
-          state: string | null;
-          country: string | null;
-          address: string | null;
-          // Pre-computed home coords — saves a Nominatim round-trip on
-          // every distance check
-          home_lat: number | null;
-          home_lon: number | null;
-          // DJ-specific fields
-          phone: string | null;
-          bio: string | null;
-          start_year: number | null;
-          travel_distance: string | null; // string because vanilla allows 'any'
-          avatar_url: string | null;
-          genres: string[] | null;
-          event_types: string | null; // comma-joined list
-          mixes: Json | null;
-          videos: Json | null;
-          photos: Json | null;
-          socials: Json | null;
-          testimonials: Json | null;
-          // Venue-specific
-          venue_name: string | null;
-          // Booking config — stringified JSON (see bookingSettings.ts)
-          booking_settings: string | null;
-          // Privacy
-          profile_private: boolean | null;
-          email_verified: boolean;
-          claimed: boolean | null;
-          blocked_users: string[] | null;
-          // Timestamps
-          created_at: string;
-          updated_at: string | null;
-        };
+          created_at: string | null
+          data: Json | null
+          dj_id: string
+          dj_slug: string | null
+          id: string
+          requester_id: string
+          updated_at: string | null
+        }
         Insert: {
-          id: string; // matches auth.users.id — never auto-generated
-          name: string;
-          role: 'dj' | 'venue' | 'host' | 'admin';
-          slug?: string | null;
-          dj_type?: 'mobile' | 'club' | null;
-          zip?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string | null;
-          address?: string | null;
-          home_lat?: number | null;
-          home_lon?: number | null;
-          phone?: string | null;
-          bio?: string | null;
-          start_year?: number | null;
-          travel_distance?: string | null;
-          avatar_url?: string | null;
-          genres?: string[] | null;
-          event_types?: string | null;
-          mixes?: Json | null;
-          videos?: Json | null;
-          photos?: Json | null;
-          socials?: Json | null;
-          testimonials?: Json | null;
-          venue_name?: string | null;
-          booking_settings?: string | null;
-          profile_private?: boolean | null;
-          email_verified?: boolean;
-          claimed?: boolean | null;
-          blocked_users?: string[] | null;
-          created_at?: string;
-          updated_at?: string | null;
-        };
+          created_at?: string | null
+          data?: Json | null
+          dj_id: string
+          dj_slug?: string | null
+          id?: string
+          requester_id: string
+          updated_at?: string | null
+        }
         Update: {
-          id?: string;
-          name?: string;
-          role?: 'dj' | 'venue' | 'host' | 'admin';
-          slug?: string | null;
-          dj_type?: 'mobile' | 'club' | null;
-          zip?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string | null;
-          address?: string | null;
-          home_lat?: number | null;
-          home_lon?: number | null;
-          phone?: string | null;
-          bio?: string | null;
-          start_year?: number | null;
-          travel_distance?: string | null;
-          avatar_url?: string | null;
-          genres?: string[] | null;
-          event_types?: string | null;
-          mixes?: Json | null;
-          videos?: Json | null;
-          photos?: Json | null;
-          socials?: Json | null;
-          testimonials?: Json | null;
-          venue_name?: string | null;
-          booking_settings?: string | null;
-          profile_private?: boolean | null;
-          email_verified?: boolean;
-          claimed?: boolean | null;
-          blocked_users?: string[] | null;
-          created_at?: string;
-          updated_at?: string | null;
-        };
-      };
-
-      // ── public.bookings ─────────────────────────────────────────
-      // One row per booking request. Mobile + club bookings share this
-      // table; differentiate via booking_type. Mobile-only fields
-      // (cocktail_*, package_*, deposit_*) are NULL for club bookings.
-      // Club-only fields (venue_type, set_type, equipment, offer_amount)
-      // are NULL for mobile.
+          created_at?: string | null
+          data?: Json | null
+          dj_id?: string
+          dj_slug?: string | null
+          id?: string
+          requester_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      booking_notes: {
+        Row: {
+          author_id: string
+          booking_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          booking_id: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          booking_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_notes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
-          id: string;
-          dj_id: string;
-          requester_id: string;
-          dj_slug: string | null;
-          booking_type: 'mobile' | 'club' | null;
-          // Event basics
-          event_date: string | null; // YYYY-MM-DD
-          event_type: string | null; // mobile only
-          venue_name: string | null;
-          venue_address: string | null;
-          venue_lat: number | null;
-          venue_lon: number | null;
-          country: string | null;
-          // Times
-          start_time: string | null; // HH:MM (24h)
-          end_time: string | null;
-          // Mobile-specific
-          room_details: string | null;
-          guest_count: number | null;
-          phone: string | null;
-          cocktail_needed: boolean | null;
-          cocktail_start_time: string | null;
-          cocktail_same_room: boolean | null;
-          cocktail_price: number | null;
-          cocktail_included: boolean | null;
-          setup_hours: string | null;
-          package_title: string | null;
-          package_category: string | null;
-          package_index: number | null;
-          package_details: string | null;
-          package_photos: string | null;
-          // Club-specific
-          venue_type: 'bar' | 'club' | null;
-          set_type: string | null;
-          equipment: 'sound_system' | 'decks_only' | 'venue_provides' | null;
-          venue_equip_detail: string | null;
-          offer_amount: number | null;
-          // Pricing
-          quoted_rate: number | null;
-          counter_rate: number | null;
-          overtime_rate: number | null;
-          counter_message: string | null;
-          deposit_pct: number | null;
-          deposit_amount: number | null;
-          currency: string | null;
-          is_quote: boolean | null;
-          // ISO timestamp set when DJ explicitly sends a drafted quote.
-          // Null means rate may be drafted (quoted_rate set) but not yet
-          // visible to booker. Club quote-mode flow only.
-          quote_sent_at: string | null;
-          // Negotiation history (JSON array of { from, amount, message, created_at })
-          negotiation_log: Json | null;
-          notes: string | null;
-          status: 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled' | null;
-          created_at: string;
-          updated_at: string | null;
-        };
+          booking_type: string | null
+          cocktail_included: boolean | null
+          cocktail_needed: boolean | null
+          cocktail_price: number | null
+          cocktail_same_room: boolean | null
+          cocktail_start_time: string | null
+          counter_message: string | null
+          counter_rate: number | null
+          country: string | null
+          created_at: string | null
+          currency: string | null
+          deposit_amount: number | null
+          deposit_pct: number | null
+          dj_email: string | null
+          dj_id: string | null
+          dj_name: string | null
+          dj_slug: string | null
+          dj_type: string | null
+          end_time: string | null
+          equipment: string | null
+          equipment_needed: string | null
+          event_date: string | null
+          event_type: string | null
+          flyer_url: string | null
+          guest_count: number | null
+          host_email: string | null
+          host_email_sent_at: string | null
+          id: string
+          is_manual: boolean
+          is_quote: boolean | null
+          link_label: string | null
+          link_url: string | null
+          negotiation_log: Json | null
+          notes: string | null
+          offer_amount: number | null
+          overtime_rate: number | null
+          package_category: string | null
+          package_details: string | null
+          package_index: number | null
+          package_photos: string | null
+          package_title: string | null
+          phone: string | null
+          quote_sent_at: string | null
+          quoted_rate: number | null
+          rate: number | null
+          requester_id: string
+          requester_name: string | null
+          room_details: string | null
+          set_type: string | null
+          setup_hours: string | null
+          start_time: string | null
+          status: string | null
+          updated_at: string | null
+          venue_address: string | null
+          venue_decks: string | null
+          venue_equip_detail: string | null
+          venue_lat: number | null
+          venue_lon: number | null
+          venue_name: string | null
+          venue_type: string | null
+        }
         Insert: {
-          id?: string; // gen_random_uuid() default
-          dj_id: string;
-          requester_id: string;
-          dj_slug?: string | null;
-          booking_type?: 'mobile' | 'club' | null;
-          event_date?: string | null;
-          event_type?: string | null;
-          venue_name?: string | null;
-          venue_address?: string | null;
-          venue_lat?: number | null;
-          venue_lon?: number | null;
-          country?: string | null;
-          start_time?: string | null;
-          end_time?: string | null;
-          room_details?: string | null;
-          guest_count?: number | null;
-          phone?: string | null;
-          cocktail_needed?: boolean | null;
-          cocktail_start_time?: string | null;
-          cocktail_same_room?: boolean | null;
-          cocktail_price?: number | null;
-          cocktail_included?: boolean | null;
-          setup_hours?: string | null;
-          package_title?: string | null;
-          package_category?: string | null;
-          package_index?: number | null;
-          package_details?: string | null;
-          package_photos?: string | null;
-          venue_type?: 'bar' | 'club' | null;
-          set_type?: string | null;
-          equipment?: 'sound_system' | 'decks_only' | 'venue_provides' | null;
-          venue_equip_detail?: string | null;
-          offer_amount?: number | null;
-          quoted_rate?: number | null;
-          counter_rate?: number | null;
-          overtime_rate?: number | null;
-          counter_message?: string | null;
-          deposit_pct?: number | null;
-          deposit_amount?: number | null;
-          currency?: string | null;
-          is_quote?: boolean | null;
-          quote_sent_at?: string | null;
-          negotiation_log?: Json | null;
-          notes?: string | null;
-          status?: 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled' | null;
-          created_at?: string;
-          updated_at?: string | null;
-        };
+          booking_type?: string | null
+          cocktail_included?: boolean | null
+          cocktail_needed?: boolean | null
+          cocktail_price?: number | null
+          cocktail_same_room?: boolean | null
+          cocktail_start_time?: string | null
+          counter_message?: string | null
+          counter_rate?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          deposit_amount?: number | null
+          deposit_pct?: number | null
+          dj_email?: string | null
+          dj_id?: string | null
+          dj_name?: string | null
+          dj_slug?: string | null
+          dj_type?: string | null
+          end_time?: string | null
+          equipment?: string | null
+          equipment_needed?: string | null
+          event_date?: string | null
+          event_type?: string | null
+          flyer_url?: string | null
+          guest_count?: number | null
+          host_email?: string | null
+          host_email_sent_at?: string | null
+          id?: string
+          is_manual?: boolean
+          is_quote?: boolean | null
+          link_label?: string | null
+          link_url?: string | null
+          negotiation_log?: Json | null
+          notes?: string | null
+          offer_amount?: number | null
+          overtime_rate?: number | null
+          package_category?: string | null
+          package_details?: string | null
+          package_index?: number | null
+          package_photos?: string | null
+          package_title?: string | null
+          phone?: string | null
+          quote_sent_at?: string | null
+          quoted_rate?: number | null
+          rate?: number | null
+          requester_id: string
+          requester_name?: string | null
+          room_details?: string | null
+          set_type?: string | null
+          setup_hours?: string | null
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string | null
+          venue_address?: string | null
+          venue_decks?: string | null
+          venue_equip_detail?: string | null
+          venue_lat?: number | null
+          venue_lon?: number | null
+          venue_name?: string | null
+          venue_type?: string | null
+        }
         Update: {
-          id?: string;
-          dj_id?: string;
-          requester_id?: string;
-          dj_slug?: string | null;
-          booking_type?: 'mobile' | 'club' | null;
-          event_date?: string | null;
-          event_type?: string | null;
-          venue_name?: string | null;
-          venue_address?: string | null;
-          venue_lat?: number | null;
-          venue_lon?: number | null;
-          country?: string | null;
-          start_time?: string | null;
-          end_time?: string | null;
-          room_details?: string | null;
-          guest_count?: number | null;
-          phone?: string | null;
-          cocktail_needed?: boolean | null;
-          cocktail_start_time?: string | null;
-          cocktail_same_room?: boolean | null;
-          cocktail_price?: number | null;
-          cocktail_included?: boolean | null;
-          setup_hours?: string | null;
-          package_title?: string | null;
-          package_category?: string | null;
-          package_index?: number | null;
-          package_details?: string | null;
-          package_photos?: string | null;
-          venue_type?: 'bar' | 'club' | null;
-          set_type?: string | null;
-          equipment?: 'sound_system' | 'decks_only' | 'venue_provides' | null;
-          venue_equip_detail?: string | null;
-          offer_amount?: number | null;
-          quoted_rate?: number | null;
-          counter_rate?: number | null;
-          overtime_rate?: number | null;
-          counter_message?: string | null;
-          deposit_pct?: number | null;
-          deposit_amount?: number | null;
-          currency?: string | null;
-          is_quote?: boolean | null;
-          quote_sent_at?: string | null;
-          negotiation_log?: Json | null;
-          notes?: string | null;
-          status?: 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled' | null;
-          created_at?: string;
-          updated_at?: string | null;
-        };
-      };
-
-      // ── public.messages ─────────────────────────────────────────
-      // Inbox messages between users. Top-level messages have
-      // parent_id = null; replies set parent_id to the parent's id.
-      messages: {
-        Row: {
-          id: string;
-          parent_id: string | null;
-          from_user_id: string | null;
-          from_name: string | null;
-          from_email: string | null;
-          to_user_id: string;
-          to_dj_slug: string | null;
-          subject: string;
-          message: string;
-          read: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          parent_id?: string | null;
-          from_user_id?: string | null;
-          from_name?: string | null;
-          from_email?: string | null;
-          to_user_id: string;
-          to_dj_slug?: string | null;
-          subject: string;
-          message: string;
-          read?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          parent_id?: string | null;
-          from_user_id?: string | null;
-          from_name?: string | null;
-          from_email?: string | null;
-          to_user_id?: string;
-          to_dj_slug?: string | null;
-          subject?: string;
-          message?: string;
-          read?: boolean;
-          created_at?: string;
-        };
-      };
-
-      // ── public.profile_claims ───────────────────────────────────
-      // Profile claim requests submitted from /claim. Admin reviews
-      // them in the admin panel and approves → triggers a set-password
-      // email so the claimant can take over the profile.
-      profile_claims: {
-        Row: {
-          id: string;
-          target_user_id: string | null;
-          target_slug: string | null;
-          target_biz_name: string;
-          claimant_name: string;
-          claimant_email: string;
-          verify_msg: string | null;
-          status: 'pending' | 'approved' | 'rejected';
-          created_at: string;
-          reviewed_at: string | null;
-          reviewed_notes: string | null;
-        };
-        Insert: {
-          id?: string;
-          target_user_id?: string | null;
-          target_slug?: string | null;
-          target_biz_name: string;
-          claimant_name: string;
-          claimant_email: string;
-          verify_msg?: string | null;
-          status?: 'pending' | 'approved' | 'rejected';
-          created_at?: string;
-          reviewed_at?: string | null;
-          reviewed_notes?: string | null;
-        };
-        Update: {
-          id?: string;
-          target_user_id?: string | null;
-          target_slug?: string | null;
-          target_biz_name?: string;
-          claimant_name?: string;
-          claimant_email?: string;
-          verify_msg?: string | null;
-          status?: 'pending' | 'approved' | 'rejected';
-          created_at?: string;
-          reviewed_at?: string | null;
-          reviewed_notes?: string | null;
-        };
-      };
-
-      // ── public.password_setup_tokens ────────────────────────────
-      // One-time tokens emailed to claimants after admin approval.
-      // User clicks link → submits new password → token marked used.
-      password_setup_tokens: {
-        Row: {
-          token: string;
-          user_id: string;
-          created_at: string;
-          expires_at: string;
-          used_at: string | null;
-        };
-        Insert: {
-          token: string;
-          user_id: string;
-          created_at?: string;
-          expires_at: string;
-          used_at?: string | null;
-        };
-        Update: {
-          token?: string;
-          user_id?: string;
-          created_at?: string;
-          expires_at?: string;
-          used_at?: string | null;
-        };
-      };
-
-      // ── public.email_verification_tokens ────────────────────────
-      // Sent on signup. User clicks link → users.email_verified=true.
+          booking_type?: string | null
+          cocktail_included?: boolean | null
+          cocktail_needed?: boolean | null
+          cocktail_price?: number | null
+          cocktail_same_room?: boolean | null
+          cocktail_start_time?: string | null
+          counter_message?: string | null
+          counter_rate?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          deposit_amount?: number | null
+          deposit_pct?: number | null
+          dj_email?: string | null
+          dj_id?: string | null
+          dj_name?: string | null
+          dj_slug?: string | null
+          dj_type?: string | null
+          end_time?: string | null
+          equipment?: string | null
+          equipment_needed?: string | null
+          event_date?: string | null
+          event_type?: string | null
+          flyer_url?: string | null
+          guest_count?: number | null
+          host_email?: string | null
+          host_email_sent_at?: string | null
+          id?: string
+          is_manual?: boolean
+          is_quote?: boolean | null
+          link_label?: string | null
+          link_url?: string | null
+          negotiation_log?: Json | null
+          notes?: string | null
+          offer_amount?: number | null
+          overtime_rate?: number | null
+          package_category?: string | null
+          package_details?: string | null
+          package_index?: number | null
+          package_photos?: string | null
+          package_title?: string | null
+          phone?: string | null
+          quote_sent_at?: string | null
+          quoted_rate?: number | null
+          rate?: number | null
+          requester_id?: string
+          requester_name?: string | null
+          room_details?: string | null
+          set_type?: string | null
+          setup_hours?: string | null
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string | null
+          venue_address?: string | null
+          venue_decks?: string | null
+          venue_equip_detail?: string | null
+          venue_lat?: number | null
+          venue_lon?: number | null
+          venue_name?: string | null
+          venue_type?: string | null
+        }
+        Relationships: []
+      }
       email_verification_tokens: {
         Row: {
-          token: string;
-          user_id: string;
-          email: string;
-          created_at: string;
-          expires_at: string;
-          used_at: string | null;
-        };
+          booking_redirect: string | null
+          email: string
+          expires_at: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
         Insert: {
-          token: string;
-          user_id: string;
-          email: string;
-          created_at?: string;
-          expires_at: string;
-          used_at?: string | null;
-        };
+          booking_redirect?: string | null
+          email: string
+          expires_at: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
         Update: {
-          token?: string;
-          user_id?: string;
-          email?: string;
-          created_at?: string;
-          expires_at?: string;
-          used_at?: string | null;
-        };
-      };
-
-      // ── public.avatars ──────────────────────────────────────────
-      // Tracks avatar image uploads (the actual binary lives in Storage).
-      avatars: {
+          booking_redirect?: string | null
+          email?: string
+          expires_at?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
         Row: {
-          user_id: string;
-          path: string;
-          updated_at: string;
-        };
+          created_at: string | null
+          deleted_by_recipient: boolean
+          deleted_by_sender: boolean
+          from_email: string | null
+          from_name: string | null
+          from_user_id: string | null
+          id: string
+          message: string | null
+          parent_id: string | null
+          read: boolean | null
+          subject: string | null
+          to_dj_slug: string | null
+          to_user_id: string | null
+        }
         Insert: {
-          user_id: string;
-          path: string;
-          updated_at?: string;
-        };
+          created_at?: string | null
+          deleted_by_recipient?: boolean
+          deleted_by_sender?: boolean
+          from_email?: string | null
+          from_name?: string | null
+          from_user_id?: string | null
+          id?: string
+          message?: string | null
+          parent_id?: string | null
+          read?: boolean | null
+          subject?: string | null
+          to_dj_slug?: string | null
+          to_user_id?: string | null
+        }
         Update: {
-          user_id?: string;
-          path?: string;
-          updated_at?: string;
-        };
-      };
-    };
+          created_at?: string | null
+          deleted_by_recipient?: boolean
+          deleted_by_sender?: boolean
+          from_email?: string | null
+          from_name?: string | null
+          from_user_id?: string | null
+          id?: string
+          message?: string | null
+          parent_id?: string | null
+          read?: boolean | null
+          subject?: string | null
+          to_dj_slug?: string | null
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_setup_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profile_claims: {
+        Row: {
+          claimant_email: string
+          claimant_name: string
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_notes: string | null
+          status: string
+          target_biz_name: string
+          target_slug: string
+          target_user_id: string | null
+          updated_at: string
+          verify_msg: string | null
+        }
+        Insert: {
+          claimant_email: string
+          claimant_name: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_notes?: string | null
+          status?: string
+          target_biz_name: string
+          target_slug: string
+          target_user_id?: string | null
+          updated_at?: string
+          verify_msg?: string | null
+        }
+        Update: {
+          claimant_email?: string
+          claimant_name?: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_notes?: string | null
+          status?: string
+          target_biz_name?: string
+          target_slug?: string
+          target_user_id?: string | null
+          updated_at?: string
+          verify_msg?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_claims_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          address: string | null
+          availability: string | null
+          avatar_position: string | null
+          avatar_url: string | null
+          banner_position: string | null
+          banner_position_mobile: string | null
+          banner_url: string | null
+          bio: string | null
+          blocked_users: string[] | null
+          booking_settings: Json | null
+          city: string | null
+          claimed: boolean
+          club_genres: string[] | null
+          company: string | null
+          contact_email: string | null
+          country: string | null
+          created_at: string | null
+          dj_start_year: number | null
+          dj_type: string | null
+          email_verified: boolean
+          email_verified_at: string | null
+          event_types: string | null
+          facebook: string | null
+          gallery_img_1: string | null
+          gallery_img_2: string | null
+          gallery_img_3: string | null
+          gallery_img_4: string | null
+          genres: string[] | null
+          home_lat: number | null
+          home_lon: number | null
+          id: string
+          instagram: string | null
+          mix_url_1: string | null
+          mix_url_2: string | null
+          mix_url_3: string | null
+          name: string | null
+          phone: string | null
+          profile_private: boolean | null
+          rate: string | null
+          real_name: string | null
+          role: string
+          slug: string | null
+          sms_enabled: boolean
+          sms_notify_booking_request: boolean
+          sms_notify_booking_status: boolean
+          sms_notify_inbox_message: boolean
+          sms_phone: string | null
+          soundcloud: string | null
+          state: string | null
+          tab_visibility: Json | null
+          testimonials: string | null
+          tiktok: string | null
+          travel_distance: string | null
+          twitch: string | null
+          updated_at: string | null
+          venue_name: string | null
+          video_desc_1: string | null
+          video_desc_2: string | null
+          video_desc_3: string | null
+          video_title_1: string | null
+          video_title_2: string | null
+          video_title_3: string | null
+          video_url_1: string | null
+          video_url_2: string | null
+          video_url_3: string | null
+          website: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          availability?: string | null
+          avatar_position?: string | null
+          avatar_url?: string | null
+          banner_position?: string | null
+          banner_position_mobile?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          blocked_users?: string[] | null
+          booking_settings?: Json | null
+          city?: string | null
+          claimed?: boolean
+          club_genres?: string[] | null
+          company?: string | null
+          contact_email?: string | null
+          country?: string | null
+          created_at?: string | null
+          dj_start_year?: number | null
+          dj_type?: string | null
+          email_verified?: boolean
+          email_verified_at?: string | null
+          event_types?: string | null
+          facebook?: string | null
+          gallery_img_1?: string | null
+          gallery_img_2?: string | null
+          gallery_img_3?: string | null
+          gallery_img_4?: string | null
+          genres?: string[] | null
+          home_lat?: number | null
+          home_lon?: number | null
+          id: string
+          instagram?: string | null
+          mix_url_1?: string | null
+          mix_url_2?: string | null
+          mix_url_3?: string | null
+          name?: string | null
+          phone?: string | null
+          profile_private?: boolean | null
+          rate?: string | null
+          real_name?: string | null
+          role: string
+          slug?: string | null
+          sms_enabled?: boolean
+          sms_notify_booking_request?: boolean
+          sms_notify_booking_status?: boolean
+          sms_notify_inbox_message?: boolean
+          sms_phone?: string | null
+          soundcloud?: string | null
+          state?: string | null
+          tab_visibility?: Json | null
+          testimonials?: string | null
+          tiktok?: string | null
+          travel_distance?: string | null
+          twitch?: string | null
+          updated_at?: string | null
+          venue_name?: string | null
+          video_desc_1?: string | null
+          video_desc_2?: string | null
+          video_desc_3?: string | null
+          video_title_1?: string | null
+          video_title_2?: string | null
+          video_title_3?: string | null
+          video_url_1?: string | null
+          video_url_2?: string | null
+          video_url_3?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          availability?: string | null
+          avatar_position?: string | null
+          avatar_url?: string | null
+          banner_position?: string | null
+          banner_position_mobile?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          blocked_users?: string[] | null
+          booking_settings?: Json | null
+          city?: string | null
+          claimed?: boolean
+          club_genres?: string[] | null
+          company?: string | null
+          contact_email?: string | null
+          country?: string | null
+          created_at?: string | null
+          dj_start_year?: number | null
+          dj_type?: string | null
+          email_verified?: boolean
+          email_verified_at?: string | null
+          event_types?: string | null
+          facebook?: string | null
+          gallery_img_1?: string | null
+          gallery_img_2?: string | null
+          gallery_img_3?: string | null
+          gallery_img_4?: string | null
+          genres?: string[] | null
+          home_lat?: number | null
+          home_lon?: number | null
+          id?: string
+          instagram?: string | null
+          mix_url_1?: string | null
+          mix_url_2?: string | null
+          mix_url_3?: string | null
+          name?: string | null
+          phone?: string | null
+          profile_private?: boolean | null
+          rate?: string | null
+          real_name?: string | null
+          role?: string
+          slug?: string | null
+          sms_enabled?: boolean
+          sms_notify_booking_request?: boolean
+          sms_notify_booking_status?: boolean
+          sms_notify_inbox_message?: boolean
+          sms_phone?: string | null
+          soundcloud?: string | null
+          state?: string | null
+          tab_visibility?: Json | null
+          testimonials?: string | null
+          tiktok?: string | null
+          travel_distance?: string | null
+          twitch?: string | null
+          updated_at?: string | null
+          venue_name?: string | null
+          video_desc_1?: string | null
+          video_desc_2?: string | null
+          video_desc_3?: string | null
+          video_title_1?: string | null
+          video_title_2?: string | null
+          video_title_3?: string | null
+          video_url_1?: string | null
+          video_url_2?: string | null
+          video_url_3?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      clear_email_confirmation: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
+      [_ in never]: never
+    }
+  }
 }
 
-// Helper type aliases that map closer to how the codebase already uses
-// them. Code can import `Tables<'users'>` instead of writing the long
-// path. Mirrors the helpers Supabase's CLI ships.
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row'];
-export type TablesInsert<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert'];
-export type TablesUpdate<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update'];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const
