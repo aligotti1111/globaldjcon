@@ -2452,7 +2452,7 @@
   font-size: .6rem;
   letter-spacing: .03em;
   color: var(--muted);
-  margin: 0 0 .5rem;
+  margin: .5rem 0 0;
 }
 
 /* "Use these photos for Wedding & Mitzvah" opt-in checkbox (General only). */
