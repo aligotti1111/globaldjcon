@@ -1112,9 +1112,13 @@ function PackagesSection({
         title,
         details: pkg.details ?? fallback.details,
         photo: pkg.photo ?? fallback.photo,
+        // Extra photos are specific to THIS package — they must not inherit
+        // from the general-category package at the same index (doing so made
+        // slots 2-4 appear shared across packages in a group). Main photo can
+        // still inherit; extras come only from this package's own `photos`.
         photos: [
           (pkg.photo ?? fallback.photo),
-          ...(((pkg as { photos?: string[] }).photos) ?? ((fallback as { photos?: string[] }).photos) ?? []),
+          ...(((pkg as { photos?: string[] }).photos) ?? []),
         ].filter((u): u is string => !!u),
       };
     })
