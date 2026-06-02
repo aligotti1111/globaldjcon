@@ -62,7 +62,11 @@ function isPkgEmpty(p: MobilePackage | undefined): boolean {
   // rather than being silently saved as a blank.
   const photosEmpty = !(p.photo || '').trim()
     && !(Array.isArray((p as { photos?: string[] }).photos) && (p as { photos?: string[] }).photos!.some((u) => !!u));
-  return titleEmpty && detailsEmpty && priceEmpty && photosEmpty;
+  // The "require price on request" toggle is content too: a price-on-request
+  // package still needs a title + details, so toggling it makes the package
+  // PARTIAL (not empty), forcing validation rather than a silent blank save.
+  const reqAllOff = !(p as { reqAll?: boolean }).reqAll;
+  return titleEmpty && detailsEmpty && priceEmpty && photosEmpty && reqAllOff;
 }
 
 interface PkgValidationResult {
@@ -713,14 +717,7 @@ function PackageCardWithCatTabs({
   // details, price, or photos). A brand-new / empty package stays neutral —
   // no green or yellow until the DJ starts filling it in.
   function catHasContent(c: PkgCategory): boolean {
-    const d = drafts[c];
-    if (!d) return false;
-    const hasPhotos = (d.photo || '').trim()
-      || (Array.isArray((d as { photos?: string[] }).photos) && (d as { photos?: string[] }).photos!.some((u) => !!u));
-    // The "require price on request" toggle is meaningful content too — when
-    // it's on, the package is being configured even if no price is entered.
-    const hasReqAll = !!(d as { reqAll?: boolean }).reqAll;
-    return !isPkgEmpty(d) || !!hasPhotos || hasReqAll;
+    return !isPkgEmpty(drafts[c]);
   }
   // Border color for a category: neutral if empty, yellow if unsaved, green if
   // saved.
