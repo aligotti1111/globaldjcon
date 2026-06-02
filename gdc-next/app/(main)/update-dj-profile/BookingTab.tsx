@@ -671,11 +671,26 @@ function PackageCardWithCatTabs({
   );
 
   // Did anything change since last save? Used for the dirty indicator.
+  // Both sides are normalized first so cosmetic shape differences (undefined
+  // vs '' vs absent, empty arrays, key order) don't falsely register as
+  // "unsaved" — only real value changes count.
   const isDirty = useMemo(() => {
+    const norm = (p: MobilePackage | undefined): string => {
+      const o = (p || {}) as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      Object.keys(o).sort().forEach((k) => {
+        const v = o[k];
+        if (v === undefined || v === null || v === '') return;          // drop empty
+        if (Array.isArray(v) && v.length === 0) return;                  // drop []
+        if (Array.isArray(v)) { out[k] = v.filter((x) => x !== '' && x != null); return; }
+        out[k] = v;
+      });
+      return JSON.stringify(out);
+    };
     return activeCats.some((c) => {
       const saved = packages[c]?.[idx] || newMobPackage();
       const draft = drafts[c] || newMobPackage();
-      return JSON.stringify(saved) !== JSON.stringify(draft);
+      return norm(saved) !== norm(draft);
     });
   }, [activeCats, packages, drafts, idx]);
 
@@ -726,7 +741,19 @@ function PackageCardWithCatTabs({
       if (isPkgEmpty(d)) {
         // Empty → save as blank (clears the slot if it had old data).
         // Counts as "saved" since the user intentionally cleared it.
-        payload[c] = newMobPackage();
+        // BUT preserve any photos: a package can hold copied/uploaded photos
+        // before its title/price are filled in (e.g. "Copy setup photos"),
+        // and discarding them here would (a) lose the photos and (b) leave the
+        // draft permanently "unsaved" since the blank wouldn't match it.
+        const blank = newMobPackage();
+        const dPhotos = Array.isArray((d as { photos?: string[] }).photos)
+          ? (d as { photos?: string[] }).photos!.filter((u) => !!u)
+          : [];
+        if ((d?.photo || '').trim() || dPhotos.length > 0) {
+          (blank as MobilePackage & { photo?: string; photos?: string[] }).photo = d!.photo || '';
+          (blank as MobilePackage & { photo?: string; photos?: string[] }).photos = dPhotos;
+        }
+        payload[c] = blank;
         anySaved = true;
         return;
       }
