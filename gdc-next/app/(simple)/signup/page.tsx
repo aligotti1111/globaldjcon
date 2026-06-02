@@ -411,8 +411,6 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
     setName(newName);
     if (!slugManuallyEdited) {
       const derived = makeSlug(newName);
-      // eslint-disable-next-line no-console
-      console.log('[signup] handleNameChange', { newName, derived, slugManuallyEdited });
       setSlug(derived);
     }
   }
