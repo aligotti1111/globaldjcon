@@ -709,6 +709,23 @@ function PackageCardWithCatTabs({
     [activeCats, dirtyByCat]
   );
 
+  // A category's status border only shows once it has actual content (title,
+  // details, price, or photos). A brand-new / empty package stays neutral —
+  // no green or yellow until the DJ starts filling it in.
+  function catHasContent(c: PkgCategory): boolean {
+    const d = drafts[c];
+    if (!d) return false;
+    const hasPhotos = (d.photo || '').trim()
+      || (Array.isArray((d as { photos?: string[] }).photos) && (d as { photos?: string[] }).photos!.some((u) => !!u));
+    return !isPkgEmpty(d) || !!hasPhotos;
+  }
+  // Border color for a category: neutral if empty, yellow if unsaved, green if
+  // saved.
+  function catBorderColor(c: PkgCategory): string {
+    if (!catHasContent(c)) return 'var(--border)';
+    return dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)';
+  }
+
   // Report dirty state to parent (BookingTab aggregates across all cards
   // and bubbles to UpdateDjProfileClient which powers the page-leave
   // warning). Stable callback via ref so this effect doesn't loop.
@@ -833,7 +850,7 @@ function PackageCardWithCatTabs({
   return (
     <div
       className={styles.pkgCard}
-      style={{ border: `2px solid ${dirtyByCat[selectedCat] ? 'var(--amber)' : 'var(--neon)'}` }}
+      style={{ border: `2px solid ${catBorderColor(selectedCat)}` }}
     >
       <div className={styles.pkgHeader}>
         <div className={styles.pkgHeaderTitle}>Package {idx + 1}</div>
@@ -892,7 +909,7 @@ function PackageCardWithCatTabs({
             {activeCats.map((c) => {
               const isActive = selectedCat === c;
               const hasError = !!catErrors[c];
-              const stateColor = dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)';
+              const stateColor = catBorderColor(c);
               return (
                 <button
                   key={c}
