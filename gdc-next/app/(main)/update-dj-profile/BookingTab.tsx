@@ -57,7 +57,12 @@ function isPkgEmpty(p: MobilePackage | undefined): boolean {
   const titleEmpty = !((p.title || '').trim());
   const detailsEmpty = !stripHtml(p.details || '');
   const priceEmpty = !p.price4 && !p.price5 && !p.price6 && !p.overtime;
-  return titleEmpty && detailsEmpty && priceEmpty;
+  // Photos count as content: a package with photos but no title/price is
+  // treated as PARTIAL (not empty), so it surfaces the "fix or clear" errors
+  // rather than being silently saved as a blank.
+  const photosEmpty = !(p.photo || '').trim()
+    && !(Array.isArray((p as { photos?: string[] }).photos) && (p as { photos?: string[] }).photos!.some((u) => !!u));
+  return titleEmpty && detailsEmpty && priceEmpty && photosEmpty;
 }
 
 interface PkgValidationResult {
@@ -664,12 +669,6 @@ function PackageCardWithCatTabs({
 
   // Track save status for the visual indicator
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-  // Categories whose last save persisted photos/content onto a package that
-  // is NOT yet a complete bookable package (missing title/details/price). The
-  // data is saved, but those packages won't go live until filled in. We track
-  // per-category so the warning only shows on the tab that's actually
-  // incomplete — not on sibling tabs in the same card that ARE complete.
-  const [incompleteCats, setIncompleteCats] = useState<PkgCategory[]>([]);
   // Per-category validation errors after the most recent save attempt.
   // Cleared when the user makes another edit.
   const [catErrors, setCatErrors] = useState<Record<PkgCategory, PkgValidationResult>>(
@@ -713,7 +712,6 @@ function PackageCardWithCatTabs({
 
   // Update one field in one category's draft
   function updateDraftField(cat: PkgCategory, p: MobilePackage) {
-    setIncompleteCats((prev) => prev.filter((c) => c !== cat));
     setDrafts((prev) => ({ ...prev, [cat]: p }));
     // Clear any previous save state — user is editing again
     if (saveStatus === 'saved' || saveStatus === 'error') setSaveStatus('idle');
@@ -742,29 +740,13 @@ function PackageCardWithCatTabs({
     const errors: Record<PkgCategory, PkgValidationResult> = {} as Record<PkgCategory, PkgValidationResult>;
     const payload: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
     let anySaved = false;
-    const incomplete: PkgCategory[] = [];
 
     activeCats.forEach((c) => {
       const d = drafts[c];
       if (isPkgEmpty(d)) {
         // Empty → save as blank (clears the slot if it had old data).
         // Counts as "saved" since the user intentionally cleared it.
-        // BUT preserve any photos: a package can hold copied/uploaded photos
-        // before its title/price are filled in (e.g. "Copy setup photos"),
-        // and discarding them here would (a) lose the photos and (b) leave the
-        // draft permanently "unsaved" since the blank wouldn't match it.
-        const blank = newMobPackage();
-        const dPhotos = Array.isArray((d as { photos?: string[] }).photos)
-          ? (d as { photos?: string[] }).photos!.filter((u) => !!u)
-          : [];
-        const hasPhotos = (d?.photo || '').trim() || dPhotos.length > 0;
-        if (hasPhotos) {
-          (blank as MobilePackage & { photo?: string; photos?: string[] }).photo = d!.photo || '';
-          (blank as MobilePackage & { photo?: string; photos?: string[] }).photos = dPhotos;
-          // Photos saved, but the package isn't bookable yet (no title/price).
-          incomplete.push(c);
-        }
-        payload[c] = blank;
+        payload[c] = newMobPackage();
         anySaved = true;
         return;
       }
@@ -816,7 +798,6 @@ function PackageCardWithCatTabs({
     // saveStatus = 'saved' if everything was clean; 'error' if some cats
     // had partial issues but at least one saved (mixed result).
     const hadErrors = Object.keys(errors).length > 0;
-    setIncompleteCats(incomplete);
     setSaveStatus(hadErrors ? 'error' : 'saved');
     setTimeout(() => {
       setSaveStatus((cur) => (cur === 'saved' ? 'idle' : cur));
@@ -1027,11 +1008,7 @@ function PackageCardWithCatTabs({
           fontSize: '.68rem',
           letterSpacing: '.05em',
         }}>
-          {incompleteCats.includes(selectedCat) ? (
-            <span style={{ color: 'var(--amber)' }}>
-              ✓ Info saved — package won&apos;t be live until the remaining required fields are filled.
-            </span>
-          ) : saveStatus === 'saved' ? (
+          {saveStatus === 'saved' ? (
             <span style={{ color: 'var(--neon)' }}>✓ Saved</span>
           ) : isDirty ? (
             <span style={{ color: 'var(--amber)' }}>● Unsaved changes</span>
