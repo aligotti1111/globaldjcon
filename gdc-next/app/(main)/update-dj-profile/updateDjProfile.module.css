@@ -2491,3 +2491,9 @@
   text-align: center;
   margin-top: .2rem;
 }
+
+/* Red outline on a required field that failed validation on save attempt. */
+.pkgFieldError {
+  border: 1px solid #ff5470 !important;
+  box-shadow: 0 0 0 1px #ff5470;
+}

@@ -35,6 +35,9 @@ interface Props {
   // For wedding/mitzvah editors: the General package's photos at this same
   // index, so the DJ can one-click copy them into this package's slots.
   generalPhotos?: { photo: string; photos: string[] };
+  // Field names that failed validation on the last save attempt (e.g.
+  // 'title', 'details', 'price4'...). Matching inputs get a red outline.
+  errorFields?: string[];
 }
 
 export function newMobPackage(): MobilePackage & {
@@ -62,8 +65,9 @@ export function newMobPackage(): MobilePackage & {
 }
 
 export default function PackageEditor({
-  cat, idx, pkg, totalCount, userId, onChange, onRemove, hideOwnHeader, generalPhotos,
+  cat, idx, pkg, totalCount, userId, onChange, onRemove, hideOwnHeader, generalPhotos, errorFields,
 }: Props) {
+  const errSet = new Set(errorFields || []);
   const isWedding = cat === 'wedding';
   const reqAll = !!pkg.reqAll;
   const { confirm, confirmDialog } = useConfirm();
@@ -213,7 +217,7 @@ export default function PackageEditor({
           placeholder="e.g. Essentials, Gold, Premium"
           value={pkg.title || ''}
           onChange={(e) => updateField('title', e.target.value)}
-          className={styles.pkgInput}
+          className={`${styles.pkgInput} ${errSet.has('title') ? styles.pkgFieldError : ''}`}
         />
       </div>
 
@@ -234,7 +238,7 @@ export default function PackageEditor({
         <div
           ref={editorRef}
           contentEditable
-          className={styles.rteEditor}
+          className={`${styles.rteEditor} ${errSet.has('details') ? styles.pkgFieldError : ''}`}
           onInput={(e) => {
             const html = (e.currentTarget as HTMLDivElement).innerHTML;
             lastSetDetailsRef.current = html;
@@ -264,7 +268,7 @@ export default function PackageEditor({
                 value={String(pkg[fld] ?? '')}
                 disabled={reqAll}
                 onChange={(e) => updateField(fld, e.target.value)}
-                className={styles.priceInput}
+                className={`${styles.priceInput} ${errSet.has(fld) ? styles.pkgFieldError : ''}`}
               />
             </div>
           );
@@ -283,7 +287,7 @@ export default function PackageEditor({
             value={String(pkg.overtime ?? '')}
             disabled={reqAll}
             onChange={(e) => updateField('overtime', e.target.value)}
-            className={styles.priceInput}
+            className={`${styles.priceInput} ${errSet.has('overtime') ? styles.pkgFieldError : ''}`}
           />
           <span className={styles.perHourLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
             Per Hour

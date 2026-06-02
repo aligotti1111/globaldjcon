@@ -968,6 +968,7 @@ function PackageCardWithCatTabs({
             ? ((drafts.general as { photos?: string[] }).photos as string[])
             : [],
         }}
+        errorFields={(catErrors[selectedCat]?.errors || []).map((e) => e.field)}
       />
 
       {/* Validation errors: list each invalid cat and what's missing */}
