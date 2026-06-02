@@ -113,9 +113,6 @@ export interface MobilePackage {
   photo?: string;            // main sample photo URL (slot 1, shown on card)
   photos?: string[];         // additional sample photos (slots 2-4), shown as
                              // thumbnails in the booking-form lightbox
-  copyPhotosToAll?: boolean; // (General packages only) on save, copy this
-                             // package's photos into the same-index Wedding
-                             // and Mitzvah packages as independent copies
   price4?: number | string;  // 4hr rate
   price5?: number | string;  // 5hr rate
   price6?: number | string;  // 6hr rate
