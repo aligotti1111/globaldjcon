@@ -2445,3 +2445,30 @@
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* Ideal-size hint under the Package Setup Photos label. */
+.photoSizeHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .03em;
+  color: var(--muted);
+  margin: 0 0 .5rem;
+}
+
+/* "Use these photos for Wedding & Mitzvah" opt-in checkbox (General only). */
+.usePhotosForAll {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  margin-top: .65rem;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+.usePhotosForAll input {
+  margin-top: .15rem;
+  accent-color: var(--neon, #00f5c4);
+  flex-shrink: 0;
+}

@@ -355,6 +355,7 @@ export default function PackageEditor({
           the booking-form lightbox. */}
       <div className={styles.pkgFieldGroup}>
         <label className={styles.pkgFieldLabel}>Package Setup Photos</label>
+        <div className={styles.photoSizeHint}>Best results: landscape, at least 1200&times;900px (4:3). JPG, PNG, or WebP.</div>
         <div className={styles.photoSlotGrid}>
           {[0, 1, 2, 3].map((slot) => {
             const url = photoAtSlot(slot);
@@ -402,6 +403,18 @@ export default function PackageEditor({
           >
             {uploadStatus.msg}
           </div>
+        )}
+        {cat === 'general' && (!!pkg.photo || extraPhotos.length > 0) && (
+          <label className={styles.usePhotosForAll}>
+            <input
+              type="checkbox"
+              checked={!!(pkg as { copyPhotosToAll?: boolean }).copyPhotosToAll}
+              onChange={(e) =>
+                onChange({ ...pkg, copyPhotosToAll: e.target.checked } as MobilePackage)
+              }
+            />
+            <span>Use these photos for Wedding &amp; Bar/Bat Mitzvah packages too</span>
+          </label>
         )}
       </div>
     </>
