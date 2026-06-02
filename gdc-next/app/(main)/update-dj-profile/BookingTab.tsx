@@ -1017,11 +1017,13 @@ function PackageCardWithCatTabs({
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: '.75rem',
-          flexWrap: 'wrap',
+          flexWrap: 'nowrap',
         }}
       >
         <div style={{
           fontFamily: "'Space Mono', monospace",
+          flex: '1 1 auto',
+          minWidth: 0,
           fontSize: '.68rem',
           letterSpacing: '.05em',
         }}>
@@ -1055,6 +1057,8 @@ function PackageCardWithCatTabs({
             cursor: isDirty ? 'pointer' : 'not-allowed',
             opacity: isDirty ? 1 : 0.6,
             fontWeight: 700,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {showInnerTabs ? 'Save Package' : 'Save'}
