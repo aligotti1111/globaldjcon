@@ -355,7 +355,6 @@ export default function PackageEditor({
           the booking-form lightbox. */}
       <div className={styles.pkgFieldGroup}>
         <label className={styles.pkgFieldLabel}>Package Setup Photos</label>
-        <div className={styles.photoSizeHint}>Best results: landscape, at least 1200&times;900px (4:3). JPG, PNG, or WebP.</div>
         <div className={styles.photoSlotGrid}>
           {[0, 1, 2, 3].map((slot) => {
             const url = photoAtSlot(slot);
@@ -393,6 +392,7 @@ export default function PackageEditor({
             );
           })}
         </div>
+        <div className={styles.photoSizeHint}>Best results: square, at least 1000&times;1000px (1:1). JPG, PNG, or WebP.</div>
         {uploadStatus.kind !== 'idle' && (
           <div
             className={`${styles.uploadStatus} ${
