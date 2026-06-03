@@ -911,14 +911,13 @@ function PackageCardWithCatTabs({
               const hasError = !!catErrors[c];
               const stateColor = catBorderColor(c);
               return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setSelectedCat(c)}
-                  className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
-                  style={{ borderColor: stateColor, boxShadow: `inset 0 0 0 1px ${stateColor}` }}
-                >
-                  <span className={styles.catTabTopRow}>
+                <div key={c} className={styles.catTabCell}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCat(c)}
+                    className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
+                    style={{ borderColor: stateColor, boxShadow: `inset 0 0 0 1px ${stateColor}` }}
+                  >
                     <span>{catLabels[c]}</span>
                     {hasError && <span className={styles.innerCatBadge}>!</span>}
                     {c === 'general' && generalCoverageLabels.length > 0 && (
@@ -933,14 +932,17 @@ function PackageCardWithCatTabs({
                         ▾
                       </span>
                     )}
-                  </span>
+                  </button>
                   <span
                     className={styles.catTabStatus}
-                    style={{ color: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)' }}
+                    style={{
+                      color: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
+                      borderColor: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
+                    }}
                   >
                     {dirtyByCat[c] ? '● Unsaved' : '✓ Saved'}
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>

@@ -487,7 +487,8 @@
   overflow-x: auto;
 }
 .innerCatTab {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 100%;
   padding: .45rem .5rem;
   border: 1px solid transparent;
   border-radius: 5px;
@@ -501,28 +502,35 @@
   background: transparent;
   color: #ffffff;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .15rem;
-}
-/* Row holding the category label (+ optional error badge / coverage arrow).
-   Sits above the tiny saved/unsaved status line inside each tab. */
-.catTabTopRow {
-  display: flex;
   align-items: center;
   justify-content: center;
   gap: .3rem;
 }
-/* Tiny per-category save-state line under the tab label. Mirrors the
-   bottom Saved/Unsaved indicator. Color is set inline (neon vs amber). */
+/* Per-category cell: stacks the tab box and its saved/unsaved pill. */
+.catTabCell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+/* Tiny saved/unsaved pill attached to the bottom of each tab. Mirrors the
+   bottom Saved/Unsaved indicator. Text + border color set inline (neon vs
+   amber). Overlaps the tab's bottom edge slightly so it reads as attached. */
 .catTabStatus {
+  align-self: center;
+  margin-top: -2px;
+  padding: .12rem .55rem .14rem;
+  border: 1px solid;
+  border-radius: 999px;
+  background: #0d0d14;
   font-family: 'Space Mono', monospace;
   font-size: .5rem;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
   line-height: 1;
+  white-space: nowrap;
 }
 .innerCatTabActive {
   background: var(--neon-dim);
@@ -2272,8 +2280,12 @@
     flex-wrap: nowrap;
     gap: .2rem;
   }
-  .innerCatTab {
+  .catTabCell {
     flex: 1 1 0;
+    min-width: 0;
+  }
+  .innerCatTab {
+    flex: 0 0 auto;
     min-width: 0;
     font-size: .8rem;
     letter-spacing: .04em;
