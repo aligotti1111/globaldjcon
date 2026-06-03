@@ -384,42 +384,62 @@ export default function PackageEditor({
           )}
         </div>
         <div className={styles.photoSlotGrid}>
+          {/* Filled photos first, as thumbnails. */}
           {[0, 1, 2, 3].map((slot) => {
             const url = photoAtSlot(slot);
+            if (!url) return null;
             return (
               <div key={slot} className={styles.photoSlot}>
-                {url ? (
-                  <div className={styles.photoPreviewWrap}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={slot === 0 ? 'Main package photo' : `Package photo ${slot + 1}`} className={styles.photoSlotImg} />
-                    <div className={styles.photoIconActions}>
-                      <label className={styles.photoIconBtn} title="Replace photo">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 20h9" />
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                        </svg>
-                        <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
-                      </label>
-                      <button type="button" onClick={() => removePhoto(slot)} className={styles.photoIconBtn} title="Delete photo">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
-                    {slot === 0 && <span className={styles.photoMainBadge}>Main</span>}
+                <div className={styles.photoPreviewWrap}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={slot === 0 ? 'Main package photo' : `Package photo ${slot + 1}`} className={styles.photoSlotImg} />
+                  <div className={styles.photoIconActions}>
+                    <label className={styles.photoIconBtn} title="Replace photo">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
+                    </label>
+                    <button type="button" onClick={() => removePhoto(slot)} className={styles.photoIconBtn} title="Delete photo">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
-                ) : (
+                  {slot === 0 && <span className={styles.photoMainBadge}>Main</span>}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* One "add" affordance for the next empty slot, to the right of the
+              filled photos. The FIRST add (no photos yet) is a bordered box
+              with a hint; subsequent adds are just a bare "+". Hidden once all
+              4 slots are filled. */}
+          {(() => {
+            const nextSlot = [0, 1, 2, 3].find((s) => !photoAtSlot(s));
+            if (nextSlot === undefined) return null; // all 4 filled
+            const isFirst = nextSlot === 0;
+            return (
+              <div className={styles.photoSlot}>
+                {isFirst ? (
                   <label className={styles.photoSlotEmpty}>
-                    <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, slot)} style={{ display: 'none' }} />
+                    <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, nextSlot)} style={{ display: 'none' }} />
                     <span className={styles.photoSlotPlus}>+</span>
-                    <span className={styles.photoSlotHint}>{slot === 0 ? 'Main photo' : 'Add photo'}</span>
-                    <span className={styles.photoSlotSize}>1000&times;1000px<br />JPG, PNG, or WebP</span>
+                    <span className={styles.photoSlotHint}>Add photo</span>
+                    <span className={styles.photoSlotSize}>1000&times;1000px</span>
+                  </label>
+                ) : (
+                  <label className={styles.photoSlotAddBare} title="Add photo">
+                    <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, nextSlot)} style={{ display: 'none' }} />
+                    <span className={styles.photoSlotPlusBare}>+</span>
                   </label>
                 )}
               </div>
             );
-          })}
+          })()}
         </div>
         {uploadStatus.kind !== 'idle' && (
           <div

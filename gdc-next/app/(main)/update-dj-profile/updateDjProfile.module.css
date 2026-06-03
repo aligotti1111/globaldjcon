@@ -2501,3 +2501,23 @@
   border: 1px solid #ff5f5f !important;
   box-shadow: 0 0 0 1px #ff5f5f;
 }
+
+/* Bare "+" add affordance for 2nd-4th photos — no box, no text. Sized to
+   match the photo slots so it aligns to the right of filled thumbnails. */
+.photoSlotAddBare {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.photoSlotPlusBare {
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--muted);
+  transition: color .15s;
+}
+.photoSlotAddBare:hover .photoSlotPlusBare {
+  color: var(--neon, #00f5c4);
+}
