@@ -2523,12 +2523,15 @@
   color: var(--neon, #00f5c4);
 }
 
-/* Muted hint at the bottom of the Package Setup Photos area. */
+/* Muted hint at the bottom of the Package Setup Photos area (was on the
+   right of the header; moved straight down, so still right-aligned). */
 .photoAreaHint {
   font-family: 'Space Mono', monospace;
   font-size: .62rem;
   font-style: italic;
   letter-spacing: .03em;
   color: var(--muted);
-  margin-top: .5rem;
+  margin-top: .65rem;
+  width: 100%;
+  text-align: right;
 }
