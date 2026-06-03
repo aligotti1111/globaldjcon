@@ -905,14 +905,15 @@ function PackageCardWithCatTabs({
           </div>
 
           {/* Tab boxes. */}
-          <div className={styles.innerCatTabs}>
-            {activeCats.map((c) => {
-              const isActive = selectedCat === c;
-              const hasError = !!catErrors[c];
-              const stateColor = catBorderColor(c);
-              return (
-                <div key={c} className={styles.catTabCell}>
+          <div className={styles.innerCatTabsWrap}>
+            <div className={styles.innerCatTabs}>
+              {activeCats.map((c) => {
+                const isActive = selectedCat === c;
+                const hasError = !!catErrors[c];
+                const stateColor = catBorderColor(c);
+                return (
                   <button
+                    key={c}
                     type="button"
                     onClick={() => setSelectedCat(c)}
                     className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
@@ -933,6 +934,13 @@ function PackageCardWithCatTabs({
                       </span>
                     )}
                   </button>
+                );
+              })}
+            </div>
+            {/* Saved/unsaved pills — own row beneath the frame, aligned per tab. */}
+            <div className={styles.catStatusRow}>
+              {activeCats.map((c) => (
+                <div key={c} className={styles.catStatusCol}>
                   <span
                     className={styles.catTabStatus}
                     style={{
@@ -943,8 +951,8 @@ function PackageCardWithCatTabs({
                     {dirtyByCat[c] ? '● Unsaved' : '✓ Saved'}
                   </span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </>
       )}

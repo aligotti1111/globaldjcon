@@ -476,10 +476,13 @@
   cursor: pointer;
   font-size: .85rem;
 }
+/* Wrapper: bordered tab frame on top, pill row beneath (outside the frame). */
+.innerCatTabsWrap {
+  margin-bottom: 1rem;
+}
 .innerCatTabs {
   display: flex;
   gap: .35rem;
-  margin-bottom: 1rem;
   background: rgba(10, 10, 16, .6);
   padding: 3px;
   border-radius: 7px;
@@ -487,8 +490,7 @@
   overflow-x: auto;
 }
 .innerCatTab {
-  flex: 0 0 auto;
-  width: 100%;
+  flex: 1;
   padding: .45rem .5rem;
   border: 1px solid transparent;
   border-radius: 5px;
@@ -506,19 +508,22 @@
   justify-content: center;
   gap: .3rem;
 }
-/* Per-category cell: stacks the tab box and its saved/unsaved pill. */
-.catTabCell {
+/* Pill row sits BELOW the bordered tab frame. Padding matches the frame's
+   border(1px) + inner padding(3px) so each column lines up under its tab. */
+.catStatusRow {
+  display: flex;
+  gap: .35rem;
+  padding: 0 4px;
+}
+.catStatusCol {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  justify-content: flex-start;
 }
-/* Tiny saved/unsaved pill attached to the bottom of each tab. Mirrors the
-   bottom Saved/Unsaved indicator. Text + border color set inline (neon vs
-   amber). Overlaps the tab's bottom edge slightly so it reads as attached. */
+/* Tiny rectangular saved/unsaved pill, snug under the frame, far-left of its
+   column. Text + border color set inline (neon vs amber). */
 .catTabStatus {
-  align-self: flex-start;
   margin-top: -1px;
   margin-left: 2px;
   padding: .1rem .4rem .12rem;
@@ -2282,12 +2287,15 @@
     flex-wrap: nowrap;
     gap: .2rem;
   }
-  .catTabCell {
+  .catStatusCol {
     flex: 1 1 0;
     min-width: 0;
   }
+  .catStatusRow {
+    gap: .2rem;
+  }
   .innerCatTab {
-    flex: 0 0 auto;
+    flex: 1 1 0;
     min-width: 0;
     font-size: .8rem;
     letter-spacing: .04em;
