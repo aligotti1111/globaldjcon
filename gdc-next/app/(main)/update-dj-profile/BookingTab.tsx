@@ -762,18 +762,32 @@ function PackageCardWithCatTabs({
   //
   // Wrapped in useCallback-like ref so the master-save effect can call
   // an always-fresh version without re-subscribing.
-  const trySaveRef = useRef<() => boolean>(() => false);
-  trySaveRef.current = function trySave(): boolean {
-    const errors: Record<PkgCategory, PkgValidationResult> = {} as Record<PkgCategory, PkgValidationResult>;
+  const trySaveRef = useRef<(saveCats?: PkgCategory[]) => boolean>(() => false);
+  trySaveRef.current = function trySave(saveCats?: PkgCategory[]): boolean {
+    // Which categories this save attempt actually evaluates + writes.
+    // Defaults to all active cats (used by the master Save All trigger).
+    // The per-card "Save Package" button passes just the selected cat so
+    // each category saves and validates independently.
+    const targetCats = saveCats ?? activeCats;
+    // Start from existing errors so untouched categories keep their state.
+    const errors: Record<PkgCategory, PkgValidationResult> = { ...catErrors };
     const payload: Record<PkgCategory, MobilePackage> = {} as Record<PkgCategory, MobilePackage>;
     let anySaved = false;
+    let targetErrorCount = 0;
 
     activeCats.forEach((c) => {
+      // Categories not being saved this click pass through unchanged —
+      // keep their currently-saved value so onSave doesn't clobber them.
+      if (!targetCats.includes(c)) {
+        payload[c] = packages[c]?.[idx] || newMobPackage();
+        return;
+      }
       const d = drafts[c];
       if (isPkgEmpty(d)) {
         // Empty → save as blank (clears the slot if it had old data).
         // Counts as "saved" since the user intentionally cleared it.
         payload[c] = newMobPackage();
+        delete errors[c];
         anySaved = true;
         return;
       }
@@ -804,12 +818,14 @@ function PackageCardWithCatTabs({
       if (v.ok) {
         // Valid → save it
         payload[c] = d;
+        delete errors[c];
         anySaved = true;
       } else {
         // Partial → keep whatever was last saved for this cat (don't
         // overwrite, don't clear). Flag the problem in the UI.
         payload[c] = packages[c]?.[idx] || newMobPackage();
         errors[c] = v;
+        targetErrorCount += 1;
       }
     });
 
@@ -822,10 +838,9 @@ function PackageCardWithCatTabs({
     }
 
     onSave(payload);
-    // saveStatus = 'saved' if everything was clean; 'error' if some cats
-    // had partial issues but at least one saved (mixed result).
-    const hadErrors = Object.keys(errors).length > 0;
-    setSaveStatus(hadErrors ? 'error' : 'saved');
+    // saveStatus = 'saved' if the targeted save was clean; 'error' if a
+    // targeted cat had partial issues but at least one saved.
+    setSaveStatus(targetErrorCount > 0 ? 'error' : 'saved');
     setTimeout(() => {
       setSaveStatus((cur) => (cur === 'saved' ? 'idle' : cur));
     }, 5000);
@@ -1059,18 +1074,18 @@ function PackageCardWithCatTabs({
           fontSize: '.68rem',
           letterSpacing: '.05em',
         }}>
-          {saveStatus === 'saved' ? (
-            <span style={{ color: 'var(--neon)' }}>✓ Saved</span>
-          ) : isDirty ? (
+          {dirtyByCat[selectedCat] ? (
             <span style={{ color: 'var(--amber)' }}>● Unsaved changes</span>
+          ) : saveStatus === 'saved' ? (
+            <span style={{ color: 'var(--neon)' }}>✓ Saved</span>
           ) : (
-            <span style={{ color: 'var(--muted)' }}>✓ All saved</span>
+            <span style={{ color: 'var(--muted)' }}>✓ Saved</span>
           )}
         </div>
         <button
           type="button"
-          onClick={() => trySaveRef.current()}
-          disabled={!isDirty}
+          onClick={() => trySaveRef.current([selectedCat])}
+          disabled={!dirtyByCat[selectedCat]}
           style={{
             fontFamily: "'Space Mono', monospace",
             fontSize: '.68rem',
@@ -1079,17 +1094,17 @@ function PackageCardWithCatTabs({
             padding: '.55rem 1.1rem',
             borderRadius: '6px',
             border: '1px solid',
-            borderColor: isDirty ? 'var(--neon)' : 'var(--border)',
-            background: isDirty ? 'var(--neon-dim)' : 'transparent',
-            color: isDirty ? 'var(--neon)' : 'var(--muted)',
-            cursor: isDirty ? 'pointer' : 'not-allowed',
-            opacity: isDirty ? 1 : 0.6,
+            borderColor: dirtyByCat[selectedCat] ? 'var(--neon)' : 'var(--border)',
+            background: dirtyByCat[selectedCat] ? 'var(--neon-dim)' : 'transparent',
+            color: dirtyByCat[selectedCat] ? 'var(--neon)' : 'var(--muted)',
+            cursor: dirtyByCat[selectedCat] ? 'pointer' : 'not-allowed',
+            opacity: dirtyByCat[selectedCat] ? 1 : 0.6,
             fontWeight: 700,
             flexShrink: 0,
             whiteSpace: 'nowrap',
           }}
         >
-          {showInnerTabs ? 'Save Package' : 'Save'}
+          {showInnerTabs ? `Save ${catLabels[selectedCat]}` : 'Save'}
         </button>
       </div>
     </div>
