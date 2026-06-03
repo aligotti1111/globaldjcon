@@ -910,14 +910,12 @@ function PackageCardWithCatTabs({
               {activeCats.map((c) => {
                 const isActive = selectedCat === c;
                 const hasError = !!catErrors[c];
-                const stateColor = catBorderColor(c);
                 return (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setSelectedCat(c)}
                     className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
-                    style={{ borderColor: stateColor, boxShadow: `inset 0 0 0 1px ${stateColor}` }}
                   >
                     <span>{catLabels[c]}</span>
                     {hasError && <span className={styles.innerCatBadge}>!</span>}
