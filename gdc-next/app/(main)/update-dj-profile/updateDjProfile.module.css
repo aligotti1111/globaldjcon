@@ -518,11 +518,13 @@
    bottom Saved/Unsaved indicator. Text + border color set inline (neon vs
    amber). Overlaps the tab's bottom edge slightly so it reads as attached. */
 .catTabStatus {
-  align-self: center;
-  margin-top: -2px;
-  padding: .12rem .55rem .14rem;
+  align-self: flex-start;
+  margin-top: -1px;
+  margin-left: 2px;
+  padding: .1rem .4rem .12rem;
   border: 1px solid;
-  border-radius: 999px;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
   background: #0d0d14;
   font-family: 'Space Mono', monospace;
   font-size: .5rem;
