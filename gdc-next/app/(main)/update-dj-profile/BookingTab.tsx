@@ -639,7 +639,7 @@ function PackageCardWithCatTabs({
   selectedEventTypes: string[];
 }) {
   const catLabels: Record<PkgCategory, string> = {
-    general: 'General',
+    general: 'General Events',
     wedding: 'Wedding',
     mitzvah: 'Bar/Bat Mitzvah',
   };
