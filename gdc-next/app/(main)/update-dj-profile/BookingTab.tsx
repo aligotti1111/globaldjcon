@@ -941,15 +941,17 @@ function PackageCardWithCatTabs({
             <div className={styles.catStatusRow}>
               {activeCats.map((c) => (
                 <div key={c} className={styles.catStatusCol}>
-                  <span
-                    className={styles.catTabStatus}
-                    style={{
-                      color: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
-                      borderColor: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
-                    }}
-                  >
-                    {dirtyByCat[c] ? '● Unsaved' : '✓ Saved'}
-                  </span>
+                  {catHasContent(c) && (
+                    <span
+                      className={styles.catTabStatus}
+                      style={{
+                        color: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
+                        borderColor: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)',
+                      }}
+                    >
+                      {dirtyByCat[c] ? '● Unsaved' : '✓ Saved'}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
