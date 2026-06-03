@@ -363,7 +363,7 @@ export default function PackageEditor({
       <div className={styles.pkgFieldGroup}>
         <div className={styles.photoHeaderRow}>
           <label className={styles.pkgFieldLabel}>Package Setup Photos</label>
-          {(cat === 'wedding' || cat === 'mitzvah') && generalPhotos && (generalPhotos.photo || generalPhotos.photos.length > 0) && (
+          {(cat === 'wedding' || cat === 'mitzvah') && generalPhotos && (generalPhotos.photo || generalPhotos.photos.length > 0) ? (
             <button
               type="button"
               className={styles.useGeneralPhotosBtn}
@@ -381,6 +381,8 @@ export default function PackageEditor({
               </svg>
               Copy setup photos to this package
             </button>
+          ) : (
+            <span className={styles.photoAreaHint}>Add up to 4 photos</span>
           )}
         </div>
         <div className={styles.photoSlotGrid}>
