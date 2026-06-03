@@ -524,12 +524,11 @@
 /* Tiny rectangular saved/unsaved pill, snug under the frame, far-left of its
    column. Text + border color set inline (neon vs amber). */
 .catTabStatus {
-  margin-top: -1px;
+  margin-top: 3px;
   margin-left: 2px;
   padding: .1rem .4rem .12rem;
   border: 1px solid;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
+  border-radius: 4px;
   background: #0d0d14;
   font-family: 'Space Mono', monospace;
   font-size: .5rem;
