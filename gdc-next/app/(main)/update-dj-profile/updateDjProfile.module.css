@@ -524,7 +524,7 @@
 /* Tiny rectangular saved/unsaved pill, snug under the frame, far-left of its
    column. Text + border color set inline (neon vs amber). */
 .catTabStatus {
-  margin-top: 3px;
+  margin-top: -1px;
   margin-left: 2px;
   padding: .1rem .4rem .12rem;
   border: 1px solid;
