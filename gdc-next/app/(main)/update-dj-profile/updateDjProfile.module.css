@@ -501,9 +501,28 @@
   background: transparent;
   color: #ffffff;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .15rem;
+}
+/* Row holding the category label (+ optional error badge / coverage arrow).
+   Sits above the tiny saved/unsaved status line inside each tab. */
+.catTabTopRow {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: .3rem;
+}
+/* Tiny per-category save-state line under the tab label. Mirrors the
+   bottom Saved/Unsaved indicator. Color is set inline (neon vs amber). */
+.catTabStatus {
+  font-family: 'Space Mono', monospace;
+  font-size: .5rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 .innerCatTabActive {
   background: var(--neon-dim);

@@ -918,20 +918,28 @@ function PackageCardWithCatTabs({
                   className={`${styles.innerCatTab} ${isActive ? styles.innerCatTabActive : ''}`}
                   style={{ borderColor: stateColor, boxShadow: `inset 0 0 0 1px ${stateColor}` }}
                 >
-                  <span>{catLabels[c]}</span>
-                  {hasError && <span className={styles.innerCatBadge}>!</span>}
-                  {c === 'general' && generalCoverageLabels.length > 0 && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className={`${styles.generalCoverageArrow} ${showGeneralCoverage ? styles.generalCoverageArrowOpen : ''}`}
-                      title="Event types this package covers"
-                      onClick={(e) => { e.stopPropagation(); setShowGeneralCoverage((v) => !v); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowGeneralCoverage((v) => !v); } }}
-                    >
-                      ▾
-                    </span>
-                  )}
+                  <span className={styles.catTabTopRow}>
+                    <span>{catLabels[c]}</span>
+                    {hasError && <span className={styles.innerCatBadge}>!</span>}
+                    {c === 'general' && generalCoverageLabels.length > 0 && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className={`${styles.generalCoverageArrow} ${showGeneralCoverage ? styles.generalCoverageArrowOpen : ''}`}
+                        title="Event types this package covers"
+                        onClick={(e) => { e.stopPropagation(); setShowGeneralCoverage((v) => !v); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowGeneralCoverage((v) => !v); } }}
+                      >
+                        ▾
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={styles.catTabStatus}
+                    style={{ color: dirtyByCat[c] ? 'var(--amber)' : 'var(--neon)' }}
+                  >
+                    {dirtyByCat[c] ? '● Unsaved' : '✓ Saved'}
+                  </span>
                 </button>
               );
             })}
