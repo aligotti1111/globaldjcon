@@ -25,6 +25,47 @@ export const MOB_EVENT_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+// Event-type-specific sub-fields shown on the booking form once the booker
+// picks a type. Six types take a single free-text "Type of X" field;
+// birthday takes a guest-of-honor age plus a surprise-party checkbox.
+// Values are composed into a single readable `event_details` string at
+// submit time (see buildEventDetails) and stored on the booking row.
+export interface EventSubFieldConfig {
+  textLabel?: string;        // label for the single text input
+  textPlaceholder?: string;  // placeholder for the text input
+  isBirthday?: boolean;      // birthday gets age + surprise instead of text
+}
+
+export const EVENT_SUBFIELDS: Record<string, EventSubFieldConfig> = {
+  anniversary: { textLabel: 'Type of Anniversary', textPlaceholder: 'e.g. 25th Wedding Anniversary' },
+  graduation:  { textLabel: 'Type of Graduation', textPlaceholder: 'e.g. College Graduation' },
+  reunion:     { textLabel: 'Type of Reunion', textPlaceholder: 'e.g. 10-Year Class Reunion' },
+  school:      { textLabel: 'Type of School Event', textPlaceholder: 'e.g. Homecoming Dance' },
+  holiday:     { textLabel: 'Type of Holiday Party', textPlaceholder: 'e.g. Christmas Party' },
+  community:   { textLabel: 'Type of Community Event', textPlaceholder: 'e.g. Block Party' },
+  birthday:    { isBirthday: true },
+};
+
+// Compose the readable event_details string stored on the booking and shown
+// under "Event Type" on the card and in emails. Returns null when there's
+// nothing meaningful to record.
+export function buildEventDetails(
+  eventType: string,
+  vals: { subType?: string; birthdayAge?: string; surprise?: boolean }
+): string | null {
+  const cfg = EVENT_SUBFIELDS[eventType];
+  if (!cfg) return null;
+  if (cfg.isBirthday) {
+    const parts: string[] = [];
+    const age = (vals.birthdayAge || '').trim();
+    if (age) parts.push(`Guest of honor age: ${age}`);
+    if (vals.surprise) parts.push('Surprise party: Yes');
+    return parts.length ? parts.join(' · ') : null;
+  }
+  const txt = (vals.subType || '').trim();
+  return txt || null;
+}
+
 // Time options every 30 min, 24 hours — vanilla djp-mob-public.js line 73.
 // Returns objects with `val` (24h "HH:MM") and `label` (12h "H:MM AM/PM").
 export interface TimeOption {

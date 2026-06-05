@@ -35,6 +35,8 @@ import {
 } from './bookingSettings';
 import {
   MOB_EVENT_TYPE_LABELS,
+  EVENT_SUBFIELDS,
+  buildEventDetails,
   MOB_TIME_OPTIONS,
   formatUSPhone,
   getPackageCategory,
@@ -115,6 +117,11 @@ export default function MobileBookingForm({
   const [phone, setPhone] = useState('');
   const [eventType, setEventType] = useState('');
   const [eventTypeOther, setEventTypeOther] = useState('');
+  // Event-type-specific sub-fields (see EVENT_SUBFIELDS). subType covers the
+  // six "Type of X" text fields; birthdayAge + surprise cover Birthday Party.
+  const [eventSubType, setEventSubType] = useState('');
+  const [birthdayAge, setBirthdayAge] = useState('');
+  const [surprise, setSurprise] = useState(false);
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
   // ISO alpha-2 country code scoping the venue-address autocomplete.
@@ -219,6 +226,11 @@ export default function MobileBookingForm({
   useEffect(() => {
     setSelectedPkgIdx(null);
     setCocktailNeeded(null);
+    // Clear event-type-specific sub-fields so stale values don't carry over
+    // when the booker switches event type.
+    setEventSubType('');
+    setBirthdayAge('');
+    setSurprise(false);
   }, [eventType]);
 
   // Cocktail-time warning: cocktail must start before reception
@@ -319,6 +331,15 @@ export default function MobileBookingForm({
 
     try {
       const supabase = createClient();
+      // Compose the event-type-specific detail string (e.g. "25th
+      // Anniversary" or "Guest of honor age: 30 · Surprise party: Yes").
+      // Null for event types without sub-fields. Shown under Event Type on
+      // the DJ's card and in both confirmation emails.
+      const eventDetails = buildEventDetails(eventType, {
+        subType: eventSubType,
+        birthdayAge,
+        surprise,
+      });
       const insertPayload = {
         dj_id: dj.id,
         requester_id: currentUser.id,
@@ -326,6 +347,7 @@ export default function MobileBookingForm({
         booking_type: 'mobile',
         event_date: dateKey,
         event_type: eventType === 'other' ? (eventTypeOther.trim() || 'other') : eventType,
+        event_details: eventDetails,
         venue_name: venueName.trim(),
         venue_address: venueAddress.trim(),
         // Coords from the Nominatim autocomplete pick (null if user typed
@@ -412,6 +434,7 @@ export default function MobileBookingForm({
             eventType: eventType === 'other'
               ? (eventTypeOther.trim() || 'other')
               : eventType,
+            eventDetails,
             // Times — DJ wants to know start/end at a glance from the
             // email so they can decide quickly whether they're available.
             startTime,
@@ -460,6 +483,7 @@ export default function MobileBookingForm({
             eventType: eventType === 'other'
               ? (eventTypeOther.trim() || 'other')
               : eventType,
+            eventDetails,
             packageTitle: selectedPkg?.title || null,
             packageDetails: selectedPkg?.details || null,
             venueName: venueName.trim(),
@@ -620,6 +644,62 @@ export default function MobileBookingForm({
               className={styles.input}
               style={{ marginTop: '.4rem' }}
             />
+          )}
+          {/* Event-type-specific sub-fields. Six types take a single
+              "Type of X" text field; Birthday takes age + surprise. */}
+          {EVENT_SUBFIELDS[eventType]?.textLabel && (
+            <div style={{ marginTop: '.6rem' }}>
+              <label htmlFor="mpf-event-subtype">{EVENT_SUBFIELDS[eventType].textLabel}</label>
+              <input
+                id="mpf-event-subtype"
+                type="text"
+                placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+                value={eventSubType}
+                onChange={(e) => setEventSubType(e.target.value)}
+                className={styles.input}
+                style={{ marginTop: '.3rem' }}
+              />
+            </div>
+          )}
+          {EVENT_SUBFIELDS[eventType]?.isBirthday && (
+            <div style={{ marginTop: '.6rem' }}>
+              <label htmlFor="mpf-birthday-age">Guest of Honor Age?</label>
+              <input
+                id="mpf-birthday-age"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="e.g. 30"
+                value={birthdayAge}
+                onChange={(e) => setBirthdayAge(e.target.value)}
+                className={styles.input}
+                style={{ marginTop: '.3rem' }}
+              />
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '.55rem',
+                  marginTop: '.6rem',
+                  cursor: 'pointer',
+                  fontSize: '.85rem',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={surprise}
+                  onChange={(e) => setSurprise(e.target.checked)}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    flexShrink: 0,
+                    accentColor: 'var(--neon)',
+                    cursor: 'pointer',
+                  }}
+                />
+                Is this a Surprise Party?
+              </label>
+            </div>
           )}
         </div>
 
