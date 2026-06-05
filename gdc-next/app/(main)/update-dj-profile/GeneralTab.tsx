@@ -19,6 +19,9 @@ import { useConfirm } from '@/components/ConfirmModal';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import {
   MOBILE_EVENT_TYPES,
+  MOB_CAT_GENERAL_TYPES,
+  MOB_CAT_WEDDING_TYPES,
+  MOB_CAT_MITZVAH_TYPES,
   CLUB_GENRES,
   COUNTRIES,
   TRAVEL_DISTANCES,
@@ -45,6 +48,54 @@ interface Props {
 export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
+
+  // Mobile party types split into two groups for display:
+  //   General Events  — everything that maps to the "general" package cat
+  //   Specialty Events — Weddings + Bar/Bat Mitzvahs (their own package cats)
+  // Grouping uses the same category constants that drive the Booking tab
+  // package categories, so the two lists stay in sync automatically.
+  const generalEventTypes = MOBILE_EVENT_TYPES.filter((t) =>
+    MOB_CAT_GENERAL_TYPES.includes(t.val)
+  );
+  const specialtyEventTypes = MOBILE_EVENT_TYPES.filter(
+    (t) => MOB_CAT_WEDDING_TYPES.includes(t.val) || MOB_CAT_MITZVAH_TYPES.includes(t.val)
+  );
+  const renderEventType = (t: { val: string; label: string }) => (
+    <label
+      key={t.val}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '.45rem .7rem',
+        background: 'transparent',
+        border: '1px solid rgba(30, 30, 48, .5)',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: '.8rem',
+        color: 'var(--white)',
+      }}
+    >
+      <input
+        type="checkbox"
+        style={{
+          width: 15,
+          height: 15,
+          marginRight: 10,
+          flexShrink: 0,
+          accentColor: 'var(--neon)',
+          cursor: 'pointer',
+        }}
+        checked={state.mobileEvents.includes(t.val)}
+        onChange={(e) => {
+          const next = e.target.checked
+            ? [...state.mobileEvents, t.val]
+            : state.mobileEvents.filter((v) => v !== t.val);
+          onChange('mobileEvents', next);
+        }}
+      />
+      {t.label}
+    </label>
+  );
 
   // ── Avatar state ─────────────────────────────────────────────────
   // `pickedFile` is non-null while the AvatarCrop modal is open.
@@ -233,43 +284,15 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         <div className={styles.formGroup}>
           <label>Mobile Party Types (select all that apply)</label>
           <div className={styles.specBox}>
+            <div className={styles.partyGroupLabel}>General Events</div>
             <div className={styles.checkboxGrid}>
-              {MOBILE_EVENT_TYPES.map((t) => (
-                <label
-                  key={t.val}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '.45rem .7rem',
-                    background: 'transparent',
-                    border: '1px solid rgba(30, 30, 48, .5)',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    fontSize: '.8rem',
-                    color: 'var(--white)',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    style={{
-                      width: 15,
-                      height: 15,
-                      marginRight: 10,
-                      flexShrink: 0,
-                      accentColor: 'var(--neon)',
-                      cursor: 'pointer',
-                    }}
-                    checked={state.mobileEvents.includes(t.val)}
-                    onChange={(e) => {
-                      const next = e.target.checked
-                        ? [...state.mobileEvents, t.val]
-                        : state.mobileEvents.filter((v) => v !== t.val);
-                      onChange('mobileEvents', next);
-                    }}
-                  />
-                  {t.label}
-                </label>
-              ))}
+              {generalEventTypes.map(renderEventType)}
+            </div>
+            <div className={`${styles.partyGroupLabel} ${styles.partyGroupLabelLater}`}>
+              Specialty Events
+            </div>
+            <div className={styles.checkboxGrid}>
+              {specialtyEventTypes.map(renderEventType)}
             </div>
           </div>
         </div>

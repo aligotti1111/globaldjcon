@@ -164,6 +164,22 @@
   gap: .35rem;
   margin-top: .4rem;
 }
+/* Subtle subheading above each mobile party-type group (General / Specialty).
+   Quiet by design — small, muted, uppercase Space Mono. */
+.partyGroupLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .65;
+}
+/* The second group ("Specialty Events") needs breathing room above it
+   to separate it from the General grid. */
+.partyGroupLabelLater {
+  margin-top: 1rem;
+}
 .checkboxLabel {
   display: flex;
   align-items: center;
