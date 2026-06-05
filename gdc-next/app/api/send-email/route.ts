@@ -245,6 +245,7 @@ function bookingInfoBox(opts: {
 // the public booking form renders) — rendered inline under the Package row.
 function mobileBookingRequestBox(opts: {
   eventTypeText?: string;
+  eventDetails?: string;
   date?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -264,7 +265,12 @@ function mobileBookingRequestBox(opts: {
   const row = (label: string, value: string) =>
     `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
 
-  if (opts.eventTypeText) rows.push(row('Event Type', escHtml(opts.eventTypeText)));
+  if (opts.eventTypeText) {
+    const detail = opts.eventDetails
+      ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>`
+      : '';
+    rows.push(row('Event Type', escHtml(opts.eventTypeText) + detail));
+  }
 
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   if (dateStr) rows.push(row('Date', dateStr));
@@ -626,6 +632,7 @@ export async function POST(req: Request) {
     // there's no rate. Club bookings keep their original inline card.
     const mobileCard = mobileBookingRequestBox({
       eventTypeText: eventTypeLabel(eventType),
+      eventDetails: (body.eventDetails as string | undefined) || undefined,
       date: eventDate,
       startTime,
       endTime,
@@ -755,6 +762,7 @@ export async function POST(req: Request) {
     const confCard = isMobileBooking
       ? mobileBookingRequestBox({
           eventTypeText: eventTypeLabel(eventType),
+          eventDetails: (body.eventDetails as string | undefined) || undefined,
           date: eventDate,
           startTime,
           endTime,
