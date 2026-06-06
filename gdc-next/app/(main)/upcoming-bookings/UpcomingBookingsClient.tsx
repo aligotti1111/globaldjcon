@@ -1628,8 +1628,8 @@ function AddManualBookingModal({
           )}
           {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.isBirthday && (
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>Guest of Honor Age?</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap' }}>
+                <span className={styles.fieldLabel} style={{ margin: 0 }}>Guest of Honor Age?</span>
                 <input
                   type="number"
                   min={0}
@@ -1638,7 +1638,7 @@ function AddManualBookingModal({
                   onChange={(e) => setBirthdayAge(e.target.value)}
                   placeholder="e.g. 30"
                   className={styles.input}
-                  style={{ width: '90px', flexShrink: 0 }}
+                  style={{ width: '80px', flexShrink: 0 }}
                   autoComplete="off"
                 />
                 <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', fontSize: '.85rem' }}>
