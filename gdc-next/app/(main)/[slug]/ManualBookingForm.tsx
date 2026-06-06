@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { searchAddresses } from './mobileBookingForm';
+import { searchAddresses, EVENT_SUBFIELDS, buildEventDetails, MOB_EVENT_TYPE_LABELS } from './mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import styles from './manualBookingForm.module.css';
 
@@ -35,6 +35,7 @@ export interface ManualBookingRow {
   venue_type: string | null;
   set_type: string | null;
   event_type: string | null;
+  event_details?: string | null;
   booking_type: string | null;
   is_manual: boolean;
   host_email?: string | null;
@@ -61,17 +62,11 @@ interface Props {
   onCancel?: () => void;
 }
 
-const MOBILE_EVENT_TYPES: Array<{ value: string; label: string }> = [
-  { value: 'wedding', label: 'Wedding' },
-  { value: 'birthday', label: 'Birthday Party' },
-  { value: 'corporate', label: 'Corporate Event' },
-  { value: 'private_party', label: 'Private Party' },
-  { value: 'school_dance', label: 'School Dance' },
-  { value: 'graduation', label: 'Graduation' },
-  { value: 'anniversary', label: 'Anniversary' },
-  { value: 'holiday_party', label: 'Holiday Party' },
-  { value: 'other', label: 'Other' },
-];
+// Mobile event types — kept in sync with the public booking-request form
+// (and EVENT_SUBFIELDS) by deriving from the canonical label map. Ensures
+// the same options + conditional sub-fields appear in both places.
+const MOBILE_EVENT_TYPES: Array<{ value: string; label: string }> =
+  Object.entries(MOB_EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const CLUB_VENUE_TYPES: Array<{ value: string; label: string }> = [
   { value: 'bar', label: 'Bar' },
@@ -132,7 +127,35 @@ export default function ManualBookingForm({
   const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
-  const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
+  const [eventType, setEventType] = useState<string>(existing?.event_type || 'weddings');
+  // Event-type-specific sub-fields, mirrored from the booking-request form.
+  // Pre-fill from an existing booking's event_details so edits round-trip:
+  // for the six text types event_details IS the value; for birthday we parse
+  // the composed "Guest of honor age: X · Surprise party: Yes" string.
+  const initEd = existing?.event_details || '';
+  const initBirthday = existing?.event_type === 'birthday';
+  const [eventSubType, setEventSubType] = useState<string>(
+    initBirthday ? '' : (EVENT_SUBFIELDS[existing?.event_type || ''] ? initEd : '')
+  );
+  const [birthdayAge, setBirthdayAge] = useState<string>(
+    initBirthday ? (initEd.match(/age:\s*([^·]+)/i)?.[1]?.trim() || '') : ''
+  );
+  const [surprise, setSurprise] = useState<boolean>(
+    initBirthday ? /surprise party:\s*yes/i.test(initEd) : false
+  );
+  const eventTypeMounted = useRef(false);
+
+  // Clear sub-fields when the user switches event type (but not on first
+  // render, so an edit's pre-filled values survive mount).
+  useEffect(() => {
+    if (!eventTypeMounted.current) {
+      eventTypeMounted.current = true;
+      return;
+    }
+    setEventSubType('');
+    setBirthdayAge('');
+    setSurprise(false);
+  }, [eventType]);
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
   const [sendInvite, setSendInvite] = useState<boolean>(false);
   // Optional flat rate the DJ charged/will charge for this gig. Stored as
@@ -351,11 +374,14 @@ export default function ManualBookingForm({
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
+        event_details: djType === 'mobile'
+          ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
+          : null,
         host_email: trimmedEmail || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label, offer_amount, currency';
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
 
       if (isEdit) {
@@ -661,6 +687,50 @@ export default function ManualBookingForm({
             ))}
           </select>
         </label>
+      )}
+
+      {/* Event-type-specific sub-fields — mirrors the public booking form. */}
+      {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.textLabel && (
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
+          <input
+            type="text"
+            value={eventSubType}
+            onChange={(e) => setEventSubType(e.target.value)}
+            placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+            className={styles.input}
+            autoComplete="off"
+          />
+        </label>
+      )}
+      {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.isBirthday && (
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>Guest of Honor Age?</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={birthdayAge}
+              onChange={(e) => setBirthdayAge(e.target.value)}
+              placeholder="e.g. 30"
+              className={styles.input}
+              style={{ width: '90px', flexShrink: 0 }}
+              autoComplete="off"
+            />
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', fontSize: '.85rem' }}
+            >
+              <input
+                type="checkbox"
+                checked={surprise}
+                onChange={(e) => setSurprise(e.target.checked)}
+                style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+              />
+              Is this a Surprise Party?
+            </label>
+          </div>
+        </div>
       )}
 
       {/* Host invite section */}
