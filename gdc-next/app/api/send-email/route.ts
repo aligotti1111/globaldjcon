@@ -268,7 +268,7 @@ function mobileBookingRequestBox(opts: {
 
   if (opts.eventTypeText) {
     const detail = opts.eventDetails
-      ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>`
+      ? `<br><span style="color:#999;font-size:12px;">${opts.eventDetails.split(' · ').map((s) => escHtml(s)).join('<br>')}</span>`
       : '';
     rows.push(row('Event Type', escHtml(opts.eventTypeText) + detail));
   }
@@ -310,13 +310,6 @@ function mobileBookingRequestBox(opts: {
     ));
   }
 
-  if (opts.setupHours) {
-    rows.push(row(
-      'Setup Time Required',
-      `${escHtml(String(opts.setupHours))} hr${opts.setupHours === '1' ? '' : 's'} before start`,
-    ));
-  }
-
   if (opts.venueName) rows.push(row('Venue', escHtml(opts.venueName)));
   if (opts.venueAddress) {
     const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
@@ -330,6 +323,15 @@ function mobileBookingRequestBox(opts: {
     if (opts.packageDetails && opts.packageDetails.trim()) {
       rows.push(`<div style="margin:0 0 8px 0;padding:8px 12px;background:#ffffff;border:1px solid #e6e6e6;border-radius:6px;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`);
     }
+  }
+
+  // Setup time sits under the package details — it's a property of the
+  // selected package's setup requirement.
+  if (opts.setupHours) {
+    rows.push(row(
+      'Setup Time Required',
+      `${escHtml(String(opts.setupHours))} hr${opts.setupHours === '1' ? '' : 's'} before start`,
+    ));
   }
 
   if (opts.rateLabel && opts.rateValue) {
