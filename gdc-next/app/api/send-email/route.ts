@@ -198,6 +198,7 @@ function venueTypeLabel(v: string | null | undefined): string {
 // the wording matches what the booker/DJ actually picked.
 function bookingInfoBox(opts: {
   eventTypeText?: string;       // mobile only — already-formatted (e.g. "Wedding")
+  eventDetails?: string;        // mobile only — sub-line under Event Type
   setTypeText?: string;         // club only — already-formatted (e.g. "Headliner")
   date?: string | null;         // raw event_date YYYY-MM-DD
   timeRange?: string;           // pre-formatted, e.g. "9:00 PM – 1:00 AM"
@@ -216,7 +217,7 @@ function bookingInfoBox(opts: {
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>`);
-  if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}</p>`);
+  if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}${opts.eventDetails ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>` : ''}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
   if (opts.venueAddress) {
     const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
@@ -1361,6 +1362,7 @@ export async function POST(req: Request) {
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
         ${bookingInfoBox({
           eventTypeText: eventType ? eventTypeLabel(eventType) : undefined,
+          eventDetails: (body.eventDetails as string | undefined) || undefined,
           setTypeText: setTypeLabel(setType),
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
