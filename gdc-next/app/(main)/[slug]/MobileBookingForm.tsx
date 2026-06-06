@@ -392,9 +392,10 @@ export default function MobileBookingForm({
         deposit_pct: depositPct || null,
         deposit_amount: finalPrice.depositAmount,
         // Snapshot the selected package's overtime rate onto the booking so
-        // the DJ's upcoming/approved views + emails can show it. Quote
-        // bookings leave this null here — the DJ sets it via the quote modal.
-        overtime_rate: selectedPkg && Number(selectedPkg.overtime) > 0
+        // the DJ's upcoming/approved views + emails can show it. Quote /
+        // price-on-request bookings leave this null — all pricing, overtime
+        // included, comes from the DJ via the offer.
+        overtime_rate: !finalPrice.isQuote && selectedPkg && Number(selectedPkg.overtime) > 0
           ? Number(selectedPkg.overtime)
           : null,
         is_quote: finalPrice.isQuote,
@@ -664,41 +665,50 @@ export default function MobileBookingForm({
           {EVENT_SUBFIELDS[eventType]?.isBirthday && (
             <div style={{ marginTop: '.6rem' }}>
               <label htmlFor="mpf-birthday-age">Guest of Honor Age?</label>
-              <input
-                id="mpf-birthday-age"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                placeholder="e.g. 30"
-                value={birthdayAge}
-                onChange={(e) => setBirthdayAge(e.target.value)}
-                className={styles.input}
-                style={{ marginTop: '.3rem' }}
-              />
-              <label
+              <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '.55rem',
-                  marginTop: '.6rem',
-                  cursor: 'pointer',
-                  fontSize: '.85rem',
+                  gap: '1rem',
+                  marginTop: '.3rem',
+                  flexWrap: 'wrap',
                 }}
               >
                 <input
-                  type="checkbox"
-                  checked={surprise}
-                  onChange={(e) => setSurprise(e.target.checked)}
-                  style={{
-                    width: 16,
-                    height: 16,
-                    flexShrink: 0,
-                    accentColor: 'var(--neon)',
-                    cursor: 'pointer',
-                  }}
+                  id="mpf-birthday-age"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  placeholder="e.g. 30"
+                  value={birthdayAge}
+                  onChange={(e) => setBirthdayAge(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '90px', flexShrink: 0 }}
                 />
-                Is this a Surprise Party?
-              </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '.55rem',
+                    cursor: 'pointer',
+                    fontSize: '.85rem',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={surprise}
+                    onChange={(e) => setSurprise(e.target.checked)}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      flexShrink: 0,
+                      accentColor: 'var(--neon)',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  Is this a Surprise Party?
+                </label>
+              </div>
             </div>
           )}
         </div>
@@ -1044,7 +1054,7 @@ export default function MobileBookingForm({
                 Includes cocktail hour: +${priceResult.cocktailAddon.toLocaleString()}
               </div>
             )}
-            {Number(selectedPkg?.overtime) > 0 && (
+            {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
                 Overtime rate: ${Number(selectedPkg?.overtime).toLocaleString()}/hr
               </div>
