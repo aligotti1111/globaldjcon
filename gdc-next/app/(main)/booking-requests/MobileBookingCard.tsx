@@ -43,6 +43,11 @@ export default function MobileBookingCard(props: Props) {
   const isQuote = !!b.is_quote;
   const status = (b.status || 'pending') as 'pending' | 'approved' | 'denied' | 'counter' | 'cancelled';
   const eventLabel = MOB_EVENT_LABELS[b.event_type || ''] || b.event_type || '—';
+  // event_details: readable string composed at booking time from the
+  // event-type-specific sub-fields (e.g. "25th Anniversary", or
+  // "Guest of honor age: 30 · Surprise party: Yes"). New column — not yet
+  // in the Booking TS type, so read it via a narrow cast.
+  const eventDetails = ((b as { event_details?: string | null }).event_details || '').trim();
   const durationLabel = calcDurationLabel(b);
   // Cocktail-hour duration (half-hour granularity) from cocktail start to
   // event start, for display on the card.
@@ -170,6 +175,14 @@ export default function MobileBookingCard(props: Props) {
               Time / Event Info / Contact Info frames. bigTitle was making
               this section noticeably taller than its neighbors. */}
           <div className={styles.infoValueBold}>{eventLabel}</div>
+          {eventDetails && (
+            <div
+              className={styles.infoValue}
+              style={{ marginTop: '.2rem', opacity: .85 }}
+            >
+              {eventDetails}
+            </div>
+          )}
         </SectionFrame>
       )}
 
