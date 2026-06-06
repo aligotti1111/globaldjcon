@@ -57,11 +57,10 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   const [price, setPrice] = useState(
     booking.quoted_rate != null ? String(booking.quoted_rate) : ''
   );
-  const [overtime, setOvertime] = useState(
-    booking.overtime_rate != null
-      ? String(booking.overtime_rate)
-      : (booking.counter_rate != null ? String(booking.counter_rate) : '')
-  );
+  // Add Offer always starts with an empty overtime box — the DJ sets the
+  // rate fresh per offer. We intentionally do NOT pre-fill from the
+  // package's snapshotted overtime_rate (or counter_rate).
+  const [overtime, setOvertime] = useState('');
   const [message, setMessage] = useState(booking.counter_message || '');
   const hasCocktail = !!booking.cocktail_needed;
   const [cocktailIncluded, setCocktailIncluded] = useState(
