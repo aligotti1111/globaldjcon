@@ -158,6 +158,19 @@ function ctaButton(href: string, label: string): string {
   return `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">${label}</a></td></tr></table>`;
 }
 
+// Three stacked action buttons for the booker's offer email: Approve
+// (green), Decline (red), View (outline). Stacked + min-width for reliable,
+// uniform rendering across mobile email clients.
+function offerButtons(approveHref: string, declineHref: string, viewHref: string): string {
+  const btn = (href: string, label: string, bg: string, color: string, border: string) =>
+    `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px;"><tr><td style="background:${bg};border:${border};border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:${color};text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;min-width:180px;text-align:center;">${label}</a></td></tr></table>`;
+  return (
+    btn(approveHref, 'Approve Offer', '#0a6f61', '#ffffff', 'none') +
+    btn(declineHref, 'Decline Offer', '#b3261e', '#ffffff', 'none') +
+    btn(viewHref, 'View Offer', '#ffffff', '#0a6f61', '1px solid #0a6f61')
+  );
+}
+
 // Friendly labels for raw club booking enums — match constants.ts.
 // Used when emails render set_type / venue_type values from bookings rows.
 const CLUB_SET_TYPE_LABELS_EMAIL: Record<string, string> = {
@@ -1068,12 +1081,22 @@ export async function POST(req: Request) {
 
     const subject = `Offer sent for your event – ${dateStr}`;
 
-    const buildHtml = (intro: string): string => emailTemplate(`
+    // Booker-side action buttons deep-link into the booking-requests page,
+    // which runs each action through its in-app confirm dialog (so nothing
+    // changes from an email click alone). The DJ copy keeps a single view
+    // button — they sent the offer, they don't approve/decline it.
+    const approveUrl = `${SITE_URL}/booking-requests?action=approve&booking=${booking.id}`;
+    const declineUrl = `${SITE_URL}/booking-requests?action=decline&booking=${booking.id}`;
+    const viewUrl = `${SITE_URL}/booking-requests`;
+    const bookerButtons = offerButtons(approveUrl, declineUrl, viewUrl);
+    const djButton = ctaButton(viewUrl, 'View Booking Requests');
+
+    const buildHtml = (intro: string, cta: string): string => emailTemplate(`
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">DJ Offer Sent</h2>
       <p style="color:#666;margin-bottom:20px;">${intro}</p>
       ${infoCard}
       ${extraRows}
-      ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Requests')}
+      ${cta}
     `);
 
     // To the booker — they need this to decide.
@@ -1085,7 +1108,8 @@ export async function POST(req: Request) {
           to: [requesterEmail],
           subject: `Offer received from ${djName} – ${dateStr}`,
           html: buildHtml(
-            `Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent you an offer for your event. Review the details below, then approve or decline from your booking requests.`,
+            `Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent you an offer for your event. Review the details below, then approve or decline.`,
+            bookerButtons,
           ),
         });
       } catch (e) {
@@ -1102,6 +1126,7 @@ export async function POST(req: Request) {
           subject,
           html: buildHtml(
             `Hi ${escHtml(djName)}, your offer has been sent to <strong>${escHtml(requesterName)}</strong>. Here's a copy of what you sent — you'll be notified when they respond.`,
+            djButton,
           ),
         });
       } catch (e) {
