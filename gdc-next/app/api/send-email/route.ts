@@ -164,11 +164,15 @@ function ctaButton(href: string, label: string): string {
 function offerButtons(approveHref: string, declineHref: string, viewHref: string): string {
   const btn = (href: string, label: string, bg: string, color: string, border: string) =>
     `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px;"><tr><td style="background:${bg};border:${border};border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:${color};text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;min-width:180px;text-align:center;">${label}</a></td></tr></table>`;
-  return (
-    btn(approveHref, 'Approve Offer', '#0a6f61', '#ffffff', 'none') +
-    btn(declineHref, 'Decline Offer', '#b3261e', '#ffffff', 'none') +
+  // padding-top (not margin) separates the button group from the info box
+  // above — email clients collapse margins unreliably.
+  return `<div style="padding-top:20px;text-align:center;">${
+    btn(approveHref, 'Approve Offer', '#0a6f61', '#ffffff', 'none')
+  }${
+    btn(declineHref, 'Decline Offer', '#b3261e', '#ffffff', 'none')
+  }${
     btn(viewHref, 'View Offer', '#ffffff', '#0a6f61', '1px solid #0a6f61')
-  );
+  }</div>`;
 }
 
 // Friendly labels for raw club booking enums — match constants.ts.
