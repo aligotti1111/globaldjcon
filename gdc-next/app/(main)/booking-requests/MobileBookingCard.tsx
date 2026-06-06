@@ -180,7 +180,9 @@ export default function MobileBookingCard(props: Props) {
               className={styles.infoValue}
               style={{ marginTop: '.2rem', opacity: .85 }}
             >
-              {eventDetails}
+              {eventDetails.split(' · ').map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
             </div>
           )}
         </SectionFrame>
