@@ -1628,25 +1628,25 @@ function AddManualBookingModal({
           )}
           {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.isBirthday && (
             <div className={styles.field}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap' }}>
-                <span className={styles.fieldLabel} style={{ margin: 0 }}>Guest of Honor Age?</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>
+                <span className={styles.fieldLabel} style={{ margin: 0, whiteSpace: 'nowrap' }}>Guest of Honor Age?</span>
                 <input
                   type="number"
                   min={0}
                   inputMode="numeric"
                   value={birthdayAge}
                   onChange={(e) => setBirthdayAge(e.target.value)}
-                  placeholder="e.g. 30"
+                  placeholder="30"
                   className={styles.input}
-                  style={{ width: '80px', flexShrink: 0 }}
+                  style={{ width: '56px', flexShrink: 0 }}
                   autoComplete="off"
                 />
-                <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', fontSize: '.85rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
                     checked={surprise}
                     onChange={(e) => setSurprise(e.target.checked)}
-                    style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                    style={{ width: 15, height: 15, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
                   />
                   Is this a Surprise Party?
                 </label>
