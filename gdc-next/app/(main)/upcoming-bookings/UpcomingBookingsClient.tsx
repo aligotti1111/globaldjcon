@@ -1602,55 +1602,61 @@ function AddManualBookingModal({
           </div>
 
           {djType === 'mobile' && (
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Event Type</span>
-              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
-                {MOBILE_EVENT_TYPES.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {/* Event-type-specific sub-fields — mirrors the public booking form. */}
-          {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.textLabel && (
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
-              <input
-                type="text"
-                value={eventSubType}
-                onChange={(e) => setEventSubType(e.target.value)}
-                placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
-                className={styles.input}
-                autoComplete="off"
-              />
-            </label>
-          )}
-          {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.isBirthday && (
-            <div className={styles.field}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>
-                <span className={styles.fieldLabel} style={{ margin: 0, whiteSpace: 'nowrap' }}>Guest of Honor Age?</span>
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  value={birthdayAge}
-                  onChange={(e) => setBirthdayAge(e.target.value)}
-                  placeholder="30"
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <label className={styles.field} style={{ flex: '0 0 auto', maxWidth: '100%' }}>
+                <span className={styles.fieldLabel}>Event Type</span>
+                <select
+                  value={eventType}
+                  onChange={(e) => setEventType(e.target.value)}
                   className={styles.input}
-                  style={{ width: '56px', flexShrink: 0 }}
-                  autoComplete="off"
-                />
-                <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
+                  style={{ width: '210px', maxWidth: '100%' }}
+                >
+                  {MOBILE_EVENT_TYPES.map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Sub-category, to the right of the event-type box. */}
+              {EVENT_SUBFIELDS[eventType]?.textLabel && (
+                <label className={styles.field} style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
                   <input
-                    type="checkbox"
-                    checked={surprise}
-                    onChange={(e) => setSurprise(e.target.checked)}
-                    style={{ width: 15, height: 15, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                    type="text"
+                    value={eventSubType}
+                    onChange={(e) => setEventSubType(e.target.value)}
+                    placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+                    className={styles.input}
+                    autoComplete="off"
                   />
-                  Is this a Surprise Party?
                 </label>
-              </div>
+              )}
+              {EVENT_SUBFIELDS[eventType]?.isBirthday && (
+                <div className={styles.field} style={{ flex: '0 0 auto' }}>
+                  <span className={styles.fieldLabel}>Guest of Honor Age?</span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={birthdayAge}
+                    onChange={(e) => setBirthdayAge(e.target.value)}
+                    placeholder="30"
+                    className={styles.input}
+                    style={{ width: '90px' }}
+                    autoComplete="off"
+                  />
+                  {/* Snug under the age box (the .field column gap handles spacing). */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
+                    <input
+                      type="checkbox"
+                      checked={surprise}
+                      onChange={(e) => setSurprise(e.target.checked)}
+                      style={{ width: 15, height: 15, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                    />
+                    Is this a Surprise Party?
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
