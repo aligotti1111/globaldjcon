@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { searchAddresses, MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
+import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 
 // Country flag emojis — matches the homepage country picker so the look
@@ -49,18 +49,11 @@ interface Props {
   initialBookings: UpcomingBooking[];
 }
 
-// Mobile-DJ event-type labels (kept aligned with the public booking form).
-const MOBILE_EVENT_TYPES: Array<{ value: string; label: string }> = [
-  { value: 'wedding', label: 'Wedding' },
-  { value: 'birthday', label: 'Birthday Party' },
-  { value: 'corporate', label: 'Corporate Event' },
-  { value: 'private_party', label: 'Private Party' },
-  { value: 'school_dance', label: 'School Dance' },
-  { value: 'graduation', label: 'Graduation' },
-  { value: 'anniversary', label: 'Anniversary' },
-  { value: 'holiday_party', label: 'Holiday Party' },
-  { value: 'other', label: 'Other' },
-];
+// Mobile-DJ event types — kept in sync with the public booking form (and
+// EVENT_SUBFIELDS) by deriving from the canonical label map, so the same
+// options + conditional sub-fields appear here as on the booking page.
+const MOBILE_EVENT_TYPES: Array<{ value: string; label: string }> =
+  Object.entries(MOB_EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const CLUB_VENUE_TYPES: Array<{ value: string; label: string }> = [
   { value: 'bar', label: 'Bar' },
@@ -833,7 +826,21 @@ function BookingDetails({
       { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
       djType === 'club'
         ? { label: 'Venue Name', value: booking.venue_name }
-        : { label: 'Event Type', value: eventTypeLabel },
+        : {
+            label: 'Event Type',
+            value: (() => {
+              const ed = ((booking as { event_details?: string | null }).event_details || '').trim();
+              if (!ed) return eventTypeLabel;
+              return (
+                <span>
+                  {eventTypeLabel}
+                  {ed.split(' · ').map((line, i) => (
+                    <span key={i} style={{ display: 'block', opacity: 0.7, fontSize: '.85em' }}>{line}</span>
+                  ))}
+                </span>
+              );
+            })(),
+          },
     ],
     // Row 2a: Cocktail Hour time (wedding bookings where the booker opted in),
     // shown above the reception start/end times.
@@ -1059,7 +1066,29 @@ function AddManualBookingModal({
   const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
-  const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
+  const [eventType, setEventType] = useState<string>(existing?.event_type || 'weddings');
+  // Event-type-specific sub-fields, mirrored from the public booking form.
+  // Pre-filled from an existing booking's event_details so edits round-trip.
+  const initEd = (existing as { event_details?: string | null } | null)?.event_details || '';
+  const initBirthday = existing?.event_type === 'birthday';
+  const [eventSubType, setEventSubType] = useState<string>(
+    initBirthday ? '' : (EVENT_SUBFIELDS[existing?.event_type || ''] ? initEd : '')
+  );
+  const [birthdayAge, setBirthdayAge] = useState<string>(
+    initBirthday ? (initEd.match(/age:\s*([^·]+)/i)?.[1]?.trim() || '') : ''
+  );
+  const [surprise, setSurprise] = useState<boolean>(
+    initBirthday ? /surprise party:\s*yes/i.test(initEd) : false
+  );
+  const eventTypeMounted = useRef(false);
+  // Clear sub-fields when the user switches event type (skip first render so
+  // an edit's pre-filled values survive mount).
+  useEffect(() => {
+    if (!eventTypeMounted.current) { eventTypeMounted.current = true; return; }
+    setEventSubType('');
+    setBirthdayAge('');
+    setSurprise(false);
+  }, [eventType]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
   // (host_email_sent_at populated), the UI shows a "sent" state instead of
@@ -1294,11 +1323,14 @@ function AddManualBookingModal({
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
+        event_details: djType === 'mobile'
+          ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
+          : null,
         host_email: trimmedEmail || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -1578,6 +1610,48 @@ function AddManualBookingModal({
                 ))}
               </select>
             </label>
+          )}
+
+          {/* Event-type-specific sub-fields — mirrors the public booking form. */}
+          {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.textLabel && (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
+              <input
+                type="text"
+                value={eventSubType}
+                onChange={(e) => setEventSubType(e.target.value)}
+                placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+                className={styles.input}
+                autoComplete="off"
+              />
+            </label>
+          )}
+          {djType === 'mobile' && EVENT_SUBFIELDS[eventType]?.isBirthday && (
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Guest of Honor Age?</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={birthdayAge}
+                  onChange={(e) => setBirthdayAge(e.target.value)}
+                  placeholder="e.g. 30"
+                  className={styles.input}
+                  style={{ width: '90px', flexShrink: 0 }}
+                  autoComplete="off"
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', fontSize: '.85rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={surprise}
+                    onChange={(e) => setSurprise(e.target.checked)}
+                    style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                  />
+                  Is this a Surprise Party?
+                </label>
+              </div>
+            </div>
           )}
 
           {/* ── Host invitation section ─────────────────────────────────
