@@ -507,6 +507,15 @@ export default function BookingRequestsClient({
   // with the counter rate locked in. Same calendar-decrement effect as
   // a normal approve.
   async function acceptCounter(bookingId: string) {
+    const target = outgoing.find((x) => x.id === bookingId);
+    const ok = await confirm({
+      title: 'Approve this offer?',
+      message: `This confirms the booking with ${target?.dj_name || 'the DJ'} and locks in the offered rate. They'll be notified by email.`,
+      confirmLabel: 'Approve Offer',
+      variant: 'primary',
+    });
+    if (!ok) return;
+
     const supabase = createClient();
     try {
       const b = outgoing.find((x) => x.id === bookingId);
@@ -628,6 +637,28 @@ export default function BookingRequestsClient({
       alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
     }
   }
+
+  // Deep-link from the offer email's buttons:
+  //   ?action=approve&booking=ID → open the Approve-offer confirm
+  //   ?action=decline&booking=ID → open the Decline-offer confirm
+  // The action runs through the same in-app confirm flow (so nothing is
+  // changed without the booker confirming on the logged-in page). We strip
+  // the params first so a refresh doesn't re-trigger it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const bid = params.get('booking');
+    if (!bid || (action !== 'approve' && action !== 'decline')) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('action');
+    url.searchParams.delete('booking');
+    window.history.replaceState({}, '', url.pathname + url.search);
+    if (action === 'approve') acceptCounter(bid);
+    else declineCounter(bid);
+    // Run once on mount; handlers are hoisted function declarations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Modal open helpers ─────────────────────────────────────────────
   function openCounterModal(booking: BookingRow, group: 'in' | 'out') {
