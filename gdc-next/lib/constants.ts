@@ -47,16 +47,16 @@ export function currencySymbol(code: string | null | undefined): string {
 
 export const MOB_EVENT_LABELS: Record<string, string> = {
   weddings: 'Wedding',
-  bar_bat_mitzvahs: 'Bar/Bat Mitzvah',
-  birthdays: 'Birthday Party',
+  birthday: 'Birthday Party',
   corporate: 'Corporate Event',
-  graduations: 'Graduation',
-  prom_homecoming: 'Prom/Homecoming',
-  anniversaries: 'Anniversary',
-  baby_showers: 'Baby Shower',
-  bridal_showers: 'Bridal Shower',
-  engagement: 'Engagement Party',
+  anniversary: 'Anniversary',
+  graduation: 'Graduation',
+  sweet16: 'Sweet 16 / Quinceañera',
+  mitzvah: 'Bar/Bat Mitzvah',
+  reunion: 'Reunion',
   holiday: 'Holiday Party',
+  school: 'School Event',
+  community: 'Community Event',
   other: 'Other',
 };
 
