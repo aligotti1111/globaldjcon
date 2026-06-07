@@ -1644,6 +1644,20 @@ function AddManualBookingModal({
                 </select>
               </label>
 
+              {/* Thin green arrow pointing right from Event Type to the next
+                  field, shown once any event type is selected. */}
+              {eventChosen && (
+                <div
+                  aria-hidden="true"
+                  style={{ flex: '0 0 auto', alignSelf: 'center', marginTop: '0.7rem', display: 'flex', alignItems: 'center' }}
+                >
+                  <svg width="28" height="12" viewBox="0 0 28 12" fill="none">
+                    <line x1="1" y1="6" x2="23" y2="6" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M19 2 L24 6 L19 10" stroke="var(--neon)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
+
               {/* Sub-category, to the right of the event-type box. */}
               {EVENT_SUBFIELDS[eventType]?.textLabel && (
                 <label className={styles.field} style={{ flex: '1 1 200px', minWidth: 0 }}>
