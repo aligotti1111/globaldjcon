@@ -1687,78 +1687,89 @@ function AddManualBookingModal({
             </div>
           )}
 
-          {/* Rate + Package — after Event Type. Both stay visible but
-              disabled (unclickable) until an event type is selected. */}
+          {/* Package + Rate — after Event Type. Both stay visible but
+              disabled (unclickable) until an event type is selected. The
+              selected package's saved details show indented below. */}
           {djType === 'mobile' && (
-            <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5 }}>
-              <label className={styles.field} style={{ flex: '0 0 auto' }}>
-                <span className={styles.fieldLabel}>Rate <span className={styles.optional}>(optional)</span></span>
-                <div className={styles.rateRow}>
-                  <div className={styles.rateInputWrap}>
-                    <span className={styles.rateSymbol}>
-                      {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
-                    </span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      value={rate}
-                      onChange={(e) => setRate(e.target.value)}
-                      placeholder="0"
-                      className={styles.rateInput}
-                      disabled={!eventChosen}
-                    />
-                  </div>
+            <>
+              <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5 }}>
+                <label className={styles.field} style={{ flex: '1 1 160px', minWidth: 0 }}>
+                  <span className={styles.fieldLabel}>Package</span>
                   <select
-                    value={rateCurrency}
-                    onChange={(e) => setRateCurrency(e.target.value)}
-                    className={styles.rateCurrencySelect}
-                    aria-label="Currency"
+                    value={selectedPkgIdx}
                     disabled={!eventChosen}
-                  >
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="CAD">CAD</option>
-                    <option value="AUD">AUD</option>
-                  </select>
-                </div>
-                <span className={styles.rateNote}>The rate is not shown publicly.</span>
-              </label>
-              <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
-                <span className={styles.fieldLabel}>Package</span>
-                <select
-                  value={selectedPkgIdx}
-                  disabled={!eventChosen}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setSelectedPkgIdx(v);
-                    if (v !== '') {
-                      const p = pkgList[Number(v)];
-                      // Auto-fill the rate with the package's base (4hr) price;
-                      // skip for price-on-request packages.
-                      if (p && !p.reqAll && p.price4 != null && String(p.price4) !== '') {
-                        setRate(String(p.price4));
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedPkgIdx(v);
+                      if (v !== '') {
+                        const p = pkgList[Number(v)];
+                        // Pre-fill the rate with the package's base (4hr) price;
+                        // skip for price-on-request packages. The DJ can still
+                        // edit the Rate box afterward.
+                        if (p && !p.reqAll && p.price4 != null && String(p.price4) !== '') {
+                          setRate(String(p.price4));
+                        }
                       }
-                    }
-                  }}
-                  className={styles.input}
-                >
-                  {!eventChosen ? (
-                    <option value="">Select event type first</option>
-                  ) : pkgList.length === 0 ? (
-                    <option value="">No packages for this type</option>
-                  ) : (
-                    <>
-                      <option value="">— None —</option>
-                      {pkgList.map((p, i) => (
-                        <option key={i} value={i}>{p.title || `Package ${i + 1}`}</option>
-                      ))}
-                    </>
-                  )}
-                </select>
-              </label>
-            </div>
+                    }}
+                    className={styles.input}
+                  >
+                    {!eventChosen ? (
+                      <option value="">Select event type first</option>
+                    ) : pkgList.length === 0 ? (
+                      <option value="">No packages for this type</option>
+                    ) : (
+                      <>
+                        <option value="">— None —</option>
+                        {pkgList.map((p, i) => (
+                          <option key={i} value={i}>{p.title || `Package ${i + 1}`}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label className={styles.field} style={{ flex: '0 0 auto' }}>
+                  <span className={styles.fieldLabel}>Rate <span className={styles.optional}>(optional)</span></span>
+                  <div className={styles.rateRow}>
+                    <div className={styles.rateInputWrap}>
+                      <span className={styles.rateSymbol}>
+                        {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        value={rate}
+                        onChange={(e) => setRate(e.target.value)}
+                        placeholder="0"
+                        className={styles.rateInput}
+                        disabled={!eventChosen}
+                      />
+                    </div>
+                    <select
+                      value={rateCurrency}
+                      onChange={(e) => setRateCurrency(e.target.value)}
+                      className={styles.rateCurrencySelect}
+                      aria-label="Currency"
+                      disabled={!eventChosen}
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="CAD">CAD</option>
+                      <option value="AUD">AUD</option>
+                    </select>
+                  </div>
+                  <span className={styles.rateNote}>The rate is not shown publicly.</span>
+                </label>
+              </div>
+              {/* Selected package's saved details — indented, smaller, muted. */}
+              {eventChosen && selectedPkgIdx !== '' && pkgList[Number(selectedPkgIdx)]?.details && (
+                <div
+                  style={{ marginLeft: '1rem', marginTop: '.1rem', fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
+                  dangerouslySetInnerHTML={{ __html: pkgList[Number(selectedPkgIdx)]!.details as string }}
+                />
+              )}
+            </>
           )}
 
           {/* ── Host invitation section ─────────────────────────────────
