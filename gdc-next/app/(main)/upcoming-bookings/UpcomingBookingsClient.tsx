@@ -21,7 +21,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails } from '../[slug]/mobileBookingForm';
+import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory } from '../[slug]/mobileBookingForm';
+import type { MobilePackage } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 
 // Country flag emojis — matches the homepage country picker so the look
@@ -47,6 +48,9 @@ interface Props {
   djName: string;
   bookingsPerDay: number;
   initialBookings: UpcomingBooking[];
+  // The DJ's saved mobile packages by category ('general' | 'wedding' |
+  // 'mitzvah'), used to populate the manual-booking package dropdown.
+  mobPackages: Record<string, MobilePackage[]> | null;
 }
 
 // Mobile-DJ event types — kept in sync with the public booking form (and
@@ -86,7 +90,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 })();
 
 export default function UpcomingBookingsClient({
-  userId, djType, djCountry, djName, bookingsPerDay, initialBookings,
+  userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
@@ -363,6 +367,7 @@ export default function UpcomingBookingsClient({
           djCountry={djCountry}
           djName={djName}
           bookingsPerDay={bookingsPerDay}
+          mobPackages={mobPackages}
           existingBookings={bookings}
           existing={editing}
           prefillDate={prefillDate}
@@ -1032,7 +1037,7 @@ function formatLongDate(d: string): string {
 // ───────────────────────────────────────────────────────────────────────
 
 function AddManualBookingModal({
-  userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
+  userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
   existing, prefillDate, onClose, onAdded, onUpdated,
 }: {
   userId: string;
@@ -1040,6 +1045,7 @@ function AddManualBookingModal({
   djCountry: string;
   djName: string;
   bookingsPerDay: number;
+  mobPackages: Record<string, MobilePackage[]> | null;
   existingBookings: UpcomingBooking[];
   existing: UpcomingBooking | null;
   // Optional initial date for the new-booking flow — used when the modal
@@ -1081,13 +1087,23 @@ function AddManualBookingModal({
     initBirthday ? /surprise party:\s*yes/i.test(initEd) : false
   );
   const eventTypeMounted = useRef(false);
-  // Clear sub-fields when the user switches event type (skip first render so
-  // an edit's pre-filled values survive mount).
+  // Selected package index (as a string; '' = none) within the category that
+  // matches the chosen event type. Pre-fill from an existing booking.
+  const [selectedPkgIdx, setSelectedPkgIdx] = useState<string>(
+    existing?.package_index != null ? String(existing.package_index) : ''
+  );
+  // Packages for the current event type's category (general/wedding/mitzvah),
+  // mirroring how the public booking form filters packages.
+  const pkgCategory = getPackageCategory(eventType);
+  const pkgList: MobilePackage[] = mobPackages?.[pkgCategory] || [];
+  // Clear sub-fields + package selection when the user switches event type
+  // (skip first render so an edit's pre-filled values survive mount).
   useEffect(() => {
     if (!eventTypeMounted.current) { eventTypeMounted.current = true; return; }
     setEventSubType('');
     setBirthdayAge('');
     setSurprise(false);
+    setSelectedPkgIdx('');
   }, [eventType]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
@@ -1311,6 +1327,8 @@ function AddManualBookingModal({
           return;
         }
       }
+      const pkgSelected = djType === 'mobile' && selectedPkgIdx !== '';
+      const selectedPkg = pkgSelected ? pkgList[Number(selectedPkgIdx)] : null;
       const payload = {
         booking_type: djType,
         event_date: eventDate,
@@ -1326,11 +1344,15 @@ function AddManualBookingModal({
         event_details: djType === 'mobile'
           ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
           : null,
+        package_title: pkgSelected ? (selectedPkg?.title || `Package ${Number(selectedPkgIdx) + 1}`) : null,
+        package_details: pkgSelected ? (selectedPkg?.details || null) : null,
+        package_category: pkgSelected ? pkgCategory : null,
+        package_index: pkgSelected ? Number(selectedPkgIdx) : null,
         host_email: trimmedEmail || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -1526,6 +1548,32 @@ function AddManualBookingModal({
               </div>
               <span className={styles.rateNote}>The rate is not shown publicly.</span>
             </label>
+            {djType === 'mobile' && pkgList.length > 0 && (
+              <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
+                <span className={styles.fieldLabel}>Package</span>
+                <select
+                  value={selectedPkgIdx}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedPkgIdx(v);
+                    if (v !== '') {
+                      const p = pkgList[Number(v)];
+                      // Auto-fill the rate with the package's base (4hr) price
+                      // as a convenience; skip for price-on-request packages.
+                      if (p && !p.reqAll && p.price4 != null && String(p.price4) !== '') {
+                        setRate(String(p.price4));
+                      }
+                    }
+                  }}
+                  className={styles.input}
+                >
+                  <option value="">— None —</option>
+                  {pkgList.map((p, i) => (
+                    <option key={i} value={i}>{p.title || `Package ${i + 1}`}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <div className={styles.field}>

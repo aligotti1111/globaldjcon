@@ -15,6 +15,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
+import type { MobilePackage } from '../[slug]/bookingSettings';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -78,7 +79,7 @@ interface ProfileRow {
   name: string | null;
   booking_settings: {
     mob_bookings_per_day?: number;
-    mob_packages?: Record<string, Array<{ overtime?: number | string | null }>>;
+    mob_packages?: Record<string, MobilePackage[]>;
   } | null;
 }
 
@@ -165,6 +166,7 @@ export default async function UpcomingBookingsPage() {
       djName={djName}
       bookingsPerDay={bookingsPerDay}
       initialBookings={bookingRows}
+      mobPackages={mobPackages ?? null}
     />
   );
 }
