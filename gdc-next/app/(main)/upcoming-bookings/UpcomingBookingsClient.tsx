@@ -1628,9 +1628,17 @@ function AddManualBookingModal({
           </div>
 
           {djType === 'mobile' && (
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '0 0 auto', maxWidth: '100%' }}>
-                <span className={styles.fieldLabel}>Event Type</span>
+                <span className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
+                  Event Type
+                  {eventChosen && EVENT_SUBFIELDS[eventType] && (
+                    <svg width="26" height="10" viewBox="0 0 26 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+                      <line x1="1" y1="5" x2="21" y2="5" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M17 1.5 L22 5 L17 8.5" stroke="var(--neon)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
                 <select
                   value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
@@ -1643,20 +1651,6 @@ function AddManualBookingModal({
                   ))}
                 </select>
               </label>
-
-              {/* Thin green arrow pointing right from Event Type to the next
-                  field, shown once any event type is selected. */}
-              {eventChosen && (
-                <div
-                  aria-hidden="true"
-                  style={{ flex: '0 0 auto', alignSelf: 'flex-start', marginTop: '0.15rem', display: 'flex', alignItems: 'center' }}
-                >
-                  <svg width="28" height="12" viewBox="0 0 28 12" fill="none">
-                    <line x1="1" y1="6" x2="23" y2="6" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
-                    <path d="M19 2 L24 6 L19 10" stroke="var(--neon)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              )}
 
               {/* Sub-category, to the right of the event-type box. */}
               {EVENT_SUBFIELDS[eventType]?.textLabel && (
