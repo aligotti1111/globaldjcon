@@ -1628,7 +1628,7 @@ function AddManualBookingModal({
           </div>
 
           {djType === 'mobile' && (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '0 0 auto', maxWidth: '100%' }}>
                 <span className={styles.fieldLabel}>Event Type</span>
                 <select
@@ -1649,7 +1649,7 @@ function AddManualBookingModal({
               {eventChosen && (
                 <div
                   aria-hidden="true"
-                  style={{ flex: '0 0 auto', alignSelf: 'center', marginTop: '0.7rem', display: 'flex', alignItems: 'center' }}
+                  style={{ flex: '0 0 auto', alignSelf: 'flex-start', marginTop: '0.15rem', display: 'flex', alignItems: 'center' }}
                 >
                   <svg width="28" height="12" viewBox="0 0 28 12" fill="none">
                     <line x1="1" y1="6" x2="23" y2="6" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
