@@ -15,7 +15,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
-import type { MobilePackage } from '../[slug]/bookingSettings';
+import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -77,10 +77,7 @@ interface ProfileRow {
   dj_type: string | null;
   country: string | null;
   name: string | null;
-  booking_settings: {
-    mob_bookings_per_day?: number;
-    mob_packages?: Record<string, MobilePackage[]>;
-  } | null;
+  booking_settings: string | null;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -97,7 +94,15 @@ export default async function UpcomingBookingsPage() {
   if (profile?.role !== 'dj') redirect('/booking-requests');
 
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
-  const bookingsPerDay = profile?.booking_settings?.mob_bookings_per_day || 1;
+  // booking_settings is stored as a JSON string (same as the public profile),
+  // so parse it before reading packages / per-day limit. Guard the rare case
+  // where it's already an object.
+  const settings: BookingSettings | null = (() => {
+    const raw = profile?.booking_settings as unknown;
+    if (typeof raw === 'string') return parseBookingSettings(raw);
+    return (raw as BookingSettings | null) || null;
+  })();
+  const bookingsPerDay = settings?.mob_bookings_per_day || 1;
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
 
@@ -143,7 +148,7 @@ export default async function UpcomingBookingsPage() {
   // definition when it wasn't snapshotted onto the row (older bookings).
   // A value stored on the row always wins; otherwise fall back to the live
   // package (category-specific, then the general package at the same index).
-  const mobPackages = profile?.booking_settings?.mob_packages;
+  const mobPackages = settings?.mob_packages;
   if (mobPackages) {
     bookingRows = bookingRows.map((b) => {
       if (b.overtime_rate != null || b.package_index == null) return b;
