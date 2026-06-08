@@ -1208,7 +1208,7 @@ function AddManualBookingModal({
         ? (buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise }) || '')
         : '',
       packageTitle: sel?.title || '',
-      packageDetails: sel ? ((editedDetails ?? sel.details) || '') : '',
+      packageDetails: djType === 'mobile' ? ((editedDetails ?? sel?.details) || '') : '',
       rate: rateNum,
       currency: rateCurrency,
     };
@@ -1414,6 +1414,11 @@ function AddManualBookingModal({
       }
       const pkgSelected = djType === 'mobile' && selectedPkgIdx !== '';
       const selectedUsable = pkgSelected ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx) : null;
+      // Instance details: a selected package's (possibly edited) details, OR
+      // free-text details typed when no packages exist for this type.
+      const instanceDetails = djType === 'mobile'
+        ? (((editedDetails ?? selectedUsable?.details) || '').trim() || null)
+        : null;
       const payload = {
         booking_type: djType,
         event_date: eventDate,
@@ -1432,8 +1437,8 @@ function AddManualBookingModal({
         cocktail_needed: (djType === 'mobile' && isWedding && showCocktail) ? true : null,
         cocktail_start_time: (djType === 'mobile' && isWedding && showCocktail && cocktailStart) ? cocktailStart : null,
         package_title: selectedUsable ? selectedUsable.title : null,
-        package_details: selectedUsable ? ((editedDetails ?? selectedUsable.details) || null) : null,
-        package_category: selectedUsable ? pkgCategory : null,
+        package_details: instanceDetails,
+        package_category: (selectedUsable || instanceDetails) ? pkgCategory : null,
         package_index: selectedUsable ? selectedUsable.idx : null,
         host_email: trimmedEmail || null,
         requester_name: hostName.trim() || null,
@@ -1907,16 +1912,17 @@ function AddManualBookingModal({
                   <span className={styles.rateNote}>The rate is not shown publicly.</span>
                 </label>
               </div>
-              {/* Selected package's details — shown indented/smaller. Editable
-                  for THIS booking only (edits are not saved back to the
-                  package). "Edit" sits at the bottom-right. */}
-              {(() => {
-                const sel = eventChosen && selectedPkgIdx !== ''
+              {/* Package details — shown indented/smaller, editable for THIS
+                  booking only (never saved back to the package). When there are
+                  no packages for this type, offer a free-text "Add Package
+                  Detail" entry for this booking. */}
+              {eventChosen && (() => {
+                const sel = selectedPkgIdx !== ''
                   ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx)
                   : null;
-                if (!sel) return null;
-                const shown = editedDetails ?? sel.details;
-                if (!shown && !editingDetails) return null;
+                const noPackages = usablePkgs.length === 0;
+                if (!sel && !noPackages) return null;
+                const shown = editedDetails ?? (sel?.details || '');
                 return (
                   <div style={{ marginLeft: '1rem', marginTop: '.1rem' }}>
                     {editingDetails ? (
@@ -1942,7 +1948,7 @@ function AddManualBookingModal({
                           </button>
                         </div>
                       </>
-                    ) : (
+                    ) : shown ? (
                       <>
                         <div
                           style={{ fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
@@ -1951,14 +1957,22 @@ function AddManualBookingModal({
                         <div style={{ textAlign: 'right', marginTop: '.1rem' }}>
                           <button
                             type="button"
-                            onClick={() => { setEditedDetails((prev) => prev ?? sel.details ?? ''); setEditingDetails(true); }}
+                            onClick={() => { setEditedDetails((prev) => prev ?? sel?.details ?? ''); setEditingDetails(true); }}
                             style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                           >
                             Edit
                           </button>
                         </div>
                       </>
-                    )}
+                    ) : noPackages ? (
+                      <button
+                        type="button"
+                        onClick={() => { setEditedDetails((prev) => prev ?? ''); setEditingDetails(true); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        + Add Package Detail
+                      </button>
+                    ) : null}
                   </div>
                 );
               })()}
