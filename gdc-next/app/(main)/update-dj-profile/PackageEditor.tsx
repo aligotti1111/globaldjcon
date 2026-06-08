@@ -253,31 +253,76 @@ export default function PackageEditor({
         <label className={styles.pkgFieldLabel}>
           Pricing <span className={styles.pkgFieldRequired}>*</span>
         </label>
-        {(['4', '5', '6'] as const).map((hrs) => {
-          const fld = `price${hrs}` as 'price4' | 'price5' | 'price6';
+        {(() => {
+          // Tiers come from priceTiers when present; otherwise derive the
+          // legacy 4/5/6 rows. Committing writes priceTiers AND keeps
+          // price4/5/6 in sync (single onChange) for backward compatibility.
+          const tiers: Array<{ hours: number; price: string }> =
+            Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
+              ? pkg.priceTiers.map((t) => ({ hours: Number(t.hours), price: String(t.price ?? '') }))
+              : ([4, 5, 6] as const).map((h) => ({
+                  hours: h,
+                  price: String((pkg as Record<string, unknown>)[`price${h}`] ?? ''),
+                }));
+          const commit = (next: Array<{ hours: number; price: string }>) => {
+            const priceFor = (h: number) => next.find((t) => t.hours === h)?.price ?? '';
+            onChange({
+              ...pkg,
+              priceTiers: next.map((t) => ({ hours: t.hours, price: t.price })),
+              price4: priceFor(4),
+              price5: priceFor(5),
+              price6: priceFor(6),
+            } as MobilePackage);
+          };
           return (
-            <div key={hrs} className={styles.priceRow}>
-              <span className={styles.priceRowLabel}>
-                {hrs} Hour Event{isWedding ? ' (Reception)' : ''}:
-              </span>
-              <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={String(pkg[fld] ?? '')}
-                disabled={reqAll}
-                onChange={(e) => updateField(fld, e.target.value)}
-                className={`${styles.priceInput} ${errSet.has(fld) ? styles.pkgFieldError : ''}`}
-              />
-            </div>
+            <>
+              {tiers.map((t, i) => (
+                <div key={i} className={styles.priceRow}>
+                  <span className={styles.priceRowLabel}>
+                    {t.hours} Hour Event{isWedding ? ' (Reception)' : ''}:
+                  </span>
+                  <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={t.price}
+                    disabled={reqAll}
+                    onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))}
+                    className={`${styles.priceInput} ${errSet.has('priceTiers') || errSet.has(`price${t.hours}`) ? styles.pkgFieldError : ''}`}
+                  />
+                  {!reqAll && tiers.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${t.hours} hour option`}
+                      onClick={() => commit(tiers.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .3rem', marginLeft: '.2rem' }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!reqAll && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextHours = tiers.length ? Math.max(...tiers.map((t) => t.hours)) + 1 : 4;
+                    commit([...tiers, { hours: nextHours, price: '' }]);
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.2rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                >
+                  + Add Hour Option
+                </button>
+              )}
+            </>
           );
-        })}
+        })()}
 
         {/* Overtime */}
         <div className={styles.priceRow}>
           <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
-            Hourly Overtime: <span className={styles.pkgFieldRequired}>*</span>
+            Hourly Overtime:
           </span>
           <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
           <input

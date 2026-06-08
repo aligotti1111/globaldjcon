@@ -23,6 +23,7 @@ import {
   type BookingSettings,
   type MobileBookingDays,
   type MobilePackage,
+  packageTiers,
 } from '@/app/(main)/[slug]/bookingSettings';
 import {
   getActivePackageCategories,
@@ -56,7 +57,8 @@ function isPkgEmpty(p: MobilePackage | undefined): boolean {
   if (!p) return true;
   const titleEmpty = !((p.title || '').trim());
   const detailsEmpty = !stripHtml(p.details || '');
-  const priceEmpty = !p.price4 && !p.price5 && !p.price6 && !p.overtime;
+  const priceEmpty = !p.price4 && !p.price5 && !p.price6 && !p.overtime
+    && !(Array.isArray(p.priceTiers) && p.priceTiers.some((t) => Number(t?.price) > 0));
   // Photos count as content: a package with photos but no title/price is
   // treated as PARTIAL (not empty), so it surfaces the "fix or clear" errors
   // rather than being silently saved as a blank.
@@ -86,10 +88,11 @@ function validatePkg(p: MobilePackage | undefined): PkgValidationResult {
   }
   // Pricing rules differ by reqAll
   if (!p.reqAll) {
-    if (!p.price4 || Number(p.price4) <= 0) errors.push({ field: 'price4', msg: '4hr price required' });
-    if (!p.price5 || Number(p.price5) <= 0) errors.push({ field: 'price5', msg: '5hr price required' });
-    if (!p.price6 || Number(p.price6) <= 0) errors.push({ field: 'price6', msg: '6hr price required' });
-    if (!p.overtime || Number(p.overtime) <= 0) errors.push({ field: 'overtime', msg: 'Overtime rate required' });
+    // At least one hour tier must have a positive price. Overtime is optional
+    // (without it, out-of-tier durations fall back to "price on request").
+    if (packageTiers(p).length === 0) {
+      errors.push({ field: 'priceTiers', msg: 'At least one hour price is required' });
+    }
   }
   return { ok: errors.length === 0, errors };
 }
