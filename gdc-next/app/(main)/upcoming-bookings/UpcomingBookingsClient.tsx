@@ -1104,6 +1104,9 @@ function AddManualBookingModal({
     !!existing?.cocktail_start_time || existing?.cocktail_needed === true
   );
   const [cocktailStart, setCocktailStart] = useState<string>(trimTime(existing?.cocktail_start_time || null));
+  // Optional overtime rate (per hour), added via a link under the rate box.
+  const [showOvertime, setShowOvertime] = useState<boolean>(existing?.overtime_rate != null);
+  const [overtimeRate, setOvertimeRate] = useState<string>(existing?.overtime_rate != null ? String(existing.overtime_rate) : '');
   const detailsEditRef = useRef<HTMLDivElement>(null);
   // Seed the editable area's content when edit mode opens (uncontrolled, so
   // typing doesn't reset the caret).
@@ -1144,7 +1147,7 @@ function AddManualBookingModal({
       // Partial/empty packages stay hidden until completed. Completeness is
       // per-package, so a finished one shows even if others are still empty.
       if (!pkg || !title || !plainDetails || !hasPrice) return null;
-      return { idx, title, details, price4, reqAll };
+      return { idx, title, details, price4, reqAll, overtime: (pkg?.overtime ?? fallback.overtime) ?? null };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
   // Clear sub-fields + package selection when the user switches event type
@@ -1159,6 +1162,8 @@ function AddManualBookingModal({
     setEditingDetails(false);
     setShowCocktail(false);
     setCocktailStart('');
+    setShowOvertime(false);
+    setOvertimeRate('');
   }, [eventType]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
@@ -1440,12 +1445,14 @@ function AddManualBookingModal({
         package_details: instanceDetails,
         package_category: (selectedUsable || instanceDetails) ? pkgCategory : null,
         package_index: selectedUsable ? selectedUsable.idx : null,
+        overtime_rate: (djType === 'mobile' && showOvertime && overtimeRate.trim() !== '' && Number(overtimeRate) > 0)
+          ? Number(overtimeRate) : null,
         host_email: trimmedEmail || null,
         requester_name: hostName.trim() || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -1756,7 +1763,6 @@ function AddManualBookingModal({
                     <option value="AUD">AUD</option>
                   </select>
                 </div>
-                <span className={styles.rateNote}>The rate is not shown publicly.</span>
               </label>
             )}
           </div>
@@ -1859,6 +1865,12 @@ function AddManualBookingModal({
                         if (!p.reqAll && p.price4 != null && String(p.price4) !== '') {
                           setRate(String(p.price4));
                         }
+                        // If the package carries an overtime rate, surface it
+                        // (editable); otherwise leave the overtime field as-is.
+                        if (p.overtime != null && String(p.overtime).trim() !== '' && Number(p.overtime) > 0) {
+                          setOvertimeRate(String(p.overtime));
+                          setShowOvertime(true);
+                        }
                       }
                     }}
                     className={styles.input}
@@ -1877,7 +1889,7 @@ function AddManualBookingModal({
                     )}
                   </select>
                 </label>
-                <label className={styles.field} style={{ flex: '0 0 auto' }}>
+                <div className={styles.field} style={{ flex: '0 0 auto' }}>
                   <span className={styles.fieldLabel}>Rate <span className={styles.optional}>(optional)</span></span>
                   <div className={styles.rateRow}>
                     <div className={styles.rateInputWrap}>
@@ -1909,8 +1921,47 @@ function AddManualBookingModal({
                       <option value="AUD">AUD</option>
                     </select>
                   </div>
-                  <span className={styles.rateNote}>The rate is not shown publicly.</span>
-                </label>
+                  {/* Optional overtime rate (per hour), shown under the rate box. */}
+                  {!showOvertime ? (
+                    <button
+                      type="button"
+                      disabled={!eventChosen}
+                      onClick={() => setShowOvertime(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.72rem', cursor: eventChosen ? 'pointer' : 'default', padding: 0, marginTop: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                    >
+                      + Add Overtime Rate
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: '.4rem' }}>
+                      <span className={styles.fieldLabel} style={{ display: 'block', marginBottom: '.2rem' }}>Overtime Rate (per hour)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                        <div className={styles.rateInputWrap}>
+                          <span className={styles.rateSymbol}>
+                            {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                          </span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            value={overtimeRate}
+                            onChange={(e) => setOvertimeRate(e.target.value)}
+                            placeholder="0"
+                            className={styles.rateInput}
+                            disabled={!eventChosen}
+                          />
+                        </div>
+                        <span style={{ fontSize: '.72rem', opacity: 0.7 }}>/hr</span>
+                        <button
+                          type="button"
+                          onClick={() => { setShowOvertime(false); setOvertimeRate(''); }}
+                          style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               {/* Package details — shown indented/smaller, editable for THIS
                   booking only (never saved back to the package). When there are
