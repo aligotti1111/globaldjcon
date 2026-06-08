@@ -1092,6 +1092,22 @@ function AddManualBookingModal({
   const [selectedPkgIdx, setSelectedPkgIdx] = useState<string>(
     existing?.package_index != null ? String(existing.package_index) : ''
   );
+  // Per-instance edit of the selected package's details. null = use the
+  // package's saved details as-is; a string = details edited for THIS booking
+  // only (never written back to the DJ's saved package).
+  const [editedDetails, setEditedDetails] = useState<string | null>(
+    existing?.package_details ? existing.package_details : null
+  );
+  const [editingDetails, setEditingDetails] = useState(false);
+  const detailsEditRef = useRef<HTMLDivElement>(null);
+  // Seed the editable area's content when edit mode opens (uncontrolled, so
+  // typing doesn't reset the caret).
+  useEffect(() => {
+    if (editingDetails && detailsEditRef.current) {
+      detailsEditRef.current.innerHTML = editedDetails ?? '';
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingDetails]);
   // Packages for the current event type's category (general/wedding/mitzvah),
   // mirroring how the public booking form filters packages. Empty until an
   // event type is actually selected.
@@ -1133,6 +1149,8 @@ function AddManualBookingModal({
     setBirthdayAge('');
     setSurprise(false);
     setSelectedPkgIdx('');
+    setEditedDetails(null);
+    setEditingDetails(false);
   }, [eventType]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
@@ -1374,7 +1392,7 @@ function AddManualBookingModal({
           ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
           : null,
         package_title: selectedUsable ? selectedUsable.title : null,
-        package_details: selectedUsable ? (selectedUsable.details || null) : null,
+        package_details: selectedUsable ? ((editedDetails ?? selectedUsable.details) || null) : null,
         package_category: selectedUsable ? pkgCategory : null,
         package_index: selectedUsable ? selectedUsable.idx : null,
         host_email: trimmedEmail || null,
@@ -1531,7 +1549,7 @@ function AddManualBookingModal({
           {/* Venue name + Rate on one line. Venue name takes the
               remaining width; the rate box is narrow (~5 chars). */}
           <div className={styles.venueRateRow}>
-            <label className={styles.field}>
+            <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
               <span className={styles.fieldLabel}>
                 Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
               </span>
@@ -1541,6 +1559,7 @@ function AddManualBookingModal({
                 onChange={(e) => setVenueName(e.target.value)}
                 placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
                 className={styles.input}
+                style={{ width: '100%' }}
               />
             </label>
             {djType === 'club' && (
@@ -1736,12 +1755,15 @@ function AddManualBookingModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setSelectedPkgIdx(v);
-                      if (v !== '') {
-                        const p = usablePkgs.find((u) => String(u.idx) === v);
+                      setEditingDetails(false);
+                      const p = v !== '' ? usablePkgs.find((u) => String(u.idx) === v) : null;
+                      // New selection starts from the package's saved details.
+                      setEditedDetails(p ? (p.details || '') : null);
+                      if (p) {
                         // Pre-fill the rate with the package's base (4hr) price;
                         // skip for price-on-request packages. The DJ can still
                         // edit the Rate box afterward.
-                        if (p && !p.reqAll && p.price4 != null && String(p.price4) !== '') {
+                        if (!p.reqAll && p.price4 != null && String(p.price4) !== '') {
                           setRate(String(p.price4));
                         }
                       }
@@ -1797,17 +1819,59 @@ function AddManualBookingModal({
                   <span className={styles.rateNote}>The rate is not shown publicly.</span>
                 </label>
               </div>
-              {/* Selected package's saved details — indented, smaller, muted. */}
+              {/* Selected package's details — shown indented/smaller. Editable
+                  for THIS booking only (edits are not saved back to the
+                  package). "Edit" sits at the bottom-right. */}
               {(() => {
                 const sel = eventChosen && selectedPkgIdx !== ''
                   ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx)
                   : null;
-                if (!sel || !sel.details) return null;
+                if (!sel) return null;
+                const shown = editedDetails ?? sel.details;
+                if (!shown && !editingDetails) return null;
                 return (
-                  <div
-                    style={{ marginLeft: '1rem', marginTop: '.1rem', fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
-                    dangerouslySetInnerHTML={{ __html: sel.details }}
-                  />
+                  <div style={{ marginLeft: '1rem', marginTop: '.1rem' }}>
+                    {editingDetails ? (
+                      <>
+                        <div
+                          ref={detailsEditRef}
+                          contentEditable
+                          suppressContentEditableWarning
+                          onInput={(e) => setEditedDetails(e.currentTarget.innerHTML)}
+                          style={{
+                            fontSize: '.78rem', lineHeight: 1.5, opacity: 0.9,
+                            border: '1px solid var(--neon)', borderRadius: 6,
+                            padding: '.4rem .55rem', outline: 'none', minHeight: '2.5rem',
+                          }}
+                        />
+                        <div style={{ textAlign: 'right', marginTop: '.2rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDetails(false)}
+                            style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          style={{ fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
+                          dangerouslySetInnerHTML={{ __html: shown }}
+                        />
+                        <div style={{ textAlign: 'right', marginTop: '.1rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => { setEditedDetails((prev) => prev ?? sel.details ?? ''); setEditingDetails(true); }}
+                            style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 );
               })()}
             </>
