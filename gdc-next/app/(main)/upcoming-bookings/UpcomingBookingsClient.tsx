@@ -1530,7 +1530,7 @@ function AddManualBookingModal({
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{isEdit ? 'Edit Manual Booking' : 'Add Manual Booking'}</h2>
+          <h2 className={styles.modalTitle}>{isEdit ? 'Edit Manual Booking' : 'Add Booking Manually'}</h2>
           <button type="button" onClick={onClose} className={styles.modalClose} aria-label="Close">✕</button>
         </div>
 
