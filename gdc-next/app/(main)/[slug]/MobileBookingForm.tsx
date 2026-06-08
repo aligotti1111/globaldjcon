@@ -32,6 +32,7 @@ import styles from './mobileBookingForm.module.css';
 import {
   type BookingSettings,
   type MobilePackage,
+  packageTiers,
 } from './bookingSettings';
 import {
   MOB_EVENT_TYPE_LABELS,
@@ -1239,10 +1240,7 @@ function PackagesSection({
           } else {
             const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
             if (cardPrice.isQuote || cardPrice.price == null) {
-              const has4 = pkg.price4 != null && pkg.price4 !== '';
-              const has5 = pkg.price5 != null && pkg.price5 !== '';
-              const has6 = pkg.price6 != null && pkg.price6 !== '';
-              if (has4 || has5 || has6) {
+              if (packageTiers(pkg).length > 0) {
                 priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
               }
             } else {

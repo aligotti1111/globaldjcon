@@ -4,7 +4,7 @@
 // US-only phone formatting in this session — international formats deferred.
 // Address autocomplete (Nominatim) and distance check (Haversine) also deferred.
 
-import type { MobilePackage } from './bookingSettings';
+import { type MobilePackage, packageTiers } from './bookingSettings';
 
 // Mobile-DJ event-type labels — vanilla djp-mob-public.js line 66.
 // Note: these differ from the EVENT_TYPE_LABELS in constants.ts (which are
@@ -148,50 +148,34 @@ export function calcPrice(
   let overtimeHours = 0;
   let isQuote = false;
 
-  if (totalHours > 0) {
-    const hrs = Math.ceil(totalHours);
-    const p4 = pkg.price4 != null && pkg.price4 !== '' ? Number(pkg.price4) : null;
-    const p5 = pkg.price5 != null && pkg.price5 !== '' ? Number(pkg.price5) : null;
-    const p6 = pkg.price6 != null && pkg.price6 !== '' ? Number(pkg.price6) : null;
-    const ot = pkg.overtime != null && pkg.overtime !== '' ? Number(pkg.overtime) : null;
+  const tiers = packageTiers(pkg);
+  const ot = pkg.overtime != null && pkg.overtime !== '' ? Number(pkg.overtime) : null;
 
-    if (hrs <= 4) {
-      if (p4 != null) price = p4;
-      else isQuote = true;
-    } else if (hrs <= 5) {
-      if (p5 != null) price = p5;
-      else if (p4 != null && ot != null) {
-        price = p4 + (hrs - 4) * ot;
-        overtimeHours = hrs - 4;
-      } else isQuote = true;
-    } else if (hrs <= 6) {
-      if (p6 != null) price = p6;
-      else if (p5 != null && ot != null) {
-        price = p5 + (hrs - 5) * ot;
-        overtimeHours = hrs - 5;
-      } else if (p4 != null && ot != null) {
-        price = p4 + (hrs - 4) * ot;
-        overtimeHours = hrs - 4;
-      } else isQuote = true;
-    } else {
-      // > 6hrs — use highest tier + overtime
-      const basePrice = p6 ?? p5 ?? p4;
-      const baseHrs = p6 != null ? 6 : p5 != null ? 5 : 4;
-      if (basePrice != null && ot != null) {
-        price = basePrice + (hrs - baseHrs) * ot;
-        overtimeHours = hrs - baseHrs;
-      } else isQuote = true;
+  if (tiers.length === 0) {
+    // No usable pricing — always a quote.
+    isQuote = true;
+  } else if (totalHours > 0) {
+    const hrs = Math.ceil(totalHours);
+    // Base off the nearest tier at or below the event length. If the event is
+    // shorter than the smallest tier, use the smallest tier as a minimum.
+    let base = tiers[0];
+    for (const t of tiers) {
+      if (t.hours <= hrs) base = t;
     }
-  } else {
-    // No times yet — show base price if available, else quote
-    const p4 = pkg.price4 != null && pkg.price4 !== '' ? Number(pkg.price4) : null;
-    const p5 = pkg.price5 != null && pkg.price5 !== '' ? Number(pkg.price5) : null;
-    const p6 = pkg.price6 != null && pkg.price6 !== '' ? Number(pkg.price6) : null;
-    if (p4 != null || p5 != null || p6 != null) {
-      price = (p4 ?? p5 ?? p6) as number;
+    const extra = Math.max(0, hrs - base.hours);
+    if (extra === 0) {
+      price = base.price;
+    } else if (ot != null && ot > 0) {
+      // Past the matched tier, add overtime per extra hour.
+      price = base.price + extra * ot;
+      overtimeHours = extra;
     } else {
+      // No overtime rate to cover the extra hours → price must be requested.
       isQuote = true;
     }
+  } else {
+    // No times yet — show the smallest tier price as the starting rate.
+    price = tiers[0].price;
   }
 
   // Wedding cocktail-hour add-on: when the booker opts into cocktail-hour

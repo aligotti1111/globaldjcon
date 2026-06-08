@@ -113,9 +113,13 @@ export interface MobilePackage {
   photo?: string;            // main sample photo URL (slot 1, shown on card)
   photos?: string[];         // additional sample photos (slots 2-4), shown as
                              // thumbnails in the booking-form lightbox
-  price4?: number | string;  // 4hr rate
-  price5?: number | string;  // 5hr rate
-  price6?: number | string;  // 6hr rate
+  price4?: number | string;  // 4hr rate (legacy; kept in sync with priceTiers)
+  price5?: number | string;  // 5hr rate (legacy)
+  price6?: number | string;  // 6hr rate (legacy)
+  // Generalized hour-based pricing. When present, this is the source of truth;
+  // price4/5/6 are kept in sync for backward compatibility. Each entry is an
+  // hour count and the flat price for an event up to that length.
+  priceTiers?: Array<{ hours: number; price: number | string }>;
   overtime?: number | string; // per-hour overtime rate
   reqAll?: boolean;          // "Price on request" — no auto-quote
   // Wedding cocktail-hour add-on. When cocktailIncluded is false, the
@@ -128,6 +132,26 @@ export interface MobilePackage {
   cocktailNotOffered?: boolean;
   // Hours the DJ needs to set up before the event start time (per package).
   setupHours?: string | number;
+}
+
+// Canonical, sorted list of valid pricing tiers for a package. Uses
+// priceTiers when present; otherwise falls back to the legacy price4/5/6
+// fields so existing packages keep working. Only tiers with a positive
+// price and positive hours are returned, ascending by hours.
+export function packageTiers(pkg: MobilePackage | null | undefined): Array<{ hours: number; price: number }> {
+  if (!pkg) return [];
+  const raw: Array<{ hours: unknown; price: unknown }> =
+    Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
+      ? pkg.priceTiers
+      : [
+          { hours: 4, price: pkg.price4 },
+          { hours: 5, price: pkg.price5 },
+          { hours: 6, price: pkg.price6 },
+        ];
+  return raw
+    .map((t) => ({ hours: Number(t.hours), price: Number(t.price) }))
+    .filter((t) => Number.isFinite(t.hours) && t.hours > 0 && Number.isFinite(t.price) && t.price > 0)
+    .sort((a, b) => a.hours - b.hours);
 }
 
 // Vanilla stores booking_settings as a JSON string. This helper parses it
