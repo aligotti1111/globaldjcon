@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory } from '../[slug]/mobileBookingForm';
+import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory, hoursBetween, durationLabel } from '../[slug]/mobileBookingForm';
 import type { MobilePackage } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 
@@ -1157,6 +1157,7 @@ function AddManualBookingModal({
   // (host_email_sent_at populated), the UI shows a "sent" state instead of
   // the checkbox to prevent accidental double-sends.
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
+  const [hostName, setHostName] = useState<string>(existing?.requester_name || '');
   const [sendInvite, setSendInvite] = useState<boolean>(false);
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
@@ -1396,10 +1397,11 @@ function AddManualBookingModal({
         package_category: selectedUsable ? pkgCategory : null,
         package_index: selectedUsable ? selectedUsable.idx : null,
         host_email: trimmedEmail || null,
+        requester_name: hostName.trim() || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -1545,6 +1547,11 @@ function AddManualBookingModal({
               </select>
             </label>
           </div>
+          {durationLabel(hoursBetween(startTime, endTime)) && (
+            <div style={{ textAlign: 'right', marginTop: '-.35rem', marginBottom: '.1rem', fontSize: '.72rem', color: 'var(--neon)' }}>
+              Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
+            </div>
+          )}
 
           {/* Venue name + Rate on one line. Venue name takes the
               remaining width; the rate box is narrow (~5 chars). */}
@@ -1883,17 +1890,32 @@ function AddManualBookingModal({
               "sent on X" banner + a Resend button, so the DJ can't double-
               fire emails by accident. */}
           <div className={styles.hostInviteBlock}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
-              <input
-                type="email"
-                value={hostEmail}
-                onChange={(e) => setHostEmail(e.target.value)}
-                placeholder="host@example.com"
-                className={styles.input}
-                autoComplete="off"
-              />
-            </label>
+            <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
+                <span className={styles.fieldLabel}>Host Name</span>
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="e.g. Jordan Smith"
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                  autoComplete="off"
+                />
+              </label>
+              <label className={styles.field} style={{ flex: '1 1 160px', minWidth: 0 }}>
+                <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
+                <input
+                  type="email"
+                  value={hostEmail}
+                  onChange={(e) => setHostEmail(e.target.value)}
+                  placeholder="host@example.com"
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                  autoComplete="off"
+                />
+              </label>
+            </div>
             {hostEmailAlreadySent ? (
               <div className={styles.sentBanner}>
                 <div className={styles.sentBannerText}>
