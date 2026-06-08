@@ -1097,7 +1097,34 @@ function AddManualBookingModal({
   // event type is actually selected.
   const eventChosen = eventType !== '';
   const pkgCategory = getPackageCategory(eventType);
-  const pkgList: MobilePackage[] = eventChosen ? (mobPackages?.[pkgCategory] || []) : [];
+  const categoryPkgs: MobilePackage[] = eventChosen ? (mobPackages?.[pkgCategory] || []) : [];
+  const generalPkgs: MobilePackage[] = mobPackages?.['general'] || [];
+  // Only packages with a usable title are "ready" — matches the public booking
+  // form, so empty packages (created but never filled in) are hidden until
+  // they have content. Wedding/Mitzvah packages inherit the general-category
+  // title at the same index as a fallback. Completeness is per-package: a
+  // finished package shows even if others in the group are still empty.
+  const usablePkgs = categoryPkgs
+    .map((pkg, idx) => {
+      const fallback = generalPkgs[idx] || ({} as MobilePackage);
+      const title = (pkg?.title?.trim()) || (fallback.title?.trim()) || '';
+      const details = (pkg?.details ?? fallback.details) || '';
+      const plainDetails = details.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+      const reqAll = pkg?.reqAll ?? fallback.reqAll ?? false;
+      const price4 = (pkg?.price4 ?? fallback.price4) ?? null;
+      // "Price set" = a real positive price on any tier, OR price-on-request.
+      const hasPrice = reqAll || [
+        pkg?.price4 ?? fallback.price4,
+        pkg?.price5 ?? fallback.price5,
+        pkg?.price6 ?? fallback.price6,
+      ].some((v) => v != null && String(v).trim() !== '' && Number(v) > 0);
+      // Only fully-ready packages show: title AND description AND price set.
+      // Partial/empty packages stay hidden until completed. Completeness is
+      // per-package, so a finished one shows even if others are still empty.
+      if (!pkg || !title || !plainDetails || !hasPrice) return null;
+      return { idx, title, details, price4, reqAll };
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
   // Clear sub-fields + package selection when the user switches event type
   // (skip first render so an edit's pre-filled values survive mount).
   useEffect(() => {
@@ -1330,7 +1357,7 @@ function AddManualBookingModal({
         }
       }
       const pkgSelected = djType === 'mobile' && selectedPkgIdx !== '';
-      const selectedPkg = pkgSelected ? pkgList[Number(selectedPkgIdx)] : null;
+      const selectedUsable = pkgSelected ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx) : null;
       const payload = {
         booking_type: djType,
         event_date: eventDate,
@@ -1346,10 +1373,10 @@ function AddManualBookingModal({
         event_details: djType === 'mobile'
           ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
           : null,
-        package_title: pkgSelected ? (selectedPkg?.title || `Package ${Number(selectedPkgIdx) + 1}`) : null,
-        package_details: pkgSelected ? (selectedPkg?.details || null) : null,
-        package_category: pkgSelected ? pkgCategory : null,
-        package_index: pkgSelected ? Number(selectedPkgIdx) : null,
+        package_title: selectedUsable ? selectedUsable.title : null,
+        package_details: selectedUsable ? (selectedUsable.details || null) : null,
+        package_category: selectedUsable ? pkgCategory : null,
+        package_index: selectedUsable ? selectedUsable.idx : null,
         host_email: trimmedEmail || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
@@ -1710,7 +1737,7 @@ function AddManualBookingModal({
                       const v = e.target.value;
                       setSelectedPkgIdx(v);
                       if (v !== '') {
-                        const p = pkgList[Number(v)];
+                        const p = usablePkgs.find((u) => String(u.idx) === v);
                         // Pre-fill the rate with the package's base (4hr) price;
                         // skip for price-on-request packages. The DJ can still
                         // edit the Rate box afterward.
@@ -1723,13 +1750,13 @@ function AddManualBookingModal({
                   >
                     {!eventChosen ? (
                       <option value="">Select event type first</option>
-                    ) : pkgList.length === 0 ? (
+                    ) : usablePkgs.length === 0 ? (
                       <option value="">No packages for this type</option>
                     ) : (
                       <>
                         <option value="">— None —</option>
-                        {pkgList.map((p, i) => (
-                          <option key={i} value={i}>{p.title || `Package ${i + 1}`}</option>
+                        {usablePkgs.map((u) => (
+                          <option key={u.idx} value={u.idx}>{u.title}</option>
                         ))}
                       </>
                     )}
@@ -1771,12 +1798,18 @@ function AddManualBookingModal({
                 </label>
               </div>
               {/* Selected package's saved details — indented, smaller, muted. */}
-              {eventChosen && selectedPkgIdx !== '' && pkgList[Number(selectedPkgIdx)]?.details && (
-                <div
-                  style={{ marginLeft: '1rem', marginTop: '.1rem', fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
-                  dangerouslySetInnerHTML={{ __html: pkgList[Number(selectedPkgIdx)]!.details as string }}
-                />
-              )}
+              {(() => {
+                const sel = eventChosen && selectedPkgIdx !== ''
+                  ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx)
+                  : null;
+                if (!sel || !sel.details) return null;
+                return (
+                  <div
+                    style={{ marginLeft: '1rem', marginTop: '.1rem', fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
+                    dangerouslySetInnerHTML={{ __html: sel.details }}
+                  />
+                );
+              })()}
             </>
           )}
 
