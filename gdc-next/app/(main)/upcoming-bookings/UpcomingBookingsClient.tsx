@@ -1099,6 +1099,11 @@ function AddManualBookingModal({
     existing?.package_details ? existing.package_details : null
   );
   const [editingDetails, setEditingDetails] = useState(false);
+  // Cocktail hour (weddings only) — optional add via a link under the date.
+  const [showCocktail, setShowCocktail] = useState<boolean>(
+    !!existing?.cocktail_start_time || existing?.cocktail_needed === true
+  );
+  const [cocktailStart, setCocktailStart] = useState<string>(trimTime(existing?.cocktail_start_time || null));
   const detailsEditRef = useRef<HTMLDivElement>(null);
   // Seed the editable area's content when edit mode opens (uncontrolled, so
   // typing doesn't reset the caret).
@@ -1112,6 +1117,7 @@ function AddManualBookingModal({
   // mirroring how the public booking form filters packages. Empty until an
   // event type is actually selected.
   const eventChosen = eventType !== '';
+  const isWedding = eventType === 'weddings';
   const pkgCategory = getPackageCategory(eventType);
   const categoryPkgs: MobilePackage[] = eventChosen ? (mobPackages?.[pkgCategory] || []) : [];
   const generalPkgs: MobilePackage[] = mobPackages?.['general'] || [];
@@ -1151,6 +1157,8 @@ function AddManualBookingModal({
     setSelectedPkgIdx('');
     setEditedDetails(null);
     setEditingDetails(false);
+    setShowCocktail(false);
+    setCocktailStart('');
   }, [eventType]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
@@ -1421,6 +1429,8 @@ function AddManualBookingModal({
         event_details: djType === 'mobile'
           ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
           : null,
+        cocktail_needed: (djType === 'mobile' && isWedding && showCocktail) ? true : null,
+        cocktail_start_time: (djType === 'mobile' && isWedding && showCocktail && cocktailStart) ? cocktailStart : null,
         package_title: selectedUsable ? selectedUsable.title : null,
         package_details: selectedUsable ? ((editedDetails ?? selectedUsable.details) || null) : null,
         package_category: selectedUsable ? pkgCategory : null,
@@ -1430,7 +1440,7 @@ function AddManualBookingModal({
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -1535,6 +1545,75 @@ function AddManualBookingModal({
         </div>
 
         <div className={styles.modalBody}>
+          {/* Event Type (+ secondary field) at the top, so the rest of the
+              form (package/rate, reception labels, cocktail hour) keys off it. */}
+          {djType === 'mobile' && (
+            <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <label className={styles.field} style={{ flex: '0 0 auto', maxWidth: '100%' }}>
+                <span className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
+                  Event Type
+                  {eventChosen && EVENT_SUBFIELDS[eventType] && (
+                    <svg width="26" height="10" viewBox="0 0 26 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+                      <line x1="1" y1="5" x2="21" y2="5" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M17 1.5 L22 5 L17 8.5" stroke="var(--neon)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <select
+                  value={eventType}
+                  onChange={(e) => setEventType(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '210px', maxWidth: '100%' }}
+                >
+                  <option value="">Select event type…</option>
+                  {MOBILE_EVENT_TYPES.map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Sub-category, to the right of the event-type box. */}
+              {EVENT_SUBFIELDS[eventType]?.textLabel && (
+                <label className={styles.field} style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
+                  <input
+                    type="text"
+                    value={eventSubType}
+                    onChange={(e) => setEventSubType(e.target.value)}
+                    placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+                    className={styles.input}
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+              {EVENT_SUBFIELDS[eventType]?.isBirthday && (
+                <div className={styles.field} style={{ flex: '1 1 auto' }}>
+                  <span className={styles.fieldLabel}>Guest of Honor Age?</span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={birthdayAge}
+                    onChange={(e) => setBirthdayAge(e.target.value)}
+                    placeholder="30"
+                    className={styles.input}
+                    style={{ width: '100%' }}
+                    autoComplete="off"
+                  />
+                  {/* Snug under the age box (the .field column gap handles spacing). */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
+                    <input
+                      type="checkbox"
+                      checked={surprise}
+                      onChange={(e) => setSurprise(e.target.checked)}
+                      style={{ width: 15, height: 15, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                    />
+                    Is this a Surprise Party?
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
           {/* Date + Start Time + End Time on a single row. Clicking
               anywhere on the date field opens the native picker. */}
           <div className={styles.fieldRow3}>
@@ -1558,7 +1637,7 @@ function AddManualBookingModal({
               </div>
             </div>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Start Time</span>
+              <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Start Time'}</span>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
@@ -1568,7 +1647,7 @@ function AddManualBookingModal({
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
-                End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}
+                {isWedding ? 'Reception End' : <>End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
@@ -1578,6 +1657,41 @@ function AddManualBookingModal({
               </select>
             </label>
           </div>
+          {isWedding && (
+            <div style={{ marginTop: '-.15rem', marginBottom: '.35rem' }}>
+              {!showCocktail ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCocktail(true)}
+                  style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                >
+                  + Add Cocktail Hour
+                </button>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
+                  <span className={styles.fieldLabel} style={{ margin: 0 }}>Cocktail Hour Start</span>
+                  <select
+                    value={cocktailStart}
+                    onChange={(e) => setCocktailStart(e.target.value)}
+                    className={styles.input}
+                    style={{ width: 'auto' }}
+                  >
+                    <option value="">Select…</option>
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCocktail(false); setCocktailStart(''); }}
+                    style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {durationLabel(hoursBetween(startTime, endTime)) && (
             <div style={{ textAlign: 'right', marginTop: '-.35rem', marginBottom: '.1rem', fontSize: '.72rem', color: 'var(--neon)' }}>
               Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
@@ -1710,74 +1824,6 @@ function AddManualBookingModal({
               </select>
             </div>
           </div>
-
-          {djType === 'mobile' && (
-            <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <label className={styles.field} style={{ flex: '0 0 auto', maxWidth: '100%' }}>
-                <span className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
-                  Event Type
-                  {eventChosen && EVENT_SUBFIELDS[eventType] && (
-                    <svg width="26" height="10" viewBox="0 0 26 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-                      <line x1="1" y1="5" x2="21" y2="5" stroke="var(--neon)" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M17 1.5 L22 5 L17 8.5" stroke="var(--neon)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <select
-                  value={eventType}
-                  onChange={(e) => setEventType(e.target.value)}
-                  className={styles.input}
-                  style={{ width: '210px', maxWidth: '100%' }}
-                >
-                  <option value="">Select event type…</option>
-                  {MOBILE_EVENT_TYPES.map((v) => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              {/* Sub-category, to the right of the event-type box. */}
-              {EVENT_SUBFIELDS[eventType]?.textLabel && (
-                <label className={styles.field} style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <span className={styles.fieldLabel}>{EVENT_SUBFIELDS[eventType].textLabel}</span>
-                  <input
-                    type="text"
-                    value={eventSubType}
-                    onChange={(e) => setEventSubType(e.target.value)}
-                    placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
-                    className={styles.input}
-                    autoComplete="off"
-                  />
-                </label>
-              )}
-              {EVENT_SUBFIELDS[eventType]?.isBirthday && (
-                <div className={styles.field} style={{ flex: '1 1 auto' }}>
-                  <span className={styles.fieldLabel}>Guest of Honor Age?</span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={birthdayAge}
-                    onChange={(e) => setBirthdayAge(e.target.value)}
-                    placeholder="30"
-                    className={styles.input}
-                    style={{ width: '100%' }}
-                    autoComplete="off"
-                  />
-                  {/* Snug under the age box (the .field column gap handles spacing). */}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
-                    <input
-                      type="checkbox"
-                      checked={surprise}
-                      onChange={(e) => setSurprise(e.target.checked)}
-                      style={{ width: 15, height: 15, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
-                    />
-                    Is this a Surprise Party?
-                  </label>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Package + Rate — after Event Type. Both stay visible but
               disabled (unclickable) until an event type is selected. The
