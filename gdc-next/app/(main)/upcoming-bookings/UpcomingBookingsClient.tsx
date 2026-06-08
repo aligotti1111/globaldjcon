@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses, MOB_EVENT_TYPE_LABELS, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory, hoursBetween, durationLabel } from '../[slug]/mobileBookingForm';
-import type { MobilePackage } from '../[slug]/bookingSettings';
+import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 
 // Country flag emojis — matches the homepage country picker so the look
@@ -1136,13 +1136,13 @@ function AddManualBookingModal({
       const details = (pkg?.details ?? fallback.details) || '';
       const plainDetails = details.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
       const reqAll = pkg?.reqAll ?? fallback.reqAll ?? false;
-      const price4 = (pkg?.price4 ?? fallback.price4) ?? null;
-      // "Price set" = a real positive price on any tier, OR price-on-request.
-      const hasPrice = reqAll || [
-        pkg?.price4 ?? fallback.price4,
-        pkg?.price5 ?? fallback.price5,
-        pkg?.price6 ?? fallback.price6,
-      ].some((v) => v != null && String(v).trim() !== '' && Number(v) > 0);
+      // Effective package (pkg overrides, inherits general fallback), then
+      // resolve its priced hour tiers (generalized; legacy 4/5/6 supported).
+      const eff = { ...fallback, ...(pkg || {}) } as MobilePackage;
+      const tiers = packageTiers(eff);
+      const price4 = tiers.length ? tiers[0].price : null; // smallest tier = auto-fill base
+      // "Price set" = at least one priced tier, OR price-on-request.
+      const hasPrice = reqAll || tiers.length > 0;
       // Only fully-ready packages show: title AND description AND price set.
       // Partial/empty packages stay hidden until completed. Completeness is
       // per-package, so a finished one shows even if others are still empty.
