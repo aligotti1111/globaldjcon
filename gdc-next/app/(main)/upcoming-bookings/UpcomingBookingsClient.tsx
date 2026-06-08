@@ -1188,6 +1188,24 @@ function AddManualBookingModal({
 
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
 
+  // Derive the mobile-only email extras (event sub-detail, package name +
+  // details, rate) from current form state, for the host invite email.
+  function emailExtras() {
+    const sel = (djType === 'mobile' && selectedPkgIdx !== '')
+      ? usablePkgs.find((u) => String(u.idx) === selectedPkgIdx)
+      : null;
+    const rateNum = rate.trim() !== '' && !isNaN(Number(rate)) ? Number(rate) : null;
+    return {
+      eventDetails: djType === 'mobile'
+        ? (buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise }) || '')
+        : '',
+      packageTitle: sel?.title || '',
+      packageDetails: sel ? ((editedDetails ?? sel.details) || '') : '',
+      rate: rateNum,
+      currency: rateCurrency,
+    };
+  }
+
   // Hit the email API. Returns ok / error message. Used for both "send"
   // (after save) and explicit "resend" actions.
   async function sendHostInviteEmail(opts: {
@@ -1205,6 +1223,11 @@ function AddManualBookingModal({
       venueType: string;
       setType: string;
       eventType: string;
+      eventDetails: string;
+      packageTitle: string;
+      packageDetails: string;
+      rate: number | null;
+      currency: string;
     };
   }): Promise<{ ok: boolean; error?: string }> {
     try {
@@ -1225,6 +1248,11 @@ function AddManualBookingModal({
           venueType: opts.snapshot.venueType || null,
           setType: opts.snapshot.setType || null,
           eventType: opts.snapshot.eventType || null,
+          eventDetails: opts.snapshot.eventDetails || null,
+          packageTitle: opts.snapshot.packageTitle || null,
+          packageDetails: opts.snapshot.packageDetails || null,
+          rate: opts.snapshot.rate,
+          currency: opts.snapshot.currency,
           isResend: opts.isResend,
         }),
       });
@@ -1275,6 +1303,7 @@ function AddManualBookingModal({
       snapshot: {
         eventDate, startTime, endTime, venueName, venueAddress,
         venueType, setType, eventType,
+        ...emailExtras(),
       },
     });
     if (!result.ok) {
@@ -1425,6 +1454,7 @@ function AddManualBookingModal({
             snapshot: {
               eventDate, startTime, endTime, venueName, venueAddress,
               venueType, setType, eventType,
+              ...emailExtras(),
             },
           });
           if (result.ok) {
@@ -1469,6 +1499,7 @@ function AddManualBookingModal({
             snapshot: {
               eventDate, startTime, endTime, venueName, venueAddress,
               venueType, setType, eventType,
+              ...emailExtras(),
             },
           });
           if (result.ok) {
