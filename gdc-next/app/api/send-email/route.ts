@@ -220,6 +220,7 @@ function bookingInfoBox(opts: {
   date?: string | null;         // raw event_date YYYY-MM-DD
   timeRange?: string;           // pre-formatted, e.g. "9:00 PM – 1:00 AM"
   packageTitle?: string;
+  packageDetails?: string;      // mobile only — package description (HTML)
   venueTypeText?: string;       // pre-formatted, e.g. "Bar"
   venueName?: string;
   venueAddress?: string;
@@ -233,7 +234,7 @@ function bookingInfoBox(opts: {
   const rows: string[] = [];
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
-  if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>`);
+  if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}${opts.eventDetails ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>` : ''}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
   if (opts.venueAddress) {
@@ -1485,6 +1486,11 @@ export async function POST(req: Request) {
     const venueType = body.venueType as string | null | undefined;
     const setType = body.setType as string | null | undefined;
     const eventType = body.eventType as string | null | undefined;
+    const eventDetails = body.eventDetails as string | null | undefined;
+    const packageTitle = body.packageTitle as string | null | undefined;
+    const packageDetails = body.packageDetails as string | null | undefined;
+    const rate = body.rate as number | null | undefined;
+    const currency = (body.currency as string | undefined) || 'USD';
     const isResend = body.isResend === true;
 
     // Build the CTA. If the host's email already has an account, send them
@@ -1519,12 +1525,17 @@ export async function POST(req: Request) {
         <p style="color:#666666;margin-bottom:20px;">${intro}</p>
         ${bookingInfoBox({
           eventTypeText: djType === 'mobile' ? eventTypeLabel(eventType || undefined) : undefined,
+          eventDetails: djType === 'mobile' ? (eventDetails || undefined) : undefined,
           setTypeText: djType === 'club' ? setTypeLabel(setType) : undefined,
           venueTypeText: djType === 'club' ? venueTypeLabel(venueType) : undefined,
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
+          packageTitle: djType === 'mobile' ? (packageTitle || undefined) : undefined,
+          packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
+          rateLabel: (rate != null && Number.isFinite(rate) && rate > 0) ? 'Rate' : undefined,
+          rateValue: (rate != null && Number.isFinite(rate) && rate > 0) ? `${currency} ${rate.toLocaleString()}` : undefined,
         })}
         <p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>
         ${ctaButton(ctaHref, ctaLabel)}
