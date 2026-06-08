@@ -1657,6 +1657,11 @@ function AddManualBookingModal({
               </select>
             </label>
           </div>
+          {durationLabel(hoursBetween(startTime, endTime)) && (
+            <div style={{ textAlign: 'right', marginTop: '-.35rem', marginBottom: '.1rem', fontSize: '.72rem', color: '#ffd24a' }}>
+              Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
+            </div>
+          )}
           {isWedding && (
             <div style={{ marginTop: '-.15rem', marginBottom: '.35rem' }}>
               {!showCocktail ? (
@@ -1669,7 +1674,7 @@ function AddManualBookingModal({
                 </button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
-                  <span className={styles.fieldLabel} style={{ margin: 0 }}>Cocktail Hour Start</span>
+                  <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Cocktail Hour Start</span>
                   <select
                     value={cocktailStart}
                     onChange={(e) => setCocktailStart(e.target.value)}
@@ -1690,11 +1695,6 @@ function AddManualBookingModal({
                   </button>
                 </div>
               )}
-            </div>
-          )}
-          {durationLabel(hoursBetween(startTime, endTime)) && (
-            <div style={{ textAlign: 'right', marginTop: '-.35rem', marginBottom: '.1rem', fontSize: '.72rem', color: 'var(--neon)' }}>
-              Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
             </div>
           )}
 
