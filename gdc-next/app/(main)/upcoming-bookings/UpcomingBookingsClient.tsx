@@ -2030,6 +2030,13 @@ function AddManualBookingModal({
             </>
           )}
 
+          {djType === 'mobile' && (
+            <>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '.7rem', marginBottom: '.6rem' }} />
+              <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: 0.55, marginBottom: '.5rem' }}>Host Details</div>
+            </>
+          )}
+
           {/* ── Host invitation section ─────────────────────────────────
               DJ can email the host with booking details. After the email
               sends once, the checkbox/send-button UI is replaced with a
