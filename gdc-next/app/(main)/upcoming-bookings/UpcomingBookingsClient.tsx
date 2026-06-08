@@ -1657,42 +1657,46 @@ function AddManualBookingModal({
               </select>
             </label>
           </div>
-          {durationLabel(hoursBetween(startTime, endTime)) && (
-            <div style={{ textAlign: 'right', marginTop: '-.35rem', marginBottom: '.1rem', fontSize: '.72rem', color: '#ffd24a' }}>
-              Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
-            </div>
-          )}
-          {isWedding && (
-            <div style={{ marginTop: '-.15rem', marginBottom: '.35rem' }}>
-              {!showCocktail ? (
-                <button
-                  type="button"
-                  onClick={() => setShowCocktail(true)}
-                  style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                >
-                  + Add Cocktail Hour
-                </button>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
-                  <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Cocktail Hour Start</span>
-                  <select
-                    value={cocktailStart}
-                    onChange={(e) => setCocktailStart(e.target.value)}
-                    className={styles.input}
-                    style={{ width: 'auto' }}
-                  >
-                    <option value="">Select…</option>
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => { setShowCocktail(false); setCocktailStart(''); }}
-                    style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                  >
-                    Remove
-                  </button>
+          {(isWedding || durationLabel(hoursBetween(startTime, endTime))) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginTop: '-.3rem', marginBottom: '.35rem' }}>
+              <div>
+                {isWedding && (
+                  !showCocktail ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCocktail(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                    >
+                      + Add Cocktail Hour
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Cocktail Hour Start</span>
+                      <select
+                        value={cocktailStart}
+                        onChange={(e) => setCocktailStart(e.target.value)}
+                        className={styles.input}
+                        style={{ width: 'auto' }}
+                      >
+                        <option value="">Select…</option>
+                        {TIME_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCocktail(false); setCocktailStart(''); }}
+                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+              {durationLabel(hoursBetween(startTime, endTime)) && (
+                <div style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                  Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
                 </div>
               )}
             </div>
