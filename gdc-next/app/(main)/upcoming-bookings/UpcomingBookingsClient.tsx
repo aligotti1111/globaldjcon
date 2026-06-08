@@ -1677,7 +1677,7 @@ function AddManualBookingModal({
                     onChange={(e) => setBirthdayAge(e.target.value)}
                     placeholder="30"
                     className={styles.input}
-                    style={{ width: '90px' }}
+                    style={{ width: '100%' }}
                     autoComplete="off"
                   />
                   {/* Snug under the age box (the .field column gap handles spacing). */}
