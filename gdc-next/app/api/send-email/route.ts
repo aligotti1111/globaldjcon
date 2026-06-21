@@ -1413,6 +1413,26 @@ export async function POST(req: Request) {
       `),
     };
 
+    // Approval fires booking_approved to BOTH parties (DJ + booker), each
+    // with their own recipientUserId. Text whichever party is being notified
+    // here — gated by their own sms toggles inside sendSmsNotification. Uses
+    // the booking_status event so it maps to the "approved/denied/countered"
+    // sub-toggle. Without this, a host approving a DJ's offer sent the DJ an
+    // email but no text even with the toggle on.
+    if (body.recipientUserId) {
+      const smsLines = [
+        `Booking confirmed with ${otherPartyName || ('the ' + otherLabel.toLowerCase())}.`,
+        `${dateStr}${venueName ? ` · ${venueName}` : ''}`,
+        agreedPrice ? `Agreed: ${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : null,
+        `View: ${SITE_URL}/booking-requests`,
+      ].filter(Boolean).join('\n');
+      smsPlan = {
+        userId: body.recipientUserId as string,
+        event: 'booking_status',
+        body: withSmsFooter(smsLines),
+      };
+    }
+
   // ── 9. CONTACT US (admin gets a contact form submission) ──────────
   } else if (type === 'contact_us') {
     const senderName = body.name as string | undefined;
