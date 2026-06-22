@@ -141,6 +141,9 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
           <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Add Booking Manually
           </Link>
+          <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Notifications
+          </Link>
           <div className="hdr-dj-menu-sep" />
           <button
             type="button"

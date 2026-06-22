@@ -100,6 +100,14 @@ function IconMessage() {
     </svg>
   );
 }
+function IconBell() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
 function IconShield() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
@@ -230,6 +238,11 @@ export default function MobileMenu() {
             {isDj && (
               <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
                 <IconPlus />Add Booking Manually
+              </Link>
+            )}
+            {isDj && (
+              <Link href="/notifications" onClick={close} className="mobile-menu-item">
+                <IconBell />Notifications
               </Link>
             )}
 
