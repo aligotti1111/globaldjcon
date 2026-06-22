@@ -8,7 +8,7 @@
 //
 // Items in the dropdown:
 //   - View My Profile         → /<dj-slug>
-//   - Edit My Profile         → /update-dj-profile
+//   - Settings                → /update-dj-profile
 //   - Upcoming Bookings       → /upcoming-bookings
 //   - Add Booking Manually    → /upcoming-bookings  (DJ taps the Add
 //                                button on that page — keeps this menu
@@ -133,13 +133,16 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
             </Link>
           )}
           <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Edit My Profile
+            Settings
           </Link>
           <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Upcoming Bookings
           </Link>
           <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Add Booking Manually
+          </Link>
+          <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Booking Settings
           </Link>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
