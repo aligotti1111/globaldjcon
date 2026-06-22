@@ -1,39 +1,28 @@
 'use client';
 
-// UpdateDjProfileClient — top-level client component for /update-dj-profile.
-// Manages: tab state, form state for General + Booking, save flow.
+// UpdateDjProfileClient — top-level client component for /update-dj-profile
+// (presented to DJs as "Settings"). Manages the General/profile form + save.
+//
+// Booking configuration used to be a second tab here; it now lives on its own
+// page (/booking-settings) with its own state + autosave. This page no longer
+// touches booking_settings at all.
 //
 // State strategy:
-//   - General tab fields are kept in a single `general` object (one update
-//     per change). On submit, we POST the whole thing to the users row.
-//   - Booking tab edits to booking_settings flow through `bookingSettings`
-//     state. We autosave on debounce and also include in the final submit.
-//
-// Save paths:
-//   - Manual "Save Changes" button at the bottom — saves both General fields
-//     AND booking_settings in one users.update call. Shows a success/error
-//     alert at the top of the card.
-//   - Background autosave for booking_settings when fields change. Vanilla
-//     parity: settings, packages, and the calendar all autosave silently.
+//   - General fields are kept in a single `general` object (one update per
+//     change). On submit, the whole thing is written to the users row.
+//   - Manual "Save Changes" button at the bottom saves those fields and shows
+//     a success/error alert at the top of the card.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
-import BookingTab from './BookingTab';
-import ClubBookingTab from './ClubBookingTab';
-// Removed imports for SocialsTab, MixesTab, PhotosTab, VideoTab, TestimonialsTab —
-// those tabs were removed from this page; their content is now managed
+// Booking configuration moved to its own page (/booking-settings); the
+// BookingTab / ClubBookingTab components live in this folder still but are
+// mounted there now. Socials/Mixes/Photos/Video/Testimonials are managed
 // inline on the public profile page.
-import {
-  type BookingSettings,
-  parseBookingSettings,
-} from '@/app/(main)/[slug]/bookingSettings';
-
-type TabKey = 'general' | 'booking';
 
 // All fields the General tab edits. Stored as state so each input is controlled.
 // All non-booking fields tracked by the form. Despite the name (kept for
@@ -131,16 +120,6 @@ interface Props {
 }
 
 export default function UpdateDjProfileClient({ initialProfile, authEmail }: Props) {
-  // Active tab — defaults to 'general'. Can be deep-linked via ?tab=
-  // (used by the public profile owner-view "+ Add" buttons that route
-  // here). Validates the value against known tab keys before applying.
-  const searchParams = useSearchParams();
-  const tabFromUrl = (() => {
-    const t = searchParams?.get('tab') || '';
-    const valid: TabKey[] = ['general', 'booking'];
-    return (valid as string[]).includes(t) ? (t as TabKey) : null;
-  })();
-  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl || 'general');
 
   const [general, setGeneral] = useState<GeneralFormState>(() => {
     // Vanilla default: a Mobile DJ with no event_types saved yet (new account)
@@ -207,48 +186,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     };
   });
 
-  const [bookingSettings, setBookingSettings] = useState<BookingSettings>(
-    parseBookingSettings(initialProfile.booking_settings) || {}
-  );
-
   // Save state — alert at top, button disabled while saving
   const [saving, setSaving] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
-  // ── Autosave booking_settings (debounced) ───────────────────────
-  // Vanilla autosaves on each control change. We do the same with a
-  // 600ms debounce to avoid hammering the database. Only triggers AFTER
-  // the user makes edits — not on initial mount.
+  // Supabase client for the manual General save below. (Booking settings and
+  // their autosave moved to /booking-settings.)
   const supabaseRef = useRef(createClient());
-  const initialBookingRef = useRef(bookingSettings);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
-  useEffect(() => {
-    // Skip the first render (when state matches initial)
-    if (bookingSettings === initialBookingRef.current) return;
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(async () => {
-      setAutosaveStatus('saving');
-      try {
-        const { error } = await supabaseRef.current
-          .from('users')
-          // Cast as never — same situation as the manual save below: the
-          // UserProfile type in db.ts doesn't list every column on the
-          // actual users table, so the type system needs the escape hatch.
-          .update({ booking_settings: JSON.stringify(bookingSettings) } as unknown as never)
-          .eq('id', initialProfile.id);
-        if (error) throw error;
-        setAutosaveStatus('saved');
-        setTimeout(() => setAutosaveStatus('idle'), 5000);
-      } catch {
-        setAutosaveStatus('error');
-      }
-    }, 600);
-    return () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    };
-  }, [bookingSettings, initialProfile.id]);
 
   // ── Unsaved changes warning ─────────────────────────────────────
   // Snapshot of `general` at mount time. When the live `general` differs
@@ -263,42 +207,14 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // memo when its dep array changes, so we add this counter to the deps.
   const [savedVersion, setSavedVersion] = useState(0);
 
-  // BookingTab tells us when ANY of its package cards has draft edits
-  // not yet committed via per-card Save / master Save All. We don't know
-  // the count, just true/false.
-  const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
-
-  // ClubBookingTab reports when the Rates section has unsaved drafts.
-  // (Equipment + calendar autosave; rates are manual save.)
-  const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
-
-  // ClubBookingTab also reports when the booking toggle is on but no
-  // equipment option has been picked. In that state booking won't be
-  // live publicly until they pick equipment, so we want to warn on
-  // navigation away just like for unsaved changes.
-  const [clubBookingActivationIncomplete, setClubBookingActivationIncomplete] = useState(false);
-
-  // Master save trigger — a counter that bumps when the user clicks the
-  // page-level Save All button at the bottom. Both BookingTab (for
-  // packages) and ClubBookingTab (for rates) listen via prop and try
-  // to save themselves.
-  const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
-  function triggerMasterSave() {
-    setMasterSaveTrigger((n) => n + 1);
-  }
-
   // Are general fields different from snapshot?
   const isGeneralDirty = useMemo(
     () => JSON.stringify(general) !== initialGeneralRef.current,
     [general, savedVersion]
   );
 
-  const isPageDirty = isGeneralDirty || hasDirtyPackages || hasDirtyClubRates;
-  // beforeunload should also fire when the booking toggle is on but no
-  // equipment is selected — this isn't "dirty data", but leaving the
-  // page in that state means booking won't actually be live publicly,
-  // which the DJ should be warned about.
-  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete;
+  const isPageDirty = isGeneralDirty;
+  const needsLeaveWarn = isPageDirty;
 
   // Register this page's dirty state with the global UnsavedChangesProvider.
   // The provider handles:
@@ -420,8 +336,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         video_url_3: general.videoUrl3.trim() || null,
         // Testimonials
         testimonials: testimonialsJson,
-        // Booking
-        booking_settings: JSON.stringify(bookingSettings),
         // Pre-resolved home coordinates — only included when zip changed.
         // When zip is cleared, both go to null. When unchanged, we don't
         // touch them (existing values preserved).
@@ -438,9 +352,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       if (error) throw error;
 
       setAlertMsg({ kind: 'success', text: '✓ Profile saved.' });
-      // Update the initial-booking ref so autosave doesn't immediately
-      // re-trigger after a manual save.
-      initialBookingRef.current = bookingSettings;
       // Reset the general dirty snapshot so the unsaved-changes warning
       // clears (until the user makes new edits). Bumping savedVersion is
       // what actually causes the isGeneralDirty memo to re-evaluate — the
@@ -461,7 +372,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         (errAny?.message?.toLowerCase().includes('duplicate') ?? false);
       if (isSlugDup) {
         msg = 'That Custom Profile URL is already taken — please pick another.';
-        setActiveTab('general');
       } else {
         msg = e instanceof Error ? e.message : 'Save failed';
       }
@@ -470,14 +380,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     setSaving(false);
   }
 
-  // ── Tab class helper ────────────────────────────────────────────
-  function tabClass(t: TabKey): string {
-    return `${styles.tabBtn} ${activeTab === t ? styles.tabBtnActive : ''}`;
-  }
-
-  // Site URL for the slug preview. ALWAYS production — even on staging
-  // the share link should point at globaldjconnect.com, never a Netlify
-  // preview URL (which would be useless to share with anyone).
+  // ── Site URL for the slug preview ───────────────────────────────
+  // ALWAYS production — even on staging the share link should point at
+  // globaldjconnect.com, never a Netlify preview URL.
   const siteUrl = 'https://globaldjconnect.com';
 
   return (
@@ -489,29 +394,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           </svg>
           Back to Directory
         </Link>
-        {/* Autosave status — only visible during/after autosave events */}
-        {autosaveStatus !== 'idle' && (
-          <span
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.6rem',
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              color: autosaveStatus === 'error' ? '#ff5f5f'
-                : autosaveStatus === 'saved' ? 'var(--neon)'
-                : 'var(--muted)',
-            }}
-          >
-            {autosaveStatus === 'saving' ? 'Saving…'
-              : autosaveStatus === 'saved' ? '✓ Auto-saved'
-              : '✗ Save failed'}
-          </span>
-        )}
       </div>
 
       <div className={styles.header}>
-        <h1>Update Profile</h1>
-        <p>Manage Your Listing</p>
+        <h1>Settings</h1>
+        <p>Manage Your Profile</p>
       </div>
 
       <div className={styles.card}>
@@ -524,69 +411,21 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Tab navigation — Socials/Mixes/Photos/Video/Testimonials
-              were removed; those are now managed inline on the public
-              profile page. */}
-          <div className={styles.tabsBar}>
-            <button type="button" className={tabClass('general')} onClick={() => setActiveTab('general')}>General</button>
-            <button type="button" className={tabClass('booking')} onClick={() => setActiveTab('booking')}>Booking</button>
-          </div>
+          <GeneralTab
+            state={general}
+            onChange={updateGeneral}
+            djType={initialProfile.dj_type}
+            email={authEmail}
+            slug={initialProfile.slug}
+            siteUrl={siteUrl}
+            userId={initialProfile.id}
+          />
 
-          {/* Panes */}
-          {activeTab === 'general' && (
-            <GeneralTab
-              state={general}
-              onChange={updateGeneral}
-              djType={initialProfile.dj_type}
-              email={authEmail}
-              slug={initialProfile.slug}
-              siteUrl={siteUrl}
-              userId={initialProfile.id}
-            />
-          )}
-
-          {/* BookingTab is mounted ALWAYS (just hidden via display:none
-              when inactive) so per-package drafts survive tab switches.
-              Other tabs unmount because they have no local-only state —
-              everything's in `general`/`bookingSettings` already. */}
-          <div style={{ display: activeTab === 'booking' ? 'block' : 'none' }}>
-            {initialProfile.dj_type === 'club' ? (
-              <ClubBookingTab
-                bookingSettings={bookingSettings}
-                onChange={setBookingSettings}
-                autosaveStatus={autosaveStatus}
-                djSlug={general.slug}
-                onDirtyChange={setHasDirtyClubRates}
-                masterSaveTrigger={masterSaveTrigger}
-                onActivationIncompleteChange={setClubBookingActivationIncomplete}
-              />
-            ) : (
-              <BookingTab
-                djType={initialProfile.dj_type}
-                djSlug={general.slug}
-                selectedEventTypes={general.mobileEvents}
-                bookingSettings={bookingSettings}
-                onChange={setBookingSettings}
-                userId={initialProfile.id}
-                onGoToGeneral={() => setActiveTab('general')}
-                autosaveStatus={autosaveStatus}
-                onDirtyChange={setHasDirtyPackages}
-                externalMasterSaveTrigger={masterSaveTrigger}
-              />
-            )}
-          </div>
-
-          {/* Page-level Save All — saves any pending edits across the
-              entire form. Disabled when nothing is dirty so the user
-              knows they're up to date. Submit type triggers the form
-              handler which saves the General fields directly; the
-              masterSaveTrigger bump fires synchronously to commit any
-              package / club-rate drafts back to bookingSettings, and the
-              autosave effect picks those up ~600ms later. */}
+          {/* Save — persists the General/profile fields. Booking config has
+              moved to its own page (/booking-settings) and saves there. */}
           <button
             type="submit"
             disabled={saving || !isPageDirty}
-            onClick={() => triggerMasterSave()}
             className={styles.submitBtn}
             style={{
               opacity: (saving || !isPageDirty) ? 0.55 : 1,
@@ -596,7 +435,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             {saving
               ? 'Saving…'
               : isPageDirty
-              ? 'Save All Changes'
+              ? 'Save Changes'
               : '✓ All Changes Saved'}
           </button>
         </form>
