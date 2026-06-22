@@ -1,0 +1,242 @@
+/* /notifications — page styles. Matches the account-settings card/theme
+   language (Bebas/Space Mono, neon accents, dark cards). */
+
+.pageWrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+.pageHeader {
+  margin-bottom: 2.5rem;
+}
+.pageHeader h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem;
+  letter-spacing: .03em;
+  background: linear-gradient(135deg, var(--white), var(--neon));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.pageHeader p {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-top: .3rem;
+}
+
+.card {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: 10px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+.card h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: 1.5rem;
+}
+
+.cardHint {
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+}
+
+/* ── Master text toggle ─────────────────────────────────────────── */
+.masterRow {
+  margin-bottom: 1.25rem;
+  padding: .75rem 1rem;
+  background: rgba(0, 245, 196, .04);
+  border: 1px solid rgba(0, 245, 196, .15);
+  border-radius: 6px;
+}
+.masterLabel {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--white);
+  font-weight: 600;
+}
+.masterCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--neon);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Form group (phone field) ───────────────────────────────────── */
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+.formGroup label {
+  display: block;
+  font-size: .78rem;
+  color: var(--white);
+  margin-bottom: .4rem;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.formGroup input {
+  width: 100%;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  color: var(--white);
+  font-size: .92rem;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color .2s;
+}
+.formGroup input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.formGroup input::placeholder {
+  color: var(--muted);
+}
+
+.finePrint {
+  font-size: .72rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: .25rem 0 0;
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
+}
+.finePrint strong {
+  color: var(--white);
+  font-weight: 600;
+}
+
+/* ── The Email/Text matrix ──────────────────────────────────────── */
+.matrix {
+  display: grid;
+  grid-template-columns: 1fr 62px 62px;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.matrixHeadRow {
+  background: rgba(10, 10, 16, .6);
+  border-bottom: 1px solid var(--border);
+}
+.matrixCorner {
+  padding: .7rem 1rem;
+}
+.matrixHead {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  padding: .7rem .4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.matrixLabel {
+  font-size: .85rem;
+  color: var(--white);
+  line-height: 1.35;
+  padding: .85rem 1rem;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.matrixCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .85rem .4rem;
+  border-bottom: 1px solid var(--border);
+}
+/* Drop the bottom border on the final row so it sits flush with the
+   container's rounded edge. */
+.matrix > .matrixLabel:nth-last-child(3),
+.matrix > .matrixCell:nth-last-child(2),
+.matrix > .matrixCell:nth-last-child(1) {
+  border-bottom: none;
+}
+.cb {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--neon);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cb:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
+.req {
+  color: var(--pink);
+  font-weight: 700;
+}
+
+.matrixHelp {
+  font-size: .72rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: .9rem 0 0;
+}
+.reqNote {
+  font-size: .78rem;
+  color: var(--pink);
+  line-height: 1.5;
+  margin: .75rem 0 0;
+}
+
+/* ── Save button + alerts ───────────────────────────────────────── */
+.saveBtn {
+  width: 100%;
+  padding: .9rem;
+  background: var(--neon);
+  border: 1px solid var(--neon);
+  color: #050507;
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 1.25rem;
+}
+.saveBtn:hover:not(:disabled) {
+  background: #00d4a9;
+  border-color: #00d4a9;
+}
+.saveBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: .85rem 1rem;
+  border-radius: 6px;
+  font-size: .85rem;
+  margin-top: 1.25rem;
+  border: 1px solid;
+}
+.alertSuccess {
+  background: rgba(61, 220, 132, .08);
+  border-color: rgba(61, 220, 132, .3);
+  color: #3ddc84;
+}
+.alertError {
+  background: rgba(255, 95, 95, .08);
+  border-color: rgba(255, 95, 95, .3);
+  color: var(--error);
+}
