@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
@@ -40,31 +41,22 @@ interface BlockedUser {
   name: string;
 }
 
-interface SmsPrefsInit {
-  sms_phone: string;
-  sms_enabled: boolean;
-  sms_notify_booking_request: boolean;
-  sms_notify_booking_status: boolean;
-  sms_notify_inbox_message: boolean;
-}
-
 interface Props {
   initialProfile: ProfileInit;
   currentEmail: string;
   initialBlocked: BlockedUser[];
-  initialSmsPrefs: SmsPrefsInit;
 }
 
 // Status object that drives the alert text under each save button.
 type Alert = { type: 'success' | 'error'; msg: string } | null;
 
 export default function AccountSettingsClient({
-  initialProfile, currentEmail, initialBlocked, initialSmsPrefs,
+  initialProfile, currentEmail, initialBlocked,
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
-  // SMS preferences: hosts and venues don't get the "new booking request"
-  // option because incoming booking requests only flow to DJs. They DO still
-  // get the booking-status + inbox-message options.
+  // Notification preferences (email + text) now live on their own page,
+  // /notifications. Hosts and venues get a link to it below; DJs reach it
+  // from the header/menu.
   const isDj = initialProfile.role === 'dj';
 
   // ── Profile (name + country) ─────────────────────────────────────
@@ -119,18 +111,6 @@ export default function AccountSettingsClient({
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [venueSaving, setVenueSaving] = useState(false);
   const [venueAlert, setVenueAlert] = useState<Alert>(null);
-
-  // ── SMS notifications ────────────────────────────────────────────
-  // Master toggle controls whether SMS is sent at all. Sub-toggles
-  // control which event types fire when the master is on. Phone re-uses
-  // the existing users.phone column.
-  const [smsPhone, setSmsPhone] = useState(initialSmsPrefs.sms_phone);
-  const [smsEnabled, setSmsEnabled] = useState(initialSmsPrefs.sms_enabled);
-  const [smsBookingRequest, setSmsBookingRequest] = useState(initialSmsPrefs.sms_notify_booking_request);
-  const [smsBookingStatus, setSmsBookingStatus] = useState(initialSmsPrefs.sms_notify_booking_status);
-  const [smsInboxMessage, setSmsInboxMessage] = useState(initialSmsPrefs.sms_notify_inbox_message);
-  const [smsSaving, setSmsSaving] = useState(false);
-  const [smsAlert, setSmsAlert] = useState<Alert>(null);
 
   // ── Blocked users — local state so unblock removes from list ─────
   const [blocked, setBlocked] = useState<BlockedUser[]>(initialBlocked);
@@ -336,47 +316,6 @@ export default function AccountSettingsClient({
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       alert('Error: ' + msg);
-    }
-  }
-
-  async function saveSms() {
-    setSmsAlert(null);
-    // If they're enabling SMS but haven't entered a phone, block save —
-    // a master-on with no phone means we'd silently never send anything.
-    const trimmedPhone = smsPhone.trim();
-    if (smsEnabled && !trimmedPhone) {
-      setSmsAlert({ type: 'error', msg: 'Enter a phone number to enable text notifications.' });
-      return;
-    }
-    // Light validation: must have at least 10 digits if provided. Twilio
-    // does proper E.164 validation on send; this is just to catch typos.
-    if (trimmedPhone) {
-      const digits = trimmedPhone.replace(/\D/g, '');
-      if (digits.length < 10) {
-        setSmsAlert({ type: 'error', msg: 'Please enter a valid phone number.' });
-        return;
-      }
-    }
-    setSmsSaving(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('users')
-        .update({
-          sms_phone: trimmedPhone || null,
-          sms_enabled: smsEnabled,
-          sms_notify_booking_request: smsBookingRequest,
-          sms_notify_booking_status: smsBookingStatus,
-          sms_notify_inbox_message: smsInboxMessage,
-        } as unknown as never)
-        .eq('id', initialProfile.id);
-      if (error) throw error;
-      setSmsAlert({ type: 'success', msg: 'Notification preferences saved.' });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setSmsAlert({ type: 'error', msg });
-    } finally {
-      setSmsSaving(false);
     }
   }
 
@@ -643,92 +582,25 @@ export default function AccountSettingsClient({
         </button>
       </div>
 
-      {/* ── Text Notifications ─────────────────────────────────────── */}
-      <div className={styles.card}>
-        <h2>Text Notifications</h2>
-        <p className={styles.cardHint}>
-          By entering your mobile number, checking &ldquo;Send me text
-          notifications,&rdquo; and clicking Save, you consent to receive
-          recurring SMS booking and account notifications from Global DJ
-          Connect. Message frequency varies. Msg &amp; data rates may apply.
-          Reply STOP to opt out, HELP for help. We&apos;ll never share your
-          number.
-        </p>
-
-        <div className={styles.smsToggleRow}>
-          <label className={styles.smsToggleLabel}>
-            <input
-              type="checkbox"
-              checked={smsEnabled}
-              onChange={(e) => setSmsEnabled(e.target.checked)}
-              className={styles.smsToggleCheckbox}
-            />
-            <span>Send me text notifications</span>
-          </label>
+      {/* ── Notifications ──────────────────────────────────────────────
+          Email + text preferences live on their own page now. Hosts and
+          venues get here from this link; DJs use the header/menu link. */}
+      {!isDj && (
+        <div className={styles.card}>
+          <h2>Notifications</h2>
+          <p className={styles.cardHint}>
+            Choose which email and text alerts you receive for bookings and
+            inbox messages.
+          </p>
+          <Link
+            href="/notifications"
+            className={styles.saveBtn}
+            style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+          >
+            Manage Notifications
+          </Link>
         </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="sms-phone">Mobile Number</label>
-          <input
-            id="sms-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={smsPhone}
-            onChange={(e) => setSmsPhone(e.target.value)}
-            autoComplete="tel"
-          />
-        </div>
-
-        <div className={smsEnabled ? styles.smsSubGroup : styles.smsSubGroupDisabled}>
-          <div className={styles.smsSubHeader}>Text me when…</div>
-          {isDj && (
-            <label className={styles.smsSubRow}>
-              <input
-                type="checkbox"
-                checked={smsBookingRequest}
-                onChange={(e) => setSmsBookingRequest(e.target.checked)}
-                disabled={!smsEnabled}
-              />
-              <span>A new booking request comes in</span>
-            </label>
-          )}
-          <label className={styles.smsSubRow}>
-            <input
-              type="checkbox"
-              checked={smsBookingStatus}
-              onChange={(e) => setSmsBookingStatus(e.target.checked)}
-              disabled={!smsEnabled}
-            />
-            <span>A booking is approved, denied, or countered</span>
-          </label>
-          <label className={styles.smsSubRow}>
-            <input
-              type="checkbox"
-              checked={smsInboxMessage}
-              onChange={(e) => setSmsInboxMessage(e.target.checked)}
-              disabled={!smsEnabled}
-            />
-            <span>I get a new inbox message</span>
-          </label>
-        </div>
-
-        <p className={styles.smsFinePrint}>
-          Reply <strong>STOP</strong> to any text to unsubscribe.
-          Reply <strong>HELP</strong> for help.
-        </p>
-
-        {smsAlert && <AlertBlock alert={smsAlert} />}
-
-        <button
-          type="button"
-          className={styles.saveBtn}
-          disabled={smsSaving}
-          onClick={saveSms}
-        >
-          {smsSaving ? 'Saving…' : 'Save Preferences'}
-        </button>
-      </div>
+      )}
 
       {/* Blocked Users — only shown if there are any */}
       {blocked.length > 0 && (
