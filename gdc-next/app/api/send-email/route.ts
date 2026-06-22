@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { resolveUserEmail, resolveUserIdByEmail } from '@/lib/supabase/admin';
+import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
@@ -42,6 +42,33 @@ type EmailType =
   | 'booking_activity';
 
 // ── Helpers ────────────────────────────────────────────────────────────
+
+// Email-notification gate. Only the 4 notification email types are gated on
+// the user's email_notify_* prefs; transactional emails (welcome, password,
+// claim, contact, receipts) always send. Mirrors the SMS gate, but defaults to
+// SEND on any lookup failure — email is the primary channel, so err toward
+// delivering rather than silently dropping.
+type EmailNotifyEvent = 'booking_request' | 'booking_status' | 'inbox_message';
+
+async function emailNotifyAllowed(userId: string, event: EmailNotifyEvent): Promise<boolean> {
+  const col =
+    event === 'booking_request' ? 'email_notify_booking_request'
+    : event === 'booking_status' ? 'email_notify_booking_status'
+    : 'email_notify_inbox_message';
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('users')
+      .select(col)
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return true; // err toward sending
+    return (data as unknown as Record<string, boolean | null>)[col] !== false;
+  } catch (e) {
+    console.error('[email] pref lookup failed:', e);
+    return true;
+  }
+}
 
 // Resolve a recipient's email — explicit address wins, else look up by
 // userId via the admin API. Returns null when neither works.
@@ -388,6 +415,10 @@ export async function POST(req: Request) {
   // booking_status, mob_booking_status, inbox_notification). Branches that
   // don't set it (welcome, claim_*, contact_us, etc.) simply skip SMS.
   let smsPlan: { userId: string; event: SmsEvent; body: string } | null = null;
+  // Optional email gate. Notification branches set this to the recipient +
+  // event so the send tail can suppress the email if the user opted out of
+  // that type. Transactional branches leave it null → always send.
+  let emailGate: { userId: string; event: EmailNotifyEvent } | null = null;
 
   // ── 1. WELCOME ─────────────────────────────────────────────────────
   if (type === 'welcome') {
@@ -497,6 +528,9 @@ export async function POST(req: Request) {
         event: 'inbox_message',
         body: withSmsFooter(smsLines),
       };
+    }
+    if (body.recipientUserId) {
+      emailGate = { userId: body.recipientUserId as string, event: 'inbox_message' };
     }
 
   // ── 3. CLAIM REQUEST (admin notified of new claim) ─────────────────
@@ -719,6 +753,9 @@ export async function POST(req: Request) {
         event: 'booking_request',
         body: withSmsFooter(smsLines),
       };
+    }
+    if (body.djUserId) {
+      emailGate = { userId: body.djUserId as string, event: 'booking_request' };
     }
 
   // ── 5b. BOOKING REQUEST CONFIRMATION (sent to BOOKER) ─────────────
@@ -1186,6 +1223,9 @@ export async function POST(req: Request) {
         body: withSmsFooter(smsLines),
       };
     }
+    if (body.requesterUserId) {
+      emailGate = { userId: body.requesterUserId as string, event: 'booking_status' };
+    }
 
   // ── 7. MOB BOOKING STATUS (DJ approved/denied a MOBILE booking) ───
   } else if (type === 'mob_booking_status') {
@@ -1232,6 +1272,9 @@ export async function POST(req: Request) {
         event: 'booking_status',
         body: withSmsFooter(smsLines),
       };
+    }
+    if (body.requesterUserId) {
+      emailGate = { userId: body.requesterUserId as string, event: 'booking_status' };
     }
 
   // ── 8. BOOKING COUNTER (one side counter-offered the other) ───────
@@ -1431,6 +1474,9 @@ export async function POST(req: Request) {
         event: 'booking_status',
         body: withSmsFooter(smsLines),
       };
+    }
+    if (body.recipientUserId) {
+      emailGate = { userId: body.recipientUserId as string, event: 'booking_status' };
     }
 
   // ── 9. CONTACT US (admin gets a contact form submission) ──────────
@@ -1751,20 +1797,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Email payload not constructed' }, { status: 500 });
   }
 
+  // SMS fires independently of the email gate — text has its own opt-in check
+  // inside sendSmsNotification. Defined here so it runs whether or not the
+  // email is suppressed. Best-effort, not awaited.
+  const fireSms = () => {
+    if (smsPlan) {
+      sendSmsNotification(smsPlan.userId, smsPlan.event, smsPlan.body).catch((e) => {
+        console.error('[sms] dispatch failed:', e);
+      });
+    }
+  };
+
+  // Email gate: notification types check the recipient's email_notify_* pref.
+  // If they've opted out of this type, skip the email entirely (but still text
+  // them if they want that). Transactional types leave emailGate null → send.
+  if (emailGate) {
+    const allowed = await emailNotifyAllowed(emailGate.userId, emailGate.event);
+    if (!allowed) {
+      fireSms();
+      return NextResponse.json({ ok: true, emailSuppressed: true });
+    }
+  }
+
   try {
     const { data, error } = await resend.emails.send(emailPayload);
     if (error) {
       console.error('Resend error:', error);
       return NextResponse.json({ error: error.message || 'Resend failed' }, { status: 500 });
     }
-    // Fire SMS in parallel with the response. We don't await — text
-    // delivery is best-effort and shouldn't delay returning success on
-    // the email. Failures are logged inside sendSmsNotification.
-    if (smsPlan) {
-      sendSmsNotification(smsPlan.userId, smsPlan.event, smsPlan.body).catch((e) => {
-        console.error('[sms] dispatch failed:', e);
-      });
-    }
+    fireSms();
     return NextResponse.json({ ok: true, id: data?.id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
