@@ -15,6 +15,7 @@ import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
 import { createClient } from '@/lib/supabase/client';
+import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 
 export default function Header() {
   const { user, loading } = useAuth();
@@ -45,6 +46,9 @@ export default function Header() {
   };
 
   const isDj = user?.role === 'dj';
+  // Whether this DJ has bookings activated — gates the booking-only items in
+  // the dropdown (Upcoming Bookings, Add Booking Manually).
+  const bookingEnabled = parseBookingSettings(user?.booking_settings)?.booking_enabled === true;
   // Admin is identified by email (single-admin model — see admin-auth.ts).
   // We swap the entire right-side toolbar for admin so they don't see the
   // host/DJ-oriented Booking + Inbox + Settings buttons that don't apply
@@ -111,6 +115,7 @@ export default function Header() {
                       name={user.name}
                       slug={user.slug}
                       avatarUrl={user.avatar_url}
+                      bookingEnabled={bookingEnabled}
                     />
                   )}
 

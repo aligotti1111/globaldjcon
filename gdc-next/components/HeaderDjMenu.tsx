@@ -8,8 +8,7 @@
 //
 // Items in the dropdown:
 //   - View My Profile         → /<dj-slug>
-//   - Settings                → /update-dj-profile
-//   - Upcoming Bookings       → /upcoming-bookings
+//   - Upcoming Bookings       → /upcoming-bookings   (booking-enabled only)
 //   - Add Booking Manually    → /upcoming-bookings  (DJ taps the Add
 //                                button on that page — keeps this menu
 //                                lightweight and avoids URL-param plumbing)
@@ -29,6 +28,8 @@ interface HeaderDjMenuProps {
   slug: string | null;
   /** Public avatar URL — when null, we render an initials circle instead. */
   avatarUrl: string | null;
+  /** Whether the DJ has bookings activated — gates the booking-only items. */
+  bookingEnabled: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -39,7 +40,7 @@ function initialsFrom(name: string): string {
   return (first + second).toUpperCase().slice(0, 2);
 }
 
-export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProps) {
+export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: HeaderDjMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -132,20 +133,24 @@ export default function HeaderDjMenu({ name, slug, avatarUrl }: HeaderDjMenuProp
               View My Profile
             </Link>
           )}
-          <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Settings
-          </Link>
-          <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Upcoming Bookings
-          </Link>
-          <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Add Booking Manually
-          </Link>
+          {bookingEnabled && (
+            <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Upcoming Bookings
+            </Link>
+          )}
+          {bookingEnabled && (
+            <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Add Booking Manually
+            </Link>
+          )}
           <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Booking Settings
           </Link>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
+          </Link>
+          <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Settings
           </Link>
           <div className="hdr-dj-menu-sep" />
           <button

@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 import { useUpcomingBookingCount } from './useUpcomingBookingCount';
+import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 
 // Shared stroke attributes for the inline icon set. Icons are sized and
 // colored via the .mm-icon CSS class (16px, neon by default).
@@ -150,6 +151,8 @@ export default function MobileMenu() {
 
   const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
   const isDj = user?.role === 'dj';
+  // Gates the booking-only DJ items (Upcoming Bookings, Add Booking Manually).
+  const bookingEnabled = parseBookingSettings(user?.booking_settings)?.booking_enabled === true;
   // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
   // so the user can see at a glance how many events they have queued.
   const upcomingCount = useUpcomingBookingCount(
@@ -234,16 +237,17 @@ export default function MobileMenu() {
             <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
               <IconCalendar />Booking Requests
             </Link>
-            {isDj ? (
+            {isDj && bookingEnabled && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Bookings{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
-            ) : (
+            )}
+            {!isDj && (
               <Link href="/upcoming-events" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
-            {isDj && (
+            {isDj && bookingEnabled && (
               <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
                 <IconPlus />Add Booking Manually
               </Link>
