@@ -522,7 +522,7 @@ export default function BookingTab({
                   {packageIntro.hasTabs ? (
                     <>
                       Each package has {packageIntro.count} tabs &mdash;{' '}
-                      {packageIntro.joined}. This gives you the ability to
+                      <span className={styles.packageIntroHi}>{packageIntro.joined}</span>. This gives you the ability to
                       customize the pricing and details for different types of
                       events. The host booking the event will only see the
                       packages based off the event type they selected.

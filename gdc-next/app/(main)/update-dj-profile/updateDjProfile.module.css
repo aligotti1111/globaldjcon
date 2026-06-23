@@ -439,6 +439,10 @@
   margin-bottom: 1rem;
   line-height: 1.55;
 }
+/* Bold (no color change) for the category names inside the Add Packages intro. */
+.packageIntroHi {
+  font-weight: 700;
+}
 
 /* No-types warning (when DJ has no mobile event types selected yet) */
 .noTypesNotice {
