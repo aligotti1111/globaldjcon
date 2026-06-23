@@ -518,7 +518,7 @@ export default function BookingTab({
             </div>
             <div className={styles.sectionBody}>
               {activeCats.length > 0 && (
-                <p className={styles.bodyHint}>
+                <p className={styles.packageIntro}>
                   {packageIntro.hasTabs ? (
                     <>
                       Each package has {packageIntro.count} tabs &mdash;{' '}

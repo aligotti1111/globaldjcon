@@ -431,6 +431,14 @@
   margin-bottom: 1rem;
   line-height: 1.5;
 }
+/* Brighter, slightly larger variant for the Add Packages intro — the muted
+   bodyHint gray wasn't legible enough for this longer explanatory copy. */
+.packageIntro {
+  font-size: .85rem;
+  color: rgba(255, 255, 255, .85);
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
 
 /* No-types warning (when DJ has no mobile event types selected yet) */
 .noTypesNotice {
