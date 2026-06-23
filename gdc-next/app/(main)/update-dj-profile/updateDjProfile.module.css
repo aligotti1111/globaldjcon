@@ -662,6 +662,13 @@
 .pkgFieldGroup {
   margin-bottom: .75rem;
 }
+/* Thin divider between the major sections of a package card (Title,
+   Details, Pricing, Setup Photos) so they don't read as one bunched block. */
+.pkgDivider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.15rem 0;
+}
 .pkgFieldLabel {
   font-family: 'Space Mono', monospace;
   font-size: .6rem;

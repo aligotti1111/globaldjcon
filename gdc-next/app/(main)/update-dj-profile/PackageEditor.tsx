@@ -221,6 +221,8 @@ export default function PackageEditor({
         />
       </div>
 
+      <div className={styles.pkgDivider} />
+
       {/* Details (rich text) */}
       <div className={styles.pkgFieldGroup}>
         <label className={styles.pkgFieldLabel}>
@@ -247,6 +249,8 @@ export default function PackageEditor({
           suppressContentEditableWarning
         />
       </div>
+
+      <div className={styles.pkgDivider} />
 
       {/* Pricing */}
       <div className={styles.pkgFieldGroup}>
@@ -401,6 +405,8 @@ export default function PackageEditor({
           ))}
         </select>
       </div>
+
+      <div className={styles.pkgDivider} />
 
       {/* Photos — up to 4 slots. Slot 1 is the main photo shown on the
           package card; slots 2-4 are extra samples shown as thumbnails in
