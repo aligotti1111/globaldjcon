@@ -396,10 +396,10 @@ export default function PackageEditor({
           >
             ?
             <span className={styles.reqAllTip} role="tooltip">
-              When this is on, the package won&apos;t show a set price. The price
-              fields above are turned off, and instead the host sends you a
-              booking request — you then reply with your own custom quote. The
-              package title, details, and photos still show normally.
+              When selected, price fields are deactivated. The host selects the
+              package they&apos;re interested in and sends you a booking request —
+              you then reply with your own custom quote. The package title,
+              details, and photos still show normally.
             </span>
           </span>
         </div>
