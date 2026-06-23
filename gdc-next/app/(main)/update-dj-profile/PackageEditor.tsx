@@ -377,16 +377,32 @@ export default function PackageEditor({
         )}
 
         {/* Req-all toggle */}
-        <label className={styles.reqAllRow}>
-          <input
-            type="checkbox"
-            checked={reqAll}
-            onChange={(e) => updateField('reqAll', e.target.checked)}
-          />
-          <span className={styles.reqAllLabel}>
-            REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST PRICE</span> (This will deactivate price fields above)
+        <div className={styles.reqAllRow}>
+          <label className={styles.reqAllToggle}>
+            <input
+              type="checkbox"
+              checked={reqAll}
+              onChange={(e) => updateField('reqAll', e.target.checked)}
+            />
+            <span className={styles.reqAllLabel}>
+              REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST PRICE</span>
+            </span>
+          </label>
+          <span
+            className={styles.reqAllInfo}
+            tabIndex={0}
+            role="button"
+            aria-label="What does requiring a price request do?"
+          >
+            ?
+            <span className={styles.reqAllTip} role="tooltip">
+              When this is on, the package won&apos;t show a set price. The price
+              fields above are turned off, and instead the host sends you a
+              booking request — you then reply with your own custom quote. The
+              package title, details, and photos still show normally.
+            </span>
           </span>
-        </label>
+        </div>
       </div>
 
       {/* Setup hours */}

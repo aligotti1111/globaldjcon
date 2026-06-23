@@ -842,6 +842,66 @@
   color: var(--neon, #00f5c4);
 }
 
+/* Inner label that actually toggles the checkbox. The ? sits OUTSIDE this
+   label (sibling in .reqAllRow) so tapping it opens the tooltip instead of
+   flipping the toggle. */
+.reqAllToggle {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+}
+/* The ? info badge + its hover/tap tooltip. */
+.reqAllInfo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--muted, #8a8a99);
+  color: var(--muted, #8a8a99);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+.reqAllInfo:hover,
+.reqAllInfo:focus {
+  border-color: var(--neon, #00f5c4);
+  color: var(--neon, #00f5c4);
+  outline: none;
+}
+.reqAllTip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 250px;
+  max-width: 72vw;
+  background: #0a0a10;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .65rem .75rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .72rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--white, #fff);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .55);
+  z-index: 50;
+  display: none;
+}
+.reqAllInfo:hover .reqAllTip,
+.reqAllInfo:focus .reqAllTip {
+  display: block;
+}
+
 /* Cocktail block (wedding category only) */
 .cocktailBlock {
   margin-bottom: .75rem;
