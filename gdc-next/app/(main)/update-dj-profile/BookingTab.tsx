@@ -150,6 +150,25 @@ export default function BookingTab({
     [selectedEventTypes]
   );
 
+  // Dynamic intro copy above the package cards. Names ONLY the categories the
+  // DJ's selected party types actually map to, in a fixed order. With 2+
+  // categories there are tabs to explain; with 1 there are no tabs, so the
+  // message drops any mention of them.
+  const packageIntro = useMemo(() => {
+    const order: PkgCategory[] = ['general', 'wedding', 'mitzvah'];
+    const words: Record<PkgCategory, string> = {
+      general: 'general events',
+      wedding: 'weddings',
+      mitzvah: 'bar/bat mitzvah',
+    };
+    const list = order.filter((c) => activeCats.includes(c)).map((c) => words[c]);
+    const joined =
+      list.length <= 1
+        ? list.join('')
+        : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+    return { hasTabs: activeCats.length > 1, count: activeCats.length, joined };
+  }, [activeCats]);
+
   // Patch booking_settings without losing other fields
   function patch(p: Partial<BookingSettings>) {
     onChange({ ...bookingSettings, ...p });
@@ -498,9 +517,25 @@ export default function BookingTab({
               <div className={styles.sectionTitle}>Add Packages</div>
             </div>
             <div className={styles.sectionBody}>
-              <p className={styles.bodyHint}>
-                Create packages for the event types you service. Categories shown are based on your selected Mobile Party Types.
-              </p>
+              {activeCats.length > 0 && (
+                <p className={styles.bodyHint}>
+                  {packageIntro.hasTabs ? (
+                    <>
+                      Each package has {packageIntro.count} tabs &mdash;{' '}
+                      {packageIntro.joined}. This gives you the ability to
+                      customize the pricing and details for different types of
+                      events. The host booking the event will only see the
+                      packages based off the event type they selected.
+                    </>
+                  ) : (
+                    <>
+                      Customize the pricing and details for your packages. The
+                      host booking the event will only see the packages based off
+                      the event type they selected.
+                    </>
+                  )}
+                </p>
+              )}
 
               {activeCats.length === 0 && (
                 <div className={styles.noTypesNotice}>
