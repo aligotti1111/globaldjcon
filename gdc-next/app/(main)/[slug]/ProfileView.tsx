@@ -48,9 +48,12 @@ interface Props {
   effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
+  // Paywall: true when the DJ has an active subscription/comp (Tier 1+).
+  // ANDed with the existing enabled + completeness checks below.
+  hasBookingAccess: boolean;
 }
 
-export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile }: Props) {
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, hasBookingAccess }: Props) {
   // ── Booking settings parsing & "show booking tab" decision ──────────
   // Vanilla shows a booking tab (and makes it the default) when the DJ has
   // booking_enabled — but the WIDGET inside that tab differs by DJ type:
@@ -71,8 +74,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     bookingSettings &&
     (bookingSettings.equip_full || bookingSettings.equip_decks || bookingSettings.equip_none)
   );
-  const clubBookingLive = !!(bookingSettings && bookingSettings.booking_enabled) && clubEquipPicked;
-  const mobileBookingLive = !!(bookingSettings && bookingSettings.booking_enabled);
+  const clubBookingLive = hasBookingAccess && !!(bookingSettings && bookingSettings.booking_enabled) && clubEquipPicked;
+  const mobileBookingLive = hasBookingAccess && !!(bookingSettings && bookingSettings.booking_enabled);
   const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
   const showClubAvailabilityTab = isClubDJ && bookingEnabled;
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled;

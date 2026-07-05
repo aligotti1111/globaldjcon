@@ -25,6 +25,7 @@ import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
 import type { Metadata } from 'next';
+import { canBook, type AccessFields } from '@/lib/access';
 
 // Render fresh on every request. The DJ's booking_settings (deposit %,
 // per-day limits, calendar, packages) can change at any time, and a
@@ -234,12 +235,19 @@ export default async function DjProfilePage({ params }: PageProps) {
   // Used by claim links + share-URL copy.
   const effectiveSlug = profile.slug || deriveSlugFromName(profile.name);
 
+  // Booking access gate (paywall). The Book button / booking tab only goes
+  // live when the DJ has an active subscription or comp (Tier 1+). This is
+  // ADDITIVE to the existing completeness + enabled checks inside ProfileView
+  // — both must be satisfied. Sub/comp columns come from the select('*') above.
+  const hasBookingAccess = canBook(profile as unknown as AccessFields);
+
   return (
     <ProfileView
       data={profile}
       effectiveSlug={effectiveSlug}
       isLoggedIn={isLoggedIn}
       isOwnProfile={isOwnProfile}
+      hasBookingAccess={hasBookingAccess}
     />
   );
 }
