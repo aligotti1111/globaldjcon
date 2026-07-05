@@ -58,17 +58,23 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; type: 'ok' | 'err' | '' }>({ msg: '', type: '' });
 
-  // ── Subscription / comp (free access) ────────────────────────────
-  // Current comp state shown live (updated after a grant/clear so the admin
-  // sees the result without reopening the modal).
-  const [compTierNow, setCompTierNow] = useState<number | null>(user?.comp_tier ?? null);
-  const [compExpiresNow, setCompExpiresNow] = useState<string | null>(user?.comp_expires_at ?? null);
-  const [compSourceNow, setCompSourceNow] = useState<string | null>(user?.comp_source ?? null);
-  // Grant form inputs
-  const [grantTier, setGrantTier] = useState<number>(1);
-  const [grantDate, setGrantDate] = useState<string>(''); // blank; admin picks a date
-  const [compBusy, setCompBusy] = useState(false);
-  const [compFeedback, setCompFeedback] = useState<{ msg: string; type: 'ok' | 'err' | '' }>({ msg: '', type: '' });
+  // ── Free access (comp) ───────────────────────────────────────────
+  // The date field pre-fills with the user's current comp expiry. Changing
+  // it (and the plan) then hitting Save Changes grants/updates the comp;
+  // clearing the date and saving removes it. No separate button — it's part
+  // of the normal account save.
+  const initialGrantTier = user?.comp_tier === 2 ? 2 : 1;
+  const initialGrantDate = (() => {
+    if (!user?.comp_expires_at) return '';
+    const d = new Date(user.comp_expires_at);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  })();
+  const [grantTier, setGrantTier] = useState<number>(initialGrantTier);
+  const [grantDate, setGrantDate] = useState<string>(initialGrantDate);
 
   // Live slug preview
   const slugPreview = (slug || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'slug';
@@ -139,6 +145,22 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         setFeedback({ msg: '✗ ' + (result.error || 'Save failed'), type: 'err' });
         return;
       }
+
+      // Free access (comp) — applied as part of the save. A date present
+      // grants/updates it; a cleared date removes it (only if there was one).
+      const trimmedDate = grantDate.trim();
+      const hadComp = !!user.comp_expires_at;
+      let compRes: { success: boolean; error?: string } = { success: true };
+      if (trimmedDate) {
+        compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
+      } else if (hadComp) {
+        compRes = await clearCompAction({ user_id: user.id });
+      }
+      if (!compRes.success) {
+        setFeedback({ msg: '✗ Profile saved, but access update failed: ' + (compRes.error || ''), type: 'err' });
+        return;
+      }
+
       setFeedback({ msg: '✓ Saved', type: 'ok' });
       // Brief delay so the user sees the success state before modal closes
       setTimeout(() => {
@@ -151,77 +173,6 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
       setFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
     } finally {
       setSaving(false);
-    }
-  }
-
-  function compExpiryLabel(): string {
-    if (!compExpiresNow) return '';
-    const d = new Date(compExpiresNow);
-    if (isNaN(d.getTime())) return '';
-    const active = d.getTime() > Date.now();
-    return `${d.toLocaleDateString()}${active ? '' : ' (expired)'}`;
-  }
-
-  // Unified "access good until" — the single date that actually matters,
-  // taking the later of an active Stripe subscription and an active comp.
-  function accessUntilLabel(): string {
-    const now = Date.now();
-    const candidates: number[] = [];
-    if ((user?.sub_status === 'active' || user?.sub_status === 'grace') && user?.sub_period_end) {
-      const t = new Date(user.sub_period_end).getTime();
-      if (!isNaN(t) && t > now) candidates.push(t);
-    }
-    if (compTierNow && compExpiresNow) {
-      const t = new Date(compExpiresNow).getTime();
-      if (!isNaN(t) && t > now) candidates.push(t);
-    }
-    if (candidates.length === 0) return 'No active access';
-    return `Access good until ${new Date(Math.max(...candidates)).toLocaleDateString()}`;
-  }
-
-  async function handleGrant() {
-    if (!user) return;
-    setCompFeedback({ msg: '', type: '' });
-    if (!grantDate) {
-      setCompFeedback({ msg: 'Pick an expiration date.', type: 'err' });
-      return;
-    }
-    setCompBusy(true);
-    try {
-      const res = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: grantDate });
-      if (!res.success) {
-        setCompFeedback({ msg: '✗ ' + (res.error || 'Grant failed'), type: 'err' });
-        return;
-      }
-      setCompTierNow(grantTier);
-      setCompExpiresNow(res.expires_at || null);
-      setCompSourceNow('admin');
-      setCompFeedback({ msg: '✓ Free access granted', type: 'ok' });
-    } catch (e) {
-      setCompFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
-    } finally {
-      setCompBusy(false);
-    }
-  }
-
-  async function handleClearComp() {
-    if (!user) return;
-    setCompFeedback({ msg: '', type: '' });
-    setCompBusy(true);
-    try {
-      const res = await clearCompAction({ user_id: user.id });
-      if (!res.success) {
-        setCompFeedback({ msg: '✗ ' + (res.error || 'Failed'), type: 'err' });
-        return;
-      }
-      setCompTierNow(null);
-      setCompExpiresNow(null);
-      setCompSourceNow(null);
-      setCompFeedback({ msg: '✓ Free access removed', type: 'ok' });
-    } catch (e) {
-      setCompFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
-    } finally {
-      setCompBusy(false);
     }
   }
 
@@ -441,45 +392,16 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
           </label>
         </div>
 
-        {/* Subscription + free access */}
+        {/* Free access (comp) — part of the normal save */}
         <div className={styles.formDivider} />
-        <div className={styles.formSectionLabel}>Subscription</div>
-
-        {/* Headline: the single date that matters. */}
-        <div
-          className={styles.formGroup}
-          style={{ gridColumn: '1/-1', marginBottom: '.75rem' }}
-        >
-          <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--white)' }}>
-            {accessUntilLabel()}
-          </div>
-        </div>
-
+        <div className={styles.formSectionLabel}>Free Access</div>
+        <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.6rem' }}>
+          Paid plan: {planLabel(user.sub_tier)} · {statusLabel(user.sub_status)}
+          {user.sub_period_end ? ` (ends ${new Date(user.sub_period_end).toLocaleDateString()})` : ''}
+        </p>
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Paid plan (Stripe)</label>
-            <p className={styles.formHint} style={{ marginTop: '.25rem' }}>
-              {planLabel(user.sub_tier)} · {statusLabel(user.sub_status)}
-              {user.sub_period_end
-                ? ` · ends ${new Date(user.sub_period_end).toLocaleDateString()}`
-                : ''}
-            </p>
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Free access (comp)</label>
-            <p className={styles.formHint} style={{ marginTop: '.25rem' }}>
-              {compTierNow
-                ? `${planLabel(compTierNow)}${compSourceNow ? ` (${compSourceNow})` : ''}${
-                    compExpiryLabel() ? ` · until ${compExpiryLabel()}` : ''
-                  }`
-                : 'None'}
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.formGrid}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Grant free access — plan</label>
+            <label className={styles.formLabel}>Plan</label>
             <select
               className={styles.formSelect}
               value={grantTier}
@@ -490,44 +412,17 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
             </select>
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Expires on</label>
+            <label className={styles.formLabel}>Free access until</label>
             <input
               className={styles.formInput}
               type="date"
               value={grantDate}
               onChange={(e) => setGrantDate(e.target.value)}
             />
-            <p className={styles.formHint}>Pick any future date. Granting replaces any current grant.</p>
+            <p className={styles.formHint}>
+              Set a date to give free access through it. Clear the date to remove access. Applied on Save.
+            </p>
           </div>
-        </div>
-        <div className={styles.flagsRow} style={{ gap: '.6rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={handleGrant}
-            disabled={compBusy}
-            className={`${styles.btn} ${styles.btnAdmin}`}
-          >
-            {compBusy ? 'Working…' : 'Grant free access'}
-          </button>
-          {compTierNow && (
-            <button
-              type="button"
-              onClick={handleClearComp}
-              disabled={compBusy}
-              className={`${styles.btn} ${styles.btnOutline}`}
-            >
-              Remove free access
-            </button>
-          )}
-          {compFeedback.msg && (
-            <span
-              className={`${styles.formFb} ${
-                compFeedback.type === 'ok' ? styles.formFbOk : styles.formFbErr
-              }`}
-            >
-              {compFeedback.msg}
-            </span>
-          )}
         </div>
 
         {/* Save bar */}
