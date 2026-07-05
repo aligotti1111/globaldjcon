@@ -181,3 +181,28 @@
   font-size: 0.9rem;
   text-align: center;
 }
+
+/* ── Manage-subscription link ────────────────────────────── */
+.manageRow {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.manageBtn {
+  background: none;
+  border: none;
+  color: var(--muted, rgba(255, 255, 255, 0.7));
+  font-size: 0.88rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.manageBtn:hover {
+  color: var(--white, #fff);
+}
+
+.manageBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

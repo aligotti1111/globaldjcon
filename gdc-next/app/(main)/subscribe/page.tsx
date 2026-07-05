@@ -7,6 +7,9 @@
 // Checkout URL; we redirect the browser there. On return, Stripe's webhook
 // has written the tier onto the user (see app/api/stripe/webhook/route.ts).
 //
+// "Manage your plan" opens Stripe's hosted customer portal (cancel, switch
+// plan, update card) via /api/stripe/portal.
+//
 // After checkout, Stripe returns the browser to /subscribe?sub=success (or
 // ?sub=cancelled), which drives the banner at the top.
 //
@@ -51,6 +54,7 @@ function SubscribeInner() {
 
   const [interval, setBillingInterval] = useState<Interval>('monthly');
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function subscribe(tier: PaidTier) {
@@ -74,6 +78,26 @@ function SubscribeInner() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
       setLoadingTier(null);
+    }
+  }
+
+  async function openPortal() {
+    setError(null);
+    setPortalLoading(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.status === 401) {
+        window.location.href = '/login?redirect=/subscribe';
+        return;
+      }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Could not open the billing portal.');
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setPortalLoading(false);
     }
   }
 
@@ -141,6 +165,17 @@ function SubscribeInner() {
             </div>
           );
         })}
+      </div>
+
+      <div className={styles.manageRow}>
+        <button
+          type="button"
+          className={styles.manageBtn}
+          onClick={openPortal}
+          disabled={portalLoading}
+        >
+          {portalLoading ? 'Opening\u2026' : 'Already subscribed? Manage your plan'}
+        </button>
       </div>
     </div>
   );
