@@ -152,34 +152,48 @@ export default function AdminClient({
 
         {/* Tabs */}
         <div className={styles.adminTabs}>
-          <span
+          <div
             style={{
-              fontSize: '.7rem',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-              color: 'var(--muted)',
-              alignSelf: 'center',
-              marginRight: '.35rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '.25rem',
+              border: '1px solid var(--border)',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '10px',
+              padding: '.15rem .55rem',
             }}
           >
-            Accounts
-          </span>
-          <TabBtn active={activeTab === 'djs'} onClick={() => setActiveTab('djs')}>
-            🎧 DJs
-          </TabBtn>
-          <TabBtn active={activeTab === 'hosts'} onClick={() => setActiveTab('hosts')}>
-            🎉 Hosts
-          </TabBtn>
-          <TabBtn active={activeTab === 'venues'} onClick={() => setActiveTab('venues')}>
-            🏛 Venues
-          </TabBtn>
-          <TabBtn active={activeTab === 'create'} onClick={() => setActiveTab('create')}>
-            ➕ Create Account
-          </TabBtn>
-          <TabBtn active={activeTab === 'claims'} onClick={() => setActiveTab('claims')}>
-            📋 Pending Claims
-            {stats.claims > 0 && <span className={styles.pill}>{stats.claims}</span>}
-          </TabBtn>
+            <span
+              style={{
+                fontSize: '.62rem',
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                color: 'var(--muted)',
+                marginRight: '.15rem',
+              }}
+            >
+              Accounts
+            </span>
+            <TabBtn active={activeTab === 'djs'} onClick={() => setActiveTab('djs')}>
+              🎧 DJs
+            </TabBtn>
+            <TabBtn active={activeTab === 'hosts'} onClick={() => setActiveTab('hosts')}>
+              🎉 Hosts
+            </TabBtn>
+            <TabBtn active={activeTab === 'venues'} onClick={() => setActiveTab('venues')}>
+              🏛 Venues
+            </TabBtn>
+          </div>
+
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.25rem', marginLeft: '.85rem' }}>
+            <TabBtn active={activeTab === 'create'} onClick={() => setActiveTab('create')}>
+              ➕ Create Account
+            </TabBtn>
+            <TabBtn active={activeTab === 'claims'} onClick={() => setActiveTab('claims')}>
+              📋 Pending Claims
+              {stats.claims > 0 && <span className={styles.pill}>{stats.claims}</span>}
+            </TabBtn>
+          </div>
         </div>
 
         {/* Tab content */}

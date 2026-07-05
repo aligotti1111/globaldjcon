@@ -103,6 +103,34 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
         </div>
       ) : (
         <div className={styles.adminList}>
+          {/* Column headers — aligned to the row columns below. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '.75rem',
+              padding: '.2rem 1rem .4rem',
+            }}
+          >
+            {(() => {
+              const hStyle: React.CSSProperties = {
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.58rem',
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                color: 'var(--muted)',
+              };
+              return (
+                <>
+                  <div style={{ ...hStyle, flex: 1.2, minWidth: 130 }}>Name</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Email</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Created</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Access Until</div>
+                  <div style={{ ...hStyle, minWidth: 120, textAlign: 'right' }}>Actions</div>
+                </>
+              );
+            })()}
+          </div>
           {filtered.map((u) => {
             const name = role === 'venue' ? (u.venue_name || u.name) : u.name;
             const email = emailMap[u.id] || '';
