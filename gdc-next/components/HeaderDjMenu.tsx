@@ -179,7 +179,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             role="menuitem"
             onClick={openBilling}
             disabled={portalLoading}
-            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
           >
             {portalLoading ? 'Opening…' : 'Manage Subscription'}
           </button>

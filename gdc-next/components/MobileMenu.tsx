@@ -293,7 +293,7 @@ export default function MobileMenu() {
                 onClick={openBilling}
                 disabled={portalLoading}
                 className="mobile-menu-item"
-                style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+                style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
               >
                 <IconGear />{portalLoading ? 'Opening…' : 'Manage Subscription'}
               </button>
