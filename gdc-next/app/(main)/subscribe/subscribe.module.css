@@ -206,3 +206,80 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* ── Subscribed state ────────────────────────────────────── */
+.currentBanner {
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  background: var(--card, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--white, #fff);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.graceNote {
+  color: var(--amber, #ffb020);
+  font-size: 0.88rem;
+}
+
+.cardCurrent {
+  position: relative;
+  border-color: var(--neon, #00e0a4);
+}
+
+.currentBadge {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--neon, #00e0a4);
+  color: #06231b;
+}
+
+.manageCardBtn {
+  width: 100%;
+  border: 1px solid var(--neon, #00e0a4);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--neon, #00e0a4);
+  transition: opacity 0.15s ease;
+}
+
+.switchBtn {
+  width: 100%;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--white, #fff);
+  transition: opacity 0.15s ease;
+}
+
+.manageCardBtn:hover,
+.switchBtn:hover {
+  opacity: 0.85;
+}
+
+.manageCardBtn:disabled,
+.switchBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.loginHint {
+  color: var(--muted, rgba(255, 255, 255, 0.6));
+  font-size: 0.85rem;
+}
