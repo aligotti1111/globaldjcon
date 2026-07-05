@@ -157,10 +157,12 @@ export default function AdminClient({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '.25rem',
-              border: '1px solid var(--border)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '10px',
-              padding: '.15rem .55rem',
+              borderTop: '1px solid var(--border)',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              borderBottom: 'none',
+              borderRadius: '10px 10px 0 0',
+              padding: '.15rem .55rem .3rem',
             }}
           >
             <span

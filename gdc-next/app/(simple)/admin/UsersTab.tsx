@@ -125,8 +125,8 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                   <div style={{ ...hStyle, flex: 1.2, minWidth: 130 }}>Name</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Email</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Created</div>
-                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Access Until</div>
-                  <div style={{ ...hStyle, minWidth: 120, textAlign: 'right' }}>Actions</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Expiration Date</div>
+                  <div style={{ ...hStyle, flex: '0 0 240px', textAlign: 'right' }}>Actions</div>
                 </>
               );
             })()}
@@ -143,10 +143,12 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
 
             return (
               <div key={u.id} className={styles.adminRow}>
-                {isUnclaimed && (
-                  <span className={styles.unclaimedBadge}>Unclaimed</span>
-                )}
-                <div className={styles.arName}>{name || 'Unnamed'}</div>
+                <div className={styles.arName}>
+                  {isUnclaimed && (
+                    <span className={styles.unclaimedBadge} style={{ marginRight: '.4rem' }}>Unclaimed</span>
+                  )}
+                  {name || 'Unnamed'}
+                </div>
                 <div
                   className={styles.arDetail}
                   style={{ color: email ? 'var(--white)' : '#6b6b88', fontStyle: email ? 'normal' : 'italic' }}
@@ -157,12 +159,13 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                 <div className={styles.arDetail} title="Account created">{createdLabel}</div>
                 <div
                   className={styles.arDetail}
-                  title="Access good until (subscription or free access)"
+                  title="Expiration date (subscription or free access)"
                   style={{ color: accessLabel === '—' ? '#6b6b88' : 'var(--white)' }}
                 >
                   {accessLabel}
                 </div>
 
+                <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 240px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => onEdit(u.id)}
@@ -194,6 +197,7 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                 >
                   Delete
                 </button>
+                </div>
               </div>
             );
           })}
