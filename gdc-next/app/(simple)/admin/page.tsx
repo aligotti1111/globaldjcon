@@ -49,6 +49,9 @@ export interface AdminUserRow {
   profile_private: boolean | null;
   claimed: boolean | null;
   email_verified: boolean | null;
+  // Account creation timestamp (from select('*')). Optional to keep the
+  // cast from the generated types happy.
+  created_at?: string | null;
   // Subscription + comp (from the gating spine). Fetched via select('*').
   // Optional because the generated Supabase types don't include these columns
   // yet (types weren't regenerated), so a required declaration would break the

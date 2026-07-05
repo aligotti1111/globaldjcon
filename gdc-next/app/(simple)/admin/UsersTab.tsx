@@ -105,10 +105,13 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
         <div className={styles.adminList}>
           {filtered.map((u) => {
             const name = role === 'venue' ? (u.venue_name || u.name) : u.name;
-            const loc = [u.city, u.state, u.country].filter(Boolean).join(', ');
             const email = emailMap[u.id] || '';
             const isUnclaimed = !u.claimed;
             const needsVerify = u.email_verified !== true;
+            const createdLabel = u.created_at
+              ? new Date(u.created_at).toLocaleDateString()
+              : '—';
+            const accessLabel = accessUntil(u);
 
             return (
               <div key={u.id} className={styles.adminRow}>
@@ -123,8 +126,14 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                 >
                   {email || 'no email'}
                 </div>
-                <div className={styles.arDetail}>{loc || '—'}</div>
-                <div className={styles.arDetail}>{u.slug || '—'}</div>
+                <div className={styles.arDetail} title="Account created">{createdLabel}</div>
+                <div
+                  className={styles.arDetail}
+                  title="Access good until (subscription or free access)"
+                  style={{ color: accessLabel === '—' ? '#6b6b88' : 'var(--white)' }}
+                >
+                  {accessLabel}
+                </div>
 
                 <button
                   type="button"
@@ -164,4 +173,21 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
       )}
     </div>
   );
+}
+
+// Access-until date for a row: the later of an active subscription's period
+// end and an unexpired comp. Renders '—' when the account has no active access.
+function accessUntil(u: AdminUserRow): string {
+  const now = Date.now();
+  const dates: number[] = [];
+  if ((u.sub_status === 'active' || u.sub_status === 'grace') && u.sub_period_end) {
+    const t = new Date(u.sub_period_end).getTime();
+    if (!isNaN(t) && t > now) dates.push(t);
+  }
+  if (u.comp_tier && u.comp_expires_at) {
+    const t = new Date(u.comp_expires_at).getTime();
+    if (!isNaN(t) && t > now) dates.push(t);
+  }
+  if (dates.length === 0) return '—';
+  return new Date(Math.max(...dates)).toLocaleDateString();
 }
