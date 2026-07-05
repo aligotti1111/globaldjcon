@@ -12,7 +12,7 @@ import styles from './profile.module.css';
 import { useAuth } from '@/components/AuthProvider';
 import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
 import { buildMixEmbed, buildVideoEmbed } from './embeds';
-import { parseBookingSettings } from './bookingSettings';
+import { parseBookingSettings, packageTiers } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
 import ClubBookingForm from './ClubBookingForm';
@@ -74,8 +74,24 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     bookingSettings &&
     (bookingSettings.equip_full || bookingSettings.equip_decks || bookingSettings.equip_none)
   );
+  // Mobile completeness: at least one package that's actually bookable —
+  // has a title and either valid price tiers or "price on request" (reqAll).
+  const mobileSetupComplete = !!(
+    bookingSettings &&
+    bookingSettings.mob_packages &&
+    Object.values(bookingSettings.mob_packages).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (pkg) =>
+            !!pkg &&
+            !!(pkg.title && String(pkg.title).trim()) &&
+            (pkg.reqAll === true || packageTiers(pkg).length > 0)
+        )
+    )
+  );
   const clubBookingLive = hasBookingAccess && clubEquipPicked;
-  const mobileBookingLive = hasBookingAccess;
+  const mobileBookingLive = hasBookingAccess && mobileSetupComplete;
   const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
   const showClubAvailabilityTab = isClubDJ && bookingEnabled;
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
