@@ -50,12 +50,15 @@ export interface AdminUserRow {
   claimed: boolean | null;
   email_verified: boolean | null;
   // Subscription + comp (from the gating spine). Fetched via select('*').
-  sub_tier: number | null;
-  sub_status: string | null;
-  sub_period_end: string | null;
-  comp_tier: number | null;
-  comp_expires_at: string | null;
-  comp_source: string | null;
+  // Optional because the generated Supabase types don't include these columns
+  // yet (types weren't regenerated), so a required declaration would break the
+  // `as AdminUserRow[]` cast on the query result.
+  sub_tier?: number | null;
+  sub_status?: string | null;
+  sub_period_end?: string | null;
+  comp_tier?: number | null;
+  comp_expires_at?: string | null;
+  comp_source?: string | null;
   // Email is fetched separately from auth.users and merged in by the client
   email?: string;
 }
