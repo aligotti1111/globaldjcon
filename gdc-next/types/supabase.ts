@@ -1,8 +1,3 @@
-// Auto-generated from the live database schema via the Supabase dashboard
-// (Data API -> Docs -> "Generate and download types"). Do not hand-edit;
-// regenerate after schema changes. Exports `Database` plus Tables/TablesInsert/
-// TablesUpdate helpers used by the typed Supabase clients.
-
 export type Json =
   | string
   | number
@@ -140,6 +135,7 @@ export type Database = {
           equipment: string | null
           equipment_needed: string | null
           event_date: string | null
+          event_details: string | null
           event_type: string | null
           flyer_url: string | null
           guest_count: number | null
@@ -170,6 +166,7 @@ export type Database = {
           setup_hours: string | null
           start_time: string | null
           status: string | null
+          tier_stamp: number | null
           updated_at: string | null
           venue_address: string | null
           venue_decks: string | null
@@ -202,6 +199,7 @@ export type Database = {
           equipment?: string | null
           equipment_needed?: string | null
           event_date?: string | null
+          event_details?: string | null
           event_type?: string | null
           flyer_url?: string | null
           guest_count?: number | null
@@ -232,6 +230,7 @@ export type Database = {
           setup_hours?: string | null
           start_time?: string | null
           status?: string | null
+          tier_stamp?: number | null
           updated_at?: string | null
           venue_address?: string | null
           venue_decks?: string | null
@@ -264,6 +263,7 @@ export type Database = {
           equipment?: string | null
           equipment_needed?: string | null
           event_date?: string | null
+          event_details?: string | null
           event_type?: string | null
           flyer_url?: string | null
           guest_count?: number | null
@@ -294,6 +294,7 @@ export type Database = {
           setup_hours?: string | null
           start_time?: string | null
           status?: string | null
+          tier_stamp?: number | null
           updated_at?: string | null
           venue_address?: string | null
           venue_decks?: string | null
@@ -483,12 +484,18 @@ export type Database = {
           city: string | null
           claimed: boolean
           club_genres: string[] | null
+          comp_expires_at: string | null
+          comp_source: string | null
+          comp_tier: number | null
           company: string | null
           contact_email: string | null
           country: string | null
           created_at: string | null
           dj_start_year: number | null
           dj_type: string | null
+          email_notify_booking_request: boolean
+          email_notify_booking_status: boolean
+          email_notify_inbox_message: boolean
           email_verified: boolean
           email_verified_at: string | null
           event_types: string | null
@@ -519,6 +526,11 @@ export type Database = {
           sms_phone: string | null
           soundcloud: string | null
           state: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          sub_period_end: string | null
+          sub_status: string
+          sub_tier: number
           tab_visibility: Json | null
           testimonials: string | null
           tiktok: string | null
@@ -552,12 +564,18 @@ export type Database = {
           city?: string | null
           claimed?: boolean
           club_genres?: string[] | null
+          comp_expires_at?: string | null
+          comp_source?: string | null
+          comp_tier?: number | null
           company?: string | null
           contact_email?: string | null
           country?: string | null
           created_at?: string | null
           dj_start_year?: number | null
           dj_type?: string | null
+          email_notify_booking_request?: boolean
+          email_notify_booking_status?: boolean
+          email_notify_inbox_message?: boolean
           email_verified?: boolean
           email_verified_at?: string | null
           event_types?: string | null
@@ -588,6 +606,11 @@ export type Database = {
           sms_phone?: string | null
           soundcloud?: string | null
           state?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          sub_period_end?: string | null
+          sub_status?: string
+          sub_tier?: number
           tab_visibility?: Json | null
           testimonials?: string | null
           tiktok?: string | null
@@ -621,12 +644,18 @@ export type Database = {
           city?: string | null
           claimed?: boolean
           club_genres?: string[] | null
+          comp_expires_at?: string | null
+          comp_source?: string | null
+          comp_tier?: number | null
           company?: string | null
           contact_email?: string | null
           country?: string | null
           created_at?: string | null
           dj_start_year?: number | null
           dj_type?: string | null
+          email_notify_booking_request?: boolean
+          email_notify_booking_status?: boolean
+          email_notify_inbox_message?: boolean
           email_verified?: boolean
           email_verified_at?: string | null
           event_types?: string | null
@@ -657,6 +686,11 @@ export type Database = {
           sms_phone?: string | null
           soundcloud?: string | null
           state?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          sub_period_end?: string | null
+          sub_status?: string
+          sub_tier?: number
           tab_visibility?: Json | null
           testimonials?: string | null
           tiktok?: string | null
@@ -687,6 +721,7 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      dj_effective_tier: { Args: { dj: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
