@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './admin.module.css';
-import { updateUserAction, getUserEmailAction } from './actions';
+import { updateUserAction, getUserEmailAction, grantCompAction, clearCompAction } from './actions';
 import type { AdminUserRow } from './page';
 
 interface Props {
@@ -57,6 +57,18 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   // Submit state
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; type: 'ok' | 'err' | '' }>({ msg: '', type: '' });
+
+  // ── Subscription / comp (free access) ────────────────────────────
+  // Current comp state shown live (updated after a grant/clear so the admin
+  // sees the result without reopening the modal).
+  const [compTierNow, setCompTierNow] = useState<number | null>(user?.comp_tier ?? null);
+  const [compExpiresNow, setCompExpiresNow] = useState<string | null>(user?.comp_expires_at ?? null);
+  const [compSourceNow, setCompSourceNow] = useState<string | null>(user?.comp_source ?? null);
+  // Grant form inputs
+  const [grantTier, setGrantTier] = useState<number>(1);
+  const [grantDays, setGrantDays] = useState<string>('30');
+  const [compBusy, setCompBusy] = useState(false);
+  const [compFeedback, setCompFeedback] = useState<{ msg: string; type: 'ok' | 'err' | '' }>({ msg: '', type: '' });
 
   // Live slug preview
   const slugPreview = (slug || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'slug';
@@ -139,6 +151,61 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
       setFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  function compExpiryLabel(): string {
+    if (!compExpiresNow) return '';
+    const d = new Date(compExpiresNow);
+    if (isNaN(d.getTime())) return '';
+    const active = d.getTime() > Date.now();
+    return `${d.toLocaleDateString()}${active ? '' : ' (expired)'}`;
+  }
+
+  async function handleGrant() {
+    if (!user) return;
+    setCompFeedback({ msg: '', type: '' });
+    const days = parseInt(grantDays, 10);
+    if (!days || days < 1) {
+      setCompFeedback({ msg: 'Enter a number of days (1 or more).', type: 'err' });
+      return;
+    }
+    setCompBusy(true);
+    try {
+      const res = await grantCompAction({ user_id: user.id, tier: grantTier, days });
+      if (!res.success) {
+        setCompFeedback({ msg: '✗ ' + (res.error || 'Grant failed'), type: 'err' });
+        return;
+      }
+      setCompTierNow(grantTier);
+      setCompExpiresNow(res.expires_at || null);
+      setCompSourceNow('admin');
+      setCompFeedback({ msg: '✓ Free access granted', type: 'ok' });
+    } catch (e) {
+      setCompFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
+    } finally {
+      setCompBusy(false);
+    }
+  }
+
+  async function handleClearComp() {
+    if (!user) return;
+    setCompFeedback({ msg: '', type: '' });
+    setCompBusy(true);
+    try {
+      const res = await clearCompAction({ user_id: user.id });
+      if (!res.success) {
+        setCompFeedback({ msg: '✗ ' + (res.error || 'Failed'), type: 'err' });
+        return;
+      }
+      setCompTierNow(null);
+      setCompExpiresNow(null);
+      setCompSourceNow(null);
+      setCompFeedback({ msg: '✓ Free access removed', type: 'ok' });
+    } catch (e) {
+      setCompFeedback({ msg: '✗ ' + (e as Error).message, type: 'err' });
+    } finally {
+      setCompBusy(false);
     }
   }
 
@@ -358,6 +425,85 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
           </label>
         </div>
 
+        {/* Subscription + free access */}
+        <div className={styles.formDivider} />
+        <div className={styles.formSectionLabel}>Subscription</div>
+        <div className={styles.formGrid}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Paid plan (Stripe)</label>
+            <p className={styles.formHint} style={{ marginTop: '.25rem' }}>
+              {planLabel(user.sub_tier)} · {statusLabel(user.sub_status)}
+              {user.sub_period_end
+                ? ` · ends ${new Date(user.sub_period_end).toLocaleDateString()}`
+                : ''}
+            </p>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Free access (comp)</label>
+            <p className={styles.formHint} style={{ marginTop: '.25rem' }}>
+              {compTierNow
+                ? `${planLabel(compTierNow)}${compSourceNow ? ` (${compSourceNow})` : ''}${
+                    compExpiryLabel() ? ` · until ${compExpiryLabel()}` : ''
+                  }`
+                : 'None'}
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.formGrid}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Grant free access — plan</label>
+            <select
+              className={styles.formSelect}
+              value={grantTier}
+              onChange={(e) => setGrantTier(parseInt(e.target.value, 10))}
+            >
+              <option value={1}>Booking</option>
+              <option value={2}>Pro</option>
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Days</label>
+            <input
+              className={styles.formInput}
+              type="number"
+              min={1}
+              value={grantDays}
+              onChange={(e) => setGrantDays(e.target.value)}
+            />
+            <p className={styles.formHint}>Runs from now. Granting again replaces any current grant.</p>
+          </div>
+        </div>
+        <div className={styles.flagsRow} style={{ gap: '.6rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleGrant}
+            disabled={compBusy}
+            className={`${styles.btn} ${styles.btnAdmin}`}
+          >
+            {compBusy ? 'Working…' : 'Grant free access'}
+          </button>
+          {compTierNow && (
+            <button
+              type="button"
+              onClick={handleClearComp}
+              disabled={compBusy}
+              className={`${styles.btn} ${styles.btnOutline}`}
+            >
+              Remove free access
+            </button>
+          )}
+          {compFeedback.msg && (
+            <span
+              className={`${styles.formFb} ${
+                compFeedback.type === 'ok' ? styles.formFbOk : styles.formFbErr
+              }`}
+            >
+              {compFeedback.msg}
+            </span>
+          )}
+        </div>
+
         {/* Save bar */}
         <div className={styles.editSaveBar}>
           <button
@@ -385,4 +531,20 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
       </div>
     </div>
   );
+}
+
+// ── Display helpers ─────────────────────────────────────────────────
+function planLabel(tier: number | null | undefined): string {
+  if (tier === 2) return 'Pro';
+  if (tier === 1) return 'Booking';
+  return 'None';
+}
+
+function statusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'active': return 'Active';
+    case 'grace': return 'Grace (payment retrying)';
+    case 'lapsed': return 'Lapsed';
+    default: return 'None';
+  }
 }

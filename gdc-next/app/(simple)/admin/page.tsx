@@ -49,6 +49,13 @@ export interface AdminUserRow {
   profile_private: boolean | null;
   claimed: boolean | null;
   email_verified: boolean | null;
+  // Subscription + comp (from the gating spine). Fetched via select('*').
+  sub_tier: number | null;
+  sub_status: string | null;
+  sub_period_end: string | null;
+  comp_tier: number | null;
+  comp_expires_at: string | null;
+  comp_source: string | null;
   // Email is fetched separately from auth.users and merged in by the client
   email?: string;
 }

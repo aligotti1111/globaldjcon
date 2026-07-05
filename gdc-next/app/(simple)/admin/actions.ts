@@ -534,6 +534,70 @@ export async function rejectClaimAction(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// GRANT FREE ACCESS (comp) — sets a tier + expiry (now + days) on a user.
+// This is the admin-issued complimentary access. It's read by the access
+// module alongside any Stripe subscription; effective access is the higher
+// of the two. Granting again replaces the previous grant (fresh days from
+// now), which is the simplest "extend / re-grant" behavior.
+// ─────────────────────────────────────────────────────────────────────────
+export async function grantCompAction(input: {
+  user_id: string;
+  tier: number;
+  days: number;
+}): Promise<{ success: boolean; expires_at?: string; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  if (!input.user_id) return { success: false, error: 'user_id required' };
+  const tier = input.tier === 2 ? 2 : 1;
+  const days = Math.floor(Number(input.days) || 0);
+  if (days < 1) return { success: false, error: 'Days must be at least 1.' };
+
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await admin
+    .from('users')
+    .update({
+      comp_tier: tier,
+      comp_expires_at: expiresAt,
+      comp_source: 'admin',
+    } as unknown as never)
+    .eq('id', input.user_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin');
+  return { success: true, expires_at: expiresAt };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CLEAR FREE ACCESS (comp) — removes an admin/code comp grant from a user.
+// Their Stripe subscription (if any) is untouched.
+// ─────────────────────────────────────────────────────────────────────────
+export async function clearCompAction(input: {
+  user_id: string;
+}): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  if (!input.user_id) return { success: false, error: 'user_id required' };
+
+  const { error } = await admin
+    .from('users')
+    .update({
+      comp_tier: null,
+      comp_expires_at: null,
+      comp_source: null,
+    } as unknown as never)
+    .eq('id', input.user_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
 function generateRandomPassword(len: number): string {
