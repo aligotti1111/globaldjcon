@@ -44,9 +44,33 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [popPos, setPopPos] = useState<{ top: number; right: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Open the Stripe billing portal (manage plan, update card, download
+  // invoices). If the DJ has no paid subscription yet (comped or free — no
+  // Stripe customer), fall back to the plans page so the click is never a
+  // dead end.
+  async function openBilling() {
+    setOpen(false);
+    if (portalLoading) return;
+    setPortalLoading(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      router.push('/subscribe');
+    } catch {
+      router.push('/subscribe');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   // Close on outside click + Escape.
   useEffect(() => {
@@ -149,6 +173,16 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
           </Link>
+          <button
+            type="button"
+            className="hdr-dj-menu-item"
+            role="menuitem"
+            onClick={openBilling}
+            disabled={portalLoading}
+            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+          >
+            {portalLoading ? 'Opening…' : 'Manage Subscription'}
+          </button>
           <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Settings
           </Link>

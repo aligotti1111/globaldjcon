@@ -149,6 +149,29 @@ export default function MobileMenu() {
     setOpen(false);
   };
 
+  // Open the Stripe billing portal (manage plan, update card, download
+  // invoices). Falls back to the plans page when there's no Stripe customer
+  // yet (comped/free DJ), so the tap is never a dead end.
+  const [portalLoading, setPortalLoading] = useState(false);
+  const openBilling = async () => {
+    if (portalLoading) return;
+    setPortalLoading(true);
+    setOpen(false);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { url?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      window.location.href = '/subscribe';
+    } catch {
+      window.location.href = '/subscribe';
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
   const isDj = user?.role === 'dj';
   // Gates the booking-only DJ items (Upcoming Bookings, Add Booking Manually).
@@ -263,6 +286,17 @@ export default function MobileMenu() {
               <Link href="/notifications" onClick={close} className="mobile-menu-item">
                 <IconBell />Notifications
               </Link>
+            )}
+            {isDj && (
+              <button
+                type="button"
+                onClick={openBilling}
+                disabled={portalLoading}
+                className="mobile-menu-item"
+                style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+              >
+                <IconGear />{portalLoading ? 'Opening…' : 'Manage Subscription'}
+              </button>
             )}
 
             <div className="mobile-menu-section">
