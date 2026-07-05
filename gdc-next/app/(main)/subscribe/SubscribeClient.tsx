@@ -13,7 +13,7 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { AccessState, Tier } from '@/lib/access';
+import type { AccessState, AccessSource, Tier } from '@/lib/access';
 import styles from './subscribe.module.css';
 
 type Interval = 'monthly' | 'yearly';
@@ -23,6 +23,11 @@ interface Props {
   isLoggedIn: boolean;
   currentTier: Tier;
   currentState: AccessState;
+  // Where the current access comes from: 'stripe' = paid subscription,
+  // 'admin'/'code' = complimentary (comp), null = none.
+  source: AccessSource;
+  // End date of the current access (paid period end or comp expiry), ISO.
+  accessUntil: string | null;
 }
 
 const PLANS: {
@@ -54,11 +59,18 @@ function planName(tier: Tier): string {
   return tier === 2 ? 'Pro' : tier === 1 ? 'Booking' : 'Free';
 }
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
   const isSubscribed = currentTier >= 1;
+  // Complimentary (admin/code) access has no Stripe subscription, so we hide
+  // all the billing controls (manage/switch/cancel) and label it as comp.
+  const isComp = source === 'admin' || source === 'code';
+  const isPaid = source === 'stripe';
+  const accessUntilLabel = accessUntil
+    ? new Date(accessUntil).toLocaleDateString()
+    : null;
 
   const [interval, setBillingInterval] = useState<Interval>('monthly');
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
@@ -125,7 +137,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState }: Props) {
       {/* Subscribed banner */}
       {isSubscribed && (
         <div className={styles.currentBanner}>
-          You&apos;re on the <strong>{planName(currentTier)}</strong> plan.
+          You&apos;re on the <strong>{planName(currentTier)}</strong> plan
+          {isComp && <span className={styles.compTag}>{' '}complimentary</span>}.
+          {isComp && accessUntilLabel && (
+            <span className={styles.graceNote}>{' '}Access through {accessUntilLabel}.</span>
+          )}
           {currentState === 'grace' && (
             <span className={styles.graceNote}>
               {' '}Your last payment didn&apos;t go through — please update your card to keep your access.
@@ -194,7 +210,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState }: Props) {
                 </button>
               )}
 
-              {isSubscribed && isCurrent && (
+              {isSubscribed && isCurrent && isPaid && (
                 <button
                   type="button"
                   className={styles.manageCardBtn}
@@ -205,7 +221,14 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState }: Props) {
                 </button>
               )}
 
-              {isSubscribed && !isCurrent && (
+              {isSubscribed && isCurrent && isComp && (
+                <div className={styles.compNote}>
+                  Complimentary access
+                  {accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — no billing.
+                </div>
+              )}
+
+              {isSubscribed && !isCurrent && isPaid && (
                 <button
                   type="button"
                   className={styles.switchBtn}
@@ -220,8 +243,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState }: Props) {
         })}
       </div>
 
-      {/* Bottom manage link — only when subscribed. */}
-      {isSubscribed && (
+      {/* Bottom manage link — only for a PAID subscription (comps have no
+          Stripe billing to manage). */}
+      {isSubscribed && isPaid && (
         <div className={styles.manageRow}>
           <button
             type="button"

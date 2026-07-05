@@ -9,7 +9,7 @@
 // Logged-out visitors still see the plans (Subscribe bounces them to login).
 
 import { createClient } from '@/lib/supabase/server';
-import { getAccess, type AccessFields, type AccessState, type Tier } from '@/lib/access';
+import { getAccess, type AccessFields, type AccessState, type AccessSource, type Tier } from '@/lib/access';
 import SubscribeClient from './SubscribeClient';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +20,8 @@ export default async function SubscribePage() {
 
   let currentTier: Tier = 0;
   let currentState: AccessState = 'none';
+  let source: AccessSource = null;
+  let accessUntil: string | null = null;
 
   if (user) {
     const { data } = await supabase
@@ -27,11 +29,22 @@ export default async function SubscribePage() {
       .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
       .eq('id', user.id)
       .maybeSingle();
-    const fields = data as unknown as AccessFields | null;
+    const fields = data as unknown as (AccessFields & {
+      sub_period_end?: string | null;
+      comp_expires_at?: string | null;
+    }) | null;
     if (fields) {
       const access = getAccess(fields);
       currentTier = access.tier;
       currentState = access.state;
+      source = access.source;
+      // The relevant end date depends on where access comes from.
+      accessUntil =
+        access.source === 'stripe'
+          ? fields.sub_period_end ?? null
+          : access.source === 'admin' || access.source === 'code'
+          ? fields.comp_expires_at ?? null
+          : null;
     }
   }
 
@@ -40,6 +53,8 @@ export default async function SubscribePage() {
       isLoggedIn={!!user}
       currentTier={currentTier}
       currentState={currentState}
+      source={source}
+      accessUntil={accessUntil}
     />
   );
 }
