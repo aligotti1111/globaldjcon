@@ -534,26 +534,37 @@ export async function rejectClaimAction(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// GRANT FREE ACCESS (comp) — sets a tier + expiry (now + days) on a user.
-// This is the admin-issued complimentary access. It's read by the access
-// module alongside any Stripe subscription; effective access is the higher
-// of the two. Granting again replaces the previous grant (fresh days from
-// now), which is the simplest "extend / re-grant" behavior.
+// GRANT FREE ACCESS (comp) — sets a tier + an explicit expiry date on a user.
+// This is admin-issued complimentary access, read by the access module
+// alongside any Stripe subscription; effective access is the higher of the
+// two. Admin picks the exact expiration date (any future date). Granting
+// again replaces the previous grant.
 // ─────────────────────────────────────────────────────────────────────────
 export async function grantCompAction(input: {
   user_id: string;
   tier: number;
-  days: number;
+  expires_at: string; // ISO date/datetime the access should end
 }): Promise<{ success: boolean; expires_at?: string; error?: string }> {
   await requireAdmin();
   const admin = createAdminClient();
 
   if (!input.user_id) return { success: false, error: 'user_id required' };
   const tier = input.tier === 2 ? 2 : 1;
-  const days = Math.floor(Number(input.days) || 0);
-  if (days < 1) return { success: false, error: 'Days must be at least 1.' };
 
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  // Parse + validate the chosen date. Accept a YYYY-MM-DD (from a date input)
+  // or a full ISO string. Store end-of-day so "expires Aug 15" means access
+  // lasts through Aug 15.
+  if (!input.expires_at) return { success: false, error: 'Pick an expiration date.' };
+  let end: Date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input.expires_at)) {
+    end = new Date(`${input.expires_at}T23:59:59`);
+  } else {
+    end = new Date(input.expires_at);
+  }
+  if (isNaN(end.getTime())) return { success: false, error: 'Invalid date.' };
+  if (end.getTime() <= Date.now()) return { success: false, error: 'Pick a future date.' };
+
+  const expiresAt = end.toISOString();
 
   const { error } = await admin
     .from('users')

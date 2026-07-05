@@ -66,7 +66,7 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   const [compSourceNow, setCompSourceNow] = useState<string | null>(user?.comp_source ?? null);
   // Grant form inputs
   const [grantTier, setGrantTier] = useState<number>(1);
-  const [grantDays, setGrantDays] = useState<string>('30');
+  const [grantDate, setGrantDate] = useState<string>(''); // blank; admin picks a date
   const [compBusy, setCompBusy] = useState(false);
   const [compFeedback, setCompFeedback] = useState<{ msg: string; type: 'ok' | 'err' | '' }>({ msg: '', type: '' });
 
@@ -162,17 +162,33 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
     return `${d.toLocaleDateString()}${active ? '' : ' (expired)'}`;
   }
 
+  // Unified "access good until" — the single date that actually matters,
+  // taking the later of an active Stripe subscription and an active comp.
+  function accessUntilLabel(): string {
+    const now = Date.now();
+    const candidates: number[] = [];
+    if ((user?.sub_status === 'active' || user?.sub_status === 'grace') && user?.sub_period_end) {
+      const t = new Date(user.sub_period_end).getTime();
+      if (!isNaN(t) && t > now) candidates.push(t);
+    }
+    if (compTierNow && compExpiresNow) {
+      const t = new Date(compExpiresNow).getTime();
+      if (!isNaN(t) && t > now) candidates.push(t);
+    }
+    if (candidates.length === 0) return 'No active access';
+    return `Access good until ${new Date(Math.max(...candidates)).toLocaleDateString()}`;
+  }
+
   async function handleGrant() {
     if (!user) return;
     setCompFeedback({ msg: '', type: '' });
-    const days = parseInt(grantDays, 10);
-    if (!days || days < 1) {
-      setCompFeedback({ msg: 'Enter a number of days (1 or more).', type: 'err' });
+    if (!grantDate) {
+      setCompFeedback({ msg: 'Pick an expiration date.', type: 'err' });
       return;
     }
     setCompBusy(true);
     try {
-      const res = await grantCompAction({ user_id: user.id, tier: grantTier, days });
+      const res = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: grantDate });
       if (!res.success) {
         setCompFeedback({ msg: '✗ ' + (res.error || 'Grant failed'), type: 'err' });
         return;
@@ -428,6 +444,17 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         {/* Subscription + free access */}
         <div className={styles.formDivider} />
         <div className={styles.formSectionLabel}>Subscription</div>
+
+        {/* Headline: the single date that matters. */}
+        <div
+          className={styles.formGroup}
+          style={{ gridColumn: '1/-1', marginBottom: '.75rem' }}
+        >
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--white)' }}>
+            {accessUntilLabel()}
+          </div>
+        </div>
+
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Paid plan (Stripe)</label>
@@ -463,15 +490,14 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
             </select>
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Days</label>
+            <label className={styles.formLabel}>Expires on</label>
             <input
               className={styles.formInput}
-              type="number"
-              min={1}
-              value={grantDays}
-              onChange={(e) => setGrantDays(e.target.value)}
+              type="date"
+              value={grantDate}
+              onChange={(e) => setGrantDate(e.target.value)}
             />
-            <p className={styles.formHint}>Runs from now. Granting again replaces any current grant.</p>
+            <p className={styles.formHint}>Pick any future date. Granting replaces any current grant.</p>
           </div>
         </div>
         <div className={styles.flagsRow} style={{ gap: '.6rem', flexWrap: 'wrap' }}>
