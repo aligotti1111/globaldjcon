@@ -7,10 +7,14 @@
 // Checkout URL; we redirect the browser there. On return, Stripe's webhook
 // has written the tier onto the user (see app/api/stripe/webhook/route.ts).
 //
+// After checkout, Stripe returns the browser to /subscribe?sub=success (or
+// ?sub=cancelled), which drives the banner at the top.
+//
 // This is a first, functional version — copy approved in chat, styling meant
 // to be refined later.
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import styles from './subscribe.module.css';
 
 type Interval = 'monthly' | 'yearly';
@@ -41,7 +45,10 @@ const PLANS: {
   },
 ];
 
-export default function SubscribePage() {
+function SubscribeInner() {
+  const searchParams = useSearchParams();
+  const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
+
   const [interval, setBillingInterval] = useState<Interval>('monthly');
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +64,6 @@ export default function SubscribePage() {
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.status === 401) {
-        // Not signed in — send to login, then back here.
         window.location.href = '/login?redirect=/subscribe';
         return;
       }
@@ -73,6 +79,17 @@ export default function SubscribePage() {
 
   return (
     <div className={styles.wrap}>
+      {subResult === 'success' && (
+        <div className={styles.success}>
+          &#10003; You&apos;re subscribed! Your plan is now active.
+        </div>
+      )}
+      {subResult === 'cancelled' && (
+        <div className={styles.notice}>
+          Checkout was cancelled &mdash; you haven&apos;t been charged.
+        </div>
+      )}
+
       <div className={styles.header}>
         <h1 className={styles.title}>Choose your plan</h1>
 
@@ -119,12 +136,20 @@ export default function SubscribePage() {
                 onClick={() => subscribe(plan.tier)}
                 disabled={loadingTier !== null}
               >
-                {isLoading ? 'Redirecting…' : 'Subscribe'}
+                {isLoading ? 'Redirecting\u2026' : 'Subscribe'}
               </button>
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+export default function SubscribePage() {
+  return (
+    <Suspense fallback={null}>
+      <SubscribeInner />
+    </Suspense>
   );
 }
