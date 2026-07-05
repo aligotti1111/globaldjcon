@@ -1,0 +1,157 @@
+/* Subscribe page styling. Uses the app's CSS variables where available,
+   with fallbacks so it renders correctly even if a token is missing. */
+
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--white, #fff);
+  margin: 0 0 1.5rem;
+}
+
+/* ── Monthly / Yearly toggle ─────────────────────────────── */
+.toggle {
+  display: inline-flex;
+  background: var(--card, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.toggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--muted, rgba(255, 255, 255, 0.6));
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleActive {
+  background: var(--neon, #00e0a4);
+  color: #06231b;
+}
+
+.saveTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 224, 164, 0.15);
+  color: var(--neon, #00e0a4);
+  white-space: nowrap;
+}
+
+.toggleActive .saveTag {
+  background: rgba(6, 35, 27, 0.25);
+  color: #06231b;
+}
+
+/* ── Error banner ────────────────────────────────────────── */
+.error {
+  max-width: 480px;
+  margin: 0 auto 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(255, 95, 95, 0.1);
+  border: 1px solid rgba(255, 95, 95, 0.35);
+  color: #ff8a8a;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ── Plan cards ──────────────────────────────────────────── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--card, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardFeatured {
+  border-color: var(--neon, #00e0a4);
+  box-shadow: 0 0 0 1px var(--neon, #00e0a4);
+}
+
+.planName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white, #fff);
+  margin-bottom: 0.5rem;
+}
+
+.price {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--white, #fff);
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.period {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  margin-left: 0.25rem;
+}
+
+.blurb {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted, rgba(255, 255, 255, 0.7));
+  margin-bottom: 1.75rem;
+  flex: 1;
+}
+
+.subscribeBtn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--neon, #00e0a4);
+  color: #06231b;
+  transition: opacity 0.15s ease;
+}
+
+.subscribeBtn:hover {
+  opacity: 0.9;
+}
+
+.subscribeBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
