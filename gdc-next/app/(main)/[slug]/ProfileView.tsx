@@ -74,8 +74,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     bookingSettings &&
     (bookingSettings.equip_full || bookingSettings.equip_decks || bookingSettings.equip_none)
   );
-  const clubBookingLive = hasBookingAccess && !!(bookingSettings && bookingSettings.booking_enabled) && clubEquipPicked;
-  const mobileBookingLive = hasBookingAccess && !!(bookingSettings && bookingSettings.booking_enabled);
+  const clubBookingLive = hasBookingAccess && clubEquipPicked;
+  const mobileBookingLive = hasBookingAccess;
   const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
   const showClubAvailabilityTab = isClubDJ && bookingEnabled;
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
