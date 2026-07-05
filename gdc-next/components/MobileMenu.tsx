@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 import { useUpcomingBookingCount } from './useUpcomingBookingCount';
-import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
+import { canBook, type AccessFields } from '@/lib/access';
 
 // Shared stroke attributes for the inline icon set. Icons are sized and
 // colored via the .mm-icon CSS class (16px, neon by default).
@@ -152,7 +152,9 @@ export default function MobileMenu() {
   const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
   const isDj = user?.role === 'dj';
   // Gates the booking-only DJ items (Upcoming Bookings, Add Booking Manually).
-  const bookingEnabled = parseBookingSettings(user?.booking_settings)?.booking_enabled === true;
+  // Gated on booking access (subscription/comp) — replaces the removed
+  // booking_enabled toggle. Auth user carries sub/comp via select('*').
+  const bookingEnabled = user ? canBook(user as unknown as AccessFields) : false;
   // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
   // so the user can see at a glance how many events they have queued.
   const upcomingCount = useUpcomingBookingCount(

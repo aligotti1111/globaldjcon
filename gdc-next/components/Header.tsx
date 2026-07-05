@@ -15,7 +15,7 @@ import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
 import { createClient } from '@/lib/supabase/client';
-import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
+import { canBook, type AccessFields } from '@/lib/access';
 
 export default function Header() {
   const { user, loading } = useAuth();
@@ -48,7 +48,11 @@ export default function Header() {
   const isDj = user?.role === 'dj';
   // Whether this DJ has bookings activated — gates the booking-only items in
   // the dropdown (Upcoming Bookings, Add Booking Manually).
-  const bookingEnabled = parseBookingSettings(user?.booking_settings)?.booking_enabled === true;
+  // Booking nav items (Upcoming Bookings, Add Booking Manually) are gated on
+  // the DJ having booking access — an active subscription or comp. Replaces
+  // the old booking_enabled toggle check (the toggle was removed; availability
+  // is subscription-driven now). The auth user carries sub/comp via select('*').
+  const bookingEnabled = user ? canBook(user as unknown as AccessFields) : false;
   // Admin is identified by email (single-admin model — see admin-auth.ts).
   // We swap the entire right-side toolbar for admin so they don't see the
   // host/DJ-oriented Booking + Inbox + Settings buttons that don't apply
