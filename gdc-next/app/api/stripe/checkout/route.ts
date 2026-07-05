@@ -81,8 +81,8 @@ export async function POST(req: Request) {
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/account-settings?sub=success`,
-      cancel_url: `${origin}/account-settings?sub=cancelled`,
+      success_url: `${origin}/subscribe?sub=success`,
+      cancel_url: `${origin}/subscribe?sub=cancelled`,
       client_reference_id: user.id,
       subscription_data: {
         metadata: { user_id: user.id, tier: String(tier) },
