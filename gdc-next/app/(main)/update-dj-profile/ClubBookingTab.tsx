@@ -79,28 +79,12 @@ export default function ClubBookingTab({
   // Confirm modal — used to require explicit acknowledgement before
   // disabling booking. The Confirm hook returns the confirm() async fn
   // plus a JSX element to render once at the top of the component tree.
-  const { confirm, confirmDialog } = useConfirm();
+  const { confirmDialog } = useConfirm();
 
-  // ── Enable Booking toggle (autosave) ─────────────────────────────
-  const enabled = !!bookingSettings.booking_enabled;
-  async function setEnabled(v: boolean) {
-    // Turning OFF — require confirmation. Equipment, rates, calendar,
-    // and packages are NOT cleared — they stay in booking_settings so
-    // re-enabling restores everything to where it was.
-    if (!v && enabled) {
-      const ok = await confirm({
-        title: 'Disable booking?',
-        message:
-          'Visitors will no longer see a Book button on your profile, and your Availability tab will be hidden. Your equipment, rates, and calendar will be saved — re-enable any time to bring them back exactly as they are.',
-        confirmLabel: 'Disable Booking',
-        cancelLabel: 'Keep Enabled',
-        variant: 'danger',
-      });
-      if (!ok) return;
-    }
-    setLastChangedField('settings');
-    patch({ booking_enabled: v });
-  }
+  // ── Booking config (subscription-gated; no manual toggle) ────────
+  // Always render the config; whether booking goes live publicly is decided
+  // by the DJ's subscription + equipment completeness on the profile side.
+  const enabled = true;
 
   // ── Equipment section (autosave) ──────────────────────────────────
   const equipFull = !!bookingSettings.equip_full;
@@ -272,43 +256,12 @@ export default function ClubBookingTab({
   return (
     <div>
       {confirmDialog}
-      {/* Enable Booking toggle — same pattern as mobile BookingTab.
-          When OFF, none of the booking config sections render. When ON
-          but no equipment is selected, the public profile still won't
-          show the Book button — the activation banner below makes this
-          explicit to the DJ. */}
-      <div className={styles.bookingEnabledRow}>
-        <div>
-          <div className={styles.bookingEnabledLabel}>Enable Booking</div>
-          <div className={styles.bookingEnabledHint}>
-            Allow guests and venues to request bookings directly from your profile.
-          </div>
-        </div>
-        <label className={styles.toggleSwitch}>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-          />
-          <span className={styles.toggleTrack} />
-          <span className={styles.toggleThumb} />
-        </label>
-      </div>
-
-      {!enabled && (
-        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '.85rem', lineHeight: 1.6 }}>
-          <div style={{ color: 'var(--white)', fontSize: '.95rem', marginBottom: '.5rem' }}>
-            Booking is currently disabled
-          </div>
-          Enable it above to configure your equipment, rates, and availability calendar.
-        </div>
-      )}
 
       {enabled && (
         <>
-          {/* Activation-incomplete banner — shown whenever the toggle is
-              on but no equipment option is selected. Booking won't go
-              live publicly until the DJ picks one. */}
+          {/* Activation-incomplete banner — shown whenever no equipment
+              option is selected. Booking won't go live publicly until the
+              DJ picks one. */}
           {activationIncomplete && (
             <div
               style={{

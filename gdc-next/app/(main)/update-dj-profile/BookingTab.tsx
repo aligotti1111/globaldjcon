@@ -138,7 +138,10 @@ export default function BookingTab({
   onDirtyChange,
   externalMasterSaveTrigger = 0,
 }: Props) {
-  const enabled = !!bookingSettings.booking_enabled;
+  // Booking availability is subscription-gated (no manual toggle). The config
+  // always renders so the DJ can set it up; whether it goes LIVE publicly is
+  // decided by their subscription + completeness on the profile side.
+  const enabled = true;
   const window = bookingSettings.mob_booking_window || 24;
   const { confirm, confirmDialog } = useConfirm();
   const perDay = bookingSettings.mob_bookings_per_day || 1;
@@ -309,7 +312,6 @@ export default function BookingTab({
 
   // Wrap all setters: each call updates lastChangedField first so the
   // SavedHint component can show its status next to the right field.
-  function setEnabled(v: boolean) { setLastChangedField('settings'); patch({ booking_enabled: v }); }
   function setWindow(v: number) { setLastChangedField('settings'); patch({ mob_booking_window: v }); }
   // Changing the per-day limit: save the NUMBER immediately (synchronous,
   // never races), then debounce the calendar recompute so rapid keystrokes
@@ -395,33 +397,6 @@ export default function BookingTab({
   return (
     <div>
       {confirmDialog}
-      {/* Enable Booking toggle */}
-      <div className={styles.bookingEnabledRow}>
-        <div>
-          <div className={styles.bookingEnabledLabel}>Enable Booking</div>
-          <div className={styles.bookingEnabledHint}>
-            Allow guests and venues to request bookings directly from your profile.
-          </div>
-        </div>
-        <label className={styles.toggleSwitch}>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-          />
-          <span className={styles.toggleTrack} />
-          <span className={styles.toggleThumb} />
-        </label>
-      </div>
-
-      {!enabled && (
-        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '.85rem', lineHeight: 1.6 }}>
-          <div style={{ color: 'var(--white)', fontSize: '.95rem', marginBottom: '.5rem' }}>
-            Booking is currently disabled
-          </div>
-          Enable it above to configure booking settings, packages, and your availability calendar.
-        </div>
-      )}
 
       {enabled && (
         <>
