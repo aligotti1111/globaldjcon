@@ -43,7 +43,7 @@ export default function AdminClient({
   initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>('create');
+  const [activeTab, setActiveTab] = useState<TabKey>('djs');
 
   // User lists, mutable so we can update after create/edit/delete
   const [djs, setDjs] = useState<AdminUserRow[]>(initialDjs);
@@ -152,21 +152,33 @@ export default function AdminClient({
 
         {/* Tabs */}
         <div className={styles.adminTabs}>
+          <span
+            style={{
+              fontSize: '.7rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              color: 'var(--muted)',
+              alignSelf: 'center',
+              marginRight: '.35rem',
+            }}
+          >
+            Accounts
+          </span>
+          <TabBtn active={activeTab === 'djs'} onClick={() => setActiveTab('djs')}>
+            🎧 DJs
+          </TabBtn>
+          <TabBtn active={activeTab === 'hosts'} onClick={() => setActiveTab('hosts')}>
+            🎉 Hosts
+          </TabBtn>
+          <TabBtn active={activeTab === 'venues'} onClick={() => setActiveTab('venues')}>
+            🏛 Venues
+          </TabBtn>
           <TabBtn active={activeTab === 'create'} onClick={() => setActiveTab('create')}>
             ➕ Create Account
           </TabBtn>
           <TabBtn active={activeTab === 'claims'} onClick={() => setActiveTab('claims')}>
             📋 Pending Claims
             {stats.claims > 0 && <span className={styles.pill}>{stats.claims}</span>}
-          </TabBtn>
-          <TabBtn active={activeTab === 'djs'} onClick={() => setActiveTab('djs')}>
-            🎧 Manage DJs
-          </TabBtn>
-          <TabBtn active={activeTab === 'hosts'} onClick={() => setActiveTab('hosts')}>
-            🎉 Manage Hosts
-          </TabBtn>
-          <TabBtn active={activeTab === 'venues'} onClick={() => setActiveTab('venues')}>
-            🏛 Manage Venues
           </TabBtn>
         </div>
 
