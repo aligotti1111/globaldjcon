@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   // 2. Parse + validate the plan choice.
-  let body: { tier?: unknown; interval?: unknown };
+  let body: { tier?: unknown; interval?: unknown; embedded?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   }
   const tier = Number(body.tier);
   const interval = String(body.interval);
+  const embedded = body.embedded === true;
   const priceId = priceIdFor(tier, interval);
   if (!priceId) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
@@ -77,6 +78,26 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_SITE_URL ||
       'https://globaldjconnect.com';
 
+    // Embedded mode — Stripe renders the payment form inside our own page.
+    // Returns a client_secret the front-end mounts; on completion Stripe
+    // redirects to return_url (our on-site completion page).
+    if (embedded) {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        ui_mode: 'embedded',
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        return_url: `${origin}/subscribe/complete?session_id={CHECKOUT_SESSION_ID}`,
+        client_reference_id: user.id,
+        subscription_data: {
+          metadata: { user_id: user.id, tier: String(tier) },
+        },
+        allow_promotion_codes: true,
+      });
+      return NextResponse.json({ clientSecret: session.client_secret });
+    }
+
+    // Hosted mode (fallback) — redirect the browser to Stripe's page.
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
