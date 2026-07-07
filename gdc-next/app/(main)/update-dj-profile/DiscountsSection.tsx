@@ -217,16 +217,20 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '.25rem 0 .75rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
             <label style={labelStyle}>Percent off</label>
-            <input
-              type="number" min={0} max={100} className={styles.settingNumber}
+            <select
+              className={styles.settingSelect}
               style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-              value={sale.percent ? sale.percent : ''}
-              placeholder="0"
+              value={sale.percent || ''}
               onChange={(e) => {
                 const v = e.target.value === '' ? 0 : Number(e.target.value);
                 updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
               }}
-            />
+            >
+              <option value="">%</option>
+              {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>{n}%</option>
+              ))}
+            </select>
           </div>
           <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
             <label style={labelStyle}>Ends on (optional)</label>
