@@ -103,6 +103,115 @@ export interface BookingSettings {
   // single date (1–3, default 1). A specific date can override this via
   // the per-day calendar editor (DayData.day_capacity).
   club_bookings_per_day?: number;
+
+  // ── Discounts (both DJ types) ────────────────────────────────
+  // Promo codes: DJ-created, entered by the client at booking. Sale: a
+  // DJ-wide automatic % off applied to every quote while active. They do
+  // NOT stack — the better of an applicable code and an active sale wins
+  // (see computeDiscount). Both live here in booking_settings.
+  promo_codes?: PromoCode[];
+  sale?: Sale;
+}
+
+// A DJ-created promo code. Codes are matched case-insensitively.
+export interface PromoCode {
+  code: string;                 // e.g. "SPRING10" (stored/compared uppercased)
+  type: 'percent' | 'flat';     // % off or flat amount off
+  value: number;                // 10 (percent) or 100 (flat, in the DJ's currency)
+  active?: boolean;             // on/off toggle (default true)
+  expires?: string | null;      // ISO date (YYYY-MM-DD); null = no expiry
+  maxUses?: number | null;      // usage cap; null = unlimited
+  uses?: number;                // times redeemed so far
+}
+
+// A DJ-wide automatic sale — applies to every auto-quote while active.
+export interface Sale {
+  active?: boolean;
+  percent?: number;             // % off (1–100)
+  ends?: string | null;         // ISO date; null = no end date
+}
+
+// Result of resolving the best discount for a quote.
+export interface DiscountResult {
+  amount: number;               // dollars off (already rounded)
+  kind: 'sale' | 'code' | null; // which one applied
+  label: string;                // e.g. "15% OFF" / "SPRING10 (10% off)"
+}
+
+// Is a promo code currently usable? (active, not expired, uses remaining)
+export function isPromoUsable(p: PromoCode, now: Date = new Date()): boolean {
+  if (!p || p.active === false) return false;
+  if (p.expires) {
+    const end = new Date(`${p.expires}T23:59:59`);
+    if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
+  }
+  if (p.maxUses != null && (p.uses || 0) >= p.maxUses) return false;
+  return true;
+}
+
+// Is a sale currently active?
+export function isSaleActive(s: Sale | null | undefined, now: Date = new Date()): boolean {
+  if (!s || !s.active) return false;
+  if (!s.percent || s.percent <= 0) return false;
+  if (s.ends) {
+    const end = new Date(`${s.ends}T23:59:59`);
+    if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
+  }
+  return true;
+}
+
+// Resolve the best discount for a subtotal. No stacking: the larger of the
+// (optionally supplied) valid promo code and an active sale wins. Returns a
+// zero/null result when nothing applies. `enteredCode` is what the client
+// typed (may be empty). Discount never exceeds the subtotal.
+export function computeDiscount(
+  subtotal: number,
+  settings: Pick<BookingSettings, 'promo_codes' | 'sale'> | null | undefined,
+  enteredCode?: string | null,
+  now: Date = new Date()
+): DiscountResult {
+  const none: DiscountResult = { amount: 0, kind: null, label: '' };
+  if (!settings || !Number.isFinite(subtotal) || subtotal <= 0) return none;
+
+  const candidates: DiscountResult[] = [];
+
+  // Sale
+  if (isSaleActive(settings.sale, now)) {
+    const pct = Math.min(100, Math.max(0, settings.sale!.percent || 0));
+    candidates.push({
+      amount: (subtotal * pct) / 100,
+      kind: 'sale',
+      label: `${pct}% OFF`,
+    });
+  }
+
+  // Promo code (only if the client entered one that matches + is usable)
+  const typed = (enteredCode || '').trim().toUpperCase();
+  if (typed && Array.isArray(settings.promo_codes)) {
+    const match = settings.promo_codes.find(
+      (p) => (p.code || '').trim().toUpperCase() === typed && isPromoUsable(p, now)
+    );
+    if (match) {
+      const amount =
+        match.type === 'percent'
+          ? (subtotal * Math.min(100, Math.max(0, match.value))) / 100
+          : Math.max(0, match.value);
+      candidates.push({
+        amount,
+        kind: 'code',
+        label:
+          match.type === 'percent'
+            ? `${match.code.toUpperCase()} (${match.value}% off)`
+            : `${match.code.toUpperCase()} ($${match.value} off)`,
+      });
+    }
+  }
+
+  if (candidates.length === 0) return none;
+  // Better one wins.
+  const best = candidates.reduce((a, b) => (b.amount > a.amount ? b : a));
+  best.amount = Math.min(subtotal, Math.round(best.amount));
+  return best;
 }
 
 // Mobile DJ package — used by the booking form (Session B) but declared
