@@ -33,6 +33,7 @@ import {
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import EmbedCodeSection from './EmbedCodeSection';
+import DiscountsSection from './DiscountsSection';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Package validation
@@ -543,6 +544,13 @@ export default function BookingTab({
                   save via externalMasterSaveTrigger. */}
             </div>
           </div>
+
+          {/* ── Discounts & Promo Codes ─────────────────────────── */}
+          <DiscountsSection
+            promoCodes={bookingSettings.promo_codes || []}
+            sale={bookingSettings.sale || {}}
+            onChange={(p) => patch(p)}
+          />
 
           {/* ── Embed Code ──────────────────────────────────────── */}
           <EmbedCodeSection slug={djSlug} />
