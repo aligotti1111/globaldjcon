@@ -200,39 +200,52 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
-            <span
-              style={{
-                fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                padding: '2px 8px', borderRadius: 999,
-                color: sale.active ? '#06231b' : 'var(--muted,#8a8aa0)',
-                background: sale.active ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
-              }}
-            >
-              {sale.active ? 'Active' : 'Inactive'}
-            </span>
-            <button
-              type="button"
-              onClick={() => updateSale({ active: !sale.active })}
-              disabled={!sale.active && !((sale.percent ?? 0) > 0)}
-              style={{
-                ...(sale.active ? btnOutline : btnPrimary),
-                ...(!sale.active && !((sale.percent ?? 0) > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
-              }}
-            >
-              {sale.active ? 'Deactivate' : 'Activate'}
-            </button>
+            {(() => {
+              const pct = sale.percent ?? 0;
+              const saleOn = !!sale.active && pct > 0;
+              return (
+                <>
+                  <span
+                    style={{
+                      fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                      padding: '2px 8px', borderRadius: 999,
+                      color: saleOn ? '#06231b' : 'var(--muted,#8a8aa0)',
+                      background: saleOn ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
+                    }}
+                  >
+                    {saleOn ? 'Active' : 'Inactive'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateSale({ active: !saleOn })}
+                    disabled={!saleOn && !(pct > 0)}
+                    style={{
+                      ...(saleOn ? btnOutline : btnPrimary),
+                      ...(!saleOn && !(pct > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+                    }}
+                  >
+                    {saleOn ? 'Deactivate' : 'Activate'}
+                  </button>
+                </>
+              );
+            })()}
           </div>
         </div>
 
         {/* Percent + end date — always shown so the DJ sets the amount before
-            activating. Activate stays disabled until percent > 0. */}
+            activating. Activate stays disabled until percent > 0. Setting
+            percent back to 0 turns the sale off (0% = no sale). */}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0 0 1rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
             <label style={labelStyle}>Percent off</label>
             <input
               type="number" min={0} max={100} className={styles.settingNumber}
               style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-              value={sale.percent ?? 0} onChange={(e) => updateSale({ percent: Number(e.target.value) })}
+              value={sale.percent ?? 0}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
+              }}
             />
           </div>
           <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
