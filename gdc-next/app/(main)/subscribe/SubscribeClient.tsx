@@ -12,6 +12,7 @@
 // Copy approved in chat; styling to be refined later.
 
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { AccessState, AccessSource, Tier } from '@/lib/access';
 import styles from './subscribe.module.css';
@@ -180,7 +181,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.cards}>
-        {PLANS.map((plan) => {
+        {(isSubscribed ? PLANS.filter((p) => p.tier === currentTier) : PLANS).map((plan) => {
           const price = interval === 'monthly' ? plan.monthly : plan.yearly;
           const period = interval === 'monthly' ? '/mo' : '/yr';
           const isCurrent = isSubscribed && currentTier === plan.tier;
@@ -227,21 +228,19 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   {accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — no billing.
                 </div>
               )}
-
-              {isSubscribed && !isCurrent && isPaid && (
-                <button
-                  type="button"
-                  className={styles.switchBtn}
-                  onClick={openPortal}
-                  disabled={portalLoading}
-                >
-                  {portalLoading ? 'Opening\u2026' : `Switch to ${plan.name}`}
-                </button>
-              )}
             </div>
           );
         })}
       </div>
+
+      {/* Subscribed → send them to set up / activate booking. */}
+      {isSubscribed && (
+        <div className={styles.manageRow}>
+          <Link href="/booking-settings" className={styles.subscribeBtn} style={{ textDecoration: 'none', display: 'inline-block' }}>
+            Go to Booking Settings
+          </Link>
+        </div>
+      )}
 
       {/* Bottom manage link — only for a PAID subscription (comps have no
           Stripe billing to manage). */}
