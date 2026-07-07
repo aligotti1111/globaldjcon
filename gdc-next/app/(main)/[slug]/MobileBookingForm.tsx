@@ -236,6 +236,7 @@ export default function MobileBookingForm({
   // sale and the applied promo code wins (no stacking). Deposit is taken from
   // the DISCOUNTED total.
   const saleOn = isSaleActive(bookingSettings.sale);
+  const hasActiveCode = (bookingSettings.promo_codes || []).some((p) => isPromoUsable(p));
   const basePrice = priceResult?.price ?? null;
   const discount: DiscountResult = useMemo(() => {
     if (basePrice == null) return { amount: 0, kind: null, label: '' };
@@ -1156,8 +1157,8 @@ export default function MobileBookingForm({
               </div>
             )}
 
-            {!priceResult.isQuote && priceResult.price != null && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!priceResult.isQuote && priceResult.price != null && hasActiveCode && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   value={promoInput}
