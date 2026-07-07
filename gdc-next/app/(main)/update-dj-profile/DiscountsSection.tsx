@@ -213,34 +213,37 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             <button
               type="button"
               onClick={() => updateSale({ active: !sale.active })}
-              style={sale.active ? btnOutline : btnPrimary}
+              disabled={!sale.active && !((sale.percent ?? 0) > 0)}
+              style={{
+                ...(sale.active ? btnOutline : btnPrimary),
+                ...(!sale.active && !((sale.percent ?? 0) > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+              }}
             >
               {sale.active ? 'Deactivate' : 'Activate'}
             </button>
           </div>
         </div>
 
-        {sale.active && (
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0 0 1rem' }}>
-            <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
-              <label style={labelStyle}>Percent off</label>
-              <input
-                type="number" min={1} max={100} className={styles.settingNumber}
-                style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-                value={sale.percent ?? ''} onChange={(e) => updateSale({ percent: Number(e.target.value) })}
-                placeholder="15"
-              />
-            </div>
-            <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
-              <label style={labelStyle}>Ends on (optional)</label>
-              <input
-                type="date" className={styles.settingNumber}
-                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }} onClick={openPicker}
-                value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
-              />
-            </div>
+        {/* Percent + end date — always shown so the DJ sets the amount before
+            activating. Activate stays disabled until percent > 0. */}
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0 0 1rem' }}>
+          <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
+            <label style={labelStyle}>Percent off</label>
+            <input
+              type="number" min={0} max={100} className={styles.settingNumber}
+              style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+              value={sale.percent ?? 0} onChange={(e) => updateSale({ percent: Number(e.target.value) })}
+            />
           </div>
-        )}
+          <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
+            <label style={labelStyle}>Ends on (optional)</label>
+            <input
+              type="date" className={styles.settingNumber}
+              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }} onClick={openPicker}
+              value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
+            />
+          </div>
+        </div>
 
         {/* ── Promo codes ────────────────────────────────────────── */}
         <div className={styles.settingRow} style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem' }}>
