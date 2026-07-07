@@ -523,6 +523,9 @@ export default function MobileBookingForm({
             // bookings). The email route reads quotedRate to show the
             // rate box instead of the "respond with a quote" prompt.
             quotedRate: insertPayload.quoted_rate,
+            originalRate: insertPayload.original_rate,
+            discountLabel: insertPayload.discount_label,
+            discountAmount: insertPayload.discount_amount,
           }),
         });
       } catch (e) {
@@ -559,6 +562,9 @@ export default function MobileBookingForm({
             cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             quotedRate: insertPayload.quoted_rate,
+            originalRate: insertPayload.original_rate,
+            discountLabel: insertPayload.discount_label,
+            discountAmount: insertPayload.discount_amount,
           }),
         });
       } catch {
