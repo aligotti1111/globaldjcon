@@ -14,6 +14,12 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { loadStripe } from '@stripe/stripe-js';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
+import { STRIPE_PUBLISHABLE_KEY } from '@/lib/stripe/config';
+
+// Stripe.js loaded once, module-level (recommended).
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 import type { AccessState, AccessSource, Tier } from '@/lib/access';
 import styles from './subscribe.module.css';
 
@@ -75,6 +81,8 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
 
   const [interval, setBillingInterval] = useState<Interval>('monthly');
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
+  // When set, the embedded Stripe Checkout renders in an on-site modal.
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,19 +93,20 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, interval }),
+        body: JSON.stringify({ tier, interval, embedded: true }),
       });
-      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { clientSecret?: string; error?: string };
       if (res.status === 401) {
         window.location.href = '/login?redirect=/subscribe';
         return;
       }
-      if (!res.ok || !data.url) {
+      if (!res.ok || !data.clientSecret) {
         throw new Error(data.error || 'Could not start checkout. Please try again.');
       }
-      window.location.href = data.url;
+      setClientSecret(data.clientSecret);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
       setLoadingTier(null);
     }
   }
@@ -124,6 +133,36 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
 
   return (
     <div className={styles.wrap}>
+      {/* Embedded Stripe Checkout — renders on-site in a modal overlay. */}
+      {clientSecret && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            overflowY: 'auto', padding: '2rem 1rem',
+          }}
+        >
+          <div style={{ width: '100%', maxWidth: 560, background: '#fff', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setClientSecret(null)}
+              aria-label="Close"
+              style={{
+                position: 'absolute', top: 10, right: 12, zIndex: 2,
+                background: 'rgba(0,0,0,.06)', border: 'none', borderRadius: 999,
+                width: 30, height: 30, fontSize: 18, cursor: 'pointer', color: '#333',
+              }}
+            >
+              ×
+            </button>
+            <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          </div>
+        </div>
+      )}
+
       {subResult === 'success' && (
         <div className={styles.success}>
           &#10003; You&apos;re subscribed! Your plan is now active.
