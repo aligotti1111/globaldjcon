@@ -37,6 +37,24 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
     onChange({ promo_codes: promoCodes.filter((_, idx) => idx !== i) });
   }
 
+  // A code has "ended" — and moves to history — when it's toggled off,
+  // past its expiry, or has hit its max uses. Codes with a blank code text
+  // (never filled in) are treated as still-active drafts, not history.
+  function hasEnded(c: PromoCode): boolean {
+    if (!c.code || !c.code.trim()) return false;
+    if (c.active === false) return true;
+    if (c.expires) {
+      const end = new Date(`${c.expires}T23:59:59`);
+      if (!isNaN(end.getTime()) && end.getTime() < Date.now()) return true;
+    }
+    if (c.maxUses != null && (c.uses || 0) >= c.maxUses) return true;
+    return false;
+  }
+  // Preserve original indices so edit/remove target the right array item.
+  const indexed = promoCodes.map((c, i) => ({ c, i }));
+  const activeCodes = indexed.filter(({ c }) => !hasEnded(c));
+  const pastCodes = indexed.filter(({ c }) => hasEnded(c));
+
   const labelStyle: React.CSSProperties = {
     fontSize: '.7rem',
     textTransform: 'uppercase',
@@ -46,6 +64,12 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
     display: 'block',
   };
   const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: 0 };
+  // Native date inputs on dark: widen so the calendar button doesn't overlap
+  // the mm/dd/yyyy text, and lighten the picker icon so it's visible.
+  const dateInputStyle: React.CSSProperties = {
+    minWidth: 170,
+    colorScheme: 'dark',
+  };
 
   return (
     <div className={styles.sectionCard}>
@@ -89,11 +113,12 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 placeholder="15"
               />
             </div>
-            <div style={{ ...fieldWrap, maxWidth: 200 }}>
+            <div style={{ ...fieldWrap, maxWidth: 220 }}>
               <label style={labelStyle}>Ends on (optional)</label>
               <input
                 type="date"
                 className={styles.settingNumber}
+                style={dateInputStyle}
                 value={sale.ends || ''}
                 onChange={(e) => updateSale({ ends: e.target.value || null })}
               />
@@ -112,13 +137,13 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           </div>
         </div>
 
-        {promoCodes.length === 0 && (
+        {activeCodes.length === 0 && (
           <div style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem', padding: '0 0 .75rem' }}>
-            No promo codes yet.
+            No active promo codes.
           </div>
         )}
 
-        {promoCodes.map((c, i) => (
+        {activeCodes.map(({ c, i }) => (
           <div
             key={i}
             style={{
@@ -164,11 +189,12 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 onChange={(e) => updateCode(i, { value: Number(e.target.value) })}
               />
             </div>
-            <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+            <div style={{ ...fieldWrap, flex: '0 0 180px' }}>
               <label style={labelStyle}>Expires (optional)</label>
               <input
                 type="date"
                 className={styles.settingNumber}
+                style={dateInputStyle}
                 value={c.expires || ''}
                 onChange={(e) => updateCode(i, { expires: e.target.value || null })}
               />
@@ -232,6 +258,90 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
         >
           + Add promo code
         </button>
+
+        {/* ── Past promo codes (history) ─────────────────────────── */}
+        {pastCodes.length > 0 && (
+          <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem' }}>
+            <div className={styles.settingLabel} style={{ marginBottom: '.25rem' }}>Past promo codes</div>
+            <div className={styles.settingHint} style={{ marginBottom: '.75rem' }}>
+              Codes that have ended (expired, hit their max uses, or turned off). Kept so you can
+              see what you ran and how it performed.
+            </div>
+            {pastCodes.map(({ c, i }) => {
+              const valLabel = c.type === 'percent' ? `${c.value}% off` : `${currencySymbol}${c.value} off`;
+              const reason =
+                c.active === false
+                  ? 'turned off'
+                  : c.maxUses != null && (c.uses || 0) >= c.maxUses
+                  ? 'max uses reached'
+                  : 'expired';
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '.5rem 1rem',
+                    padding: '.6rem .85rem',
+                    marginBottom: '.5rem',
+                    border: '1px solid var(--border, rgba(255,255,255,.08))',
+                    borderRadius: 8,
+                    opacity: 0.75,
+                  }}
+                >
+                  <span style={{ fontWeight: 700, letterSpacing: '.03em' }}>{(c.code || '').toUpperCase()}</span>
+                  <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>{valLabel}</span>
+                  <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>
+                    {c.uses || 0} use{(c.uses || 0) === 1 ? '' : 's'}
+                  </span>
+                  {c.expires && (
+                    <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>
+                      ended {new Date(`${c.expires}T00:00:00`).toLocaleDateString()}
+                    </span>
+                  )}
+                  <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    {reason}
+                  </span>
+                  <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+                    {c.active === false && (
+                      <button
+                        type="button"
+                        onClick={() => updateCode(i, { active: true })}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border, rgba(255,255,255,.25))',
+                          color: 'var(--white, #fff)',
+                          borderRadius: 6,
+                          padding: '.35rem .6rem',
+                          fontSize: '.72rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Reactivate
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeCode(i)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255,80,80,.3)',
+                        color: '#ff6b6b',
+                        borderRadius: 6,
+                        padding: '.35rem .6rem',
+                        fontSize: '.72rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
