@@ -824,6 +824,19 @@ function BookingDetails({
     </span>
   ) : money(agreedTotal);
 
+  // Discount note — shown under the agreed rate when the booking used a
+  // sale/promo code (original price + which discount + amount saved).
+  const bkDiscountAmt = booking.discount_amount != null ? Number(booking.discount_amount) : 0;
+  const agreedRateWithDiscount = bkDiscountAmt > 0 ? (
+    <span>
+      {agreedRateValue}
+      <span style={{ display: 'block', color: 'var(--neon)', fontSize: '.8rem', marginTop: 2 }}>
+        {booking.discount_label || 'Discount'} — saved {money(bkDiscountAmt)}
+        {booking.original_rate != null ? ` (was ${money(booking.original_rate)})` : ''}
+      </span>
+    </span>
+  ) : agreedRateValue;
+
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
     // Row 1: Event Date + Venue Name (Event Type for mobile)
@@ -906,7 +919,7 @@ function BookingDetails({
     // details area below.) Mobile always shows an overtime cell with a
     // placeholder when the DJ set none; club hides it when unset.
     [
-      { label: 'Agreed Rate', value: agreedRateValue },
+      { label: 'Agreed Rate', value: agreedRateWithDiscount },
       {
         label: 'Overtime Rate',
         value: booking.overtime_rate != null
@@ -1452,7 +1465,7 @@ function AddManualBookingModal({
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
