@@ -61,7 +61,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
       const res = await fetch('/api/stripe/portal', { method: 'POST' });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank', 'noopener');
         return;
       }
       router.push('/subscribe');
