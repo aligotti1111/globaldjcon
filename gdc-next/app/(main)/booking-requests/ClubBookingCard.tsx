@@ -307,6 +307,16 @@ export default function ClubBookingCard(props: Props) {
                 <div className={styles.bigPrice}>
                   {sym}{Number(b.quoted_rate).toLocaleString()} <span className={styles.priceSub}>{cur}</span>
                 </div>
+                {b.discount_amount != null && b.discount_amount > 0 && (
+                  <div className={styles.priceSub}>
+                    <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
+                      {sym}{Number(b.original_rate ?? Number(b.quoted_rate) + b.discount_amount).toLocaleString()}
+                    </span>{' '}
+                    <span style={{ color: 'var(--neon)' }}>
+                      {b.discount_label || 'Discount'} (−{sym}{Number(b.discount_amount).toLocaleString()})
+                    </span>
+                  </div>
+                )}
               </div>
               {durationLabel && (
                 <div className={styles.priceCol}>
