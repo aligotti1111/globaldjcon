@@ -71,13 +71,14 @@ function CodeFields({
           value={value.code}
           onChange={(e) => onField({ code: e.target.value.toUpperCase() })}
           placeholder="SPRING10"
-          style={{ textTransform: 'uppercase' }}
+          style={{ textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
         <label style={labelStyle}>Type</label>
         <select
           className={styles.settingSelect}
+          style={{ color: 'var(--white,#fff)' }}
           value={value.type}
           onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
         >
@@ -91,7 +92,7 @@ function CodeFields({
           type="number"
           min={1}
           className={styles.settingNumber}
-          style={{ width: '100%', boxSizing: 'border-box' }}
+          style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
           value={value.value ?? ''}
           onChange={(e) => onField({ value: Number(e.target.value) })}
         />
@@ -101,7 +102,7 @@ function CodeFields({
         <input
           type="date"
           className={styles.settingNumber}
-          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }}
+          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
@@ -113,6 +114,7 @@ function CodeFields({
           type="number"
           min={1}
           className={styles.settingNumber}
+          style={{ color: 'var(--white,#fff)' }}
           value={value.maxUses ?? ''}
           onChange={(e) => onField({ maxUses: e.target.value ? Number(e.target.value) : null })}
           placeholder="∞"
@@ -197,13 +199,25 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               bigger discount wins.
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => updateSale({ active: !sale.active })}
-            style={sale.active ? btnOutline : btnPrimary}
-          >
-            {sale.active ? 'Deactivate' : 'Activate'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
+            <span
+              style={{
+                fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                padding: '2px 8px', borderRadius: 999,
+                color: sale.active ? '#06231b' : 'var(--muted,#8a8aa0)',
+                background: sale.active ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
+              }}
+            >
+              {sale.active ? 'Active' : 'Inactive'}
+            </span>
+            <button
+              type="button"
+              onClick={() => updateSale({ active: !sale.active })}
+              style={sale.active ? btnOutline : btnPrimary}
+            >
+              {sale.active ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
         </div>
 
         {sale.active && (
@@ -212,7 +226,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               <label style={labelStyle}>Percent off</label>
               <input
                 type="number" min={1} max={100} className={styles.settingNumber}
-                style={{ width: '100%', boxSizing: 'border-box' }}
+                style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
                 value={sale.percent ?? ''} onChange={(e) => updateSale({ percent: Number(e.target.value) })}
                 placeholder="15"
               />
@@ -221,7 +235,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               <label style={labelStyle}>Ends on (optional)</label>
               <input
                 type="date" className={styles.settingNumber}
-                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }} onClick={openPicker}
+                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }} onClick={openPicker}
                 value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
               />
             </div>
