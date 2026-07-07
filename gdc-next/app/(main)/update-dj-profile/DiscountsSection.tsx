@@ -234,8 +234,8 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           </div>
         </div>
 
-        {/* Status pill + Activate/Deactivate — at the bottom of the sale box. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', padding: '0 0 1rem' }}>
+        {/* Status pill + Activate/Deactivate — bottom of the sale box, right side. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.7rem', padding: '0 0 1rem' }}>
           {(() => {
             const pct = sale.percent ?? 0;
             const saleOn = !!sale.active && pct > 0;
