@@ -24,6 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import ClubOwnerCalendar from './ClubOwnerCalendar';
 import EmbedCodeSection from './EmbedCodeSection';
+import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 
 // Currency options matching vanilla's <select> dropdown
@@ -596,6 +597,13 @@ export default function ClubBookingTab({
           />
         </div>
       </div>
+
+      {/* ── Discounts & Promo Codes ─────────────────────────── */}
+      <DiscountsSection
+        promoCodes={bookingSettings.promo_codes || []}
+        sale={bookingSettings.sale || {}}
+        onChange={(p) => patch(p)}
+      />
 
       {/* ── Embed Code ──────────────────────────────────────── */}
       <EmbedCodeSection slug={djSlug} />
