@@ -301,6 +301,7 @@ function mobileBookingRequestBox(opts: {
   packageDetails?: string;
   rateLabel?: string;
   rateValue?: string;
+  rateBreakdown?: string;
   isWedding?: boolean;
   cocktailNeeded?: boolean | null;
   cocktailStart?: string | null;
@@ -380,7 +381,7 @@ function mobileBookingRequestBox(opts: {
   }
 
   if (opts.rateLabel && opts.rateValue) {
-    rows.push(row(opts.rateLabel, escHtml(opts.rateValue)));
+    rows.push(row(opts.rateLabel, escHtml(opts.rateValue) + (opts.rateBreakdown ? ` <span style="color:#0a6f61;">(${escHtml(opts.rateBreakdown)})</span>` : '')));
   }
 
   if (rows.length > 0) {
