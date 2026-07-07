@@ -30,9 +30,10 @@ interface InitialProfile {
 
 interface Props {
   initialProfile: InitialProfile;
+  hasBookingAccess: boolean;
 }
 
-export default function BookingSettingsClient({ initialProfile }: Props) {
+export default function BookingSettingsClient({ initialProfile, hasBookingAccess }: Props) {
   const router = useRouter();
   const djType = initialProfile.dj_type;
   const djSlug = initialProfile.slug || '';
@@ -136,6 +137,43 @@ export default function BookingSettingsClient({ initialProfile }: Props) {
         <h1>Booking Settings</h1>
         <p>Manage Your Bookings</p>
       </div>
+
+      {!hasBookingAccess && (
+        <div
+          style={{
+            margin: '0 0 1.25rem',
+            padding: '1rem 1.25rem',
+            borderRadius: 12,
+            border: '1px solid rgba(255,176,32,.4)',
+            background: 'rgba(255,176,32,.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ color: '#ffb020', fontSize: '.9rem', lineHeight: 1.5 }}>
+            <strong>Booking isn&apos;t active on your account.</strong> You can set everything up
+            here, but visitors won&apos;t be able to book you until you subscribe.
+          </div>
+          <Link
+            href="/subscribe"
+            style={{
+              background: 'var(--neon, #00e0a4)',
+              color: '#06231b',
+              padding: '.6rem 1.1rem',
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: '.85rem',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Subscribe to activate →
+          </Link>
+        </div>
+      )}
 
       <div className={styles.card}>
         {djType === 'club' ? (

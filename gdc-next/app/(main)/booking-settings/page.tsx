@@ -12,6 +12,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { canBook, type AccessFields } from '@/lib/access';
 import BookingSettingsClient from './BookingSettingsClient';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,11 @@ interface ProfileRow {
   slug: string | null;
   booking_settings: string | null;
   event_types: string | null;
+  sub_tier: number | null;
+  sub_status: string | null;
+  sub_period_end: string | null;
+  comp_tier: number | null;
+  comp_expires_at: string | null;
 }
 
 export default async function BookingSettingsPage() {
@@ -32,7 +38,7 @@ export default async function BookingSettingsPage() {
 
   const { data: row } = await supabase
     .from('users')
-    .select('id, role, dj_type, slug, booking_settings, event_types')
+    .select('id, role, dj_type, slug, booking_settings, event_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -41,8 +47,13 @@ export default async function BookingSettingsPage() {
   // DJ-only. Hosts/venues don't take bookings, so send them to their settings.
   if (row.role !== 'dj') redirect('/account-settings');
 
+  // Whether booking is actually LIVE (subscription/comp). DJs can configure
+  // everything regardless, but nothing goes public until this is true.
+  const hasBookingAccess = canBook(row as unknown as AccessFields);
+
   return (
     <BookingSettingsClient
+      hasBookingAccess={hasBookingAccess}
       initialProfile={{
         id: row.id,
         dj_type: row.dj_type,
