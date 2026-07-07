@@ -88,15 +88,29 @@ function CodeFields({
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 90px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
-        <input
-          type="number"
-          min={1}
-          className={styles.settingNumber}
-          style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-          value={value.value ? value.value : ''}
-          placeholder="0"
-          onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
-        />
+        {value.type === 'percent' ? (
+          <select
+            className={styles.settingSelect}
+            style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+            value={value.value || ''}
+            onChange={(e) => onField({ value: Number(e.target.value) })}
+          >
+            <option value="">%</option>
+            {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n}%</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="number"
+            min={1}
+            className={styles.settingNumber}
+            style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+            value={value.value ? value.value : ''}
+            placeholder="0"
+            onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
+          />
+        )}
       </div>
       <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
         <label style={labelStyle}>Expires (optional)</label>
