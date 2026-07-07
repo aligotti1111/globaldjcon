@@ -276,9 +276,9 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
               <CodeFields value={draft} onField={(p) => setDraft({ ...draft, ...p })} currencySymbol={currencySymbol} />
             </div>
-            <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem' }}>
-              <button type="button" onClick={activateDraft} style={btnPrimary}>Activate</button>
+            <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setDraft(null); setError(''); }} style={btnOutline}>Cancel</button>
+              <button type="button" onClick={activateDraft} style={btnPrimary}>Activate</button>
             </div>
           </div>
         )}
