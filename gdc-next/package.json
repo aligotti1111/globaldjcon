@@ -17,7 +17,9 @@
     "@supabase/ssr": "^0.5.0",
     "resend": "^4.0.0",
     "stripe": "^22.0.0",
-    "twilio": "^6.0.2"
+    "twilio": "^6.0.2",
+    "@stripe/stripe-js": "^4.10.0",
+    "@stripe/react-stripe-js": "^2.9.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
