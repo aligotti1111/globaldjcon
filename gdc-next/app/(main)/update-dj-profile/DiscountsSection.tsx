@@ -93,8 +93,9 @@ function CodeFields({
           min={1}
           className={styles.settingNumber}
           style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-          value={value.value ?? ''}
-          onChange={(e) => onField({ value: Number(e.target.value) })}
+          value={value.value ? value.value : ''}
+          placeholder="0"
+          onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
         />
       </div>
       <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
@@ -205,9 +206,10 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             <input
               type="number" min={0} max={100} className={styles.settingNumber}
               style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-              value={sale.percent ?? 0}
+              value={sale.percent ? sale.percent : ''}
+              placeholder="0"
               onChange={(e) => {
-                const v = Number(e.target.value);
+                const v = e.target.value === '' ? 0 : Number(e.target.value);
                 updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
               }}
             />
