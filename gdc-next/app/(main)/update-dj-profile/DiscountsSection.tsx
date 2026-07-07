@@ -48,7 +48,7 @@ function openPicker(e: React.MouseEvent<HTMLInputElement>) {
 }
 
 function emptyDraft(): PromoCode {
-  return { code: '', type: 'percent', value: 10, active: true, expires: null, maxUses: null, uses: 0 };
+  return { code: '', type: 'percent', value: 0, active: true, expires: null, maxUses: null, uses: 0 };
 }
 
 // Fields shared by the draft form and inline edit. `value` is the working copy.
@@ -74,7 +74,7 @@ function CodeFields({
           style={{ textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 95px' }}>
         <label style={labelStyle}>Type</label>
         <select
           className={styles.settingSelect}
@@ -86,7 +86,7 @@ function CodeFields({
           <option value="flat">{currencySymbol} off</option>
         </select>
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 90px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
         <input
           type="number"
