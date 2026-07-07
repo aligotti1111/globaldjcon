@@ -29,6 +29,10 @@ import {
   type BookingSettings,
   type DayData,
   formatTime12,
+  computeDiscount,
+  isSaleActive,
+  isPromoUsable,
+  type DiscountResult,
 } from './bookingSettings';
 import {
   MOB_TIME_OPTIONS,
@@ -198,6 +202,10 @@ export default function ClubBookingForm({
   // ── Form state ────────────────────────────────────────────────────
   const [venueType, setVenueType] = useState<'' | 'bar' | 'club'>('');
   const [setType, setSetType] = useState<string>('');
+  // Promo code entry (client-typed). appliedCode set only after a valid Apply.
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [promoError, setPromoError] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -389,6 +397,31 @@ export default function ClubBookingForm({
   const isOffers = rateInfo.rateType === 'offers';
   const isHourly = rateInfo.rateType === 'hourly';
 
+  // Discount layer — applies only to a real computed rate (not offers/quote).
+  // Better of an active sale and the applied promo code wins (no stacking).
+  const displayTotal = !isOffers && rateInfo.rate != null
+    ? (rateInfo.rateType === 'hourly' && rateInfo.hourlyTotal != null
+        ? rateInfo.hourlyTotal
+        : Number(rateInfo.rate))
+    : null;
+  const saleOn = isSaleActive(bookingSettings.sale);
+  const hasActiveCode = (bookingSettings.promo_codes || []).some((p) => isPromoUsable(p));
+  const clubDiscount: DiscountResult = useMemo(() => {
+    if (displayTotal == null) return { amount: 0, kind: null, label: '' };
+    return computeDiscount(displayTotal, bookingSettings, appliedCode);
+  }, [displayTotal, bookingSettings, appliedCode]);
+  const discountedTotal = displayTotal != null ? Math.max(0, displayTotal - clubDiscount.amount) : null;
+
+  function applyClubPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    const match = (bookingSettings.promo_codes || []).find(
+      (p) => (p.code || '').trim().toUpperCase() === code && isPromoUsable(p)
+    );
+    if (match) { setAppliedCode(code); setPromoError(''); }
+    else { setAppliedCode(''); setPromoError('Invalid or expired code'); }
+  }
+
   // Quote mode — DJ has booking enabled and equipment picked, but no
   // rate configured for the picked equipment option (and they're not in
   // offers mode). The form stays open as a normal booking flow but
@@ -477,6 +510,15 @@ export default function ClubBookingForm({
             : rateInfo.rate)
         : null;
 
+      // Apply discount to the computed total (sale/promo). quoted_rate stores
+      // the discounted price; original_rate keeps the pre-discount total.
+      const clubFinalDiscount: DiscountResult = computedTotal != null
+        ? computeDiscount(Number(computedTotal), bookingSettings, appliedCode)
+        : { amount: 0, kind: null, label: '' };
+      const computedTotalDiscounted = computedTotal != null
+        ? Math.max(0, Number(computedTotal) - clubFinalDiscount.amount)
+        : null;
+
       // Initial negotiation log entry. We seed the log at insert time so
       // the booking-requests history modal can replay the full thread —
       // CounterModal already appends to this column on each counter, but
@@ -485,7 +527,7 @@ export default function ClubBookingForm({
       // get an empty log; sendDraftQuote will seed it later.
       const initialPrice = isOffers && offerNum && !isNaN(offerNum)
         ? offerNum
-        : computedTotal;
+        : computedTotalDiscounted;
       const initialLog: Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> =
         initialPrice != null
           ? [{
@@ -521,7 +563,11 @@ export default function ClubBookingForm({
         // Full computed total — see computedTotal derivation above.
         // For flat: per-event rate. For hourly: rate × hours. For offers:
         // null — there's no quoted rate, only the visitor's offer.
-        quoted_rate: computedTotal,
+        quoted_rate: computedTotalDiscounted,
+        original_rate: clubFinalDiscount.amount > 0 ? Number(computedTotal) : null,
+        discount_code: clubFinalDiscount.kind === 'code' ? appliedCode : null,
+        discount_label: clubFinalDiscount.amount > 0 ? clubFinalDiscount.label : null,
+        discount_amount: clubFinalDiscount.amount > 0 ? clubFinalDiscount.amount : null,
         currency: rateInfo.currency,
         notes: notes.trim() || null,
         // is_quote=true when DJ has booking enabled but hasn't set rates
@@ -560,6 +606,9 @@ export default function ClubBookingForm({
             notes: notes.trim() || null,
             offerAmount: insertPayload.offer_amount,
             quotedRate: insertPayload.quoted_rate,
+            originalRate: insertPayload.original_rate,
+            discountLabel: insertPayload.discount_label,
+            discountAmount: insertPayload.discount_amount,
             totalHours: rateInfo.hours,
             // Per-hour rate — only meaningful for hourly bookings; lets the
             // email show "$330/hr × 3 hr" alongside the total.
@@ -593,6 +642,9 @@ export default function ClubBookingForm({
             equipment,
             offerAmount: insertPayload.offer_amount,
             quotedRate: insertPayload.quoted_rate,
+            originalRate: insertPayload.original_rate,
+            discountLabel: insertPayload.discount_label,
+            discountAmount: insertPayload.discount_amount,
             totalHours: rateInfo.hours,
             hourlyRate: rateInfo.rateType === 'hourly' ? rateInfo.rate : null,
             currency: rateInfo.currency,
@@ -952,6 +1004,7 @@ export default function ClubBookingForm({
             // Path 1 — full rate display ready to render
             if (canShowRate && isEquipmentSupported && !isQuoteMode) {
               return (
+                <>
                 <RateDisplay
                   info={rateInfo}
                   allowOffers={allowOffers && !isOffers}
@@ -965,6 +1018,46 @@ export default function ClubBookingForm({
                       || rateInfo.rate
                   }
                 />
+                {!isOffers && displayTotal != null && (clubDiscount.amount > 0 || saleOn || hasActiveCode) && (
+                  <div style={{ marginTop: 10, textAlign: 'center' }}>
+                    {saleOn && (
+                      <div style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, fontSize: '.68rem', padding: '2px 8px', borderRadius: 999, marginBottom: 6, letterSpacing: '.04em' }}>
+                        {bookingSettings.sale?.percent}% OFF
+                      </div>
+                    )}
+                    {clubDiscount.amount > 0 && discountedTotal != null && (
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                        <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.75em', marginRight: 8 }}>
+                          {currencySymbol(bookingSettings.rate_currency || 'USD')}{displayTotal.toLocaleString()}
+                        </span>
+                        <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                          {currencySymbol(bookingSettings.rate_currency || 'USD')}{discountedTotal.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {clubDiscount.amount > 0 && (
+                      <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.85rem', marginTop: 2 }}>
+                        {clubDiscount.label} — you save {currencySymbol(bookingSettings.rate_currency || 'USD')}{clubDiscount.amount.toLocaleString()}
+                      </div>
+                    )}
+                    {hasActiveCode && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          value={promoInput}
+                          onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                          placeholder="Promo code"
+                          style={{ textTransform: 'uppercase', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'inherit', maxWidth: 150 }}
+                        />
+                        <button type="button" onClick={applyClubPromo} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--neon,#00e0a4)', cursor: 'pointer', fontSize: '.8rem' }}>Apply</button>
+                        {appliedCode && clubDiscount.kind === 'code' && <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem' }}>✓ Applied</span>}
+                        {appliedCode && clubDiscount.kind === 'sale' && <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.75rem' }}>Sale price is better — applied</span>}
+                        {promoError && <span style={{ color: '#ff6b6b', fontSize: '.8rem' }}>{promoError}</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                </>
               );
             }
             // Path 2 — DJ has no rate configured for this equipment.
