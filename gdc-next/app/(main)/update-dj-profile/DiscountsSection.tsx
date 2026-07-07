@@ -197,27 +197,31 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               bigger discount wins.
             </div>
           </div>
-          <label className={styles.toggleSwitch}>
-            <input type="checkbox" checked={!!sale.active} onChange={(e) => updateSale({ active: e.target.checked })} />
-            <span className={styles.toggleTrack} />
-            <span className={styles.toggleThumb} />
-          </label>
+          <button
+            type="button"
+            onClick={() => updateSale({ active: !sale.active })}
+            style={sale.active ? btnOutline : btnPrimary}
+          >
+            {sale.active ? 'Deactivate' : 'Activate'}
+          </button>
         </div>
 
         {sale.active && (
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0 0 1rem' }}>
-            <div style={{ ...fieldWrap, maxWidth: 140 }}>
+            <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
               <label style={labelStyle}>Percent off</label>
               <input
                 type="number" min={1} max={100} className={styles.settingNumber}
+                style={{ width: '100%', boxSizing: 'border-box' }}
                 value={sale.percent ?? ''} onChange={(e) => updateSale({ percent: Number(e.target.value) })}
                 placeholder="15"
               />
             </div>
-            <div style={{ ...fieldWrap, maxWidth: 220 }}>
+            <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
               <label style={labelStyle}>Ends on (optional)</label>
               <input
-                type="date" className={styles.settingNumber} style={dateInputStyle} onClick={openPicker}
+                type="date" className={styles.settingNumber}
+                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }} onClick={openPicker}
                 value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
               />
             </div>
