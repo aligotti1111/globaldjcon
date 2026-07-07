@@ -97,7 +97,7 @@ function CodeFields({
           onChange={(e) => onField({ value: Number(e.target.value) })}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 190px' }}>
+      <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
         <label style={labelStyle}>Expires (optional)</label>
         <input
           type="date"
@@ -106,18 +106,6 @@ function CodeFields({
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
-        />
-      </div>
-      <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
-        <label style={labelStyle}>Max uses</label>
-        <input
-          type="number"
-          min={1}
-          className={styles.settingNumber}
-          style={{ color: 'var(--white,#fff)' }}
-          value={value.maxUses ?? ''}
-          onChange={(e) => onField({ maxUses: e.target.value ? Number(e.target.value) : null })}
-          placeholder="∞"
         />
       </div>
     </>
@@ -370,7 +358,6 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '.6rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
                 <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
                 <span><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}</span>
-                <span><span style={metaLabel}>Max uses</span> {c.maxUses != null ? c.maxUses : 'Unlimited'}</span>
                 <span><span style={metaLabel}>Used</span> {c.uses || 0}</span>
               </div>
             </div>
