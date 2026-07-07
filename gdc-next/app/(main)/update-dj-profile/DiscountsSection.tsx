@@ -33,6 +33,14 @@ const labelStyle: React.CSSProperties = {
 };
 const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: 0 };
 const dateInputStyle: React.CSSProperties = { colorScheme: 'dark', cursor: 'pointer' };
+// Small uppercase caption before each meta value in a code row.
+const metaLabel: React.CSSProperties = {
+  fontSize: '.6rem',
+  textTransform: 'uppercase',
+  letterSpacing: '.06em',
+  color: 'var(--muted, #8a8aa0)',
+  marginRight: '.35rem',
+};
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
@@ -77,22 +85,23 @@ function CodeFields({
           <option value="flat">{currencySymbol} off</option>
         </select>
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
         <input
           type="number"
           min={1}
           className={styles.settingNumber}
+          style={{ width: '100%', boxSizing: 'border-box' }}
           value={value.value ?? ''}
           onChange={(e) => onField({ value: Number(e.target.value) })}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 170px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 190px' }}>
         <label style={labelStyle}>Expires (optional)</label>
         <input
           type="date"
           className={styles.settingNumber}
-          style={dateInputStyle}
+          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }}
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
@@ -280,37 +289,46 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             <div
               key={i}
               style={{
-                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '.5rem 1rem',
-                padding: '.7rem .9rem', marginBottom: '.6rem',
-                border: '1px solid var(--border, rgba(255,255,255,.12))', borderRadius: 8,
-                opacity: off ? 0.6 : 1,
+                padding: '.85rem 1rem',
+                marginBottom: '.6rem',
+                border: '1px solid var(--border, rgba(255,255,255,.14))',
+                borderRadius: 10,
+                background: 'rgba(255,255,255,.02)',
+                opacity: off ? 0.55 : 1,
               }}
             >
-              <span style={{ fontWeight: 700, letterSpacing: '.03em' }}>{(c.code || '').toUpperCase()}</span>
-              <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>{valueLabel(c)}</span>
-              {c.expires && (
-                <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.8rem' }}>
-                  exp {new Date(`${c.expires}T00:00:00`).toLocaleDateString()}
-                </span>
-              )}
-              {c.maxUses != null && (
-                <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.8rem' }}>max {c.maxUses}</span>
-              )}
-              <span style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.8rem' }}>{c.uses || 0} used</span>
-              <span style={{
-                fontSize: '.68rem', textTransform: 'uppercase', letterSpacing: '.04em',
-                color: off ? 'var(--muted, #8a8aa0)' : 'var(--neon, #00e0a4)',
-              }}>
-                {off ? 'inactive' : 'active'}
-              </span>
-              <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
-                <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
-                {off ? (
-                  <button type="button" onClick={() => setActive(i, true)} style={btnOutline}>Reactivate</button>
-                ) : (
-                  <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
-                )}
-                <button type="button" onClick={() => removeCode(i)} style={btnDanger}>Delete</button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', minWidth: 0 }}>
+                  <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                    {(c.code || '').toUpperCase()}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                      padding: '2px 8px', borderRadius: 999,
+                      color: off ? 'var(--muted,#8a8aa0)' : '#06231b',
+                      background: off ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)',
+                    }}
+                  >
+                    {off ? 'Inactive' : 'Active'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '.5rem' }}>
+                  <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
+                  {off ? (
+                    <button type="button" onClick={() => setActive(i, true)} style={btnOutline}>Reactivate</button>
+                  ) : (
+                    <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
+                  )}
+                  <button type="button" onClick={() => removeCode(i)} style={btnDanger}>Delete</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '.6rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+                <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
+                <span><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}</span>
+                <span><span style={metaLabel}>Max uses</span> {c.maxUses != null ? c.maxUses : 'Unlimited'}</span>
+                <span><span style={metaLabel}>Used</span> {c.uses || 0}</span>
               </div>
             </div>
           );
