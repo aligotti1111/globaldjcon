@@ -640,6 +640,16 @@ export async function POST(req: Request) {
     const hourlyRateNum = hourlyRate != null && String(hourlyRate).trim() !== ''
       ? Number(hourlyRate) : null;
 
+    // Discount breakdown — when the booking used a sale/promo code, show the
+    // original price + which discount, as the rate's parenthetical.
+    const discAmt = body.discountAmount != null ? Number(body.discountAmount) : 0;
+    const origRate = body.originalRate != null ? Number(body.originalRate) : null;
+    const discLabel = (body.discountLabel as string) || 'Discount';
+    const discountBreakdown =
+      discAmt > 0 && origRate != null
+        ? `was ${currencySymbol(offerCurrency)}${origRate.toLocaleString()} — ${discLabel}, save ${currencySymbol(offerCurrency)}${discAmt.toLocaleString()}`
+        : undefined;
+
     const dateStr = fmtDate(eventDate);
     const timeStr = fmtTimeRange(startTime, endTime);
     // Set type (club) — "Event Type" labelling belongs to mobile bookings.
@@ -699,6 +709,7 @@ export async function POST(req: Request) {
       rateValue: rateValueNum != null && !isNaN(rateValueNum)
         ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()} ${offerCurrency}`
         : undefined,
+      rateBreakdown: discountBreakdown,
       isWedding,
       cocktailNeeded,
       cocktailStart,
@@ -809,6 +820,13 @@ export async function POST(req: Request) {
       : null;
     const confHourlyNum = confHourlyRate != null && String(confHourlyRate).trim() !== ''
       ? Number(confHourlyRate) : null;
+    const confDiscAmt = body.discountAmount != null ? Number(body.discountAmount) : 0;
+    const confOrigRate = body.originalRate != null ? Number(body.originalRate) : null;
+    const confDiscLabel = (body.discountLabel as string) || 'Discount';
+    const confDiscountBreakdown =
+      confDiscAmt > 0 && confOrigRate != null
+        ? `was ${currencySymbol(confCurrency)}${confOrigRate.toLocaleString()} — ${confDiscLabel}, save ${currencySymbol(confCurrency)}${confDiscAmt.toLocaleString()}`
+        : undefined;
     const confEquipmentLabel = ({
       sound_system: 'DJ provides system + decks',
       decks_only: 'DJ provides decks',
@@ -832,6 +850,7 @@ export async function POST(req: Request) {
           rateValue: confRateNum != null && !isNaN(confRateNum)
             ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}`
             : undefined,
+          rateBreakdown: confDiscountBreakdown,
           isWedding,
           cocktailNeeded,
           cocktailStart,
