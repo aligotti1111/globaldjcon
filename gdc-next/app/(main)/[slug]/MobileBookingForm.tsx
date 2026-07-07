@@ -33,6 +33,10 @@ import {
   type BookingSettings,
   type MobilePackage,
   packageTiers,
+  computeDiscount,
+  isSaleActive,
+  isPromoUsable,
+  type DiscountResult,
 } from './bookingSettings';
 import {
   MOB_EVENT_TYPE_LABELS,
@@ -117,6 +121,12 @@ export default function MobileBookingForm({
   // ── Form state ────────────────────────────────────────────────────
   const [phone, setPhone] = useState('');
   const [eventType, setEventType] = useState('');
+  // Promo code entry (client-typed). appliedCode is set only after a valid
+  // code is confirmed via Apply; the actual discount is the better of an
+  // active sale and the applied code (no stacking — see computeDiscount).
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [promoError, setPromoError] = useState('');
   const [eventTypeOther, setEventTypeOther] = useState('');
   // Event-type-specific sub-fields (see EVENT_SUBFIELDS). subType covers the
   // six "Type of X" text fields; birthdayAge + surprise cover Birthday Party.
@@ -221,6 +231,36 @@ export default function MobileBookingForm({
     if (!selectedPkg || !formReadyForPackages) return null;
     return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
   }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart]);
+
+  // Discount layer — applied on top of the computed price. Better of an active
+  // sale and the applied promo code wins (no stacking). Deposit is taken from
+  // the DISCOUNTED total.
+  const saleOn = isSaleActive(bookingSettings.sale);
+  const basePrice = priceResult?.price ?? null;
+  const discount: DiscountResult = useMemo(() => {
+    if (basePrice == null) return { amount: 0, kind: null, label: '' };
+    return computeDiscount(basePrice, bookingSettings, appliedCode);
+  }, [basePrice, bookingSettings, appliedCode]);
+  const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
+  const discountedDeposit =
+    discountedTotal != null && depositPct > 0
+      ? Number(((discountedTotal * depositPct) / 100).toFixed(2))
+      : null;
+
+  function applyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    const match = (bookingSettings.promo_codes || []).find(
+      (p) => (p.code || '').trim().toUpperCase() === code && isPromoUsable(p)
+    );
+    if (match) {
+      setAppliedCode(code);
+      setPromoError('');
+    } else {
+      setAppliedCode('');
+      setPromoError('Invalid or expired code');
+    }
+  }
 
   // Reset selected package when event type changes (vanilla parity —
   // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
@@ -328,6 +368,20 @@ export default function MobileBookingForm({
       ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart)
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
 
+    // Apply the discount to the final total; deposit comes off the discounted
+    // amount. Stamp the booking with which discount was used so the DJ's
+    // usage history can show who booked with it.
+    const finalDiscount: DiscountResult =
+      finalPrice.price != null
+        ? computeDiscount(finalPrice.price, bookingSettings, appliedCode)
+        : { amount: 0, kind: null, label: '' };
+    const finalTotal =
+      finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
+    const finalDeposit =
+      finalTotal != null && depositPct > 0
+        ? Number(((finalTotal * depositPct) / 100).toFixed(2))
+        : null;
+
     setSubmitting(true);
 
     try {
@@ -389,9 +443,15 @@ export default function MobileBookingForm({
         ),
         package_category: cat,
         package_index: selectedPkgIdx,
-        quoted_rate: finalPrice.price,
+        quoted_rate: finalTotal,
         deposit_pct: depositPct || null,
-        deposit_amount: finalPrice.depositAmount,
+        deposit_amount: finalDeposit,
+        // Discount snapshot — what was applied, for the DJ's records + usage
+        // history. original_rate keeps the pre-discount total for reference.
+        original_rate: finalDiscount.amount > 0 ? finalPrice.price : null,
+        discount_code: finalDiscount.kind === 'code' ? appliedCode : null,
+        discount_label: finalDiscount.amount > 0 ? finalDiscount.label : null,
+        discount_amount: finalDiscount.amount > 0 ? finalDiscount.amount : null,
         // Snapshot the selected package's overtime rate onto the booking so
         // the DJ's upcoming/approved views + emails can show it. Quote /
         // price-on-request bookings leave this null — all pricing, overtime
@@ -1031,6 +1091,25 @@ export default function MobileBookingForm({
         {priceResult && selectedPkgIdx != null && (
           <div className={styles.priceDisplay}>
             <div className={styles.priceLabel}>Estimated Price</div>
+
+            {!priceResult.isQuote && priceResult.price != null && saleOn && (
+              <div
+                style={{
+                  display: 'inline-block',
+                  background: 'var(--neon,#00e0a4)',
+                  color: '#06231b',
+                  fontWeight: 700,
+                  fontSize: '.68rem',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  marginBottom: 6,
+                  letterSpacing: '.04em',
+                }}
+              >
+                {bookingSettings.sale?.percent}% OFF
+              </div>
+            )}
+
             <div
               className={
                 priceResult.isQuote
@@ -1038,13 +1117,29 @@ export default function MobileBookingForm({
                   : styles.priceValue
               }
             >
-              {priceResult.isQuote || priceResult.price == null
-                ? 'Price on Request'
-                : `$${priceResult.price.toLocaleString()}`}
+              {priceResult.isQuote || priceResult.price == null ? (
+                'Price on Request'
+              ) : discount.amount > 0 && discountedTotal != null ? (
+                <>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
+                    ${priceResult.price.toLocaleString()}
+                  </span>
+                  ${discountedTotal.toLocaleString()}
+                </>
+              ) : (
+                `$${priceResult.price.toLocaleString()}`
+              )}
             </div>
-            {priceResult.price != null && depositPct > 0 && priceResult.depositAmount != null && (
+
+            {discount.amount > 0 && (
+              <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)' }}>
+                {discount.label} — you save ${discount.amount.toLocaleString()}
+              </div>
+            )}
+
+            {priceResult.price != null && depositPct > 0 && discountedDeposit != null && (
               <div className={styles.depositText}>
-                Deposit required: ${priceResult.depositAmount.toLocaleString()} ({depositPct}%)
+                Deposit required: ${discountedDeposit.toLocaleString()} ({depositPct}%)
               </div>
             )}
             {priceResult.price != null && depositPct === 0 && (
@@ -1058,6 +1153,50 @@ export default function MobileBookingForm({
             {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
                 Overtime rate: ${Number(selectedPkg?.overtime).toLocaleString()}/hr
+              </div>
+            )}
+
+            {!priceResult.isQuote && priceResult.price != null && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                  placeholder="Promo code"
+                  style={{
+                    textTransform: 'uppercase',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border,rgba(255,255,255,.25))',
+                    background: 'transparent',
+                    color: 'inherit',
+                    maxWidth: 150,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={applyPromo}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--neon,#00e0a4)',
+                    background: 'transparent',
+                    color: 'var(--neon,#00e0a4)',
+                    cursor: 'pointer',
+                    fontSize: '.8rem',
+                  }}
+                >
+                  Apply
+                </button>
+                {appliedCode && discount.kind === 'code' && (
+                  <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem' }}>✓ Applied</span>
+                )}
+                {appliedCode && discount.kind === 'sale' && (
+                  <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.75rem' }}>
+                    Sale price is better — applied
+                  </span>
+                )}
+                {promoError && <span style={{ color: '#ff6b6b', fontSize: '.8rem' }}>{promoError}</span>}
               </div>
             )}
           </div>
