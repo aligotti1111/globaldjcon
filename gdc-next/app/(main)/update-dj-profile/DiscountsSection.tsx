@@ -101,8 +101,8 @@ function CodeFields({
         <label style={labelStyle}>Expires (optional)</label>
         <input
           type="date"
-          className={styles.settingNumber}
-          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+          className={`${styles.settingNumber} gdcDateWhite`}
+          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }}
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
@@ -190,6 +190,15 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
       <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
 
         {/* ── Automatic sale ─────────────────────────────────────── */}
+        <style>{`
+          .gdcDateWhite::-webkit-datetime-edit,
+          .gdcDateWhite::-webkit-datetime-edit-text,
+          .gdcDateWhite::-webkit-datetime-edit-month-field,
+          .gdcDateWhite::-webkit-datetime-edit-day-field,
+          .gdcDateWhite::-webkit-datetime-edit-year-field { color: #fff; }
+          .gdcDateWhite { color: #fff; }
+        `}</style>
+
         <div className={styles.settingRow}>
           <div className={styles.settingLabelWrap}>
             <div className={styles.settingLabel}>Run a sale</div>
@@ -199,43 +208,10 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               bigger discount wins.
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
-            {(() => {
-              const pct = sale.percent ?? 0;
-              const saleOn = !!sale.active && pct > 0;
-              return (
-                <>
-                  <span
-                    style={{
-                      fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                      padding: '2px 8px', borderRadius: 999,
-                      color: saleOn ? '#06231b' : 'var(--muted,#8a8aa0)',
-                      background: saleOn ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
-                    }}
-                  >
-                    {saleOn ? 'Active' : 'Inactive'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateSale({ active: !saleOn })}
-                    disabled={!saleOn && !(pct > 0)}
-                    style={{
-                      ...(saleOn ? btnOutline : btnPrimary),
-                      ...(!saleOn && !(pct > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
-                    }}
-                  >
-                    {saleOn ? 'Deactivate' : 'Activate'}
-                  </button>
-                </>
-              );
-            })()}
-          </div>
         </div>
 
-        {/* Percent + end date — always shown so the DJ sets the amount before
-            activating. Activate stays disabled until percent > 0. Setting
-            percent back to 0 turns the sale off (0% = no sale). */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0 0 1rem' }}>
+        {/* Percent + end date — set the amount before activating. */}
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '.25rem 0 .75rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
             <label style={labelStyle}>Percent off</label>
             <input
@@ -251,11 +227,44 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
             <label style={labelStyle}>Ends on (optional)</label>
             <input
-              type="date" className={styles.settingNumber}
-              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }} onClick={openPicker}
+              type="date" className={`${styles.settingNumber} gdcDateWhite`}
+              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }} onClick={openPicker}
               value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
             />
           </div>
+        </div>
+
+        {/* Status pill + Activate/Deactivate — at the bottom of the sale box. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', padding: '0 0 1rem' }}>
+          {(() => {
+            const pct = sale.percent ?? 0;
+            const saleOn = !!sale.active && pct > 0;
+            return (
+              <>
+                <span
+                  style={{
+                    fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                    padding: '2px 8px', borderRadius: 999,
+                    color: saleOn ? '#06231b' : 'var(--muted,#8a8aa0)',
+                    background: saleOn ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
+                  }}
+                >
+                  {saleOn ? 'Active' : 'Inactive'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => updateSale({ active: !saleOn })}
+                  disabled={!saleOn && !(pct > 0)}
+                  style={{
+                    ...(saleOn ? btnOutline : btnPrimary),
+                    ...(!saleOn && !(pct > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+                  }}
+                >
+                  {saleOn ? 'Deactivate' : 'Activate'}
+                </button>
+              </>
+            );
+          })()}
         </div>
 
         {/* ── Promo codes ────────────────────────────────────────── */}
