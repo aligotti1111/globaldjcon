@@ -69,7 +69,19 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
   const dateInputStyle: React.CSSProperties = {
     minWidth: 170,
     colorScheme: 'dark',
+    cursor: 'pointer',
   };
+  // Open the date picker when the field is clicked anywhere (not just the
+  // little calendar icon). showPicker is supported in modern browsers; the
+  // try/catch keeps older ones from throwing.
+  function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+    const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+    try {
+      el.showPicker?.();
+    } catch {
+      /* not supported — fall back to default behavior */
+    }
+  }
 
   return (
     <div className={styles.sectionCard}>
@@ -119,6 +131,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 type="date"
                 className={styles.settingNumber}
                 style={dateInputStyle}
+                onClick={openPicker}
                 value={sale.ends || ''}
                 onChange={(e) => updateSale({ ends: e.target.value || null })}
               />
@@ -195,6 +208,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 type="date"
                 className={styles.settingNumber}
                 style={dateInputStyle}
+                onClick={openPicker}
                 value={c.expires || ''}
                 onChange={(e) => updateCode(i, { expires: e.target.value || null })}
               />
