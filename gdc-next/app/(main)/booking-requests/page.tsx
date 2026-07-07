@@ -56,6 +56,12 @@ interface BookingRow {
   quoted_rate: number | null;
   counter_rate: number | null;
   overtime_rate: number | null;
+  // Discount snapshot (from the booking form). quoted_rate is already the
+  // DISCOUNTED total; original_rate holds the pre-discount price.
+  original_rate: number | null;
+  discount_code: string | null;
+  discount_label: string | null;
+  discount_amount: number | null;
   // ── Club-DJ specific fields ─────────────────────────────────────
   // Vanilla writes these on club bookings only; null for mobile.
   venue_type: string | null;          // 'bar' | 'club'

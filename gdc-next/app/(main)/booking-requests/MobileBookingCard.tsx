@@ -341,6 +341,16 @@ export default function MobileBookingCard(props: Props) {
             <div className={styles.bigPrice} style={{ color: hasCounter ? 'var(--amber)' : 'var(--white)' }}>
               ${Number(bigPriceVal).toLocaleString()}
             </div>
+            {!hasCounter && b.discount_amount != null && b.discount_amount > 0 && (
+              <div className={styles.priceSub}>
+                <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
+                  ${Number(b.original_rate ?? Number(bigPriceVal) + b.discount_amount).toLocaleString()}
+                </span>{' '}
+                <span style={{ color: 'var(--neon)' }}>
+                  {b.discount_label || 'Discount'} (−${Number(b.discount_amount).toLocaleString()})
+                </span>
+              </div>
+            )}
             {hasCounter && (
               <div className={styles.priceSub}>
                 Initial Offer: <span>${Number(b.quoted_rate).toLocaleString()}</span>
