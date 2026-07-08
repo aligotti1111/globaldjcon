@@ -218,7 +218,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
       {hasBookingAccess && (
         <div className={styles.card}>
-          <ContractSection />
+          <ContractSection userId={initialProfile.id} />
         </div>
       )}
     </div>
