@@ -133,7 +133,7 @@ export async function POST(req: Request) {
           { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
-      12000, 'createSubmission',
+      7000, 'createSubmission',
     );
 
     const arr = submission as unknown as Array<{ role?: string; embed_src?: string; submission_id?: number }>;
