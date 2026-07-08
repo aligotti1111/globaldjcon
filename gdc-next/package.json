@@ -22,7 +22,8 @@
     "@docuseal/react": "^1.0.75",
     "@stripe/stripe-js": "^4.10.0",
     "@stripe/react-stripe-js": "^2.9.0",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
@@ -30,6 +31,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0"
+    "eslint-config-next": "^15.0.0",
+    "@types/jsonwebtoken": "^9.0.6"
   }
 }
