@@ -20,9 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import {
   type BookingSettings,
-  type BookingDays,
 } from '@/app/(main)/[slug]/bookingSettings';
-import ClubOwnerCalendar from './ClubOwnerCalendar';
 import EmbedCodeSection from './EmbedCodeSection';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
@@ -236,14 +234,8 @@ export default function ClubBookingTab({
     if (ratesSaveStatus !== 'idle') setRatesSaveStatus('idle');
   }
 
-  // ── Calendar section (autosave) ───────────────────────────────────
-  const bookingDays = bookingSettings.booking_days || {};
+  // ── Booking window (autosave) ─────────────────────────────────────
   const bookingWindow = bookingSettings.booking_window_months || 12;
-  function setBookingDays(next: BookingDays) {
-    // Don't tag a section here; ClubOwnerCalendar fires onMonthChanged
-    // with a more specific month-level key.
-    patch({ booking_days: next });
-  }
   function setBookingWindow(v: number) {
     setLastChangedField('window');
     patch({ booking_window_months: v });
@@ -452,6 +444,24 @@ export default function ClubBookingTab({
                 also raise this for a specific date from the calendar.
               </p>
 
+              {/* How far ahead bookings are allowed. Autosaves on change. */}
+              <div className={styles.rateTypeRow}>
+                <div className={styles.rateTypeLabel}>Book In Advance</div>
+                <select
+                  value={bookingWindow}
+                  onChange={(e) => setBookingWindow(parseInt(e.target.value, 10))}
+                  className={styles.rateSelect}
+                  style={{ width: 'auto', minWidth: 110 }}
+                >
+                  {[3, 6, 9, 12, 18, 24, 36].map((m) => (
+                    <option key={m} value={m}>{m} months</option>
+                  ))}
+                </select>
+              </div>
+              <p className={styles.bodyHint} style={{ marginTop: '-.25rem' }}>
+                How far ahead someone can book you.
+              </p>
+
               {ratesDraft.global_rate_type === 'offers' && (
                 <p className={styles.rateOffersHint}>
                   Offers can be countered and negotiated through the platform.
@@ -553,48 +563,6 @@ export default function ClubBookingTab({
               </div>
             </>
           )}
-        </div>
-      </div>
-
-      {/* ── Availability calendar (autosave) ──────────────────────── */}
-      <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionTitle}>Availability Calendar</div>
-        </div>
-        <div className={styles.sectionBody}>
-          {/* Booking window selector */}
-          <div className={styles.settingRow}>
-            <div className={styles.settingLabelWrap}>
-              <div className={styles.settingLabel}>How far in advance can someone book?</div>
-            </div>
-            <select
-              value={bookingWindow}
-              onChange={(e) => setBookingWindow(parseInt(e.target.value, 10))}
-              className={styles.settingSelect}
-            >
-              {[3, 6, 9, 12, 18, 24, 36].map((m) => (
-                <option key={m} value={m}>{m} months</option>
-              ))}
-            </select>
-          </div>
-
-          <p className={styles.bodyHint}>
-            All days are available by default. Use{' '}
-            <strong style={{ color: 'rgba(255,255,255,.4)' }}>✕</strong> to mark unavailable,{' '}
-            <strong style={{ color: 'var(--neon)' }}>✓</strong> to restore, or{' '}
-            <strong>✏️</strong> to add an event / customize.
-          </p>
-
-          <ClubOwnerCalendar
-            bookingDays={bookingDays}
-            onChange={setBookingDays}
-            bookingWindowMonths={bookingWindow}
-            bookingSettings={bookingSettings}
-            currencySymbol={currentCurrency.symbol}
-            lastChangedField={lastChangedField}
-            autosaveStatus={autosaveStatus}
-            onMonthChanged={(monthKey) => setLastChangedField(monthKey)}
-          />
         </div>
       </div>
 
