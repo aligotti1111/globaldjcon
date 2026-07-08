@@ -324,7 +324,13 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 </span>
                 <button
                   type="button"
-                  onClick={() => updateSale({ active: !saleOn })}
+                  onClick={() =>
+                    updateSale(
+                      saleOn
+                        ? { active: false }
+                        : { active: true, started_at: new Date().toISOString() }
+                    )
+                  }
                   disabled={!saleOn && !(pct > 0)}
                   style={{
                     ...(saleOn ? btnOutline : btnPrimary),
@@ -338,7 +344,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           })()}
         </div>
 
-        {/* Sale usage — who booked while a sale was applied. */}
+        {/* Sale usage — the sale's run window + who booked during it. */}
         {saleUsage.length > 0 && (
           <div style={{ padding: '0 0 1rem' }}>
             <button
@@ -347,10 +353,18 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               style={{
                 background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
                 color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex',
-                alignItems: 'center', gap: 4,
+                alignItems: 'center', gap: 6, flexWrap: 'wrap',
               }}
             >
-              <span style={metaLabel}>Sale used</span> {saleUsage.length}
+              <span style={metaLabel}>Sale</span>
+              <span style={{ color: 'var(--white,#fff)' }}>
+                {sale.started_at ? fmtDate(sale.started_at) : '—'}
+                {' – '}
+                {sale.active
+                  ? (sale.ends ? fmtDate(sale.ends) : 'ongoing')
+                  : (sale.ends ? fmtDate(sale.ends) : 'ended')}
+              </span>
+              <span>· {saleUsage.length} used</span>
               <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
             </button>
             {saleOpen && (
