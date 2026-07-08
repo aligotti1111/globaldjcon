@@ -178,7 +178,6 @@ export default function ContractSection({ userId }: { userId: string }) {
     } finally { setSaving(false); }
   }
 
-  const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif' };
 
   return (
     <div className={styles.sectionCard}>
@@ -220,54 +219,43 @@ export default function ContractSection({ userId }: { userId: string }) {
           </>
         )}
 
-        {/* ---------- Standard contract editor ---------- */}
-        {mode === 'standard' && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setMode('none'); }}>
-            <div style={{ background: 'var(--bg-card,#14141f)', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 12, width: '100%', maxWidth: 760, maxHeight: '90vh', overflow: 'auto', padding: '1.4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
-                <strong style={{ color: 'var(--white,#fff)', fontSize: '1.05rem' }}>Standard contract</strong>
-                <button type="button" onClick={() => setMode('none')} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#888)', fontSize: 20, cursor: 'pointer' }}>✕</button>
-              </div>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '1rem' }}>
-                Edit the wording to fit how you work. Keep the {'{{tags}}'} — they fill
-                in each booking&rsquo;s details automatically. Have a lawyer review before use.
-              </div>
-
-              {/* Logo */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Logo" style={{ maxHeight: 48, maxWidth: 120, borderRadius: 4 }} />
-                ) : null}
-                <button type="button" onClick={() => logoInput.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--neon,#00e0a4)', borderRadius: 6, padding: '.5rem .9rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>
-                  {logoBusy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add your logo (optional)'}
-                </button>
-                {logoUrl && <button type="button" onClick={() => setLogoUrl(null)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>}
-                <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
-              </div>
-
-              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={18} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 320 }} />
-
-              {stdErr && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{stdErr}</div>}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setMode('none')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.6rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
-                <button type="button" onClick={saveStandard} disabled={saving} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.6rem 1.4rem', cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : 'Save contract'}</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ---------- Builder ---------- */}
-        {mode === 'builder' && (
+        {/* ---------- Shared modal shell (identical box for both modes) ---------- */}
+        {mode !== 'none' && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setMode('none'); }}>
             <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 1000, height: '90vh', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              {/* Header — same for both */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.75rem 1rem', borderBottom: '1px solid #eee' }}>
                 <strong style={{ color: '#111' }}>Set up your contract</strong>
                 <button type="button" onClick={() => setMode('none')} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: '#666' }}>✕</button>
               </div>
+
+              {/* Body */}
               <div style={{ flex: 1, overflow: 'auto' }}>
-                {tokenErr ? (
+                {mode === 'standard' ? (
+                  <div style={{ padding: '1.25rem 1.4rem' }}>
+                    <div style={{ color: '#555', fontSize: '.82rem', marginBottom: '1rem' }}>
+                      Edit the wording to fit how you work. Keep the {'{{tags}}'} — they
+                      fill in each booking&rsquo;s details automatically. Have a lawyer review before use.
+                    </div>
+
+                    {/* Logo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      {logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logoUrl} alt="Logo" style={{ maxHeight: 48, maxWidth: 120, borderRadius: 4 }} />
+                      ) : null}
+                      <button type="button" onClick={() => logoInput.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.5rem .9rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>
+                        {logoBusy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add your logo (optional)'}
+                      </button>
+                      {logoUrl && <button type="button" onClick={() => setLogoUrl(null)} style={{ background: 'transparent', border: 'none', color: '#d33', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>}
+                      <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
+                    </div>
+
+                    <textarea value={text} onChange={(e) => setText(e.target.value)} rows={18} style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid #ccc', background: '#fff', color: '#111', fontFamily: 'ui-monospace, Menlo, monospace', resize: 'vertical', lineHeight: 1.55, fontSize: '.82rem', minHeight: 340 }} />
+
+                    {stdErr && <div style={{ color: '#d33', fontSize: '.82rem', marginTop: '.6rem' }}>{stdErr}</div>}
+                  </div>
+                ) : tokenErr ? (
                   <div style={{ padding: '2rem', color: '#c00' }}>{tokenErr}</div>
                 ) : token ? (
                   <DocusealBuilder token={token} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
@@ -275,11 +263,23 @@ export default function ContractSection({ userId }: { userId: string }) {
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>
                 )}
               </div>
+
+              {/* Footer — same frame, buttons swap by mode */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.6rem 1rem', borderTop: '1px solid #eee' }}>
-                <button type="button" onClick={() => { setMode('standard'); setStdErr(null); }} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>
-                  Having trouble? Use our standard contract instead
-                </button>
-                <button type="button" onClick={() => setMode('none')} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem 1.2rem', cursor: 'pointer' }}>Done</button>
+                {mode === 'standard' ? (
+                  <button type="button" onClick={openBuilder} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>
+                    Prefer to build your own instead?
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { setMode('standard'); setStdErr(null); }} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>
+                    Having trouble? Use our standard contract instead
+                  </button>
+                )}
+                {mode === 'standard' ? (
+                  <button type="button" onClick={saveStandard} disabled={saving} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : 'Save contract'}</button>
+                ) : (
+                  <button type="button" onClick={() => setMode('none')} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Done</button>
+                )}
               </div>
             </div>
           </div>
