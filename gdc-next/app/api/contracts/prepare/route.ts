@@ -114,14 +114,17 @@ export async function POST(req: Request) {
   let submissionId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const submission = await docuseal.createSubmission({
-      template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
-      order: 'preserved',
-      submitters: [
-        { role: 'DJ', email: djEmail, name: dj.name || 'DJ', fields, send_email: false },
-        { role: 'Client', email: clientEmail, name: clientName },
-      ],
-    } as unknown as Parameters<typeof docuseal.createSubmission>[0]);
+    const submission = await Promise.race([
+      docuseal.createSubmission({
+        template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
+        order: 'preserved',
+        submitters: [
+          { role: 'DJ', email: djEmail, name: dj.name || 'DJ', fields, send_email: false },
+          { role: 'Client', email: clientEmail, name: clientName },
+        ],
+      } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('DocuSeal timed out after 8s')), 8000)),
+    ]);
 
     const arr = submission as unknown as Array<{ role?: string; embed_src?: string; submission_id?: number }>;
     const djSubmitter = Array.isArray(arr) ? arr.find((s) => s.role === 'DJ') || arr[0] : undefined;
