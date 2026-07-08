@@ -100,9 +100,9 @@ export default function ContractSection() {
       </div>
       <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
         <div className={styles.settingHint} style={{ marginBottom: '1rem' }}>
-          Upload your own booking contract (PDF or Word). Add the tags below where you
-          want event details and signatures to appear. When a booking is approved, we
-          fill in the details so you can review and send it for signature.
+          Upload your own booking contract. <strong>PDF or Word</strong> lets you use the
+          tags below to auto-fill event details. A <strong>photo (JPG/PNG)</strong> works
+          too, but it&rsquo;s sign-only — no auto-filled details.
         </div>
 
         {loading ? (
@@ -121,11 +121,11 @@ export default function ContractSection() {
           </div>
         ) : (
           <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} style={{ width: '100%', background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', cursor: busy ? 'wait' : 'pointer', padding: '1.5rem', fontFamily: "'Space Mono', monospace", fontSize: '.85rem', letterSpacing: '.04em', marginBottom: '1rem' }}>
-            {busy ? 'Uploading…' : '+ Upload your contract (PDF or Word)'}
+            {busy ? 'Uploading…' : '+ Upload your contract (PDF, Word, or photo)'}
           </button>
         )}
 
-        <input ref={inputRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: 'none' }} onChange={onFile} />
+        <input ref={inputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" style={{ display: 'none' }} onChange={onFile} />
 
         {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginBottom: '.75rem' }}>{error}</div>}
 
