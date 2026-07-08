@@ -12,6 +12,16 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 
 export const runtime = 'nodejs';
+export const maxDuration = 26;
+
+// Wrap any promise so a hang becomes a readable error naming the step, instead
+// of the whole function silently timing out to a 502.
+function withTimeout<T>(p: Promise<T>, ms: number, step: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`HANG at ${step} (${ms}ms)`)), ms)),
+  ]);
+}
 
 function money(n: number, currency: string): string {
   try {
@@ -36,11 +46,10 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
 
   // DJ + their contract template. (Email comes from auth, not public.users.)
-  const { data: djRow } = await admin
-    .from('users')
-    .select('docuseal_template_id, name')
-    .eq('id', user.id)
-    .maybeSingle();
+  const { data: djRow } = await withTimeout(
+    admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle(),
+    5000, 'users-select',
+  );
   const dj = djRow as { docuseal_template_id?: string | null; name?: string | null } | null;
   if (!dj?.docuseal_template_id) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
@@ -48,12 +57,10 @@ export async function POST(req: Request) {
   const djEmail = user.email || '';
 
   // The booking — must belong to this DJ.
-  const { data: bkRow } = await admin
-    .from('bookings')
-    .select('*')
-    .eq('id', bookingId)
-    .eq('dj_id', user.id)
-    .maybeSingle();
+  const { data: bkRow } = await withTimeout(
+    admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle(),
+    5000, 'bookings-select',
+  );
   const b = bkRow as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
@@ -84,7 +91,10 @@ export async function POST(req: Request) {
   let clientEmail = (b.host_email as string) || '';
   if (!clientEmail && b.requester_id) {
     try {
-      const { data: reqUser } = await admin.auth.admin.getUserById(String(b.requester_id));
+      const { data: reqUser } = await withTimeout(
+        admin.auth.admin.getUserById(String(b.requester_id)),
+        5000, 'getUserById',
+      );
       clientEmail = reqUser?.user?.email || '';
     } catch { /* fall through */ }
   }
@@ -114,7 +124,7 @@ export async function POST(req: Request) {
   let submissionId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const submission = await Promise.race([
+    const submission = await withTimeout(
       docuseal.createSubmission({
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
@@ -123,8 +133,8 @@ export async function POST(req: Request) {
           { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('DocuSeal timed out after 8s')), 8000)),
-    ]);
+      12000, 'createSubmission',
+    );
 
     const arr = submission as unknown as Array<{ role?: string; embed_src?: string; submission_id?: number }>;
     const djSubmitter = Array.isArray(arr) ? arr.find((s) => s.role === 'DJ') || arr[0] : undefined;
