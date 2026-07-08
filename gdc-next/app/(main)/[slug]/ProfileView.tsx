@@ -32,7 +32,7 @@ import type { DjProfileData, Testimonial, TabKey } from './profileTypes';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
-  BannerTypeEventsDropdown, HeroActions, OwnerEditableBio, MediaAddButton,
+  BannerTypeEventsDropdown, HeroActions, OwnerEditableBio, MediaAddButton, MixAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, ShareCalendarModal,
   UnderBannerSocials,
@@ -239,9 +239,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // (Photo deletion now happens inside PhotoManagerModal, which edits the
   // gallery_photos array directly.)
 
-  // Delete a mix — clears mix_url_N for the given slot and reloads on
-  // the Mixes tab. Owner-only; called from X button on each mix embed.
-  async function deleteMix(slot: 1 | 2 | 3) {
+  // Delete a mix — removes it from the mix_urls array by index.
+  async function deleteMix(index: number) {
     const ok = await confirm({
       title: 'Delete this mix?',
       message: 'This removes the mix from your profile. You can add it back any time.',
@@ -251,9 +250,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!ok) return;
     try {
       const supabase = createClient();
+      const next = mixList.filter((_, i) => i !== index);
       await supabase
         .from('users')
-        .update({ [`mix_url_${slot}`]: null } as unknown as never)
+        .update({ mix_urls: next } as unknown as never)
         .eq('id', data.id);
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'mixes');
@@ -360,14 +360,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       ).map(s => s.trim()).filter(Boolean)
     : [];
 
-  // Mix URLs (1-3) and Gallery (1-4) and Video URLs (1-3) — vanilla pattern
-  // Slot-aware mix entries — needed so the owner delete X targets the
-  // right mix_url_N column even after earlier slots are emptied.
-  const mixEntries = [
-    { slot: 1 as const, url: data.mix_url_1 },
-    { slot: 2 as const, url: data.mix_url_2 },
-    { slot: 3 as const, url: data.mix_url_3 },
-  ].filter((m): m is { slot: 1 | 2 | 3; url: string } => !!m.url);
+  // Mixes — array model (mix_urls) with legacy 3-slot fallback.
+  const legacyMix = [data.mix_url_1, data.mix_url_2, data.mix_url_3].filter((u): u is string => !!u);
+  const mixList: string[] = (Array.isArray((data as { mix_urls?: string[] }).mix_urls)
+    && (data as { mix_urls?: string[] }).mix_urls!.length > 0)
+    ? (data as { mix_urls?: string[] }).mix_urls!.filter((u): u is string => !!u)
+    : legacyMix;
+  const mixCap = hasBookingAccess ? 10 : 4;
   // Gallery — new array model (gallery_photos) with fallback to the legacy
   // 4 fixed slots so existing photos still show until re-saved.
   const legacyGallery = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
@@ -943,23 +942,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Mixes tab */}
           <div className={paneClass('mixes')}>
-            {mixEntries.length > 0 ? (
+            {mixList.length > 0 ? (
               <div className={styles.mediaList}>
-                {mixEntries.map((m) => {
-                  const embed = buildMixEmbed(m.url);
+                {mixList.map((mUrl, i) => {
+                  const embed = buildMixEmbed(mUrl);
                   if (!embed) return null;
                   return (
                     <div
-                      key={m.slot}
+                      key={i}
                       className={styles.mediaEmbedWrap}
                       style={isOwnProfile ? { position: 'relative' } : undefined}
                     >
-                      {/* Owner-only delete X — top-right corner of the
-                          mix embed. Confirms before delete. */}
                       {isOwnProfile && (
                         <button
                           type="button"
-                          onClick={() => deleteMix(m.slot)}
+                          onClick={() => deleteMix(i)}
                           title="Delete this mix"
                           aria-label="Delete this mix"
                           style={{
@@ -996,24 +993,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {/* Owner-only inline add — appears below existing mixes
-                    until all 3 slots are filled. Saves to next empty
-                    mix_url_1/2/3 column. */}
-                {isOwnProfile && mixEntries.length < 3 && (
-                  <MediaAddButton
+                {isOwnProfile && (
+                  <MixAddButton
                     userId={data.id}
-                    kind="mix"
-                    existing={[data.mix_url_1, data.mix_url_2, data.mix_url_3]}
+                    list={mixList}
+                    cap={mixCap}
+                    isPaid={hasBookingAccess}
                   />
                 )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <MediaAddButton
+                  <MixAddButton
                     userId={data.id}
-                    kind="mix"
-                    existing={[data.mix_url_1, data.mix_url_2, data.mix_url_3]}
+                    list={mixList}
+                    cap={mixCap}
+                    isPaid={hasBookingAccess}
                     big
                   />
                 ) : 'Coming Soon'}

@@ -754,6 +754,92 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
 // Two visual modes: `big` (centered + button on empty tab) and inline
 // (smaller button rendered after existing media when slots remain).
 // ─────────────────────────────────────────────────────────────────────────
+export function MixAddButton({
+  userId,
+  list,
+  cap,
+  isPaid,
+  big,
+}: {
+  userId: string;
+  list: string[];
+  cap: number;
+  isPaid: boolean;
+  big?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(!!big);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const atCap = list.length >= cap;
+
+  async function handleSave() {
+    const trimmed = value.trim();
+    if (!trimmed) { setError('Paste a URL first.'); return; }
+    if (atCap) {
+      setError(isPaid ? `You've reached ${cap} mixes. Remove one first.` : `Free accounts can add ${cap} mixes. Upgrade for up to 10.`);
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const next = [...list, trimmed];
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ mix_urls: next } as unknown as never)
+        .eq('id', userId);
+      if (dbError) throw dbError;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'mixes');
+      window.location.href = url.toString();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.');
+      setSaving(false);
+    }
+  }
+
+  if (atCap && !isPaid) {
+    return (
+      <div style={{ padding: '.75rem .9rem', border: '1px solid var(--neon)', borderRadius: 8, background: 'rgba(0,245,196,.06)', fontFamily: 'DM Sans, sans-serif', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+        You&apos;ve reached the free limit of {cap} mixes.{' '}
+        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> to add up to 10.
+      </div>
+    );
+  }
+  if (atCap) return null;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        style={{ background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon)', borderRadius: 8, color: 'var(--neon)', cursor: 'pointer', padding: big ? '1.5rem' : '.9rem', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', letterSpacing: '.05em', width: '100%' }}
+      >
+        + Add a mix
+      </button>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } else if (e.key === 'Escape') { setExpanded(false); setValue(''); setError(''); } }}
+        placeholder="Paste SoundCloud, Mixcloud, or other mix URL"
+        autoFocus
+        style={{ padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif' }}
+      />
+      {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem' }}>{error}</div>}
+      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+        <button type="button" onClick={() => { setExpanded(false); setValue(''); setError(''); }} style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.8rem' }}>Cancel</button>
+        <button type="button" onClick={handleSave} disabled={saving} style={{ background: 'var(--neon)', border: 'none', color: '#000', borderRadius: 6, padding: '.5rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '.8rem' }}>{saving ? 'Saving…' : 'Add'}</button>
+      </div>
+    </div>
+  );
+}
+
 export function MediaAddButton({
   userId,
   kind,
