@@ -12,7 +12,7 @@ import styles from './profile.module.css';
 import { useAuth } from '@/components/AuthProvider';
 import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
 import { buildMixEmbed, buildVideoEmbed } from './embeds';
-import { parseBookingSettings, packageTiers } from './bookingSettings';
+import { parseBookingSettings, packageTiers, isSaleActive } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
 import ClubBookingForm from './ClubBookingForm';
@@ -62,6 +62,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Tab labels also differ: "Availability" for club, "Booking" for mobile,
   // matching vanilla bookingTabBtn.textContent flips at line 707 of dj-profile.html.
   const bookingSettings = parseBookingSettings(data.booking_settings);
+  // Site-wide sale badge — shown on the public profile when the DJ has an
+  // active sale (and booking is live for them).
+  const saleActive = hasBookingAccess && isSaleActive(bookingSettings?.sale);
+  const salePercent = bookingSettings?.sale?.percent;
   const isClubDJ = data.dj_type === 'club';
   const isMobileDJBooking = data.dj_type === 'mobile';
   // Club DJ booking goes live publicly only when:
@@ -687,6 +691,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {/* Mobile-only column: name + badges next to avatar */}
             <div className={styles.heroNameCol}>
               <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
+              {saleActive && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.72rem', letterSpacing: '.05em', padding: '3px 10px', borderRadius: 999 }}>
+                  {salePercent ? `${salePercent}% OFF` : 'SALE'} · BOOKING SALE
+                </div>
+              )}
               {heroBadgesEl}
             </div>
           </div>
@@ -696,6 +705,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
             <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
+              {saleActive && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.72rem', letterSpacing: '.05em', padding: '3px 10px', borderRadius: 999 }}>
+                  {salePercent ? `${salePercent}% OFF` : 'SALE'} · BOOKING SALE
+                </div>
+              )}
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 
