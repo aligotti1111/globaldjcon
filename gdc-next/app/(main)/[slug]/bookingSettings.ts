@@ -129,6 +129,7 @@ export interface Sale {
   active?: boolean;
   percent?: number;             // % off (1–100)
   ends?: string | null;         // ISO date; null = no end date
+  started_at?: string | null;   // ISO timestamp set when the sale is activated
 }
 
 // Result of resolving the best discount for a quote.
