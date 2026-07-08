@@ -93,9 +93,12 @@ async function tracePrepare(body: { bookingId?: unknown }) {
       ],
     } as unknown as Parameters<typeof docuseal.createSubmission>[0]);
     steps.push('createSubmission:ok');
-    const arr = sub as unknown as Array<{ role?: string; embed_src?: string }>;
-    steps.push(`embed:${Array.isArray(arr) && arr[0]?.embed_src ? 'yes' : 'no'}`);
-    return NextResponse.json({ steps });
+    const arr = sub as unknown as Array<Record<string, unknown>>;
+    const first = Array.isArray(arr) ? arr[0] : (sub as Record<string, unknown>);
+    const keys = first ? Object.keys(first) : [];
+    steps.push(`isArray:${Array.isArray(arr)}`);
+    steps.push(`keys:${keys.join(',')}`);
+    return NextResponse.json({ steps, firstSubmitter: first });
   } catch (e) {
     return NextResponse.json({ steps, error: e instanceof Error ? e.message : String(e) });
   }
