@@ -46,8 +46,8 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
 
   // DJ + their contract template. (Email comes from auth, not public.users.)
-  const { data: djRow } = await withTimeout(
-    admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle(),
+  const { data: djRow } = await withTimeout<{ data: unknown }>(
+    admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
     5000, 'users-select',
   );
   const dj = djRow as { docuseal_template_id?: string | null; name?: string | null } | null;
@@ -57,8 +57,8 @@ export async function POST(req: Request) {
   const djEmail = user.email || '';
 
   // The booking — must belong to this DJ.
-  const { data: bkRow } = await withTimeout(
-    admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle(),
+  const { data: bkRow } = await withTimeout<{ data: unknown }>(
+    admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
     5000, 'bookings-select',
   );
   const b = bkRow as Record<string, unknown> | null;
@@ -91,8 +91,8 @@ export async function POST(req: Request) {
   let clientEmail = (b.host_email as string) || '';
   if (!clientEmail && b.requester_id) {
     try {
-      const { data: reqUser } = await withTimeout(
-        admin.auth.admin.getUserById(String(b.requester_id)),
+      const { data: reqUser } = await withTimeout<{ data: { user: { email?: string } | null } }>(
+        admin.auth.admin.getUserById(String(b.requester_id)) as unknown as Promise<{ data: { user: { email?: string } | null } }>,
         5000, 'getUserById',
       );
       clientEmail = reqUser?.user?.email || '';
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
   let submissionId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const submission = await withTimeout(
+    const submission = await withTimeout<unknown>(
       docuseal.createSubmission({
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
