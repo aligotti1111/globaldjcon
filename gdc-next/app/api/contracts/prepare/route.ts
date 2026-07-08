@@ -32,13 +32,27 @@ function money(n: number, currency: string): string {
 }
 
 export async function POST(req: Request) {
+  // TEMP DEBUG: prove the handler runs at all, before touching any service.
+  // Send { "debug": true } to get an immediate response.
+  try {
+    const rawBody = await req.text();
+    if (rawBody.includes('"debug"')) {
+      return NextResponse.json({ ok: false, debug: 'handler-reached', bodyLen: rawBody.length });
+    }
+    const parsed = rawBody ? JSON.parse(rawBody) : {};
+    return await runPrepare(parsed);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `outer: ${msg}`.slice(0, 400) }, { status: 500 });
+  }
+}
+
+async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) {
   try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  let body: { bookingId?: unknown; clientEmail?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const bookingId = body.bookingId != null ? String(body.bookingId) : '';
   const manualClientEmail = typeof body.clientEmail === 'string' ? body.clientEmail.trim() : '';
   if (!bookingId) return NextResponse.json({ error: 'Missing booking' }, { status: 400 });
@@ -133,7 +147,7 @@ export async function POST(req: Request) {
           { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
-      7000, 'createSubmission',
+      12000, 'createSubmission',
     );
 
     const arr = submission as unknown as Array<{ role?: string; embed_src?: string; submission_id?: number }>;
