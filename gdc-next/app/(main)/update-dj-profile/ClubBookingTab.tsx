@@ -74,6 +74,7 @@ export default function ClubBookingTab({
 
   // ── Per-section last-changed tracking (for inline saved hints) ──
   const [lastChangedField, setLastChangedField] = useState<string | null>(null);
+  const [showBpdTip, setShowBpdTip] = useState(false);
 
   // Confirm modal — used to require explicit acknowledgement before
   // disabling booking. The Confirm hook returns the confirm() async fn
@@ -531,19 +532,35 @@ export default function ClubBookingTab({
         <div className={styles.sectionBody}>
           <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
             <div className={styles.settingLabelWrap}>
-              <div className={styles.settingLabel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className={styles.settingLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
                 Bookings Per Day
-                <span
-                  title="Max number of jobs you can DJ in one day before the day is marked completely booked."
+                <button
+                  type="button"
+                  onClick={() => setShowBpdTip((v) => !v)}
+                  aria-label="What is this?"
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 16, height: 16, borderRadius: '50%',
-                    border: '1px solid var(--muted, #8a8aa0)', color: 'var(--muted, #8a8aa0)',
-                    fontSize: '.65rem', cursor: 'help', lineHeight: 1,
+                    width: 18, height: 18, borderRadius: '50%', padding: 0,
+                    border: '1px solid var(--muted, #8a8aa0)', background: 'transparent',
+                    color: 'var(--muted, #8a8aa0)', fontSize: '.7rem', cursor: 'pointer', lineHeight: 1,
                   }}
                 >
                   ?
-                </span>
+                </button>
+                {showBpdTip && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
+                      width: 260, background: '#1a1a2e', color: '#fff',
+                      border: '1px solid var(--border, rgba(255,255,255,.2))', borderRadius: 8,
+                      padding: '.6rem .75rem', fontSize: '.78rem', lineHeight: 1.5,
+                      textTransform: 'none', letterSpacing: 'normal', fontWeight: 400,
+                      boxShadow: '0 4px 16px rgba(0,0,0,.4)',
+                    }}
+                  >
+                    Max number of jobs you can DJ in one day before the day is marked completely booked.
+                  </div>
+                )}
               </div>
               <div className={styles.settingHint}>
                 How many bookings you&rsquo;ll accept on a single day.
