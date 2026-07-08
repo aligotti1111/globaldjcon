@@ -40,10 +40,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, debug: 'handler-reached', bodyLen: rawBody.length });
     }
     const parsed = rawBody ? JSON.parse(rawBody) : {};
+    if (parsed && parsed.trace) return await tracePrepare(parsed);
     return await runPrepare(parsed);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: `outer: ${msg}`.slice(0, 400) }, { status: 500 });
+  }
+}
+
+// Step-by-step diagnostic: send { bookingId, trace: true } and it returns which
+// step it reached, so a hanging service call is pinpointed.
+async function tracePrepare(body: { bookingId?: unknown }) {
+  const steps: string[] = [];
+  try {
+    steps.push('start');
+    const supabase = await createClient();
+    steps.push('createClient');
+    const { data: { user } } = await supabase.auth.getUser();
+    steps.push(`getUser:${user ? 'ok' : 'none'}`);
+    if (!user) return NextResponse.json({ steps });
+    const admin = createAdminClient();
+    steps.push('adminClient');
+    const { data: djRow } = await admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle();
+    const dj = djRow as { docuseal_template_id?: string | null } | null;
+    steps.push(`users:${dj?.docuseal_template_id ? 'has-template' : 'no-template'}`);
+    const bookingId = String(body.bookingId || '');
+    const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle();
+    const b = bkRow as Record<string, unknown> | null;
+    steps.push(`booking:${b ? 'found' : 'missing'}`);
+    if (b?.requester_id) {
+      const { data: reqUser } = await admin.auth.admin.getUserById(String(b.requester_id));
+      steps.push(`getUserById:${(reqUser as { user?: { email?: string } } | null)?.user?.email ? 'has-email' : 'no-email'}`);
+    } else {
+      steps.push('getUserById:skipped');
+    }
+    steps.push('before-createSubmission');
+    const docuseal = getDocuseal();
+    steps.push('getDocuseal');
+    const sub = await docuseal.createSubmission({
+      template_id: Number(dj?.docuseal_template_id) || (dj?.docuseal_template_id as unknown as number),
+      order: 'preserved',
+      submitters: [
+        { role: 'DJ', email: user.email || '', name: 'DJ', send_email: false },
+        { role: 'Client', email: (b?.host_email as string) || 'test@example.com', name: 'Client' },
+      ],
+    } as unknown as Parameters<typeof docuseal.createSubmission>[0]);
+    steps.push('createSubmission:ok');
+    const arr = sub as unknown as Array<{ role?: string; embed_src?: string }>;
+    steps.push(`embed:${Array.isArray(arr) && arr[0]?.embed_src ? 'yes' : 'no'}`);
+    return NextResponse.json({ steps });
+  } catch (e) {
+    return NextResponse.json({ steps, error: e instanceof Error ? e.message : String(e) });
   }
 }
 
