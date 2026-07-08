@@ -18,8 +18,8 @@
     "resend": "^4.0.0",
     "stripe": "^22.0.0",
     "twilio": "^6.0.2",
-    "@stripe/stripe-js": "^4.10.0",
-    "@stripe/react-stripe-js": "^2.9.0"
+    "@docuseal/api": "^1.0.23",
+    "@docuseal/react": "^1.0.75"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
