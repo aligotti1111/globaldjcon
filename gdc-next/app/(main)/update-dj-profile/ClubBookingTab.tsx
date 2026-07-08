@@ -581,7 +581,7 @@ export default function ClubBookingTab({
             <div className={styles.settingLabelWrap}>
               <div className={styles.settingLabel}>Book In Advance</div>
               <div className={styles.settingHint}>
-                How far ahead someone can book you.
+                How far ahead can someone book you?
               </div>
             </div>
             <select
