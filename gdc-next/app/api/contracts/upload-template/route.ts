@@ -38,24 +38,63 @@ export async function POST(req: Request) {
   const isDocx =
     lower.endsWith('.docx') ||
     file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  if (!isPdf && !isDocx) {
-    return NextResponse.json({ error: 'Upload a PDF or Word (.docx) file' }, { status: 400 });
+  const isJpg = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || file.type === 'image/jpeg';
+  const isPng = lower.endsWith('.png') || file.type === 'image/png';
+  const isImage = isJpg || isPng;
+  if (!isPdf && !isDocx && !isImage) {
+    return NextResponse.json({ error: 'Upload a PDF, Word (.docx), or image (JPG/PNG)' }, { status: 400 });
   }
   if (file.size > 20 * 1024 * 1024) {
     return NextResponse.json({ error: 'File is too large (max 20MB)' }, { status: 400 });
   }
 
-  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+  const bytes = new Uint8Array(await file.arrayBuffer());
 
-  // 3. Create the DocuSeal template from the file (tags auto-detected).
+  // 3. Create the DocuSeal template.
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const docs = [{ name, file: base64 }];
-    const template = isPdf
-      ? await docuseal.createTemplateFromPdf({ name: `Contract — ${user.id}`, documents: docs })
-      : await docuseal.createTemplateFromDocx({ name: `Contract — ${user.id}`, documents: docs });
-    templateId = (template as { id?: string | number }).id;
+
+    if (isImage) {
+      // Images have no tags — wrap the picture into a single-page PDF and
+      // place DJ + client signature fields near the bottom (sign-only).
+      const { PDFDocument } = await import('pdf-lib');
+      const pdf = await PDFDocument.create();
+      const img = isPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+      // Fit the image onto a letter-ish page, preserving aspect ratio.
+      const maxW = 612;
+      const scale = Math.min(1, maxW / img.width);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const page = pdf.addPage([w, h + 90]); // extra space at bottom for signatures
+      page.drawImage(img, { x: 0, y: 90, width: w, height: h });
+      const pdfBytes = await pdf.save();
+      const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
+
+      const template = await docuseal.createTemplateFromPdf({
+        name: `Contract — ${user.id}`,
+        documents: [
+          {
+            name,
+            file: pdfBase64,
+            fields: [
+              { name: 'Signature', role: 'DJ', type: 'signature', areas: [{ x: 0.08, y: 0.02, w: 0.38, h: 0.07, page: 0 }] },
+              { name: 'Signature', role: 'Client', type: 'signature', areas: [{ x: 0.54, y: 0.02, w: 0.38, h: 0.07, page: 0 }] },
+            ],
+          },
+        ],
+      } as unknown as Parameters<typeof docuseal.createTemplateFromPdf>[0]);
+      templateId = (template as { id?: string | number }).id;
+    } else {
+      // PDF / DOCX — tags are read straight from the document.
+      const base64 = Buffer.from(bytes).toString('base64');
+      const docs = [{ name, file: base64 }];
+      const template = isPdf
+        ? await docuseal.createTemplateFromPdf({ name: `Contract — ${user.id}`, documents: docs })
+        : await docuseal.createTemplateFromDocx({ name: `Contract — ${user.id}`, documents: docs });
+      templateId = (template as { id?: string | number }).id;
+    }
+
     if (templateId == null) throw new Error('No template id returned');
   } catch (e) {
     return NextResponse.json(
