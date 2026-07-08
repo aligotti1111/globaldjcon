@@ -99,7 +99,7 @@ export default function ContractSendModal({
   const [builderToken, setBuilderToken] = useState<string | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
 
-  async function prepare() {
+  async function prepare(afterSave = false) {
     setPhase('loading'); setError(null);
     try {
       const res = await fetch('/api/contracts/prepare', {
@@ -107,7 +107,17 @@ export default function ContractSendModal({
         body: JSON.stringify({ bookingId }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; embedSrc?: string; error?: string };
-      if (res.status === 400 && /set up your contract/i.test(json.error || '')) { setPhase('need_setup'); return; }
+      if (res.status === 400 && /set up your contract/i.test(json.error || '')) {
+        if (afterSave) {
+          // We just saved a contract but prepare still can't see it — surface
+          // the real message rather than silently looping.
+          setError('Your contract saved, but this booking couldn\u2019t load it. Try again in a moment.');
+          setPhase('error');
+        } else {
+          setPhase('need_setup');
+        }
+        return;
+      }
       if (!res.ok || !json.ok || !json.embedSrc) throw new Error(json.error || 'Could not prepare the contract.');
       setEmbedSrc(json.embedSrc); setPhase('signing');
     } catch (e) {
@@ -153,9 +163,11 @@ export default function ContractSendModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, logoUrl }),
       });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
-      await prepare(); // contract exists now → prepare + sign
+      // Small delay to let the template write settle, then prepare + sign.
+      await new Promise((r) => setTimeout(r, 600));
+      await prepare(true);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSaving(false); }
   }
@@ -248,7 +260,7 @@ export default function ContractSendModal({
     ), (
       <>
         <button type="button" onClick={() => { setError(null); setPhase('setup_standard'); }} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>Use our standard contract instead</button>
-        <button type="button" onClick={prepare} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Done — continue</button>
+        <button type="button" onClick={() => prepare()} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Done — continue</button>
       </>
     ));
   }
