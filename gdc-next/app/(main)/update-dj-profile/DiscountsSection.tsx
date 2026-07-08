@@ -167,6 +167,9 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
   // Redemptions grouped by uppercased code, pulled from the DJ's bookings.
   const [usageByCode, setUsageByCode] = useState<Record<string, Redemption[]>>({});
+  // Bookings that used the automatic sale (a discount was applied but no code).
+  const [saleUsage, setSaleUsage] = useState<Redemption[]>([]);
+  const [saleOpen, setSaleOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -178,16 +181,21 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
         .from('bookings')
         .select('requester_name, event_date, created_at, discount_code, discount_label, discount_amount, original_rate, currency')
         .eq('dj_id', user.id)
-        .not('discount_code', 'is', null)
+        .not('discount_amount', 'is', null)
         .order('created_at', { ascending: false });
       if (!mounted) return;
       const map: Record<string, Redemption[]> = {};
+      const sales: Redemption[] = [];
       ((data as unknown as Redemption[]) || []).forEach((r) => {
         const key = (r.discount_code || '').trim().toUpperCase();
-        if (!key) return;
-        (map[key] = map[key] || []).push(r);
+        if (key) {
+          (map[key] = map[key] || []).push(r);
+        } else if ((r.discount_amount || 0) > 0) {
+          sales.push(r); // sale redemption (no code)
+        }
       });
       setUsageByCode(map);
+      setSaleUsage(sales);
     })();
     return () => { mounted = false; };
   }, []);
@@ -320,6 +328,45 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             );
           })()}
         </div>
+
+        {/* Sale usage — who booked while a sale was applied. */}
+        {saleUsage.length > 0 && (
+          <div style={{ padding: '0 0 1rem' }}>
+            <button
+              type="button"
+              onClick={() => setSaleOpen((o) => !o)}
+              style={{
+                background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex',
+                alignItems: 'center', gap: 4,
+              }}
+            >
+              <span style={metaLabel}>Sale used</span> {saleUsage.length}
+              <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
+            </button>
+            {saleOpen && (
+              <div style={{ marginTop: '.6rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.6rem' }}>
+                {saleUsage.map((r, ri) => (
+                  <div
+                    key={ri}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem' }}
+                  >
+                    <span style={{ color: 'var(--white,#fff)' }}>
+                      {r.requester_name || 'Someone'}
+                      <span style={{ color: 'var(--muted,#8a8aa0)' }}>
+                        {' '}· booked {fmtDate(r.created_at)}
+                        {r.discount_label ? ` · ${r.discount_label}` : ''}
+                      </span>
+                    </span>
+                    <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                      saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Promo codes ────────────────────────────────────────── */}
         <div className={styles.settingRow} style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem' }}>
