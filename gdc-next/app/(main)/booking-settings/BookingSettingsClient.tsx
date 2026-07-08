@@ -18,6 +18,7 @@ import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 import BookingTab from '../update-dj-profile/BookingTab';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
+import ContractSection from '../update-dj-profile/ContractSection';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
 
 interface InitialProfile {
@@ -214,6 +215,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
         </button>
       </div>
+
+      {hasBookingAccess && (
+        <div className={styles.card}>
+          <ContractSection />
+        </div>
+      )}
     </div>
   );
 }
