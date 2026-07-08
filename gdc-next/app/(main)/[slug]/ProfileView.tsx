@@ -236,30 +236,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     }
   }
 
-  // Delete a photo — clears gallery_img_N for the given slot and
-  // reloads on the Photos tab. Owner-only; called from X button on
-  // each gallery image.
-  async function deletePhoto(slot: 1 | 2 | 3 | 4) {
-    const ok = await confirm({
-      title: 'Delete this photo?',
-      message: 'This removes the photo from your profile gallery.',
-      confirmLabel: 'Delete',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    try {
-      const supabase = createClient();
-      await supabase
-        .from('users')
-        .update({ [`gallery_img_${slot}`]: null } as unknown as never)
-        .eq('id', data.id);
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', 'images');
-      window.location.href = url.toString();
-    } catch {
-      // Best-effort
-    }
-  }
+  // (Photo deletion now happens inside PhotoManagerModal, which edits the
+  // gallery_photos array directly.)
 
   // Delete a mix — clears mix_url_N for the given slot and reloads on
   // the Mixes tab. Owner-only; called from X button on each mix embed.
@@ -390,17 +368,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     { slot: 2 as const, url: data.mix_url_2 },
     { slot: 3 as const, url: data.mix_url_3 },
   ].filter((m): m is { slot: 1 | 2 | 3; url: string } => !!m.url);
-  const galleryUrls = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
+  // Gallery — new array model (gallery_photos) with fallback to the legacy
+  // 4 fixed slots so existing photos still show until re-saved.
+  const legacyGallery = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
     .filter((u): u is string => !!u);
-  // Slot-aware gallery entries — needed so the owner delete X can
-  // null out the correct gallery_img_N column (since galleryUrls is
-  // filtered, indexes don't line up with DB slots after a deletion).
-  const galleryEntries = [
-    { slot: 1 as const, url: data.gallery_img_1 },
-    { slot: 2 as const, url: data.gallery_img_2 },
-    { slot: 3 as const, url: data.gallery_img_3 },
-    { slot: 4 as const, url: data.gallery_img_4 },
-  ].filter((g): g is { slot: 1 | 2 | 3 | 4; url: string } => !!g.url);
+  const galleryPhotos: string[] = (Array.isArray((data as { gallery_photos?: string[] }).gallery_photos)
+    && (data as { gallery_photos?: string[] }).gallery_photos!.length > 0)
+    ? (data as { gallery_photos?: string[] }).gallery_photos!.filter((u): u is string => !!u)
+    : legacyGallery;
+  const photoCap = hasBookingAccess ? 50 : 4;
   const videoUrls = [data.video_url_1, data.video_url_2, data.video_url_3].filter((u): u is string => !!u);
   // Pair each video URL with its title + description from the matching
   // numbered columns. slot is 1/2/3 — the original DB column index — so
@@ -1047,54 +1023,34 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Photos tab */}
           <div className={paneClass('images')}>
-            {galleryEntries.length > 0 ? (
-              <div className={styles.imageGrid}>
-                {galleryEntries.map((g) => (
-                  <div
-                    key={g.slot}
-                    style={isOwnProfile ? { position: 'relative' } : undefined}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={g.url}
-                      alt="Gallery photo"
-                      loading="lazy"
-                      onClick={() => setLightboxSrc(g.url)}
-                    />
-                    {isOwnProfile && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); deletePhoto(g.slot); }}
-                        title="Delete this photo"
-                        aria-label="Delete this photo"
-                        style={{
-                          position: 'absolute',
-                          top: 6,
-                          right: 6,
-                          zIndex: 5,
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: 'rgba(0, 0, 0, .8)',
-                          border: '1px solid rgba(255, 95, 95, .7)',
-                          color: '#ff5f5f',
-                          fontSize: '.8rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: 0,
-                          lineHeight: 1,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
+            {galleryPhotos.length > 0 ? (
+              <>
+                {isOwnProfile && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.6rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoManagerOpen(true)}
+                      style={{ background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.4rem .9rem', fontSize: '.75rem', letterSpacing: '.04em', textTransform: 'uppercase', cursor: 'pointer' }}
+                    >
+                      Manage Photos
+                    </button>
                   </div>
-                ))}
-                {/* Owner-only inline add — opens manage-photos modal
-                    when there's room for more photos. */}
-                {isOwnProfile && galleryEntries.length < 4 && (
+                )}
+                <div className={styles.imageGrid}>
+                  {galleryPhotos.map((url, i) => (
+                    <div key={i}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt="Gallery photo"
+                        loading="lazy"
+                        onClick={() => setLightboxSrc(url)}
+                      />
+                    </div>
+                  ))}
+                  {/* Owner-only inline add — opens manage-photos modal
+                      when there's room for more photos. */}
+                  {isOwnProfile && galleryPhotos.length < photoCap && (
                   <button
                     type="button"
                     onClick={() => setPhotoManagerOpen(true)}
@@ -1120,7 +1076,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     +
                   </button>
                 )}
-              </div>
+                </div>
+              </>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
@@ -1415,12 +1372,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       {photoManagerOpen && isOwnProfile && (
         <PhotoManagerModal
           userId={data.id}
-          slots={[
-            { slot: 1, url: data.gallery_img_1 },
-            { slot: 2, url: data.gallery_img_2 },
-            { slot: 3, url: data.gallery_img_3 },
-            { slot: 4, url: data.gallery_img_4 },
-          ]}
+          photos={galleryPhotos}
+          cap={photoCap}
+          isPaid={hasBookingAccess}
           onClose={() => {
             // Reload on close so any changes the DJ made show in the
             // hero/photos tab. Cheaper than wiring up live state.

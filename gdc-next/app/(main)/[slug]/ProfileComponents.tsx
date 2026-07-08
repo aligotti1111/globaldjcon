@@ -1374,195 +1374,67 @@ export function ExpandableDesc({ text }: { text: string }) {
 // ─────────────────────────────────────────────────────────────────────────
 export function PhotoManagerModal({
   userId,
-  slots,
+  photos,
+  cap,
+  isPaid,
   onClose,
 }: {
   userId: string;
-  slots: { slot: 1 | 2 | 3 | 4; url: string | null }[];
+  photos: string[];
+  cap: number;
+  isPaid: boolean;
   onClose: () => void;
 }) {
-  // Local mirror of slot URLs so the modal updates immediately on
-  // upload/remove without waiting for the close-and-reload roundtrip.
-  const [slotUrls, setSlotUrls] = useState<Record<number, string | null>>(() => {
-    const m: Record<number, string | null> = {};
-    for (const s of slots) m[s.slot] = s.url;
-    return m;
-  });
-
-  const filledCount = Object.values(slotUrls).filter((u) => !!u).length;
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '1rem',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-card, #1a1a2e)',
-          border: '1px solid var(--border, rgba(255,255,255,0.1))',
-          borderRadius: 12,
-          padding: '1.5rem',
-          width: '100%',
-          maxWidth: 560,
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '.4rem',
-        }}>
-          <div style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: '1.4rem',
-            color: 'var(--white, #fff)',
-            letterSpacing: '.04em',
-          }}>
-            Manage Photos
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--muted, #888)',
-              fontSize: '1.4rem',
-              cursor: 'pointer',
-              padding: '.25rem .5rem',
-            }}
-          >
-            ✕
-          </button>
-        </div>
-        <div style={{
-          fontFamily: "'Space Mono', monospace",
-          fontSize: '.7rem',
-          letterSpacing: '.06em',
-          textTransform: 'uppercase',
-          color: 'var(--muted, #888)',
-          marginBottom: '1rem',
-        }}>
-          {filledCount} of 4 slots filled
-        </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '.75rem',
-        }}>
-          {([1, 2, 3, 4] as const).map((slot) => (
-            <PhotoManagerSlot
-              key={slot}
-              slot={slot}
-              userId={userId}
-              url={slotUrls[slot] || null}
-              onChange={(newUrl) => {
-                setSlotUrls((prev) => ({ ...prev, [slot]: newUrl }));
-              }}
-            />
-          ))}
-        </div>
-        {/* Footer — Done button to close + reload. Each slot already
-            persists to DB on upload/remove, so this is purely a way to
-            dismiss the modal and refresh the underlying tab. */}
-        <div style={{
-          marginTop: '1.25rem',
-          display: 'flex',
-          justifyContent: 'flex-end',
-        }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '.6rem 1.4rem',
-              background: 'var(--neon)',
-              border: 'none',
-              borderRadius: 6,
-              color: '#000',
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.75rem',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// PhotoManagerSlot — a single 2x2 grid cell. Empty: dashed neon border
-// with a centered + that opens the file picker. Filled: shows the image
-// with a remove ✕ and a "Change Photo" overlay on hover. Uploads to
-// Supabase Storage via the same path convention the existing PhotosTab
-// uses (avatars bucket, `${userId}/gallery_${slot}.{ext}`).
-export function PhotoManagerSlot({
-  slot,
-  userId,
-  url,
-  onChange,
-}: {
-  slot: 1 | 2 | 3 | 4;
-  userId: string;
-  url: string | null;
-  onChange: (url: string | null) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Array-based gallery. Photos persist to public.users.gallery_photos
+  // (a jsonb array). Upload appends up to `cap`; remove pulls from the array.
+  const [list, setList] = useState<string[]>(photos);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hovering, setHovering] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const atCap = list.length >= cap;
 
-  function pick() {
-    if (busy) return;
-    inputRef.current?.click();
+  async function persist(next: string[]) {
+    const supabase = createClient();
+    const { error: dbErr } = await supabase
+      .from('users')
+      .update({ gallery_photos: next } as unknown as never)
+      .eq('id', userId);
+    if (dbErr) throw dbErr;
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     setError(null);
-    // Run client-side validation BEFORE the upload kicks off so a
-    // bad file gets rejected instantly with no Supabase roundtrip.
-    const valErr = await validateImageFile(file);
-    if (valErr) {
-      setError(valErr);
-      return;
-    }
+    const room = cap - list.length;
+    if (room <= 0) return;
+    const toAdd = files.slice(0, room);
     setBusy(true);
     try {
       const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${userId}/gallery_${slot}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ [`gallery_img_${slot}`]: publicUrl } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
-      onChange(publicUrl);
+      const uploaded: string[] = [];
+      for (const file of toAdd) {
+        const valErr = await validateImageFile(file);
+        if (valErr) { setError(valErr); continue; }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const rand = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+        const id = rand.replace(/[^a-z0-9]/gi, '');
+        const path = `${userId}/gallery_${id}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('avatars')
+          .upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) { setError(upErr.message); continue; }
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        uploaded.push(`${data.publicUrl}?t=${Date.now()}`);
+      }
+      if (uploaded.length) {
+        const next = [...list, ...uploaded];
+        await persist(next);
+        setList(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
@@ -1570,19 +1442,14 @@ export function PhotoManagerSlot({
     }
   }
 
-  async function remove(e: React.MouseEvent) {
-    e.stopPropagation();
+  async function removeAt(idx: number) {
     if (busy) return;
-    setError(null);
     setBusy(true);
+    setError(null);
     try {
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ [`gallery_img_${slot}`]: null } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
-      onChange(null);
+      const next = list.filter((_, i) => i !== idx);
+      await persist(next);
+      setList(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not remove.');
     } finally {
@@ -1591,138 +1458,73 @@ export function PhotoManagerSlot({
   }
 
   return (
-    <div>
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+    >
       <div
-        onClick={pick}
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-        style={{
-          position: 'relative',
-          aspectRatio: '1 / 1',
-          background: url ? '#000' : 'rgba(0, 245, 196, .05)',
-          border: url ? '1px solid var(--border, rgba(255,255,255,0.15))' : '2px dashed var(--neon)',
-          borderRadius: 8,
-          cursor: busy ? 'wait' : 'pointer',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: busy ? 0.6 : 1,
-          transition: 'opacity .15s',
-        }}
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--bg-card, #1a1a2e)', border: '1px solid var(--border, rgba(255,255,255,0.1))', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 620, maxHeight: '90vh', overflowY: 'auto' }}
       >
-        {url ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={thumbUrl(url, 400)}
-              alt={`Gallery slot ${slot}`}
-              width={400}
-              height={400}
-              loading="eager"
-              decoding="async"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-              }}
-            />
-            {hovering && !busy && (
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(0,0,0,.55)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--neon)',
-                fontFamily: "'Space Mono', monospace",
-                fontSize: '.7rem',
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-              }}>
-                Change Photo
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={remove}
-              title="Remove this photo"
-              aria-label="Remove this photo"
-              style={{
-                position: 'absolute',
-                top: 6,
-                right: 6,
-                width: 26,
-                height: 26,
-                borderRadius: '50%',
-                background: 'rgba(0, 0, 0, .8)',
-                border: '1px solid rgba(255, 95, 95, .7)',
-                color: '#ff5f5f',
-                fontSize: '.8rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                lineHeight: 1,
-              }}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: 'var(--white, #fff)', letterSpacing: '.04em' }}>
+            Manage Photos
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--muted, #888)', fontSize: '1.4rem', cursor: 'pointer', padding: '.25rem .5rem' }}>✕</button>
+        </div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted, #888)', marginBottom: '1rem' }}>
+          {list.length} of {cap} photos
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.6rem' }}>
+          {list.map((url, idx) => (
+            <div key={idx} style={{ position: 'relative', aspectRatio: '1 / 1', background: '#000', border: '1px solid var(--border, rgba(255,255,255,0.15))', borderRadius: 8, overflow: 'hidden' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={thumbUrl(url, 400)} alt={`Photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button
+                type="button"
+                onClick={() => removeAt(idx)}
+                aria-label="Remove photo"
+                style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.65)', color: '#fff', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
+              >✕</button>
+            </div>
+          ))}
+
+          {!atCap && (
+            <div
+              onClick={() => { if (!busy) inputRef.current?.click(); }}
+              style={{ aspectRatio: '1 / 1', background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon)', borderRadius: 8, cursor: busy ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--neon)', opacity: busy ? 0.6 : 1 }}
             >
-              ✕
-            </button>
-          </>
-        ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '.4rem',
-          }}>
-            <div style={{
-              color: 'var(--neon)',
-              fontSize: '2.5rem',
-              lineHeight: 1,
-              fontWeight: 300,
-            }}>
-              {busy ? '…' : '+'}
+              <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>+</span>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', marginTop: 4 }}>ADD</span>
             </div>
-            <div style={{
-              color: 'var(--muted, #888)',
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.6rem',
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-            }}>
-              Photo {slot}
-            </div>
+          )}
+        </div>
+
+        <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onFiles} />
+
+        {atCap && !isPaid && (
+          <div style={{ marginTop: '1rem', padding: '.75rem .9rem', border: '1px solid var(--neon)', borderRadius: 8, background: 'rgba(0,245,196,.06)', fontFamily: 'DM Sans, sans-serif', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+            You&apos;ve reached the free limit of {cap} photos.{' '}
+            <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> to add up to 50.
           </div>
         )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={onFile}
-        />
-      </div>
-      {error && (
-        <div style={{
-          marginTop: '.3rem',
-          color: '#ff5f5f',
-          fontSize: '.7rem',
-          fontFamily: 'DM Sans, sans-serif',
-        }}>
-          {error}
+
+        {error && (
+          <div style={{ marginTop: '.75rem', color: '#ff5f5f', fontSize: '.78rem', fontFamily: 'DM Sans, sans-serif' }}>{error}</div>
+        )}
+
+        <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{ padding: '.6rem 1.4rem', background: 'var(--neon)', border: 'none', borderRadius: 6, color: '#000', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Done</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─
 // EmbedCalendarModal — owner-only popup that generates a copy-pasteable
 // iframe snippet pointing at /embed-calendar?slug=…. Mirrors the
 // generator UX of update-dj-profile/EmbedCodeSection but inlined here
