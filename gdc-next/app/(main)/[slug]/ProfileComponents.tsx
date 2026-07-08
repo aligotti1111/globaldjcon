@@ -754,6 +754,99 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
 // Two visual modes: `big` (centered + button on empty tab) and inline
 // (smaller button rendered after existing media when slots remain).
 // ─────────────────────────────────────────────────────────────────────────
+type VideoItem = { url: string; title: string | null; desc: string | null };
+
+export function VideoAddButton({
+  userId,
+  list,
+  cap,
+  isPaid,
+  big,
+}: {
+  userId: string;
+  list: VideoItem[];
+  cap: number;
+  isPaid: boolean;
+  big?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(!!big);
+  const [value, setValue] = useState('');
+  const [titleVal, setTitleVal] = useState('');
+  const [descVal, setDescVal] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const atCap = list.length >= cap;
+
+  async function handleSave() {
+    const trimmed = value.trim();
+    if (!trimmed) { setError('Paste a URL first.'); return; }
+    if (atCap) { setError(`You've reached ${cap} videos. Remove one first.`); return; }
+    setError(null);
+    setSaving(true);
+    try {
+      let resolvedTitle = titleVal.trim();
+      if (!resolvedTitle) {
+        try {
+          const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(trimmed)}&format=json`;
+          const r = await fetch(oembedUrl);
+          if (r.ok) {
+            const j = await r.json() as { title?: string };
+            if (j.title) resolvedTitle = j.title;
+          }
+        } catch { /* ignore */ }
+      }
+      const supabase = createClient();
+      const next: VideoItem[] = [...list, { url: trimmed, title: resolvedTitle || null, desc: descVal.trim() || null }];
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ video_urls: next } as unknown as never)
+        .eq('id', userId);
+      if (dbError) throw dbError;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'video');
+      window.location.href = url.toString();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.');
+      setSaving(false);
+    }
+  }
+
+  if (atCap && !isPaid) {
+    return (
+      <div style={{ padding: '.75rem .9rem', border: '1px solid var(--neon)', borderRadius: 8, background: 'rgba(0,245,196,.06)', fontFamily: 'DM Sans, sans-serif', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+        You&apos;ve reached the free limit of {cap} videos.{' '}
+        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> to add up to 10.
+      </div>
+    );
+  }
+  if (atCap) return null;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        style={{ background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon)', borderRadius: 8, color: 'var(--neon)', cursor: 'pointer', padding: big ? '1.5rem' : '.9rem', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', letterSpacing: '.05em', width: '100%' }}
+      >
+        + Add a video
+      </button>
+    );
+  }
+  const inputStyle: React.CSSProperties = { padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif', width: '100%', boxSizing: 'border-box' };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+      <input type="text" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Paste YouTube or Vimeo URL" autoFocus style={inputStyle} />
+      <input type="text" value={titleVal} onChange={(e) => setTitleVal(e.target.value)} placeholder="Title (optional — auto-filled from YouTube)" style={inputStyle} />
+      <textarea value={descVal} onChange={(e) => setDescVal(e.target.value)} placeholder="Description (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+      {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem' }}>{error}</div>}
+      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+        <button type="button" onClick={() => { setExpanded(false); setValue(''); setTitleVal(''); setDescVal(''); setError(''); }} style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.8rem' }}>Cancel</button>
+        <button type="button" onClick={handleSave} disabled={saving} style={{ background: 'var(--neon)', border: 'none', color: '#000', borderRadius: 6, padding: '.5rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '.8rem' }}>{saving ? 'Saving…' : 'Add'}</button>
+      </div>
+    </div>
+  );
+}
+
 export function MixAddButton({
   userId,
   list,
@@ -1162,12 +1255,14 @@ export function MediaAddButton({
 // ─────────────────────────────────────────────────────────────────────────
 export function VideoMetaEditor({
   userId,
-  slot,
+  list,
+  index,
   initialTitle,
   initialDesc,
 }: {
   userId: string;
-  slot: 1 | 2 | 3;
+  list: VideoItem[];
+  index: number;
   initialTitle: string | null;
   initialDesc: string | null;
 }) {
@@ -1192,12 +1287,12 @@ export function VideoMetaEditor({
     setSaving(true);
     try {
       const supabase = createClient();
+      const next = list.map((v, i) =>
+        i === index ? { ...v, title: titleDraft.trim() || null, desc: descDraft.trim() || null } : v
+      );
       const { error: dbError } = await supabase
         .from('users')
-        .update({
-          [`video_title_${slot}`]: titleDraft.trim() || null,
-          [`video_desc_${slot}`]: descDraft.trim() || null,
-        } as unknown as never)
+        .update({ video_urls: next } as unknown as never)
         .eq('id', userId);
       if (dbError) throw dbError;
       const url = new URL(window.location.href);

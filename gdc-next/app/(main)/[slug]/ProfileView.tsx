@@ -32,7 +32,7 @@ import type { DjProfileData, Testimonial, TabKey } from './profileTypes';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
-  BannerTypeEventsDropdown, HeroActions, OwnerEditableBio, MediaAddButton, MixAddButton,
+  BannerTypeEventsDropdown, HeroActions, OwnerEditableBio, MixAddButton, VideoAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, ShareCalendarModal,
   UnderBannerSocials,
@@ -207,10 +207,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // a confirm() promise + a confirmDialog JSX element to render once.
   const { confirm, confirmDialog } = useConfirm();
 
-  // Delete a video — clears url/title/desc for the given slot and
-  // reloads on the same tab. Owner-only; called from the X button on
-  // each framed video card.
-  async function deleteVideo(slot: 1 | 2 | 3) {
+  // Delete a video — removes it from the video_urls array by index.
+  async function deleteVideo(index: number) {
     const ok = await confirm({
       title: 'Delete this video?',
       message: 'This removes the video from your profile. You can add it back any time.',
@@ -220,13 +218,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!ok) return;
     try {
       const supabase = createClient();
+      const next = videoList.filter((_, i) => i !== index);
       await supabase
         .from('users')
-        .update({
-          [`video_url_${slot}`]: null,
-          [`video_title_${slot}`]: null,
-          [`video_desc_${slot}`]: null,
-        } as unknown as never)
+        .update({ video_urls: next } as unknown as never)
         .eq('id', data.id);
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'video');
@@ -376,16 +371,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     ? (data as { gallery_photos?: string[] }).gallery_photos!.filter((u): u is string => !!u)
     : legacyGallery;
   const photoCap = hasBookingAccess ? 50 : 4;
-  const videoUrls = [data.video_url_1, data.video_url_2, data.video_url_3].filter((u): u is string => !!u);
-  // Pair each video URL with its title + description from the matching
-  // numbered columns. slot is 1/2/3 — the original DB column index — so
-  // delete handlers can target the right video_url_N / video_title_N /
-  // video_desc_N columns even after filtering out empty slots.
-  const videoEntries = [
-    { slot: 1 as const, url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
-    { slot: 2 as const, url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
-    { slot: 3 as const, url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
-  ].filter((v): v is { slot: 1 | 2 | 3; url: string; title: string | null; desc: string | null } => !!v.url);
+  // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
+  type VideoItem = { url: string; title: string | null; desc: string | null };
+  const legacyVideos: VideoItem[] = [
+    { url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
+    { url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
+    { url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
+  ].filter((v): v is VideoItem => !!v.url);
+  const rawVideoArr = (data as { video_urls?: VideoItem[] }).video_urls;
+  const videoList: VideoItem[] = (Array.isArray(rawVideoArr) && rawVideoArr.length > 0)
+    ? rawVideoArr.filter((v) => v && !!v.url)
+    : legacyVideos;
+  const videoCap = hasBookingAccess ? 10 : 3;
 
   // Testimonials (JSON-stringified, mobile DJs only)
   let testimonials: Testimonial[] = [];
@@ -1109,20 +1106,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* Video tab */}
           <div className={paneClass('video')}>
-            {videoEntries.length > 0 ? (
+            {videoList.length > 0 ? (
               <div className={styles.videoList}>
-                {videoEntries.map((v, i) => {
+                {videoList.map((v, i) => {
                   const embed = buildVideoEmbed(v.url);
                   if (!embed) return null;
                   return (
                     <div key={i} className={styles.videoCard} style={isOwnProfile ? { position: 'relative' } : undefined}>
-                      {/* Owner-only delete X — top-right corner of the
-                          frame, above the title. Confirms before delete
-                          via useConfirm modal. */}
                       {isOwnProfile && (
                         <button
                           type="button"
-                          onClick={() => deleteVideo(v.slot)}
+                          onClick={() => deleteVideo(i)}
                           title="Delete this video"
                           aria-label="Delete this video"
                           style={{
@@ -1165,7 +1159,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       {isOwnProfile ? (
                         <VideoMetaEditor
                           userId={data.id}
-                          slot={v.slot}
+                          list={videoList}
+                          index={i}
                           initialTitle={v.title}
                           initialDesc={v.desc}
                         />
@@ -1177,21 +1172,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {isOwnProfile && videoEntries.length < 3 && (
-                  <MediaAddButton
+                {isOwnProfile && (
+                  <VideoAddButton
                     userId={data.id}
-                    kind="video"
-                    existing={[data.video_url_1, data.video_url_2, data.video_url_3]}
+                    list={videoList}
+                    cap={videoCap}
+                    isPaid={hasBookingAccess}
                   />
                 )}
               </div>
             ) : (
               <div className={styles.tabEmpty}>
                 {isOwnProfile ? (
-                  <MediaAddButton
+                  <VideoAddButton
                     userId={data.id}
-                    kind="video"
-                    existing={[data.video_url_1, data.video_url_2, data.video_url_3]}
+                    list={videoList}
+                    cap={videoCap}
+                    isPaid={hasBookingAccess}
                     big
                   />
                 ) : 'Coming Soon'}
