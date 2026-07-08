@@ -22,6 +22,7 @@ function money(n: number, currency: string): string {
 }
 
 export async function POST(req: Request) {
+  try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
@@ -155,4 +156,11 @@ export async function POST(req: Request) {
   } catch { /* non-fatal */ }
 
   return NextResponse.json({ ok: true, embedSrc, submissionId: submissionId != null ? String(submissionId) : null });
+  } catch (e) {
+    // Guarantee a readable JSON error instead of an infra-level 502.
+    let msg = 'Prepare crashed.';
+    if (e instanceof Error && e.message) msg = e.message;
+    else { try { msg = JSON.stringify(e); } catch { /* keep default */ } }
+    return NextResponse.json({ error: `prepare: ${msg}`.slice(0, 500) }, { status: 500 });
+  }
 }
