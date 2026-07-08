@@ -132,8 +132,6 @@ export default function ClubBookingTab({
     rate_hourly_with_system: string;
     rate_hourly_with_decks: string;
     rate_hourly_no_equip: string;
-    // Club daily capacity — how many bookings accepted per day (1-3).
-    club_bookings_per_day: number;
   };
 
   function snapshotRates(bs: BookingSettings): RatesDraft {
@@ -150,7 +148,6 @@ export default function ClubBookingTab({
       rate_hourly_with_system: bs.rate_hourly_with_system != null ? String(bs.rate_hourly_with_system) : '',
       rate_hourly_with_decks: bs.rate_hourly_with_decks != null ? String(bs.rate_hourly_with_decks) : '',
       rate_hourly_no_equip: bs.rate_hourly_no_equip != null ? String(bs.rate_hourly_no_equip) : '',
-      club_bookings_per_day: bs.club_bookings_per_day != null ? bs.club_bookings_per_day : 1,
     };
   }
 
@@ -208,7 +205,6 @@ export default function ClubBookingTab({
       rate_hourly_with_system: ratesDraft.rate_hourly_with_system,
       rate_hourly_with_decks: ratesDraft.rate_hourly_with_decks,
       rate_hourly_no_equip: ratesDraft.rate_hourly_no_equip,
-      club_bookings_per_day: ratesDraft.club_bookings_per_day,
     });
     setRatesSaveStatus('saved');
     setTimeout(() => {
@@ -423,45 +419,6 @@ export default function ClubBookingTab({
                 </div>
               </div>
 
-              {/* Bookings-per-day sub-setting — how many bookings the DJ
-                  will accept on a single date. A specific date can be
-                  raised independently from the calendar pencil editor. */}
-              <div className={styles.rateTypeRow}>
-                <div className={styles.rateTypeLabel}>Bookings Per Day</div>
-                <select
-                  value={ratesDraft.club_bookings_per_day}
-                  onChange={(e) => setRateField('club_bookings_per_day', Number(e.target.value))}
-                  className={styles.rateSelect}
-                  style={{ width: 'auto', minWidth: 90 }}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                </select>
-              </div>
-              <p className={styles.bodyHint} style={{ marginTop: '-.25rem' }}>
-                How many bookings you&rsquo;ll accept on a single day. You can
-                also raise this for a specific date from the calendar.
-              </p>
-
-              {/* How far ahead bookings are allowed. Autosaves on change. */}
-              <div className={styles.rateTypeRow}>
-                <div className={styles.rateTypeLabel}>Book In Advance</div>
-                <select
-                  value={bookingWindow}
-                  onChange={(e) => setBookingWindow(parseInt(e.target.value, 10))}
-                  className={styles.rateSelect}
-                  style={{ width: 'auto', minWidth: 110 }}
-                >
-                  {[3, 6, 9, 12, 18, 24, 36].map((m) => (
-                    <option key={m} value={m}>{m} months</option>
-                  ))}
-                </select>
-              </div>
-              <p className={styles.bodyHint} style={{ marginTop: '-.25rem' }}>
-                How far ahead someone can book you.
-              </p>
-
               {ratesDraft.global_rate_type === 'offers' && (
                 <p className={styles.rateOffersHint}>
                   Offers can be countered and negotiated through the platform.
@@ -563,6 +520,50 @@ export default function ClubBookingTab({
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* ── Settings (autosave) ─────────────────────────────── */}
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>Settings</div>
+        </div>
+        <div className={styles.sectionBody}>
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Bookings Per Day</div>
+              <div className={styles.settingHint}>
+                How many bookings you&rsquo;ll accept on a single day.
+              </div>
+            </div>
+            <select
+              value={bookingSettings.club_bookings_per_day != null ? bookingSettings.club_bookings_per_day : 1}
+              onChange={(e) => patch({ club_bookings_per_day: Number(e.target.value) })}
+              className={styles.settingSelect}
+            >
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+            </select>
+          </div>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Book In Advance</div>
+              <div className={styles.settingHint}>
+                How far ahead someone can book you.
+              </div>
+            </div>
+            <select
+              value={bookingWindow}
+              onChange={(e) => setBookingWindow(parseInt(e.target.value, 10))}
+              className={styles.settingSelect}
+            >
+              {[3, 6, 9, 12, 18, 24, 36].map((m) => (
+                <option key={m} value={m}>{m} months</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
