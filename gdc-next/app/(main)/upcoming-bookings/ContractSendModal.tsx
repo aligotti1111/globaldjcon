@@ -73,7 +73,7 @@ DJ: {{dj_signature}}   {{dj_name}}
 
 Client: {{client_signature}}   {{client_name}}`;
 
-type Phase = 'loading' | 'need_setup' | 'setup_standard' | 'setup_builder' | 'signing' | 'signed' | 'error';
+type Phase = 'loading' | 'need_setup' | 'setup_standard' | 'setup_builder' | 'need_email' | 'signing' | 'signed' | 'error';
 interface SaveData { id?: number | string }
 
 export default function ContractSendModal({
@@ -97,20 +97,20 @@ export default function ContractSendModal({
   const [logoBusy, setLogoBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [builderToken, setBuilderToken] = useState<string | null>(null);
+  const [clientEmail, setClientEmail] = useState('');
   const logoInput = useRef<HTMLInputElement>(null);
 
-  async function prepare(afterSave = false) {
+  async function prepare(afterSave = false, emailOverride?: string) {
     setPhase('loading'); setError(null);
     try {
       const res = await fetch('/api/contracts/prepare', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId }),
+        body: JSON.stringify({ bookingId, clientEmail: emailOverride || undefined }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; embedSrc?: string; error?: string };
+      if (res.status === 400 && json.error === 'NO_CLIENT_EMAIL') { setPhase('need_email'); return; }
       if (res.status === 400 && /set up your contract/i.test(json.error || '')) {
         if (afterSave) {
-          // We just saved a contract but prepare still can't see it — surface
-          // the real message rather than silently looping.
           setError('Your contract saved, but this booking couldn\u2019t load it. Try again in a moment.');
           setPhase('error');
         } else {
@@ -261,6 +261,38 @@ export default function ContractSendModal({
       <>
         <button type="button" onClick={() => { setError(null); setPhase('setup_standard'); }} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>Use our standard contract instead</button>
         <button type="button" onClick={() => prepare()} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Done — continue</button>
+      </>
+    ));
+  }
+
+  if (phase === 'need_email') {
+    return shell('Review & sign contract', (
+      <div style={{ padding: '1.5rem', maxWidth: 480 }}>
+        <div style={{ color: '#555', marginBottom: '1rem' }}>
+          We couldn&rsquo;t find a client email for this booking. Enter the email address
+          to send the signed contract to:
+        </div>
+        <input
+          type="email"
+          value={clientEmail}
+          onChange={(e) => setClientEmail(e.target.value)}
+          placeholder="client@example.com"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '.65rem .8rem', borderRadius: 8, border: '1px solid #ccc', fontSize: '.9rem', color: '#111' }}
+        />
+        {error && <div style={{ color: '#d33', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
+      </div>
+    ), (
+      <>
+        <span />
+        <button
+          type="button"
+          onClick={() => {
+            const em = clientEmail.trim();
+            if (!/.+@.+\..+/.test(em)) { setError('Enter a valid email address.'); return; }
+            prepare(false, em);
+          }}
+          style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}
+        >Continue</button>
       </>
     ));
   }
