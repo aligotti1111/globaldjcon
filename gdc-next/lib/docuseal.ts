@@ -75,16 +75,26 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;');
 }
 
-// Translate friendly tags in the (already HTML-escaped) text into DocuSeal
-// field tags. Data fields are pre-filled (role DJ); signatures get real
-// signature fields for each party.
+// Translate friendly tags in the (already HTML-escaped) text into DocuSeal HTML
+// field ELEMENTS (text-field / signature-field). For HTML templates DocuSeal
+// only recognizes these elements, not {{...}} text tags. Data fields are
+// pre-filled (role DJ) per booking; signatures are collected from each party.
 function translateTags(escaped: string): string {
   let out = escaped;
-  out = out.replace(/\{\{\s*dj_signature\s*\}\}/gi, '{{Signature;role=DJ;type=signature}}');
-  out = out.replace(/\{\{\s*client_signature\s*\}\}/gi, '{{Signature;role=Client;type=signature}}');
+  out = out.replace(
+    /\{\{\s*dj_signature\s*\}\}/gi,
+    '<signature-field name="DJ Signature" role="DJ" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+  );
+  out = out.replace(
+    /\{\{\s*client_signature\s*\}\}/gi,
+    '<signature-field name="Client Signature" role="Client" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+  );
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
-    out = out.replace(re, `{{${f};role=DJ}}`);
+    out = out.replace(
+      re,
+      `<text-field name="${f}" role="DJ" required="false" style="width:180px;height:16px;display:inline-block;"></text-field>`,
+    );
   }
   return out;
 }
