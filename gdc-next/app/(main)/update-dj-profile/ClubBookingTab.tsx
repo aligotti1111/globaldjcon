@@ -529,9 +529,22 @@ export default function ClubBookingTab({
           <div className={styles.sectionTitle}>Settings</div>
         </div>
         <div className={styles.sectionBody}>
-          <div className={styles.settingRow}>
+          <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
             <div className={styles.settingLabelWrap}>
-              <div className={styles.settingLabel}>Bookings Per Day</div>
+              <div className={styles.settingLabel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                Bookings Per Day
+                <span
+                  title="Max number of jobs you can DJ in one day before the day is marked completely booked."
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 16, height: 16, borderRadius: '50%',
+                    border: '1px solid var(--muted, #8a8aa0)', color: 'var(--muted, #8a8aa0)',
+                    fontSize: '.65rem', cursor: 'help', lineHeight: 1,
+                  }}
+                >
+                  ?
+                </span>
+              </div>
               <div className={styles.settingHint}>
                 How many bookings you&rsquo;ll accept on a single day.
               </div>
