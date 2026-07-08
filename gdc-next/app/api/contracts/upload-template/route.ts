@@ -56,34 +56,29 @@ export async function POST(req: Request) {
     const docuseal = getDocuseal();
 
     if (isImage) {
-      // Images have no tags — wrap the picture into a single-page PDF and
-      // place DJ + client signature fields near the bottom (sign-only).
-      const { PDFDocument } = await import('pdf-lib');
+      // Images have no tags — wrap the picture into a PDF and add a signature
+      // strip at the bottom with DocuSeal tag text drawn on it, so DocuSeal
+      // detects the fields the same reliable way it does for a normal PDF.
+      const { PDFDocument, StandardFonts } = await import('pdf-lib');
       const pdf = await PDFDocument.create();
       const img = isPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
-      // Fit the image onto a letter-ish page, preserving aspect ratio.
       const maxW = 612;
       const scale = Math.min(1, maxW / img.width);
       const w = img.width * scale;
       const h = img.height * scale;
-      const page = pdf.addPage([w, h + 90]); // extra space at bottom for signatures
-      page.drawImage(img, { x: 0, y: 90, width: w, height: h });
+      const page = pdf.addPage([w, h + 70]);
+      page.drawImage(img, { x: 0, y: 70, width: w, height: h });
+      const font = await pdf.embedFont(StandardFonts.Helvetica);
+      // DocuSeal reads these {{...}} tags from the PDF text layer.
+      page.drawText('DJ: {{Signature;role=DJ;type=signature}}', { x: 20, y: 30, size: 11, font });
+      page.drawText('Client: {{Signature;role=Client;type=signature}}', { x: Math.max(20, w / 2), y: 30, size: 11, font });
       const pdfBytes = await pdf.save();
       const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
 
       const template = await docuseal.createTemplateFromPdf({
         name: `Contract — ${user.id}`,
-        documents: [
-          {
-            name,
-            file: pdfBase64,
-            fields: [
-              { name: 'Signature', role: 'DJ', type: 'signature', areas: [{ x: 0.08, y: 0.02, w: 0.38, h: 0.07, page: 0 }] },
-              { name: 'Signature', role: 'Client', type: 'signature', areas: [{ x: 0.54, y: 0.02, w: 0.38, h: 0.07, page: 0 }] },
-            ],
-          },
-        ],
-      } as unknown as Parameters<typeof docuseal.createTemplateFromPdf>[0]);
+        documents: [{ name: name.replace(/\.(jpe?g|png)$/i, '.pdf'), file: pdfBase64 }],
+      });
       templateId = (template as { id?: string | number }).id;
     } else {
       // PDF / DOCX — tags are read straight from the document.
