@@ -529,7 +529,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
                 padding: '5px 12px', borderRadius: 999,
-                border: '2px solid #fff',
                 boxShadow: '0 2px 10px rgba(0,0,0,.35)',
               }}
             >
