@@ -605,8 +605,6 @@ function BookingRow({
   // Flyer URL owned here so the row slot and the in-card thumbnail
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
-  const [contractOpen, setContractOpen] = useState(false);
-  const [contractStatus, setContractStatus] = useState<string | null>(booking.contract_status ?? null);
   const { day, dow, mo } = getDateParts(booking.event_date);
   // Header time range. When the booker added a cocktail hour, the row's
   // start reflects the cocktail-hour start (the DJ is engaged from then),
@@ -769,6 +767,8 @@ function BookingDetails({
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
 }) {
+  const [contractOpen, setContractOpen] = useState(false);
+  const [contractSent, setContractSent] = useState(false);
   // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
     ? (booking.set_type
@@ -1026,13 +1026,13 @@ function BookingDetails({
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
           <div className={styles.detailLabel}>Contract</div>
-          {contractStatus === 'signed' ? (
-            <div style={{ color: '#00e0a4', fontWeight: 700, marginTop: 8 }}>✓ Contract signed</div>
-          ) : contractStatus === 'awaiting_client' ? (
+          {(contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' ? (
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
               <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'transparent', border: 'none', color: '#00e0a4', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline', padding: '4px 0 0' }}>View / resend</button>
             </div>
+          ) : booking.contract_status === 'signed' ? (
+            <div style={{ color: '#00e0a4', fontWeight: 700, marginTop: 8 }}>✓ Contract signed</div>
           ) : (
             <button type="button" onClick={() => setContractOpen(true)} style={{ marginTop: 8, background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
           )}
@@ -1048,7 +1048,7 @@ function BookingDetails({
           bookingId={booking.id}
           userId={userId}
           onClose={() => setContractOpen(false)}
-          onSent={() => setContractStatus('awaiting_client')}
+          onSent={() => setContractSent(true)}
         />
       )}
     </div>
