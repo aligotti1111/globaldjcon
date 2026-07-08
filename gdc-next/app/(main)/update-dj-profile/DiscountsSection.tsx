@@ -12,8 +12,9 @@
 // Nothing here applies the discount to a quote — that happens in the booking
 // form using computeDiscount() from bookingSettings.ts.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './updateDjProfile.module.css';
+import { createClient } from '@/lib/supabase/client';
 import type { PromoCode, Sale } from '@/app/(main)/[slug]/bookingSettings';
 
 interface Props {
@@ -21,6 +22,23 @@ interface Props {
   sale: Sale;
   currencySymbol?: string;
   onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale }) => void;
+}
+
+interface Redemption {
+  requester_name: string | null;
+  event_date: string | null;
+  created_at: string | null;
+  discount_code: string | null;
+  discount_label: string | null;
+  discount_amount: number | null;
+  original_rate: number | null;
+  currency: string | null;
+}
+
+function fmtDate(s: string | null): string {
+  if (!s) return '';
+  const d = new Date(s.length <= 10 ? `${s}T00:00:00` : s);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
 const labelStyle: React.CSSProperties = {
@@ -145,6 +163,34 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editBuf, setEditBuf] = useState<PromoCode | null>(null);
   const [error, setError] = useState('');
+  // Which code row is expanded to show its usage.
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
+  // Redemptions grouped by uppercased code, pulled from the DJ's bookings.
+  const [usageByCode, setUsageByCode] = useState<Record<string, Redemption[]>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('bookings')
+        .select('requester_name, event_date, created_at, discount_code, discount_label, discount_amount, original_rate, currency')
+        .eq('dj_id', user.id)
+        .not('discount_code', 'is', null)
+        .order('created_at', { ascending: false });
+      if (!mounted) return;
+      const map: Record<string, Redemption[]> = {};
+      ((data as unknown as Redemption[]) || []).forEach((r) => {
+        const key = (r.discount_code || '').trim().toUpperCase();
+        if (!key) return;
+        (map[key] = map[key] || []).push(r);
+      });
+      setUsageByCode(map);
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   function updateSale(p: Partial<Sale>) {
     onChange({ sale: { ...sale, ...p } });
@@ -378,8 +424,53 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '.6rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
                 <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
                 <span><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}</span>
-                <span><span style={metaLabel}>Used</span> {c.uses || 0}</span>
+                {(() => {
+                  const key = (c.code || '').trim().toUpperCase();
+                  const uses = usageByCode[key] || [];
+                  const open = expandedCode === key;
+                  if (uses.length === 0) {
+                    return <span><span style={metaLabel}>Used</span> 0</span>;
+                  }
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCode(open ? null : key)}
+                      style={{
+                        background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                        color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex',
+                        alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <span style={metaLabel}>Used</span> {uses.length}
+                      <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
+                    </button>
+                  );
+                })()}
               </div>
+
+              {/* Unfolded usage — who booked with this code and when. */}
+              {expandedCode === (c.code || '').trim().toUpperCase() &&
+                (usageByCode[(c.code || '').trim().toUpperCase()] || []).length > 0 && (
+                <div style={{ marginTop: '.7rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.7rem' }}>
+                  {(usageByCode[(c.code || '').trim().toUpperCase()] || []).map((r, ri) => (
+                    <div
+                      key={ri}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem',
+                      }}
+                    >
+                      <span style={{ color: 'var(--white,#fff)' }}>
+                        {r.requester_name || 'Someone'}
+                        <span style={{ color: 'var(--muted,#8a8aa0)' }}> · booked {fmtDate(r.created_at)}</span>
+                      </span>
+                      <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                        saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

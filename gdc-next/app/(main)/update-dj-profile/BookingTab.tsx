@@ -34,7 +34,6 @@ import {
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import EmbedCodeSection from './EmbedCodeSection';
 import DiscountsSection from './DiscountsSection';
-import DiscountUsage from './DiscountUsage';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Package validation
@@ -552,8 +551,6 @@ export default function BookingTab({
             sale={bookingSettings.sale || {}}
             onChange={(p) => patch(p)}
           />
-
-          <DiscountUsage />
 
           {/* ── Embed Code ──────────────────────────────────────── */}
           <EmbedCodeSection slug={djSlug} />
