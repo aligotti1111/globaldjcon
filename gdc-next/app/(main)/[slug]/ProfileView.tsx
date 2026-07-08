@@ -524,9 +524,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {saleActive && (
             <div
               style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 5,
+                position: 'absolute', top: 56, right: 12, zIndex: 5,
                 background: 'var(--neon,#00e0a4)', color: '#06231b',
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
+                textTransform: 'uppercase',
                 padding: '5px 12px', borderRadius: 999,
                 boxShadow: '0 2px 10px rgba(0,0,0,.35)',
               }}
@@ -858,7 +859,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
               {saleActive && (
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', padding: '7px 16px', borderRadius: 999 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', textTransform: 'uppercase', padding: '7px 16px', borderRadius: 999 }}>
                     {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
                   </div>
                 </div>
@@ -921,7 +922,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
               {saleActive && (
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', padding: '7px 16px', borderRadius: 999 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', textTransform: 'uppercase', padding: '7px 16px', borderRadius: 999 }}>
                     {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
                   </div>
                 </div>
