@@ -524,11 +524,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {saleActive && (
             <div
               style={{
-                position: 'absolute', top: 56, right: 12, zIndex: 5,
+                position: 'absolute', top: 62, right: 12, zIndex: 5,
                 background: 'var(--neon,#00e0a4)', color: '#06231b',
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
                 padding: '5px 12px', borderRadius: 999,
+                border: '2px solid #fff',
                 boxShadow: '0 2px 10px rgba(0,0,0,.35)',
               }}
             >
