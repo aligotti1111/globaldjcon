@@ -128,7 +128,18 @@ export async function POST(req: Request) {
     submissionId = djSubmitter?.submission_id;
     if (!embedSrc) throw new Error('No signing link returned');
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not prepare the contract.' }, { status: 502 });
+    let msg = 'Could not prepare the contract.';
+    if (e instanceof Error && e.message) msg = e.message;
+    else if (typeof e === 'string' && e) msg = e;
+    else {
+      try { msg = JSON.stringify(e); } catch { /* keep default */ }
+    }
+    // Some SDK errors carry the API body on a `.response` or `.body` field.
+    const anyE = e as { response?: unknown; body?: unknown; status?: number };
+    if (anyE?.response || anyE?.body) {
+      try { msg += ` — ${JSON.stringify(anyE.response ?? anyE.body)}`; } catch { /* ignore */ }
+    }
+    return NextResponse.json({ error: msg.slice(0, 500) }, { status: 502 });
   }
 
   try {
