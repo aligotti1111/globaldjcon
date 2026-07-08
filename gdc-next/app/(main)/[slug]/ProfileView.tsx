@@ -520,7 +520,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
       <div>
         {/* HERO */}
-        <div className={`${styles.hero} ${data.banner_url ? styles.heroHasBanner : ''}`}>
+        <div className={`${styles.hero} ${data.banner_url ? styles.heroHasBanner : ''}`} style={{ position: 'relative' }}>
+          {saleActive && (
+            <div
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 5,
+                background: 'var(--neon,#00e0a4)', color: '#06231b',
+                fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
+                padding: '5px 12px', borderRadius: 999,
+                boxShadow: '0 2px 10px rgba(0,0,0,.35)',
+              }}
+            >
+              {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+            </div>
+          )}
           {/* BANNER — sits behind the hero content as a background layer.
               Read-only here; all edits happen inside the BannerEditModal
               that opens from the corner button. Both desktop and mobile
@@ -691,11 +704,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {/* Mobile-only column: name + badges next to avatar */}
             <div className={styles.heroNameCol}>
               <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
-              {saleActive && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.72rem', letterSpacing: '.05em', padding: '3px 10px', borderRadius: 999 }}>
-                  {salePercent ? `${salePercent}% OFF` : 'SALE'} · BOOKING SALE
-                </div>
-              )}
               {heroBadgesEl}
             </div>
           </div>
@@ -705,11 +713,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
             <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
-              {saleActive && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.72rem', letterSpacing: '.05em', padding: '3px 10px', borderRadius: 999 }}>
-                  {salePercent ? `${salePercent}% OFF` : 'SALE'} · BOOKING SALE
-                </div>
-              )}
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 
@@ -853,6 +856,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* Booking tab — different component for club vs mobile DJs */}
           {showClubAvailabilityTab && (
             <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
+              {saleActive && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', padding: '7px 16px', borderRadius: 999 }}>
+                    {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+                  </div>
+                </div>
+              )}
               <PublicCalendar
                 bookingDays={bookingSettings!.booking_days || {}}
                 bookingWindowMonths={bookingSettings!.booking_window_months || 12}
@@ -909,6 +919,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           )}
           {showMobileBookingTab && (
             <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
+              {saleActive && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', padding: '7px 16px', borderRadius: 999 }}>
+                    {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+                  </div>
+                </div>
+              )}
               <MobilePublicCalendar
                 djId={data.id}
                 djName={data.name || ''}
