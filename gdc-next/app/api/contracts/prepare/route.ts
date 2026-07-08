@@ -26,9 +26,10 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  let body: { bookingId?: unknown };
+  let body: { bookingId?: unknown; clientEmail?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const bookingId = body.bookingId != null ? String(body.bookingId) : '';
+  const manualClientEmail = typeof body.clientEmail === 'string' ? body.clientEmail.trim() : '';
   if (!bookingId) return NextResponse.json({ error: 'Missing booking' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -76,9 +77,19 @@ export async function POST(req: Request) {
   }
 
   const clientName = (b.requester_name as string) || 'Client';
-  const clientEmail = (b.host_email as string) || '';
+
+  // Resolve the client's email: the manual field on the booking (host_email),
+  // else the booking requester's account email, else an email entered by the DJ.
+  let clientEmail = (b.host_email as string) || '';
+  if (!clientEmail && b.requester_id) {
+    try {
+      const { data: reqUser } = await admin.auth.admin.getUserById(String(b.requester_id));
+      clientEmail = reqUser?.user?.email || '';
+    } catch { /* fall through */ }
+  }
+  if (!clientEmail && manualClientEmail) clientEmail = manualClientEmail;
   if (!clientEmail) {
-    return NextResponse.json({ error: "This booking has no client email. Add one on the booking first." }, { status: 400 });
+    return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
   }
 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
