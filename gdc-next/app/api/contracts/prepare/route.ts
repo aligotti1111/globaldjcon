@@ -65,8 +65,15 @@ async function tracePrepare(body: { bookingId?: unknown }) {
     const dj = djRow as { docuseal_template_id?: string | null } | null;
     steps.push(`users:${dj?.docuseal_template_id ? 'has-template' : 'no-template'}`);
     const bookingId = String(body.bookingId || '');
-    const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle();
-    const b = bkRow as Record<string, unknown> | null;
+    let b: Record<string, unknown> | null = null;
+    if (bookingId) {
+      const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle();
+      b = bkRow as Record<string, unknown> | null;
+    } else {
+      // No id given — grab this DJ's most recent booking to trace against.
+      const { data: bkRow } = await admin.from('bookings').select('*').eq('dj_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      b = bkRow as Record<string, unknown> | null;
+    }
     steps.push(`booking:${b ? 'found' : 'missing'}`);
     if (b?.requester_id) {
       const { data: reqUser } = await admin.auth.admin.getUserById(String(b.requester_id));
