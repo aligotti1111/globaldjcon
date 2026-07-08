@@ -107,7 +107,9 @@ export default function ContractSendModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId, clientEmail: emailOverride || undefined }),
       });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; embedSrc?: string; error?: string };
+      const raw = await res.text();
+      let json: { ok?: boolean; embedSrc?: string; error?: string } = {};
+      try { json = JSON.parse(raw); } catch { /* non-JSON response */ }
       if (res.status === 400 && json.error === 'NO_CLIENT_EMAIL') { setPhase('need_email'); return; }
       if (res.status === 400 && /set up your contract/i.test(json.error || '')) {
         if (afterSave) {
@@ -118,7 +120,9 @@ export default function ContractSendModal({
         }
         return;
       }
-      if (!res.ok || !json.ok || !json.embedSrc) throw new Error(json.error || 'Could not prepare the contract.');
+      if (!res.ok || !json.ok || !json.embedSrc) {
+        throw new Error(json.error || `HTTP ${res.status}: ${raw.slice(0, 300) || '(empty response)'}`);
+      }
       setEmbedSrc(json.embedSrc); setPhase('signing');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not prepare the contract.'); setPhase('error');
