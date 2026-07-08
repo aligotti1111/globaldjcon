@@ -21,7 +21,8 @@
     "@docuseal/api": "^1.0.23",
     "@docuseal/react": "^1.0.75",
     "@stripe/stripe-js": "^4.10.0",
-    "@stripe/react-stripe-js": "^2.9.0"
+    "@stripe/react-stripe-js": "^2.9.0",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
