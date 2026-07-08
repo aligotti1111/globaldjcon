@@ -267,13 +267,22 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           </div>
         </div>
 
-        {/* Percent + end date — set the amount before activating. */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '.25rem 0 .75rem' }}>
-          <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
+        {/* Percent + end date — matched two-column grid so both are identical
+            width and aligned. Inputs share the same box-sizing + height. */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '1rem',
+            maxWidth: 440,
+            padding: '.25rem 0 .75rem',
+          }}
+        >
+          <div style={fieldWrap}>
             <label style={labelStyle}>Percent off</label>
             <select
               className={styles.settingSelect}
-              style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+              style={{ width: '100%', boxSizing: 'border-box', height: 44, color: 'var(--white,#fff)' }}
               value={sale.percent || ''}
               onChange={(e) => {
                 const v = e.target.value === '' ? 0 : Number(e.target.value);
@@ -286,11 +295,11 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               ))}
             </select>
           </div>
-          <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
+          <div style={fieldWrap}>
             <label style={labelStyle}>Ends on (optional)</label>
             <input
               type="date" className={`${styles.settingNumber} gdcDateWhite`}
-              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }} onClick={openPicker}
+              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
               value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
             />
           </div>
