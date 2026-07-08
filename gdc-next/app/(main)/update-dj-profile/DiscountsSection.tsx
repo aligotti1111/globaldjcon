@@ -261,7 +261,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
 
         {/* Percent + end date — set the amount before activating. */}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '.25rem 0 .75rem' }}>
-          <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
+          <div style={{ ...fieldWrap, flex: '0 0 200px' }}>
             <label style={labelStyle}>Percent off</label>
             <select
               className={styles.settingSelect}
