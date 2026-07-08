@@ -33,16 +33,17 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
-  // DJ + their contract template.
+  // DJ + their contract template. (Email comes from auth, not public.users.)
   const { data: djRow } = await admin
     .from('users')
-    .select('docuseal_template_id, name, email')
+    .select('docuseal_template_id, name')
     .eq('id', user.id)
     .maybeSingle();
-  const dj = djRow as { docuseal_template_id?: string | null; name?: string | null; email?: string | null } | null;
+  const dj = djRow as { docuseal_template_id?: string | null; name?: string | null } | null;
   if (!dj?.docuseal_template_id) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
   }
+  const djEmail = user.email || '';
 
   // The booking — must belong to this DJ.
   const { data: bkRow } = await admin
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
       template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
       order: 'preserved',
       submitters: [
-        { role: 'DJ', email: dj.email || user.email || '', name: dj.name || 'DJ', fields, send_email: false },
+        { role: 'DJ', email: djEmail, name: dj.name || 'DJ', fields, send_email: false },
         { role: 'Client', email: clientEmail, name: clientName },
       ],
     } as unknown as Parameters<typeof docuseal.createSubmission>[0]);
