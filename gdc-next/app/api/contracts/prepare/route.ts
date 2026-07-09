@@ -207,8 +207,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
       12000, 'createSubmission',
     );
 
-    const arr = submission as unknown as Array<{ role?: string; embed_src?: string; submission_id?: number }>;
-    const djSubmitter = Array.isArray(arr) ? arr.find((s) => s.role === 'DJ') || arr[0] : undefined;
+    type Submitter = { role?: string; embed_src?: string; submission_id?: number };
+    const resp = submission as unknown as { submitters?: Submitter[] } | Submitter[];
+    // Response is an object { id, submitters:[...] }; older shapes may be a bare array.
+    const submitters: Submitter[] = Array.isArray(resp) ? resp : (resp.submitters || []);
+    const djSubmitter = submitters.find((s: Submitter) => s.role === 'DJ') || submitters[0];
     embedSrc = djSubmitter?.embed_src || '';
     submissionId = djSubmitter?.submission_id;
     if (!embedSrc) throw new Error('No signing link returned');
