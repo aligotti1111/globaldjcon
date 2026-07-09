@@ -174,9 +174,20 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
   }
 
-  // Client name: the booker's name, else the email's local part, else "Client".
+  // Client name: prefer the booker's account name (users.name via requester_id),
+  // then the booking's requester_name, then the email's local part, else "Client".
+  let accountName = '';
+  if (b.requester_id) {
+    try {
+      const { data: reqProfile } = await withTimeout<{ data: { name?: string | null } | null }>(
+        admin.from('users').select('name').eq('id', String(b.requester_id)).maybeSingle() as unknown as Promise<{ data: { name?: string | null } | null }>,
+        5000, 'requester-name',
+      );
+      accountName = (reqProfile?.name || '').trim();
+    } catch { /* fall through */ }
+  }
   const emailPrefix = clientEmail.includes('@') ? clientEmail.split('@')[0] : '';
-  const clientName = ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
+  const clientName = accountName || ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
