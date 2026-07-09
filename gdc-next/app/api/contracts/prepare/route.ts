@@ -218,14 +218,14 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
 
     const brand = companyName || 'your DJ';
 
-    // Subject: skip missing parts. Club: venue — date. Mobile: host — event — date.
-    const subjectParts = isClub
-      ? [(b.venue_name as string) || '', prettyDate]
-      : [(b.requester_name as string) || '', (b.event_type as string) || '', prettyDate];
-    const subjectTail = subjectParts.map((p) => (p || '').trim()).filter(Boolean).join(' — ');
-    const subject = companyName
-      ? `Please sign your ${companyName} contract${subjectTail ? ` — ${subjectTail}` : ''}`
-      : `Please sign your booking contract${subjectTail ? ` — ${subjectTail}` : ''}`;
+    // Subject: "Contract from [Company] | [event or venue] | [date]" — skip missing parts.
+    const middle = isClub ? ((b.venue_name as string) || '') : ((b.event_type as string) || '');
+    const subjectParts = [
+      companyName ? `Contract from ${companyName}` : 'Contract',
+      middle,
+      prettyDate,
+    ].map((p) => (p || '').trim()).filter(Boolean);
+    const subject = subjectParts.join(' | ');
 
     // Body: personalized, branches on club vs mobile, lists relevant details.
     const detailLines: string[] = [];
