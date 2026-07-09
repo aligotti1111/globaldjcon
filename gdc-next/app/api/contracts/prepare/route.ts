@@ -118,14 +118,16 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
 
   // DJ + their contract template. (Email comes from auth, not public.users.)
   const { data: djRow } = await withTimeout<{ data: unknown }>(
-    admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+    admin.from('users').select('docuseal_template_id, name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
     5000, 'users-select',
   );
-  const dj = djRow as { docuseal_template_id?: string | null; name?: string | null } | null;
+  const dj = djRow as { docuseal_template_id?: string | null; name?: string | null; company?: string | null; dj_type?: string | null } | null;
   if (!dj?.docuseal_template_id) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
   }
   const djEmail = user.email || '';
+  const companyName = (dj.company || dj.name || '').trim();
+  const isClub = dj.dj_type === 'club';
 
   // The booking — must belong to this DJ.
   const { data: bkRow } = await withTimeout<{ data: unknown }>(
@@ -196,7 +198,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
   try {
     const docuseal = getDocuseal();
 
-    // Contract name: "Host — EventType — Date", skipping any missing parts.
+    // Contract name for the subject: skip any missing parts.
     let prettyDate = '';
     const rawDate = b.event_date as string | null;
     if (rawDate) {
@@ -205,22 +207,63 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
         ? rawDate
         : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
-    const nameParts = [
-      (b.requester_name as string) || '',
-      (b.event_type as string) || '',
-      prettyDate,
-    ].map((p) => p.trim()).filter(Boolean);
-    const contractName = nameParts.length ? nameParts.join(' — ') : 'DJ Booking Contract';
+    const timeRange = [(b.start_time as string) || '', (b.end_time as string) || '']
+      .filter(Boolean).join(' – ');
+    const venueLine = [(b.venue_name as string) || '', (b.event_address as string) || (b.venue_address as string) || '']
+      .map((p) => (p || '').trim()).filter(Boolean).join(', ');
+    const priceStr = price != null ? money(price, currency) : '';
+    const depositStr = depositAmount != null && depositAmount > 0
+      ? money(depositAmount, currency)
+      : (depositPct != null && depositPct > 0 && price != null ? money((price * depositPct) / 100, currency) : '');
+
+    const brand = companyName || 'your DJ';
+
+    // Subject: skip missing parts. Club: venue — date. Mobile: host — event — date.
+    const subjectParts = isClub
+      ? [(b.venue_name as string) || '', prettyDate]
+      : [(b.requester_name as string) || '', (b.event_type as string) || '', prettyDate];
+    const subjectTail = subjectParts.map((p) => (p || '').trim()).filter(Boolean).join(' — ');
+    const subject = companyName
+      ? `Please sign your ${companyName} contract${subjectTail ? ` — ${subjectTail}` : ''}`
+      : `Please sign your booking contract${subjectTail ? ` — ${subjectTail}` : ''}`;
+
+    // Body: personalized, branches on club vs mobile, lists relevant details.
+    const detailLines: string[] = [];
+    if (isClub) {
+      if (b.venue_name) detailLines.push(`Venue: ${b.venue_name as string}`);
+      if (prettyDate) detailLines.push(`Date: ${prettyDate}`);
+      if (timeRange) detailLines.push(`Set time: ${timeRange}`);
+      if (b.set_type) detailLines.push(`Set type: ${b.set_type as string}`);
+      if (priceStr) detailLines.push(`Rate: ${priceStr}`);
+    } else {
+      if (b.event_type) detailLines.push(`Event: ${b.event_type as string}`);
+      if (prettyDate) detailLines.push(`Date: ${prettyDate}`);
+      if (timeRange) detailLines.push(`Time: ${timeRange}`);
+      if (venueLine) detailLines.push(`Venue: ${venueLine}`);
+      if (b.package_title) detailLines.push(`Package: ${b.package_title as string}`);
+      if (priceStr) detailLines.push(`Total: ${priceStr}`);
+      if (depositStr) detailLines.push(`Deposit: ${depositStr}`);
+    }
+
+    const greetingName = (b.requester_name as string) || 'there';
+    const intro = isClub
+      ? `Please review and sign your booking contract with ${brand}. Details below:`
+      : `Please review and sign your contract with ${brand} for your upcoming event. Details below:`;
+
+    // Mobile + deposit: note the follow-up deposit email (Option A wording).
+    const depositNote = (!isClub && depositStr)
+      ? `\n\nA deposit of ${depositStr} is required to secure your date. Once the contract is signed, you'll receive a separate email with instructions to submit your deposit.`
+      : '';
+
+    const signOff = companyName ? `\n\n— ${companyName}` : '';
+    const body = `Hi ${greetingName},\n\n${intro}\n\n${detailLines.join('\n')}${depositNote}\n\nClick below to review and sign:\n{{submitter.link}}\n\nQuestions? Just reply to this email.${signOff}`;
 
     const submission = await withTimeout<unknown>(
       docuseal.createSubmission({
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
         reply_to: djEmail || undefined,
-        message: {
-          subject: `Please sign your DJ booking contract — ${contractName}`,
-          body: 'You have a DJ booking contract ready to review and sign. Click below to complete it. {{submitter.link}}',
-        },
+        message: { subject, body },
         submitters: [
           { role: 'DJ', email: djEmail, name: dj.name || 'DJ', values, send_email: false },
           { role: 'Client', email: clientEmail, name: clientName },
