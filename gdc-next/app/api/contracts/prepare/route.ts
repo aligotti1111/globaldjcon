@@ -189,7 +189,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
     payment_terms: paymentTerms,
   };
-  const fields = Object.entries(values).map(([name, default_value]) => ({ name, default_value, readonly: true }));
+  // Pre-fill values are passed as a `values` object on the DJ submitter.
 
   let embedSrc = '';
   let submissionId: string | number | undefined;
@@ -200,7 +200,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
         submitters: [
-          { role: 'DJ', email: djEmail, name: dj.name || 'DJ', fields, send_email: false },
+          { role: 'DJ', email: djEmail, name: dj.name || 'DJ', values, send_email: false },
           { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
