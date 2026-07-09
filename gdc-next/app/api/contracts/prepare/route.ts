@@ -195,10 +195,31 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
   let submissionId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
+
+    // Contract name: "Host — EventType — Date", skipping any missing parts.
+    let prettyDate = '';
+    const rawDate = b.event_date as string | null;
+    if (rawDate) {
+      const d = new Date(rawDate);
+      prettyDate = isNaN(d.getTime())
+        ? rawDate
+        : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+    const nameParts = [
+      (b.requester_name as string) || '',
+      (b.event_type as string) || '',
+      prettyDate,
+    ].map((p) => p.trim()).filter(Boolean);
+    const contractName = nameParts.length ? nameParts.join(' — ') : 'DJ Booking Contract';
+
     const submission = await withTimeout<unknown>(
       docuseal.createSubmission({
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
+        message: {
+          subject: `Please sign your DJ booking contract — ${contractName}`,
+          body: 'You have a DJ booking contract ready to review and sign. Click below to complete it. {{submitter.link}}',
+        },
         submitters: [
           { role: 'DJ', email: djEmail, name: dj.name || 'DJ', values, send_email: false },
           { role: 'Client', email: clientEmail, name: clientName },
