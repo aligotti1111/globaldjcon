@@ -216,6 +216,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
       docuseal.createSubmission({
         template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
         order: 'preserved',
+        reply_to: djEmail || undefined,
         message: {
           subject: `Please sign your DJ booking contract — ${contractName}`,
           body: 'You have a DJ booking contract ready to review and sign. Click below to complete it. {{submitter.link}}',
