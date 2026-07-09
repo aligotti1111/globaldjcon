@@ -1029,7 +1029,7 @@ function BookingDetails({
           {(contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' ? (
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
-              <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'transparent', border: 'none', color: '#00e0a4', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline', padding: '4px 0 0' }}>View / resend</button>
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
             </div>
           ) : booking.contract_status === 'signed' ? (
             <div style={{ color: '#00e0a4', fontWeight: 700, marginTop: 8 }}>✓ Contract signed</div>
