@@ -157,8 +157,6 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     paymentTerms = `Full payment of ${money(price, currency)} is due by the day of the event.`;
   }
 
-  const clientName = (b.requester_name as string) || 'Client';
-
   // Resolve the client's email: the manual field on the booking (host_email),
   // else the booking requester's account email, else an email entered by the DJ.
   let clientEmail = (b.host_email as string) || '';
@@ -175,6 +173,10 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
   if (!clientEmail) {
     return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
   }
+
+  // Client name: the booker's name, else the email's local part, else "Client".
+  const emailPrefix = clientEmail.includes('@') ? clientEmail.split('@')[0] : '';
+  const clientName = ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
