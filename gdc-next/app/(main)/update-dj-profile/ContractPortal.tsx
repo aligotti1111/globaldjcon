@@ -18,7 +18,7 @@ const DocusealBuilder = dynamic(
 
 const BUILDER_FIELDS = [
   { name: 'client_name', type: 'text', role: 'DJ', title: 'Client name' },
-  { name: 'dj_name', type: 'text', role: 'DJ', title: 'DJ name' },
+  { name: 'dj_name', type: 'text', role: 'DJ', title: 'Company / DJ name' },
   { name: 'event_date', type: 'text', role: 'DJ', title: 'Event date' },
   { name: 'event_type', type: 'text', role: 'DJ', title: 'Event type' },
   { name: 'venue_name', type: 'text', role: 'DJ', title: 'Venue name' },
