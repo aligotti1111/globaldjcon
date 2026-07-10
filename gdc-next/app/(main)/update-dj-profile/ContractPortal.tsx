@@ -29,6 +29,7 @@ const BUILDER_FIELDS = [
   { name: 'set_type', type: 'text', role: 'DJ', title: 'Set type', only: 'club' },
   { name: 'equipment', type: 'text', role: 'DJ', title: 'Equipment', only: 'club' },
   { name: 'duration', type: 'text', role: 'DJ', title: 'Duration (hours)' },
+  { name: 'overtime_rate', type: 'text', role: 'DJ', title: 'Overtime rate', only: 'mobile' },
   { name: 'price', type: 'text', role: 'DJ', title: 'Price' },
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
   { name: 'DJ Signature', type: 'signature', role: 'DJ', title: 'Your signature' },
@@ -190,7 +191,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} withSendButton={false} withRecipientsButton={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} fieldTypes={['text', 'signature', 'date', 'initials', 'checkbox', 'number']} withSendButton={false} withRecipientsButton={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '.6rem 1rem', borderTop: '1px solid #eee' }}>
