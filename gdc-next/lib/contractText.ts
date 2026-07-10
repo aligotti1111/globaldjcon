@@ -4,7 +4,7 @@
 // Booking-data fields the standard contract can auto-fill per booking.
 export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
-  'event_address', 'start_time', 'end_time', 'package', 'package_details',
+  'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'price', 'deposit', 'payment_terms',
 ] as const;
 
@@ -48,7 +48,6 @@ Time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}, {{event_address}}
 Price: {{price}}
 Package: {{package}}
-Details: {{package_details}}
 
 ${SHARED_CLAUSES}`;
 
