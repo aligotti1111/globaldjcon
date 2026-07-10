@@ -93,7 +93,7 @@ function translateTags(escaped: string): string {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
     out = out.replace(
       re,
-      `<text-field name="${f}" role="DJ" required="false" style="width:180px;height:16px;display:inline-block;"></text-field>`,
+      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field>`,
     );
   }
   return out;
