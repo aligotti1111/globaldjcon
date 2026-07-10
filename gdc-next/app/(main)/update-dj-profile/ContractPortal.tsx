@@ -25,9 +25,9 @@ const BUILDER_FIELDS = [
   { name: 'event_address', type: 'text', role: 'DJ', title: 'Event address' },
   { name: 'start_time', type: 'text', role: 'DJ', title: 'Start time' },
   { name: 'end_time', type: 'text', role: 'DJ', title: 'End time' },
-  { name: 'package', type: 'text', role: 'DJ', title: 'Package (name + details)' },
-  { name: 'set_type', type: 'text', role: 'DJ', title: 'Set type' },
-  { name: 'equipment', type: 'text', role: 'DJ', title: 'Equipment' },
+  { name: 'package', type: 'text', role: 'DJ', title: 'Package (name + details)', only: 'mobile' },
+  { name: 'set_type', type: 'text', role: 'DJ', title: 'Set type', only: 'club' },
+  { name: 'equipment', type: 'text', role: 'DJ', title: 'Equipment', only: 'club' },
   { name: 'duration', type: 'text', role: 'DJ', title: 'Duration (hours)' },
   { name: 'price', type: 'text', role: 'DJ', title: 'Price' },
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
@@ -47,6 +47,7 @@ type View = 'grid' | 'builder' | 'standard';
 export default function ContractPortal({
   userId, djType,
 }: { userId: string; djType?: string | null }) {
+  const builderFields = BUILDER_FIELDS.filter((f) => !('only' in f) || (f as { only?: string }).only === djType);
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +190,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withRecipientsButton={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} withSendButton={false} withRecipientsButton={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '.6rem 1rem', borderTop: '1px solid #eee' }}>
