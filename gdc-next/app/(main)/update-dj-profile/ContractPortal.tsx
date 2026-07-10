@@ -37,6 +37,30 @@ const BUILDER_FIELDS = [
   { name: 'Client Signature', type: 'signature', role: 'Client', title: 'Client signature' },
 ];
 
+// Click-to-insert placeholders for the one-page text editor. Each drops a
+// {{tag}} into the text where the cursor is; the server turns these into
+// auto-fill fields (booking details, role DJ) and signature fields per booking.
+const PLACEHOLDERS: { label: string; tag: string; only?: string }[] = [
+  { label: 'Client name', tag: 'client_name' },
+  { label: 'Your / company name', tag: 'dj_name' },
+  { label: 'Event date', tag: 'event_date' },
+  { label: 'Event type', tag: 'event_type' },
+  { label: 'Venue', tag: 'venue_name' },
+  { label: 'Address', tag: 'event_address' },
+  { label: 'Start time', tag: 'start_time' },
+  { label: 'End time', tag: 'end_time' },
+  { label: 'Package', tag: 'package', only: 'mobile' },
+  { label: 'Set type', tag: 'set_type', only: 'club' },
+  { label: 'Equipment', tag: 'equipment', only: 'club' },
+  { label: 'Duration', tag: 'duration' },
+  { label: 'Overtime rate', tag: 'overtime_rate', only: 'mobile' },
+  { label: 'Price', tag: 'price' },
+  { label: 'Deposit', tag: 'deposit' },
+  { label: 'Payment terms', tag: 'payment_terms' },
+  { label: 'DJ signature', tag: 'dj_signature' },
+  { label: 'Client signature', tag: 'client_signature' },
+];
+
 interface Contract {
   id: string;
   name: string;
@@ -51,6 +75,7 @@ export default function ContractPortal({
   userId, djType,
 }: { userId: string; djType?: string | null }) {
   const builderFields = BUILDER_FIELDS.filter((f) => !('only' in f) || (f as { only?: string }).only === djType);
+  const placeholders = PLACEHOLDERS.filter((p) => !p.only || p.only === djType);
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +92,23 @@ export default function ContractPortal({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Insert a {{tag}} placeholder into the text at the cursor position.
+  function insertPlaceholder(tag: string) {
+    const token = `{{${tag}}}`;
+    const el = textareaRef.current;
+    if (!el) { setPasteText((t) => t + token); return; }
+    const start = el.selectionStart ?? pasteText.length;
+    const end = el.selectionEnd ?? pasteText.length;
+    const next = pasteText.slice(0, start) + token + pasteText.slice(end);
+    setPasteText(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + token.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
 
   async function load() {
     try {
@@ -111,8 +153,8 @@ export default function ContractPortal({
     setError(null); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
   }
 
-  // Lock the pasted text in: (re)build the contract, then hand off to the
-  // field builder. Passes contractId when editing so it updates in place.
+  // Save the contract: (re)build it from the text + inline placeholders and
+  // return to the grid. Passes contractId when editing so it updates in place.
   async function submitPastedText() {
     if (!pasteText.trim()) { setError('Contract text is empty.'); return; }
     setError(null); setSubmittingPaste(true);
@@ -122,10 +164,10 @@ export default function ContractPortal({
         body: JSON.stringify({ text: pasteText, name: name || 'My contract', contractId: editingId || undefined }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
-      if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not build the contract.');
+      if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not save the contract.');
       await load();
-      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false });
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not build the contract.'); }
+      setView('grid');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save the contract.'); }
     finally { setSubmittingPaste(false); }
   }
 
@@ -222,13 +264,18 @@ export default function ContractPortal({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <div style={{ padding: '1.1rem 1.4rem', overflow: 'auto' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', marginBottom: '1rem', fontWeight: 600 }} />
-          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '1rem' }}>Paste or write your contract below. Next you&rsquo;ll drop the fields (client name, date, price, signatures) onto it, then lock it in. You can come back and edit the text anytime.</div>
-          <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={16} placeholder="Paste or type your contract here…" style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
+          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '.6rem' }}>Write your contract, and click a placeholder to drop it into the text where your cursor is. Placeholders auto-fill from the booking; signatures are collected from each party. Have a lawyer review before use.</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginBottom: '.9rem' }}>
+            {placeholders.map((p) => (
+              <button key={p.tag} type="button" onClick={() => insertPlaceholder(p.tag)} title={`Insert {{${p.tag}}}`} style={{ background: 'var(--bg-elev,rgba(255,255,255,.06))', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', borderRadius: 999, padding: '.28rem .7rem', cursor: 'pointer', fontSize: '.72rem', fontWeight: 600 }}>+ {p.label}</button>
+            ))}
+          </div>
+          <textarea ref={textareaRef} value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={16} placeholder="Paste or type your contract here…  Click a placeholder above to insert it." style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
           {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
           <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={submitPastedText} disabled={submittingPaste} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: submittingPaste ? 'wait' : 'pointer' }}>{submittingPaste ? 'Opening…' : 'Next: place fields →'}</button>
+          <button type="button" onClick={submitPastedText} disabled={submittingPaste} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: submittingPaste ? 'wait' : 'pointer' }}>{submittingPaste ? 'Saving…' : 'Save contract'}</button>
         </div>
       </div>, false, editingId ? 'Edit your contract' : 'Write your contract',
     );
@@ -299,10 +346,7 @@ export default function ContractPortal({
                 {c.is_standard ? (
                   <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
                 ) : c.body_text != null ? (
-                  <>
-                    <button type="button" onClick={() => openTextEditor(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Edit text</button>
-                    <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Place fields</button>
-                  </>
+                  <button type="button" onClick={() => openTextEditor(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Edit</button>
                 ) : (
                   <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Automate Fields</button>
                 )}
