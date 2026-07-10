@@ -98,24 +98,29 @@ export async function POST(req: Request) {
     );
   }
 
-  // 4. Store the template id on the DJ's row.
+  // 4. Save as a new named contract (name taken from the uploaded filename).
+  const contractName = name.replace(/\.(pdf|docx?|jpe?g|png)$/i, '').trim() || 'Contract';
+  let contractId: string | null = null;
   try {
     const admin = createAdminClient();
-    const { error: dbErr } = await admin
-      .from('users')
-      .update({
+    const { data, error: dbErr } = await admin
+      .from('contracts')
+      .insert({
+        dj_id: user.id,
+        name: contractName,
         docuseal_template_id: String(templateId),
-        contract_file_name: name,
-        contract_uploaded_at: new Date().toISOString(),
+        is_standard: false,
       } as unknown as never)
-      .eq('id', user.id);
+      .select('id')
+      .single();
     if (dbErr) throw dbErr;
+    contractId = (data as { id?: string } | null)?.id || null;
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Saved to DocuSeal but could not update your account.' },
+      { error: e instanceof Error ? e.message : 'Saved to DocuSeal but could not save the contract.' },
       { status: 500 },
     );
   }
 
-  return NextResponse.json({ ok: true, templateId: String(templateId), fileName: name });
+  return NextResponse.json({ ok: true, contractId, templateId: String(templateId), fileName: name, name: contractName });
 }
