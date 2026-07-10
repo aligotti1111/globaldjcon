@@ -83,8 +83,8 @@ export default function ContractPortal({
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [userId]);
 
   function openNew() {
-    setEditingId(null); setName(''); setText(defaultContractText(djType));
-    setLogoUrl(null); setError(null); setView('choose');
+    setEditingId(null); setName(''); setLogoUrl(null); setError(null);
+    openBuilder(null, '');
   }
   function openCard(c: Contract) {
     if (onPick) { onPick(c.id); return; }
@@ -264,13 +264,22 @@ export default function ContractPortal({
   }
 
   // builder
-  return overlay(editingId ? 'Edit contract' : 'Build your contract', (
-    error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-      : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
-      : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>
+  return overlay(editingId ? 'Edit contract' : 'New contract', (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name this contract (e.g. Wedding Contract)"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
+        <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Upload your contract, then drag the auto-fill fields (client name, date, price, signatures…) onto it. Name it, then Save.</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
+          : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
+          : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
+      </div>
+    </div>
   ), (
     <>
-      <span style={{ color: '#555', fontSize: '.8rem' }}>{name}</span>
+      <span style={{ color: '#555', fontSize: '.8rem' }}>{name || 'Unnamed contract'}</span>
       <button type="button" onClick={() => setView('grid')} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Done</button>
     </>
   ), true);
