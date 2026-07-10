@@ -1,10 +1,11 @@
 'use client';
 
 // ContractPortal — one button ("Open Contract Portal") opens a modal holding
-// the DJ's contract library. They upload a contract (it sits as a card, named
-// from the filename), rename inline, and click a card to place the auto-fill
-// fields via the embedded DocuSeal builder. The standard contract is always
-// present and can be customized but not deleted.
+// the DJ's contract library. They add a contract three ways: upload a file, or
+// write/paste their own text, or customize the standard contract. Uploaded and
+// pasted-text contracts open the embedded DocuSeal field builder so the DJ can
+// place the auto-fill fields. The standard contract is always present and can
+// be customized but not deleted.
 
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
@@ -43,7 +44,7 @@ interface Contract {
   is_standard: boolean;
   updated_at?: string;
 }
-type View = 'grid' | 'builder' | 'standard';
+type View = 'grid' | 'builder' | 'standard' | 'paste';
 
 export default function ContractPortal({
   userId, djType,
@@ -59,6 +60,8 @@ export default function ContractPortal({
   const [uploading, setUploading] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
   const [text, setText] = useState('');
+  const [pasteText, setPasteText] = useState('');
+  const [submittingPaste, setSubmittingPaste] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
@@ -95,6 +98,28 @@ export default function ContractPortal({
       }
     } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed.'); }
     finally { setUploading(false); }
+  }
+
+  // Open the blank "write your contract" screen.
+  function openPaste() {
+    setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setView('paste');
+  }
+
+  // Turn the pasted text into a contract, then hand off to the field builder.
+  async function submitPastedText() {
+    if (!pasteText.trim()) { setError('Contract text is empty.'); return; }
+    setError(null); setSubmittingPaste(true);
+    try {
+      const res = await fetch('/api/contracts/from-text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: pasteText, name: name || 'My contract' }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
+      if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not build the contract.');
+      await load();
+      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false });
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not build the contract.'); }
+    finally { setSubmittingPaste(false); }
   }
 
   async function openCard(c: Contract) {
@@ -185,6 +210,23 @@ export default function ContractPortal({
     </div>
   );
 
+  if (view === 'paste') {
+    return wrap(
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        <div style={{ padding: '1.1rem 1.4rem', overflow: 'auto' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', marginBottom: '1rem', fontWeight: 600 }} />
+          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '1rem' }}>Paste or write your contract below. Next, you&rsquo;ll drop in the spots where booking details and signatures go.</div>
+          <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={16} placeholder="Paste or type your contract here…" style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
+          {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
+          <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={submitPastedText} disabled={submittingPaste} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: submittingPaste ? 'wait' : 'pointer' }}>{submittingPaste ? 'Building…' : 'Next: place fields →'}</button>
+        </div>
+      </div>, false, 'Write your contract',
+    );
+  }
+
   if (view === 'builder') {
     return wrap(
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -226,8 +268,11 @@ export default function ContractPortal({
   return wrap(
     <div style={{ padding: '1.25rem', overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
-        <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>Your contracts. Upload one to add it, click a card to place fields, or customize the standard.</div>
-        <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 8, padding: '.6rem 1.1rem', cursor: uploading ? 'wait' : 'pointer', fontSize: '.85rem' }}>{uploading ? 'Uploading…' : '+ Upload contract'}</button>
+        <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>Your contracts. Upload one, write your own, or customize the standard — then click a card to place fields.</div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" onClick={openPaste} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 8, padding: '.6rem 1.1rem', cursor: 'pointer', fontSize: '.85rem' }}>✍️ Write from text</button>
+          <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 8, padding: '.6rem 1.1rem', cursor: uploading ? 'wait' : 'pointer', fontSize: '.85rem' }}>{uploading ? 'Uploading…' : '+ Upload contract'}</button>
+        </div>
         <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
       </div>
       {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginBottom: '.8rem' }}>{error}</div>}
@@ -253,6 +298,12 @@ export default function ContractPortal({
               </div>
             </div>
           ))}
+          <div style={{ ...cardBase, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
+            <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+              <div style={{ fontSize: 30, lineHeight: 1 }}>✍️</div>
+              <div style={{ fontSize: '.8rem', marginTop: 6 }}>Write from text</div>
+            </div>
+          </div>
           <div style={{ ...cardBase, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
             <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
               <div style={{ fontSize: 30, lineHeight: 1 }}>+</div>
