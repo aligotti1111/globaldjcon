@@ -127,7 +127,7 @@ async function tracePrepare(body: { bookingId?: unknown }) {
   }
 }
 
-async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) {
+async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; contractId?: unknown }) {
   try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -135,22 +135,37 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
 
   const bookingId = body.bookingId != null ? String(body.bookingId) : '';
   const manualClientEmail = typeof body.clientEmail === 'string' ? body.clientEmail.trim() : '';
+  const contractId = typeof body.contractId === 'string' && body.contractId ? body.contractId : null;
   if (!bookingId) return NextResponse.json({ error: 'Missing booking' }, { status: 400 });
 
   const admin = createAdminClient();
 
-  // DJ + their contract template. (Email comes from auth, not public.users.)
+  // DJ profile (name, company, type) — email comes from auth, not public.users.
   const { data: djRow } = await withTimeout<{ data: unknown }>(
-    admin.from('users').select('docuseal_template_id, name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+    admin.from('users').select('name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
     5000, 'users-select',
   );
-  const dj = djRow as { docuseal_template_id?: string | null; name?: string | null; company?: string | null; dj_type?: string | null } | null;
-  if (!dj?.docuseal_template_id) {
+  const dj = djRow as { name?: string | null; company?: string | null; dj_type?: string | null } | null;
+  const djEmail = user.email || '';
+  const companyName = (dj?.company || dj?.name || '').trim();
+  const isClub = dj?.dj_type === 'club';
+
+  // Which contract/template to use: the chosen one, else the DJ's most recent.
+  let templateId: string | null = null;
+  let usedContractId: string | null = null;
+  {
+    let cq = admin.from('contracts').select('id, docuseal_template_id').eq('dj_id', user.id);
+    cq = contractId ? cq.eq('id', contractId) : cq.order('updated_at', { ascending: false });
+    const { data: cRow } = await withTimeout<{ data: { id?: string; docuseal_template_id?: string | null } | null }>(
+      cq.limit(1).maybeSingle() as unknown as Promise<{ data: { id?: string; docuseal_template_id?: string | null } | null }>,
+      5000, 'contracts-select',
+    );
+    templateId = cRow?.docuseal_template_id || null;
+    usedContractId = cRow?.id || null;
+  }
+  if (!templateId) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
   }
-  const djEmail = user.email || '';
-  const companyName = (dj.company || dj.name || '').trim();
-  const isClub = dj.dj_type === 'club';
 
   // The booking — must belong to this DJ.
   const { data: bkRow } = await withTimeout<{ data: unknown }>(
@@ -215,7 +230,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     client_name: clientName,
-    dj_name: dj.name || 'DJ',
+    dj_name: dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
     event_type: (b.event_type as string) || '',
     venue_name: (b.venue_name as string) || '',
@@ -292,12 +307,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
 
     const submission = await withTimeout<unknown>(
       docuseal.createSubmission({
-        template_id: Number(dj.docuseal_template_id) || (dj.docuseal_template_id as unknown as number),
+        template_id: Number(templateId) || (templateId as unknown as number),
         order: 'preserved',
         reply_to: djEmail || undefined,
         message: { subject, body },
         submitters: [
-          { role: 'DJ', email: djEmail, name: dj.name || 'DJ', values, send_email: false },
+          { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
           { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
@@ -332,6 +347,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
       .from('bookings')
       .update({
         contract_submission_id: submissionId != null ? String(submissionId) : null,
+        contract_id: usedContractId,
         contract_status: 'awaiting_dj',
         contract_sent_at: new Date().toISOString(),
       } as unknown as never)
