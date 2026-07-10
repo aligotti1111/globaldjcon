@@ -4,8 +4,8 @@
 // Booking-data fields the standard contract can auto-fill per booking.
 export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
-  'event_address', 'start_time', 'end_time', 'package', 'set_type',
-  'price', 'deposit', 'payment_terms',
+  'event_address', 'start_time', 'end_time', 'package', 'package_details',
+  'set_type', 'equipment', 'price', 'deposit', 'payment_terms',
 ] as const;
 
 // Shared clauses used by both contract types.
@@ -46,7 +46,9 @@ Event: {{event_type}}
 Date: {{event_date}}
 Time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}, {{event_address}}
+Price: {{price}}
 Package: {{package}}
+Details: {{package_details}}
 
 ${SHARED_CLAUSES}`;
 
@@ -60,6 +62,8 @@ Venue: {{venue_name}}
 Date: {{event_date}}
 Set time: {{start_time}} - {{end_time}}
 Set type: {{set_type}}
+Equipment: {{equipment}}
+Price: {{price}}
 
 ${SHARED_CLAUSES}`;
 
