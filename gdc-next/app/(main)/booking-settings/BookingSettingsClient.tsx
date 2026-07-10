@@ -18,7 +18,7 @@ import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 import BookingTab from '../update-dj-profile/BookingTab';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
-import ContractSection from '../update-dj-profile/ContractSection';
+import ContractPortal from '../update-dj-profile/ContractPortal';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
 
 interface InitialProfile {
@@ -218,7 +218,15 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
       {hasBookingAccess && (
         <div className={styles.card}>
-          <ContractSection userId={initialProfile.id} />
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionTitle}>Your Contracts</div>
+          </div>
+          <div className={styles.settingHint} style={{ margin: '0 0 1rem' }}>
+            Build and name the contracts clients sign when they book you — a standard
+            agreement or your own. When a booking is approved, the details fill in for
+            you to review and send.
+          </div>
+          <ContractPortal userId={initialProfile.id} djType={djType} />
         </div>
       )}
     </div>
