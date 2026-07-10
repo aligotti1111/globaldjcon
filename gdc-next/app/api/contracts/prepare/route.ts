@@ -31,6 +31,14 @@ function money(n: number, currency: string): string {
   }
 }
 
+// Convert "2026-08-28" to "August 28, 2026". Leaves unparseable input as-is.
+function fmtDate(dstr: string | null | undefined): string {
+  if (!dstr) return '';
+  const d = new Date(dstr);
+  if (isNaN(d.getTime())) return dstr;
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
 // Convert "17:00" / "17:00:00" (24-hour) to "5:00 PM". Leaves anything it
 // can't parse untouched.
 function fmtTime(t: string | null | undefined): string {
@@ -208,7 +216,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
   const values: Record<string, string> = {
     client_name: clientName,
     dj_name: dj.name || 'DJ',
-    event_date: (b.event_date as string) || '',
+    event_date: fmtDate(b.event_date as string),
     event_type: (b.event_type as string) || '',
     venue_name: (b.venue_name as string) || '',
     event_address: (b.venue_address as string) || '',
@@ -227,14 +235,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     const docuseal = getDocuseal();
 
     // Contract name for the subject: skip any missing parts.
-    let prettyDate = '';
-    const rawDate = b.event_date as string | null;
-    if (rawDate) {
-      const d = new Date(rawDate);
-      prettyDate = isNaN(d.getTime())
-        ? rawDate
-        : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    }
+    const prettyDate = fmtDate(b.event_date as string);
     const timeRange = [fmtTime(b.start_time as string), fmtTime(b.end_time as string)]
       .filter(Boolean).join(' – ');
     const venueLine = [(b.venue_name as string) || '', (b.event_address as string) || (b.venue_address as string) || '']
