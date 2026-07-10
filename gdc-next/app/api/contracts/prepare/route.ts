@@ -31,6 +31,21 @@ function money(n: number, currency: string): string {
   }
 }
 
+// Convert "17:00" / "17:00:00" (24-hour) to "5:00 PM". Leaves anything it
+// can't parse untouched.
+function fmtTime(t: string | null | undefined): string {
+  if (!t) return '';
+  const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
+  if (!m) return t;
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  if (isNaN(h) || h > 23) return t;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${min} ${ampm}`;
+}
+
 export async function POST(req: Request) {
   // TEMP DEBUG: prove the handler runs at all, before touching any service.
   // Send { "debug": true } to get an immediate response.
@@ -197,8 +212,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     event_type: (b.event_type as string) || '',
     venue_name: (b.venue_name as string) || '',
     event_address: (b.venue_address as string) || '',
-    start_time: (b.start_time as string) || '',
-    end_time: (b.end_time as string) || '',
+    start_time: fmtTime(b.start_time as string),
+    end_time: fmtTime(b.end_time as string),
     package: (b.package_title as string) || '',
     price: price != null ? money(price, currency) : '',
     deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
@@ -220,7 +235,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
         ? rawDate
         : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
-    const timeRange = [(b.start_time as string) || '', (b.end_time as string) || '']
+    const timeRange = [fmtTime(b.start_time as string), fmtTime(b.end_time as string)]
       .filter(Boolean).join(' – ');
     const venueLine = [(b.venue_name as string) || '', (b.event_address as string) || (b.venue_address as string) || '']
       .map((p) => (p || '').trim()).filter(Boolean).join(', ');
