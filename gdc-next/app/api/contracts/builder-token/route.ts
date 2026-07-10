@@ -1,11 +1,11 @@
 // POST /api/contracts/builder-token
 //
 // Generates the signed JWT that authorizes the embedded DocuSeal form builder
-// for the current DJ. The builder lets the DJ upload their contract and place
-// fields (client name, date, signatures) visually — no tags, no re-upload.
+// for the current DJ. Optionally reopens a specific existing contract's
+// template (when editing) via a contractId in the request body.
 //
 // Requires env vars:
-//   DOCUSEAL_API_KEY   — used to sign the JWT (same key used for the API)
+//   DOCUSEAL_API_KEY    — used to sign the JWT (same key used for the API)
 //   DOCUSEAL_USER_EMAIL — the admin email of your DocuSeal account (owner of the key)
 
 import { NextResponse } from 'next/server';
@@ -15,7 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
-export async function POST() {
+export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
@@ -26,26 +26,36 @@ export async function POST() {
     return NextResponse.json({ error: 'Contract builder is not configured.' }, { status: 500 });
   }
 
-  // Reopen the DJ's existing template if they have one; otherwise the builder
-  // starts fresh and lets them upload.
-  let templateId: string | null = null;
+  let contractId: string | null = null;
+  let name = 'Booking Contract';
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from('users')
-      .select('docuseal_template_id')
-      .eq('id', user.id)
-      .maybeSingle();
-    templateId = (data as { docuseal_template_id?: string | null } | null)?.docuseal_template_id || null;
-  } catch {
-    templateId = null;
+    const body = await req.json();
+    if (body && typeof body.contractId === 'string') contractId = body.contractId || null;
+    if (body && typeof body.name === 'string' && body.name.trim()) name = body.name.trim();
+  } catch { /* no body — fresh builder */ }
+
+  // If editing an existing contract, reopen its template so the DJ can adjust it.
+  let templateId: string | null = null;
+  if (contractId) {
+    try {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from('contracts')
+        .select('docuseal_template_id')
+        .eq('id', contractId)
+        .eq('dj_id', user.id)
+        .maybeSingle();
+      templateId = (data as { docuseal_template_id?: string | null } | null)?.docuseal_template_id || null;
+    } catch {
+      templateId = null;
+    }
   }
 
   const payload: Record<string, unknown> = {
     user_email: adminEmail,
     integration_email: user.email || `dj_${user.id}@globaldjconnect.com`,
-    external_id: `dj_${user.id}`,
-    name: 'Booking Contract',
+    external_id: `dj_${user.id}_${contractId || Date.now()}`,
+    name,
   };
   if (templateId) payload.template_id = Number(templateId) || templateId;
 
