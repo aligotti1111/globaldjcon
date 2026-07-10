@@ -311,7 +311,18 @@ export default function ContractSendModal({
           <div style={{ color: '#555' }}>We&rsquo;ve emailed the client to sign. You&rsquo;ll be notified when it&rsquo;s complete.</div>
         </div>
       ) : phase === 'signing' && embedSrc ? (
-        <DocusealForm src={embedSrc} onComplete={handleSignComplete} withTitle={false} />
+        <DocusealForm
+          src={embedSrc}
+          onComplete={handleSignComplete}
+          withTitle={false}
+          allowTypedSignature={true}
+          rememberSignature={true}
+          customCss={`
+            .signature-pad, [class*="signature"] canvas { max-height: 160px !important; }
+            .modal-box, [class*="modal"] .signature-pad { max-width: 520px !important; }
+            canvas { max-height: 160px !important; }
+          `}
+        />
       ) : (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Preparing your contract…</div>
       )
