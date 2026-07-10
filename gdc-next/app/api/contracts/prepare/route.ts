@@ -244,7 +244,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     client_name: clientName,
-    dj_name: dj?.name || 'DJ',
+    dj_name: companyName || dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
     event_type: (b.event_type as string) || '',
     venue_name: (b.venue_name as string) || '',
@@ -255,6 +255,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     set_type: (b.set_type as string) || '',
     equipment: (b.equipment as string) || '',
     duration: fmtDuration(b.start_time as string, b.end_time as string),
+    overtime_rate: b.overtime_rate != null && b.overtime_rate !== '' ? (isNaN(Number(b.overtime_rate)) ? String(b.overtime_rate) : money(Number(b.overtime_rate), currency)) : '',
     price: price != null ? money(price, currency) : '',
     deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
     payment_terms: paymentTerms,
