@@ -83,11 +83,11 @@ function translateTags(escaped: string): string {
   let out = escaped;
   out = out.replace(
     /\{\{\s*dj_signature\s*\}\}/gi,
-    '<signature-field name="DJ Signature" role="DJ" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+    '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
   );
   out = out.replace(
     /\{\{\s*client_signature\s*\}\}/gi,
-    '<signature-field name="Client Signature" role="Client" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+    '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
   );
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
