@@ -41,6 +41,20 @@ function fmtDate(dstr: string | null | undefined): string {
 
 // Convert "17:00" / "17:00:00" (24-hour) to "5:00 PM". Leaves anything it
 // can't parse untouched.
+// Hours between "17:00" and "23:00" as "6 hours" (or "6.5 hours"). Handles
+// past-midnight end times. Blank if either is missing/unparseable.
+function fmtDuration(start: string | null | undefined, end: string | null | undefined): string {
+  if (!start || !end) return '';
+  const p = (t: string) => { const m = /^(\d{1,2}):(\d{2})/.exec(t.trim()); return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN; };
+  const a = p(start); let b = p(end);
+  if (isNaN(a) || isNaN(b)) return '';
+  if (b < a) b += 24 * 60; // crosses midnight
+  const hrs = (b - a) / 60;
+  if (hrs <= 0) return '';
+  const rounded = Math.round(hrs * 100) / 100;
+  return `${rounded % 1 === 0 ? rounded : rounded.toFixed(1)} hour${rounded === 1 ? '' : 's'}`;
+}
+
 function fmtTime(t: string | null | undefined): string {
   if (!t) return '';
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
@@ -237,10 +251,10 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     event_address: (b.venue_address as string) || '',
     start_time: fmtTime(b.start_time as string),
     end_time: fmtTime(b.end_time as string),
-    package: (b.package_title as string) || '',
-    package_details: (b.package_details as string) || '',
+    package: [(b.package_title as string) || '', (b.package_details as string) || ''].filter(Boolean).join(' — '),
     set_type: (b.set_type as string) || '',
     equipment: (b.equipment as string) || '',
+    duration: fmtDuration(b.start_time as string, b.end_time as string),
     price: price != null ? money(price, currency) : '',
     deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
     payment_terms: paymentTerms,
