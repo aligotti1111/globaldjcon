@@ -5,7 +5,7 @@
 export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package', 'package_details',
-  'set_type', 'equipment', 'price', 'deposit', 'payment_terms',
+  'set_type', 'equipment', 'duration', 'price', 'deposit', 'payment_terms',
 ] as const;
 
 // Shared clauses used by both contract types.
