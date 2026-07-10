@@ -223,6 +223,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown }) 
     start_time: fmtTime(b.start_time as string),
     end_time: fmtTime(b.end_time as string),
     package: (b.package_title as string) || '',
+    set_type: (b.set_type as string) || '',
     price: price != null ? money(price, currency) : '',
     deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
     payment_terms: paymentTerms,
