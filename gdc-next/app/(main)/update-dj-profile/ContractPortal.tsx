@@ -235,18 +235,22 @@ export default function ContractPortal({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
           {contracts.map((c) => (
             <div key={c.id} style={cardBase}>
-              <div onClick={() => openCard(c)} style={{ cursor: 'pointer' }}>
+              <div>
                 <div style={{ fontSize: 22 }}>📄</div>
                 {renaming === c.id ? (
                   <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} onClick={(e) => e.stopPropagation()} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
                 ) : (
-                  <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word' }} onClick={(e) => { e.stopPropagation(); setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
+                  <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
                 )}
-                <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 2 }}>{c.is_standard ? 'Standard · Customize' : 'Custom · Add fields'}</div>
               </div>
-              {!c.is_standard && (
-                <button type="button" onClick={() => deleteContract(c)} style={{ alignSelf: 'flex-end', background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>
+                  {c.is_standard ? 'Open / Customize' : 'Open / Automate Fields'}
+                </button>
+                {!c.is_standard && (
+                  <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
+                )}
+              </div>
             </div>
           ))}
           <div style={{ ...cardBase, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
