@@ -1,10 +1,13 @@
 // POST /api/contracts/from-text
 //
-// The DJ writes or pastes their contract as plain text. We turn that text into
-// a DocuSeal HTML template (no fields placed yet) and save it as a normal
-// named contract. The DJ is then taken into the embedded field builder to drop
-// in the spots where booking details and signatures go — exactly like an
-// uploaded contract, but the starting document comes from pasted text.
+// The DJ writes or pastes their contract as plain text and "locks it in". We
+// turn that text into a DocuSeal template (no fields placed yet) and save it as
+// a normal named contract, keeping the raw text on the row so the DJ can come
+// back and edit the words later. After locking in, the DJ is taken into the
+// field builder to drop in the spots where booking details and signatures go.
+//
+// Pass a contractId to re-lock an existing text contract after editing (rebuilds
+// its template from the new text; previously placed fields are re-placed).
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -19,7 +22,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  let body: { text?: unknown; name?: unknown; logoUrl?: unknown };
+  let body: { text?: unknown; name?: unknown; logoUrl?: unknown; contractId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -29,6 +32,7 @@ export async function POST(req: Request) {
   const text = typeof body.text === 'string' ? body.text : '';
   const name = (typeof body.name === 'string' && body.name.trim()) ? body.name.trim() : 'My contract';
   const logoUrl = typeof body.logoUrl === 'string' && body.logoUrl ? body.logoUrl : null;
+  const contractId = typeof body.contractId === 'string' && body.contractId ? body.contractId : null;
   if (!text.trim()) return NextResponse.json({ error: 'Contract text is empty' }, { status: 400 });
 
   // 1. Build the DocuSeal template from the pasted text.
@@ -50,23 +54,41 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2. Save it as a normal (non-standard) named contract.
-  let contractId: string | null = null;
+  // 2. Save (or update) it as a normal (non-standard) named contract, keeping
+  //    the raw text so it can be edited later.
+  let savedId: string | null = contractId;
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .from('contracts')
-      .insert({
-        dj_id: user.id,
-        name,
-        docuseal_template_id: String(templateId),
-        logo_url: logoUrl,
-        is_standard: false,
-      } as unknown as never)
-      .select('id')
-      .single();
-    if (error) throw error;
-    contractId = (data as { id?: string } | null)?.id || null;
+    if (contractId) {
+      const { error } = await admin
+        .from('contracts')
+        .update({
+          name,
+          docuseal_template_id: String(templateId),
+          body_text: text,
+          logo_url: logoUrl,
+          is_standard: false,
+          updated_at: new Date().toISOString(),
+        } as unknown as never)
+        .eq('id', contractId)
+        .eq('dj_id', user.id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await admin
+        .from('contracts')
+        .insert({
+          dj_id: user.id,
+          name,
+          docuseal_template_id: String(templateId),
+          body_text: text,
+          logo_url: logoUrl,
+          is_standard: false,
+        } as unknown as never)
+        .select('id')
+        .single();
+      if (error) throw error;
+      savedId = (data as { id?: string } | null)?.id || null;
+    }
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Built the contract but could not save it.' },
@@ -74,5 +96,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, contractId, templateId: String(templateId), name });
+  return NextResponse.json({ ok: true, contractId: savedId, templateId: String(templateId), name });
 }
