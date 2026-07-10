@@ -111,8 +111,50 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          created_at: string
+          dj_id: string
+          docuseal_template_id: string | null
+          id: string
+          is_standard: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dj_id: string
+          docuseal_template_id?: string | null
+          id?: string
+          is_standard?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dj_id?: string
+          docuseal_template_id?: string | null
+          id?: string
+          is_standard?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_dj_id_fkey"
+            columns: ["dj_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
+          contract_id: string | null
           booking_type: string | null
           cocktail_included: boolean | null
           cocktail_needed: boolean | null
@@ -177,6 +219,7 @@ export type Database = {
           venue_type: string | null
         }
         Insert: {
+          contract_id?: string | null
           booking_type?: string | null
           cocktail_included?: boolean | null
           cocktail_needed?: boolean | null
@@ -241,6 +284,7 @@ export type Database = {
           venue_type?: string | null
         }
         Update: {
+          contract_id?: string | null
           booking_type?: string | null
           cocktail_included?: boolean | null
           cocktail_needed?: boolean | null
