@@ -86,9 +86,13 @@ export default function ContractPortal({
     try {
       const fd = new FormData(); fd.append('file', file);
       const res = await fetch('/api/contracts/upload-template', { method: 'POST', body: fd });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Upload failed.');
       await load();
+      // Take them straight into the new contract to place the fields.
+      if (json.contractId) {
+        openCard({ id: json.contractId, name: json.name || 'Contract', docuseal_template_id: json.templateId || null, is_standard: false });
+      }
     } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed.'); }
     finally { setUploading(false); }
   }
