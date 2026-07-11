@@ -260,6 +260,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   let embedSrc = '';
   let submissionId: string | number | undefined;
+  let hasClientSig = false;
+  let hasDjSig = false;
   try {
     const docuseal = getDocuseal();
 
@@ -276,7 +278,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       const subs = tpl?.submitters || [];
       const roleOf = (uuid?: string) => subs.find((s) => s.uuid === uuid)?.name || '';
       const sigFields = (tpl?.fields || []).filter((f) => (f.type || '').toLowerCase() === 'signature');
-      const hasClientSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'Client');
+      hasClientSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'Client');
+      hasDjSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'DJ');
       if (!hasClientSig) {
         return NextResponse.json(
           { ok: false, error: 'This contract has no signature fields for the client yet, so there’s nothing to sign. Add a Client signature (and a DJ signature if you sign in the app), save, then send.' },
@@ -401,7 +404,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       .eq('dj_id', user.id);
   } catch { /* non-fatal */ }
 
-  return NextResponse.json({ ok: true, embedSrc, submissionId: submissionId != null ? String(submissionId) : null });
+  return NextResponse.json({ ok: true, embedSrc, submissionId: submissionId != null ? String(submissionId) : null, hasClientSig, hasDjSig });
   } catch (e) {
     // Guarantee a readable JSON error instead of an infra-level 502.
     let msg = 'Prepare crashed.';
