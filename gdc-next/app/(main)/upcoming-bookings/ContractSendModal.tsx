@@ -73,7 +73,7 @@ DJ: {{dj_signature}}   {{dj_name}}
 
 Client: {{client_signature}}   {{client_name}}`;
 
-type Phase = 'loading' | 'need_setup' | 'setup_standard' | 'setup_builder' | 'need_email' | 'signing' | 'signed' | 'error';
+type Phase = 'loading' | 'need_setup' | 'setup_standard' | 'setup_builder' | 'add_fields' | 'need_email' | 'signing' | 'signed' | 'error';
 interface SaveData { id?: number | string }
 
 export default function ContractSendModal({
@@ -113,6 +113,12 @@ export default function ContractSendModal({
       let json: { ok?: boolean; embedSrc?: string; error?: string } = {};
       try { json = JSON.parse(raw); } catch { /* non-JSON response */ }
       if (res.status === 400 && json.error === 'NO_CLIENT_EMAIL') { setPhase('need_email'); return; }
+      // Chosen contract has no signature yet — open it so the DJ can add one,
+      // rather than dead-ending on an error.
+      if (/no signature fields|nothing to sign|does not contain fields/i.test(json.error || '')) {
+        openContractBuilder();
+        return;
+      }
       if (res.status === 400 && /set up your contract/i.test(json.error || '')) {
         if (afterSave) {
           setError('Your contract saved, but this booking couldn\u2019t load it. Try again in a moment.');
@@ -192,12 +198,25 @@ export default function ContractSendModal({
       setBuilderToken(json.token);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not open the builder.'); }
   }
+  // Open the CHOSEN contract in the builder so the DJ can add a signature to it.
+  async function openContractBuilder() {
+    setError(null); setBuilderToken(null); setPhase('add_fields');
+    try {
+      const res = await fetch('/api/contracts/builder-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+      if (!res.ok || !json.token) throw new Error(json.error || 'Could not open the contract.');
+      setBuilderToken(json.token);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not open the contract.'); }
+  }
   async function handleBuilderSave(data: SaveData) {
     const id = data?.id; if (id == null) return;
     try {
       await fetch('/api/contracts/save-template', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: String(id) }),
+        body: JSON.stringify({ templateId: String(id), contractId: contractId || undefined }),
       });
     } catch { /* exists in DocuSeal regardless */ }
   }
@@ -271,6 +290,26 @@ export default function ContractSendModal({
       <>
         <button type="button" onClick={() => { setError(null); setPhase('setup_standard'); }} style={{ background: 'transparent', border: 'none', color: '#0a7', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>Use our standard contract instead</button>
         <button type="button" onClick={() => prepare()} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Done — continue</button>
+      </>
+    ));
+  }
+
+  if (phase === 'add_fields') {
+    return shell('Add a signature to send', (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '.7rem 1rem', background: '#fff7ed', borderBottom: '1px solid #eee', color: '#9a3412', fontSize: '.8rem', lineHeight: 1.4 }}>
+          This contract has no signature yet, so there&rsquo;s nothing to sign. Drag a <strong>DJ signature</strong> and a <strong>Client signature</strong> onto it (plus any booking details you want), then click <strong>Save &amp; send</strong>.
+        </div>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
+            : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening…</div>}
+        </div>
+      </div>
+    ), (
+      <>
+        <span />
+        <button type="button" onClick={async () => { await new Promise((r) => setTimeout(r, 700)); prepare(); }} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Save &amp; send</button>
       </>
     ));
   }
