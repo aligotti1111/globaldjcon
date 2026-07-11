@@ -61,6 +61,7 @@ export default function ContractPortal({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
+  const [stdDisclaimer, setStdDisclaimer] = useState(false);
   const [text, setText] = useState('');
   const [pasteText, setPasteText] = useState('');
   const [submittingPaste, setSubmittingPaste] = useState(false);
@@ -132,6 +133,13 @@ export default function ContractPortal({
     setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setView('paste');
   }
 
+  // Open a fresh copy of the Global DJ Connect standard contract. Saving it
+  // (after accepting the disclaimer) creates a copy in the DJ's contracts.
+  function openStandardTemplate() {
+    setError(null); setEditingId(null); setName('Global DJ Connect standard contract');
+    setText(defaultContractText(djType)); setStdDisclaimer(false); setView('standard');
+  }
+
   // Reopen an existing text contract's words so the DJ can edit and re-lock.
   function openTextEditor(c: Contract) {
     setError(null); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
@@ -159,7 +167,7 @@ export default function ContractPortal({
 
   async function openCard(c: Contract) {
     setEditingId(c.id); setName(c.name); setError(null);
-    if (c.is_standard) { setText(defaultContractText(djType)); setView('standard'); return; }
+    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); setView('standard'); return; }
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -311,13 +319,17 @@ export default function ContractPortal({
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', marginBottom: '1rem', fontWeight: 600 }} />
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '1rem' }}>Customize the wording. Keep the {'{{tags}}'} — they auto-fill booking details. Have a lawyer review before use.</div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={16} style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
+          <label style={{ display: 'flex', gap: '.55rem', alignItems: 'flex-start', marginTop: '1rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.45, cursor: 'pointer' }}>
+            <input type="checkbox" checked={stdDisclaimer} onChange={(e) => setStdDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+            <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
+          </label>
           {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
           <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={saveStandard} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save contract'}</button>
+          <button type="button" onClick={saveStandard} disabled={savingStd || !stdDisclaimer} title={!stdDisclaimer ? 'Accept the disclaimer to save' : undefined} style={{ background: stdDisclaimer ? 'var(--neon,#00e0a4)' : 'rgba(0,224,164,.35)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : stdDisclaimer ? 'pointer' : 'not-allowed' }}>{savingStd ? 'Saving…' : 'Save to my contracts'}</button>
         </div>
-      </div>, false, 'Customize contract',
+      </div>, false, 'Global DJ Connect standard contract',
     );
   }
 
@@ -330,6 +342,12 @@ export default function ContractPortal({
       {/* ── Create a new contract ── */}
       <div style={sectionLabel}>Create a contract</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openStandardTemplate}>
+          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+            <div style={{ fontSize: 28, lineHeight: 1 }}>📃</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect standard contract</div>
+          </div>
+        </div>
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
@@ -381,9 +399,7 @@ export default function ContractPortal({
                   ) : (
                     <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Automate Fields</button>
                   )}
-                  {!c.is_standard && (
-                    <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
-                  )}
+                  <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
                 </div>
               </div>
             ))}
