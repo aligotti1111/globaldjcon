@@ -79,11 +79,13 @@ interface SaveData { id?: number | string }
 export default function ContractSendModal({
   bookingId,
   userId,
+  contractId,
   onClose,
   onSent,
 }: {
   bookingId: string;
   userId: string;
+  contractId?: string;
   onClose: () => void;
   onSent: () => void;
 }) {
@@ -105,7 +107,7 @@ export default function ContractSendModal({
     try {
       const res = await fetch('/api/contracts/prepare', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, clientEmail: emailOverride || undefined }),
+        body: JSON.stringify({ bookingId, contractId: contractId || undefined, clientEmail: emailOverride || undefined }),
       });
       const raw = await res.text();
       let json: { ok?: boolean; embedSrc?: string; error?: string } = {};
