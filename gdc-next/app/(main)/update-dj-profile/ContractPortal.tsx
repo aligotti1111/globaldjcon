@@ -277,60 +277,67 @@ export default function ContractPortal({
   }
 
   // grid
+  const sectionLabel: React.CSSProperties = { color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.7rem' };
   return wrap(
     <div style={{ padding: '1.25rem', overflow: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
-        <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>Your contracts. Upload one, write your own, or customize the standard — then click a card to place fields.</div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <button type="button" onClick={openPaste} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 8, padding: '.6rem 1.1rem', cursor: 'pointer', fontSize: '.85rem' }}>✍️ Write from text</button>
-          <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 8, padding: '.6rem 1.1rem', cursor: uploading ? 'wait' : 'pointer', fontSize: '.85rem' }}>{uploading ? 'Uploading…' : '+ Upload contract'}</button>
+      <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
+
+      {/* ── Create a new contract ── */}
+      <div style={sectionLabel}>Create a contract</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
+          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+            <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Write from text</div>
+          </div>
         </div>
-        <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
+          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+            <div style={{ fontSize: 28, lineHeight: 1 }}>{uploading ? '…' : '+'}</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : 'Upload contract'}</div>
+          </div>
+        </div>
       </div>
-      {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginBottom: '.8rem' }}>{error}</div>}
-      {loading ? <div style={{ color: 'var(--muted,#8a8aa0)' }}>Loading…</div> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
-          {contracts.map((c) => (
-            <div key={c.id} style={cardBase}>
-              <div>
-                <div style={{ fontSize: 22 }}>📄</div>
-                {renaming === c.id ? (
-                  <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} onClick={(e) => e.stopPropagation()} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
-                ) : (
-                  <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
-                )}
+
+      {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', margin: '.9rem 0 0' }}>{error}</div>}
+
+      {/* ── Your existing contracts ── */}
+      <div style={{ marginTop: '1.6rem', paddingTop: '1.3rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
+        <div style={sectionLabel}>Your contracts</div>
+        {loading ? <div style={{ color: 'var(--muted,#8a8aa0)' }}>Loading…</div>
+          : contracts.length === 0 ? <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No contracts yet. Create one above.</div>
+          : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
+            {contracts.map((c) => (
+              <div key={c.id} style={cardBase}>
+                <div>
+                  <div style={{ fontSize: 22 }}>📄</div>
+                  {renaming === c.id ? (
+                    <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} onClick={(e) => e.stopPropagation()} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+                  ) : (
+                    <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                  {c.is_standard ? (
+                    <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
+                  ) : c.body_text != null ? (
+                    <>
+                      <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Place fields</button>
+                      <button type="button" onClick={() => openTextEditor(c)} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit text</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Automate Fields</button>
+                  )}
+                  {!c.is_standard && (
+                    <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                {c.is_standard ? (
-                  <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
-                ) : c.body_text != null ? (
-                  <>
-                    <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Place fields</button>
-                    <button type="button" onClick={() => openTextEditor(c)} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit text</button>
-                  </>
-                ) : (
-                  <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Automate Fields</button>
-                )}
-                {!c.is_standard && (
-                  <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
-                )}
-              </div>
-            </div>
-          ))}
-          <div style={{ ...cardBase, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
-            <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
-              <div style={{ fontSize: 30, lineHeight: 1 }}>✍️</div>
-              <div style={{ fontSize: '.8rem', marginTop: 6 }}>Write from text</div>
-            </div>
+            ))}
           </div>
-          <div style={{ ...cardBase, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
-            <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
-              <div style={{ fontSize: 30, lineHeight: 1 }}>+</div>
-              <div style={{ fontSize: '.8rem', marginTop: 6 }}>Upload contract</div>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>,
   );
 }
