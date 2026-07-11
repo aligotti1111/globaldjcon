@@ -369,21 +369,23 @@ export default function ContractSendModal({
               <span style={{ color: sigCheck.client ? '#0a7' : '#c00', fontWeight: sigCheck.client ? 400 : 700 }}>{sigCheck.client ? '✓' : '✕'} Client signature spot</span>
             </div>
           )}
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            <DocusealForm
-              src={embedSrc}
-              onComplete={handleSignComplete}
-              withTitle={false}
-              allowTypedSignature={true}
-              rememberSignature={true}
-              i18n={{ submit: 'Send contract', complete: 'Send contract' }}
-              customCss={`
-                [class*="signature"] canvas, [class*="signature"] img, [class*="signature"] svg, canvas { max-height: 84px !important; height: auto !important; }
-                [class*="signature"] { font-size: 34px !important; }
-                .signature-pad, .modal-box, [class*="modal"] .signature-pad, [class*="signature"] { max-width: 420px !important; margin-left: auto !important; margin-right: auto !important; }
-                [class*="field-area"], [class*="expanded"] { max-height: 300px !important; }
-              `}
-            />
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 560 }}>
+              <DocusealForm
+                src={embedSrc}
+                onComplete={handleSignComplete}
+                withTitle={false}
+                allowTypedSignature={true}
+                rememberSignature={true}
+                i18n={{ submit: 'Send contract', complete: 'Send contract' }}
+                customCss={`
+                  canvas, svg, [class*="signature"] canvas, [class*="signature"] img, [class*="signature"] svg { max-height: 70px !important; height: auto !important; }
+                  [class*="signature"], [class*="Signature"], [id*="signature"] { font-size: 26px !important; max-width: 360px !important; margin-left: auto !important; margin-right: auto !important; }
+                  .signature-pad, .modal-box, [class*="modal"], [role="dialog"] { max-width: 400px !important; }
+                  [class*="field-area"], [class*="expanded"], [class*="popup"] { max-height: 260px !important; }
+                `}
+              />
+            </div>
           </div>
         </div>
       ) : (
