@@ -24,17 +24,25 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
-  // Find the submission for this booking (DJ must own it).
+  // Find the submission for this booking (DJ must own it) and its status.
   let submissionId: string | null = null;
+  let status: string | null = null;
   try {
     const { data } = await admin
       .from('bookings')
-      .select('contract_submission_id')
+      .select('contract_submission_id, contract_status')
       .eq('id', bookingId)
       .eq('dj_id', user.id)
       .maybeSingle();
-    submissionId = (data as { contract_submission_id?: string | null } | null)?.contract_submission_id || null;
+    const row = data as { contract_submission_id?: string | null; contract_status?: string | null } | null;
+    submissionId = row?.contract_submission_id || null;
+    status = row?.contract_status || null;
   } catch { submissionId = null; }
+
+  // A fully signed contract can't be cancelled — it's an executed agreement.
+  if (status === 'signed') {
+    return NextResponse.json({ error: 'This contract has been signed and can no longer be cancelled.' }, { status: 400 });
+  }
 
   // Void the DocuSeal submission (best-effort — clearing the booking is what
   // lets the DJ send again, so we don't hard-fail if the archive call errors).
