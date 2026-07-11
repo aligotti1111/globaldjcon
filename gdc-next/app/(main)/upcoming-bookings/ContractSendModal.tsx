@@ -134,13 +134,12 @@ export default function ContractSendModal({
   useEffect(() => { prepare(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [bookingId]);
 
   async function handleSignComplete() {
-    // The DJ has signed. Only now do we email the client their copy to sign.
+    // The DJ has signed. DocuSeal (order:'preserved') now emails the client
+    // their copy to sign — nothing went to the client before this.
     try {
-      await fetch('/api/contracts/send-client', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId }),
-      });
-    } catch { /* the send-client route also updates status; best-effort */ }
+      const supabase = createClient();
+      await supabase.from('bookings').update({ contract_status: 'awaiting_client' } as unknown as never).eq('id', bookingId).eq('dj_id', userId);
+    } catch { /* best-effort */ }
     setPhase('signed');
     onSent();
   }
