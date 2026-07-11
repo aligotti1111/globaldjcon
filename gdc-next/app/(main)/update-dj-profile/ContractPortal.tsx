@@ -21,6 +21,7 @@ const BUILDER_FIELDS = [
   { name: 'client_name', type: 'text', role: 'DJ', title: 'Client name' },
   { name: 'dj_name', type: 'text', role: 'DJ', title: 'Company / DJ name' },
   { name: 'event_date', type: 'text', role: 'DJ', title: 'Event date' },
+  { name: 'todays_date', type: 'datenow', role: 'DJ', title: 'Today’s date (auto)' },
   { name: 'event_type', type: 'text', role: 'DJ', title: 'Event type', only: 'mobile' },
   { name: 'venue_name', type: 'text', role: 'DJ', title: 'Venue name' },
   { name: 'event_address', type: 'text', role: 'DJ', title: 'Event address' },
