@@ -353,6 +353,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     if (anyE?.response || anyE?.body) {
       try { msg += ` — ${JSON.stringify(anyE.response ?? anyE.body)}`; } catch { /* ignore */ }
     }
+    // Common cause: the chosen contract has no fields placed on it yet, so
+    // there's nothing to sign. Give the DJ an actionable message.
+    if (/does not contain fields|no fields|without fields/i.test(msg)) {
+      msg = 'This contract has no signature fields yet, so there’s nothing to sign. Open it in the Contract Portal, place at least a DJ signature and a Client signature (plus any booking details), save, then send.';
+    }
     console.error('[prepare] contract error:', msg);
     // Return 200 with ok:false so the platform doesn't replace this JSON body
     // with a generic HTML 502 — the real reason reaches the app.
