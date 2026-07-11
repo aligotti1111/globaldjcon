@@ -1,13 +1,17 @@
 // POST /api/contracts/from-text
 //
 // The DJ writes or pastes their contract as plain text and "locks it in". We
-// turn that text into a DocuSeal template (no fields placed yet) and save it as
-// a normal named contract, keeping the raw text on the row so the DJ can come
-// back and edit the words later. After locking in, the DJ is taken into the
-// field builder to drop in the spots where booking details and signatures go.
+// turn that text into a DocuSeal template and save it as a normal named
+// contract, keeping the raw text on the row so the DJ can come back and edit
+// the words later. After locking in, the DJ is taken into the field builder to
+// drop in the spots where booking details and signatures go.
+//
+// Every NEW contract also gets a DJ + Client signature block automatically, so
+// it's always signable — a contract with zero fields is rejected by DocuSeal
+// ("Template does not contain fields") and can't be sent.
 //
 // Pass a contractId to re-lock an existing text contract after editing (rebuilds
-// its template from the new text; previously placed fields are re-placed).
+// its template from the new text; previously placed fields are kept).
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -18,20 +22,17 @@ import { CONTRACT_DATA_FIELDS } from '@/lib/contractText';
 export const runtime = 'nodejs';
 export const maxDuration = 26;
 
+const DJ_SIGNATURE_FIELD = '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>';
+const CLIENT_SIGNATURE_FIELD = '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>';
+
 // Convert friendly {{tags}} typed/pasted in the editor into DocuSeal field
 // elements, so booking details (set_type, equipment, price, date…) auto-fill
 // per booking and signature lines are collected from each party. Runs on the
 // already-HTML body (the rich-text editor output) — no escaping.
 function translateTags(html: string): string {
   let out = html;
-  out = out.replace(
-    /\{\{\s*dj_signature\s*\}\}/gi,
-    '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
-  );
-  out = out.replace(
-    /\{\{\s*client_signature\s*\}\}/gi,
-    '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
-  );
+  out = out.replace(/\{\{\s*dj_signature\s*\}\}/gi, DJ_SIGNATURE_FIELD);
+  out = out.replace(/\{\{\s*client_signature\s*\}\}/gi, CLIENT_SIGNATURE_FIELD);
   for (const f of CONTRACT_DATA_FIELDS) {
     out = out.replace(
       new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi'),
@@ -41,11 +42,18 @@ function translateTags(html: string): string {
   return out;
 }
 
-// Wrap the DJ's formatted contract HTML (from the rich-text editor) into a
-// full print-ready document. Any {{tags}} become auto-fill fields; the DJ can
-// also drag additional fields on in the builder step.
-function wrapContractHtml(bodyHtml: string, logoUrl?: string | null): string {
-  const body = translateTags(bodyHtml);
+// Wrap the DJ's formatted contract HTML into a full print-ready document. Any
+// {{tags}} become auto-fill fields. When ensureSignature is true (new contract)
+// and the DJ placed no signature, a DJ + Client signature block is appended so
+// the contract is always signable.
+function wrapContractHtml(bodyHtml: string, logoUrl?: string | null, ensureSignature = false): string {
+  let body = translateTags(bodyHtml);
+  if (ensureSignature && !/signature-field/i.test(body)) {
+    body += `<div style="margin-top:40px">
+      <div style="margin-bottom:22px">DJ signature: ${DJ_SIGNATURE_FIELD}</div>
+      <div>Client signature: ${CLIENT_SIGNATURE_FIELD}</div>
+    </div>`;
+  }
   const logo = logoUrl
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
     : '';
@@ -92,20 +100,22 @@ export async function POST(req: Request) {
     } catch { existingTemplateId = null; }
   }
 
-  // 1. Build/refresh the DocuSeal template from the text.
+  // 1. Build/refresh the DocuSeal template from the text. New contracts get the
+  //    signature block guaranteed; edits keep the existing (transferred) fields.
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const html = wrapContractHtml(text, logoUrl);
     if (existingTemplateId) {
-      // Replace the document in place. The new HTML carries no fields, so
-      // DocuSeal transfers the DJ's previously dragged fields onto it — their
-      // placements are kept when they reopen the builder.
+      // Replace the document in place. Built WITHOUT auto-signatures so, when
+      // the new HTML has no fields, DocuSeal transfers the DJ's existing fields
+      // (including the signatures added at creation) onto the new document.
+      const html = wrapContractHtml(text, logoUrl, false);
       await docuseal.updateTemplateDocuments(Number(existingTemplateId), {
         documents: [{ html, position: 0, replace: true }],
       });
       templateId = existingTemplateId;
     } else {
+      const html = wrapContractHtml(text, logoUrl, true);
       const template = await docuseal.createTemplateFromHtml({
         name: `${name} — ${user.id}`,
         html,
