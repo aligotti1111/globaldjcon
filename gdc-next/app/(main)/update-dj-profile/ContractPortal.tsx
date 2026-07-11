@@ -347,7 +347,7 @@ export default function ContractPortal({
       <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
 
       {bookingMode && (
-        <div style={{ background: 'rgba(0,224,164,.1)', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, padding: '.7rem .9rem', marginBottom: '1.1rem', color: 'var(--white,#fff)', fontSize: '.82rem', lineHeight: 1.45 }}>
+        <div style={{ marginBottom: '1.1rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', lineHeight: 1.45 }}>
           Pick a contract to send for this booking — or create one below. The booking details fill in automatically before you sign.
         </div>
       )}
@@ -398,7 +398,7 @@ export default function ContractPortal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                   {bookingMode ? (
                     <>
-                      <button type="button" onClick={() => onUseContract?.(c.id)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Use for this booking</button>
+                      <button type="button" onClick={() => onUseContract?.(c.id)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Use this contract</button>
                       <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit</button>
                     </>
                   ) : c.is_standard ? (
