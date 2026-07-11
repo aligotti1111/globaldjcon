@@ -268,10 +268,10 @@ export default function ContractPortal({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
-          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Click a field on the left to drop it into your contract where the cursor is. Fields auto-fill from the booking; signatures are collected from each party.</div>
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Click a field on the right to drop it into your contract where the cursor is. Fields auto-fill from the booking; signatures are collected from each party.</div>
         </div>
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <div style={{ width: 210, flexShrink: 0, background: '#fafafa', borderRight: '1px solid #e5e7eb', overflow: 'auto', padding: '.9rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'row-reverse', flex: 1, overflow: 'hidden' }}>
+          <div style={{ width: 210, flexShrink: 0, background: '#fafafa', borderLeft: '1px solid #e5e7eb', overflow: 'auto', padding: '.9rem' }}>
             <div style={sideLabel}>Booking details</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
               {dataPh.map((p) => (
