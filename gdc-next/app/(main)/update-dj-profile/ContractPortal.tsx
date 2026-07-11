@@ -342,12 +342,6 @@ export default function ContractPortal({
       {/* ── Create a new contract ── */}
       <div style={sectionLabel}>Create a contract</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
-        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openStandardTemplate}>
-          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
-            <div style={{ fontSize: 28, lineHeight: 1 }}>📃</div>
-            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect standard contract</div>
-          </div>
-        </div>
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
@@ -365,6 +359,12 @@ export default function ContractPortal({
             <div style={{ fontSize: 28, lineHeight: 1 }}>{uploading ? '…' : '⬆'}</div>
             <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : dragOver ? 'Drop to upload' : 'Upload contract'}</div>
             {!uploading && <div style={{ fontSize: '.68rem', marginTop: 3, color: 'var(--muted,#8a8aa0)' }}>Drag &amp; drop or click · PDF, Word, image</div>}
+          </div>
+        </div>
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openStandardTemplate}>
+          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+            <div style={{ fontSize: 28, lineHeight: 1 }}>📃</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect standard contract</div>
           </div>
         </div>
       </div>
