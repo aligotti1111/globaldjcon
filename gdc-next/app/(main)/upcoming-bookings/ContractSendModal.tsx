@@ -113,8 +113,8 @@ export default function ContractSendModal({
       let json: { ok?: boolean; embedSrc?: string; error?: string } = {};
       try { json = JSON.parse(raw); } catch { /* non-JSON response */ }
       if (res.status === 400 && json.error === 'NO_CLIENT_EMAIL') { setPhase('need_email'); return; }
-      // Chosen contract has no signature yet — open it so the DJ can add one,
-      // rather than dead-ending on an error.
+      // Chosen contract isn't set up yet (no signature fields). Open it right
+      // here so the DJ can set it up, then review + send — all in one place.
       if (/no signature fields|nothing to sign|does not contain fields/i.test(json.error || '')) {
         openContractBuilder();
         return;
@@ -198,7 +198,8 @@ export default function ContractSendModal({
       setBuilderToken(json.token);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not open the builder.'); }
   }
-  // Open the CHOSEN contract in the builder so the DJ can add a signature to it.
+  // Open the CHOSEN contract in the builder so the DJ can set it up (place a
+  // signature + fields) right inside the review/send flow.
   async function openContractBuilder() {
     setError(null); setBuilderToken(null); setPhase('add_fields');
     try {
@@ -295,10 +296,10 @@ export default function ContractSendModal({
   }
 
   if (phase === 'add_fields') {
-    return shell('Add a signature to send', (
+    return shell('Set up this contract', (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '.7rem 1rem', background: '#fff7ed', borderBottom: '1px solid #eee', color: '#9a3412', fontSize: '.8rem', lineHeight: 1.4 }}>
-          This contract has no signature yet, so there&rsquo;s nothing to sign. Drag a <strong>DJ signature</strong> and a <strong>Client signature</strong> onto it (plus any booking details you want), then click <strong>Save &amp; continue</strong> to review it with the booking details filled in.
+          Set up this contract: drag a <strong>DJ signature</strong> and a <strong>Client signature</strong> onto it (plus any booking-detail fields you want). Then click <strong>Save &amp; continue</strong> to review it with the booking details filled in before sending.
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
