@@ -309,7 +309,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} fieldTypes={['text', 'signature', 'date', 'initials', 'checkbox', 'number']} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} onlyDefinedFields={true} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '.6rem 1rem', borderTop: '1px solid #eee' }}>
