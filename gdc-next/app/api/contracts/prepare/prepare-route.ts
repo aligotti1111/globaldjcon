@@ -154,38 +154,39 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   const admin = createAdminClient();
 
-  // DJ profile (name, company, type) — email comes from auth, not public.users.
-  const { data: djRow } = await withTimeout<{ data: unknown }>(
-    admin.from('users').select('name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
-    5000, 'users-select',
-  );
+  // Fetch the DJ profile, the chosen contract/template, and the booking in
+  // PARALLEL. Running these sequentially was slow enough that bookings needing
+  // extra client lookups (mobile) could exceed the platform time limit and
+  // surface as a 502. They're independent, so fire them together.
+  let cq = admin.from('contracts').select('id, docuseal_template_id').eq('dj_id', user.id);
+  cq = contractId ? cq.eq('id', contractId) : cq.order('updated_at', { ascending: false });
+
+  const [{ data: djRow }, { data: cRow }, { data: bkRow }] = await Promise.all([
+    withTimeout<{ data: unknown }>(
+      admin.from('users').select('name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      5000, 'users-select',
+    ),
+    withTimeout<{ data: { id?: string; docuseal_template_id?: string | null } | null }>(
+      cq.limit(1).maybeSingle() as unknown as Promise<{ data: { id?: string; docuseal_template_id?: string | null } | null }>,
+      5000, 'contracts-select',
+    ),
+    withTimeout<{ data: unknown }>(
+      admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      5000, 'bookings-select',
+    ),
+  ]);
+
   const dj = djRow as { name?: string | null; company?: string | null; dj_type?: string | null } | null;
   const djEmail = user.email || '';
   const companyName = (dj?.company || dj?.name || '').trim();
   const isClub = dj?.dj_type === 'club';
 
-  // Which contract/template to use: the chosen one, else the DJ's most recent.
-  let templateId: string | null = null;
-  let usedContractId: string | null = null;
-  {
-    let cq = admin.from('contracts').select('id, docuseal_template_id').eq('dj_id', user.id);
-    cq = contractId ? cq.eq('id', contractId) : cq.order('updated_at', { ascending: false });
-    const { data: cRow } = await withTimeout<{ data: { id?: string; docuseal_template_id?: string | null } | null }>(
-      cq.limit(1).maybeSingle() as unknown as Promise<{ data: { id?: string; docuseal_template_id?: string | null } | null }>,
-      5000, 'contracts-select',
-    );
-    templateId = cRow?.docuseal_template_id || null;
-    usedContractId = cRow?.id || null;
-  }
+  const cData = cRow as { id?: string; docuseal_template_id?: string | null } | null;
+  const templateId: string | null = cData?.docuseal_template_id || null;
+  const usedContractId: string | null = cData?.id || null;
   if (!templateId) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
   }
-
-  // The booking — must belong to this DJ.
-  const { data: bkRow } = await withTimeout<{ data: unknown }>(
-    admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
-    5000, 'bookings-select',
-  );
   const b = bkRow as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
@@ -209,34 +210,28 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     paymentTerms = `Full payment of ${money(price, currency)} is due by the day of the event.`;
   }
 
-  // Resolve the client's email: the manual field on the booking (host_email),
-  // else the booking requester's account email, else an email entered by the DJ.
+  // Resolve the client's email + display name. Both come from requester_id, so
+  // run them together (parallel, settled) to keep the request fast and never
+  // let one slow/failed lookup hang the whole route.
   let clientEmail = (b.host_email as string) || '';
-  if (!clientEmail && b.requester_id) {
-    try {
-      const { data: reqUser } = await withTimeout<{ data: { user: { email?: string } | null } }>(
+  let accountName = '';
+  if (b.requester_id) {
+    const [emailRes, nameRes] = await Promise.allSettled([
+      withTimeout<{ data: { user: { email?: string } | null } }>(
         admin.auth.admin.getUserById(String(b.requester_id)) as unknown as Promise<{ data: { user: { email?: string } | null } }>,
         5000, 'getUserById',
-      );
-      clientEmail = reqUser?.user?.email || '';
-    } catch { /* fall through */ }
+      ),
+      withTimeout<{ data: { name?: string | null } | null }>(
+        admin.from('users').select('name').eq('id', String(b.requester_id)).maybeSingle() as unknown as Promise<{ data: { name?: string | null } | null }>,
+        5000, 'requester-name',
+      ),
+    ]);
+    if (!clientEmail && emailRes.status === 'fulfilled') clientEmail = emailRes.value?.data?.user?.email || '';
+    if (nameRes.status === 'fulfilled') accountName = (nameRes.value?.data?.name || '').trim();
   }
   if (!clientEmail && manualClientEmail) clientEmail = manualClientEmail;
   if (!clientEmail) {
     return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
-  }
-
-  // Client name: prefer the booker's account name (users.name via requester_id),
-  // then the booking's requester_name, then the email's local part, else "Client".
-  let accountName = '';
-  if (b.requester_id) {
-    try {
-      const { data: reqProfile } = await withTimeout<{ data: { name?: string | null } | null }>(
-        admin.from('users').select('name').eq('id', String(b.requester_id)).maybeSingle() as unknown as Promise<{ data: { name?: string | null } | null }>,
-        5000, 'requester-name',
-      );
-      accountName = (reqProfile?.name || '').trim();
-    } catch { /* fall through */ }
   }
   const emailPrefix = clientEmail.includes('@') ? clientEmail.split('@')[0] : '';
   const clientName = accountName || ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
@@ -327,11 +322,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         reply_to: djEmail || undefined,
         message: { subject, body },
         submitters: [
-          // DJ signs first (embedded, no email). order:'preserved' means the
-          // client is only emailed by DocuSeal AFTER the DJ completes — so
-          // nothing goes to the client when the contract is first prepared.
+          // DJ signs first (embedded, no email). The client is NOT emailed at
+          // creation — only after the DJ reviews, signs, and sends, via
+          // /api/contracts/send-client. This is what stops the auto-send.
           { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
-          { role: 'Client', email: clientEmail, name: clientName },
+          { role: 'Client', email: clientEmail, name: clientName, send_email: false },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
       12000, 'createSubmission',
