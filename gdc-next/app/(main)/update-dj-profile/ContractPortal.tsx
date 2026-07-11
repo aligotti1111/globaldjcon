@@ -406,7 +406,7 @@ export default function ContractPortal({
                   {bookingMode ? (
                     <>
                       <button type="button" onClick={() => onUseContract?.(c.id)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Use this contract</button>
-                      <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit</button>
+                      <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit text' : 'Edit auto-fill fields'}</button>
                     </>
                   ) : c.is_standard ? (
                     <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
