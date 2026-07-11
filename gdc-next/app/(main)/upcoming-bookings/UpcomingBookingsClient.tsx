@@ -40,6 +40,7 @@ import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
+import ContractPortal from '../update-dj-profile/ContractPortal';
 import { useConfirm } from '@/components/ConfirmModal';
 
 interface Props {
@@ -768,6 +769,7 @@ function BookingDetails({
   onFlyerChange: (url: string | null) => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
+  const [sendContractId, setSendContractId] = useState<string | null>(null);
   const [contractSent, setContractSent] = useState(false);
   // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
@@ -1044,11 +1046,22 @@ function BookingDetails({
         </div>
       )}
       {contractOpen && (
+        <ContractPortal
+          userId={userId}
+          djType={djType}
+          controlledOpen
+          bookingId={booking.id}
+          onRequestClose={() => setContractOpen(false)}
+          onUseContract={(id) => { setContractOpen(false); setSendContractId(id); }}
+        />
+      )}
+      {sendContractId && (
         <ContractSendModal
           bookingId={booking.id}
           userId={userId}
-          onClose={() => setContractOpen(false)}
-          onSent={() => setContractSent(true)}
+          contractId={sendContractId}
+          onClose={() => setSendContractId(null)}
+          onSent={() => { setContractSent(true); setSendContractId(null); }}
         />
       )}
     </div>
