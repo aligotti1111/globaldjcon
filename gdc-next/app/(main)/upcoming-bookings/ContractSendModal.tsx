@@ -298,7 +298,7 @@ export default function ContractSendModal({
     return shell('Add a signature to send', (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '.7rem 1rem', background: '#fff7ed', borderBottom: '1px solid #eee', color: '#9a3412', fontSize: '.8rem', lineHeight: 1.4 }}>
-          This contract has no signature yet, so there&rsquo;s nothing to sign. Drag a <strong>DJ signature</strong> and a <strong>Client signature</strong> onto it (plus any booking details you want), then click <strong>Save &amp; send</strong>.
+          This contract has no signature yet, so there&rsquo;s nothing to sign. Drag a <strong>DJ signature</strong> and a <strong>Client signature</strong> onto it (plus any booking details you want), then click <strong>Save &amp; continue</strong> to review it with the booking details filled in.
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
@@ -309,7 +309,7 @@ export default function ContractSendModal({
     ), (
       <>
         <span />
-        <button type="button" onClick={async () => { await new Promise((r) => setTimeout(r, 700)); prepare(); }} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Save &amp; send</button>
+        <button type="button" onClick={async () => { await new Promise((r) => setTimeout(r, 700)); prepare(); }} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Save &amp; continue →</button>
       </>
     ));
   }
