@@ -60,7 +60,10 @@ export default function ContractPortal({
   onRequestClose?: () => void;
 }) {
   const bookingMode = !!bookingId && !!onUseContract;
-  const builderFields = BUILDER_FIELDS.filter((f) => !('only' in f) || (f as { only?: string }).only === djType);
+  const builderFields = BUILDER_FIELDS
+    .filter((f) => !('only' in f) || (f as { only?: string }).only === djType)
+    // Club/bar DJs don't use a company — label the field just "DJ Name".
+    .map((f) => (f.name === 'dj_name' && djType === 'club') ? { ...f, title: 'DJ Name' } : f);
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
