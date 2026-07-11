@@ -92,6 +92,7 @@ export default function ContractSendModal({
   const [phase, setPhase] = useState<Phase>('loading');
   const [embedSrc, setEmbedSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sigCheck, setSigCheck] = useState<{ client: boolean; dj: boolean } | null>(null);
 
   // Setup state
   const [text, setText] = useState(STANDARD_TEXT);
@@ -110,7 +111,7 @@ export default function ContractSendModal({
         body: JSON.stringify({ bookingId, contractId: contractId || undefined, clientEmail: emailOverride || undefined }),
       });
       const raw = await res.text();
-      let json: { ok?: boolean; embedSrc?: string; error?: string } = {};
+      let json: { ok?: boolean; embedSrc?: string; error?: string; hasClientSig?: boolean; hasDjSig?: boolean } = {};
       try { json = JSON.parse(raw); } catch { /* non-JSON response */ }
       if (res.status === 400 && json.error === 'NO_CLIENT_EMAIL') { setPhase('need_email'); return; }
       // Chosen contract isn't set up yet (no signature fields). Open it right
@@ -131,7 +132,7 @@ export default function ContractSendModal({
       if (!res.ok || !json.ok || !json.embedSrc) {
         throw new Error(json.error || `HTTP ${res.status}: ${raw.slice(0, 300) || '(empty response)'}`);
       }
-      setEmbedSrc(json.embedSrc); setPhase('signing');
+      setEmbedSrc(json.embedSrc); setSigCheck({ client: !!json.hasClientSig, dj: !!json.hasDjSig }); setPhase('signing');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not prepare the contract.'); setPhase('error');
     }
@@ -361,6 +362,13 @@ export default function ContractSendModal({
           <div style={{ padding: '.7rem 1rem', background: '#f3faf7', borderBottom: '1px solid #e5e7eb', color: '#0a7', fontSize: '.8rem', lineHeight: 1.4 }}>
             Review the contract below and add anything you need, then sign and click <strong>Send contract</strong> at the bottom to email it to your client.
           </div>
+          {sigCheck && (
+            <div style={{ padding: '.5rem 1rem', background: '#fff', borderBottom: '1px solid #e5e7eb', fontSize: '.78rem', display: 'flex', gap: '1.2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ color: '#555', fontWeight: 600 }}>On this contract:</span>
+              <span style={{ color: sigCheck.dj ? '#0a7' : '#c00' }}>{sigCheck.dj ? '✓' : '✕'} Your signature</span>
+              <span style={{ color: sigCheck.client ? '#0a7' : '#c00', fontWeight: sigCheck.client ? 400 : 700 }}>{sigCheck.client ? '✓' : '✕'} Client signature spot</span>
+            </div>
+          )}
           <div style={{ flex: 1, overflow: 'auto' }}>
             <DocusealForm
               src={embedSrc}
