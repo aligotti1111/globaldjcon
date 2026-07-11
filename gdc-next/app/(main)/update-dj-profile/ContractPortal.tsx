@@ -48,8 +48,18 @@ interface Contract {
 type View = 'grid' | 'builder' | 'standard' | 'paste';
 
 export default function ContractPortal({
-  userId, djType,
-}: { userId: string; djType?: string | null }) {
+  userId, djType, bookingId, controlledOpen, onUseContract, onRequestClose,
+}: {
+  userId: string;
+  djType?: string | null;
+  // Booking mode: when a bookingId + onUseContract are passed, the portal is
+  // opened from a booking so the DJ can pick (or create) a contract to send.
+  bookingId?: string;
+  controlledOpen?: boolean;
+  onUseContract?: (contractId: string) => void;
+  onRequestClose?: () => void;
+}) {
+  const bookingMode = !!bookingId && !!onUseContract;
   const builderFields = BUILDER_FIELDS.filter((f) => !('only' in f) || (f as { only?: string }).only === djType);
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -97,7 +107,7 @@ export default function ContractPortal({
     } catch { /* ignore */ }
     setLoading(false);
   }
-  useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open, userId]);
+  useEffect(() => { if (open || controlledOpen) load(); /* eslint-disable-next-line */ }, [open, controlledOpen, userId]);
 
   async function uploadFile(file: File) {
     setError(null); setUploading(true);
@@ -218,7 +228,9 @@ export default function ContractPortal({
   }
 
   // ---------- UI ----------
-  if (!open) {
+  // In booking mode the portal is opened by the parent (controlledOpen) — no
+  // launcher button. Otherwise it shows its own "Open Contract Portal" button.
+  if (!controlledOpen && !open) {
     return (
       <button type="button" onClick={() => setOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 8, padding: '.75rem 1.4rem', cursor: 'pointer', fontSize: '.9rem' }}>
         Open Contract Portal
@@ -226,7 +238,10 @@ export default function ContractPortal({
     );
   }
 
-  const closePortal = () => { setOpen(false); setView('grid'); setError(null); };
+  const closePortal = () => {
+    if (controlledOpen) { onRequestClose?.(); return; }
+    setOpen(false); setView('grid'); setError(null);
+  };
   const cardBase: React.CSSProperties = {
     border: '1px solid var(--border,rgba(255,255,255,.15))', borderRadius: 10, padding: '1rem',
     minHeight: 120, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -331,6 +346,12 @@ export default function ContractPortal({
     <div style={{ padding: '1.25rem', overflow: 'auto' }}>
       <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
 
+      {bookingMode && (
+        <div style={{ background: 'rgba(0,224,164,.1)', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, padding: '.7rem .9rem', marginBottom: '1.1rem', color: 'var(--white,#fff)', fontSize: '.82rem', lineHeight: 1.45 }}>
+          Pick a contract to send for this booking — or create one below. The booking details fill in automatically before you sign.
+        </div>
+      )}
+
       {/* ── Create a new contract ── */}
       <div style={sectionLabel}>Create a contract</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
@@ -375,7 +396,12 @@ export default function ContractPortal({
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                  {c.is_standard ? (
+                  {bookingMode ? (
+                    <>
+                      <button type="button" onClick={() => onUseContract?.(c.id)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Use for this booking</button>
+                      <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit</button>
+                    </>
+                  ) : c.is_standard ? (
                     <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
                   ) : c.body_text != null ? (
                     <>
@@ -392,6 +418,6 @@ export default function ContractPortal({
           </div>
         )}
       </div>
-    </div>,
+    </div>, false, bookingMode ? 'Send a contract' : 'Contract Portal',
   );
 }
