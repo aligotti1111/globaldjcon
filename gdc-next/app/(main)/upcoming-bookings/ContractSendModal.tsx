@@ -121,7 +121,7 @@ export default function ContractSendModal({
       }
       if (res.status === 400 && /set up your contract/i.test(json.error || '')) {
         if (afterSave) {
-          setError('Your contract saved, but this booking couldn\u2019t load it. Try again in a moment.');
+          setError('Your contract saved, but this booking couldn’t load it. Try again in a moment.');
           setPhase('error');
         } else {
           setPhase('need_setup');
@@ -370,9 +370,10 @@ export default function ContractSendModal({
               rememberSignature={true}
               i18n={{ submit: 'Send contract', complete: 'Send contract' }}
               customCss={`
-                .signature-pad, [class*="signature"] canvas { max-height: 160px !important; }
-                .modal-box, [class*="modal"] .signature-pad { max-width: 520px !important; }
-                canvas { max-height: 160px !important; }
+                [class*="signature"] canvas, [class*="signature"] img, [class*="signature"] svg, canvas { max-height: 84px !important; height: auto !important; }
+                [class*="signature"] { font-size: 34px !important; }
+                .signature-pad, .modal-box, [class*="modal"] .signature-pad, [class*="signature"] { max-width: 420px !important; margin-left: auto !important; margin-right: auto !important; }
+                [class*="field-area"], [class*="expanded"] { max-height: 300px !important; }
               `}
             />
           </div>
