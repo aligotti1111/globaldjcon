@@ -12,10 +12,26 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getDocuseal, buildContractHtml } from '@/lib/docuseal';
+import { getDocuseal } from '@/lib/docuseal';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
+
+// Wrap the DJ's formatted contract HTML (from the rich-text editor) into a
+// full print-ready document. The body is already HTML (headings, bold, lists),
+// so we inject it as-is rather than escaping. No field tags are added here —
+// the DJ drags fields on in the builder step.
+function wrapContractHtml(bodyHtml: string, logoUrl?: string | null): string {
+  const logo = logoUrl
+    ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
+    : '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#111;padding:40px}
+    h1{font-size:20px;margin:.4em 0}h2{font-size:16px;margin:.4em 0}h3{font-size:14px;margin:.4em 0}
+    p{margin:.5em 0}ul,ol{margin:.5em 0 .5em 1.4em}
+    strong,b{font-weight:bold}em,i{font-style:italic}u{text-decoration:underline}
+  </style></head><body>${logo}${bodyHtml}</body></html>`;
+}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -56,7 +72,7 @@ export async function POST(req: Request) {
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
-    const html = buildContractHtml(text, logoUrl);
+    const html = wrapContractHtml(text, logoUrl);
     if (existingTemplateId) {
       // Replace the document in place. The new HTML carries no fields, so
       // DocuSeal transfers the DJ's previously dragged fields onto it — their
