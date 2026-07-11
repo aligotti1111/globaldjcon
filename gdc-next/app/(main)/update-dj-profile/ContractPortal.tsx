@@ -173,7 +173,9 @@ export default function ContractPortal({
 
   async function openCard(c: Contract) {
     setEditingId(c.id); setName(c.name); setError(null);
-    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); setView('standard'); return; }
+    // Standard contracts open straight to the fields builder (which has the
+    // "Edit text" button + disclaimer); preload wording so Edit text is ready.
+    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); }
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -321,11 +323,16 @@ export default function ContractPortal({
   }
 
   if (view === 'builder') {
+    const editingC = contracts.find((c) => c.id === editingId);
+    const isStdBuilder = !!editingC?.is_standard;
     return wrap(
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
+              style={{ flex: 1, boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
+            {isStdBuilder && <button type="button" onClick={() => setView('standard')} style={{ flexShrink: 0, background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.5rem .9rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit text</button>}
+          </div>
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. Then Lock it in.</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -333,8 +340,16 @@ export default function ContractPortal({
             : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} onlyDefinedFields={true} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '.6rem 1rem', borderTop: '1px solid #eee' }}>
-          <button type="button" onClick={async () => { const supabase = createClient(); try { if (editingId) await supabase.from('contracts').update({ name } as never).eq('id', editingId).eq('dj_id', userId); } catch {} setView('grid'); }} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: 'pointer' }}>Lock it in</button>
+        <div style={{ borderTop: '1px solid #eee', padding: '.6rem 1rem', background: '#fff' }}>
+          {isStdBuilder && (
+            <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', color: '#6b7280', fontSize: '.74rem', lineHeight: 1.4, cursor: 'pointer', marginBottom: '.55rem' }}>
+              <input type="checkbox" checked={stdDisclaimer} onChange={(e) => setStdDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+              <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
+            </label>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { const supabase = createClient(); try { if (editingId) await supabase.from('contracts').update({ name } as never).eq('id', editingId).eq('dj_id', userId); } catch {} setView('grid'); }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>Lock it in</button>
+          </div>
         </div>
       </div>, true, 'Add fields',
     );
@@ -353,15 +368,9 @@ export default function ContractPortal({
           </div>
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
-        <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem' }}>
-          <label style={{ display: 'flex', gap: '.55rem', alignItems: 'flex-start', color: '#6b7280', fontSize: '.76rem', lineHeight: 1.45, cursor: 'pointer', marginBottom: '.6rem' }}>
-            <input type="checkbox" checked={stdDisclaimer} onChange={(e) => setStdDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
-            <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
-          </label>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
-            <button type="button" onClick={saveStandard} disabled={savingStd || !stdDisclaimer} title={!stdDisclaimer ? 'Accept the disclaimer to continue' : undefined} style={{ background: stdDisclaimer ? 'var(--neon,#00e0a4)' : 'rgba(0,224,164,.4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : stdDisclaimer ? 'pointer' : 'not-allowed' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
-          </div>
+        <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
+          <button type="button" onClick={() => setView(editingId ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId ? 'Back to fields' : 'Cancel'}</button>
+          <button type="button" onClick={saveStandard} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect standard contract',
     );
