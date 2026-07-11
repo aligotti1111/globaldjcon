@@ -204,9 +204,26 @@ export default function ContractPortal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId }),
       });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
-      await load(); setView('grid');
+      await load();
+      // Hand off to the drag builder so the DJ can place/reposition the fields
+      // (signatures, auto-fill) on the document, DocuSeal-style.
+      const cid = json.contractId || editingId;
+      if (cid) {
+        setEditingId(cid); setView('builder'); setBuilderToken(null);
+        try {
+          const tres = await fetch('/api/contracts/builder-token', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contractId: cid, name: name || 'Standard contract' }),
+          });
+          const tjson = (await tres.json().catch(() => ({}))) as { token?: string; error?: string };
+          if (tjson.token) setBuilderToken(tjson.token);
+          else setError(tjson.error || 'Could not open the field editor.');
+        } catch { setError('Could not open the field editor.'); }
+      } else {
+        setView('grid');
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSavingStd(false); }
   }
@@ -309,7 +326,7 @@ export default function ContractPortal({
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
             style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
-          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Drag the auto-fill fields onto your contract. Your fields (client name, date, price, your signature) are under <strong>DJ</strong> in the dropdown at the top-right. To place the <strong>client&rsquo;s signature</strong>, switch that dropdown to <strong>Client</strong> and drag it onto their line. Then Lock it in.</div>
+          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. Then Lock it in.</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
@@ -325,22 +342,28 @@ export default function ContractPortal({
 
   if (view === 'standard') {
     return wrap(
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-        <div style={{ padding: '1.1rem 1.4rem', overflow: 'auto' }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', marginBottom: '1rem', fontWeight: 600 }} />
-          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '1rem' }}>Customize the wording. Keep the {'{{tags}}'} — they auto-fill booking details. Have a lawyer review before use.</div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={16} style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
-          <label style={{ display: 'flex', gap: '.55rem', alignItems: 'flex-start', marginTop: '1rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.45, cursor: 'pointer' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
+        <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. Keep the {'{{tags}}'} — the signature and detail fields fill in from them automatically. Next you can review and adjust where the fields sit. Have a lawyer review before use.</div>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#f3f4f6' }}>
+          <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', boxShadow: '0 1px 5px rgba(0,0,0,.15)', borderRadius: 2 }}>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', minHeight: 560, padding: '2.5rem', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7 }} />
+          </div>
+          {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
+        </div>
+        <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem' }}>
+          <label style={{ display: 'flex', gap: '.55rem', alignItems: 'flex-start', color: '#6b7280', fontSize: '.76rem', lineHeight: 1.45, cursor: 'pointer', marginBottom: '.6rem' }}>
             <input type="checkbox" checked={stdDisclaimer} onChange={(e) => setStdDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
             <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
           </label>
-          {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={saveStandard} disabled={savingStd || !stdDisclaimer} title={!stdDisclaimer ? 'Accept the disclaimer to continue' : undefined} style={{ background: stdDisclaimer ? 'var(--neon,#00e0a4)' : 'rgba(0,224,164,.4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : stdDisclaimer ? 'pointer' : 'not-allowed' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
+          </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
-          <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={saveStandard} disabled={savingStd || !stdDisclaimer} title={!stdDisclaimer ? 'Accept the disclaimer to save' : undefined} style={{ background: stdDisclaimer ? 'var(--neon,#00e0a4)' : 'rgba(0,224,164,.35)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : stdDisclaimer ? 'pointer' : 'not-allowed' }}>{savingStd ? 'Saving…' : 'Save to my contracts'}</button>
-        </div>
-      </div>, false, 'Global DJ Connect standard contract',
+      </div>, true, 'Global DJ Connect standard contract',
     );
   }
 
