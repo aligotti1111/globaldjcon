@@ -263,6 +263,28 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   try {
     const docuseal = getDocuseal();
 
+    // Guard: a contract MUST have a client signature field. Without one,
+    // DocuSeal "completes" the submission after the data fields are filled and
+    // it goes out with nobody signing. Verify signature fields exist first, and
+    // if not, route the DJ to add them (message matches the client-side check
+    // that opens the field builder).
+    try {
+      const tpl = await withTimeout<{ fields?: Array<{ type?: string; submitter_uuid?: string }>; submitters?: Array<{ uuid?: string; name?: string }> }>(
+        docuseal.getTemplate(Number(templateId)) as unknown as Promise<{ fields?: Array<{ type?: string; submitter_uuid?: string }>; submitters?: Array<{ uuid?: string; name?: string }> }>,
+        8000, 'getTemplate',
+      );
+      const subs = tpl?.submitters || [];
+      const roleOf = (uuid?: string) => subs.find((s) => s.uuid === uuid)?.name || '';
+      const sigFields = (tpl?.fields || []).filter((f) => (f.type || '').toLowerCase() === 'signature');
+      const hasClientSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'Client');
+      if (!hasClientSig) {
+        return NextResponse.json(
+          { ok: false, error: 'This contract has no client signature yet, so there’s nothing for the client to sign. Open it, add a Client signature (and a DJ signature if you sign in the app), save, then send.' },
+          { status: 200 },
+        );
+      }
+    } catch { /* if the template check itself fails, don't block sending */ }
+
     // Contract name for the subject: skip any missing parts.
     const prettyDate = fmtDate(b.event_date as string);
     const timeRange = [fmtTime(b.start_time as string), fmtTime(b.end_time as string)]
