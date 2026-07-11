@@ -260,24 +260,43 @@ export default function ContractPortal({
   );
 
   if (view === 'paste') {
+    const dataPh = placeholders.filter((p) => p.tag !== 'dj_signature' && p.tag !== 'client_signature');
+    const sigPh = placeholders.filter((p) => p.tag === 'dj_signature' || p.tag === 'client_signature');
+    const sideLabel: React.CSSProperties = { fontSize: '.68rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', margin: '0 0 .5rem' };
+    const fieldBtn: React.CSSProperties = { textAlign: 'left', background: '#fff', border: '1px solid #d1d5db', color: '#111', borderRadius: 6, padding: '.5rem .6rem', cursor: 'pointer', fontSize: '.78rem', fontWeight: 600, boxShadow: '0 1px 1px rgba(0,0,0,.04)' };
     return wrap(
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-        <div style={{ padding: '1.1rem 1.4rem', overflow: 'auto' }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', marginBottom: '1rem', fontWeight: 600 }} />
-          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginBottom: '.6rem' }}>Write your contract, and click a placeholder to drop it into the text where your cursor is. Placeholders auto-fill from the booking; signatures are collected from each party. Have a lawyer review before use.</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginBottom: '.9rem' }}>
-            {placeholders.map((p) => (
-              <button key={p.tag} type="button" onClick={() => insertPlaceholder(p.tag)} title={`Insert {{${p.tag}}}`} style={{ background: 'var(--bg-elev,rgba(255,255,255,.06))', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', borderRadius: 999, padding: '.28rem .7rem', cursor: 'pointer', fontSize: '.72rem', fontWeight: 600 }}>+ {p.label}</button>
-            ))}
-          </div>
-          <textarea ref={textareaRef} value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={16} placeholder="Paste or type your contract here…  Click a placeholder above to insert it." style={{ width: '100%', boxSizing: 'border-box', padding: '.75rem .85rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', resize: 'vertical', lineHeight: 1.5, fontSize: '.85rem', minHeight: 300 }} />
-          {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: '.6rem' }}>{error}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
+        <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Click a field on the left to drop it into your contract where the cursor is. Fields auto-fill from the booking; signatures are collected from each party.</div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid var(--border,rgba(255,255,255,.12))' }}>
-          <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div style={{ width: 210, flexShrink: 0, background: '#fafafa', borderRight: '1px solid #e5e7eb', overflow: 'auto', padding: '.9rem' }}>
+            <div style={sideLabel}>Booking details</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+              {dataPh.map((p) => (
+                <button key={p.tag} type="button" onClick={() => insertPlaceholder(p.tag)} title={`Insert {{${p.tag}}}`} style={fieldBtn}>{p.label}</button>
+              ))}
+            </div>
+            <div style={{ ...sideLabel, marginTop: '1.1rem' }}>Signatures</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+              {sigPh.map((p) => (
+                <button key={p.tag} type="button" onClick={() => insertPlaceholder(p.tag)} title={`Insert {{${p.tag}}}`} style={{ ...fieldBtn, borderStyle: 'dashed', color: '#0b6' }}>✎ {p.label}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#f3f4f6' }}>
+            <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', boxShadow: '0 1px 5px rgba(0,0,0,.15)', borderRadius: 2 }}>
+              <textarea ref={textareaRef} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste or type your contract here…" style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', minHeight: 620, padding: '3rem', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7 }} />
+            </div>
+            {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid #e5e7eb', background: '#fff' }}>
+          <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
           <button type="button" onClick={submitPastedText} disabled={submittingPaste} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: submittingPaste ? 'wait' : 'pointer' }}>{submittingPaste ? 'Saving…' : 'Save contract'}</button>
         </div>
-      </div>, false, editingId ? 'Edit your contract' : 'Write your contract',
+      </div>, true, editingId ? 'Edit your contract' : 'Write your contract',
     );
   }
 
