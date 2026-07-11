@@ -35,17 +35,44 @@ export async function POST(req: Request) {
   const contractId = typeof body.contractId === 'string' && body.contractId ? body.contractId : null;
   if (!text.trim()) return NextResponse.json({ error: 'Contract text is empty' }, { status: 400 });
 
-  // 1. Build the DocuSeal template from the pasted text.
+  const admin = createAdminClient();
+
+  // When editing an existing contract, find its current DocuSeal template so we
+  // can update it in place (keeping the fields the DJ already dragged on).
+  let existingTemplateId: string | null = null;
+  if (contractId) {
+    try {
+      const { data } = await admin
+        .from('contracts')
+        .select('docuseal_template_id')
+        .eq('id', contractId)
+        .eq('dj_id', user.id)
+        .maybeSingle();
+      existingTemplateId = (data as { docuseal_template_id?: string | null } | null)?.docuseal_template_id || null;
+    } catch { existingTemplateId = null; }
+  }
+
+  // 1. Build/refresh the DocuSeal template from the text.
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
     const html = buildContractHtml(text, logoUrl);
-    const template = await docuseal.createTemplateFromHtml({
-      name: `${name} — ${user.id}`,
-      html,
-      external_id: `dj_${user.id}_${Date.now()}`,
-    });
-    templateId = (template as { id?: string | number }).id;
+    if (existingTemplateId) {
+      // Replace the document in place. The new HTML carries no fields, so
+      // DocuSeal transfers the DJ's previously dragged fields onto it — their
+      // placements are kept when they reopen the builder.
+      await docuseal.updateTemplateDocuments(Number(existingTemplateId), {
+        documents: [{ html, position: 0, replace: true }],
+      });
+      templateId = existingTemplateId;
+    } else {
+      const template = await docuseal.createTemplateFromHtml({
+        name: `${name} — ${user.id}`,
+        html,
+        external_id: `dj_${user.id}_${Date.now()}`,
+      });
+      templateId = (template as { id?: string | number }).id;
+    }
     if (templateId == null) throw new Error('No template id returned');
   } catch (e) {
     return NextResponse.json(
@@ -58,7 +85,6 @@ export async function POST(req: Request) {
   //    the raw text so it can be edited later.
   let savedId: string | null = contractId;
   try {
-    const admin = createAdminClient();
     if (contractId) {
       const { error } = await admin
         .from('contracts')
