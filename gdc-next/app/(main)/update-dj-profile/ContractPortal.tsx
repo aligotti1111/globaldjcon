@@ -385,8 +385,15 @@ export default function ContractPortal({
           : contracts.length === 0 ? <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No contracts yet. Create one above.</div>
           : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
-            {contracts.map((c) => (
-              <div key={c.id} style={cardBase}>
+            {contracts.map((c) => {
+              const cType = c.is_standard
+                ? { label: 'Standard', color: '#e8e2d0' }
+                : c.body_text != null
+                  ? { label: 'Written', color: '#f5c451' }
+                  : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
+              return (
+              <div key={c.id} style={{ ...cardBase, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 8, right: 10, fontSize: '.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: cType.color }}>{cType.label}</div>
                 <div>
                   <div style={{ fontSize: 22 }}>📄</div>
                   {renaming === c.id ? (
@@ -394,7 +401,6 @@ export default function ContractPortal({
                   ) : (
                     <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
                   )}
-                  <div style={{ fontSize: '.62rem', color: 'var(--muted,#8a8aa0)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 3 }}>{c.is_standard ? 'Standard contract' : c.body_text != null ? 'Written' : 'Uploaded file'}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                   {bookingMode ? (
@@ -415,7 +421,8 @@ export default function ContractPortal({
                   <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
