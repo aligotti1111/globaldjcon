@@ -68,7 +68,21 @@ export default function ContractPortal({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // Seed the rich-text editor with the contract content when the write/edit
+  // screen opens (uncontrolled contenteditable, read back on save).
+  useEffect(() => {
+    if (view === 'paste' && editorRef.current) {
+      editorRef.current.innerHTML = pasteText || '';
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, editingId]);
+
+  function exec(cmd: string, value?: string) {
+    editorRef.current?.focus();
+    try { document.execCommand(cmd, false, value); } catch { /* ignore */ }
+  }
 
   async function load() {
     try {
@@ -126,12 +140,14 @@ export default function ContractPortal({
   // Lock the text in: (re)build the contract from the text, then hand off to the
   // drag builder to place fields. Passes contractId when editing (re-lock).
   async function submitPastedText() {
-    if (!pasteText.trim()) { setError('Contract text is empty.'); return; }
+    const html = editorRef.current?.innerHTML ?? '';
+    const plain = (editorRef.current?.textContent ?? '').trim();
+    if (!plain) { setError('Contract text is empty.'); return; }
     setError(null); setSubmittingPaste(true);
     try {
       const res = await fetch('/api/contracts/from-text', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pasteText, name: name || 'My contract', contractId: editingId || undefined }),
+        body: JSON.stringify({ text: html, name: name || 'My contract', contractId: editingId || undefined }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
       if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not build the contract.');
@@ -230,15 +246,33 @@ export default function ContractPortal({
   );
 
   if (view === 'paste') {
+    const toolBtn: React.CSSProperties = { minWidth: 30, height: 28, border: '1px solid #d1d5db', background: '#fff', borderRadius: 5, cursor: 'pointer', color: '#111', fontSize: '.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 .5rem' };
+    const sep = <span style={{ width: 1, height: 20, background: '#e5e7eb', margin: '0 .2rem' }} />;
     return wrap(
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
-          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Write or paste your contract. Next you&rsquo;ll drag the fields (client name, date, price, signatures) onto it, then lock it in. You can edit the text anytime.</div>
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Write or paste your contract and format it with the toolbar. Next you&rsquo;ll drag the fields (client name, date, price, signatures) onto it, then lock it in.</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.3rem', flexWrap: 'wrap', padding: '.5rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+          <button type="button" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('bold')} style={{ ...toolBtn, fontWeight: 700 }}>B</button>
+          <button type="button" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('italic')} style={{ ...toolBtn, fontStyle: 'italic' }}>I</button>
+          <button type="button" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('underline')} style={{ ...toolBtn, textDecoration: 'underline' }}>U</button>
+          {sep}
+          <button type="button" title="Heading" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'H2')} style={{ ...toolBtn, fontWeight: 700 }}>H</button>
+          <button type="button" title="Normal text" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'P')} style={toolBtn}>¶</button>
+          {sep}
+          <button type="button" title="Bulleted list" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('insertUnorderedList')} style={toolBtn}>•</button>
+          <button type="button" title="Numbered list" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('insertOrderedList')} style={toolBtn}>1.</button>
+          {sep}
+          <button type="button" title="Align left" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('justifyLeft')} style={toolBtn}>⯇</button>
+          <button type="button" title="Center" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('justifyCenter')} style={toolBtn}>≡</button>
+          {sep}
+          <button type="button" title="Clear formatting" onMouseDown={(e) => e.preventDefault()} onClick={() => exec('removeFormat')} style={toolBtn}>⌫</button>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#f3f4f6' }}>
           <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', boxShadow: '0 1px 5px rgba(0,0,0,.15)', borderRadius: 2 }}>
-            <textarea ref={textareaRef} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste or type your contract here…" style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', minHeight: 620, padding: '3rem', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7 }} />
+            <div ref={editorRef} contentEditable suppressContentEditableWarning style={{ minHeight: 620, padding: '3rem', outline: 'none', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7 }} />
           </div>
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
