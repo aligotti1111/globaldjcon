@@ -279,7 +279,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       const hasClientSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'Client');
       if (!hasClientSig) {
         return NextResponse.json(
-          { ok: false, error: 'This contract has no client signature yet, so there’s nothing for the client to sign. Open it, add a Client signature (and a DJ signature if you sign in the app), save, then send.' },
+          { ok: false, error: 'This contract has no signature fields for the client yet, so there’s nothing to sign. Add a Client signature (and a DJ signature if you sign in the app), save, then send.' },
           { status: 200 },
         );
       }
