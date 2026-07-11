@@ -303,7 +303,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       if (depositStr) detailLines.push(`Deposit: ${depositStr}`);
     }
 
-    const greetingName = (b.requester_name as string) || 'there';
+    // Greet the host by name — prefer their resolved account/booking name (first
+    // name), falling back to "there" only when we genuinely have no name.
+    const greetingName = (clientName && clientName !== 'Client') ? clientName.split(' ')[0] : 'there';
     const intro = isClub
       ? `Please review and sign your booking contract with ${brand}. Details below:`
       : `Please review and sign your contract with ${brand} for your upcoming event. Details below:`;
