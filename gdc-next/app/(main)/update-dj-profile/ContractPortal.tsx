@@ -139,11 +139,33 @@ export default function ContractPortal({
     setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setView('paste');
   }
 
-  // Open a fresh copy of the Global DJ Connect standard contract. Saving it
-  // (after accepting the disclaimer) creates a copy in the DJ's contracts.
-  function openStandardTemplate() {
-    setError(null); setEditingId(null); setName('Global DJ Connect standard contract');
-    setText(defaultContractText(djType)); setStdDisclaimer(false); setView('standard');
+  // Create a fresh Global DJ Connect standard contract and open it straight on
+  // the FIELDS builder (fields auto-placed from the tags). The DJ can hit
+  // "Edit text" to change wording; the disclaimer is on the fields page.
+  async function openStandardTemplate() {
+    setError(null);
+    const defText = defaultContractText(djType);
+    const nm = 'Global DJ Connect standard contract';
+    setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null);
+    setView('builder'); setBuilderToken(null); setSavingStd(true);
+    try {
+      const res = await fetch('/api/contracts/standard', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: defText, name: nm, contractId: null }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string };
+      if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not create the standard contract.');
+      await load();
+      setEditingId(json.contractId);
+      const tres = await fetch('/api/contracts/builder-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: json.contractId, name: nm }),
+      });
+      const tjson = (await tres.json().catch(() => ({}))) as { token?: string; error?: string };
+      if (tjson.token) setBuilderToken(tjson.token);
+      else setError(tjson.error || 'Could not open the field editor.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the standard contract.'); }
+    finally { setSavingStd(false); }
   }
 
   // Reopen an existing text contract's words so the DJ can edit and re-lock.
@@ -328,12 +350,14 @@ export default function ContractPortal({
     return wrap(
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
-          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
-              style={{ flex: 1, boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
-            {isStdBuilder && <button type="button" onClick={() => setView('standard')} style={{ flexShrink: 0, background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.5rem .9rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit text</button>}
-          </div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. Then Lock it in.</div>
+          {isStdBuilder && (
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <button type="button" onClick={() => setView('standard')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit text</button>
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
