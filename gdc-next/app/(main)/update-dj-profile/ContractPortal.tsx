@@ -59,7 +59,6 @@ export default function ContractPortal({
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
   const [stdDisclaimer, setStdDisclaimer] = useState(false);
   const [text, setText] = useState('');
@@ -118,13 +117,6 @@ export default function ContractPortal({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = '';
-    if (file) uploadFile(file);
-  }
-
-  function onDropFile(e: React.DragEvent) {
-    e.preventDefault(); setDragOver(false);
-    if (uploading) return;
-    const file = e.dataTransfer.files?.[0];
     if (file) uploadFile(file);
   }
 
@@ -348,17 +340,11 @@ export default function ContractPortal({
             <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Write or paste contract text</div>
           </div>
         </div>
-        <div
-          onClick={() => !uploading && fileInput.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); if (!uploading) setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDropFile}
-          style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer', borderColor: dragOver ? 'var(--neon,#00e0a4)' : undefined, borderWidth: dragOver ? 2 : 1, background: dragOver ? 'rgba(0,224,164,.08)' : cardBase.background }}
-        >
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
-            <div style={{ fontSize: 28, lineHeight: 1 }}>{uploading ? '…' : '⬆'}</div>
-            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : dragOver ? 'Drop to upload' : 'Upload contract'}</div>
-            {!uploading && <div style={{ fontSize: '.68rem', marginTop: 3, color: 'var(--muted,#8a8aa0)' }}>Drag &amp; drop or click · PDF, Word, image</div>}
+            <div style={{ fontSize: 28, lineHeight: 1 }}>{uploading ? '…' : '+'}</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : 'Upload contract'}</div>
+            {!uploading && <div style={{ fontSize: '.68rem', marginTop: 3, color: 'var(--muted,#8a8aa0)' }}>PDF, Word, image</div>}
           </div>
         </div>
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openStandardTemplate}>
