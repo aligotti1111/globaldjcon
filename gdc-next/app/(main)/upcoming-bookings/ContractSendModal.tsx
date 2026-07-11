@@ -304,27 +304,35 @@ export default function ContractSendModal({
   }
 
   // signing / signed / loading / error
-  return shell('Review & sign contract', (
+  return shell('Review & send contract', (
     error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
       : phase === 'signed' ? (
         <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#111' }}>
           <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>✓</div>
-          <div style={{ fontWeight: 700, marginBottom: '.4rem' }}>You&rsquo;ve signed.</div>
-          <div style={{ color: '#555' }}>We&rsquo;ve emailed the client to sign. You&rsquo;ll be notified when it&rsquo;s complete.</div>
+          <div style={{ fontWeight: 700, marginBottom: '.4rem' }}>Contract sent.</div>
+          <div style={{ color: '#555' }}>You&rsquo;ve signed and we&rsquo;ve emailed the client to sign. You&rsquo;ll be notified when it&rsquo;s complete.</div>
         </div>
       ) : phase === 'signing' && embedSrc ? (
-        <DocusealForm
-          src={embedSrc}
-          onComplete={handleSignComplete}
-          withTitle={false}
-          allowTypedSignature={true}
-          rememberSignature={true}
-          customCss={`
-            .signature-pad, [class*="signature"] canvas { max-height: 160px !important; }
-            .modal-box, [class*="modal"] .signature-pad { max-width: 520px !important; }
-            canvas { max-height: 160px !important; }
-          `}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ padding: '.7rem 1rem', background: '#f3faf7', borderBottom: '1px solid #e5e7eb', color: '#0a7', fontSize: '.8rem', lineHeight: 1.4 }}>
+            Review the contract below and add anything you need, then sign and click <strong>Send contract</strong> at the bottom to email it to your client.
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <DocusealForm
+              src={embedSrc}
+              onComplete={handleSignComplete}
+              withTitle={false}
+              allowTypedSignature={true}
+              rememberSignature={true}
+              i18n={{ submit: 'Send contract', complete: 'Send contract' }}
+              customCss={`
+                .signature-pad, [class*="signature"] canvas { max-height: 160px !important; }
+                .modal-box, [class*="modal"] .signature-pad { max-width: 520px !important; }
+                canvas { max-height: 160px !important; }
+              `}
+            />
+          </div>
+        </div>
       ) : (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Preparing your contract…</div>
       )
