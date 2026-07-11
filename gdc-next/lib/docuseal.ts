@@ -21,9 +21,14 @@ export const ROLE_DJ = 'DJ';
 export const ROLE_CLIENT = 'Client';
 
 // Booking-data fields the standard contract can auto-fill per booking.
+// MUST match lib/contractText.ts CONTRACT_DATA_FIELDS — including the club-only
+// fields set_type/equipment (and duration/overtime_rate). When these were
+// missing here, the club standard contract left {{set_type}}/{{equipment}} as
+// literal text because translateTags never converted them into fields.
 export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
-  'event_address', 'start_time', 'end_time', 'package', 'price', 'deposit',
+  'event_address', 'start_time', 'end_time', 'package',
+  'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit',
   'payment_terms',
 ] as const;
 
