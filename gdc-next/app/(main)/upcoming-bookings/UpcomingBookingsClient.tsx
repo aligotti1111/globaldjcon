@@ -771,6 +771,41 @@ function BookingDetails({
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
   const [contractSent, setContractSent] = useState(false);
+  const [contractCancelled, setContractCancelled] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+
+  // Re-email the client their copy to sign.
+  async function resendContract() {
+    setResendBusy(true); setResendDone(false);
+    try {
+      const res = await fetch('/api/contracts/send-client', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      if (!res.ok) throw new Error('resend failed');
+      setResendDone(true);
+    } catch { alert('Could not resend the contract. Try again in a moment.'); }
+    finally { setResendBusy(false); }
+  }
+
+  // Void the sent contract and clear it so a new one can be sent.
+  async function cancelContract() {
+    if (!confirm('Cancel this sent contract? The client’s copy will be voided and you can review and send a new one.')) return;
+    setCancelBusy(true);
+    try {
+      const res = await fetch('/api/contracts/cancel', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Could not cancel.');
+      setContractSent(false); setResendDone(false); setContractCancelled(true);
+    } catch (e) { alert(e instanceof Error ? e.message : 'Could not cancel the contract.'); }
+    finally { setCancelBusy(false); }
+  }
+
   // Pretty-format the helper labels.
   const setTypeLabel = booking.set_type
     ? (booking.set_type
@@ -1028,15 +1063,22 @@ function BookingDetails({
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
           <div className={styles.detailLabel}>Contract</div>
-          {(contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' ? (
+          {!contractCancelled && (contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' ? (
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
+              <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
+                <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
+              </div>
             </div>
           ) : booking.contract_status === 'signed' ? (
             <div style={{ color: '#00e0a4', fontWeight: 700, marginTop: 8 }}>✓ Contract signed</div>
           ) : (
-            <button type="button" onClick={() => setContractOpen(true)} style={{ marginTop: 8, background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
+            <div style={{ marginTop: 8 }}>
+              {contractCancelled && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginBottom: 6 }}>Contract cancelled. Review and send a new one below.</div>}
+              <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
+            </div>
           )}
         </div>
       )}
@@ -1061,7 +1103,7 @@ function BookingDetails({
           userId={userId}
           contractId={sendContractId}
           onClose={() => setSendContractId(null)}
-          onSent={() => { setContractSent(true); setSendContractId(null); }}
+          onSent={() => { setContractSent(true); setSendContractId(null); setContractCancelled(false); setResendDone(false); }}
         />
       )}
     </div>
