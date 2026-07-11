@@ -48,11 +48,19 @@ function translateTags(html: string): string {
 // the contract is always signable.
 function wrapContractHtml(bodyHtml: string, logoUrl?: string | null, ensureSignature = false): string {
   let body = translateTags(bodyHtml);
-  if (ensureSignature && !/signature-field/i.test(body)) {
-    body += `<div style="margin-top:40px">
-      <div style="margin-bottom:22px">DJ signature: ${DJ_SIGNATURE_FIELD}</div>
-      <div>Client signature: ${CLIENT_SIGNATURE_FIELD}</div>
-    </div>`;
+  if (ensureSignature) {
+    // Guarantee a signature spot for each party. Checked separately so a
+    // contract that only has a DJ signature still gets a Client one — the
+    // client MUST have somewhere to sign. (DJ may have pre-signed in the text.)
+    const hasDjSig = /<signature-field[^>]*role="DJ"/i.test(body);
+    const hasClientSig = /<signature-field[^>]*role="Client"/i.test(body);
+    if (!hasDjSig || !hasClientSig) {
+      let block = '<div style="margin-top:40px">';
+      if (!hasDjSig) block += `<div style="margin-bottom:22px">DJ signature: ${DJ_SIGNATURE_FIELD}</div>`;
+      if (!hasClientSig) block += `<div>Client signature: ${CLIENT_SIGNATURE_FIELD}</div>`;
+      block += '</div>';
+      body += block;
+    }
   }
   const logo = logoUrl
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
@@ -105,17 +113,15 @@ export async function POST(req: Request) {
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
+    // Always guarantee DJ + Client signature spots — on create AND edit — so a
+    // contract can never end up without somewhere for the client to sign.
+    const html = wrapContractHtml(text, logoUrl, true);
     if (existingTemplateId) {
-      // Replace the document in place. Built WITHOUT auto-signatures so, when
-      // the new HTML has no fields, DocuSeal transfers the DJ's existing fields
-      // (including the signatures added at creation) onto the new document.
-      const html = wrapContractHtml(text, logoUrl, false);
       await docuseal.updateTemplateDocuments(Number(existingTemplateId), {
         documents: [{ html, position: 0, replace: true }],
       });
       templateId = existingTemplateId;
     } else {
-      const html = wrapContractHtml(text, logoUrl, true);
       const template = await docuseal.createTemplateFromHtml({
         name: `${name} — ${user.id}`,
         html,
