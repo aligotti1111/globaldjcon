@@ -327,10 +327,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         reply_to: djEmail || undefined,
         message: { subject, body },
         submitters: [
+          // DJ signs first (embedded, no email). order:'preserved' means the
+          // client is only emailed by DocuSeal AFTER the DJ completes — so
+          // nothing goes to the client when the contract is first prepared.
           { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
-          // Client is NOT emailed at creation — they're notified only after the
-          // DJ reviews, signs, and sends (via /api/contracts/send-client).
-          { role: 'Client', email: clientEmail, name: clientName, send_email: false },
+          { role: 'Client', email: clientEmail, name: clientName },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
       12000, 'createSubmission',
