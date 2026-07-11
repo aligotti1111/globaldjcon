@@ -305,7 +305,7 @@ export default function ContractPortal({
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
             style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
-          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Drag the auto-fill fields (client name, date, price, signatures…) onto your contract, then Lock it in.</div>
+          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Drag the auto-fill fields onto your contract. Your fields (client name, date, price, your signature) are under <strong>DJ</strong> in the dropdown at the top-right. To place the <strong>client&rsquo;s signature</strong>, switch that dropdown to <strong>Client</strong> and drag it onto their line. Then Lock it in.</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
