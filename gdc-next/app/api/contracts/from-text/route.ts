@@ -13,15 +13,39 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
+import { CONTRACT_DATA_FIELDS } from '@/lib/contractText';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
 
+// Convert friendly {{tags}} typed/pasted in the editor into DocuSeal field
+// elements, so booking details (set_type, equipment, price, date…) auto-fill
+// per booking and signature lines are collected from each party. Runs on the
+// already-HTML body (the rich-text editor output) — no escaping.
+function translateTags(html: string): string {
+  let out = html;
+  out = out.replace(
+    /\{\{\s*dj_signature\s*\}\}/gi,
+    '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+  );
+  out = out.replace(
+    /\{\{\s*client_signature\s*\}\}/gi,
+    '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+  );
+  for (const f of CONTRACT_DATA_FIELDS) {
+    out = out.replace(
+      new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi'),
+      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="min-width:120px;display:inline-block;"></text-field>`,
+    );
+  }
+  return out;
+}
+
 // Wrap the DJ's formatted contract HTML (from the rich-text editor) into a
-// full print-ready document. The body is already HTML (headings, bold, lists),
-// so we inject it as-is rather than escaping. No field tags are added here —
-// the DJ drags fields on in the builder step.
+// full print-ready document. Any {{tags}} become auto-fill fields; the DJ can
+// also drag additional fields on in the builder step.
 function wrapContractHtml(bodyHtml: string, logoUrl?: string | null): string {
+  const body = translateTags(bodyHtml);
   const logo = logoUrl
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
     : '';
@@ -30,7 +54,7 @@ function wrapContractHtml(bodyHtml: string, logoUrl?: string | null): string {
     h1{font-size:20px;margin:.4em 0}h2{font-size:16px;margin:.4em 0}h3{font-size:14px;margin:.4em 0}
     p{margin:.5em 0}ul,ol{margin:.5em 0 .5em 1.4em}
     strong,b{font-weight:bold}em,i{font-style:italic}u{text-decoration:underline}
-  </style></head><body>${logo}${bodyHtml}</body></html>`;
+  </style></head><body>${logo}${body}</body></html>`;
 }
 
 export async function POST(req: Request) {
