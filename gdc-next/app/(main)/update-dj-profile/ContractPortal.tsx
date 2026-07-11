@@ -394,6 +394,7 @@ export default function ContractPortal({
                   ) : (
                     <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
                   )}
+                  <div style={{ fontSize: '.62rem', color: 'var(--muted,#8a8aa0)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 3 }}>{c.is_standard ? 'Standard contract' : c.body_text != null ? 'Written' : 'Uploaded file'}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                   {bookingMode ? (
