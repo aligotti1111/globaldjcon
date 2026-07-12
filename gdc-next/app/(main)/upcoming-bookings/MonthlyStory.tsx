@@ -178,11 +178,13 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   const groupH = cardH * count + cardGap * Math.max(0, count - 1);
   const groupTop = regionTop + Math.max(0, (region - groupH) * 0.44); // center group, slight upward bias
 
+  const sideM = story ? pad : Math.round(w * 0.095); // narrower cards on the square
+
   d.rows.forEach((b, i) => {
     const ry = groupTop + i * (cardH + cardGap);
     const cy = ry + cardH / 2;
 
-    roundRect(ctx, pad, ry, w - 2 * pad, cardH, 26);
+    roundRect(ctx, sideM, ry, w - 2 * sideM, cardH, 26);
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -191,7 +193,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
 
     const badgeW = 140;
     const badgeH = Math.min(cardH - 34, 190);
-    const bx = pad + 26;
+    const bx = sideM + 26;
     const by = cy - badgeH / 2;
     roundRect(ctx, bx, by, badgeW, badgeH, 20);
     ctx.fillStyle = 'rgba(0,224,164,0.12)';
@@ -215,7 +217,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
       ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bcx, cy + badgeH * 0.40);
     }
 
-    const textRight = w - pad - 26;
+    const textRight = w - sideM - 26;
     const mx = bx + badgeW + 28;
     const mw = Math.max(80, textRight - mx - 12);
     const vFont = T(clampN(cardH * 0.26, 26, 60));
@@ -262,11 +264,6 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.fillStyle = 'rgba(255,255,255,.5)';
     ctx.font = '400 36px Arial, sans-serif';
     ctx.fillText('No dates in this range yet.', w / 2, regionTop + 80);
-  }
-  if (d.pageCount > 1) {
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = '600 30px Arial, sans-serif';
-    ctx.fillText(`${d.pageIndex + 1} / ${d.pageCount}`, w / 2, h - 104);
   }
   if (d.showUrl && d.footerUrl) {
     ctx.strokeStyle = 'rgba(0,224,164,0.4)';
