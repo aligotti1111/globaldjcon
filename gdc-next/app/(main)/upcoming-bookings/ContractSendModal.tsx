@@ -76,6 +76,17 @@ Client: {{client_signature}}   {{client_name}}`;
 type Phase = 'loading' | 'need_setup' | 'setup_standard' | 'setup_builder' | 'add_fields' | 'need_email' | 'signing' | 'signed' | 'error';
 interface SaveData { id?: number | string }
 
+// Shrink DocuSeal's signature widget. The drawing/typed area is a canvas with
+// class "draw-canvas" that DocuSeal sizes to (parent width) tall/3 — hence huge.
+// The completed preview is an <img class="max-h-44"> (176px). Cap both, and the
+// big "DJ Signature" title.
+const CUSTOM_CSS = `
+  .draw-canvas { max-width: 360px !important; max-height: 120px !important; margin-left: auto !important; margin-right: auto !important; }
+  img.max-h-44 { max-height: 120px !important; }
+  .field-name-label { font-size: 1.1rem !important; }
+  #signature_text_input { font-size: 1.1rem !important; }
+`;
+
 export default function ContractSendModal({
   bookingId,
   userId,
@@ -369,23 +380,16 @@ export default function ContractSendModal({
               <span style={{ color: sigCheck.client ? '#0a7' : '#c00', fontWeight: sigCheck.client ? 400 : 700 }}>{sigCheck.client ? '✓' : '✕'} Client signature spot</span>
             </div>
           )}
-          <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 560 }}>
-              <DocusealForm
-                src={embedSrc}
-                onComplete={handleSignComplete}
-                withTitle={false}
-                allowTypedSignature={true}
-                rememberSignature={true}
-                i18n={{ submit: 'Send contract', complete: 'Send contract' }}
-                customCss={`
-                  canvas, svg, [class*="signature"] canvas, [class*="signature"] img, [class*="signature"] svg { max-height: 70px !important; height: auto !important; }
-                  [class*="signature"], [class*="Signature"], [id*="signature"] { font-size: 26px !important; max-width: 360px !important; margin-left: auto !important; margin-right: auto !important; }
-                  .signature-pad, .modal-box, [class*="modal"], [role="dialog"] { max-width: 400px !important; }
-                  [class*="field-area"], [class*="expanded"], [class*="popup"] { max-height: 260px !important; }
-                `}
-              />
-            </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <DocusealForm
+              src={embedSrc}
+              onComplete={handleSignComplete}
+              withTitle={false}
+              allowTypedSignature={true}
+              rememberSignature={true}
+              i18n={{ submit: 'Send contract', complete: 'Send contract' }}
+              customCss={CUSTOM_CSS}
+            />
           </div>
         </div>
       ) : (
