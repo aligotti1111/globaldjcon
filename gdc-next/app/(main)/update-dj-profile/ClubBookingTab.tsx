@@ -249,6 +249,15 @@ export default function ClubBookingTab({
     patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
   }
 
+  // Optional sales tax % the DJ chooses to charge. They are responsible for
+  // charging + remitting it — the platform doesn't collect or remit tax.
+  // 0/blank = none. Stored in the same booking_settings blob (tax_pct).
+  const clubTaxPct = (bookingSettings as { tax_pct?: number }).tax_pct || 0;
+  function setClubTax(v: number) {
+    setLastChangedField('settings');
+    patch({ tax_pct: v } as unknown as Partial<BookingSettings>);
+  }
+
   // Currency symbol helper (used for the rate field prefix)
   const currentCurrency = useMemo(() => {
     return CURRENCIES.find((c) => c.code === ratesDraft.rate_currency) || CURRENCIES[0];
@@ -623,6 +632,25 @@ export default function ClubBookingTab({
                 <option key={p} value={p}>{p}%</option>
               ))}
             </select>
+          </div>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Sales tax (%)</div>
+              <div className={styles.settingHint}>
+                Optional — added on top of the total. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
+              </div>
+            </div>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.001"
+              value={clubTaxPct || ''}
+              onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
+              className={styles.settingNumber}
+              placeholder="0"
+            />
           </div>
 
           <SectionHint
