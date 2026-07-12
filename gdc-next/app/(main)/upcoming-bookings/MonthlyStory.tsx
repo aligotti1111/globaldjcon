@@ -291,6 +291,7 @@ export default function MonthlyStory({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
   const bgInput = useRef<HTMLInputElement | null>(null);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
 
   const now = useMemo(() => new Date(), []);
 
@@ -374,6 +375,26 @@ export default function MonthlyStory({
     setBusy(false);
   }
 
+  // Drag the preview to reposition the background image (only when one is set).
+  function onDragStart(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!bgUrl) return;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+  function onDragMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!dragRef.current || !bgUrl) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dx = e.clientX - dragRef.current.x;
+    const dy = e.clientY - dragRef.current.y;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    setBgOffsetX((o) => clamp(o + (dx / rect.width) * 2));
+    setBgOffsetY((o) => clamp(o + (dy / rect.height) * 2));
+  }
+  function onDragEnd() {
+    dragRef.current = null;
+  }
+
   function download() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -413,7 +434,7 @@ export default function MonthlyStory({
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <style>{`
-        .gdc-range { -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:99px; background:rgba(255,255,255,.16); outline:none; cursor:pointer; }
+        .gdc-range { -webkit-appearance:none; appearance:none; width:120px; flex:none; height:4px; border-radius:99px; background:rgba(255,255,255,.16); outline:none; cursor:pointer; }
         .gdc-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:15px; height:15px; border-radius:50%; background:#00e0a4; border:none; cursor:pointer; box-shadow:0 0 0 3px rgba(0,224,164,.2); }
         .gdc-range::-moz-range-thumb { width:15px; height:15px; border-radius:50%; background:#00e0a4; border:none; cursor:pointer; }
       `}</style>
@@ -473,8 +494,6 @@ export default function MonthlyStory({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
               {bgUrl && <Slider text="Background size" value={bgScale} min={0.7} max={2.5} step={0.05} onChange={setBgScale} />}
-              {bgUrl && <Slider text="Background X" value={bgOffsetX} min={-1} max={1} step={0.02} onChange={setBgOffsetX} display={(v) => `${Math.round(v * 100)}`} />}
-              {bgUrl && <Slider text="Background Y" value={bgOffsetY} min={-1} max={1} step={0.02} onChange={setBgOffsetY} display={(v) => `${Math.round(v * 100)}`} />}
               {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
               <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
             </div>
@@ -482,11 +501,16 @@ export default function MonthlyStory({
             <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1rem', fontSize: '.9rem' }}>Download PNG</button>
           </div>
 
-          <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <canvas
               ref={canvasRef}
-              style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14' }}
+              onPointerDown={onDragStart}
+              onPointerMove={onDragMove}
+              onPointerUp={onDragEnd}
+              onPointerLeave={onDragEnd}
+              style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14', cursor: bgUrl ? 'grab' : 'default', touchAction: bgUrl ? 'none' : 'auto' }}
             />
+            {bgUrl && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>Drag the image to reposition it</div>}
           </div>
         </div>
       </div>
