@@ -1140,10 +1140,10 @@ export default function MobileBookingForm({
               <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
                 {taxPct > 0 && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--white,#fff)', padding: '2px 0' }}>
                       <span>Subtotal</span><span>${discountedTotal.toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--white,#fff)', padding: '2px 0' }}>
                       <span>Tax ({taxPct}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
