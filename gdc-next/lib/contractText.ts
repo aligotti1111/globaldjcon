@@ -74,7 +74,7 @@ This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("C
 WEDDING DETAILS
 Client/Host: {{client_name}}
 Date: {{event_date}}
-{{cocktail_hour}}
+Cocktail hour: {{cocktail_hour}}
 Reception time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}
 Address: {{event_address}}

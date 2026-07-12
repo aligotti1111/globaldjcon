@@ -101,7 +101,7 @@ function translateTags(escaped: string): string {
     event_date: 130, overtime_rate: 120,
     client_name: 170, dj_name: 170, venue_name: 170, set_type: 170, event_type: 170,
     equipment: 220, package: 260, event_address: 300, payment_terms: 480,
-    cocktail_hour: 360,
+    cocktail_hour: 200,
   };
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
@@ -119,14 +119,14 @@ function translateTags(escaped: string): string {
 // (the SIGNATURES lines are intentionally not in the contract text).
 const SIGNATURE_BLOCK = `<div style="margin-top:34px">
   <div style="font-weight:bold;margin-bottom:16px">SIGNATURES</div>
-  <div style="display:flex;justify-content:space-between;gap:48px">
-    <div style="flex:1;min-width:0">
+  <div style="display:flex;justify-content:flex-start;gap:56px">
+    <div style="width:240px">
       <div style="margin-bottom:4px">DJ Name:</div>
       <div style="margin-bottom:20px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
       <div style="margin-bottom:4px">DJ Signature:</div>
       <div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
     </div>
-    <div style="flex:1;min-width:0">
+    <div style="width:240px">
       <div style="margin-bottom:4px">Client Name:</div>
       <div style="margin-bottom:20px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
       <div style="margin-bottom:4px">Client Signature:</div>
