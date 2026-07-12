@@ -1093,6 +1093,7 @@ function BookingDetails({
           djType={djType}
           controlledOpen
           bookingId={booking.id}
+          eventType={booking.event_type}
           onRequestClose={() => setContractOpen(false)}
           onUseContract={(id) => { setContractOpen(false); setSendContractId(id); }}
         />
