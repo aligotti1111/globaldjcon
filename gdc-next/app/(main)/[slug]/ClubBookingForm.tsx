@@ -1090,7 +1090,7 @@ export default function ClubBookingForm({
                     )}
                   </div>
                 )}
-                {!isOffers && taxPct > 0 && taxBase != null && (
+                {!isOffers && taxPct > 0 && grandTotal != null && (
                   <div style={{ marginTop: 8, textAlign: 'center' }}>
                     <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
                       Tax ({taxPct}%): {currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString()}
