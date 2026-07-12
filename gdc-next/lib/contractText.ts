@@ -6,7 +6,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit', 'payment_terms',
-  'cocktail_hour',
+  'cocktail_hour', 'tax', 'grand_total',
 ] as const;
 
 // Shared clauses used by both contract types.
@@ -47,6 +47,8 @@ Venue: {{venue_name}}
 Address: {{event_address}}
 Price: {{price}}
 Package: {{package}}
+Tax: {{tax}}
+Total: {{grand_total}}
 
 ${SHARED_CLAUSES}`;
 
@@ -63,6 +65,8 @@ Set type: {{set_type}}
 Equipment: {{equipment}}
 Price: {{price}}
 Deposit: {{deposit}}
+Tax: {{tax}}
+Total: {{grand_total}}
 
 ${SHARED_CLAUSES}`;
 
@@ -82,6 +86,8 @@ Address: {{event_address}}
 Package: {{package}}
 Price: {{price}}
 Overtime rate: {{overtime_rate}}/hr
+Tax: {{tax}}
+Total: {{grand_total}}
 
 SERVICES
 The DJ will provide music and MC services for the wedding, including announcements and coordination of key moments (grand entrance, first dance, parent dances, cake cutting, speeches/toasts, bouquet and garter toss, and last dance), and will play music suited to the couple's preferences throughout the reception.
