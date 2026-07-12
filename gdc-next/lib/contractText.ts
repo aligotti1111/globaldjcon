@@ -6,6 +6,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit', 'payment_terms',
+  'cocktail_hour',
 ] as const;
 
 // Shared clauses used by both contract types.
@@ -73,6 +74,7 @@ This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("C
 WEDDING DETAILS
 Client/Host: {{client_name}}
 Date: {{event_date}}
+{{cocktail_hour}}
 Reception time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}
 Address: {{event_address}}

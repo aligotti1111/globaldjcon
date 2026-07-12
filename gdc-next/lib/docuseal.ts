@@ -29,7 +29,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit',
-  'payment_terms',
+  'payment_terms', 'cocktail_hour',
 ] as const;
 
 // The editable standard Mobile DJ contract. DJs start from this and tweak the
@@ -101,6 +101,7 @@ function translateTags(escaped: string): string {
     event_date: 130, overtime_rate: 120,
     client_name: 170, dj_name: 170, venue_name: 170, set_type: 170, event_type: 170,
     equipment: 220, package: 260, event_address: 300, payment_terms: 480,
+    cocktail_hour: 360,
   };
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
@@ -154,4 +155,74 @@ export function buildContractHtml(text: string, logoUrl?: string | null): string
     body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
     div{white-space:pre-wrap}
   </style></head><body>${logo}${body}${SIGNATURE_BLOCK}</body></html>`;
+}
+
+// Per-booking build: the booking's DATA is written straight into the text (real
+// text, not fixed-width fields) so nothing has awkward gaps, and any line whose
+// only tag came back empty is dropped entirely (used for the wedding cocktail
+// hour — if the booking has none, the line vanishes). Only the signatures stay
+// as fields. Produced fresh for each booking, then turned into a throwaway
+// DocuSeal template to submit from.
+export function buildBookedContractHtml(
+  text: string,
+  values: Record<string, string>,
+  logoUrl?: string | null,
+): string {
+  // 1) Drop short "Label: {{tag}}" lines whose value came back empty (e.g. no
+  //    cocktail hour). Prose sentences that merely contain a tag are kept.
+  const kept = text.split('\n').filter((line) => {
+    const tags = line.match(/\{\{\s*([a-z_]+)\s*\}\}/gi) || [];
+    if (tags.length === 0) return true; // plain text line, always keep
+    const allEmpty = tags.every((t) => {
+      const name = t.replace(/[^a-z_]/gi, '');
+      return !(values[name] || '').trim();
+    });
+    if (!allEmpty) return true;
+    // Every tag empty — only drop if the rest of the line is just a short label.
+    const nonTag = line.replace(/\{\{\s*[a-z_]+\s*\}\}/gi, '').replace(/[:\-–·,()"']/g, '').trim();
+    return nonTag.length > 30; // keep real prose, drop bare "Label:" lines
+  }).join('\n');
+
+  // 2) Escape, then bake each value in as real text.
+  let esc = escapeHtml(kept);
+  for (const f of CONTRACT_DATA_FIELDS) {
+    const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
+    esc = esc.replace(re, escapeHtml(values[f] || ''));
+  }
+  // Any signature tags left in the body become fields.
+  esc = esc
+    .replace(/\{\{\s*dj_signature\s*\}\}/gi, '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>')
+    .replace(/\{\{\s*client_signature\s*\}\}/gi, '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>');
+
+  const body = esc
+    .split('\n')
+    .map((line) => (line.trim() === '' ? '<div style="height:10px"></div>' : `<div>${line}</div>`))
+    .join('');
+  const logo = logoUrl
+    ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
+    : '';
+
+  // Names baked in; only the signature inputs remain as fields.
+  const djName = escapeHtml(values.dj_name || 'DJ');
+  const clientName = escapeHtml(values.client_name || 'Client');
+  const sigBlock = `<div style="margin-top:34px">
+  <div style="font-weight:bold;margin-bottom:16px">SIGNATURES</div>
+  <div style="display:flex;justify-content:space-between;gap:48px">
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:16px">DJ Name: ${djName}</div>
+      <div style="margin-bottom:4px">DJ Signature:</div>
+      <div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:16px">Client Name: ${clientName}</div>
+      <div style="margin-bottom:4px">Client Signature:</div>
+      <div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
+    </div>
+  </div>
+</div>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
+    div{white-space:pre-wrap}
+  </style></head><body>${logo}${body}${sigBlock}</body></html>`;
 }
