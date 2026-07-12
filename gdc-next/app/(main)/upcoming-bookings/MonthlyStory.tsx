@@ -88,6 +88,8 @@ interface DrawData {
   bgColor: string | null;
   themeStops: [string, string, string];
   bgScale: number;
+  bgOffsetX: number;
+  bgOffsetY: number;
   logoScale: number;
   textScale: number;
   rows: StoryBooking[];
@@ -108,7 +110,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const s = base * d.bgScale;
     const dw = d.bgImg.width * s;
     const dh = d.bgImg.height * s;
-    ctx.drawImage(d.bgImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    const ox = (w - dw) / 2 + (d.bgOffsetX * (dw - w)) / 2;
+    const oy = (h - dh) / 2 + (d.bgOffsetY * (dh - h)) / 2;
+    ctx.drawImage(d.bgImg, ox, oy, dw, dh);
     ctx.fillStyle = 'rgba(8,8,18,0.62)'; // readability overlay
     ctx.fillRect(0, 0, w, h);
   } else if (d.bgColor) {
@@ -278,6 +282,8 @@ export default function MonthlyStory({
   const [bgColor, setBgColor] = useState<string | null>(null);
   const [theme, setTheme] = useState<string>('Teal');
   const [bgScale, setBgScale] = useState(1);
+  const [bgOffsetX, setBgOffsetX] = useState(0);
+  const [bgOffsetY, setBgOffsetY] = useState(0);
   const [logoScale, setLogoScale] = useState(1);
   const [textScale, setTextScale] = useState(1);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -330,13 +336,13 @@ export default function MonthlyStory({
       drawStory(ctx, cfg.w, cfg.h, {
         headline, djName, logoImg, bgImg, bgColor,
         themeStops: THEMES[theme] || THEMES.Teal,
-        bgScale, logoScale, textScale,
+        bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
         rows, flyerImgs,
         moreCount: Math.max(0, items.length - rows.length), size,
       });
     })();
     return () => { cancelled = true; };
-  }, [items, size, logoUrl, bgUrl, bgColor, theme, bgScale, logoScale, textScale, headline, djName]);
+  }, [items, size, logoUrl, bgUrl, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName]);
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
@@ -394,19 +400,23 @@ export default function MonthlyStory({
   });
   const label: React.CSSProperties = { color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 };
 
-  function Slider({ text, value, min, max, step, onChange }: { text: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+  function Slider({ text, value, min, max, step, onChange, display }: { text: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; display?: (v: number) => string }) {
     return (
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--white,#fff)', fontSize: '.78rem', marginBottom: 4 }}>
-          <span>{text}</span><span style={{ color: 'var(--muted,#8a8aa0)' }}>{Math.round(value * 100)}%</span>
-        </div>
-        <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#00e0a4' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.72rem', width: 96, flexShrink: 0 }}>{text}</span>
+        <input type="range" className="gdc-range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} />
+        <span style={{ color: 'var(--white,#fff)', fontSize: '.68rem', width: 40, textAlign: 'right', flexShrink: 0 }}>{display ? display(value) : `${Math.round(value * 100)}%`}</span>
       </div>
     );
   }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <style>{`
+        .gdc-range { -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:99px; background:rgba(255,255,255,.16); outline:none; cursor:pointer; }
+        .gdc-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:15px; height:15px; border-radius:50%; background:#00e0a4; border:none; cursor:pointer; box-shadow:0 0 0 3px rgba(0,224,164,.2); }
+        .gdc-range::-moz-range-thumb { width:15px; height:15px; border-radius:50%; background:#00e0a4; border:none; cursor:pointer; }
+      `}</style>
       <div style={{ background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, width: '100%', maxWidth: 900, maxHeight: '92vh', overflow: 'auto', padding: '1.1rem 1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <strong style={{ color: 'var(--white,#fff)', fontSize: '1.05rem' }}>Create Schedule Graphic</strong>
@@ -463,6 +473,8 @@ export default function MonthlyStory({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
               {bgUrl && <Slider text="Background size" value={bgScale} min={0.7} max={2.5} step={0.05} onChange={setBgScale} />}
+              {bgUrl && <Slider text="Background X" value={bgOffsetX} min={-1} max={1} step={0.02} onChange={setBgOffsetX} display={(v) => `${Math.round(v * 100)}`} />}
+              {bgUrl && <Slider text="Background Y" value={bgOffsetY} min={-1} max={1} step={0.02} onChange={setBgOffsetY} display={(v) => `${Math.round(v * 100)}`} />}
               {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
               <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
             </div>
