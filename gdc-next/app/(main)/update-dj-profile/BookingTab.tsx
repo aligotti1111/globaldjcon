@@ -520,16 +520,19 @@ export default function BookingTab({
                         : 'Enter your local rate.'}
                     </div>
                   </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step="0.001"
-                    value={taxPct || ''}
-                    onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                    className={styles.settingNumber}
-                    placeholder="0"
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.001"
+                      value={taxPct || ''}
+                      onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
+                      className={styles.settingNumber}
+                      placeholder="0"
+                    />
+                    <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
+                  </div>
                 </div>
               )}
               {/* Save status hint at the bottom of the section box.

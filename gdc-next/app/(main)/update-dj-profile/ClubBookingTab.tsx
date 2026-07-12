@@ -690,16 +690,19 @@ export default function ClubBookingTab({
                     : 'Enter your local rate.'}
                 </div>
               </div>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step="0.001"
-                value={clubTaxPct || ''}
-                onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
-                className={styles.settingNumber}
-                placeholder="0"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.001"
+                  value={clubTaxPct || ''}
+                  onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
+                  className={styles.settingNumber}
+                  placeholder="0"
+                />
+                <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
+              </div>
             </div>
           )}
 
