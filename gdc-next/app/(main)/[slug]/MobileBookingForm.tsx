@@ -1135,23 +1135,36 @@ export default function MobileBookingForm({
               )}
             </div>
 
-            {priceResult.price != null && depositPct > 0 && discountedDeposit != null && (
-              <div className={styles.depositText}>
-                Deposit required: ${discountedDeposit.toLocaleString()} ({depositPct}%)
+            {/* Clean itemized breakdown when there's tax and/or a deposit. */}
+            {!priceResult.isQuote && priceResult.price != null && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0) && (
+              <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                {taxPct > 0 && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                      <span>Subtotal</span><span>${discountedTotal.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                      <span>Tax ({taxPct}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.95rem', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.15))', paddingTop: 6, marginTop: taxPct > 0 ? 5 : 0 }}>
+                  <span>Total</span><span>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                </div>
+                {depositPct > 0 && discountedDeposit != null && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0', marginTop: 5 }}>
+                      <span>Deposit ({depositPct}%) &middot; on signing</span><span>${discountedDeposit.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                      <span>Balance &middot; day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
-            {priceResult.price != null && depositPct === 0 && (
+            {priceResult.price != null && depositPct === 0 && taxPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
-            )}
-            {!priceResult.isQuote && taxPct > 0 && discountedTotal != null && (
-              <div className={styles.depositText}>
-                Tax ({taxPct}%): ${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-              </div>
-            )}
-            {!priceResult.isQuote && taxPct > 0 && grandTotal != null && (
-              <div className={styles.depositText} style={{ fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>
-                Total with tax: ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-              </div>
             )}
             {priceResult.cocktailAddon > 0 && (
               <div className={styles.cocktailNote}>
