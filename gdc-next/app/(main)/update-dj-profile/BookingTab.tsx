@@ -387,6 +387,11 @@ export default function BookingTab({
     }
   }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
+  // Optional sales tax % the DJ chooses to charge. They're responsible for
+  // charging + remitting it — the platform doesn't collect/remit tax. Stored
+  // in the same booking_settings blob as tax_pct.
+  const taxPct = (bookingSettings as { tax_pct?: number }).tax_pct || 0;
+  function setTax(v: number) { setLastChangedField('settings'); patch({ tax_pct: v } as unknown as Partial<BookingSettings>); }
   // Top-level wholesale rewrite of all packages (add/remove a row, or
   // commit a save from a single package card). No SavedHint tagging since
   // packages don't autosave anymore — they have their own save buttons
@@ -463,6 +468,25 @@ export default function BookingTab({
                     <option key={p} value={p}>{p}%</option>
                   ))}
                 </select>
+              </div>
+              {/* Sales tax (optional) */}
+              <div className={styles.settingRow}>
+                <div className={styles.settingLabelWrap}>
+                  <div className={styles.settingLabel}>Sales tax (%)</div>
+                  <div className={styles.settingHint}>
+                    Optional &mdash; added on top of the total. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.001"
+                  value={taxPct || ''}
+                  onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
+                  className={styles.settingNumber}
+                  placeholder="0"
+                />
               </div>
               {/* Save status hint at the bottom of the section box.
                   Reserves a small fixed height so the layout doesn't
