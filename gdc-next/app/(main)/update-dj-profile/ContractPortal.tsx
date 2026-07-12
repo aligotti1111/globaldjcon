@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
-import { defaultContractText } from '@/lib/contractText';
+import { defaultContractText, WEDDING_CONTRACT_TEXT } from '@/lib/contractText';
 
 const DocusealBuilder = dynamic(
   () => import('@docuseal/react').then((m) => m.DocusealBuilder),
@@ -164,10 +164,10 @@ export default function ContractPortal({
   // Create a fresh Global DJ Connect standard contract and open it straight on
   // the FIELDS builder (fields auto-placed from the tags). The DJ can hit
   // "Edit text" to change wording; the disclaimer is on the fields page.
-  async function openStandardTemplate() {
+  async function openStandardTemplate(variant?: 'wedding') {
     setError(null);
-    const defText = defaultContractText(djType);
-    const nm = 'Global DJ Connect standard contract';
+    const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
+    const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect standard contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
@@ -457,12 +457,20 @@ export default function ContractPortal({
             {!uploading && <div style={{ fontSize: '.68rem', marginTop: 3, color: 'var(--muted,#8a8aa0)' }}>PDF, Word, image</div>}
           </div>
         </div>
-        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openStandardTemplate}>
+        <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={() => openStandardTemplate()}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>📃</div>
             <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect standard contract</div>
           </div>
         </div>
+        {djType !== 'club' && (
+          <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={() => openStandardTemplate('wedding')}>
+            <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
+              <div style={{ fontSize: 28, lineHeight: 1 }}>💍</div>
+              <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect Standard Wedding Contract</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && <div style={{ color: '#ff6b6b', fontSize: '.82rem', margin: '.9rem 0 0' }}>{error}</div>}
