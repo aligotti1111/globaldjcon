@@ -68,6 +68,31 @@ Price: {{price}}
 
 ${SHARED_CLAUSES}`;
 
+// Wedding DJ contract — mobile DJs only. Wedding-specific wording + fields, on
+// top of the shared clauses.
+export const WEDDING_CONTRACT_TEXT = `WEDDING DJ SERVICES AGREEMENT
+
+This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("Client") for the wedding detailed below.
+
+WEDDING DETAILS
+Couple: {{client_name}}
+Date: {{event_date}}
+Reception time: {{start_time}} - {{end_time}}
+Venue: {{venue_name}}, {{event_address}}
+Package: {{package}}
+Price: {{price}}
+
+SERVICES
+The DJ will provide music and MC services for the wedding, including announcements and coordination of key moments (grand entrance, first dance, parent dances, cake cutting, speeches/toasts, bouquet and garter toss, and last dance), and will play music suited to the couple's preferences throughout the reception.
+
+MUSIC & REQUESTS
+The Client may provide a must-play list, a do-not-play list, and selections for special moments (ceremony, first dance, parent dances) in advance. The DJ will make reasonable efforts to honor requests, subject to availability and appropriateness for the event.
+
+TIMELINE
+The Client will provide the wedding-day timeline and the names to be announced in advance. The DJ will coordinate with the venue, photographer, and planner as needed to keep the reception running on schedule.
+
+${SHARED_CLAUSES}`;
+
 // Pick the right default contract text for a DJ's type.
 export function defaultContractText(djType?: string | null): string {
   return djType === 'club' ? CLUB_CONTRACT_TEXT : MOBILE_CONTRACT_TEXT;
