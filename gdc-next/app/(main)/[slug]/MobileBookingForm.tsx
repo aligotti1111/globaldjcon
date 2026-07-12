@@ -1161,10 +1161,10 @@ export default function MobileBookingForm({
                 {depositPct > 0 && discountedDeposit != null && (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Deposit ({depositPct}%) &middot; on signing</span><span>${discountedDeposit.toLocaleString()}</span>
+                      <span>Deposit ({depositPct}%)</span><span>${discountedDeposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Balance &middot; day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString()}</span>
+                      <span>Balance due day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 )}
