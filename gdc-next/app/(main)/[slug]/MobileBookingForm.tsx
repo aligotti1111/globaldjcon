@@ -1125,17 +1125,14 @@ export default function MobileBookingForm({
               className={
                 priceResult.isQuote
                   ? `${styles.priceValue} ${styles.priceValueQuote}`
-                  : showPriceBreakdown
-                    ? undefined
-                    : styles.priceValue
+                  : styles.priceValue
               }
-              style={showPriceBreakdown ? { fontSize: '1.3rem', fontWeight: 700, lineHeight: 1.15 } : undefined}
             >
               {priceResult.isQuote || priceResult.price == null ? (
                 'Price on Request'
               ) : discount.amount > 0 && discountedTotal != null ? (
                 <>
-                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.62em', marginRight: 8 }}>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
                     ${priceResult.price.toLocaleString()}
                   </span>
                   ${discountedTotal.toLocaleString()}
@@ -1158,16 +1155,15 @@ export default function MobileBookingForm({
                     </div>
                   </>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6 }}>
-                  <span style={{ fontSize: '.72rem', letterSpacing: '.08em', color: 'var(--muted,#8a8aa0)', fontWeight: 700 }}>TOTAL</span>
-                  <span style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--neon,#00e0a4)' }}>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 6, marginTop: 5 }}>
+                  <span>Total</span><span>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                 </div>
                 {depositPct > 0 && discountedDeposit != null && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '3px 0', marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 6, marginTop: 5 }}>
                       <span>Deposit ({depositPct}%) &middot; on signing</span><span>${discountedDeposit.toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '3px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
                       <span>Balance &middot; day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString()}</span>
                     </div>
                   </>
