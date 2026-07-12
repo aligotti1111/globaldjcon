@@ -1108,21 +1108,9 @@ export default function MobileBookingForm({
           <div className={styles.priceDisplay}>
             <div className={styles.priceLabel}>Estimated Price</div>
 
-            {!priceResult.isQuote && priceResult.price != null && saleOn && (
-              <div
-                style={{
-                  display: 'inline-block',
-                  background: 'var(--neon,#00e0a4)',
-                  color: '#06231b',
-                  fontWeight: 700,
-                  fontSize: '.68rem',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  marginBottom: 6,
-                  letterSpacing: '.04em',
-                }}
-              >
-                {bookingSettings.sale?.percent}% OFF
+            {discount.amount > 0 && (
+              <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, marginBottom: 4 }}>
+                {discount.label} — you save ${discount.amount.toLocaleString()}
               </div>
             )}
 
@@ -1146,12 +1134,6 @@ export default function MobileBookingForm({
                 `$${priceResult.price.toLocaleString()}`
               )}
             </div>
-
-            {discount.amount > 0 && (
-              <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)' }}>
-                {discount.label} — you save ${discount.amount.toLocaleString()}
-              </div>
-            )}
 
             {priceResult.price != null && depositPct > 0 && discountedDeposit != null && (
               <div className={styles.depositText}>
