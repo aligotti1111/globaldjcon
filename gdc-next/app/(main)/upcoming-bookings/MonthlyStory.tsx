@@ -222,23 +222,37 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const tFont = T(clampN(cardH * 0.20, 22, 44));
     let aFont = T(clampN(cardH * 0.16, 19, 30));
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `700 ${Math.round(vFont)}px Arial, sans-serif`;
-    ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - cardH * 0.14);
 
-    ctx.fillStyle = NEON;
-    ctx.font = `600 ${Math.round(tFont)}px Arial, sans-serif`;
+    const venue = ellipsize(ctx, b.venue_name || 'Venue TBA', mw);
     const times = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
-    if (times) ctx.fillText(times, mx, cy + cardH * 0.05);
-
+    // shrink the address so the whole thing (incl. ZIP) fits on one line — never truncate
     if (b.venue_address) {
-      // shrink the address so the whole thing (incl. ZIP) fits on one line — never truncate
       ctx.font = `400 ${Math.round(aFont)}px Arial, sans-serif`;
       const aw = ctx.measureText(b.venue_address).width;
       if (aw > mw) aFont = Math.max(15, Math.floor(aFont * (mw / aw)));
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = `400 ${Math.round(aFont)}px Arial, sans-serif`;
-      ctx.fillText(b.venue_address, mx, cy + cardH * 0.26);
+    }
+
+    // Stack the lines with an EQUAL visual gap between each (bottom-of-line to
+    // top-of-next), then center the whole block in the card.
+    const cap = (f: number) => f * 0.72;   // glyph height above baseline
+    const desc = (f: number) => f * 0.06;  // small descender below baseline
+    const lineGap = Math.max(8, Math.round(cardH * 0.05)); // same gap between every line
+    const stack: { txt: string; f: number; weight: number; color: string }[] = [
+      { txt: venue, f: vFont, weight: 700, color: '#ffffff' },
+    ];
+    if (times) stack.push({ txt: times, f: tFont, weight: 600, color: NEON });
+    if (b.venue_address) stack.push({ txt: b.venue_address, f: aFont, weight: 400, color: 'rgba(255,255,255,.6)' });
+
+    let blockH = lineGap * (stack.length - 1);
+    for (const s of stack) blockH += cap(s.f) + desc(s.f);
+    let topY = cy - blockH / 2;
+
+    ctx.textAlign = 'left';
+    for (const s of stack) {
+      ctx.fillStyle = s.color;
+      ctx.font = `${s.weight} ${Math.round(s.f)}px Arial, sans-serif`;
+      ctx.fillText(s.txt, mx, topY + cap(s.f));
+      topY += cap(s.f) + desc(s.f) + lineGap;
     }
   });
 
