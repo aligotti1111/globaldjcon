@@ -186,14 +186,20 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   // in the booking_settings JSON). It flows into the contract's payment terms
   // for club bookings that don't already carry a per-booking deposit.
   let clubDepositPct = 0;
-  if (isClub) {
-    try {
-      const raw = dj?.booking_settings;
-      const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number };
+  // Sales tax % — only when the DJ turned it on. Applies to both DJ types.
+  let taxPctVal = 0;
+  try {
+    const raw = dj?.booking_settings;
+    const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number };
+    if (isClub) {
       const v = Number(bs?.club_deposit_pct);
       if (Number.isFinite(v) && v > 0) clubDepositPct = v;
-    } catch { /* bad JSON — treat as no deposit */ }
-  }
+    }
+    if (bs?.tax_enabled) {
+      const t = Number(bs?.tax_pct);
+      if (Number.isFinite(t) && t > 0) taxPctVal = t;
+    }
+  } catch { /* bad JSON — no deposit/tax */ }
 
   const cData = cRow as { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null;
   let templateId: string | null = cData?.docuseal_template_id || null;
@@ -272,9 +278,14 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     cocktailHour = [cStart, room].filter(Boolean).join(' · ') || 'Yes';
   }
 
+  // Sales tax on the service price (only when the DJ enabled it).
+  const taxAmt = (taxPctVal > 0 && price != null) ? (price * taxPctVal) / 100 : 0;
+
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     cocktail_hour: cocktailHour,
+    tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctVal}%)` : '',
+    grand_total: (taxAmt > 0 && price != null) ? money(price + taxAmt, currency) : '',
     client_name: clientName,
     dj_name: companyName || dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
