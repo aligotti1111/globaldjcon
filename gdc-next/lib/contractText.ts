@@ -28,15 +28,10 @@ CIRCUMSTANCES BEYOND CONTROL
 Neither party is liable for failure to perform due to events beyond reasonable control, such as illness, severe weather, venue closure, or power failure. In such cases, both parties will work in good faith toward a fair resolution or rescheduled date.
 
 AGREEMENT
-This document reflects the full agreement between both parties. Any changes will be made in writing and agreed by both. The DJ's total liability under this agreement is limited to the total fee paid.
-
-SIGNATURES
-
-DJ Name: {{dj_name}}
-DJ Signature: {{dj_signature}}
-
-Client Name: {{client_name}}
-Client Signature: {{client_signature}}`;
+This document reflects the full agreement between both parties. Any changes will be made in writing and agreed by both. The DJ's total liability under this agreement is limited to the total fee paid.`;
+// NOTE: the SIGNATURES block is NOT in the text — buildContractHtml appends it
+// as a two-column layout (DJ on the left, Client on the right, each with the
+// name stacked over the signature).
 
 // Mobile DJ contract — private events (weddings, parties, etc.).
 export const MOBILE_CONTRACT_TEXT = `DJ SERVICES AGREEMENT

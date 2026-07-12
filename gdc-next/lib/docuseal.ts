@@ -104,8 +104,30 @@ function translateTags(escaped: string): string {
   return out;
 }
 
+// Two-column signature block: DJ on the left, Client on the right, each with
+// the name field stacked over the signature field. Appended by buildContractHtml
+// (the SIGNATURES lines are intentionally not in the contract text).
+const SIGNATURE_BLOCK = `<div style="margin-top:34px">
+  <div style="font-weight:bold;margin-bottom:16px">SIGNATURES</div>
+  <div style="display:flex;justify-content:space-between;gap:48px">
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:4px">DJ Name:</div>
+      <div style="margin-bottom:20px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
+      <div style="margin-bottom:4px">DJ Signature:</div>
+      <div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:4px">Client Name:</div>
+      <div style="margin-bottom:20px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
+      <div style="margin-bottom:4px">Client Signature:</div>
+      <div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
+    </div>
+  </div>
+</div>`;
+
 // Build the full HTML document for the contract from the DJ's edited text,
-// optionally with a logo at the top. Field tags are left intact for DocuSeal.
+// optionally with a logo at the top. Field tags are left intact for DocuSeal,
+// and the two-column signature block is appended at the end.
 export function buildContractHtml(text: string, logoUrl?: string | null): string {
   // Escape everything, THEN re-open the tag braces so DocuSeal still sees {{}}.
   // (escapeHtml doesn't touch braces, so tags survive; translateTags then
@@ -122,5 +144,5 @@ export function buildContractHtml(text: string, logoUrl?: string | null): string
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
     div{white-space:pre-wrap}
-  </style></head><body>${logo}${body}</body></html>`;
+  </style></head><body>${logo}${body}${SIGNATURE_BLOCK}</body></html>`;
 }
