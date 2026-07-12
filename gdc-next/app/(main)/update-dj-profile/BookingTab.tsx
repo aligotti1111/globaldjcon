@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
+import { guessStateTaxRate } from '@/lib/salesTax';
 import { useConfirm } from '@/components/ConfirmModal';
 import {
   type BookingSettings,
@@ -387,10 +388,33 @@ export default function BookingTab({
     }
   }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
-  // Optional sales tax % the DJ chooses to charge. They're responsible for
-  // charging + remitting it — the platform doesn't collect/remit tax. Stored
-  // in the same booking_settings blob as tax_pct.
+  // Optional sales tax — OFF by default. When on, we suggest a rate from the
+  // DJ's state (adjustable). They're responsible for charging + remitting;
+  // the platform doesn't collect/remit. Stored as tax_enabled + tax_pct.
+  const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const taxPct = (bookingSettings as { tax_pct?: number }).tax_pct || 0;
+  const [djState, setDjState] = useState<string>('');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from('users').select('state').eq('id', userId).maybeSingle();
+        if (active) setDjState(((data as { state?: string | null } | null)?.state) || '');
+      } catch { /* ignore — no suggestion */ }
+    })();
+    return () => { active = false; };
+  }, [userId]);
+  const suggestedTax = guessStateTaxRate(djState);
+  function setTaxEnabled(on: boolean) {
+    setLastChangedField('settings');
+    if (on) {
+      const next = taxPct > 0 ? taxPct : (suggestedTax != null ? suggestedTax : 0);
+      patch({ tax_enabled: true, tax_pct: next } as unknown as Partial<BookingSettings>);
+    } else {
+      patch({ tax_enabled: false } as unknown as Partial<BookingSettings>);
+    }
+  }
   function setTax(v: number) { setLastChangedField('settings'); patch({ tax_pct: v } as unknown as Partial<BookingSettings>); }
   // Top-level wholesale rewrite of all packages (add/remove a row, or
   // commit a save from a single package card). No SavedHint tagging since
@@ -469,25 +493,45 @@ export default function BookingTab({
                   ))}
                 </select>
               </div>
-              {/* Sales tax (optional) */}
+              {/* Sales tax (optional, off by default) */}
               <div className={styles.settingRow}>
                 <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>Sales tax (%)</div>
+                  <div className={styles.settingLabel}>Charge sales tax?</div>
                   <div className={styles.settingHint}>
-                    Optional &mdash; added on top of the total. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
+                    Off by default. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
                   </div>
                 </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.001"
-                  value={taxPct || ''}
-                  onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                  className={styles.settingNumber}
-                  placeholder="0"
-                />
+                <select
+                  value={taxEnabled ? 'yes' : 'no'}
+                  onChange={(e) => setTaxEnabled(e.target.value === 'yes')}
+                  className={styles.settingSelect}
+                >
+                  <option value="no">Off</option>
+                  <option value="yes">On</option>
+                </select>
               </div>
+              {taxEnabled && (
+                <div className={styles.settingRow}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Tax rate (%)</div>
+                    <div className={styles.settingHint}>
+                      {suggestedTax != null
+                        ? `Suggested from your state (${djState}): ${suggestedTax}% base rate — adjust for your local rate.`
+                        : 'Enter your local rate.'}
+                    </div>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.001"
+                    value={taxPct || ''}
+                    onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
+                    className={styles.settingNumber}
+                    placeholder="0"
+                  />
+                </div>
+              )}
               {/* Save status hint at the bottom of the section box.
                   Reserves a small fixed height so the layout doesn't
                   jump when the hint appears/disappears. */}

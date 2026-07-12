@@ -24,6 +24,8 @@ import {
 import EmbedCodeSection from './EmbedCodeSection';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
+import { createClient } from '@/lib/supabase/client';
+import { guessStateTaxRate } from '@/lib/salesTax';
 
 // Currency options matching vanilla's <select> dropdown
 const CURRENCIES: { code: string; symbol: string; label: string }[] = [
@@ -249,10 +251,37 @@ export default function ClubBookingTab({
     patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
   }
 
-  // Optional sales tax % the DJ chooses to charge. They are responsible for
-  // charging + remitting it — the platform doesn't collect or remit tax.
-  // 0/blank = none. Stored in the same booking_settings blob (tax_pct).
+  // Optional sales tax — OFF by default. When on, we suggest a rate from the
+  // DJ's state (adjustable). The DJ is responsible for charging + remitting;
+  // the platform doesn't collect or remit. Stored as tax_enabled + tax_pct.
+  const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const clubTaxPct = (bookingSettings as { tax_pct?: number }).tax_pct || 0;
+  // The DJ's state (from their profile) — used to suggest a base rate. Read via
+  // the authenticated user so this tab doesn't need a userId/state prop.
+  const [djState, setDjState] = useState<string>('');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('users').select('state').eq('id', user.id).maybeSingle();
+        if (active) setDjState(((data as { state?: string | null } | null)?.state) || '');
+      } catch { /* ignore — no suggestion */ }
+    })();
+    return () => { active = false; };
+  }, []);
+  const suggestedTax = guessStateTaxRate(djState);
+  function setTaxEnabled(on: boolean) {
+    setLastChangedField('settings');
+    if (on) {
+      const next = clubTaxPct > 0 ? clubTaxPct : (suggestedTax != null ? suggestedTax : 0);
+      patch({ tax_enabled: true, tax_pct: next } as unknown as Partial<BookingSettings>);
+    } else {
+      patch({ tax_enabled: false } as unknown as Partial<BookingSettings>);
+    }
+  }
   function setClubTax(v: number) {
     setLastChangedField('settings');
     patch({ tax_pct: v } as unknown as Partial<BookingSettings>);
@@ -636,22 +665,43 @@ export default function ClubBookingTab({
 
           <div className={styles.settingRow}>
             <div className={styles.settingLabelWrap}>
-              <div className={styles.settingLabel}>Sales tax (%)</div>
+              <div className={styles.settingLabel}>Charge sales tax?</div>
               <div className={styles.settingHint}>
-                Optional — added on top of the total. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
+                Off by default. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
               </div>
             </div>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="0.001"
-              value={clubTaxPct || ''}
-              onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
-              className={styles.settingNumber}
-              placeholder="0"
-            />
+            <select
+              value={taxEnabled ? 'yes' : 'no'}
+              onChange={(e) => setTaxEnabled(e.target.value === 'yes')}
+              className={styles.settingSelect}
+            >
+              <option value="no">Off</option>
+              <option value="yes">On</option>
+            </select>
           </div>
+
+          {taxEnabled && (
+            <div className={styles.settingRow}>
+              <div className={styles.settingLabelWrap}>
+                <div className={styles.settingLabel}>Tax rate (%)</div>
+                <div className={styles.settingHint}>
+                  {suggestedTax != null
+                    ? `Suggested from your state (${djState}): ${suggestedTax}% base rate — adjust for your local rate.`
+                    : 'Enter your local rate.'}
+                </div>
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.001"
+                value={clubTaxPct || ''}
+                onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
+                className={styles.settingNumber}
+                placeholder="0"
+              />
+            </div>
+          )}
 
           <SectionHint
             fieldKey="settings"
