@@ -257,6 +257,11 @@ export default function MobileBookingForm({
       ? Number(((grandTotal * depositPct) / 100).toFixed(2))
       : null;
 
+  // Show the itemized breakdown (Subtotal/Tax/Total…) when there's tax and/or
+  // a deposit — otherwise the package price alone is the whole story.
+  const showPriceBreakdown = !!priceResult && !priceResult.isQuote && priceResult.price != null
+    && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0);
+
   function applyPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -1114,44 +1119,55 @@ export default function MobileBookingForm({
               </div>
             )}
 
+            {/* Package price — big on its own when there's no breakdown;
+                demoted to a supporting size when a Total sits below. */}
             <div
               className={
                 priceResult.isQuote
                   ? `${styles.priceValue} ${styles.priceValueQuote}`
-                  : styles.priceValue
+                  : showPriceBreakdown
+                    ? undefined
+                    : styles.priceValue
               }
+              style={showPriceBreakdown ? { fontSize: '1.3rem', fontWeight: 700, lineHeight: 1.15 } : undefined}
             >
-              {priceResult.isQuote || priceResult.price == null
-                ? 'Price on Request'
-                : `$${(grandTotal ?? discountedTotal ?? priceResult.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`}
+              {priceResult.isQuote || priceResult.price == null ? (
+                'Price on Request'
+              ) : discount.amount > 0 && discountedTotal != null ? (
+                <>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.62em', marginRight: 8 }}>
+                    ${priceResult.price.toLocaleString()}
+                  </span>
+                  ${discountedTotal.toLocaleString()}
+                </>
+              ) : (
+                `$${priceResult.price.toLocaleString()}`
+              )}
             </div>
 
-            {/* Original price struck through when discounted (supporting detail). */}
-            {!priceResult.isQuote && priceResult.price != null && discount.amount > 0 && (
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem', marginTop: 2 }}>
-                <span style={{ textDecoration: 'line-through' }}>${priceResult.price.toLocaleString()}</span> before discount
-              </div>
-            )}
-
-            {/* Clean itemized breakdown when there's tax and/or a deposit. */}
-            {!priceResult.isQuote && priceResult.price != null && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0) && (
+            {/* Itemized breakdown — the big Total sits at the bottom. */}
+            {showPriceBreakdown && discountedTotal != null && grandTotal != null && (
               <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
                 {taxPct > 0 && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--white,#fff)', padding: '2px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
                       <span>Subtotal</span><span>${discountedTotal.toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.84rem', color: 'var(--white,#fff)', padding: '2px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
                       <span>Tax ({taxPct}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6 }}>
+                  <span style={{ fontSize: '.72rem', letterSpacing: '.08em', color: 'var(--muted,#8a8aa0)', fontWeight: 700 }}>TOTAL</span>
+                  <span style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--neon,#00e0a4)' }}>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                </div>
                 {depositPct > 0 && discountedDeposit != null && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0', marginTop: 5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '3px 0', marginTop: 4 }}>
                       <span>Deposit ({depositPct}%) &middot; on signing</span><span>${discountedDeposit.toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '3px 0' }}>
                       <span>Balance &middot; day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString()}</span>
                     </div>
                   </>
