@@ -289,7 +289,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     duration: fmtDuration(b.start_time as string, b.end_time as string),
     overtime_rate: b.overtime_rate != null && b.overtime_rate !== '' ? (isNaN(Number(b.overtime_rate)) ? String(b.overtime_rate) : money(Number(b.overtime_rate), currency)) : '',
     price: price != null ? money(price, currency) : '',
-    deposit: depositAmount != null ? money(depositAmount, currency) : (depositPct != null ? `${depositPct}%` : ''),
+    deposit: (depositAmount != null && depositAmount > 0)
+      ? money(depositAmount, currency)
+      : (depositPct != null && depositPct > 0 && price != null)
+        ? `${money((price * depositPct) / 100, currency)} (${depositPct}%)`
+        : (depositPct != null && depositPct > 0 ? `${depositPct}%` : ''),
     payment_terms: paymentTerms,
   };
   // Pre-fill values are passed as a `values` object on the DJ submitter.
