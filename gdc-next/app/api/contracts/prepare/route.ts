@@ -237,15 +237,14 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const emailPrefix = clientEmail.includes('@') ? clientEmail.split('@')[0] : '';
   const clientName = accountName || ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
 
-  // Cocktail hour (wedding bookings only). The label lives INSIDE the value so
-  // that when the booking has no cocktail hour, the field is empty and nothing
-  // prints there at all — no dangling "Cocktail hour:" label.
+  // Cocktail hour (wedding bookings only). Fills the field next to the
+  // "Cocktail hour:" label; stays empty (blank) when the booking has none.
   let cocktailHour = '';
   if (b.cocktail_needed === true) {
     const cStart = fmtTime(b.cocktail_start_time as string);
     const room = b.cocktail_same_room === true ? 'same room'
       : (b.cocktail_same_room === false ? 'separate room' : '');
-    cocktailHour = 'Cocktail hour: ' + ([cStart, room].filter(Boolean).join(' · ') || 'Yes');
+    cocktailHour = [cStart, room].filter(Boolean).join(' · ') || 'Yes';
   }
 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
