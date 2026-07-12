@@ -227,19 +227,25 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     ? clubDepositPct
     : depositPctRaw;
 
-  // Build the payment_terms sentence (handles deposit / no deposit).
+  // Sales tax on the post-discount price, then the TOTAL the client owes.
+  // The deposit is taken on this tax-inclusive total.
+  const taxAmt = (taxPctVal > 0 && price != null) ? (price * taxPctVal) / 100 : 0;
+  const totalWithTax = price != null ? price + taxAmt : null;
+
+  // Build the payment_terms sentence (handles deposit / no deposit). All
+  // amounts are on the tax-inclusive total the client owes.
   let paymentTerms: string;
-  if (price == null) {
+  if (totalWithTax == null) {
     paymentTerms = 'Payment terms as agreed between the DJ and Client.';
-  } else if (depositAmount != null && depositAmount > 0) {
-    const bal = Math.max(0, price - depositAmount);
-    paymentTerms = `A deposit of ${money(depositAmount, currency)} is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
   } else if (depositPct != null && depositPct > 0) {
-    const dep = (price * depositPct) / 100;
-    const bal = Math.max(0, price - dep);
+    const dep = (totalWithTax * depositPct) / 100;
+    const bal = Math.max(0, totalWithTax - dep);
     paymentTerms = `A deposit of ${depositPct}% (${money(dep, currency)}) is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
+  } else if (depositAmount != null && depositAmount > 0) {
+    const bal = Math.max(0, totalWithTax - depositAmount);
+    paymentTerms = `A deposit of ${money(depositAmount, currency)} is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
   } else {
-    paymentTerms = `Full payment of ${money(price, currency)} is due by the day of the event.`;
+    paymentTerms = `Full payment of ${money(totalWithTax, currency)} is due by the day of the event.`;
   }
 
   // Resolve the client's email + display name. Both come from requester_id, so
@@ -278,14 +284,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     cocktailHour = [cStart, room].filter(Boolean).join(' · ') || 'Yes';
   }
 
-  // Sales tax on the service price (only when the DJ enabled it).
-  const taxAmt = (taxPctVal > 0 && price != null) ? (price * taxPctVal) / 100 : 0;
-
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     cocktail_hour: cocktailHour,
     tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctVal}%)` : '',
-    grand_total: (taxAmt > 0 && price != null) ? money(price + taxAmt, currency) : '',
+    grand_total: (taxAmt > 0 && totalWithTax != null) ? money(totalWithTax, currency) : '',
     client_name: clientName,
     dj_name: companyName || dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
@@ -300,11 +303,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     duration: fmtDuration(b.start_time as string, b.end_time as string),
     overtime_rate: b.overtime_rate != null && b.overtime_rate !== '' ? (isNaN(Number(b.overtime_rate)) ? String(b.overtime_rate) : money(Number(b.overtime_rate), currency)) : '',
     price: price != null ? money(price, currency) : '',
-    deposit: (depositAmount != null && depositAmount > 0)
-      ? money(depositAmount, currency)
-      : (depositPct != null && depositPct > 0 && price != null)
-        ? `${money((price * depositPct) / 100, currency)} (${depositPct}%)`
-        : (depositPct != null && depositPct > 0 ? `${depositPct}%` : ''),
+    deposit: (depositPct != null && depositPct > 0 && totalWithTax != null)
+      ? `${money((totalWithTax * depositPct) / 100, currency)} (${depositPct}%)`
+      : (depositAmount != null && depositAmount > 0)
+        ? money(depositAmount, currency)
+        : '',
     payment_terms: paymentTerms,
   };
   // Pre-fill values are passed as a `values` object on the DJ submitter.
@@ -368,9 +371,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     const venueLine = [(b.venue_name as string) || '', (b.event_address as string) || (b.venue_address as string) || '']
       .map((p) => (p || '').trim()).filter(Boolean).join(', ');
     const priceStr = price != null ? money(price, currency) : '';
-    const depositStr = depositAmount != null && depositAmount > 0
-      ? money(depositAmount, currency)
-      : (depositPct != null && depositPct > 0 && price != null ? money((price * depositPct) / 100, currency) : '');
+    const depositStr = (depositPct != null && depositPct > 0 && totalWithTax != null)
+      ? money((totalWithTax * depositPct) / 100, currency)
+      : (depositAmount != null && depositAmount > 0 ? money(depositAmount, currency) : '');
 
     const brand = companyName || 'your DJ';
 
