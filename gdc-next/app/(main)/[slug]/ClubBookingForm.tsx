@@ -427,9 +427,9 @@ export default function ClubBookingForm({
   const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
   const depositBase = grandTotal;
   const depositAmount = (clubDepositPct > 0 && depositBase != null)
-    ? Math.round((depositBase * clubDepositPct) / 100)
+    ? Number(((depositBase * clubDepositPct) / 100).toFixed(2))
     : 0;
-  const depositBalance = depositBase != null ? Math.max(0, depositBase - depositAmount) : null;
+  const depositBalance = depositBase != null ? Math.max(0, Number((depositBase - depositAmount).toFixed(2))) : null;
 
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
@@ -1078,26 +1078,34 @@ export default function ClubBookingForm({
                     )}
                   </div>
                 )}
-                {!isOffers && depositBase != null && clubDepositPct > 0 && (
-                  <div style={{ marginTop: 8, textAlign: 'center' }}>
-                    <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600 }}>
-                      {clubDepositPct}% deposit ({currencySymbol(bookingSettings.rate_currency || 'USD')}{depositAmount.toLocaleString()}) due on signing to reserve the date
-                    </div>
-                    {depositBalance != null && (
-                      <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginTop: 3 }}>
-                        Remaining balance of {currencySymbol(bookingSettings.rate_currency || 'USD')}{depositBalance.toLocaleString()} due on the day of the event
-                      </div>
+                {/* Itemized breakdown — Total set off, deposit/balance below. */}
+                {!isOffers && discountedTotal != null && grandTotal != null && (taxPct > 0 || clubDepositPct > 0) && (
+                  <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                    {taxPct > 0 && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Subtotal</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{discountedTotal.toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Tax ({taxPct}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </>
                     )}
-                  </div>
-                )}
-                {!isOffers && taxPct > 0 && grandTotal != null && (
-                  <div style={{ marginTop: 8, textAlign: 'center' }}>
-                    <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
-                      Tax ({taxPct}%): {currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString()}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
+                      <span>Total</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                     </div>
-                    <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.85rem', fontWeight: 700, marginTop: 2 }}>
-                      Total with tax: {currencySymbol(bookingSettings.rate_currency || 'USD')}{grandTotal.toLocaleString()}
-                    </div>
+                    {clubDepositPct > 0 && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Deposit ({clubDepositPct}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {depositBalance != null && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                            <span>Balance due day of event</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{depositBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
                 </>
