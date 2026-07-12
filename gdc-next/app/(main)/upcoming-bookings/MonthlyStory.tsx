@@ -12,13 +12,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // Minimal shape we need — UpcomingBooking (a superset) is assignable to this.
+// Fields are optional so a wider booking type (string | null | undefined) fits.
 type StoryBooking = {
-  event_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  venue_name: string | null;
-  venue_address: string | null;
-  flyer_url: string | null;
+  event_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  venue_name?: string | null;
+  venue_address?: string | null;
+  flyer_url?: string | null;
 };
 
 const SIZES = {
