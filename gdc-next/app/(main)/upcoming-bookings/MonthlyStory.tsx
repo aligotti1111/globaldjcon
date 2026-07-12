@@ -165,19 +165,21 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     y += 54;
   }
 
-  // ── Gig cards (auto-size + even spread: fewer dates = bigger, more = smaller) ──
+  // ── Gig cards: auto-size (fewer = bigger) + center the group under the header ──
   const clampN = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
   const count = d.rows.length;
-  const listStart = Math.max(cfg.listTop, y + 30);
-  const listBottom = h - (story ? 172 : 150);
-  const avail = Math.max(120, listBottom - listStart);
-  const maxCardH = story ? 250 : 186;
+  const regionTop = Math.max(cfg.listTop - 130, y + (story ? 36 : 24));
+  const regionBottom = h - (story ? 150 : 128);
+  const region = Math.max(160, regionBottom - regionTop);
+  const cardGap = story ? 30 : 22;
+  const maxCardH = story ? 320 : 210;
   const minCardH = story ? 118 : 90;
-  const cardH = count > 0 ? clampN(avail / count - (story ? 30 : 22), minCardH, maxCardH) : maxCardH;
-  const gapEach = count > 0 ? (avail - cardH * count) / (count + 1) : 0; // even top/between/bottom spacing
+  const cardH = count > 0 ? clampN(region / count - cardGap, minCardH, maxCardH) : maxCardH;
+  const groupH = cardH * count + cardGap * Math.max(0, count - 1);
+  const groupTop = regionTop + Math.max(0, (region - groupH) * 0.44); // center group, slight upward bias
 
   d.rows.forEach((b, i) => {
-    const ry = listStart + gapEach * (i + 1) + cardH * i;
+    const ry = groupTop + i * (cardH + cardGap);
     const cy = ry + cardH / 2;
 
     roundRect(ctx, pad, ry, w - 2 * pad, cardH, 26);
@@ -188,7 +190,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.stroke();
 
     const badgeW = 140;
-    const badgeH = Math.min(cardH - 34, 168);
+    const badgeH = Math.min(cardH - 34, 190);
     const bx = pad + 26;
     const by = cy - badgeH / 2;
     roundRect(ctx, bx, by, badgeW, badgeH, 20);
@@ -245,7 +247,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   if (count === 0) {
     ctx.fillStyle = 'rgba(255,255,255,.5)';
     ctx.font = '400 36px Arial, sans-serif';
-    ctx.fillText('No dates in this range yet.', w / 2, listStart + 80);
+    ctx.fillText('No dates in this range yet.', w / 2, regionTop + 80);
   }
   if (d.pageCount > 1) {
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
