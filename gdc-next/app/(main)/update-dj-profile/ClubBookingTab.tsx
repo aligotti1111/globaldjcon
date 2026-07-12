@@ -234,7 +234,7 @@ export default function ClubBookingTab({
   // ── Booking window (autosave) ─────────────────────────────────────
   const bookingWindow = bookingSettings.booking_window_months || 12;
   function setBookingWindow(v: number) {
-    setLastChangedField('window');
+    setLastChangedField('settings');
     patch({ booking_window_months: v });
   }
 
@@ -245,7 +245,7 @@ export default function ClubBookingTab({
   // the shared type doesn't declare it yet.
   const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
   function setClubDeposit(v: number) {
-    setLastChangedField('deposit');
+    setLastChangedField('settings');
     patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
   }
 
@@ -579,7 +579,7 @@ export default function ClubBookingTab({
             </div>
             <select
               value={bookingSettings.club_bookings_per_day != null ? bookingSettings.club_bookings_per_day : 1}
-              onChange={(e) => patch({ club_bookings_per_day: Number(e.target.value) })}
+              onChange={(e) => { setLastChangedField('settings'); patch({ club_bookings_per_day: Number(e.target.value) }); }}
               className={styles.settingSelect}
             >
               <option value={1}>1</option>
@@ -624,6 +624,12 @@ export default function ClubBookingTab({
               ))}
             </select>
           </div>
+
+          <SectionHint
+            fieldKey="settings"
+            lastChangedField={lastChangedField}
+            autosaveStatus={autosaveStatus}
+          />
         </div>
       </div>
 
