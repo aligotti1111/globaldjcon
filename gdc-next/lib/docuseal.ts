@@ -94,11 +94,20 @@ function translateTags(escaped: string): string {
     /\{\{\s*client_signature\s*\}\}/gi,
     '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
   );
+  // Size each auto-fill field to the KIND of value it holds so short values
+  // (times, price) don't leave big gaps and long ones (address) don't overflow.
+  const FIELD_WIDTH: Record<string, number> = {
+    start_time: 90, end_time: 90, price: 90, deposit: 90, duration: 90,
+    event_date: 130, overtime_rate: 120,
+    client_name: 170, dj_name: 170, venue_name: 170, set_type: 170, event_type: 170,
+    equipment: 220, package: 260, event_address: 300, payment_terms: 480,
+  };
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
+    const w = FIELD_WIDTH[f] || 160;
     out = out.replace(
       re,
-      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field>`,
+      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="width:${w}px;height:16px;display:inline-block;"></text-field>`,
     );
   }
   return out;
