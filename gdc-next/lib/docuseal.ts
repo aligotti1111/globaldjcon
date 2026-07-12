@@ -117,23 +117,9 @@ function translateTags(escaped: string): string {
 // Two-column signature block: DJ on the left, Client on the right, each with
 // the name field stacked over the signature field. Appended by buildContractHtml
 // (the SIGNATURES lines are intentionally not in the contract text).
-const SIGNATURE_BLOCK = `<div style="margin-top:34px">
-  <div style="font-weight:bold;margin-bottom:16px">SIGNATURES</div>
-  <div style="display:flex;justify-content:flex-start;gap:56px">
-    <div style="width:240px">
-      <div style="margin-bottom:4px">DJ Name:</div>
-      <div style="margin-bottom:20px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
-      <div style="margin-bottom:4px">DJ Signature:</div>
-      <div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
-    </div>
-    <div style="width:240px">
-      <div style="margin-bottom:4px">Client Name:</div>
-      <div style="margin-bottom:20px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div>
-      <div style="margin-bottom:4px">Client Signature:</div>
-      <div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
-    </div>
-  </div>
-</div>`;
+// Single line, no whitespace between tags (body CSS is white-space:pre-wrap,
+// which would render indentation/newlines as big visible gaps).
+const SIGNATURE_BLOCK = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:4px">DJ Name:</div><div style="margin-bottom:14px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:4px">Client Name:</div><div style="margin-bottom:14px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
 
 // Build the full HTML document for the contract from the DJ's edited text,
 // optionally with a logo at the top. Field tags are left intact for DocuSeal,
@@ -205,21 +191,9 @@ export function buildBookedContractHtml(
   // Names baked in; only the signature inputs remain as fields.
   const djName = escapeHtml(values.dj_name || 'DJ');
   const clientName = escapeHtml(values.client_name || 'Client');
-  const sigBlock = `<div style="margin-top:34px">
-  <div style="font-weight:bold;margin-bottom:16px">SIGNATURES</div>
-  <div style="display:flex;justify-content:space-between;gap:48px">
-    <div style="flex:1;min-width:0">
-      <div style="margin-bottom:16px">DJ Name: ${djName}</div>
-      <div style="margin-bottom:4px">DJ Signature:</div>
-      <div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="margin-bottom:16px">Client Name: ${clientName}</div>
-      <div style="margin-bottom:4px">Client Signature:</div>
-      <div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div>
-    </div>
-  </div>
-</div>`;
+  // Single line, no whitespace between tags — the body's white-space:pre-wrap
+  // would otherwise render the indentation/newlines as big visible gaps.
+  const sigBlock = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:10px">DJ Name: ${djName}</div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:10px">Client Name: ${clientName}</div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
