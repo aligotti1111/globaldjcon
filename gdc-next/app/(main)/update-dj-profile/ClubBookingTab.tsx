@@ -238,6 +238,17 @@ export default function ClubBookingTab({
     patch({ booking_window_months: v });
   }
 
+  // ── Deposit (autosave) ────────────────────────────────────────────
+  // Club DJ deposit policy: a % of the total added to the contract as a
+  // deposit due on signing. Default 0 = no deposit. Stored in the same
+  // booking_settings JSON blob (club_deposit_pct); read via a cast since
+  // the shared type doesn't declare it yet.
+  const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
+  function setClubDeposit(v: number) {
+    setLastChangedField('deposit');
+    patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
+  }
+
   // Currency symbol helper (used for the rate field prefix)
   const currentCurrency = useMemo(() => {
     return CURRENCIES.find((c) => c.code === ratesDraft.rate_currency) || CURRENCIES[0];
@@ -577,7 +588,7 @@ export default function ClubBookingTab({
             </select>
           </div>
 
-          <div className={styles.settingRow}>
+          <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
             <div className={styles.settingLabelWrap}>
               <div className={styles.settingLabel}>Book In Advance</div>
               <div className={styles.settingHint}>
@@ -591,6 +602,25 @@ export default function ClubBookingTab({
             >
               {[3, 6, 9, 12, 18, 24, 36].map((m) => (
                 <option key={m} value={m}>{m} months</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Require deposit?</div>
+              <div className={styles.settingHint}>
+                Percentage of the total added to the contract as a deposit due on signing.
+              </div>
+            </div>
+            <select
+              value={clubDepositPct}
+              onChange={(e) => setClubDeposit(parseInt(e.target.value, 10) || 0)}
+              className={styles.settingSelect}
+            >
+              <option value={0}>No Deposit</option>
+              {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95].map((p) => (
+                <option key={p} value={p}>{p}%</option>
               ))}
             </select>
           </div>
