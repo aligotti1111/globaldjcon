@@ -164,7 +164,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   const [{ data: djRow }, { data: cRow }, { data: bkRow }] = await Promise.all([
     withTimeout<{ data: unknown }>(
-      admin.from('users').select('name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      admin.from('users').select('name, company, dj_type, booking_settings').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
       5000, 'users-select',
     ),
     withTimeout<{ data: { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null }>(
@@ -177,10 +177,23 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     ),
   ]);
 
-  const dj = djRow as { name?: string | null; company?: string | null; dj_type?: string | null } | null;
+  const dj = djRow as { name?: string | null; company?: string | null; dj_type?: string | null; booking_settings?: string | null } | null;
   const djEmail = user.email || '';
   const companyName = (dj?.company || dj?.name || '').trim();
   const isClub = dj?.dj_type === 'club';
+
+  // Club DJs set a standing deposit policy in Booking Settings (club_deposit_pct
+  // in the booking_settings JSON). It flows into the contract's payment terms
+  // for club bookings that don't already carry a per-booking deposit.
+  let clubDepositPct = 0;
+  if (isClub) {
+    try {
+      const raw = dj?.booking_settings;
+      const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number };
+      const v = Number(bs?.club_deposit_pct);
+      if (Number.isFinite(v) && v > 0) clubDepositPct = v;
+    } catch { /* bad JSON — treat as no deposit */ }
+  }
 
   const cData = cRow as { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null;
   let templateId: string | null = cData?.docuseal_template_id || null;
@@ -198,7 +211,15 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const currency = (b.currency as string) || 'USD';
   const price = (b.counter_rate ?? b.quoted_rate ?? b.offer_amount) as number | null;
   const depositAmount = b.deposit_amount as number | null;
-  const depositPct = b.deposit_pct as number | null;
+  const depositPctRaw = b.deposit_pct as number | null;
+  // For club bookings with no per-booking deposit, fall back to the DJ's
+  // standing club deposit % so the contract still shows deposit + balance.
+  const depositPct = (isClub
+    && (depositAmount == null || depositAmount <= 0)
+    && (depositPctRaw == null || depositPctRaw <= 0)
+    && clubDepositPct > 0)
+    ? clubDepositPct
+    : depositPctRaw;
 
   // Build the payment_terms sentence (handles deposit / no deposit).
   let paymentTerms: string;
