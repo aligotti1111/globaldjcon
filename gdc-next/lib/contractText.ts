@@ -62,6 +62,7 @@ Set time: {{start_time}} - {{end_time}}
 Set type: {{set_type}}
 Equipment: {{equipment}}
 Price: {{price}}
+Deposit: {{deposit}}
 
 ${SHARED_CLAUSES}`;
 
