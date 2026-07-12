@@ -243,19 +243,19 @@ export default function MobileBookingForm({
     return computeDiscount(basePrice, bookingSettings, appliedCode);
   }, [basePrice, bookingSettings, appliedCode]);
   const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
-  const discountedDeposit =
-    discountedTotal != null && depositPct > 0
-      ? Number(((discountedTotal * depositPct) / 100).toFixed(2))
-      : null;
-
-  // Sales tax — only when the DJ has it turned ON. Added on top of the
-  // (discounted) price; the platform doesn't collect/remit it.
+  // Sales tax first (post-discount price), then the tax-inclusive total.
   const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
   const taxAmount = (taxPct > 0 && discountedTotal != null)
     ? Number(((discountedTotal * taxPct) / 100).toFixed(2))
     : 0;
   const grandTotal = discountedTotal != null ? discountedTotal + taxAmount : null;
+
+  // Deposit taken on the tax-inclusive total.
+  const discountedDeposit =
+    grandTotal != null && depositPct > 0
+      ? Number(((grandTotal * depositPct) / 100).toFixed(2))
+      : null;
 
   function applyPromo() {
     const code = promoInput.trim().toUpperCase();

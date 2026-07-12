@@ -416,20 +416,20 @@ export default function ClubBookingForm({
   // Applied to the final price the booker pays (discounted total if any,
   // else the plain total). Shown on the form and stored on the booking so
   // it carries into the contract.
-  const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
-  const depositBase = discountedTotal != null ? discountedTotal : displayTotal;
-  const depositAmount = (clubDepositPct > 0 && depositBase != null)
-    ? Math.round((depositBase * clubDepositPct) / 100)
-    : 0;
-  const depositBalance = depositBase != null ? Math.max(0, depositBase - depositAmount) : null;
-
-  // Sales tax — only when the DJ has it turned ON. Added on top of the
-  // (discounted) price; the platform doesn't collect/remit it.
+  // Sales tax first (post-discount price), then the tax-inclusive total.
   const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
   const taxBase = discountedTotal != null ? discountedTotal : displayTotal;
   const taxAmount = (taxPct > 0 && taxBase != null) ? Math.round((taxBase * taxPct) / 100) : 0;
   const grandTotal = taxBase != null ? taxBase + taxAmount : null;
+
+  // Deposit % is taken on the tax-inclusive total.
+  const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
+  const depositBase = grandTotal;
+  const depositAmount = (clubDepositPct > 0 && depositBase != null)
+    ? Math.round((depositBase * clubDepositPct) / 100)
+    : 0;
+  const depositBalance = depositBase != null ? Math.max(0, depositBase - depositAmount) : null;
 
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
