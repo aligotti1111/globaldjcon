@@ -120,7 +120,7 @@ export function buildContractHtml(text: string, logoUrl?: string | null): string
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
     : '';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#111;padding:36px}
+    body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
     div{white-space:pre-wrap}
   </style></head><body>${logo}${body}</body></html>`;
 }
