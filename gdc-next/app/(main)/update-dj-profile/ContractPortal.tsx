@@ -75,6 +75,28 @@ export default function ContractPortal({
   const [uploading, setUploading] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
   const [stdDisclaimer, setStdDisclaimer] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
+
+  // Upload a logo to show at the top of the standard contract.
+  async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Logo must be an image.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setError('Logo is too large (max 4MB).'); return; }
+    setError(null); setLogoBusy(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${userId}/contract_logo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      setLogoUrl(`${data.publicUrl}?t=${Date.now()}`);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Logo upload failed.'); }
+    finally { setLogoBusy(false); }
+  }
   const [text, setText] = useState('');
   const [pasteText, setPasteText] = useState('');
   const [submittingPaste, setSubmittingPaste] = useState(false);
@@ -146,12 +168,12 @@ export default function ContractPortal({
     setError(null);
     const defText = defaultContractText(djType);
     const nm = 'Global DJ Connect standard contract';
-    setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null);
+    setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: defText, name: nm, contractId: null }),
+        body: JSON.stringify({ text: defText, name: nm, contractId: null, logoUrl: null }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string };
       if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not create the standard contract.');
@@ -197,7 +219,7 @@ export default function ContractPortal({
     setEditingId(c.id); setName(c.name); setError(null);
     // Standard contracts open straight to the fields builder (which has the
     // "Edit text" button + disclaimer); preload wording so Edit text is ready.
-    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); }
+    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -226,7 +248,7 @@ export default function ContractPortal({
     try {
       const res = await fetch('/api/contracts/standard', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId }),
+        body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId, logoUrl }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
@@ -385,6 +407,13 @@ export default function ContractPortal({
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
           <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. Keep the {'{{tags}}'} — the signature and detail fields fill in from them automatically. Next you can review and adjust where the fields sit. Have a lawyer review before use.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 38, maxWidth: 110, borderRadius: 4 }} />}
+            <button type="button" onClick={() => logoInput.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.4rem .8rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.78rem', fontWeight: 600 }}>{logoBusy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add logo to top (optional)'}</button>
+            {logoUrl && <button type="button" onClick={() => setLogoUrl(null)} style={{ background: 'transparent', border: 'none', color: '#d33', cursor: 'pointer', fontSize: '.78rem' }}>Remove</button>}
+            <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
+          </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#f3f4f6' }}>
           <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', boxShadow: '0 1px 5px rgba(0,0,0,.15)', borderRadius: 2 }}>
