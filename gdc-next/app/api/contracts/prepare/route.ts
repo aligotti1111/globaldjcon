@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getDocuseal } from '@/lib/docuseal';
+import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -159,7 +159,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   // PARALLEL. Running these sequentially was slow enough that bookings needing
   // extra client lookups (mobile) could exceed the platform time limit and
   // surface as a 502. They're independent, so fire them together.
-  let cq = admin.from('contracts').select('id, docuseal_template_id').eq('dj_id', user.id);
+  let cq = admin.from('contracts').select('id, docuseal_template_id, body_text, logo_url, is_standard').eq('dj_id', user.id);
   cq = contractId ? cq.eq('id', contractId) : cq.order('updated_at', { ascending: false });
 
   const [{ data: djRow }, { data: cRow }, { data: bkRow }] = await Promise.all([
@@ -167,8 +167,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       admin.from('users').select('name, company, dj_type').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
       5000, 'users-select',
     ),
-    withTimeout<{ data: { id?: string; docuseal_template_id?: string | null } | null }>(
-      cq.limit(1).maybeSingle() as unknown as Promise<{ data: { id?: string; docuseal_template_id?: string | null } | null }>,
+    withTimeout<{ data: { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null }>(
+      cq.limit(1).maybeSingle() as unknown as Promise<{ data: { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null }>,
       5000, 'contracts-select',
     ),
     withTimeout<{ data: unknown }>(
@@ -182,12 +182,16 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const companyName = (dj?.company || dj?.name || '').trim();
   const isClub = dj?.dj_type === 'club';
 
-  const cData = cRow as { id?: string; docuseal_template_id?: string | null } | null;
-  const templateId: string | null = cData?.docuseal_template_id || null;
+  const cData = cRow as { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null;
+  let templateId: string | null = cData?.docuseal_template_id || null;
   const usedContractId: string | null = cData?.id || null;
   if (!templateId) {
     return NextResponse.json({ error: 'Set up your contract in Booking Settings first.' }, { status: 400 });
   }
+  // Auto-fit: the standard/wedding contracts are assembled fresh for THIS
+  // booking, so every value is sized to its own text (no fixed-width gaps) and
+  // empty lines (e.g. no cocktail hour) drop out. Needs the saved body text.
+  const autoFit = !!cData?.is_standard && !!(cData?.body_text || '').trim();
   const b = bkRow as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
@@ -276,12 +280,34 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   try {
     const docuseal = getDocuseal();
 
+    // AUTO-FIT (standard + wedding contracts): assemble the contract for THIS
+    // booking with every value sized to its own text, then turn it into a
+    // throwaway template to submit from. Signatures are always present, so the
+    // guard below is skipped for it.
+    if (autoFit) {
+      const html = buildBookedContractHtml(cData?.body_text || '', values, cData?.logo_url || null);
+      const fitTpl = await withTimeout<{ id?: string | number }>(
+        docuseal.createTemplateFromHtml({
+          name: `Contract — ${bookingId} — ${Date.now()}`,
+          html,
+          external_id: `fit_${user.id}_${bookingId}_${Date.now()}`,
+        }) as unknown as Promise<{ id?: string | number }>,
+        14000, 'createTemplateFromHtml',
+      );
+      const fitId = fitTpl?.id;
+      if (fitId == null) throw new Error('Could not build the contract.');
+      templateId = String(fitId);
+      hasClientSig = true;
+      hasDjSig = true;
+    }
+
     // Guard: a contract MUST have a client signature field. Without one,
     // DocuSeal "completes" the submission after the data fields are filled and
     // it goes out with nobody signing. Verify signature fields exist first, and
     // if not, route the DJ to add them (message matches the client-side check
-    // that opens the field builder).
-    try {
+    // that opens the field builder). (Skipped for auto-fit — we just built it
+    // with both signatures.)
+    if (!autoFit) try {
       const tpl = await withTimeout<{ fields?: Array<{ type?: string; submitter_uuid?: string }>; submitters?: Array<{ uuid?: string; name?: string }> }>(
         docuseal.getTemplate(Number(templateId)) as unknown as Promise<{ fields?: Array<{ type?: string; submitter_uuid?: string }>; submitters?: Array<{ uuid?: string; name?: string }> }>,
         8000, 'getTemplate',
