@@ -1121,19 +1121,17 @@ export default function MobileBookingForm({
                   : styles.priceValue
               }
             >
-              {priceResult.isQuote || priceResult.price == null ? (
-                'Price on Request'
-              ) : discount.amount > 0 && discountedTotal != null ? (
-                <>
-                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
-                    ${priceResult.price.toLocaleString()}
-                  </span>
-                  ${discountedTotal.toLocaleString()}
-                </>
-              ) : (
-                `$${priceResult.price.toLocaleString()}`
-              )}
+              {priceResult.isQuote || priceResult.price == null
+                ? 'Price on Request'
+                : `$${(grandTotal ?? discountedTotal ?? priceResult.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`}
             </div>
+
+            {/* Original price struck through when discounted (supporting detail). */}
+            {!priceResult.isQuote && priceResult.price != null && discount.amount > 0 && (
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem', marginTop: 2 }}>
+                <span style={{ textDecoration: 'line-through' }}>${priceResult.price.toLocaleString()}</span> before discount
+              </div>
+            )}
 
             {/* Clean itemized breakdown when there's tax and/or a deposit. */}
             {!priceResult.isQuote && priceResult.price != null && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0) && (
@@ -1148,9 +1146,6 @@ export default function MobileBookingForm({
                     </div>
                   </>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.95rem', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.15))', paddingTop: 6, marginTop: taxPct > 0 ? 5 : 0 }}>
-                  <span>Total</span><span>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-                </div>
                 {depositPct > 0 && discountedDeposit != null && (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', padding: '2px 0', marginTop: 5 }}>
