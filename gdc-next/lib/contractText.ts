@@ -80,6 +80,7 @@ Venue: {{venue_name}}
 Address: {{event_address}}
 Package: {{package}}
 Price: {{price}}
+Overtime rate: {{overtime_rate}}/hr
 
 SERVICES
 The DJ will provide music and MC services for the wedding, including announcements and coordination of key moments (grand entrance, first dance, parent dances, cake cutting, speeches/toasts, bouquet and garter toss, and last dance), and will play music suited to the couple's preferences throughout the reception.
