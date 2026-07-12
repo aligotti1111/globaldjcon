@@ -103,15 +103,21 @@ export default function UpcomingBookingsClient({
   // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
   // on cards for both DJ types.
   const [taxPct, setTaxPct] = useState<number>(0);
+  // Paid-subscriber flag — the Schedule Graphic tool is premium-only. Uses the
+  // app's standard access check: sub_status 'active' or 'grace'.
+  const [isPaid, setIsPaid] = useState(false);
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const supabase = createClient();
-        const { data } = await supabase.from('users').select('booking_settings').eq('id', userId).maybeSingle();
-        const raw = (data as { booking_settings?: string | null } | null)?.booking_settings;
+        const { data } = await supabase.from('users').select('booking_settings, sub_status').eq('id', userId).maybeSingle();
+        const row = data as { booking_settings?: string | null; sub_status?: string | null } | null;
+        const raw = row?.booking_settings;
         const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number };
         if (!active) return;
+        const ss = row?.sub_status;
+        setIsPaid(ss === 'active' || ss === 'grace');
         if (djType === 'club') {
           const v = Number(bs?.club_deposit_pct);
           if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
@@ -321,7 +327,7 @@ export default function UpcomingBookingsClient({
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          {djType === 'club' && (
+          {djType === 'club' && isPaid && (
             <button type="button" onClick={() => setShowStory(true)} className={styles.addBtn}>
               📅 Schedule Graphic
             </button>
@@ -403,7 +409,7 @@ export default function UpcomingBookingsClient({
         </div>
       )}
 
-      {showStory && (
+      {showStory && isPaid && (
         <MonthlyStory
           bookings={bookings}
           djName={djName}
