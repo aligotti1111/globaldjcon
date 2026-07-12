@@ -248,6 +248,15 @@ export default function MobileBookingForm({
       ? Number(((discountedTotal * depositPct) / 100).toFixed(2))
       : null;
 
+  // Sales tax — only when the DJ has it turned ON. Added on top of the
+  // (discounted) price; the platform doesn't collect/remit it.
+  const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
+  const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
+  const taxAmount = (taxPct > 0 && discountedTotal != null)
+    ? Number(((discountedTotal * taxPct) / 100).toFixed(2))
+    : 0;
+  const grandTotal = discountedTotal != null ? discountedTotal + taxAmount : null;
+
   function applyPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -1151,6 +1160,16 @@ export default function MobileBookingForm({
             )}
             {priceResult.price != null && depositPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
+            )}
+            {!priceResult.isQuote && taxPct > 0 && discountedTotal != null && (
+              <div className={styles.depositText}>
+                Tax ({taxPct}%): ${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </div>
+            )}
+            {!priceResult.isQuote && taxPct > 0 && grandTotal != null && (
+              <div className={styles.depositText} style={{ fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>
+                Total with tax: ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </div>
             )}
             {priceResult.cocktailAddon > 0 && (
               <div className={styles.cocktailNote}>

@@ -423,6 +423,14 @@ export default function ClubBookingForm({
     : 0;
   const depositBalance = depositBase != null ? Math.max(0, depositBase - depositAmount) : null;
 
+  // Sales tax — only when the DJ has it turned ON. Added on top of the
+  // (discounted) price; the platform doesn't collect/remit it.
+  const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
+  const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
+  const taxBase = discountedTotal != null ? discountedTotal : displayTotal;
+  const taxAmount = (taxPct > 0 && taxBase != null) ? Math.round((taxBase * taxPct) / 100) : 0;
+  const grandTotal = taxBase != null ? taxBase + taxAmount : null;
+
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -1080,6 +1088,16 @@ export default function ClubBookingForm({
                         Remaining balance of {currencySymbol(bookingSettings.rate_currency || 'USD')}{depositBalance.toLocaleString()} due on the day of the event
                       </div>
                     )}
+                  </div>
+                )}
+                {!isOffers && taxPct > 0 && taxBase != null && (
+                  <div style={{ marginTop: 8, textAlign: 'center' }}>
+                    <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
+                      Tax ({taxPct}%): {currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString()}
+                    </div>
+                    <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.85rem', fontWeight: 700, marginTop: 2 }}>
+                      Total with tax: {currencySymbol(bookingSettings.rate_currency || 'USD')}{grandTotal.toLocaleString()}
+                    </div>
                   </div>
                 )}
                 </>
