@@ -70,7 +70,7 @@ export const WEDDING_CONTRACT_TEXT = `WEDDING DJ SERVICES AGREEMENT
 This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("Client") for the wedding detailed below.
 
 WEDDING DETAILS
-Couple: {{client_name}}
+Client/Host: {{client_name}}
 Date: {{event_date}}
 Reception time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}, {{event_address}}
