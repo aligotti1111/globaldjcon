@@ -494,7 +494,7 @@ export default function BookingTab({
                 </select>
               </div>
               {/* Sales tax (optional, off by default) */}
-              <div className={styles.settingRow}>
+              <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
                 <div className={styles.settingLabelWrap}>
                   <div className={styles.settingLabel}>Charge sales tax?</div>
                   <div className={styles.settingHint}>
