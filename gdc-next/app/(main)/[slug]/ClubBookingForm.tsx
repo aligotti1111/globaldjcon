@@ -421,6 +421,7 @@ export default function ClubBookingForm({
   const depositAmount = (clubDepositPct > 0 && depositBase != null)
     ? Math.round((depositBase * clubDepositPct) / 100)
     : 0;
+  const depositBalance = depositBase != null ? Math.max(0, depositBase - depositAmount) : null;
 
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
@@ -1036,9 +1037,10 @@ export default function ClubBookingForm({
                 />
                 {!isOffers && displayTotal != null && (clubDiscount.amount > 0 || saleOn || hasActiveCode) && (
                   <div style={{ marginTop: 10, textAlign: 'center' }}>
-                    {saleOn && (
-                      <div style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, fontSize: '.68rem', padding: '2px 8px', borderRadius: 999, marginBottom: 6, letterSpacing: '.04em' }}>
-                        {bookingSettings.sale?.percent}% OFF
+                    {/* Discount summary — shown once, on top */}
+                    {clubDiscount.amount > 0 && (
+                      <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700, marginBottom: 6 }}>
+                        {clubDiscount.label} — you save {currencySymbol(bookingSettings.rate_currency || 'USD')}{clubDiscount.amount.toLocaleString()}
                       </div>
                     )}
                     {clubDiscount.amount > 0 && discountedTotal != null && (
@@ -1049,11 +1051,6 @@ export default function ClubBookingForm({
                         <span style={{ color: 'var(--neon,#00e0a4)' }}>
                           {currencySymbol(bookingSettings.rate_currency || 'USD')}{discountedTotal.toLocaleString()}
                         </span>
-                      </div>
-                    )}
-                    {clubDiscount.amount > 0 && (
-                      <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.85rem', marginTop: 2 }}>
-                        {clubDiscount.label} — you save {currencySymbol(bookingSettings.rate_currency || 'USD')}{clubDiscount.amount.toLocaleString()}
                       </div>
                     )}
                     {hasActiveCode && (
@@ -1074,8 +1071,15 @@ export default function ClubBookingForm({
                   </div>
                 )}
                 {!isOffers && depositBase != null && clubDepositPct > 0 && (
-                  <div style={{ marginTop: 8, textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600 }}>
-                    {clubDepositPct}% deposit ({currencySymbol(bookingSettings.rate_currency || 'USD')}{depositAmount.toLocaleString()}) due on signing to reserve the date
+                  <div style={{ marginTop: 8, textAlign: 'center' }}>
+                    <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600 }}>
+                      {clubDepositPct}% deposit ({currencySymbol(bookingSettings.rate_currency || 'USD')}{depositAmount.toLocaleString()}) due on signing to reserve the date
+                    </div>
+                    {depositBalance != null && (
+                      <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', marginTop: 3 }}>
+                        Remaining balance of {currencySymbol(bookingSettings.rate_currency || 'USD')}{depositBalance.toLocaleString()} due on the day of the event
+                      </div>
+                    )}
                   </div>
                 )}
                 </>
