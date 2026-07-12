@@ -8,7 +8,7 @@
 // Customizable: background theme OR a custom background image, and sliders to
 // resize the background image, the logo, and the text.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // Minimal shape we need — UpcomingBooking (a superset) is assignable to this.
@@ -93,7 +93,8 @@ interface DrawData {
   logoScale: number;
   textScale: number;
   rows: StoryBooking[];
-  moreCount: number;
+  pageIndex: number;
+  pageCount: number;
   size: keyof typeof SIZES;
   footerUrl: string;
   showUrl: boolean;
@@ -243,11 +244,10 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.font = '400 36px Arial, sans-serif';
     ctx.fillText('No dates in this range yet.', w / 2, listStart + 80);
   }
-  if (d.moreCount > 0) {
-    const afterList = startY + count * rowH;
-    ctx.fillStyle = NEON;
-    ctx.font = '600 34px Arial, sans-serif';
-    ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, Math.min(afterList + 40, h - 122));
+  if (d.pageCount > 1) {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '600 30px Arial, sans-serif';
+    ctx.fillText(`${d.pageIndex + 1} / ${d.pageCount}`, w / 2, h - 104);
   }
   if (d.showUrl && d.footerUrl) {
     ctx.strokeStyle = 'rgba(0,224,164,0.4)';
@@ -354,10 +354,32 @@ export default function MonthlyStory({
   // the background doesn't re-fetch anything (that's what made it laggy).
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
-  const rows = useMemo(() => items.slice(0, SIZES[size].maxRows), [items, size]);
+
+  // Split into pages of maxRows — dates that don't fit spill onto the next graphic.
+  const pages = useMemo(() => {
+    const per = SIZES[size].maxRows;
+    const out: StoryBooking[][] = [];
+    for (let i = 0; i < items.length; i += per) out.push(items.slice(i, i + per));
+    return out.length ? out : [[]];
+  }, [items, size]);
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage((p) => Math.min(p, pages.length - 1)); }, [pages.length]);
+  const rows = pages[Math.min(page, pages.length - 1)] || [];
 
   useEffect(() => { let a = true; (async () => { const img = logoUrl ? await loadImage(logoUrl) : null; if (a) setLogoImg(img); })(); return () => { a = false; }; }, [logoUrl]);
   useEffect(() => { let a = true; (async () => { const img = bgUrl ? await loadImage(bgUrl) : null; if (a) setBgImg(img); })(); return () => { a = false; }; }, [bgUrl]);
+
+  // Shared draw params so the preview and every downloaded page look identical.
+  const renderPage = useCallback((ctx: CanvasRenderingContext2D, pageRows: StoryBooking[], pageIndex: number) => {
+    const cfg = SIZES[size];
+    drawStory(ctx, cfg.w, cfg.h, {
+      headline, djName, logoImg, bgImg, bgColor,
+      themeStops: THEMES[theme] || THEMES.Teal,
+      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
+      rows: pageRows, pageIndex, pageCount: pages.length, size,
+      footerUrl, showUrl,
+    });
+  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, footerUrl, showUrl]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -368,15 +390,8 @@ export default function MonthlyStory({
     canvas.height = cfg.h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    drawStory(ctx, cfg.w, cfg.h, {
-      headline, djName, logoImg, bgImg, bgColor,
-      themeStops: THEMES[theme] || THEMES.Teal,
-      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
-      rows,
-      moreCount: Math.max(0, items.length - rows.length), size,
-      footerUrl, showUrl,
-    });
-  }, [rows, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName, footerUrl, showUrl]);
+    renderPage(ctx, rows, Math.min(page, pages.length - 1));
+  }, [renderPage, rows, page, pages.length, size]);
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
@@ -429,22 +444,45 @@ export default function MonthlyStory({
     dragRef.current = null;
   }
 
-  function download() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  function exportCanvas(cvs: HTMLCanvasElement, name: string) {
     try {
-      canvas.toBlob((blob) => {
+      cvs.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `gdc-schedule-${range}-${size}.png`;
+        a.download = name;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
       }, 'image/png');
     } catch { /* canvas may be tainted if an image host blocks CORS */ }
+  }
+
+  function renderOffscreen(pageIndex: number): HTMLCanvasElement | null {
+    const cfg = SIZES[size];
+    const cvs = document.createElement('canvas');
+    cvs.width = cfg.w;
+    cvs.height = cfg.h;
+    const ctx = cvs.getContext('2d');
+    if (!ctx) return null;
+    renderPage(ctx, pages[pageIndex] || [], pageIndex);
+    return cvs;
+  }
+
+  function download() {
+    const cur = Math.min(page, pages.length - 1);
+    const cvs = renderOffscreen(cur);
+    if (cvs) exportCanvas(cvs, `gdc-schedule-${range}-${size}${pages.length > 1 ? `-p${cur + 1}` : ''}.png`);
+  }
+
+  async function downloadAll() {
+    for (let i = 0; i < pages.length; i++) {
+      const cvs = renderOffscreen(i);
+      if (cvs) exportCanvas(cvs, `gdc-schedule-${range}-${size}-p${i + 1}.png`);
+      await new Promise((r) => setTimeout(r, 350)); // stagger so the browser accepts multiple saves
+    }
   }
 
   const btn = (active: boolean): React.CSSProperties => ({
@@ -563,7 +601,21 @@ export default function MonthlyStory({
                 </div>
               )}
             </div>
-            <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1.4rem', fontSize: '.9rem', width: '100%', maxWidth: size === 'story' ? 240 : 330 }}>Download PNG</button>
+
+            {pages.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--white,#fff)', fontSize: '.8rem', fontWeight: 700 }}>
+                <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page <= 0} style={{ ...btn(false), padding: '.25rem .6rem', opacity: page <= 0 ? 0.4 : 1 }}>‹</button>
+                <span>Graphic {Math.min(page, pages.length - 1) + 1} of {pages.length}</span>
+                <button type="button" onClick={() => setPage((p) => Math.min(pages.length - 1, p + 1))} disabled={page >= pages.length - 1} style={{ ...btn(false), padding: '.25rem .6rem', opacity: page >= pages.length - 1 ? 0.4 : 1 }}>›</button>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: size === 'story' ? 240 : 330 }}>
+              <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1.4rem', fontSize: '.9rem', width: '100%' }}>{pages.length > 1 ? `Download this graphic (${Math.min(page, pages.length - 1) + 1})` : 'Download PNG'}</button>
+              {pages.length > 1 && (
+                <button type="button" onClick={downloadAll} style={{ ...btn(false), padding: '.6rem 1.4rem', fontSize: '.85rem', width: '100%' }}>Download all {pages.length} graphics</button>
+              )}
+            </div>
           </div>
         </div>
       </div>
