@@ -165,20 +165,19 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     y += 54;
   }
 
-  // ── Gig cards (auto-size: fewer dates = bigger cards, more = smaller) ──
+  // ── Gig cards (auto-size + even spread: fewer dates = bigger, more = smaller) ──
   const clampN = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
   const count = d.rows.length;
   const listStart = Math.max(cfg.listTop, y + 30);
   const listBottom = h - (story ? 172 : 150);
   const avail = Math.max(120, listBottom - listStart);
-  const maxRowH = story ? 300 : 230;
-  const rowH = count > 0 ? Math.min(maxRowH, avail / count) : maxRowH;
-  const gap = Math.max(16, Math.round(rowH * 0.13));
-  const cardH = rowH - gap;
-  const startY = listStart + Math.max(0, (avail - rowH * count) / 2); // center the block
+  const maxCardH = story ? 250 : 186;
+  const minCardH = story ? 118 : 90;
+  const cardH = count > 0 ? clampN(avail / count - (story ? 30 : 22), minCardH, maxCardH) : maxCardH;
+  const gapEach = count > 0 ? (avail - cardH * count) / (count + 1) : 0; // even top/between/bottom spacing
 
   d.rows.forEach((b, i) => {
-    const ry = startY + i * rowH;
+    const ry = listStart + gapEach * (i + 1) + cardH * i;
     const cy = ry + cardH / 2;
 
     roundRect(ctx, pad, ry, w - 2 * pad, cardH, 26);
@@ -217,23 +216,27 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const textRight = w - pad - 26;
     const mx = bx + badgeW + 28;
     const mw = Math.max(80, textRight - mx - 12);
-    const vFont = T(clampN(cardH * 0.30, 28, 72));
-    const tFont = T(clampN(cardH * 0.22, 22, 52));
-    const aFont = T(clampN(cardH * 0.19, 20, 44));
+    const vFont = T(clampN(cardH * 0.26, 26, 60));
+    const tFont = T(clampN(cardH * 0.20, 22, 44));
+    let aFont = T(clampN(cardH * 0.16, 19, 30));
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
     ctx.font = `700 ${Math.round(vFont)}px Arial, sans-serif`;
-    ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - cardH * 0.12);
+    ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - cardH * 0.14);
 
     ctx.fillStyle = NEON;
     ctx.font = `600 ${Math.round(tFont)}px Arial, sans-serif`;
     const times = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
-    if (times) ctx.fillText(times, mx, cy + cardH * 0.06);
+    if (times) ctx.fillText(times, mx, cy + cardH * 0.05);
 
     if (b.venue_address) {
+      // shrink the address so the whole thing (incl. ZIP) fits on one line — never truncate
+      ctx.font = `400 ${Math.round(aFont)}px Arial, sans-serif`;
+      const aw = ctx.measureText(b.venue_address).width;
+      if (aw > mw) aFont = Math.max(15, Math.floor(aFont * (mw / aw)));
       ctx.fillStyle = 'rgba(255,255,255,.6)';
       ctx.font = `400 ${Math.round(aFont)}px Arial, sans-serif`;
-      ctx.fillText(ellipsize(ctx, b.venue_address, mw), mx, cy + cardH * 0.28);
+      ctx.fillText(b.venue_address, mx, cy + cardH * 0.26);
     }
   });
 
