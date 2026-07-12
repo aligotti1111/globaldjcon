@@ -49,18 +49,24 @@ interface Contract {
 type View = 'grid' | 'builder' | 'standard' | 'paste';
 
 export default function ContractPortal({
-  userId, djType, bookingId, controlledOpen, onUseContract, onRequestClose,
+  userId, djType, bookingId, eventType, controlledOpen, onUseContract, onRequestClose,
 }: {
   userId: string;
   djType?: string | null;
   // Booking mode: when a bookingId + onUseContract are passed, the portal is
   // opened from a booking so the DJ can pick (or create) a contract to send.
   bookingId?: string;
+  // The booking's event type (booking mode) — used to gate the wedding contract.
+  eventType?: string | null;
   controlledOpen?: boolean;
   onUseContract?: (contractId: string) => void;
   onRequestClose?: () => void;
 }) {
   const bookingMode = !!bookingId && !!onUseContract;
+  // Wedding contract is only offerable for a wedding booking. Outside booking
+  // mode (Booking Settings) it's always available; in booking mode it's locked
+  // unless the booking's event is a wedding.
+  const weddingLocked = bookingMode && !/wedding/i.test(eventType || '');
   const builderFields = BUILDER_FIELDS
     .filter((f) => !('only' in f) || (f as { only?: string }).only === djType)
     // Club/bar DJs don't use a company — label the field just "DJ Name".
@@ -483,10 +489,15 @@ export default function ContractPortal({
           </div>
         </div>
         {djType !== 'club' && (
-          <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={() => openStandardTemplate('wedding')}>
+          <div
+            style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: weddingLocked ? 'not-allowed' : 'pointer', opacity: weddingLocked ? 0.45 : 1 }}
+            title={weddingLocked ? 'Only available when the booking is a wedding' : undefined}
+            onClick={weddingLocked ? undefined : () => openStandardTemplate('wedding')}
+          >
             <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
               <div style={{ fontSize: 28, lineHeight: 1 }}>💍</div>
               <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect Standard Wedding Contract</div>
+              {weddingLocked && <div style={{ fontSize: '.66rem', marginTop: 4, color: '#888', fontWeight: 400 }}>Weddings only</div>}
             </div>
           </div>
         )}
