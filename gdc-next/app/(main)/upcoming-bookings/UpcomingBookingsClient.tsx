@@ -893,6 +893,10 @@ function BookingDetails({
   // total. When there's a separately-charged cocktail price, show
   // "base + cocktail = total"; otherwise just the total.
   const agreedTotal = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+  // Sales tax (post-discount price) and the tax-inclusive total. The deposit
+  // is taken on this total.
+  const cardTax = (taxPct > 0 && agreedTotal != null) ? Math.round((Number(agreedTotal) * taxPct) / 100) : 0;
+  const cardTotal = agreedTotal != null ? Number(agreedTotal) + cardTax : null;
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
   const agreedBase = hasSeparateCocktail ? (Number(agreedTotal) - cocktailCharge) : null;
@@ -1010,23 +1014,21 @@ function BookingDetails({
       {
         label: 'Deposit',
         value: (() => {
-          // Stored deposit amount wins — show it, with the % if we have it.
-          if (booking.deposit_amount != null) {
-            return booking.deposit_pct != null
-              ? `${money(booking.deposit_amount)} (${booking.deposit_pct}%)`
-              : money(booking.deposit_amount);
-          }
-          // Stored % only — compute the amount off the agreed total.
+          // Deposit % is taken on the tax-inclusive total (cardTotal).
+          // A stored % wins; else the DJ's standing club % as a fallback.
           if (booking.deposit_pct != null) {
-            return agreedTotal != null
-              ? `${money(Math.round((Number(agreedTotal) * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
+            return cardTotal != null
+              ? `${money(Math.round((cardTotal * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
               : `${booking.deposit_pct}%`;
           }
-          // Fallback: the DJ's standing club deposit % (what the contract uses).
           if (djType === 'club' && clubDepositPct > 0) {
-            return agreedTotal != null && Number(agreedTotal) > 0
-              ? `${money(Math.round((Number(agreedTotal) * clubDepositPct) / 100))} (${clubDepositPct}%)`
+            return cardTotal != null && cardTotal > 0
+              ? `${money(Math.round((cardTotal * clubDepositPct) / 100))} (${clubDepositPct}%)`
               : `${clubDepositPct}%`;
+          }
+          // Last resort: a stored fixed deposit amount.
+          if (booking.deposit_amount != null) {
+            return money(booking.deposit_amount);
           }
           return null;
         })(),
@@ -1036,14 +1038,14 @@ function BookingDetails({
     [
       {
         label: 'Tax',
-        value: (taxPct > 0 && agreedTotal != null && Number(agreedTotal) > 0)
-          ? `${money(Math.round((Number(agreedTotal) * taxPct) / 100))} (${taxPct}%)`
+        value: (taxPct > 0 && cardTax > 0)
+          ? `${money(cardTax)} (${taxPct}%)`
           : null,
       },
       {
         label: 'Total (with tax)',
-        value: (taxPct > 0 && agreedTotal != null && Number(agreedTotal) > 0)
-          ? money(Number(agreedTotal) + Math.round((Number(agreedTotal) * taxPct) / 100))
+        value: (taxPct > 0 && cardTotal != null && cardTax > 0)
+          ? money(cardTotal)
           : null,
       },
     ],
