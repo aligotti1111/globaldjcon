@@ -412,6 +412,16 @@ export default function ClubBookingForm({
   }, [displayTotal, bookingSettings, appliedCode]);
   const discountedTotal = displayTotal != null ? Math.max(0, displayTotal - clubDiscount.amount) : null;
 
+  // Deposit — the DJ's standing club deposit % (set in Booking Settings).
+  // Applied to the final price the booker pays (discounted total if any,
+  // else the plain total). Shown on the form and stored on the booking so
+  // it carries into the contract.
+  const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
+  const depositBase = discountedTotal != null ? discountedTotal : displayTotal;
+  const depositAmount = (clubDepositPct > 0 && depositBase != null)
+    ? Math.round((depositBase * clubDepositPct) / 100)
+    : 0;
+
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -568,6 +578,12 @@ export default function ClubBookingForm({
         discount_code: clubFinalDiscount.kind === 'code' ? appliedCode : null,
         discount_label: clubFinalDiscount.amount > 0 ? clubFinalDiscount.label : null,
         discount_amount: clubFinalDiscount.amount > 0 ? clubFinalDiscount.amount : null,
+        // Deposit — the DJ's standing club deposit %, applied to the final
+        // (discounted) total. Stored so it carries straight into the contract.
+        deposit_pct: clubDepositPct > 0 ? clubDepositPct : null,
+        deposit_amount: (clubDepositPct > 0 && computedTotalDiscounted != null)
+          ? Math.round((Number(computedTotalDiscounted) * clubDepositPct) / 100)
+          : null,
         currency: rateInfo.currency,
         notes: notes.trim() || null,
         // is_quote=true when DJ has booking enabled but hasn't set rates
@@ -1055,6 +1071,11 @@ export default function ClubBookingForm({
                         {promoError && <span style={{ color: '#ff6b6b', fontSize: '.8rem' }}>{promoError}</span>}
                       </div>
                     )}
+                  </div>
+                )}
+                {!isOffers && depositBase != null && clubDepositPct > 0 && (
+                  <div style={{ marginTop: 8, textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600 }}>
+                    {clubDepositPct}% deposit ({currencySymbol(bookingSettings.rate_currency || 'USD')}{depositAmount.toLocaleString()}) due on signing to reserve the date
                   </div>
                 )}
                 </>
