@@ -296,6 +296,7 @@ export default function MonthlyStory({
   const [djSlug, setDjSlug] = useState<string>('');
   const [showUrl, setShowUrl] = useState(true);
   const [saveLogo, setSaveLogo] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
   const bgInput = useRef<HTMLInputElement | null>(null);
@@ -421,7 +422,7 @@ export default function MonthlyStory({
     if (!file || !file.type.startsWith('image/')) return;
     setBusy(true);
     const url = await uploadTo(file, 'story_bg');
-    if (url) setBgUrl(url);
+    if (url) { setBgUrl(url); setBgOffsetX(0); setBgOffsetY(0); setHasDragged(false); }
     setBusy(false);
   }
 
@@ -437,6 +438,7 @@ export default function MonthlyStory({
     const dx = e.clientX - dragRef.current.x;
     const dy = e.clientY - dragRef.current.y;
     dragRef.current = { x: e.clientX, y: e.clientY };
+    setHasDragged(true);
     const clamp = (v: number) => Math.max(-1, Math.min(1, v));
     setBgOffsetX((o) => clamp(o + (dx / rect.width) * 2));
     setBgOffsetY((o) => clamp(o + (dy / rect.height) * 2));
@@ -573,8 +575,10 @@ export default function MonthlyStory({
                 onPointerLeave={onDragEnd}
                 style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14', cursor: bgUrl ? 'grab' : 'default', touchAction: bgUrl ? 'none' : 'auto', display: 'block' }}
               />
-              {bgUrl && (
-                <div style={{ position: 'absolute', top: 8, left: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,.6)', color: '#00e0a4', fontSize: '.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', border: '1px solid rgba(0,224,164,.6)' }}>✥</div>
+              {bgUrl && !hasDragged && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', padding: '0 22px' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '.8rem', fontWeight: 600, textAlign: 'center', lineHeight: 1.45, textShadow: '0 1px 8px rgba(0,0,0,.9)' }}>✥ Drag image to position where you&rsquo;d like it to sit</span>
+                </div>
               )}
             </div>
             <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1.4rem', fontSize: '.9rem', width: '100%', maxWidth: size === 'story' ? 240 : 330 }}>Download PNG</button>
