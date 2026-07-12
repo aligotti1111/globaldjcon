@@ -317,33 +317,40 @@ export default function MonthlyStory({
     return `${MONTHS[m.getMonth()].toUpperCase()} ${m.getFullYear()}`;
   }, [range, monthOffset, now]);
 
+  // Cached images — loaded only when their URLs change, so dragging sliders or
+  // the background doesn't re-fetch anything (that's what made it laggy).
+  const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
+  const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
+  const [flyerImgs, setFlyerImgs] = useState<(HTMLImageElement | null)[]>([]);
+  const rows = useMemo(() => items.slice(0, SIZES[size].maxRows), [items, size]);
+  const flyerKey = rows.map((b) => b.flyer_url || '').join('|');
+
+  useEffect(() => { let a = true; (async () => { const img = logoUrl ? await loadImage(logoUrl) : null; if (a) setLogoImg(img); })(); return () => { a = false; }; }, [logoUrl]);
+  useEffect(() => { let a = true; (async () => { const img = bgUrl ? await loadImage(bgUrl) : null; if (a) setBgImg(img); })(); return () => { a = false; }; }, [bgUrl]);
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const cfg = SIZES[size];
-      canvas.width = cfg.w;
-      canvas.height = cfg.h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const [logoImg, bgImg] = await Promise.all([
-        logoUrl ? loadImage(logoUrl) : Promise.resolve(null),
-        bgUrl ? loadImage(bgUrl) : Promise.resolve(null),
-      ]);
-      const rows = items.slice(0, cfg.maxRows);
-      const flyerImgs = await Promise.all(rows.map((b) => (b.flyer_url ? loadImage(b.flyer_url) : Promise.resolve(null))));
-      if (cancelled) return;
-      drawStory(ctx, cfg.w, cfg.h, {
-        headline, djName, logoImg, bgImg, bgColor,
-        themeStops: THEMES[theme] || THEMES.Teal,
-        bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
-        rows, flyerImgs,
-        moreCount: Math.max(0, items.length - rows.length), size,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [items, size, logoUrl, bgUrl, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName]);
+    let a = true;
+    (async () => { const imgs = await Promise.all(rows.map((b) => (b.flyer_url ? loadImage(b.flyer_url) : Promise.resolve(null)))); if (a) setFlyerImgs(imgs); })();
+    return () => { a = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyerKey]);
+
+  // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const cfg = SIZES[size];
+    canvas.width = cfg.w;
+    canvas.height = cfg.h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    drawStory(ctx, cfg.w, cfg.h, {
+      headline, djName, logoImg, bgImg, bgColor,
+      themeStops: THEMES[theme] || THEMES.Teal,
+      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
+      rows, flyerImgs,
+      moreCount: Math.max(0, items.length - rows.length), size,
+    });
+  }, [rows, flyerImgs, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName]);
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
@@ -502,15 +509,22 @@ export default function MonthlyStory({
           </div>
 
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <canvas
-              ref={canvasRef}
-              onPointerDown={onDragStart}
-              onPointerMove={onDragMove}
-              onPointerUp={onDragEnd}
-              onPointerLeave={onDragEnd}
-              style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14', cursor: bgUrl ? 'grab' : 'default', touchAction: bgUrl ? 'none' : 'auto' }}
-            />
-            {bgUrl && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>Drag the image to reposition it</div>}
+            <div style={{ position: 'relative', lineHeight: 0 }}>
+              <canvas
+                ref={canvasRef}
+                onPointerDown={onDragStart}
+                onPointerMove={onDragMove}
+                onPointerUp={onDragEnd}
+                onPointerLeave={onDragEnd}
+                style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14', cursor: bgUrl ? 'grab' : 'default', touchAction: bgUrl ? 'none' : 'auto', display: 'block' }}
+              />
+              {bgUrl && (
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.62rem', fontWeight: 600, padding: '4px 9px', borderRadius: 99, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 5, border: '1px solid rgba(0,224,164,.5)' }}>
+                  <span style={{ color: '#00e0a4' }}>✥</span> Drag to move background
+                </div>
+              )}
+            </div>
+            {bgUrl && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>Drag the image on the preview to reposition it</div>}
           </div>
         </div>
       </div>
