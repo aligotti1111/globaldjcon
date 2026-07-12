@@ -442,7 +442,7 @@ export default function ContractPortal({
         </div>
         <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
           <button type="button" onClick={() => setView(editingId ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId ? 'Back to fields' : 'Cancel'}</button>
-          <button type="button" onClick={saveStandard} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
+          <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect standard contract',
     );
