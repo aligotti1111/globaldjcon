@@ -387,7 +387,7 @@ export default function ContractSendModal({
               withTitle={false}
               allowTypedSignature={true}
               rememberSignature={true}
-              i18n={{ submit: 'Send contract', complete: 'Send contract' }}
+              i18n={{ submit: 'Send contract', complete: 'Send contract', redraw: 'Update signature', clear: 'Update signature' }}
               customCss={CUSTOM_CSS}
             />
           </div>
