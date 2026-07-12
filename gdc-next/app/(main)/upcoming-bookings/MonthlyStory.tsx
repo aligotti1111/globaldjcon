@@ -96,6 +96,8 @@ interface DrawData {
   flyerImgs: (HTMLImageElement | null)[];
   moreCount: number;
   size: keyof typeof SIZES;
+  footerUrl: string;
+  showUrl: boolean;
 }
 
 function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawData) {
@@ -192,16 +194,17 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
 
     const dt = b.event_date ? parseDate(b.event_date) : null;
     if (dt) {
+      const bcx = bx + badgeW / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = NEON;
-      ctx.font = '700 30px Arial, sans-serif';
-      ctx.fillText(DOW[dt.getDay()], bx + badgeW / 2, cy - 32);
+      ctx.font = `700 ${Math.round(badgeH * 0.19)}px Arial, sans-serif`;
+      ctx.fillText(DOW[dt.getDay()], bcx, cy - badgeH * 0.24);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '800 64px Arial, sans-serif';
-      ctx.fillText(String(dt.getDate()), bx + badgeW / 2, cy + 24);
+      ctx.font = `800 ${Math.round(badgeH * 0.42)}px Arial, sans-serif`;
+      ctx.fillText(String(dt.getDate()), bcx, cy + badgeH * 0.13);
       ctx.fillStyle = 'rgba(255,255,255,.7)';
-      ctx.font = '600 26px Arial, sans-serif';
-      ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bx + badgeW / 2, cy + 58);
+      ctx.font = `600 ${Math.round(badgeH * 0.16)}px Arial, sans-serif`;
+      ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bcx, cy + badgeH * 0.40);
     }
 
     const thumb = cardH - 68;
@@ -256,15 +259,17 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.font = '600 34px Arial, sans-serif';
     ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, Math.min(afterList + 44, h - 130));
   }
-  ctx.strokeStyle = 'rgba(0,224,164,0.4)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(80, h - 92);
-  ctx.lineTo(w - 80, h - 92);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.font = '400 32px Arial, sans-serif';
-  ctx.fillText('globaldjconnect.com', w / 2, h - 48);
+  if (d.showUrl && d.footerUrl) {
+    ctx.strokeStyle = 'rgba(0,224,164,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(80, h - 92);
+    ctx.lineTo(w - 80, h - 92);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '600 32px Arial, sans-serif';
+    ctx.fillText(d.footerUrl, w / 2, h - 48);
+  }
 }
 
 export default function MonthlyStory({
@@ -288,10 +293,47 @@ export default function MonthlyStory({
   const [textScale, setTextScale] = useState(1);
   const [monthOffset, setMonthOffset] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [djSlug, setDjSlug] = useState<string>('');
+  const [showUrl, setShowUrl] = useState(true);
+  const [saveLogo, setSaveLogo] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
   const bgInput = useRef<HTMLInputElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const settingsRef = useRef<Record<string, unknown>>({});
+
+  // Load the DJ's slug (for the footer URL) + any previously-saved story logo.
+  useEffect(() => {
+    let a = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from('users').select('slug, booking_settings').eq('id', userId).maybeSingle();
+        const row = data as { slug?: string | null; booking_settings?: string | null } | null;
+        if (!a) return;
+        if (row?.slug) setDjSlug(row.slug);
+        const raw = row?.booking_settings;
+        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as Record<string, unknown>;
+        settingsRef.current = bs;
+        const saved = bs.story_logo_url;
+        if (typeof saved === 'string' && saved) { setLogoUrl(saved); setSaveLogo(true); }
+      } catch { /* ignore */ }
+    })();
+    return () => { a = false; };
+  }, [userId]);
+
+  const footerUrl = djSlug ? `globaldjconnect.com/${djSlug}` : 'globaldjconnect.com';
+
+  // Persist (or clear) the story logo in booking_settings for reuse next time.
+  async function persistLogo(url: string | null) {
+    try {
+      const supabase = createClient();
+      const next = { ...settingsRef.current } as Record<string, unknown>;
+      if (url) next.story_logo_url = url; else delete next.story_logo_url;
+      settingsRef.current = next;
+      await supabase.from('users').update({ booking_settings: JSON.stringify(next) } as never).eq('id', userId);
+    } catch { /* ignore */ }
+  }
 
   const now = useMemo(() => new Date(), []);
 
@@ -349,8 +391,9 @@ export default function MonthlyStory({
       bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
       rows, flyerImgs,
       moreCount: Math.max(0, items.length - rows.length), size,
+      footerUrl, showUrl,
     });
-  }, [rows, flyerImgs, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName]);
+  }, [rows, flyerImgs, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName, footerUrl, showUrl]);
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
@@ -369,7 +412,7 @@ export default function MonthlyStory({
     if (!file || !file.type.startsWith('image/')) return;
     setBusy(true);
     const url = await uploadTo(file, 'story_logo');
-    if (url) setLogoUrl(url);
+    if (url) { setLogoUrl(url); if (saveLogo) persistLogo(url); }
     setBusy(false);
   }
 
@@ -495,8 +538,22 @@ export default function MonthlyStory({
             <div>
               <div style={label}>Logo</div>
               <button type="button" style={btn(false)} disabled={busy} onClick={() => logoInput.current?.click()}>{busy ? '…' : logoUrl ? 'Change logo' : 'Add logo'}</button>
-              {logoUrl && <button type="button" style={{ ...btn(false), marginLeft: 8, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.5)' }} onClick={() => setLogoUrl(null)}>Remove</button>}
+              {logoUrl && <button type="button" style={{ ...btn(false), marginLeft: 8, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.5)' }} onClick={() => { setLogoUrl(null); if (saveLogo) { setSaveLogo(false); persistLogo(null); } }}>Remove</button>}
               <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
+              {logoUrl && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={saveLogo} onChange={(e) => { const on = e.target.checked; setSaveLogo(on); persistLogo(on ? logoUrl : null); }} style={{ accentColor: '#00e0a4' }} />
+                  Save this logo for future graphics
+                </label>
+              )}
+            </div>
+
+            <div>
+              <div style={label}>Link</div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--white,#fff)', fontSize: '.78rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} style={{ accentColor: '#00e0a4' }} />
+                Show {footerUrl}
+              </label>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
@@ -504,8 +561,6 @@ export default function MonthlyStory({
               {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
               <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
             </div>
-
-            <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1rem', fontSize: '.9rem' }}>Download PNG</button>
           </div>
 
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -519,12 +574,10 @@ export default function MonthlyStory({
                 style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14', cursor: bgUrl ? 'grab' : 'default', touchAction: bgUrl ? 'none' : 'auto', display: 'block' }}
               />
               {bgUrl && (
-                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.62rem', fontWeight: 600, padding: '4px 9px', borderRadius: 99, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 5, border: '1px solid rgba(0,224,164,.5)' }}>
-                  <span style={{ color: '#00e0a4' }}>✥</span> Drag to move background
-                </div>
+                <div style={{ position: 'absolute', top: 8, left: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,.6)', color: '#00e0a4', fontSize: '.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', border: '1px solid rgba(0,224,164,.6)' }}>✥</div>
               )}
             </div>
-            {bgUrl && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>Drag the image on the preview to reposition it</div>}
+            <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1.4rem', fontSize: '.9rem', width: '100%', maxWidth: size === 'story' ? 240 : 330 }}>Download PNG</button>
           </div>
         </div>
       </div>
