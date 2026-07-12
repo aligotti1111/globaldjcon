@@ -97,11 +97,11 @@ function translateTags(escaped: string): string {
   // Size each auto-fill field to the KIND of value it holds so short values
   // (times, price) don't leave big gaps and long ones (address) don't overflow.
   const FIELD_WIDTH: Record<string, number> = {
-    start_time: 90, end_time: 90, price: 90, deposit: 90, duration: 90,
-    event_date: 130, overtime_rate: 120,
-    client_name: 170, dj_name: 170, venue_name: 170, set_type: 170, event_type: 170,
-    equipment: 220, package: 260, event_address: 300, payment_terms: 480,
-    cocktail_hour: 200,
+    start_time: 68, end_time: 68, price: 80, deposit: 80, duration: 84,
+    event_date: 116, overtime_rate: 104,
+    client_name: 132, dj_name: 132, venue_name: 140, set_type: 140, event_type: 140,
+    equipment: 200, package: 240, event_address: 280, payment_terms: 460,
+    cocktail_hour: 180,
   };
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');
