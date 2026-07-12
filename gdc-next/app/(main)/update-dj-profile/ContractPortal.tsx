@@ -78,13 +78,12 @@ export default function ContractPortal({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
+  const logoInputFields = useRef<HTMLInputElement>(null);
 
-  // Upload a logo to show at the top of the standard contract.
-  async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('Logo must be an image.'); return; }
-    if (file.size > 4 * 1024 * 1024) { setError('Logo is too large (max 4MB).'); return; }
+  // Upload a logo file to storage; returns its public URL (or null on failure).
+  async function uploadLogoFile(file: File): Promise<string | null> {
+    if (!file.type.startsWith('image/')) { setError('Logo must be an image.'); return null; }
+    if (file.size > 4 * 1024 * 1024) { setError('Logo is too large (max 4MB).'); return null; }
     setError(null); setLogoBusy(true);
     try {
       const supabase = createClient();
@@ -93,9 +92,26 @@ export default function ContractPortal({
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      setLogoUrl(`${data.publicUrl}?t=${Date.now()}`);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Logo upload failed.'); }
+      return `${data.publicUrl}?t=${Date.now()}`;
+    } catch (err) { setError(err instanceof Error ? err.message : 'Logo upload failed.'); return null; }
     finally { setLogoBusy(false); }
+  }
+
+  // Logo upload from the Edit-text page (just stores it; applied on save).
+  async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    const url = await uploadLogoFile(file);
+    if (url) setLogoUrl(url);
+  }
+
+  // Logo upload from the FIELDS page — uploads AND rebuilds the contract with
+  // the logo, right there, without going to the text page.
+  async function onLogoFromFields(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    const url = await uploadLogoFile(file);
+    if (url) { setLogoUrl(url); await saveStandard(url); }
   }
   const [text, setText] = useState('');
   const [pasteText, setPasteText] = useState('');
@@ -242,13 +258,14 @@ export default function ContractPortal({
     } catch { /* template exists regardless */ }
   }
 
-  async function saveStandard() {
+  async function saveStandard(overrideLogo?: string | null) {
     if (!text.trim()) { setError('Contract text is empty.'); return; }
+    const lg = overrideLogo !== undefined ? overrideLogo : logoUrl;
     setError(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId, logoUrl }),
+        body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId, logoUrl: lg }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
@@ -376,8 +393,10 @@ export default function ContractPortal({
             style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. Then Lock it in.</div>
           {isStdBuilder && (
-            <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
               <button type="button" onClick={() => setView('standard')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit text</button>
+              <button type="button" onClick={() => logoInputFields.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.45rem 1.1rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem', fontWeight: 600 }}>{logoBusy ? 'Adding logo…' : logoUrl ? 'Change logo' : 'Add logo to top'}</button>
+              <input ref={logoInputFields} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoFromFields} />
             </div>
           )}
         </div>
