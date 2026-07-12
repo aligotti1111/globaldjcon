@@ -41,6 +41,7 @@ import type { UpcomingBooking } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
+import MonthlyStory from './MonthlyStory';
 import { useConfirm } from '@/components/ConfirmModal';
 
 interface Props {
@@ -127,6 +128,7 @@ export default function UpcomingBookingsClient({
   // month) or 'recent' (most recently booked first, flat list).
   const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showStory, setShowStory] = useState(false);
   // Site-uniform confirm dialog — replaces window.confirm() for delete.
   const { confirm, confirmDialog } = useConfirm();
   // When set, the modal opens in edit mode prefilled with this booking's data.
@@ -318,9 +320,16 @@ export default function UpcomingBookingsClient({
           <h1 className={styles.title}>Upcoming Bookings</h1>
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
-        <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
-          + Add Booking Manually
-        </button>
+        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          {djType === 'club' && (
+            <button type="button" onClick={() => setShowStory(true)} className={styles.addBtn}>
+              📅 Schedule Graphic
+            </button>
+          )}
+          <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
+            + Add Booking Manually
+          </button>
+        </div>
       </div>
 
       {bookings.length > 0 && (
@@ -392,6 +401,15 @@ export default function UpcomingBookingsClient({
             </section>
           ))}
         </div>
+      )}
+
+      {showStory && (
+        <MonthlyStory
+          bookings={bookings}
+          djName={djName}
+          userId={userId}
+          onClose={() => setShowStory(false)}
+        />
       )}
 
       {(showAddModal || editing) && (
