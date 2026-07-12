@@ -394,7 +394,7 @@ export default function ContractPortal({
             </label>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { const supabase = createClient(); try { if (editingId) await supabase.from('contracts').update({ name } as never).eq('id', editingId).eq('dj_id', userId); } catch {} setView('grid'); }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>Lock it in</button>
+            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { const supabase = createClient(); try { if (editingId) await supabase.from('contracts').update({ name } as never).eq('id', editingId).eq('dj_id', userId); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : 'Lock it in'}</button>
           </div>
         </div>
       </div>, true, 'Add fields',
