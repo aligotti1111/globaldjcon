@@ -401,7 +401,7 @@ export default function ContractPortal({
           {isStdBuilder && (
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
               <button type="button" onClick={() => setView('standard')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit text</button>
-              <button type="button" onClick={() => logoInputFields.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.45rem 1.1rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem', fontWeight: 600 }}>{logoBusy ? 'Adding logo…' : logoUrl ? 'Change logo' : 'Add logo to top'}</button>
+              <button type="button" onClick={() => logoInputFields.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.45rem 1.1rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem', fontWeight: 600 }}>{logoBusy ? 'Adding logo…' : logoUrl ? 'Change logo' : 'Add logo to contract'}</button>
               <input ref={logoInputFields} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoFromFields} />
             </div>
           )}
@@ -435,7 +435,7 @@ export default function ContractPortal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 38, maxWidth: 110, borderRadius: 4 }} />}
-            <button type="button" onClick={() => logoInput.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.4rem .8rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.78rem', fontWeight: 600 }}>{logoBusy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add logo to top (optional)'}</button>
+            <button type="button" onClick={() => logoInput.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.4rem .8rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.78rem', fontWeight: 600 }}>{logoBusy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add logo to contract (optional)'}</button>
             {logoUrl && <button type="button" onClick={() => setLogoUrl(null)} style={{ background: 'transparent', border: 'none', color: '#d33', cursor: 'pointer', fontSize: '.78rem' }}>Remove</button>}
             <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
           </div>
