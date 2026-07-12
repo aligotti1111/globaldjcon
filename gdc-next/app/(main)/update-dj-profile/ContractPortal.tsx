@@ -443,7 +443,7 @@ export default function ContractPortal({
 
       {/* ── Create a new contract ── */}
       <div style={sectionLabel}>Create a contract</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '.6rem' }}>
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
