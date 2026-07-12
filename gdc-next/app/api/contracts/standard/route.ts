@@ -57,6 +57,9 @@ export async function POST(req: Request) {
           docuseal_template_id: String(templateId),
           logo_url: logoUrl,
           is_standard: true,
+          // Keep the raw text so per-booking contracts (e.g. the wedding
+          // contract) can be rebuilt fresh with the booking's data baked in.
+          body_text: text,
           updated_at: new Date().toISOString(),
         } as unknown as never)
         .eq('id', contractId)
@@ -71,6 +74,7 @@ export async function POST(req: Request) {
           docuseal_template_id: String(templateId),
           logo_url: logoUrl,
           is_standard: true,
+          body_text: text,
         } as unknown as never)
         .select('id')
         .single();
