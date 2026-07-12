@@ -157,7 +157,8 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   ctx.restore();
   y += story ? 112 : 92;
 
-  if (d.djName) {
+  // Show the DJ name only when there's no logo (otherwise it's redundant).
+  if (d.djName && !d.logoImg) {
     ctx.fillStyle = '#ffffff';
     ctx.font = `600 ${T(story ? 40 : 34)}px Arial, sans-serif`;
     ctx.fillText(d.djName.toUpperCase(), w / 2, y + 24);
