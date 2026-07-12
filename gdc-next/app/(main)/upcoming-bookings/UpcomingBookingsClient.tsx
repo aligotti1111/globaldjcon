@@ -95,6 +95,34 @@ export default function UpcomingBookingsClient({
   userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
+  // The DJ's standing club deposit % (from booking_settings). Lets club
+  // booking cards show the deposit even when it wasn't stored per-booking —
+  // matching what the contract applies.
+  const [clubDepositPct, setClubDepositPct] = useState<number>(0);
+  // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
+  // on cards for both DJ types.
+  const [taxPct, setTaxPct] = useState<number>(0);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from('users').select('booking_settings').eq('id', userId).maybeSingle();
+        const raw = (data as { booking_settings?: string | null } | null)?.booking_settings;
+        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number };
+        if (!active) return;
+        if (djType === 'club') {
+          const v = Number(bs?.club_deposit_pct);
+          if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
+        }
+        if (bs?.tax_enabled) {
+          const t = Number(bs?.tax_pct);
+          if (Number.isFinite(t) && t > 0) setTaxPct(t);
+        }
+      } catch { /* ignore — no deposit/tax shown */ }
+    })();
+    return () => { active = false; };
+  }, [djType, userId]);
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
   // month) or 'recent' (most recently booked first, flat list).
   const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
@@ -332,6 +360,8 @@ export default function UpcomingBookingsClient({
                 booking={b}
                 djType={djType}
                 userId={userId}
+                clubDepositPct={clubDepositPct}
+                taxPct={taxPct}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                 onEdit={b.is_manual ? () => setEditing(b) : undefined}
@@ -351,6 +381,8 @@ export default function UpcomingBookingsClient({
                     booking={b}
                     djType={djType}
                     userId={userId}
+                    clubDepositPct={clubDepositPct}
+                    taxPct={taxPct}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={b.is_manual ? () => setEditing(b) : undefined}
@@ -593,11 +625,13 @@ function FlyerSlot({
 }
 
 function BookingRow({
-  booking, djType, userId, overlaps, onDelete, onEdit,
+  booking, djType, userId, clubDepositPct, taxPct, overlaps, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
+  clubDepositPct: number;
+  taxPct: number;
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -744,6 +778,8 @@ function BookingRow({
           booking={booking}
           djType={djType}
           userId={userId}
+          clubDepositPct={clubDepositPct}
+          taxPct={taxPct}
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
         />
@@ -760,11 +796,13 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId, flyerUrl, onFlyerChange,
+  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
+  clubDepositPct: number;
+  taxPct: number;
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
 }) {
@@ -971,11 +1009,42 @@ function BookingDetails({
     [
       {
         label: 'Deposit',
-        value: booking.deposit_amount != null
-          ? money(booking.deposit_amount)
-          : booking.deposit_pct != null
-            ? `${booking.deposit_pct}%`
-            : null,
+        value: (() => {
+          // Stored deposit amount wins — show it, with the % if we have it.
+          if (booking.deposit_amount != null) {
+            return booking.deposit_pct != null
+              ? `${money(booking.deposit_amount)} (${booking.deposit_pct}%)`
+              : money(booking.deposit_amount);
+          }
+          // Stored % only — compute the amount off the agreed total.
+          if (booking.deposit_pct != null) {
+            return agreedTotal != null
+              ? `${money(Math.round((Number(agreedTotal) * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
+              : `${booking.deposit_pct}%`;
+          }
+          // Fallback: the DJ's standing club deposit % (what the contract uses).
+          if (djType === 'club' && clubDepositPct > 0) {
+            return agreedTotal != null && Number(agreedTotal) > 0
+              ? `${money(Math.round((Number(agreedTotal) * clubDepositPct) / 100))} (${clubDepositPct}%)`
+              : `${clubDepositPct}%`;
+          }
+          return null;
+        })(),
+      },
+    ],
+    // Row 8: Tax + Total (only when the DJ has sales tax turned on).
+    [
+      {
+        label: 'Tax',
+        value: (taxPct > 0 && agreedTotal != null && Number(agreedTotal) > 0)
+          ? `${money(Math.round((Number(agreedTotal) * taxPct) / 100))} (${taxPct}%)`
+          : null,
+      },
+      {
+        label: 'Total (with tax)',
+        value: (taxPct > 0 && agreedTotal != null && Number(agreedTotal) > 0)
+          ? money(Number(agreedTotal) + Math.round((Number(agreedTotal) * taxPct) / 100))
+          : null,
       },
     ],
   ];
