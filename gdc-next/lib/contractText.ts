@@ -42,7 +42,8 @@ EVENT DETAILS
 Event: {{event_type}}
 Date: {{event_date}}
 Time: {{start_time}} - {{end_time}}
-Venue: {{venue_name}}, {{event_address}}
+Venue: {{venue_name}}
+Address: {{event_address}}
 Price: {{price}}
 Package: {{package}}
 
@@ -73,7 +74,8 @@ WEDDING DETAILS
 Client/Host: {{client_name}}
 Date: {{event_date}}
 Reception time: {{start_time}} - {{end_time}}
-Venue: {{venue_name}}, {{event_address}}
+Venue: {{venue_name}}
+Address: {{event_address}}
 Package: {{package}}
 Price: {{price}}
 
