@@ -40,7 +40,7 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-function fmtTime(t: string | null): string {
+function fmtTime(t: string | null | undefined): string {
   if (!t) return '';
   const m = /^(\d{1,2}):(\d{2})/.exec(t);
   if (!m) return t;
