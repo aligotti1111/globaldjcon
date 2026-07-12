@@ -22,7 +22,7 @@ type StoryBooking = {
 };
 
 const SIZES = {
-  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 8, listTop: 440, rowH: 156 },
+  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 9, listTop: 440, rowH: 156 },
   square: { w: 1080, h: 1080, label: 'Square 1:1', maxRows: 5, listTop: 345, rowH: 118 },
 } as const;
 
@@ -164,14 +164,20 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     y += 54;
   }
 
-  // ── Gig cards ──────────────────────────────────────────
-  const listTop = cfg.listTop;
-  const rowH = cfg.rowH;
-  const gap = 22;
+  // ── Gig cards (auto-size: fewer dates = bigger cards, more = smaller) ──
+  const clampN = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+  const count = d.rows.length;
+  const listStart = Math.max(cfg.listTop, y + 30);
+  const listBottom = h - (story ? 172 : 150);
+  const avail = Math.max(120, listBottom - listStart);
+  const maxRowH = story ? 300 : 230;
+  const rowH = count > 0 ? Math.min(maxRowH, avail / count) : maxRowH;
+  const gap = Math.max(16, Math.round(rowH * 0.13));
   const cardH = rowH - gap;
+  const startY = listStart + Math.max(0, (avail - rowH * count) / 2); // center the block
 
   d.rows.forEach((b, i) => {
-    const ry = listTop + i * rowH;
+    const ry = startY + i * rowH;
     const cy = ry + cardH / 2;
 
     roundRect(ctx, pad, ry, w - 2 * pad, cardH, 26);
@@ -182,7 +188,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.stroke();
 
     const badgeW = 140;
-    const badgeH = cardH - 34;
+    const badgeH = Math.min(cardH - 34, 168);
     const bx = pad + 26;
     const by = cy - badgeH / 2;
     roundRect(ctx, bx, by, badgeW, badgeH, 20);
@@ -210,9 +216,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const textRight = w - pad - 26;
     const mx = bx + badgeW + 28;
     const mw = Math.max(80, textRight - mx - 12);
-    const vFont = Math.min(T(44), cardH * 0.34);
-    const tFont = Math.min(T(32), cardH * 0.26);
-    const aFont = Math.min(T(28), cardH * 0.22);
+    const vFont = T(clampN(cardH * 0.30, 28, 72));
+    const tFont = T(clampN(cardH * 0.22, 22, 52));
+    const aFont = T(clampN(cardH * 0.19, 20, 44));
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
     ctx.font = `700 ${Math.round(vFont)}px Arial, sans-serif`;
@@ -232,16 +238,16 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
 
   // ── More / empty / footer ──────────────────────────────
   ctx.textAlign = 'center';
-  if (d.rows.length === 0) {
+  if (count === 0) {
     ctx.fillStyle = 'rgba(255,255,255,.5)';
     ctx.font = '400 36px Arial, sans-serif';
-    ctx.fillText('No dates in this range yet.', w / 2, listTop + 80);
+    ctx.fillText('No dates in this range yet.', w / 2, listStart + 80);
   }
   if (d.moreCount > 0) {
-    const afterList = listTop + d.rows.length * rowH;
+    const afterList = startY + count * rowH;
     ctx.fillStyle = NEON;
     ctx.font = '600 34px Arial, sans-serif';
-    ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, Math.min(afterList + 44, h - 130));
+    ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, Math.min(afterList + 40, h - 122));
   }
   if (d.showUrl && d.footerUrl) {
     ctx.strokeStyle = 'rgba(0,224,164,0.4)';
