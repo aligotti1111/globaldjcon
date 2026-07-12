@@ -32,9 +32,11 @@ This document reflects the full agreement between both parties. Any changes will
 
 SIGNATURES
 
-DJ: {{dj_signature}}   {{dj_name}}
+DJ Name: {{dj_name}}
+DJ Signature: {{dj_signature}}
 
-Client: {{client_signature}}   {{client_name}}`;
+Client Name: {{client_name}}
+Client Signature: {{client_signature}}`;
 
 // Mobile DJ contract — private events (weddings, parties, etc.).
 export const MOBILE_CONTRACT_TEXT = `DJ SERVICES AGREEMENT
