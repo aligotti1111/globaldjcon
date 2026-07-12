@@ -22,8 +22,8 @@ type StoryBooking = {
 };
 
 const SIZES = {
-  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 5, listTop: 470, rowH: 262 },
-  square: { w: 1080, h: 1080, label: 'Square 1:1', maxRows: 3, listTop: 385, rowH: 190 },
+  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 8, listTop: 440, rowH: 156 },
+  square: { w: 1080, h: 1080, label: 'Square 1:1', maxRows: 5, listTop: 345, rowH: 118 },
 } as const;
 
 const THEMES: Record<string, [string, string, string]> = {
@@ -93,7 +93,6 @@ interface DrawData {
   logoScale: number;
   textScale: number;
   rows: StoryBooking[];
-  flyerImgs: (HTMLImageElement | null)[];
   moreCount: number;
   size: keyof typeof SIZES;
   footerUrl: string;
@@ -183,7 +182,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     ctx.stroke();
 
     const badgeW = 140;
-    const badgeH = cardH - 56;
+    const badgeH = cardH - 34;
     const bx = pad + 26;
     const by = cy - badgeH / 2;
     roundRect(ctx, bx, by, badgeW, badgeH, 20);
@@ -208,42 +207,26 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
       ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bcx, cy + badgeH * 0.40);
     }
 
-    const thumb = cardH - 68;
-    const flyer = d.flyerImgs[i];
-    const textRight = w - pad - 26 - (flyer ? thumb + 28 : 0);
-    if (flyer) {
-      const tx = w - pad - 26 - thumb;
-      const ty = cy - thumb / 2;
-      const s = Math.max(thumb / flyer.width, thumb / flyer.height);
-      const sw = thumb / s;
-      const sh = thumb / s;
-      ctx.save();
-      roundRect(ctx, tx, ty, thumb, thumb, 14);
-      ctx.clip();
-      ctx.drawImage(flyer, (flyer.width - sw) / 2, (flyer.height - sh) / 2, sw, sh, tx, ty, thumb, thumb);
-      ctx.restore();
-      roundRect(ctx, tx, ty, thumb, thumb, 14);
-      ctx.strokeStyle = 'rgba(0,224,164,.6)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    }
-
+    const textRight = w - pad - 26;
     const mx = bx + badgeW + 28;
-    const mw = Math.max(80, textRight - mx - 14);
+    const mw = Math.max(80, textRight - mx - 12);
+    const vFont = Math.min(T(44), cardH * 0.34);
+    const tFont = Math.min(T(32), cardH * 0.26);
+    const aFont = Math.min(T(28), cardH * 0.22);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.font = `700 ${T(44)}px Arial, sans-serif`;
-    ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - 24);
+    ctx.font = `700 ${Math.round(vFont)}px Arial, sans-serif`;
+    ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - cardH * 0.12);
 
     ctx.fillStyle = NEON;
-    ctx.font = `600 ${T(32)}px Arial, sans-serif`;
+    ctx.font = `600 ${Math.round(tFont)}px Arial, sans-serif`;
     const times = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
-    if (times) ctx.fillText(times, mx, cy + 18);
+    if (times) ctx.fillText(times, mx, cy + cardH * 0.06);
 
     if (b.venue_address) {
       ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = `400 ${T(28)}px Arial, sans-serif`;
-      ctx.fillText(ellipsize(ctx, b.venue_address, mw), mx, cy + 56);
+      ctx.font = `400 ${Math.round(aFont)}px Arial, sans-serif`;
+      ctx.fillText(ellipsize(ctx, b.venue_address, mw), mx, cy + cardH * 0.28);
     }
   });
 
@@ -365,18 +348,10 @@ export default function MonthlyStory({
   // the background doesn't re-fetch anything (that's what made it laggy).
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
-  const [flyerImgs, setFlyerImgs] = useState<(HTMLImageElement | null)[]>([]);
   const rows = useMemo(() => items.slice(0, SIZES[size].maxRows), [items, size]);
-  const flyerKey = rows.map((b) => b.flyer_url || '').join('|');
 
   useEffect(() => { let a = true; (async () => { const img = logoUrl ? await loadImage(logoUrl) : null; if (a) setLogoImg(img); })(); return () => { a = false; }; }, [logoUrl]);
   useEffect(() => { let a = true; (async () => { const img = bgUrl ? await loadImage(bgUrl) : null; if (a) setBgImg(img); })(); return () => { a = false; }; }, [bgUrl]);
-  useEffect(() => {
-    let a = true;
-    (async () => { const imgs = await Promise.all(rows.map((b) => (b.flyer_url ? loadImage(b.flyer_url) : Promise.resolve(null)))); if (a) setFlyerImgs(imgs); })();
-    return () => { a = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flyerKey]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -391,11 +366,11 @@ export default function MonthlyStory({
       headline, djName, logoImg, bgImg, bgColor,
       themeStops: THEMES[theme] || THEMES.Teal,
       bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
-      rows, flyerImgs,
+      rows,
       moreCount: Math.max(0, items.length - rows.length), size,
       footerUrl, showUrl,
     });
-  }, [rows, flyerImgs, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName, footerUrl, showUrl]);
+  }, [rows, items.length, size, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, headline, djName, footerUrl, showUrl]);
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
