@@ -2,17 +2,16 @@
 
 // MonthlyStory — club/bar DJ promo generator. Renders the DJ's upcoming
 // profile bookings (this week or this month) into a shareable image on a
-// <canvas>, with an optional logo, and downloads it as a PNG. Uses only the
-// native Canvas API — no external dependency, no per-image cost.
+// <canvas>, and downloads it as a PNG. Native Canvas API only — no external
+// dependency, no per-image cost.
 //
-// v1: fixed template + logo + range (7-day / month) + size (story / square).
-// A full drag-and-edit editor is a later phase.
+// Customizable: background theme OR a custom background image, and sliders to
+// resize the background image, the logo, and the text.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // Minimal shape we need — UpcomingBooking (a superset) is assignable to this.
-// Fields are optional so a wider booking type (string | null | undefined) fits.
 type StoryBooking = {
   event_date?: string | null;
   start_time?: string | null;
@@ -23,12 +22,20 @@ type StoryBooking = {
 };
 
 const SIZES = {
-  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 7, listTop: 540, rowH: 178 },
-  square: { w: 1080, h: 1080, label: 'Square 1:1', maxRows: 4, listTop: 430, rowH: 150 },
+  story: { w: 1080, h: 1920, label: 'Story 9:16', maxRows: 5, listTop: 470, rowH: 262 },
+  square: { w: 1080, h: 1080, label: 'Square 1:1', maxRows: 3, listTop: 385, rowH: 190 },
 } as const;
+
+const THEMES: Record<string, [string, string, string]> = {
+  Teal: ['#141433', '#0b0b16', '#08201c'],
+  Purple: ['#2a1240', '#150a24', '#0a0a16'],
+  Crimson: ['#2a0d18', '#170a12', '#0a0a10'],
+  Ink: ['#111119', '#0b0b12', '#08080d'],
+};
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const NEON = '#00e0a4';
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -55,7 +62,6 @@ function parseDate(d: string): Date {
   return new Date(`${d}T00:00:00`);
 }
 
-// Truncate text to a max pixel width for the given ctx font.
 function ellipsize(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
   if (ctx.measureText(text).width <= maxW) return text;
   let t = text;
@@ -63,10 +69,27 @@ function ellipsize(ctx: CanvasRenderingContext2D, text: string, maxW: number): s
   return `${t}…`;
 }
 
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
 interface DrawData {
   headline: string;
   djName: string;
   logoImg: HTMLImageElement | null;
+  bgImg: HTMLImageElement | null;
+  bgColor: string | null;
+  themeStops: [string, string, string];
+  bgScale: number;
+  logoScale: number;
+  textScale: number;
   rows: StoryBooking[];
   flyerImgs: (HTMLImageElement | null)[];
   moreCount: number;
@@ -75,136 +98,169 @@ interface DrawData {
 
 function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawData) {
   const cfg = SIZES[d.size];
-  const NEON = '#00e0a4';
-  const pad = 70;
+  const pad = 55;
+  const story = d.size === 'story';
+  const T = (px: number) => Math.round(px * d.textScale); // scale readable text
 
-  // Background + top accent
-  ctx.fillStyle = '#0b0b14';
+  // ── Background ─────────────────────────────────────────
+  if (d.bgImg) {
+    const base = Math.max(w / d.bgImg.width, h / d.bgImg.height);
+    const s = base * d.bgScale;
+    const dw = d.bgImg.width * s;
+    const dh = d.bgImg.height * s;
+    ctx.drawImage(d.bgImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(8,8,18,0.62)'; // readability overlay
+    ctx.fillRect(0, 0, w, h);
+  } else if (d.bgColor) {
+    ctx.fillStyle = d.bgColor;
+    ctx.fillRect(0, 0, w, h);
+  } else {
+    const bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, d.themeStops[0]);
+    bg.addColorStop(0.55, d.themeStops[1]);
+    bg.addColorStop(1, d.themeStops[2]);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
+  const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
+  glow.addColorStop(0, 'rgba(0,224,164,0.20)');
+  glow.addColorStop(1, 'rgba(0,224,164,0)');
+  ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = NEON;
-  ctx.fillRect(0, 0, w, 10);
+  ctx.fillRect(0, 0, w, 12);
 
   // ── Header ─────────────────────────────────────────────
+  ctx.textAlign = 'center';
   let y = 80;
   if (d.logoImg) {
-    const lh = d.size === 'story' ? 170 : 120;
+    const lh = (story ? 150 : 110) * d.logoScale;
     const lw = Math.min(w - 2 * pad, d.logoImg.width * (lh / d.logoImg.height));
     ctx.drawImage(d.logoImg, (w - lw) / 2, y, lw, lh);
-    y += lh + 28;
+    y += lh + 30;
   } else {
-    y += 24;
+    y += 20;
   }
 
-  ctx.textAlign = 'center';
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,224,164,0.7)';
+  ctx.shadowBlur = story ? 45 : 34;
   ctx.fillStyle = NEON;
-  ctx.font = `800 ${d.size === 'story' ? 88 : 72}px Arial, sans-serif`;
-  ctx.fillText(d.headline, w / 2, y + 60);
-  y += d.size === 'story' ? 108 : 92;
+  ctx.font = `800 ${T(story ? 92 : 74)}px Arial, sans-serif`;
+  ctx.fillText(d.headline, w / 2, y + (story ? 72 : 60));
+  ctx.restore();
+  y += story ? 112 : 92;
 
   if (d.djName) {
     ctx.fillStyle = '#ffffff';
-    ctx.font = '600 40px Arial, sans-serif';
-    ctx.fillText(d.djName.toUpperCase(), w / 2, y + 28);
-    y += 60;
+    ctx.font = `600 ${T(story ? 40 : 34)}px Arial, sans-serif`;
+    ctx.fillText(d.djName.toUpperCase(), w / 2, y + 24);
+    y += 54;
   }
 
-  // ── List ───────────────────────────────────────────────
+  // ── Gig cards ──────────────────────────────────────────
   const listTop = cfg.listTop;
   const rowH = cfg.rowH;
-  ctx.textAlign = 'left';
+  const gap = 22;
+  const cardH = rowH - gap;
 
   d.rows.forEach((b, i) => {
     const ry = listTop + i * rowH;
-    // Row divider
-    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    const cy = ry + cardH / 2;
+
+    roundRect(ctx, pad, ry, w - 2 * pad, cardH, 26);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pad, ry);
-    ctx.lineTo(w - pad, ry);
     ctx.stroke();
 
-    const cy = ry + rowH / 2;
-    // Date block (left)
+    const badgeW = 140;
+    const badgeH = cardH - 56;
+    const bx = pad + 26;
+    const by = cy - badgeH / 2;
+    roundRect(ctx, bx, by, badgeW, badgeH, 20);
+    ctx.fillStyle = 'rgba(0,224,164,0.12)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,224,164,0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
     const dt = b.event_date ? parseDate(b.event_date) : null;
     if (dt) {
       ctx.textAlign = 'center';
       ctx.fillStyle = NEON;
       ctx.font = '700 30px Arial, sans-serif';
-      ctx.fillText(DOW[dt.getDay()], pad + 55, cy - 34);
+      ctx.fillText(DOW[dt.getDay()], bx + badgeW / 2, cy - 32);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '800 66px Arial, sans-serif';
-      ctx.fillText(String(dt.getDate()), pad + 55, cy + 24);
+      ctx.font = '800 64px Arial, sans-serif';
+      ctx.fillText(String(dt.getDate()), bx + badgeW / 2, cy + 24);
       ctx.fillStyle = 'rgba(255,255,255,.7)';
       ctx.font = '600 26px Arial, sans-serif';
-      ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), pad + 55, cy + 58);
+      ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bx + badgeW / 2, cy + 58);
     }
 
-    // Flyer thumbnail (right)
-    const thumb = d.size === 'story' ? 130 : 108;
+    const thumb = cardH - 68;
     const flyer = d.flyerImgs[i];
-    const textRight = w - pad - (flyer ? thumb + 30 : 0);
+    const textRight = w - pad - 26 - (flyer ? thumb + 28 : 0);
     if (flyer) {
-      const tx = w - pad - thumb;
+      const tx = w - pad - 26 - thumb;
       const ty = cy - thumb / 2;
-      // cover-fit crop
       const s = Math.max(thumb / flyer.width, thumb / flyer.height);
       const sw = thumb / s;
       const sh = thumb / s;
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(tx, ty, thumb, thumb);
+      roundRect(ctx, tx, ty, thumb, thumb, 14);
       ctx.clip();
       ctx.drawImage(flyer, (flyer.width - sw) / 2, (flyer.height - sh) / 2, sw, sh, tx, ty, thumb, thumb);
       ctx.restore();
+      roundRect(ctx, tx, ty, thumb, thumb, 14);
       ctx.strokeStyle = 'rgba(0,224,164,.6)';
       ctx.lineWidth = 3;
-      ctx.strokeRect(tx, ty, thumb, thumb);
+      ctx.stroke();
     }
 
-    // Venue / time / address (middle)
-    const mx = pad + 160;
-    const mw = textRight - mx - 20;
+    const mx = bx + badgeW + 28;
+    const mw = Math.max(80, textRight - mx - 14);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.font = '700 44px Arial, sans-serif';
+    ctx.font = `700 ${T(44)}px Arial, sans-serif`;
     ctx.fillText(ellipsize(ctx, b.venue_name || 'Venue TBA', mw), mx, cy - 24);
 
     ctx.fillStyle = NEON;
-    ctx.font = '600 32px Arial, sans-serif';
+    ctx.font = `600 ${T(32)}px Arial, sans-serif`;
     const times = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
     if (times) ctx.fillText(times, mx, cy + 18);
 
     if (b.venue_address) {
       ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = '400 28px Arial, sans-serif';
+      ctx.font = `400 ${T(28)}px Arial, sans-serif`;
       ctx.fillText(ellipsize(ctx, b.venue_address, mw), mx, cy + 56);
     }
   });
 
-  // bottom divider under last row
-  const lastY = listTop + d.rows.length * rowH;
-  ctx.strokeStyle = 'rgba(255,255,255,.12)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pad, lastY);
-  ctx.lineTo(w - pad, lastY);
-  ctx.stroke();
-
-  // ── Footer ─────────────────────────────────────────────
+  // ── More / empty / footer ──────────────────────────────
   ctx.textAlign = 'center';
-  if (d.moreCount > 0) {
-    ctx.fillStyle = NEON;
-    ctx.font = '600 32px Arial, sans-serif';
-    ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, h - 110);
-  }
   if (d.rows.length === 0) {
     ctx.fillStyle = 'rgba(255,255,255,.5)';
     ctx.font = '400 36px Arial, sans-serif';
     ctx.fillText('No dates in this range yet.', w / 2, listTop + 80);
   }
-  ctx.fillStyle = 'rgba(255,255,255,.45)';
-  ctx.font = '400 30px Arial, sans-serif';
-  ctx.fillText('globaldjconnect.com', w / 2, h - 55);
+  if (d.moreCount > 0) {
+    const afterList = listTop + d.rows.length * rowH;
+    ctx.fillStyle = NEON;
+    ctx.font = '600 34px Arial, sans-serif';
+    ctx.fillText(`+ ${d.moreCount} more date${d.moreCount === 1 ? '' : 's'}`, w / 2, Math.min(afterList + 44, h - 130));
+  }
+  ctx.strokeStyle = 'rgba(0,224,164,0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(80, h - 92);
+  ctx.lineTo(w - 80, h - 92);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '400 32px Arial, sans-serif';
+  ctx.fillText('globaldjconnect.com', w / 2, h - 48);
 }
 
 export default function MonthlyStory({
@@ -218,10 +274,17 @@ export default function MonthlyStory({
   const [range, setRange] = useState<'7day' | 'month'>('month');
   const [size, setSize] = useState<keyof typeof SIZES>('story');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const [bgColor, setBgColor] = useState<string | null>(null);
+  const [theme, setTheme] = useState<string>('Teal');
+  const [bgScale, setBgScale] = useState(1);
+  const [logoScale, setLogoScale] = useState(1);
+  const [textScale, setTextScale] = useState(1);
   const [monthOffset, setMonthOffset] = useState(0);
   const [busy, setBusy] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
+  const bgInput = useRef<HTMLInputElement | null>(null);
 
   const now = useMemo(() => new Date(), []);
 
@@ -257,34 +320,52 @@ export default function MonthlyStory({
       canvas.height = cfg.h;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      const logoImg = logoUrl ? await loadImage(logoUrl) : null;
+      const [logoImg, bgImg] = await Promise.all([
+        logoUrl ? loadImage(logoUrl) : Promise.resolve(null),
+        bgUrl ? loadImage(bgUrl) : Promise.resolve(null),
+      ]);
       const rows = items.slice(0, cfg.maxRows);
       const flyerImgs = await Promise.all(rows.map((b) => (b.flyer_url ? loadImage(b.flyer_url) : Promise.resolve(null))));
       if (cancelled) return;
       drawStory(ctx, cfg.w, cfg.h, {
-        headline, djName, logoImg, rows, flyerImgs,
+        headline, djName, logoImg, bgImg, bgColor,
+        themeStops: THEMES[theme] || THEMES.Teal,
+        bgScale, logoScale, textScale,
+        rows, flyerImgs,
         moreCount: Math.max(0, items.length - rows.length), size,
       });
     })();
     return () => { cancelled = true; };
-  }, [items, size, logoUrl, headline, djName]);
+  }, [items, size, logoUrl, bgUrl, bgColor, theme, bgScale, logoScale, textScale, headline, djName]);
 
-  async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !file.type.startsWith('image/')) return;
-    setBusy(true);
+  async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
       const supabase = createClient();
       const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-      const path = `${userId}/story_logo_${Date.now()}.${ext}`;
+      const path = `${userId}/${prefix}_${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
-      if (!error) {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-        setLogoUrl(`${data.publicUrl}?t=${Date.now()}`);
-      }
-    } catch { /* ignore */ }
-    finally { setBusy(false); }
+      if (error) return null;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      return `${data.publicUrl}?t=${Date.now()}`;
+    } catch { return null; }
+  }
+
+  async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    setBusy(true);
+    const url = await uploadTo(file, 'story_logo');
+    if (url) setLogoUrl(url);
+    setBusy(false);
+  }
+
+  async function onBg(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    setBusy(true);
+    const url = await uploadTo(file, 'story_bg');
+    if (url) setBgUrl(url);
+    setBusy(false);
   }
 
   function download() {
@@ -302,29 +383,40 @@ export default function MonthlyStory({
         a.remove();
         URL.revokeObjectURL(url);
       }, 'image/png');
-    } catch { /* canvas may be tainted if a flyer host blocks CORS */ }
+    } catch { /* canvas may be tainted if an image host blocks CORS */ }
   }
 
   const btn = (active: boolean): React.CSSProperties => ({
-    padding: '.5rem 1rem', borderRadius: 8, cursor: 'pointer', fontSize: '.82rem', fontWeight: 700,
+    padding: '.45rem .9rem', borderRadius: 8, cursor: 'pointer', fontSize: '.8rem', fontWeight: 700,
     border: `1px solid ${active ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.25)'}`,
     background: active ? 'var(--neon,#00e0a4)' : 'transparent',
     color: active ? '#06231b' : 'var(--white,#fff)',
   });
+  const label: React.CSSProperties = { color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 };
+
+  function Slider({ text, value, min, max, step, onChange }: { text: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--white,#fff)', fontSize: '.78rem', marginBottom: 4 }}>
+          <span>{text}</span><span style={{ color: 'var(--muted,#8a8aa0)' }}>{Math.round(value * 100)}%</span>
+        </div>
+        <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#00e0a4' }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, width: '100%', maxWidth: 860, maxHeight: '92vh', overflow: 'auto', padding: '1.1rem 1.25rem' }}>
+      <div style={{ background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, width: '100%', maxWidth: 900, maxHeight: '92vh', overflow: 'auto', padding: '1.1rem 1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <strong style={{ color: 'var(--white,#fff)', fontSize: '1.05rem' }}>Create Schedule Graphic</strong>
           <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#888)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
 
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-          {/* Controls */}
-          <div style={{ flex: '1 1 240px', minWidth: 220, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ flex: '1 1 260px', minWidth: 240, display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
             <div>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Range</div>
+              <div style={label}>Range</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" style={btn(range === '7day')} onClick={() => setRange('7day')}>Next 7 days</button>
                 <button type="button" style={btn(range === 'month')} onClick={() => setRange('month')}>This month</button>
@@ -339,7 +431,7 @@ export default function MonthlyStory({
             </div>
 
             <div>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Size</div>
+              <div style={label}>Size</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" style={btn(size === 'story')} onClick={() => setSize('story')}>{SIZES.story.label}</button>
                 <button type="button" style={btn(size === 'square')} onClick={() => setSize('square')}>{SIZES.square.label}</button>
@@ -347,23 +439,41 @@ export default function MonthlyStory({
             </div>
 
             <div>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Logo</div>
-              <button type="button" style={btn(false)} disabled={busy} onClick={() => logoInput.current?.click()}>{busy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add logo'}</button>
-              {logoUrl && <button type="button" style={{ ...btn(false), marginLeft: 8, borderColor: 'rgba(255,120,120,.5)', color: '#ff8a8a' }} onClick={() => setLogoUrl(null)}>Remove</button>}
+              <div style={label}>Background</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {Object.keys(THEMES).map((t) => (
+                  <button key={t} type="button" style={btn(!bgUrl && !bgColor && theme === t)} onClick={() => { setBgUrl(null); setBgColor(null); setTheme(t); }}>{t}</button>
+                ))}
+                <label style={{ ...btn(!bgUrl && !!bgColor), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  Color
+                  <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => { setBgUrl(null); setBgColor(e.target.value); }} style={{ width: 22, height: 22, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }} />
+                </label>
+                <button type="button" style={btn(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>{busy ? '…' : bgUrl ? 'Image ✓' : 'Upload image'}</button>
+                {bgUrl && <button type="button" style={{ ...btn(false), color: '#ff8a8a', borderColor: 'rgba(255,120,120,.5)' }} onClick={() => setBgUrl(null)}>Remove</button>}
+              </div>
+              <input ref={bgInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBg} />
+            </div>
+
+            <div>
+              <div style={label}>Logo</div>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => logoInput.current?.click()}>{busy ? '…' : logoUrl ? 'Change logo' : 'Add logo'}</button>
+              {logoUrl && <button type="button" style={{ ...btn(false), marginLeft: 8, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.5)' }} onClick={() => setLogoUrl(null)}>Remove</button>}
               <input ref={logoInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogo} />
             </div>
 
-            <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1rem', fontSize: '.9rem' }}>Download PNG</button>
-            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.5 }}>
-              Shows the gigs on your public profile for the selected range. Busy months show the first {SIZES[size].maxRows} and a “+ more” note (full editing coming later).
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
+              {bgUrl && <Slider text="Background size" value={bgScale} min={0.7} max={2.5} step={0.05} onChange={setBgScale} />}
+              {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
+              <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
             </div>
+
+            <button type="button" onClick={download} style={{ ...btn(true), padding: '.7rem 1rem', fontSize: '.9rem' }}>Download PNG</button>
           </div>
 
-          {/* Preview */}
           <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
             <canvas
               ref={canvasRef}
-              style={{ width: size === 'story' ? 220 : 300, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14' }}
+              style={{ width: size === 'story' ? 240 : 330, height: 'auto', borderRadius: 10, boxShadow: '0 4px 24px rgba(0,0,0,.5)', background: '#0b0b14' }}
             />
           </div>
         </div>
