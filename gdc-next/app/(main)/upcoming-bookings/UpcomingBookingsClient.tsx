@@ -675,6 +675,21 @@ function BookingRow({
   // Set true when the details panel's live DocuSeal check confirms the contract
   // is actually signed (covers rows whose stored status is still 'awaiting').
   const [signedOverride, setSignedOverride] = useState(false);
+  // Manual step overrides (booking.status_overrides) — DJ can mark a step done
+  // when it was handled outside the app. Optimistic UI + persisted via the API.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>(() => {
+    const o = (booking as { status_overrides?: unknown }).status_overrides;
+    return o && typeof o === 'object' ? { ...(o as Record<string, boolean>) } : {};
+  });
+  async function toggleStep(key: string, next: boolean) {
+    setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
+    try {
+      await fetch('/api/bookings/status-override', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, key, done: next }),
+      });
+    } catch { /* keep optimistic UI; will reconcile on next load */ }
+  }
   // Flyer URL owned here so the row slot and the in-card thumbnail
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
@@ -710,15 +725,17 @@ function BookingRow({
   const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' }[] = [
     { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check' },
   ];
-  if (!booking.is_manual && (requireContract || !!cstatus)) {
-    const isSigned = cstatus === 'signed' || signedOverride;
+  if (!booking.is_manual && (requireContract || !!cstatus || overrides.contract)) {
+    const trulySigned = cstatus === 'signed' || signedOverride;
+    const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
-      isSigned ? 'done'
+      isDone ? 'done'
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
     const cLabel =
-      isSigned ? 'Signed'
+      trulySigned ? 'Signed'
+      : overrides.contract ? 'Done'
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'Void'
       : cstatus === 'awaiting_client' ? 'Awaiting'
       : cstatus === 'awaiting_dj' ? 'Sign'
@@ -874,6 +891,8 @@ function BookingRow({
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
+          contractMarkedDone={!!overrides.contract}
+          onMarkContract={(v) => toggleStep('contract', v)}
         />
       )}
     </div>
@@ -898,6 +917,8 @@ function BookingDetails({
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
   onContractSigned?: () => void;
+  contractMarkedDone?: boolean;
+  onMarkContract?: (v: boolean) => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
@@ -1334,6 +1355,21 @@ function BookingDetails({
             <div style={{ marginTop: 8 }}>
               {contractCancelled && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginBottom: 6 }}>Contract cancelled. Review and send a new one below.</div>}
               <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
+            </div>
+          )}
+          {/* Manual override — mark the contract step done when it was handled
+              outside the app. Hidden once it's genuinely signed. */}
+          {!(booking.contract_status === 'signed' || locallySigned) && onMarkContract && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.07)' }}>
+              {contractMarkedDone ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ color: '#00e0a4', fontWeight: 700, fontSize: '.82rem' }}>✓ Contract marked done manually</span>
+                  <button type="button" onClick={() => onMarkContract(false)} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: '.76rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Undo</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => onMarkContract(true)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: 'var(--white,#fff)', fontWeight: 600, borderRadius: 6, padding: '.45rem 1rem', cursor: 'pointer', fontSize: '.78rem' }}>✔ Mark contract done manually</button>
+              )}
+              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.7rem', marginTop: 6 }}>Use this only if the contract was handled outside Global DJ Connect. It updates the status here — it does not create a signed copy.</div>
             </div>
           )}
         </div>
