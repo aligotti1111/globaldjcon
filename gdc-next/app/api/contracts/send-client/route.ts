@@ -47,6 +47,17 @@ export async function POST(req: Request) {
     const client = submitters.find((s) => s.role === 'Client');
     if (client?.id == null) throw new Error('Client signer not found on the contract.');
     await docuseal.updateSubmitter(Number(client.id), { send_email: true } as unknown as Parameters<typeof docuseal.updateSubmitter>[1]);
+
+    // The DJ has already signed by this point; enabling their email lets DocuSeal
+    // send the DJ the final SIGNED copy once the client completes. (No new signing
+    // request is generated for an already-completed signer.) So both parties get
+    // the finished PDF, not just the client.
+    const djSigner = submitters.find((s) => s.role === 'DJ');
+    if (djSigner?.id != null) {
+      try {
+        await docuseal.updateSubmitter(Number(djSigner.id), { send_email: true } as unknown as Parameters<typeof docuseal.updateSubmitter>[1]);
+      } catch { /* non-fatal — client email is the critical one */ }
+    }
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Could not email the client.' },
