@@ -93,11 +93,24 @@ interface DrawData {
   logoScale: number;
   textScale: number;
   rows: StoryBooking[];
+  layoutCount: number; // rows to SIZE for (keeps every page's cards the same size)
   pageIndex: number;
   pageCount: number;
   size: keyof typeof SIZES;
   footerUrl: string;
   showUrl: boolean;
+  headlineColor: string;
+  accentColor: string;
+  textColor: string;
+}
+
+// Convert a #rgb / #rrggbb hex to an rgba() string; falls back to neon if invalid.
+function hexToRgba(hex: string, a: number): string {
+  let h = (hex || '').replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return `rgba(0,224,164,${a})`;
+  const n = parseInt(h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
 function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawData) {
@@ -137,12 +150,13 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
       ctx.fillRect(0, 0, w, h);
     }
   }
+  const accent = d.accentColor || NEON;
   const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
-  glow.addColorStop(0, 'rgba(0,224,164,0.20)');
-  glow.addColorStop(1, 'rgba(0,224,164,0)');
+  glow.addColorStop(0, hexToRgba(accent, 0.20));
+  glow.addColorStop(1, hexToRgba(accent, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = NEON;
+  ctx.fillStyle = accent;
   ctx.fillRect(0, 0, w, 12);
 
   // ── Header ─────────────────────────────────────────────
@@ -158,9 +172,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   }
 
   ctx.save();
-  ctx.shadowColor = 'rgba(0,224,164,0.7)';
+  ctx.shadowColor = hexToRgba(d.headlineColor || accent, 0.7);
   ctx.shadowBlur = story ? 45 : 34;
-  ctx.fillStyle = NEON;
+  ctx.fillStyle = d.headlineColor || accent;
   ctx.font = `800 ${T(story ? 92 : 74)}px Arial, sans-serif`;
   ctx.fillText(d.headline, w / 2, y + (story ? 72 : 60));
   ctx.restore();
@@ -168,7 +182,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
 
   // Show the DJ name only when there's no logo (otherwise it's redundant).
   if (d.djName && !d.logoImg) {
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = d.textColor || '#ffffff';
     ctx.font = `600 ${T(story ? 40 : 34)}px Arial, sans-serif`;
     ctx.fillText(d.djName.toUpperCase(), w / 2, y + 24);
     y += 54;
@@ -177,13 +191,15 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   // ── Gig cards: auto-size (fewer = bigger) + center the group under the header ──
   const clampN = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
   const count = d.rows.length;
+  // Size cards for the FULLEST page so every page in a multi-page set matches.
+  const sizeCount = Math.max(1, d.layoutCount || count);
   const regionTop = Math.max(cfg.listTop - 130, y + (story ? 36 : 24));
   const regionBottom = h - (story ? 150 : 128);
   const region = Math.max(160, regionBottom - regionTop);
   const cardGap = story ? 30 : 22;
   const maxCardH = story ? 320 : 210;
   const minCardH = story ? 118 : 90;
-  const cardH = count > 0 ? clampN(region / count - cardGap, minCardH, maxCardH) : maxCardH;
+  const cardH = clampN(region / sizeCount - cardGap, minCardH, maxCardH);
   const groupH = cardH * count + cardGap * Math.max(0, count - 1);
   const groupTop = regionTop + Math.max(0, (region - groupH) * 0.44); // center group, slight upward bias
 
@@ -205,9 +221,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const bx = sideM + 26;
     const by = cy - badgeH / 2;
     roundRect(ctx, bx, by, badgeW, badgeH, 20);
-    ctx.fillStyle = 'rgba(0,224,164,0.12)';
+    ctx.fillStyle = hexToRgba(accent, 0.12);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,224,164,0.6)';
+    ctx.strokeStyle = hexToRgba(accent, 0.6);
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -215,13 +231,13 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     if (dt) {
       const bcx = bx + badgeW / 2;
       ctx.textAlign = 'center';
-      ctx.fillStyle = NEON;
+      ctx.fillStyle = accent;
       ctx.font = `700 ${Math.round(badgeH * 0.19)}px Arial, sans-serif`;
       ctx.fillText(DOW[dt.getDay()], bcx, cy - badgeH * 0.24);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = d.textColor || '#ffffff';
       ctx.font = `800 ${Math.round(badgeH * 0.42)}px Arial, sans-serif`;
       ctx.fillText(String(dt.getDate()), bcx, cy + badgeH * 0.13);
-      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      ctx.fillStyle = hexToRgba(d.textColor === '#ffffff' || !d.textColor ? '#ffffff' : d.textColor, 0.75);
       ctx.font = `600 ${Math.round(badgeH * 0.16)}px Arial, sans-serif`;
       ctx.fillText(MONTHS[dt.getMonth()].slice(0, 3).toUpperCase(), bcx, cy + badgeH * 0.40);
     }
@@ -248,11 +264,12 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const cap = (f: number) => f * 0.72;   // glyph height above baseline
     const desc = (f: number) => f * 0.06;  // small descender below baseline
     const lineGap = Math.max(8, Math.round(cardH * 0.05)); // same gap between every line
+    const txtCol = d.textColor || '#ffffff';
     const stack: { txt: string; f: number; weight: number; color: string }[] = [
-      { txt: venue, f: vFont, weight: 700, color: '#ffffff' },
+      { txt: venue, f: vFont, weight: 700, color: txtCol },
     ];
-    if (times) stack.push({ txt: times, f: tFont, weight: 600, color: NEON });
-    if (b.venue_address) stack.push({ txt: b.venue_address, f: aFont, weight: 400, color: 'rgba(255,255,255,.6)' });
+    if (times) stack.push({ txt: times, f: tFont, weight: 600, color: accent });
+    if (b.venue_address) stack.push({ txt: b.venue_address, f: aFont, weight: 400, color: hexToRgba(txtCol, 0.6) });
 
     let blockH = lineGap * (stack.length - 1);
     for (const s of stack) blockH += cap(s.f) + desc(s.f);
@@ -306,6 +323,9 @@ export default function MonthlyStory({
   const [bgOffsetY, setBgOffsetY] = useState(0);
   const [logoScale, setLogoScale] = useState(1);
   const [textScale, setTextScale] = useState(1);
+  const [headlineColor, setHeadlineColor] = useState('#00e0a4');
+  const [accentColor, setAccentColor] = useState('#00e0a4');
+  const [textColor, setTextColor] = useState('#ffffff');
   const [monthOffset, setMonthOffset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [djSlug, setDjSlug] = useState<string>('');
@@ -387,6 +407,7 @@ export default function MonthlyStory({
     for (let i = 0; i < items.length; i += per) out.push(items.slice(i, i + per));
     return out.length ? out : [[]];
   }, [items, size]);
+  const layoutCount = useMemo(() => pages.reduce((m, p) => Math.max(m, p.length), 0), [pages]);
   const [page, setPage] = useState(0);
   useEffect(() => { setPage((p) => Math.min(p, pages.length - 1)); }, [pages.length]);
   const rows = pages[Math.min(page, pages.length - 1)] || [];
@@ -401,10 +422,11 @@ export default function MonthlyStory({
       headline, djName, logoImg, bgImg, bgColor,
       themeStops: THEMES[theme] || THEMES.Teal,
       bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
-      rows: pageRows, pageIndex, pageCount: pages.length, size,
+      rows: pageRows, layoutCount, pageIndex, pageCount: pages.length, size,
       footerUrl, showUrl,
+      headlineColor, accentColor, textColor,
     });
-  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, footerUrl, showUrl]);
+  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -592,7 +614,7 @@ export default function MonthlyStory({
                   <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => setBgColor(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
                 </label>
 
-                <button type="button" title="Upload image" style={swatch(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>
+                <button type="button" title="Upload a full background image" style={swatch(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>
                   {bgUrl
                     ? <span style={{ position: 'absolute', inset: 0, backgroundImage: `url(${bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                     : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#9a9ab0)', fontSize: 20 }}>{busy ? '…' : '＋'}</span>}
@@ -602,9 +624,11 @@ export default function MonthlyStory({
                   <button type="button" title="Clear color & image" onClick={() => { setBgUrl(null); setBgColor(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 2 }}>Clear</button>
                 )}
               </div>
-              {(bgColor && bgUrl) && (
-                <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>A transparent PNG shows your color behind it.</div>
-              )}
+              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>
+                {bgUrl
+                  ? <>Your image fills the whole background{bgColor ? ' — a transparent PNG shows your color behind it.' : '.'}</>
+                  : 'Presets, a custom color, or your own full-bleed background image (＋).'}
+              </div>
               <input ref={bgInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBg} />
             </div>
 
@@ -627,6 +651,29 @@ export default function MonthlyStory({
                 <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} style={{ accentColor: '#00e0a4' }} />
                 Show {footerUrl}
               </label>
+            </div>
+
+            <div>
+              <div style={label}>Text colors</div>
+              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                {([
+                  { lbl: 'Month', val: headlineColor, set: setHeadlineColor },
+                  { lbl: 'Accent', val: accentColor, set: setAccentColor },
+                  { lbl: 'Lines', val: textColor, set: setTextColor },
+                ] as const).map((c) => (
+                  <label key={c.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <span style={{ ...swatch(false), width: 30, height: 30 }}>
+                      <span style={{ position: 'absolute', inset: 0, background: c.val }} />
+                      <input type="color" value={c.val} onChange={(e) => c.set(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                    </span>
+                    <span style={{ color: 'var(--white,#fff)', fontSize: '.78rem' }}>{c.lbl}</span>
+                  </label>
+                ))}
+                {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff') && (
+                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
+                )}
+              </div>
+              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times & date badge · Lines = venue &amp; address.</div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
