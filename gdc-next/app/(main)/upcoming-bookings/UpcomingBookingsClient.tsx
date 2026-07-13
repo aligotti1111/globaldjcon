@@ -739,8 +739,7 @@ function BookingRow({
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
     const cLabel =
-      trulySigned ? 'Signed'
-      : overrides.contract ? 'Done'
+      isDone ? 'Signed'
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'Void'
       : cstatus === 'awaiting_client' ? 'Awaiting'
       : cstatus === 'awaiting_dj' ? 'Sign'
