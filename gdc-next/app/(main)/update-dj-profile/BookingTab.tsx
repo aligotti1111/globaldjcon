@@ -506,14 +506,25 @@ export default function BookingTab({
                     Off by default. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
                   </div>
                 </div>
-                <select
-                  value={taxEnabled ? 'yes' : 'no'}
-                  onChange={(e) => setTaxEnabled(e.target.value === 'yes')}
-                  className={styles.settingSelect}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={taxEnabled}
+                  aria-label="Charge sales tax"
+                  onClick={() => setTaxEnabled(!taxEnabled)}
+                  style={{
+                    position: 'relative', width: 46, height: 26, borderRadius: 999,
+                    border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                    background: taxEnabled ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                    transition: 'background .15s ease',
+                  }}
                 >
-                  <option value="no">Off</option>
-                  <option value="yes">On</option>
-                </select>
+                  <span style={{
+                    position: 'absolute', top: 3, left: taxEnabled ? 23 : 3,
+                    width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                    transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                  }} />
+                </button>
               </div>
               {taxEnabled && (
                 <div className={styles.settingRow}>
