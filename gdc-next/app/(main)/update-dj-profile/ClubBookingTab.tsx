@@ -287,6 +287,14 @@ export default function ClubBookingTab({
     patch({ tax_pct: v } as unknown as Partial<BookingSettings>);
   }
 
+  // Require a signed contract for each booking — OFF by default. Stored as a
+  // preference (require_contract); not enforced yet.
+  const requireContract = !!(bookingSettings as { require_contract?: boolean }).require_contract;
+  function setRequireContract(on: boolean) {
+    setLastChangedField('settings');
+    patch({ require_contract: on } as unknown as Partial<BookingSettings>);
+  }
+
   // Currency symbol helper (used for the rate field prefix)
   const currentCurrency = useMemo(() => {
     return CURRENCIES.find((c) => c.code === ratesDraft.rate_currency) || CURRENCIES[0];
@@ -705,6 +713,23 @@ export default function ClubBookingTab({
               </div>
             </div>
           )}
+
+          <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
+              <div className={styles.settingHint}>
+                Off by default. When on, you plan to send a contract for every booking before the event.
+              </div>
+            </div>
+            <select
+              value={requireContract ? 'yes' : 'no'}
+              onChange={(e) => setRequireContract(e.target.value === 'yes')}
+              className={styles.settingSelect}
+            >
+              <option value="no">Off</option>
+              <option value="yes">On</option>
+            </select>
+          </div>
 
           <SectionHint
             fieldKey="settings"

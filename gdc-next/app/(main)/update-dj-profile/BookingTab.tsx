@@ -416,6 +416,11 @@ export default function BookingTab({
     }
   }
   function setTax(v: number) { setLastChangedField('settings'); patch({ tax_pct: v } as unknown as Partial<BookingSettings>); }
+
+  // Require a signed contract for each booking — OFF by default. Stored as a
+  // preference (require_contract); not enforced yet.
+  const requireContract = !!(bookingSettings as { require_contract?: boolean }).require_contract;
+  function setRequireContract(on: boolean) { setLastChangedField('settings'); patch({ require_contract: on } as unknown as Partial<BookingSettings>); }
   // Top-level wholesale rewrite of all packages (add/remove a row, or
   // commit a save from a single package card). No SavedHint tagging since
   // packages don't autosave anymore — they have their own save buttons
@@ -535,6 +540,22 @@ export default function BookingTab({
                   </div>
                 </div>
               )}
+              <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+                <div className={styles.settingLabelWrap}>
+                  <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
+                  <div className={styles.settingHint}>
+                    Off by default. When on, you plan to send a contract for every booking before the event.
+                  </div>
+                </div>
+                <select
+                  value={requireContract ? 'yes' : 'no'}
+                  onChange={(e) => setRequireContract(e.target.value === 'yes')}
+                  className={styles.settingSelect}
+                >
+                  <option value="no">Off</option>
+                  <option value="yes">On</option>
+                </select>
+              </div>
               {/* Save status hint at the bottom of the section box.
                   Reserves a small fixed height so the layout doesn't
                   jump when the hint appears/disappears. */}
