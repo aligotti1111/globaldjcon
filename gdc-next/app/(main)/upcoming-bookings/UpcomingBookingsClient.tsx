@@ -672,6 +672,9 @@ function BookingRow({
   onEdit?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Set true when the details panel's live DocuSeal check confirms the contract
+  // is actually signed (covers rows whose stored status is still 'awaiting').
+  const [signedOverride, setSignedOverride] = useState(false);
   // Flyer URL owned here so the row slot and the in-card thumbnail
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
@@ -708,13 +711,14 @@ function BookingRow({
     { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check' },
   ];
   if (!booking.is_manual && (requireContract || !!cstatus)) {
+    const isSigned = cstatus === 'signed' || signedOverride;
     const cState: StepState =
-      cstatus === 'signed' ? 'done'
+      isSigned ? 'done'
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
     const cLabel =
-      cstatus === 'signed' ? 'Signed'
+      isSigned ? 'Signed'
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'Void'
       : cstatus === 'awaiting_client' ? 'Awaiting'
       : cstatus === 'awaiting_dj' ? 'Sign'
@@ -869,6 +873,7 @@ function BookingRow({
           taxPct={taxPct}
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
+          onContractSigned={() => setSignedOverride(true)}
         />
       )}
     </div>
@@ -883,7 +888,7 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange,
+  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -892,6 +897,7 @@ function BookingDetails({
   taxPct: number;
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
+  onContractSigned?: () => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
@@ -951,6 +957,7 @@ function BookingDetails({
         if (alive && res.ok && (json.contract || json.audit)) {
           setSignedDocs({ contract: json.contract, audit: json.audit });
           setLocallySigned(true);
+          onContractSigned?.(); // bubble up so the row's status strip shows Signed
         }
       } catch { /* ignore — leave as awaiting */ }
     })();
