@@ -135,6 +135,35 @@ function EventRow({
   // Lightbox for the flyer image — shown when the user clicks the
   // thumbnail. Provides a Download link inside the overlay.
   const [showLightbox, setShowLightbox] = useState(false);
+  // Signed-contract download for the host. Checked when the row is expanded.
+  const [contractDocs, setContractDocs] = useState<{ contract?: string; audit?: string } | null>(null);
+  const [contractPending, setContractPending] = useState(false);
+
+  // When the host opens an event, check whether a contract exists / is signed.
+  //   200 + urls → signed (show download buttons)
+  //   409        → contract out for signature (show "awaiting")
+  //   404/other  → no contract (show nothing)
+  useEffect(() => {
+    if (!expanded) return;
+    if (event.booking_type !== 'club' && event.booking_type !== 'mobile') return;
+    if (contractDocs || contractPending) return; // already resolved
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/contracts/signed-doc', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: event.id }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { contract?: string; audit?: string };
+        if (!alive) return;
+        if (res.ok && (json.contract || json.audit)) setContractDocs({ contract: json.contract, audit: json.audit });
+        else if (res.status === 409) setContractPending(true);
+      } catch { /* ignore — no contract section */ }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
   const isManual = event.is_manual;
   // Hosts/venues can upload a flyer to:
   //   - Any manual event they added (no DJ or any DJ)
@@ -640,6 +669,24 @@ function EventRow({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          {/* Contract — the host can download their signed copy + audit log
+              once both parties have signed. Same source as the DJ's page. */}
+          {(event.booking_type === 'club' || event.booking_type === 'mobile') && (contractDocs || contractPending) && (
+            <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
+              <div className={styles.detailLabel}>Contract</div>
+              {contractDocs ? (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ color: '#00e0a4', fontWeight: 700 }}>✓ Contract signed</div>
+                  <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                    {contractDocs.contract && <a href={contractDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
+                    {contractDocs.audit && <a href={contractDocs.audit} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Audit log</a>}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', marginTop: 6 }}>Awaiting signatures — your signed copy will appear here once everyone has signed.</div>
+              )}
             </div>
           )}
           {/* Shared notes feed — both DJ and host can read + post. Shown
