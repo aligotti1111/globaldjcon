@@ -849,6 +849,34 @@ function BookingDetails({
   const [cancelBusy, setCancelBusy] = useState(false);
   const [signedBusy, setSignedBusy] = useState(false);
   const [signedDocs, setSignedDocs] = useState<{ contract?: string; audit?: string } | null>(null);
+  const [locallySigned, setLocallySigned] = useState(false);
+
+  // When a sent contract is opened, verify with DocuSeal whether it's actually
+  // completed. The webhook flips the DB to 'signed', but a page loaded before
+  // that won't know — so we check live and update the UI to "✓ Signed" without
+  // needing a refresh. Runs once when the details panel mounts (on expand).
+  useEffect(() => {
+    const pending = !contractCancelled
+      && (contractSent || booking.contract_status === 'awaiting_client')
+      && booking.contract_status !== 'signed';
+    if (!pending) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/contracts/signed-doc', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: booking.id }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { contract?: string; audit?: string };
+        if (alive && res.ok && (json.contract || json.audit)) {
+          setSignedDocs({ contract: json.contract, audit: json.audit });
+          setLocallySigned(true);
+        }
+      } catch { /* ignore — leave as awaiting */ }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch the finished, signed contract PDF + audit log so the DJ can download both.
   async function downloadSigned() {
@@ -1185,7 +1213,7 @@ function BookingDetails({
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
           <div className={styles.detailLabel}>Contract</div>
-          {!contractCancelled && (contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' ? (
+          {!contractCancelled && (contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' && !locallySigned ? (
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
@@ -1202,7 +1230,7 @@ function BookingDetails({
                 <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)', fontWeight: 600, cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.76rem', marginTop: 8, textDecoration: 'underline', padding: 0 }}>{signedBusy ? 'Checking…' : 'Download signed copy (once both have signed)'}</button>
               )}
             </div>
-          ) : booking.contract_status === 'signed' ? (
+          ) : (booking.contract_status === 'signed' || locallySigned) ? (
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#00e0a4', fontWeight: 700 }}>✓ Contract signed</div>
               {signedDocs ? (
