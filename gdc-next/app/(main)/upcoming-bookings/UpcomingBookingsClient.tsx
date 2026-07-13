@@ -721,8 +721,10 @@ function BookingRow({
       : 'Contract';
     steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc' });
   }
+  // Grayed out until the step is complete, then it lights up neon. (Void/
+  // cancelled stays red since that's a problem state, not just "incomplete".)
   const stepColor = (s: StepState) =>
-    s === 'done' ? '#00e0a4' : s === 'pending' ? '#f0b23e' : s === 'void' ? '#ff9a9a' : 'var(--muted,#8a8aa0)';
+    s === 'done' ? '#00e0a4' : s === 'void' ? '#ff9a9a' : 'rgba(255,255,255,.32)';
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
