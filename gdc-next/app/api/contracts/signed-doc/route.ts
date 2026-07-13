@@ -58,6 +58,12 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
+    // Self-heal: a signed doc / audit log only exists once the submission is
+    // completed, so make sure the booking's status reflects that (covers rows
+    // whose webhook never fired). Idempotent, non-fatal.
+    try {
+      await admin.from('bookings').update({ contract_status: 'signed' } as unknown as never).eq('id', bookingId);
+    } catch { /* non-fatal */ }
     return NextResponse.json({ contract, audit });
   } catch (e) {
     return NextResponse.json(
