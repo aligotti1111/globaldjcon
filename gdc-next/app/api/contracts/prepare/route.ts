@@ -429,13 +429,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         reply_to: djEmail || undefined,
         message: { subject, body },
         submitters: [
-          // DJ signs first (embedded in-app). send_email is TRUE so DocuSeal will
-          // email the DJ the final SIGNED copy on completion — enabling it later
-          // (after they've signed) is too late, DocuSeal won't send the copy then.
-          // The client is still NOT emailed at creation; they're second with
-          // send_email:false and only get emailed after the DJ reviews, signs, and
-          // sends via /api/contracts/send-client — so nothing goes to the client early.
-          { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: true },
+          // DJ signs first, embedded in-app — NO email to the DJ (enabling it would
+          // send them a confusing "please sign" email the moment they open the page).
+          // The client is not emailed at creation either; they're only emailed after
+          // the DJ reviews, signs, and sends via /api/contracts/send-client.
+          { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
           { role: 'Client', email: clientEmail, name: clientName, send_email: false },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
