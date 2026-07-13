@@ -6,13 +6,10 @@
 // buttons by absorbing all three (and a couple more nav targets) into
 // one menu.
 //
-// Items in the dropdown:
-//   - View My Profile         → /<dj-slug>
-//   - Upcoming Bookings       → /upcoming-bookings   (booking-enabled only)
-//   - Add Booking Manually    → /upcoming-bookings  (DJ taps the Add
-//                                button on that page — keeps this menu
-//                                lightweight and avoids URL-param plumbing)
-//   - Sign Out                → triggers signOut from AuthProvider
+// Grouped into sections for scannability:
+//   Account:   View My Profile · Upcoming Bookings · Add Booking Manually
+//   Settings:  Booking Settings · Notifications · Account Settings · Manage Subscription
+//   —          Sign Out
 //
 // No avatar uploaded? Shows initials from the DJ's name.
 
@@ -39,6 +36,18 @@ function initialsFrom(name: string): string {
   const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : '';
   return (first + second).toUpperCase().slice(0, 2);
 }
+
+// Small muted section caption inside the menu. Kept inline so this component
+// doesn't depend on new CSS classes being added to the global stylesheet.
+const sectionLabelStyle: React.CSSProperties = {
+  padding: '10px 16px 4px',
+  fontSize: '.6rem',
+  fontWeight: 700,
+  letterSpacing: '.1em',
+  textTransform: 'uppercase',
+  color: 'var(--muted, #8a8aa0)',
+  opacity: 0.65,
+};
 
 export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: HeaderDjMenuProps) {
   const router = useRouter();
@@ -152,6 +161,8 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           role="menu"
           style={{ top: popPos.top, right: popPos.right }}
         >
+          {/* ── Account ── */}
+          <div style={sectionLabelStyle}>Account</div>
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               View My Profile
@@ -167,11 +178,18 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
               Add Booking Manually
             </Link>
           )}
+
+          {/* ── Settings ── */}
+          <div className="hdr-dj-menu-sep" />
+          <div style={sectionLabelStyle}>Settings</div>
           <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Booking Settings
           </Link>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
+          </Link>
+          <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Account Settings
           </Link>
           <button
             type="button"
@@ -183,9 +201,8 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           >
             {portalLoading ? 'Opening…' : 'Manage Subscription'}
           </button>
-          <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Settings
-          </Link>
+
+          {/* ── Sign out ── */}
           <div className="hdr-dj-menu-sep" />
           <button
             type="button"
