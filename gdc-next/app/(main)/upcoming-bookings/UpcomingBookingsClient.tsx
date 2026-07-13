@@ -847,6 +847,33 @@ function BookingDetails({
   const [resendBusy, setResendBusy] = useState(false);
   const [resendDone, setResendDone] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [copyBusy, setCopyBusy] = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
+
+  // Copy the client's DocuSeal signing link so the DJ can send it directly
+  // (e.g. if the email didn't reach the client).
+  async function copyClientLink() {
+    setCopyBusy(true);
+    try {
+      const res = await fetch('/api/contracts/client-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && json.url) {
+        try {
+          await navigator.clipboard.writeText(json.url);
+          setCopyDone(true);
+          setTimeout(() => setCopyDone(false), 2500);
+        } catch {
+          window.prompt('Copy this signing link and send it to the client:', json.url);
+        }
+      } else {
+        alert(json.error || 'Could not get the client link.');
+      }
+    } catch { alert('Could not copy the link. Try again in a moment.'); }
+    finally { setCopyBusy(false); }
+  }
   const [signedBusy, setSignedBusy] = useState(false);
   const [signedDocs, setSignedDocs] = useState<{ contract?: string; audit?: string } | null>(null);
   const [locallySigned, setLocallySigned] = useState(false);
@@ -1219,6 +1246,7 @@ function BookingDetails({
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
               <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
+                <button type="button" onClick={copyClientLink} disabled={copyBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: copyBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{copyBusy ? 'Getting link…' : copyDone ? 'Link copied ✓' : '🔗 Copy client link'}</button>
                 <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
               </div>
               {signedDocs ? (
