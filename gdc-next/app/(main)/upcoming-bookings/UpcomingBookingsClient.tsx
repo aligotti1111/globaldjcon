@@ -106,6 +106,9 @@ export default function UpcomingBookingsClient({
   // Paid-subscriber flag — the Schedule Graphic tool is premium-only. Uses the
   // app's standard access check: sub_status 'active' or 'grace'.
   const [isPaid, setIsPaid] = useState(false);
+  // Whether the DJ requires a signed contract per booking — drives the Contract
+  // segment in each row's status strip.
+  const [requireContract, setRequireContract] = useState(false);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -114,10 +117,11 @@ export default function UpcomingBookingsClient({
         const { data } = await supabase.from('users').select('booking_settings, sub_status').eq('id', userId).maybeSingle();
         const row = data as { booking_settings?: string | null; sub_status?: string | null } | null;
         const raw = row?.booking_settings;
-        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number };
+        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean };
         if (!active) return;
         const ss = row?.sub_status;
         setIsPaid(ss === 'active' || ss === 'grace');
+        setRequireContract(!!bs?.require_contract);
         if (djType === 'club') {
           const v = Number(bs?.club_deposit_pct);
           if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
@@ -381,6 +385,7 @@ export default function UpcomingBookingsClient({
                 userId={userId}
                 clubDepositPct={clubDepositPct}
                 taxPct={taxPct}
+                requireContract={requireContract}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                 onEdit={b.is_manual ? () => setEditing(b) : undefined}
@@ -402,6 +407,7 @@ export default function UpcomingBookingsClient({
                     userId={userId}
                     clubDepositPct={clubDepositPct}
                     taxPct={taxPct}
+                    requireContract={requireContract}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={b.is_manual ? () => setEditing(b) : undefined}
@@ -653,13 +659,14 @@ function FlyerSlot({
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, overlaps, onDelete, onEdit,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, overlaps, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
   clubDepositPct: number;
   taxPct: number;
+  requireContract: boolean;
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -690,6 +697,32 @@ function BookingRow({
     const label = MOB_EVENT_TYPE_LABELS[ev] || MOBILE_EVENT_TYPES.find((e) => e.value === ev)?.label;
     context = label || (ev || 'Event');
   }
+
+  // Booking readiness pipeline — compact icon steps driven by the DJ's settings.
+  // Accepted always shows; Contract shows when the DJ requires it (or a contract
+  // already exists). Deposit / Song-list steps slot in here later. Manual
+  // add-ins (no counterparty) only ever show Accepted.
+  type StepState = 'done' | 'pending' | 'void' | 'todo';
+  const cstatus = (booking.contract_status as string | null | undefined) || null;
+  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' }[] = [
+    { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check' },
+  ];
+  if (!booking.is_manual && (requireContract || !!cstatus)) {
+    const cState: StepState =
+      cstatus === 'signed' ? 'done'
+      : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
+      : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
+      : 'todo';
+    const cLabel =
+      cstatus === 'signed' ? 'Signed'
+      : (cstatus === 'cancelled' || cstatus === 'voided') ? 'Void'
+      : cstatus === 'awaiting_client' ? 'Awaiting'
+      : cstatus === 'awaiting_dj' ? 'Sign'
+      : 'Contract';
+    steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc' });
+  }
+  const stepColor = (s: StepState) =>
+    s === 'done' ? '#00e0a4' : s === 'pending' ? '#f0b23e' : s === 'void' ? '#ff9a9a' : 'var(--muted,#8a8aa0)';
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
@@ -764,6 +797,24 @@ function BookingRow({
             <div />
           )}
         </button>
+        {/* Readiness pipeline — icon steps, minimal text. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginRight: 4 }} onClick={(e) => e.stopPropagation()}>
+          {steps.map((st) => {
+            const c = stepColor(st.state);
+            return (
+              <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }} title={st.label}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', color: c, border: `1.5px solid ${c}`, background: st.state === 'done' ? 'rgba(0,224,164,.12)' : 'transparent', flexShrink: 0 }}>
+                  {st.icon === 'check' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                  )}
+                </span>
+                <span style={{ fontSize: '.66rem', fontWeight: 700, color: c, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{st.label}</span>
+              </div>
+            );
+          })}
+        </div>
         {booking.is_manual && (
           <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
         )}
