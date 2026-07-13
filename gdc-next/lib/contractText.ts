@@ -6,7 +6,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit', 'payment_terms',
-  'cocktail_hour', 'tax', 'grand_total',
+  'cocktail_hour', 'tax', 'grand_total', 'agreement_date',
 ] as const;
 
 // Shared clauses used by both contract types.
@@ -39,6 +39,8 @@ export const MOBILE_CONTRACT_TEXT = `DJ SERVICES AGREEMENT
 
 This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("Client") for the event detailed below.
 
+Agreement entered on {{agreement_date}}.
+
 EVENT DETAILS
 Event: {{event_type}}
 Date: {{event_date}}
@@ -56,6 +58,8 @@ ${SHARED_CLAUSES}`;
 export const CLUB_CONTRACT_TEXT = `DJ SERVICES AGREEMENT
 
 This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("Client") for the booking detailed below.
+
+Agreement entered on {{agreement_date}}.
 
 BOOKING DETAILS
 Venue: {{venue_name}}
@@ -75,6 +79,8 @@ ${SHARED_CLAUSES}`;
 export const WEDDING_CONTRACT_TEXT = `WEDDING DJ SERVICES AGREEMENT
 
 This agreement confirms the booking of {{dj_name}} ("DJ") by {{client_name}} ("Client") for the wedding detailed below.
+
+Agreement entered on {{agreement_date}}.
 
 WEDDING DETAILS
 Client/Host: {{client_name}}
