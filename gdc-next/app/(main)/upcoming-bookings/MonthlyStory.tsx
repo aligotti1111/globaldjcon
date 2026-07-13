@@ -335,6 +335,7 @@ export default function MonthlyStory({
   const [djSlug, setDjSlug] = useState<string>('');
   const [showUrl, setShowUrl] = useState(true);
   const [saveLogo, setSaveLogo] = useState(false);
+  const [saveColors, setSaveColors] = useState(false);
   const [hasDragged, setHasDragged] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
@@ -357,6 +358,14 @@ export default function MonthlyStory({
         settingsRef.current = bs;
         const saved = bs.story_logo_url;
         if (typeof saved === 'string' && saved) { setLogoUrl(saved); setSaveLogo(true); }
+        const cols = bs.story_colors as Record<string, string> | undefined;
+        if (cols && typeof cols === 'object') {
+          if (cols.headline) setHeadlineColor(cols.headline);
+          if (cols.accent) setAccentColor(cols.accent);
+          if (cols.text) setTextColor(cols.text);
+          if (cols.address) setAddressColor(cols.address);
+          setSaveColors(true);
+        }
       } catch { /* ignore */ }
     })();
     return () => { a = false; };
@@ -374,6 +383,24 @@ export default function MonthlyStory({
       await supabase.from('users').update({ booking_settings: JSON.stringify(next) } as never).eq('id', userId);
     } catch { /* ignore */ }
   }
+
+  // Persist (or clear) the chosen colors in booking_settings for reuse next time.
+  async function persistColors(save: boolean, cols?: { headline: string; accent: string; text: string; address: string }) {
+    try {
+      const supabase = createClient();
+      const next = { ...settingsRef.current } as Record<string, unknown>;
+      if (save && cols) next.story_colors = cols; else delete next.story_colors;
+      settingsRef.current = next;
+      await supabase.from('users').update({ booking_settings: JSON.stringify(next) } as never).eq('id', userId);
+    } catch { /* ignore */ }
+  }
+
+  // While "save colors" is on, keep the saved palette in sync with any edits.
+  useEffect(() => {
+    if (!saveColors) return;
+    persistColors(true, { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveColors, headlineColor, accentColor, textColor, addressColor]);
 
   const now = useMemo(() => new Date(), []);
 
@@ -679,6 +706,10 @@ export default function MonthlyStory({
                 )}
               </div>
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times &amp; date badge · Venue &amp; Address = the two card lines.</div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={saveColors} onChange={(e) => { const on = e.target.checked; setSaveColors(on); if (!on) persistColors(false); }} style={{ accentColor: '#00e0a4' }} />
+                Save these colors for future graphics
+              </label>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
