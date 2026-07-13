@@ -102,6 +102,7 @@ interface DrawData {
   headlineColor: string;
   accentColor: string;
   textColor: string;
+  addressColor: string;
 }
 
 // Convert a #rgb / #rrggbb hex to an rgba() string; falls back to neon if invalid.
@@ -269,7 +270,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
       { txt: venue, f: vFont, weight: 700, color: txtCol },
     ];
     if (times) stack.push({ txt: times, f: tFont, weight: 600, color: accent });
-    if (b.venue_address) stack.push({ txt: b.venue_address, f: aFont, weight: 400, color: hexToRgba(txtCol, 0.6) });
+    if (b.venue_address) stack.push({ txt: b.venue_address, f: aFont, weight: 400, color: d.addressColor || hexToRgba(txtCol, 0.6) });
 
     let blockH = lineGap * (stack.length - 1);
     for (const s of stack) blockH += cap(s.f) + desc(s.f);
@@ -326,6 +327,7 @@ export default function MonthlyStory({
   const [headlineColor, setHeadlineColor] = useState('#00e0a4');
   const [accentColor, setAccentColor] = useState('#00e0a4');
   const [textColor, setTextColor] = useState('#ffffff');
+  const [addressColor, setAddressColor] = useState('#b9b9c8');
   const [monthOffset, setMonthOffset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [djSlug, setDjSlug] = useState<string>('');
@@ -424,9 +426,9 @@ export default function MonthlyStory({
       bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
       rows: pageRows, layoutCount, pageIndex, pageCount: pages.length, size,
       footerUrl, showUrl,
-      headlineColor, accentColor, textColor,
+      headlineColor, accentColor, textColor, addressColor,
     });
-  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor]);
+  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor, addressColor]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -659,7 +661,8 @@ export default function MonthlyStory({
                 {([
                   { lbl: 'Month', val: headlineColor, set: setHeadlineColor },
                   { lbl: 'Accent', val: accentColor, set: setAccentColor },
-                  { lbl: 'Lines', val: textColor, set: setTextColor },
+                  { lbl: 'Venue', val: textColor, set: setTextColor },
+                  { lbl: 'Address', val: addressColor, set: setAddressColor },
                 ] as const).map((c) => (
                   <label key={c.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <span style={{ ...swatch(false), width: 30, height: 30 }}>
@@ -669,11 +672,11 @@ export default function MonthlyStory({
                     <span style={{ color: 'var(--white,#fff)', fontSize: '.78rem' }}>{c.lbl}</span>
                   </label>
                 ))}
-                {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff') && (
-                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
+                {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff' || addressColor !== '#b9b9c8') && (
+                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); setAddressColor('#b9b9c8'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
                 )}
               </div>
-              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times & date badge · Lines = venue &amp; address.</div>
+              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times &amp; date badge · Venue &amp; Address = the two card lines.</div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.8rem' }}>
