@@ -727,10 +727,14 @@ function BookingRow({
   // add-ins (no counterparty) only ever show Accepted.
   type StepState = 'done' | 'pending' | 'void' | 'todo';
   const cstatus = (booking.contract_status as string | null | undefined) || null;
+  // Use the booking's OWN snapshot of the requirement (frozen at creation) so
+  // changing the DJ's setting later never re-shapes existing bookings. Falls
+  // back to the live setting only for rows created before the snapshot existed.
+  const needsContract = (booking as { requires_contract?: boolean | null }).requires_contract ?? requireContract;
   const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc'; overridable: boolean; done: boolean }[] = [
     { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check', overridable: false, done: true },
   ];
-  if (!booking.is_manual && (requireContract || !!cstatus || overrides.contract)) {
+  if (!booking.is_manual && (needsContract || !!cstatus || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
     const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
