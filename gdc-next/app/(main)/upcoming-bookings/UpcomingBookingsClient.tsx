@@ -704,7 +704,10 @@ function BookingRow({
 
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
-      <div className={styles.row}>
+      {/* Whole row is clickable — a click anywhere (date, empty space, time)
+          toggles expand. Interactive children (flyer, edit, delete, chevron)
+          stopPropagation so they run their own action instead of toggling. */}
+      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
         {/* Date pill — first on the row. */}
         <div className={styles.rowDate}>
           <div className={styles.dayNum}>{day}</div>
@@ -716,19 +719,22 @@ function BookingRow({
         {/* Event flyer — club/bar bookings only. Sits right of the date.
             Same flyer the host can manage on the Upcoming Events page. */}
         {djType === 'club' && (
-          <FlyerSlot
-            bookingId={booking.id}
-            userId={userId}
-            flyerUrl={flyerUrl}
-            onChange={setFlyerUrl}
-            size="row"
-          />
+          <span style={{ display: 'contents' }} onClick={(e) => e.stopPropagation()}>
+            <FlyerSlot
+              bookingId={booking.id}
+              userId={userId}
+              flyerUrl={flyerUrl}
+              onChange={setFlyerUrl}
+              size="row"
+            />
+          </span>
         )}
-        {/* Clickable area — toggles the expand/collapse. */}
+        {/* Time/context area — clicking it toggles too (stops propagation to
+            avoid a double-toggle with the row wrapper). */}
         <button
           type="button"
           className={styles.rowToggle}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
           aria-expanded={expanded}
         >
           <div className={styles.rowTimeWrap}>
@@ -785,7 +791,7 @@ function BookingRow({
         <button
           type="button"
           className={styles.rowChevronBtn}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           <svg
