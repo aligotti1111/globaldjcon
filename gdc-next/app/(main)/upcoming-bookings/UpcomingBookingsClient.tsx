@@ -837,6 +837,23 @@ function BookingDetails({
   const [resendBusy, setResendBusy] = useState(false);
   const [resendDone, setResendDone] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [signedBusy, setSignedBusy] = useState(false);
+  const [signedDocs, setSignedDocs] = useState<{ contract?: string; audit?: string } | null>(null);
+
+  // Fetch the finished, signed contract PDF + audit log so the DJ can download both.
+  async function downloadSigned() {
+    setSignedBusy(true);
+    try {
+      const res = await fetch('/api/contracts/signed-doc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { contract?: string; audit?: string; error?: string };
+      if (res.ok && (json.contract || json.audit)) setSignedDocs({ contract: json.contract, audit: json.audit });
+      else alert(json.error || 'The signed contract isn’t ready yet.');
+    } catch { alert('Could not fetch the signed contract. Try again in a moment.'); }
+    finally { setSignedBusy(false); }
+  }
 
   // Re-email the client their copy to sign.
   async function resendContract() {
@@ -1166,9 +1183,27 @@ function BookingDetails({
                 <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
                 <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
               </div>
+              {signedDocs ? (
+                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                  {signedDocs.contract && <a href={signedDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
+                  {signedDocs.audit && <a href={signedDocs.audit} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Audit log</a>}
+                </div>
+              ) : (
+                <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)', fontWeight: 600, cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.76rem', marginTop: 8, textDecoration: 'underline', padding: 0 }}>{signedBusy ? 'Checking…' : 'Download signed copy (once both have signed)'}</button>
+              )}
             </div>
           ) : booking.contract_status === 'signed' ? (
-            <div style={{ color: '#00e0a4', fontWeight: 700, marginTop: 8 }}>✓ Contract signed</div>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ color: '#00e0a4', fontWeight: 700 }}>✓ Contract signed</div>
+              {signedDocs ? (
+                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                  {signedDocs.contract && <a href={signedDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
+                  {signedDocs.audit && <a href={signedDocs.audit} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Audit log</a>}
+                </div>
+              ) : (
+                <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.8rem', marginTop: 8 }}>{signedBusy ? 'Loading…' : '⬇ Download signed contract'}</button>
+              )}
+            </div>
           ) : (
             <div style={{ marginTop: 8 }}>
               {contractCancelled && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginBottom: 6 }}>Contract cancelled. Review and send a new one below.</div>}
