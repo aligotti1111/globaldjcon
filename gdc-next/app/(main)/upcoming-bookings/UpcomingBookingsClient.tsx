@@ -907,7 +907,7 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned,
+  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, contractMarkedDone, onMarkContract,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
