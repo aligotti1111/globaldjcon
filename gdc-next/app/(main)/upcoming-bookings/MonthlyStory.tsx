@@ -152,12 +152,14 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     }
   }
   const accent = d.accentColor || NEON;
+  // Background glow + top bar stay on the brand neon — the Accent control only
+  // affects the times and date badge, not the background.
   const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
-  glow.addColorStop(0, hexToRgba(accent, 0.20));
-  glow.addColorStop(1, hexToRgba(accent, 0));
+  glow.addColorStop(0, 'rgba(0,224,164,0.20)');
+  glow.addColorStop(1, 'rgba(0,224,164,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = accent;
+  ctx.fillStyle = NEON;
   ctx.fillRect(0, 0, w, 12);
 
   // ── Header ─────────────────────────────────────────────
