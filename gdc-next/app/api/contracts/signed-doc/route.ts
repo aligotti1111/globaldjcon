@@ -22,17 +22,22 @@ export async function POST(req: Request) {
   const bookingId = typeof body.bookingId === 'string' && body.bookingId ? body.bookingId : null;
   if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
 
-  // Find the submission for this booking (DJ must own it).
+  // Find the submission for this booking. EITHER party may download the signed
+  // contract — the DJ (dj_id) or the host/booker (requester_id).
   const admin = createAdminClient();
   let submissionId: string | null = null;
   try {
     const { data } = await admin
       .from('bookings')
-      .select('contract_submission_id')
+      .select('contract_submission_id, dj_id, requester_id')
       .eq('id', bookingId)
-      .eq('dj_id', user.id)
       .maybeSingle();
-    submissionId = (data as { contract_submission_id?: string | null } | null)?.contract_submission_id || null;
+    const row = data as { contract_submission_id?: string | null; dj_id?: string | null; requester_id?: string | null } | null;
+    if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (row.dj_id !== user.id && row.requester_id !== user.id) {
+      return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    }
+    submissionId = row.contract_submission_id || null;
   } catch { submissionId = null; }
   if (!submissionId) return NextResponse.json({ error: 'No contract found for this booking.' }, { status: 404 });
 
