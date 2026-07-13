@@ -681,8 +681,10 @@ function BookingRow({
     const o = (booking as { status_overrides?: unknown }).status_overrides;
     return o && typeof o === 'object' ? { ...(o as Record<string, boolean>) } : {};
   });
-  // Which step's mark-complete dropdown is open (by key), or null.
+  // Which step's mark-complete dropdown is open (by key), or null — plus the
+  // viewport position to render it at (fixed, so the card's overflow can't clip it).
   const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   async function toggleStep(key: string, next: boolean) {
     setMenuOpenKey(null);
     setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
@@ -851,7 +853,12 @@ function BookingRow({
                   <button
                     type="button"
                     title="Mark this step complete"
-                    onClick={() => setMenuOpenKey(open ? null : st.key)}
+                    onClick={(e) => {
+                      if (open) { setMenuOpenKey(null); return; }
+                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                      setMenuOpenKey(st.key);
+                    }}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
                   >
                     {inner}
@@ -859,18 +866,18 @@ function BookingRow({
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
                 )}
-                {open && st.overridable && (
+                {open && st.overridable && menuPos && (
                   <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpenKey(null)} />
-                    <div style={{ position: 'absolute', top: '130%', right: 0, zIndex: 41, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 160, whiteSpace: 'nowrap' }}>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
+                    <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
                       <button
                         type="button"
                         onClick={() => toggleStep(st.key, !st.done)}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.76rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
                       >
                         {st.done ? '✕ Mark not complete' : '✓ Mark complete'}
                       </button>
-                      <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.64rem', padding: '2px 8px 4px' }}>For steps handled outside the app.</div>
+                      <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
                     </div>
                   </>
                 )}
