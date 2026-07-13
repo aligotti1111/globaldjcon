@@ -681,7 +681,10 @@ function BookingRow({
     const o = (booking as { status_overrides?: unknown }).status_overrides;
     return o && typeof o === 'object' ? { ...(o as Record<string, boolean>) } : {};
   });
+  // Which step's mark-complete dropdown is open (by key), or null.
+  const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
   async function toggleStep(key: string, next: boolean) {
+    setMenuOpenKey(null);
     setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
     try {
       await fetch('/api/bookings/status-override', {
@@ -722,8 +725,8 @@ function BookingRow({
   // add-ins (no counterparty) only ever show Accepted.
   type StepState = 'done' | 'pending' | 'void' | 'todo';
   const cstatus = (booking.contract_status as string | null | undefined) || null;
-  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' }[] = [
-    { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check' },
+  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc'; overridable: boolean; done: boolean }[] = [
+    { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check', overridable: false, done: true },
   ];
   if (!booking.is_manual && (requireContract || !!cstatus || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
@@ -740,7 +743,8 @@ function BookingRow({
       : cstatus === 'awaiting_client' ? 'Awaiting'
       : cstatus === 'awaiting_dj' ? 'Sign'
       : 'Contract';
-    steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc' });
+    // Overridable only when it isn't genuinely signed (can't un-sign a real one).
+    steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc', overridable: !trulySigned, done: isDone });
   }
   // Grayed out until the step is complete, then it lights up neon. (Void/
   // cancelled stays red since that's a problem state, not just "incomplete".)
@@ -820,12 +824,14 @@ function BookingRow({
             <div />
           )}
         </button>
-        {/* Readiness pipeline — icon steps, minimal text. */}
+        {/* Readiness pipeline — icon steps. Overridable steps open a small
+            dropdown to mark them complete (for stuff handled outside the app). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginRight: 4 }} onClick={(e) => e.stopPropagation()}>
           {steps.map((st) => {
             const c = stepColor(st.state);
-            return (
-              <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }} title={st.label}>
+            const open = menuOpenKey === st.key;
+            const inner = (
+              <>
                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', color: c, border: `1.5px solid ${c}`, background: st.state === 'done' ? 'rgba(0,224,164,.12)' : 'transparent', flexShrink: 0 }}>
                   {st.icon === 'check' ? (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -834,6 +840,40 @@ function BookingRow({
                   )}
                 </span>
                 <span style={{ fontSize: '.66rem', fontWeight: 700, color: c, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{st.label}</span>
+                {st.overridable && (
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: -1 }}><polyline points="6 9 12 15 18 9" /></svg>
+                )}
+              </>
+            );
+            return (
+              <div key={st.key} style={{ position: 'relative', flexShrink: 0 }}>
+                {st.overridable ? (
+                  <button
+                    type="button"
+                    title="Mark this step complete"
+                    onClick={() => setMenuOpenKey(open ? null : st.key)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
+                )}
+                {open && st.overridable && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpenKey(null)} />
+                    <div style={{ position: 'absolute', top: '130%', right: 0, zIndex: 41, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 160, whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleStep(st.key, !st.done)}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.76rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        {st.done ? '✕ Mark not complete' : '✓ Mark complete'}
+                      </button>
+                      <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.64rem', padding: '2px 8px 4px' }}>For steps handled outside the app.</div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -891,8 +931,6 @@ function BookingRow({
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
-          contractMarkedDone={!!overrides.contract}
-          onMarkContract={(v) => toggleStep('contract', v)}
         />
       )}
     </div>
@@ -907,7 +945,7 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, contractMarkedDone, onMarkContract,
+  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -917,8 +955,6 @@ function BookingDetails({
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
   onContractSigned?: () => void;
-  contractMarkedDone?: boolean;
-  onMarkContract?: (v: boolean) => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
@@ -1355,21 +1391,6 @@ function BookingDetails({
             <div style={{ marginTop: 8 }}>
               {contractCancelled && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginBottom: 6 }}>Contract cancelled. Review and send a new one below.</div>}
               <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
-            </div>
-          )}
-          {/* Manual override — mark the contract step done when it was handled
-              outside the app. Hidden once it's genuinely signed. */}
-          {!(booking.contract_status === 'signed' || locallySigned) && onMarkContract && (
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.07)' }}>
-              {contractMarkedDone ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ color: '#00e0a4', fontWeight: 700, fontSize: '.82rem' }}>✓ Contract marked done manually</span>
-                  <button type="button" onClick={() => onMarkContract(false)} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: '.76rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Undo</button>
-                </div>
-              ) : (
-                <button type="button" onClick={() => onMarkContract(true)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: 'var(--white,#fff)', fontWeight: 600, borderRadius: 6, padding: '.45rem 1rem', cursor: 'pointer', fontSize: '.78rem' }}>✔ Mark contract done manually</button>
-              )}
-              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.7rem', marginTop: 6 }}>Use this only if the contract was handled outside Global DJ Connect. It updates the status here — it does not create a signed copy.</div>
             </div>
           )}
         </div>
