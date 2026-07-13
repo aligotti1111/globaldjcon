@@ -286,6 +286,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
+    agreement_date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     cocktail_hour: cocktailHour,
     tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctVal}%)` : '',
     grand_total: (taxAmt > 0 && totalWithTax != null) ? money(totalWithTax, currency) : '',
