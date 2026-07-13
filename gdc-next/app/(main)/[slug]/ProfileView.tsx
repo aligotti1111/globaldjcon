@@ -497,7 +497,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             <div
               style={{
                 position: 'absolute', top: 0, right: 0, zIndex: 6,
-                background: 'var(--neon,#00e0a4)', color: '#06231b',
+                background: '#000000', color: 'var(--neon,#00e0a4)',
+                border: '1px solid var(--neon,#00e0a4)',
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
                 padding: '6px 14px', borderRadius: '0 0 0 12px',
