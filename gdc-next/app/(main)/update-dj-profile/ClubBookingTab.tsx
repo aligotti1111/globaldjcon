@@ -721,14 +721,25 @@ export default function ClubBookingTab({
                 Off by default. When on, you plan to send a contract for every booking before the event.
               </div>
             </div>
-            <select
-              value={requireContract ? 'yes' : 'no'}
-              onChange={(e) => setRequireContract(e.target.value === 'yes')}
-              className={styles.settingSelect}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={requireContract}
+              aria-label="Require a signed contract for each booking"
+              onClick={() => setRequireContract(!requireContract)}
+              style={{
+                position: 'relative', width: 46, height: 26, borderRadius: 999,
+                border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                background: requireContract ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                transition: 'background .15s ease',
+              }}
             >
-              <option value="no">Off</option>
-              <option value="yes">On</option>
-            </select>
+              <span style={{
+                position: 'absolute', top: 3, left: requireContract ? 23 : 3,
+                width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+              }} />
+            </button>
           </div>
 
           <SectionHint
