@@ -328,7 +328,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       const html = buildBookedContractHtml(cData?.body_text || '', values, cData?.logo_url || null);
       const fitTpl = await withTimeout<{ id?: string | number }>(
         docuseal.createTemplateFromHtml({
-          name: `Contract — ${bookingId} — ${Date.now()}`,
+          // Human-readable document name (shows as the email subject + attachment
+          // file name). Falls back gracefully if client/date are missing.
+          name: `Global DJ Connect Contract${clientName ? ` — ${clientName}` : ''}${b.event_date ? ` — ${fmtDate(b.event_date as string)}` : ''}`,
           html,
           external_id: `fit_${user.id}_${bookingId}_${Date.now()}`,
         }) as unknown as Promise<{ id?: string | number }>,
@@ -427,10 +429,13 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         reply_to: djEmail || undefined,
         message: { subject, body },
         submitters: [
-          // DJ signs first (embedded, no email). The client is NOT emailed at
-          // creation — only after the DJ reviews, signs, and sends, via
-          // /api/contracts/send-client. This is what stops the auto-send.
-          { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
+          // DJ signs first (embedded in-app). send_email is TRUE so DocuSeal will
+          // email the DJ the final SIGNED copy on completion — enabling it later
+          // (after they've signed) is too late, DocuSeal won't send the copy then.
+          // The client is still NOT emailed at creation; they're second with
+          // send_email:false and only get emailed after the DJ reviews, signs, and
+          // sends via /api/contracts/send-client — so nothing goes to the client early.
+          { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: true },
           { role: 'Client', email: clientEmail, name: clientName, send_email: false },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
