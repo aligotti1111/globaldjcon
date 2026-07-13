@@ -327,11 +327,6 @@ export default function UpcomingBookingsClient({
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          {djType === 'club' && isPaid && (
-            <button type="button" onClick={() => setShowStory(true)} className={styles.addBtn}>
-              📅 Schedule Graphic
-            </button>
-          )}
           <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
             + Add Booking Manually
           </button>
@@ -339,7 +334,7 @@ export default function UpcomingBookingsClient({
       </div>
 
       {bookings.length > 0 && (
-        <div className={styles.sortBar}>
+        <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
           <button
             type="button"
@@ -355,6 +350,15 @@ export default function UpcomingBookingsClient({
           >
             Recently booked
           </button>
+          {djType === 'club' && isPaid && (
+            <button
+              type="button"
+              onClick={() => setShowStory(true)}
+              style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, letterSpacing: '.03em' }}
+            >
+              📅 Generate graphic of schedule
+            </button>
+          )}
         </div>
       )}
 
