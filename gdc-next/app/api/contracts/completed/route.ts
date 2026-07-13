@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     const { data: bookingRow } = await admin
       .from('bookings')
       .select('id, dj_id, contract_status, event_date, venue_name')
-      .eq('contract_submission_id', String(submissionId))
+      .eq('contract_submission_id' as never, String(submissionId) as never)
       .maybeSingle();
     const booking = bookingRow as {
       id: string; dj_id: string | null; contract_status: string | null;
