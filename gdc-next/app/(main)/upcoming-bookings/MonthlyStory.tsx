@@ -107,18 +107,12 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
   const T = (px: number) => Math.round(px * d.textScale); // scale readable text
 
   // ── Background ─────────────────────────────────────────
-  if (d.bgImg) {
-    const base = Math.max(w / d.bgImg.width, h / d.bgImg.height);
-    const s = base * d.bgScale;
-    const dw = d.bgImg.width * s;
-    const dh = d.bgImg.height * s;
-    const ox = (w - dw) / 2 + (d.bgOffsetX * (dw - w)) / 2;
-    const oy = (h - dh) / 2 + (d.bgOffsetY * (dh - h)) / 2;
-    ctx.drawImage(d.bgImg, ox, oy, dw, dh);
-    ctx.fillStyle = 'rgba(8,8,18,0.62)'; // readability overlay
-    ctx.fillRect(0, 0, w, h);
-  } else if (d.bgColor) {
+  // Base layer: chosen color, else theme gradient, else a neutral dark base under a photo.
+  if (d.bgColor) {
     ctx.fillStyle = d.bgColor;
+    ctx.fillRect(0, 0, w, h);
+  } else if (d.bgImg) {
+    ctx.fillStyle = '#0b0b14';
     ctx.fillRect(0, 0, w, h);
   } else {
     const bg = ctx.createLinearGradient(0, 0, w, h);
@@ -127,6 +121,21 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     bg.addColorStop(1, d.themeStops[2]);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
+  }
+  // Image drawn ON TOP of the base — a transparent PNG lets the color show through.
+  if (d.bgImg) {
+    const base = Math.max(w / d.bgImg.width, h / d.bgImg.height);
+    const s = base * d.bgScale;
+    const dw = d.bgImg.width * s;
+    const dh = d.bgImg.height * s;
+    const ox = (w - dw) / 2 + (d.bgOffsetX * (dw - w)) / 2;
+    const oy = (h - dh) / 2 + (d.bgOffsetY * (dh - h)) / 2;
+    ctx.drawImage(d.bgImg, ox, oy, dw, dh);
+    // Darken for text readability only in pure-photo mode; respect an explicit color choice.
+    if (!d.bgColor) {
+      ctx.fillStyle = 'rgba(8,8,18,0.55)';
+      ctx.fillRect(0, 0, w, h);
+    }
   }
   const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
   glow.addColorStop(0, 'rgba(0,224,164,0.20)');
@@ -508,6 +517,12 @@ export default function MonthlyStory({
     color: active ? '#06231b' : 'var(--white,#fff)',
   });
   const label: React.CSSProperties = { color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 };
+  const swatch = (active: boolean): React.CSSProperties => ({
+    width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0,
+    border: active ? '2px solid var(--neon,#00e0a4)' : '2px solid rgba(255,255,255,.18)',
+    boxShadow: active ? '0 0 0 3px rgba(0,224,164,.3)' : 'none',
+    display: 'block',
+  });
 
   function Slider({ text, value, min, max, step, onChange, display }: { text: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; display?: (v: number) => string }) {
     return (
@@ -559,17 +574,37 @@ export default function MonthlyStory({
 
             <div>
               <div style={label}>Background</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                {Object.keys(THEMES).map((t) => (
-                  <button key={t} type="button" style={btn(!bgUrl && !bgColor && theme === t)} onClick={() => { setBgUrl(null); setBgColor(null); setTheme(t); }}>{t}</button>
-                ))}
-                <label style={{ ...btn(!bgUrl && !!bgColor), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  Color
-                  <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => { setBgUrl(null); setBgColor(e.target.value); }} style={{ width: 22, height: 22, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }} />
+              <div style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
+                {Object.keys(THEMES).map((t) => {
+                  const active = !bgUrl && !bgColor && theme === t;
+                  const s = THEMES[t];
+                  return (
+                    <button key={t} type="button" title={t} style={swatch(active)} onClick={() => { setBgUrl(null); setBgColor(null); setTheme(t); }}>
+                      <span style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${s[0]}, ${s[1]} 55%, ${s[2]})` }} />
+                    </button>
+                  );
+                })}
+
+                <span style={{ width: 1, height: 26, background: 'rgba(255,255,255,.14)', margin: '0 2px' }} />
+
+                <label title="Custom color" style={swatch(!!bgColor)}>
+                  <span style={{ position: 'absolute', inset: 0, background: bgColor || 'conic-gradient(from 0deg,#ff5f6d,#ffc371,#47e5bc,#4facfe,#b16cea,#ff5f6d)' }} />
+                  <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => setBgColor(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
                 </label>
-                <button type="button" style={btn(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>{busy ? '…' : bgUrl ? 'Image ✓' : 'Upload image'}</button>
-                {bgUrl && <button type="button" style={{ ...btn(false), color: '#ff8a8a', borderColor: 'rgba(255,120,120,.5)' }} onClick={() => setBgUrl(null)}>Remove</button>}
+
+                <button type="button" title="Upload image" style={swatch(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>
+                  {bgUrl
+                    ? <span style={{ position: 'absolute', inset: 0, backgroundImage: `url(${bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                    : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#9a9ab0)', fontSize: 20 }}>{busy ? '…' : '＋'}</span>}
+                </button>
+
+                {(bgUrl || bgColor) && (
+                  <button type="button" title="Clear color & image" onClick={() => { setBgUrl(null); setBgColor(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 2 }}>Clear</button>
+                )}
               </div>
+              {(bgColor && bgUrl) && (
+                <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>A transparent PNG shows your color behind it.</div>
+              )}
               <input ref={bgInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBg} />
             </div>
 
