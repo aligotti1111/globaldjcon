@@ -92,6 +92,7 @@ interface DrawData {
   bgOffsetY: number;
   logoScale: number;
   textScale: number;
+  cardAlpha: number; // fill opacity of each date/gig box
   rows: StoryBooking[];
   layoutCount: number; // rows to SIZE for (keeps every page's cards the same size)
   pageIndex: number;
@@ -213,9 +214,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const cy = ry + cardH / 2;
 
     roundRect(ctx, sideM, ry, w - 2 * sideM, cardH, 26);
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillStyle = `rgba(255,255,255,${d.cardAlpha})`;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.5, d.cardAlpha * 1.6 + 0.05)})`;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -326,6 +327,7 @@ export default function MonthlyStory({
   const [bgOffsetY, setBgOffsetY] = useState(0);
   const [logoScale, setLogoScale] = useState(1);
   const [textScale, setTextScale] = useState(1);
+  const [cardAlpha, setCardAlpha] = useState(0.05);
   const [headlineColor, setHeadlineColor] = useState('#00e0a4');
   const [accentColor, setAccentColor] = useState('#00e0a4');
   const [textColor, setTextColor] = useState('#ffffff');
@@ -452,12 +454,12 @@ export default function MonthlyStory({
     drawStory(ctx, cfg.w, cfg.h, {
       headline, djName, logoImg, bgImg, bgColor,
       themeStops: THEMES[theme] || THEMES.Teal,
-      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale,
+      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha,
       rows: pageRows, layoutCount, pageIndex, pageCount: pages.length, size,
       footerUrl, showUrl,
       headlineColor, accentColor, textColor, addressColor,
     });
-  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor, addressColor]);
+  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor, addressColor]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -707,7 +709,7 @@ export default function MonthlyStory({
               </div>
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times &amp; date badge · Venue &amp; Address = the two card lines.</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={saveColors} onChange={(e) => { const on = e.target.checked; setSaveColors(on); if (!on) persistColors(false); }} style={{ accentColor: '#00e0a4' }} />
+                <input type="checkbox" checked={saveColors} onChange={(e) => { const on = e.target.checked; setSaveColors(on); persistColors(on, on ? { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor } : undefined); }} style={{ accentColor: '#00e0a4' }} />
                 Save these colors for future graphics
               </label>
             </div>
@@ -716,6 +718,7 @@ export default function MonthlyStory({
               {bgUrl && <Slider text="Background size" value={bgScale} min={0.7} max={2.5} step={0.05} onChange={setBgScale} />}
               {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
               <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
+              <Slider text="Box opacity" value={cardAlpha} min={0} max={0.6} step={0.02} onChange={setCardAlpha} display={(v) => `${Math.round((v / 0.6) * 100)}%`} />
             </div>
           </div>
 
