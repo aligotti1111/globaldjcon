@@ -347,7 +347,7 @@ export default function UpcomingBookingsClient({
         </div>
       </div>
 
-      {bookings.length > 0 && (
+      {!archive && bookings.length > 0 && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
           <button
