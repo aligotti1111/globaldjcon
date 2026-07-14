@@ -217,7 +217,7 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     roundRect(ctx, sideM, ry, w - 2 * sideM, cardH, 26);
     ctx.fillStyle = hexToRgba(d.cardColor, d.cardAlpha);
     ctx.fill();
-    ctx.strokeStyle = hexToRgba(d.cardColor, Math.min(0.6, d.cardAlpha * 1.6 + 0.05));
+    ctx.strokeStyle = hexToRgba(d.cardColor, Math.min(1, d.cardAlpha * 1.4 + 0.08));
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -722,7 +722,7 @@ export default function MonthlyStory({
               {bgUrl && <Slider text="Background size" value={bgScale} min={0.7} max={2.5} step={0.05} onChange={setBgScale} />}
               {logoUrl && <Slider text="Logo size" value={logoScale} min={0.5} max={2} step={0.05} onChange={setLogoScale} />}
               <Slider text="Text size" value={textScale} min={0.85} max={1.25} step={0.02} onChange={setTextScale} />
-              <Slider text="Box opacity" value={cardAlpha} min={0} max={0.6} step={0.02} onChange={setCardAlpha} display={(v) => `${Math.round((v / 0.6) * 100)}%`} />
+              <Slider text="Box opacity" value={cardAlpha} min={0} max={1} step={0.02} onChange={setCardAlpha} display={(v) => `${Math.round(v * 100)}%`} />
             </div>
           </div>
 
