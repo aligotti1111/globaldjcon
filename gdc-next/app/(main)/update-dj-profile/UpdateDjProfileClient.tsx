@@ -234,6 +234,23 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     setGeneral(prev => ({ ...prev, [field]: val }));
   }
 
+  // Called by the URL field's own Save (SlugChangeGate) AFTER it has written
+  // the new slug straight to the DB. We mirror the change into form state so
+  // the QR + preview update, and we overwrite ONLY the slug in the dirty
+  // snapshot so the leave-warning doesn't fire for a URL that's already saved
+  // (other unsaved fields keep their dirty state).
+  function handleSlugSaved(newSlug: string) {
+    setGeneral(prev => ({ ...prev, slug: newSlug }));
+    try {
+      const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+      base.slug = newSlug;
+      initialGeneralRef.current = JSON.stringify(base);
+    } catch {
+      /* snapshot stays as-is; worst case a harmless dirty flag */
+    }
+    setSavedVersion(v => v + 1);
+  }
+
   // ── Manual save ─────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -419,6 +436,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             slug={initialProfile.slug}
             siteUrl={siteUrl}
             userId={initialProfile.id}
+            onSlugSaved={handleSlugSaved}
           />
 
           {/* Save — persists the General/profile fields. Booking config has

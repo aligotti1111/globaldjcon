@@ -44,9 +44,12 @@ interface Props {
   // Auth user ID — needed by AvatarCrop to write to `${userId}/avatar.png`
   // in Supabase storage.
   userId: string;
+  // Persist the slug immediately to the DB and clear ONLY its dirty flag, so
+  // the unsaved-changes guard doesn't fire for a URL we've already saved.
+  onSlugSaved: (slug: string) => void;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId }: Props) {
+export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -270,9 +273,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         <div style={{ marginTop: '.85rem' }}>
           <SlugChangeGate
             email={email}
-            currentUrl={`${siteUrl}/${slugDisplay}`}
+            userId={userId}
+            currentUrl={`${siteUrl}/${state.slug || 'your-url'}`}
             currentSlug={state.slug}
-            onSave={(newSlug) => onChange('slug', newSlug)}
+            onSaved={onSlugSaved}
             renderInput={({ value, onChange: setDraft, onStatusChange }) => (
               <SlugInput
                 value={value}
@@ -615,23 +619,26 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
 // SlugChangeGate — the profile URL is a public identity, so we don't let it
 // be edited casually. It stays LOCKED (read-only) until the DJ re-confirms
 // their current password (same signInWithPassword re-auth used by the
-// password/email blocks). Once unlocked, they edit a DRAFT and must click
-// Save (next to the field) to apply it — Save only enables when the new slug
-// differs from the current one AND is confirmed available.
+// password/email blocks). Once unlocked, they edit a DRAFT and click Save
+// (next to the field). Save writes the slug DIRECTLY to the DB — like the
+// email/password blocks — and reports up via onSaved so the parent clears
+// just the slug's dirty flag (no false "unsaved changes" warning).
 // ─────────────────────────────────────────────────────────────────────────
 type GateStatus = 'idle' | 'checking' | 'available' | 'taken';
 
 function SlugChangeGate({
   email,
+  userId,
   currentUrl,
   currentSlug,
-  onSave,
+  onSaved,
   renderInput,
 }: {
   email: string;
+  userId: string;
   currentUrl: string;
   currentSlug: string;
-  onSave: (slug: string) => void;
+  onSaved: (slug: string) => void;
   renderInput: (p: {
     value: string;
     onChange: (v: string) => void;
@@ -646,10 +653,11 @@ function SlugChangeGate({
 
   const [draft, setDraft] = useState(currentSlug || '');
   const [status, setStatus] = useState<GateStatus>('idle');
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const changed = (draft || '').trim() !== (currentSlug || '').trim();
-  const canSave = changed && status === 'available';
+  const canSave = changed && status === 'available' && !saving;
 
   async function verify(e?: React.MouseEvent) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -674,6 +682,24 @@ function SlugChangeGate({
     }
   }
 
+  async function save() {
+    const next = (draft || '').trim();
+    if (!next || next === (currentSlug || '').trim() || status !== 'available') return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('users').update({ slug: next }).eq('id', userId);
+      if (error) { setErr('That URL was just taken — try another.'); return; }
+      onSaved(next);
+      setSaved(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save your URL.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const btn = (variant: 'ghost' | 'primary', enabled = true): React.CSSProperties => ({
     fontFamily: "'Space Mono', monospace",
     fontSize: '.62rem',
@@ -690,7 +716,7 @@ function SlugChangeGate({
     opacity: enabled ? 1 : 0.45,
   });
 
-  // ── Unlocked: edit a draft + Save next to the field ──
+  // ── Unlocked: edit a draft + Save (writes straight to the DB) ──
   if (unlocked) {
     return (
       <div>
@@ -702,24 +728,20 @@ function SlugChangeGate({
               onStatusChange: setStatus,
             })}
           </div>
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={() => { onSave((draft || '').trim()); setSaved(true); }}
-            style={btn('primary', canSave)}
-          >
-            Save
+          <button type="button" disabled={!canSave} onClick={save} style={btn('primary', canSave)}>
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-        {saved && !changed ? (
+        {err && <p style={{ margin: '.5rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+        {!err && saved && !changed ? (
           <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: 'var(--success)' }}>
             ✓ URL saved.
           </p>
-        ) : (
+        ) : !err ? (
           <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)' }}>
             Enter a new URL, then click Save to apply it.
           </p>
-        )}
+        ) : null}
       </div>
     );
   }
