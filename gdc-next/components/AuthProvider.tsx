@@ -43,6 +43,9 @@ interface AuthContextValue {
   /** Call after the banner has been shown so it doesn't re-trigger. */
   acknowledgeVerification: () => void;
   signOut: () => Promise<void>;
+  /** Merge fields into the cached current user in place (e.g. after the DJ
+   *  saves a new slug) so header links update without a full reload. */
+  patchUser: (partial: Partial<CurrentUserWithVerified>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -51,6 +54,7 @@ const AuthContext = createContext<AuthContextValue>({
   justVerified: false,
   acknowledgeVerification: () => {},
   signOut: async () => {},
+  patchUser: () => {},
 });
 
 // localStorage key used to mark a specific verification event as "shown"
@@ -224,6 +228,10 @@ export function AuthProvider({
     }
   }
 
+  const patchUser = (partial: Partial<CurrentUserWithVerified>) => {
+    setUser(prev => (prev ? { ...prev, ...partial } : prev));
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -231,7 +239,7 @@ export function AuthProvider({
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, justVerified, acknowledgeVerification, signOut }}
+      value={{ user, loading, justVerified, acknowledgeVerification, signOut, patchUser }}
     >
       {children}
     </AuthContext.Provider>
