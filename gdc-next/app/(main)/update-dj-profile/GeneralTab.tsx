@@ -30,6 +30,7 @@ import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
+import ProfileQrCode from './ProfileQrCode';
 
 interface Props {
   state: GeneralFormState;
@@ -276,6 +277,11 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             excludeUserId={userId}
             originalSlug={slug || ''}
           />
+
+          {/* Premium: downloadable QR code for the public profile, sitting
+              right under the URL it points at. Uses the live slug value so
+              the preview updates as the DJ edits their URL. */}
+          <ProfileQrCode slug={state.slug} djName={state.name} />
         </div>
       </div>
 
