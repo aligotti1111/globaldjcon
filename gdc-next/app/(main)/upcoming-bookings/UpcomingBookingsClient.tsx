@@ -408,7 +408,7 @@ export default function UpcomingBookingsClient({
                 archive={archive}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                onEdit={b.is_manual ? () => setEditing(b) : undefined}
+                onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
               />
             ))}
           </div>
@@ -431,7 +431,7 @@ export default function UpcomingBookingsClient({
                     archive={archive}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                    onEdit={b.is_manual ? () => setEditing(b) : undefined}
+                    onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
                   />
                 ))}
               </div>
