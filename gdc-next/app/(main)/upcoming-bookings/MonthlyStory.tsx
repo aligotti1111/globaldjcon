@@ -154,13 +154,16 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     }
   }
   const accent = d.accentColor || NEON;
-  // Background glow + top bar stay on the brand neon — the Accent control only
-  // affects the times and date badge, not the background.
-  const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
-  glow.addColorStop(0, 'rgba(0,224,164,0.20)');
-  glow.addColorStop(1, 'rgba(0,224,164,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
+  // Background glow — skipped when a custom solid color is chosen, so that color
+  // stays perfectly flat/solid. Kept for theme gradients and photo backgrounds.
+  if (!d.bgColor) {
+    const glow = ctx.createRadialGradient(w / 2, h * 0.14, 0, w / 2, h * 0.14, w * 0.85);
+    glow.addColorStop(0, 'rgba(0,224,164,0.20)');
+    glow.addColorStop(1, 'rgba(0,224,164,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  }
+  // Top accent bar — brand neon, always.
   ctx.fillStyle = NEON;
   ctx.fillRect(0, 0, w, 12);
 
@@ -645,16 +648,24 @@ export default function MonthlyStory({
 
                 <span style={{ width: 1, height: 26, background: 'rgba(255,255,255,.14)', margin: '0 2px' }} />
 
-                <label title="Custom color" style={swatch(!!bgColor)}>
-                  <span style={{ position: 'absolute', inset: 0, background: bgColor || 'conic-gradient(from 0deg,#ff5f6d,#ffc371,#47e5bc,#4facfe,#b16cea,#ff5f6d)' }} />
-                  <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => setBgColor(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <label title="Solid background color" style={swatch(!!bgColor)}>
+                    <span style={{ position: 'absolute', inset: 0, background: bgColor || 'conic-gradient(from 0deg,#ff5f6d,#ffc371,#47e5bc,#4facfe,#b16cea,#ff5f6d)' }} />
+                    <input type="color" value={bgColor || '#0b0b16'} onChange={(e) => setBgColor(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                  </label>
+                  <span style={{ fontSize: '.58rem', color: 'var(--muted,#9a9ab0)', fontWeight: 700, letterSpacing: '.03em' }}>COLOR</span>
+                </div>
 
-                <button type="button" title="Upload a full background image" style={swatch(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>
-                  {bgUrl
-                    ? <span style={{ position: 'absolute', inset: 0, backgroundImage: `url(${bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                    : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#9a9ab0)', fontSize: 20 }}>{busy ? '…' : '＋'}</span>}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <button type="button" title="Upload a background image" style={swatch(!!bgUrl)} disabled={busy} onClick={() => bgInput.current?.click()}>
+                    {bgUrl
+                      ? <span style={{ position: 'absolute', inset: 0, backgroundImage: `url(${bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                      : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#9a9ab0)' }}>{busy ? '…' : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                        )}</span>}
+                  </button>
+                  <span style={{ fontSize: '.58rem', color: 'var(--muted,#9a9ab0)', fontWeight: 700, letterSpacing: '.03em' }}>IMAGE</span>
+                </div>
 
                 {(bgUrl || bgColor) && (
                   <button type="button" title="Clear color & image" onClick={() => { setBgUrl(null); setBgColor(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 2 }}>Clear</button>
@@ -663,7 +674,7 @@ export default function MonthlyStory({
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>
                 {bgUrl
                   ? <>Your image fills the whole background{bgColor ? ' — a transparent PNG shows your color behind it.' : '.'}</>
-                  : 'Presets, a custom color, or your own full-bleed background image (＋).'}
+                  : 'Pick a preset, a solid COLOR, or upload a full-bleed background IMAGE.'}
               </div>
               <input ref={bgInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBg} />
             </div>
