@@ -689,7 +689,7 @@ function SlugChangeGate({
     setErr(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.from('users').update({ slug: next }).eq('id', userId);
+      const { error } = await supabase.from('users').update({ slug: next } as unknown as never).eq('id', userId);
       if (error) { setErr('That URL was just taken — try another.'); return; }
       onSaved(next);
       setSaved(true);
