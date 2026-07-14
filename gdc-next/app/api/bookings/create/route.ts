@@ -233,9 +233,28 @@ export async function POST(req: Request) {
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
       finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
+
+    // Sales-tax SNAPSHOT — computed once here and frozen onto the booking
+    // row, so a DJ later changing their tax settings can never re-price an
+    // existing booking (or an already-signed contract). Same formulas as
+    // the form's live preview (MobileBookingForm): tax on the post-discount
+    // total, to the cent; then the deposit on the TAX-INCLUSIVE total, to
+    // the cent. (The old code took the deposit on the PRE-tax total, which
+    // stored a different number than the one the client agreed to.)
+    // tax_pct is stored even when 0, so "no tax at booking time" is itself
+    // frozen; the amounts stay null only when there's no price (quote mode).
+    const taxPct = (settings as { tax_enabled?: boolean }).tax_enabled
+      ? Number((settings as { tax_pct?: number }).tax_pct) || 0
+      : 0;
+    const taxAmount =
+      finalTotal != null ? Number(((finalTotal * taxPct) / 100).toFixed(2)) : null;
+    const totalWithTax =
+      finalTotal != null && taxAmount != null
+        ? Number((finalTotal + taxAmount).toFixed(2))
+        : null;
     const finalDeposit =
-      finalTotal != null && depositPct > 0
-        ? Number(((finalTotal * depositPct) / 100).toFixed(2))
+      totalWithTax != null && depositPct > 0
+        ? Number(((totalWithTax * depositPct) / 100).toFixed(2))
         : null;
 
     // Price drift — the DJ edited packages / a sale ended / the promo code
@@ -305,6 +324,11 @@ export async function POST(req: Request) {
       quoted_rate: finalTotal,
       deposit_pct: depositPct || null,
       deposit_amount: finalDeposit,
+      // Frozen tax snapshot (see above) — every display surface and the
+      // contract read THESE, never the DJ's current settings.
+      tax_pct: taxPct,
+      tax_amount: taxAmount,
+      total_with_tax: totalWithTax,
       // Discount snapshot — what was applied, for the DJ's records + usage
       // history. original_rate keeps the pre-discount total for reference.
       original_rate: finalDiscount.amount > 0 ? finalPrice.price : null,
@@ -343,6 +367,9 @@ export async function POST(req: Request) {
         discount_amount: insertPayload.discount_amount,
         deposit_pct: insertPayload.deposit_pct,
         deposit_amount: insertPayload.deposit_amount,
+        tax_pct: insertPayload.tax_pct,
+        tax_amount: insertPayload.tax_amount,
+        total_with_tax: insertPayload.total_with_tax,
         is_quote: insertPayload.is_quote,
         cocktail_price: insertPayload.cocktail_price,
       },
@@ -428,6 +455,26 @@ export async function POST(req: Request) {
   // yet (same cast the form uses).
   const clubDepositPct = (settings as { club_deposit_pct?: number }).club_deposit_pct || 0;
 
+  // Sales-tax SNAPSHOT — same frozen-at-creation rule as the mobile branch:
+  // tax on the post-discount total, to the cent; deposit on the
+  // TAX-INCLUSIVE total, to the cent. (The old code took the deposit on the
+  // PRE-tax total AND Math.round'ed it to whole dollars — two ways to
+  // disagree with the number the form showed.) Offers-mode bookings have no
+  // agreed price yet, so the amounts stay null until a price exists;
+  // tax_pct is still frozen now.
+  const clubTaxPct = (settings as { tax_enabled?: boolean }).tax_enabled
+    ? Number((settings as { tax_pct?: number }).tax_pct) || 0
+    : 0;
+  const clubTaxAmount = computedTotalDiscounted != null
+    ? Number(((computedTotalDiscounted * clubTaxPct) / 100).toFixed(2))
+    : null;
+  const clubTotalWithTax = computedTotalDiscounted != null && clubTaxAmount != null
+    ? Number((computedTotalDiscounted + clubTaxAmount).toFixed(2))
+    : null;
+  const clubDepositAmount = (clubDepositPct > 0 && clubTotalWithTax != null)
+    ? Number(((clubTotalWithTax * clubDepositPct) / 100).toFixed(2))
+    : null;
+
   // Price drift check (see mobile branch). For offers-mode bookings the
   // client previews no quoted total, so expectedTotal is null on both sides.
   if (hasExpected && totalsDiffer(expectedTotal, computedTotalDiscounted)) {
@@ -484,9 +531,12 @@ export async function POST(req: Request) {
     discount_label: clubFinalDiscount.amount > 0 ? clubFinalDiscount.label : null,
     discount_amount: clubFinalDiscount.amount > 0 ? clubFinalDiscount.amount : null,
     deposit_pct: clubDepositPct > 0 ? clubDepositPct : null,
-    deposit_amount: (clubDepositPct > 0 && computedTotalDiscounted != null)
-      ? Math.round((Number(computedTotalDiscounted) * clubDepositPct) / 100)
-      : null,
+    deposit_amount: clubDepositAmount,
+    // Frozen tax snapshot (see above) — every display surface and the
+    // contract read THESE, never the DJ's current settings.
+    tax_pct: clubTaxPct,
+    tax_amount: clubTaxAmount,
+    total_with_tax: clubTotalWithTax,
     currency: rateInfo.currency,
     notes: notes.trim() || null,
     is_quote: isQuoteMode,
@@ -515,6 +565,9 @@ export async function POST(req: Request) {
       discount_amount: insertPayload.discount_amount,
       deposit_pct: insertPayload.deposit_pct,
       deposit_amount: insertPayload.deposit_amount,
+      tax_pct: insertPayload.tax_pct,
+      tax_amount: insertPayload.tax_amount,
+      total_with_tax: insertPayload.total_with_tax,
       is_quote: insertPayload.is_quote,
       currency: insertPayload.currency,
     },
