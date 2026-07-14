@@ -27,7 +27,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { createClient } from '@/lib/supabase/client';
 import styles from './mobileBookingForm.module.css';
 import {
   type BookingSettings,
@@ -392,15 +391,15 @@ export default function MobileBookingForm({
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
       finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
-    const finalDeposit =
-      finalTotal != null && depositPct > 0
-        ? Number(((finalTotal * depositPct) / 100).toFixed(2))
-        : null;
+    // NOTE: finalPrice/finalDiscount/finalTotal are now PREVIEW-ONLY. The
+    // stored money fields (quoted_rate, discount_*, deposit_amount, package
+    // snapshots) are recomputed server-side by /api/bookings/create;
+    // finalTotal is sent as expectedTotal purely so the server can detect
+    // price drift (and 409 instead of booking at a different number).
 
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
       // Compose the event-type-specific detail string (e.g. "25th
       // Anniversary" or "Guest of honor age: 30 · Surprise party: Yes").
       // Null for event types without sub-fields. Shown under Event Type on
@@ -410,84 +409,60 @@ export default function MobileBookingForm({
         birthdayAge,
         surprise,
       });
-      const insertPayload = {
-        dj_id: dj.id,
-        requester_id: currentUser.id,
-        dj_slug: dj.slug,
-        booking_type: 'mobile',
-        event_date: dateKey,
-        event_type: eventType === 'other' ? (eventTypeOther.trim() || 'other') : eventType,
-        event_details: eventDetails,
-        venue_name: venueName.trim(),
-        venue_address: venueAddress.trim(),
-        // Coords from the Nominatim autocomplete pick (null if user typed
-        // freehand). Used by the DJ's booking-requests page to show a
-        // distance warning when the venue is outside their travel range.
-        venue_lat: venueCoordsRef.current?.lat ?? null,
-        venue_lon: venueCoordsRef.current?.lon ?? null,
-        room_details: room.trim() || null,
-        guest_count: guests ? parseInt(guests, 10) : null,
-        start_time: startTime,
-        end_time: endTime || null,
-        phone: phone.trim(),
-        cocktail_needed: wantsCocktail ? true : (isWedding ? !!cocktailNeeded : null),
-        cocktail_start_time: wantsCocktail ? cocktailStart : null,
-        cocktail_same_room: wantsCocktail ? !!cocktailSameRoom : null,
-        // Cocktail add-on snapshot: the separately-charged cocktail price
-        // (0 when bundled/included) and the package's included flag. Lets the
-        // booking card show "base + cocktail = total" without recomputing.
-        cocktail_price: wantsCocktail && finalPrice.cocktailAddon > 0 ? finalPrice.cocktailAddon : null,
-        cocktail_included: wantsCocktail
-          ? (selectedPkg?.cocktailIncluded !== false)
-          : null,
-        // Setup hours snapshot — the selected package's required setup time.
-        setup_hours: selectedPkg?.setupHours
-          ? String(selectedPkg.setupHours)
-          : null,
-        package_title: selectedPkg?.title || null,
-        // HTML package details — snapshotted onto the booking so the DJ's
-        // quote modal and emails can show what the booker actually selected.
-        package_details: selectedPkg?.details || null,
-        // Snapshot the selected package's photos (main + extras) so the
-        // booking's photo view doesn't change if the DJ edits the package later.
-        package_photos: JSON.stringify(
-          [
-            selectedPkg?.photo,
-            ...(((selectedPkg as { photos?: string[] } | null)?.photos) ?? []),
-          ].filter((u): u is string => !!u)
-        ),
-        package_category: cat,
-        package_index: selectedPkgIdx,
-        quoted_rate: finalTotal,
-        deposit_pct: depositPct || null,
-        deposit_amount: finalDeposit,
-        // Discount snapshot — what was applied, for the DJ's records + usage
-        // history. original_rate keeps the pre-discount total for reference.
-        original_rate: finalDiscount.amount > 0 ? finalPrice.price : null,
-        discount_code: finalDiscount.kind === 'code' ? appliedCode : null,
-        discount_label: finalDiscount.amount > 0 ? finalDiscount.label : null,
-        discount_amount: finalDiscount.amount > 0 ? finalDiscount.amount : null,
-        // Snapshot the selected package's overtime rate onto the booking so
-        // the DJ's upcoming/approved views + emails can show it. Quote /
-        // price-on-request bookings leave this null — all pricing, overtime
-        // included, comes from the DJ via the offer.
-        overtime_rate: !finalPrice.isQuote && selectedPkg && Number(selectedPkg.overtime) > 0
-          ? Number(selectedPkg.overtime)
-          : null,
-        is_quote: finalPrice.isQuote,
-        notes: message.trim() || null,
-        status: 'pending',
-      };
-
-      // Insert booking — using `unknown as never` because the Booking type
-      // in db.ts is incomplete (missing dj_slug, event_type, room_details,
-      // guest_count, phone, cocktail_*, package_index). The actual Supabase
-      // table has these columns; the type just doesn't capture them yet.
-      const { error: insertError } = await supabase
-        .from('bookings')
-        .insert(insertPayload as unknown as never);
-
-      if (insertError) throw insertError;
+      // Create the booking via the server route — it recomputes ALL money
+      // fields (price, discount, deposit, package/discount snapshots) from
+      // the DJ's own booking_settings, so a tampered client can't forge
+      // amounts. We send only the booker's CHOICES.
+      const res = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingType: 'mobile',
+          djId: dj.id,
+          dateKey,
+          eventType,
+          eventTypeOther,
+          eventSubType,
+          birthdayAge,
+          surprise,
+          venueName: venueName.trim(),
+          venueAddress: venueAddress.trim(),
+          // Coords from the Nominatim autocomplete pick (null if user typed
+          // freehand). Used by the DJ's booking-requests page to show a
+          // distance warning when the venue is outside their travel range.
+          venueLat: venueCoordsRef.current?.lat ?? null,
+          venueLon: venueCoordsRef.current?.lon ?? null,
+          room,
+          guests,
+          startTime,
+          endTime,
+          phone: phone.trim(),
+          cocktailNeeded,
+          cocktailStart,
+          cocktailSameRoom,
+          packageIndex: selectedPkgIdx,
+          promoCode: appliedCode,
+          message,
+          // Preview total — server-verified, never stored as-is. A 409
+          // below means pricing changed while the form was open.
+          expectedTotal: finalTotal,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (json && typeof json.error === 'string' && json.error) || 'Submission failed'
+        );
+      }
+      // Server-computed money snapshot — used for the emails below so they
+      // always match what was actually stored on the booking row.
+      const created: {
+        quoted_rate: number | null;
+        original_rate: number | null;
+        discount_label: string | null;
+        discount_amount: number | null;
+        is_quote: boolean;
+      } = json.booking;
 
       // Email the DJ that a new booking request came in. The send-email
       // route accepts djUserId and resolves the email server-side via the
@@ -536,10 +511,10 @@ export default function MobileBookingForm({
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
             // rate box instead of the "respond with a quote" prompt.
-            quotedRate: insertPayload.quoted_rate,
-            originalRate: insertPayload.original_rate,
-            discountLabel: insertPayload.discount_label,
-            discountAmount: insertPayload.discount_amount,
+            quotedRate: created.quoted_rate,
+            originalRate: created.original_rate,
+            discountLabel: created.discount_label,
+            discountAmount: created.discount_amount,
           }),
         });
       } catch (e) {
@@ -575,17 +550,17 @@ export default function MobileBookingForm({
             cocktailStart: wantsCocktail ? cocktailStart : null,
             cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
-            quotedRate: insertPayload.quoted_rate,
-            originalRate: insertPayload.original_rate,
-            discountLabel: insertPayload.discount_label,
-            discountAmount: insertPayload.discount_amount,
+            quotedRate: created.quoted_rate,
+            originalRate: created.original_rate,
+            discountLabel: created.discount_label,
+            discountAmount: created.discount_amount,
           }),
         });
       } catch {
         // Best-effort
       }
 
-      setSuccessState({ isQuote: finalPrice.isQuote });
+      setSuccessState({ isQuote: created.is_quote });
       // Notify the parent so the calendar can refresh pending dates — the
       // just-requested date should immediately render a "Pending" pill.
       onSubmitted?.();

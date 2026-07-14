@@ -16,14 +16,14 @@
 //     once day editor adds them — for now we use globals)
 //   - For 'offers' rate type: input field for the visitor's offer amount
 //   - Notes
-//   - Submit → INSERT into bookings + email DJ via /api/send-email
+//   - Submit → POST /api/bookings/create (server recomputes all pricing
+//     from the DJ's booking_settings) + email DJ via /api/send-email
 //
 // The form is rendered inline in the booking tab below the calendar — it
 // does NOT use a modal, matching MobileBookingForm's UX.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { createClient } from '@/lib/supabase/client';
 import styles from './clubBookingForm.module.css';
 import {
   type BookingSettings,
@@ -47,6 +47,7 @@ import {
   CLUB_SET_TYPE_LABELS,
   currencySymbol,
 } from '@/lib/constants';
+import { computeRate, type RateInfo } from './clubRate';
 
 interface DjLite {
   id: string;
@@ -70,123 +71,9 @@ interface Props {
   onClose: () => void;
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Rate calculation — figures out what to show in the rate area based on
-// equipment selection, rate type (flat/hourly/offers), and per-day
-// overrides if present.
-// ─────────────────────────────────────────────────────────────────────────
-
-interface RateInfo {
-  // Display rate (per booking for flat, per hour for hourly, base for offers)
-  rate: number | null;
-  // Rate type — drives what the visitor sees + what gets submitted
-  rateType: 'flat' | 'hourly' | 'offers';
-  // Currency symbol for display
-  symbol: string;
-  // Currency code for submit payload
-  currency: string;
-  // Hourly only — total when start + end are picked
-  hourlyTotal: number | null;
-  // Hourly only — number of hours computed
-  hours: number | null;
-  // Human label (e.g. "Rate with Sound System & Decks")
-  label: string;
-}
-
-function computeRate(
-  bs: BookingSettings,
-  dayData: DayData,
-  equipment: string,
-  startTime: string,
-  endTime: string,
-): RateInfo {
-  const currency = bs.rate_currency || 'USD';
-  const symbol = currencySymbol(currency);
-
-  // Effective rate type — per-day rateType wins, else global
-  // Note: DayData.rateType isn't in the type yet (deferred from day-editor
-  // session) but vanilla writes it. Cast to access defensively.
-  const dayRateType = (dayData as DayData & { rateType?: string }).rateType;
-  const baseType: 'flat' | 'hourly' | 'offers' =
-    (dayRateType as 'flat' | 'hourly' | 'offers') ||
-    ((bs.global_rate_type as 'flat' | 'hourly' | 'offers') || 'flat');
-
-  let label = '';
-  let rate: number | null = null;
-
-  // Equipment-specific label
-  if (equipment === 'sound_system') {
-    label = 'Rate with Sound System & Decks/Controller';
-  } else if (equipment === 'decks_only') {
-    label = 'Rate with Decks/Controller only';
-  } else if (equipment === 'venue_provides') {
-    label = 'Rate with venue providing all equipment';
-  }
-
-  // Pick the correct rate for this equipment AND rate type.
-  // Day-level overrides win — when present, the day's rate fields take
-  // priority over the DJ's universal rates. This lets the DJ promote a
-  // special rate for a specific date (e.g. high-demand Saturday) without
-  // changing their default rates.
-  // Hourly mode reads the rate_hourly_* fields; flat mode reads the
-  // rate_* (flat) fields. They're independent — a DJ who has flat values
-  // set but switches to hourly without entering hourly values will show
-  // no rate for hourly until they configure them.
-  if (baseType !== 'offers') {
-    let raw: number | string | null | undefined = null;
-    const isHourly = baseType === 'hourly';
-    // Day-level field name matching equipment + rateType
-    const dayFlatKey = equipment === 'sound_system' ? 'rate_with_system'
-      : equipment === 'decks_only' ? 'rate_with_decks'
-      : equipment === 'venue_provides' ? 'rate_no_equip'
-      : null;
-    const dayHourlyKey = equipment === 'sound_system' ? 'rate_hourly_with_system'
-      : equipment === 'decks_only' ? 'rate_hourly_with_decks'
-      : equipment === 'venue_provides' ? 'rate_hourly_no_equip'
-      : null;
-    const dayKey = isHourly ? dayHourlyKey : dayFlatKey;
-    const dayRaw = dayKey ? (dayData as DayData & Record<string, number | string | undefined>)[dayKey] : undefined;
-    if (dayRaw != null && dayRaw !== '') {
-      raw = dayRaw;
-    } else {
-      // Fall back to global rate
-      if (equipment === 'sound_system') {
-        raw = isHourly ? bs.rate_hourly_with_system : bs.rate_with_system;
-      } else if (equipment === 'decks_only') {
-        raw = isHourly ? bs.rate_hourly_with_decks : bs.rate_with_decks;
-      } else if (equipment === 'venue_provides') {
-        raw = isHourly ? bs.rate_hourly_no_equip : bs.rate_no_equip;
-      }
-    }
-
-    if (raw != null && raw !== '') {
-      const n = Number(raw);
-      if (!isNaN(n) && n > 0) rate = n;
-    }
-  }
-
-  // Hourly total
-  let hourlyTotal: number | null = null;
-  let hours: number | null = null;
-  if (baseType === 'hourly' && rate != null && startTime && endTime) {
-    const [sh, sm] = startTime.split(':').map(Number);
-    let [eh, em] = endTime.split(':').map(Number);
-    let totalMins = (eh * 60 + em) - (sh * 60 + sm);
-    if (totalMins <= 0) totalMins += 24 * 60;
-    hours = totalMins / 60;
-    hourlyTotal = hours * rate;
-  }
-
-  return {
-    rate,
-    rateType: baseType,
-    symbol,
-    currency,
-    hourlyTotal,
-    hours,
-    label,
-  };
-}
+// Rate calculation (RateInfo + computeRate) moved to ./clubRate so the
+// server-side booking route (/api/bookings/create) recomputes the stored
+// price with the EXACT same logic this form uses for its live preview.
 
 // ─────────────────────────────────────────────────────────────────────────
 // Main component
@@ -512,25 +399,34 @@ export default function ClubBookingForm({
       return;
     }
 
+    // Offers mode — the offer must be a real positive amount. The old
+    // `offerNum && !isNaN(offerNum)` check let negative offers through;
+    // the server route now rejects those too — this check just surfaces
+    // the error before the round-trip.
+    if (isOffers) {
+      const offerNum = Number(offerAmount.trim());
+      if (!Number.isFinite(offerNum) || offerNum <= 0) {
+        setError('Please enter a valid offer amount greater than 0.');
+        return;
+      }
+      if (offerNum > 1000000) {
+        setError('Offer amount is too large. Please enter a realistic offer.');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const offerNum = offerAmount ? Number(offerAmount) : null;
-
-      // For flat-rate bookings, rateInfo.rate IS the total. For hourly
-      // bookings, the total is rate × hours (rateInfo.hourlyTotal). The
-      // booking card and emails treat quoted_rate as the FULL price
-      // agreed for the gig, so we save the computed total here — saving
-      // the per-hour rate to quoted_rate would make the card display
-      // $400 instead of $1400 for a 3.5-hour booking at $400/hr.
+      // Recompute the total the same way the on-screen preview does — sent
+      // ONLY as expectedTotal so the server can detect price drift. The
+      // /api/bookings/create route recomputes ALL money fields (rate,
+      // discount, deposit, negotiation-log seed) from the DJ's own
+      // booking_settings and is the sole authority for what gets stored.
       const computedTotal = !isOffers && rateInfo.rate
         ? (rateInfo.rateType === 'hourly' && rateInfo.hourlyTotal
             ? rateInfo.hourlyTotal
             : rateInfo.rate)
         : null;
-
-      // Apply discount to the computed total (sale/promo). quoted_rate stores
-      // the discounted price; original_rate keeps the pre-discount total.
       const clubFinalDiscount: DiscountResult = computedTotal != null
         ? computeDiscount(Number(computedTotal), bookingSettings, appliedCode)
         : { amount: 0, kind: null, label: '' };
@@ -538,76 +434,51 @@ export default function ClubBookingForm({
         ? Math.max(0, Number(computedTotal) - clubFinalDiscount.amount)
         : null;
 
-      // Initial negotiation log entry. We seed the log at insert time so
-      // the booking-requests history modal can replay the full thread —
-      // CounterModal already appends to this column on each counter, but
-      // the FIRST price (booker's offer or flat-rate accept) was never
-      // recorded until now. Quote-mode bookings have no price yet and
-      // get an empty log; sendDraftQuote will seed it later.
-      const initialPrice = isOffers && offerNum && !isNaN(offerNum)
-        ? offerNum
-        : computedTotalDiscounted;
-      const initialLog: Array<{ from: 'dj' | 'booker'; amount: number; message: string; created_at: string }> =
-        initialPrice != null
-          ? [{
-              from: 'booker' as const,
-              amount: initialPrice,
-              message: notes.trim() || '',
-              created_at: new Date().toISOString(),
-            }]
-          : [];
-
-      const insertPayload = {
-        dj_id: dj.id,
-        requester_id: currentUser.id,
-        dj_slug: dj.slug,
-        booking_type: 'club',
-        event_date: dateKey,
-        country,
-        venue_type: venueType,
-        set_type: setType,
-        venue_name: venueName.trim(),
-        venue_address: venueAddress.trim(),
-        phone: phone.trim(),
-        // Coords from a Nominatim suggestion the booker picked. Null when
-        // they typed freehand or the search returned nothing. The
-        // booking-requests card uses these for the venue distance check.
-        venue_lat: venueCoordsRef.current?.lat ?? null,
-        venue_lon: venueCoordsRef.current?.lon ?? null,
-        start_time: startTime,
-        end_time: endTime,
-        equipment,
-        venue_equip_detail: venueEquipDetail.trim() || null,
-        offer_amount: isOffers && offerNum && !isNaN(offerNum) ? offerNum : null,
-        // Full computed total — see computedTotal derivation above.
-        // For flat: per-event rate. For hourly: rate × hours. For offers:
-        // null — there's no quoted rate, only the visitor's offer.
-        quoted_rate: computedTotalDiscounted,
-        original_rate: clubFinalDiscount.amount > 0 ? Number(computedTotal) : null,
-        discount_code: clubFinalDiscount.kind === 'code' ? appliedCode : null,
-        discount_label: clubFinalDiscount.amount > 0 ? clubFinalDiscount.label : null,
-        discount_amount: clubFinalDiscount.amount > 0 ? clubFinalDiscount.amount : null,
-        // Deposit — the DJ's standing club deposit %, applied to the final
-        // (discounted) total. Stored so it carries straight into the contract.
-        deposit_pct: clubDepositPct > 0 ? clubDepositPct : null,
-        deposit_amount: (clubDepositPct > 0 && computedTotalDiscounted != null)
-          ? Math.round((Number(computedTotalDiscounted) * clubDepositPct) / 100)
-          : null,
-        currency: rateInfo.currency,
-        notes: notes.trim() || null,
-        // is_quote=true when DJ has booking enabled but hasn't set rates
-        // for this equipment option. The DJ will respond with a custom
-        // rate via the existing counter flow on the booking-requests page.
-        is_quote: isQuoteMode,
-        negotiation_log: initialLog,
-        status: 'pending',
-      };
-
-      const { error: insertError } = await supabase
-        .from('bookings')
-        .insert(insertPayload as unknown as never);
-
-      if (insertError) throw insertError;
+      const res = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingType: 'club',
+          djId: dj.id,
+          dateKey,
+          country,
+          venueType,
+          setType,
+          venueName: venueName.trim(),
+          venueAddress: venueAddress.trim(),
+          phone: phone.trim(),
+          // Coords from a Nominatim suggestion the booker picked. Null when
+          // they typed freehand or the search returned nothing. The
+          // booking-requests card uses these for the venue distance check.
+          venueLat: venueCoordsRef.current?.lat ?? null,
+          venueLon: venueCoordsRef.current?.lon ?? null,
+          startTime,
+          endTime,
+          equipment,
+          venueEquipDetail,
+          offerAmount,
+          promoCode: appliedCode,
+          notes,
+          // Preview total — server-verified, never stored as-is. A 409
+          // below means pricing changed while the form was open.
+          expectedTotal: computedTotalDiscounted,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (json && typeof json.error === 'string' && json.error) || 'Failed to submit booking.'
+        );
+      }
+      // Server-computed money snapshot — used for the emails below so they
+      // always match what was actually stored on the booking row.
+      const created: {
+        offer_amount: number | null;
+        quoted_rate: number | null;
+        original_rate: number | null;
+        discount_label: string | null;
+        discount_amount: number | null;
+      } = json.booking;
 
       // Notify the DJ — fire-and-forget. Failures don't block the success
       // state since the booking is already saved.
@@ -629,11 +500,11 @@ export default function ClubBookingForm({
             endTime,
             equipment,
             notes: notes.trim() || null,
-            offerAmount: insertPayload.offer_amount,
-            quotedRate: insertPayload.quoted_rate,
-            originalRate: insertPayload.original_rate,
-            discountLabel: insertPayload.discount_label,
-            discountAmount: insertPayload.discount_amount,
+            offerAmount: created.offer_amount,
+            quotedRate: created.quoted_rate,
+            originalRate: created.original_rate,
+            discountLabel: created.discount_label,
+            discountAmount: created.discount_amount,
             totalHours: rateInfo.hours,
             // Per-hour rate — only meaningful for hourly bookings; lets the
             // email show "$330/hr × 3 hr" alongside the total.
@@ -665,11 +536,11 @@ export default function ClubBookingForm({
             startTime,
             endTime,
             equipment,
-            offerAmount: insertPayload.offer_amount,
-            quotedRate: insertPayload.quoted_rate,
-            originalRate: insertPayload.original_rate,
-            discountLabel: insertPayload.discount_label,
-            discountAmount: insertPayload.discount_amount,
+            offerAmount: created.offer_amount,
+            quotedRate: created.quoted_rate,
+            originalRate: created.original_rate,
+            discountLabel: created.discount_label,
+            discountAmount: created.discount_amount,
             totalHours: rateInfo.hours,
             hourlyRate: rateInfo.rateType === 'hourly' ? rateInfo.rate : null,
             currency: rateInfo.currency,
