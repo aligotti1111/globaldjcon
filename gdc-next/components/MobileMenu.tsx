@@ -86,6 +86,15 @@ function IconClock() {
     </svg>
   );
 }
+function IconArchive() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <path d="M21 8v13H3V8" />
+      <path d="M1 3h22v5H1z" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
 function IconLogout() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
@@ -244,7 +253,7 @@ export default function MobileMenu() {
             )}
             {isDj && (
               <Link href="/update-dj-profile" onClick={close} className="mobile-menu-item">
-                <IconEdit />Settings
+                <IconEdit />Account Settings
               </Link>
             )}
             {!isDj && (
@@ -265,6 +274,11 @@ export default function MobileMenu() {
             {isDj && bookingEnabled && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Bookings{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
+              </Link>
+            )}
+            {isDj && bookingEnabled && (
+              <Link href="/upcoming-bookings?view=past" onClick={close} className="mobile-menu-item">
+                <IconArchive />Past Bookings
               </Link>
             )}
             {!isDj && (
