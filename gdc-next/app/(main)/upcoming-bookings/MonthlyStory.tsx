@@ -325,6 +325,9 @@ export default function MonthlyStory({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [bgColor, setBgColor] = useState<string | null>(null);
+  // Text mirror of bgColor so a hex code can be typed / pasted.
+  const [colorText, setColorText] = useState('');
+  useEffect(() => { if (bgColor) setColorText(bgColor); }, [bgColor]);
   const [theme, setTheme] = useState<string>('Teal');
   const [bgScale, setBgScale] = useState(1);
   const [bgOffsetX, setBgOffsetX] = useState(0);
@@ -668,8 +671,27 @@ export default function MonthlyStory({
                 </div>
 
                 {(bgUrl || bgColor) && (
-                  <button type="button" title="Clear color & image" onClick={() => { setBgUrl(null); setBgColor(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 2 }}>Clear</button>
+                  <button type="button" title="Clear color & image" onClick={() => { setBgUrl(null); setBgColor(null); setColorText(''); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 2 }}>Clear</button>
                 )}
+              </div>
+
+              {/* Paste / type a hex color code — below the color + image spot. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <span style={{ width: 22, height: 22, borderRadius: 5, flexShrink: 0, border: '1px solid rgba(255,255,255,.22)', background: (colorText && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(colorText)) ? colorText : 'transparent' }} />
+                <input
+                  type="text"
+                  value={colorText}
+                  placeholder="Paste hex code — e.g. #0B0B16"
+                  spellCheck={false}
+                  onChange={(e) => {
+                    let v = e.target.value.trim();
+                    setColorText(v);
+                    if (v === '') { setBgColor(null); return; }
+                    if (v[0] !== '#') v = `#${v}`;
+                    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) { setBgUrl(null); setBgColor(v); }
+                  }}
+                  style={{ flex: 1, minWidth: 120, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.8rem', padding: '.4rem .6rem', outline: 'none' }}
+                />
               </div>
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>
                 {bgUrl
