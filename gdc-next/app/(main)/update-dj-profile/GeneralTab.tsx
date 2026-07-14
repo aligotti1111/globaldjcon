@@ -268,17 +268,23 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             the name field. Border-left/indent removed so the input box
             aligns flush with the other fields above and below. */}
         <div style={{ marginTop: '.85rem' }}>
-          <SlugChangeGate email={email} currentUrl={`${siteUrl}/${slugDisplay}`}>
-            <SlugInput
-              value={state.slug}
-              onChange={(s) => onChange('slug', s)}
-              onStatusChange={() => { /* parent's save handler will catch any DB-side conflict */ }}
-              generateAlternatives={generateDjAlternatives}
-              placeholder="e.g. dj-nova"
-              excludeUserId={userId}
-              originalSlug={slug || ''}
-            />
-          </SlugChangeGate>
+          <SlugChangeGate
+            email={email}
+            currentUrl={`${siteUrl}/${slugDisplay}`}
+            currentSlug={state.slug}
+            onSave={(newSlug) => onChange('slug', newSlug)}
+            renderInput={({ value, onChange: setDraft, onStatusChange }) => (
+              <SlugInput
+                value={value}
+                onChange={setDraft}
+                onStatusChange={onStatusChange}
+                generateAlternatives={generateDjAlternatives}
+                placeholder="e.g. dj-nova"
+                excludeUserId={userId}
+                originalSlug={slug || ''}
+              />
+            )}
+          />
 
           {/* Premium: downloadable QR code for the public profile, sitting
               right under the URL it points at. Encodes the permanent profile
@@ -610,19 +616,44 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PasswordChangeBlock — inline form to change the account's password.
 // ─────────────────────────────────────────────────────────────────────────
-// SlugChangeGate — the profile URL is a public-facing identity, so we don't
-// let it be edited casually. It stays locked (read-only) until the DJ
-// re-confirms their current password. Verification reuses the same
-// signInWithPassword re-auth pattern as the password/email change blocks.
-// Once unlocked, the real SlugInput (passed as children) is revealed for
-// this session.
+// SlugChangeGate — the profile URL is a public identity, so we don't let it
+// be edited casually. It stays LOCKED (read-only) until the DJ re-confirms
+// their current password (same signInWithPassword re-auth used by the
+// password/email blocks). Once unlocked, they edit a DRAFT and must click
+// Save (next to the field) to apply it — Save only enables when the new slug
+// differs from the current one AND is confirmed available.
 // ─────────────────────────────────────────────────────────────────────────
-function SlugChangeGate({ email, currentUrl, children }: { email: string; currentUrl: string; children: React.ReactNode }) {
+type GateStatus = 'idle' | 'checking' | 'available' | 'taken';
+
+function SlugChangeGate({
+  email,
+  currentUrl,
+  currentSlug,
+  onSave,
+  renderInput,
+}: {
+  email: string;
+  currentUrl: string;
+  currentSlug: string;
+  onSave: (slug: string) => void;
+  renderInput: (p: {
+    value: string;
+    onChange: (v: string) => void;
+    onStatusChange: (s: GateStatus) => void;
+  }) => React.ReactNode;
+}) {
   const [unlocked, setUnlocked] = useState(false);
   const [open, setOpen] = useState(false);
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const [draft, setDraft] = useState(currentSlug || '');
+  const [status, setStatus] = useState<GateStatus>('idle');
+  const [saved, setSaved] = useState(false);
+
+  const changed = (draft || '').trim() !== (currentSlug || '').trim();
+  const canSave = changed && status === 'available';
 
   async function verify(e?: React.MouseEvent) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -639,6 +670,7 @@ function SlugChangeGate({ email, currentUrl, children }: { email: string; curren
       setUnlocked(true);
       setOpen(false);
       setPw('');
+      setDraft(currentSlug || '');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not verify.');
     } finally {
@@ -646,28 +678,63 @@ function SlugChangeGate({ email, currentUrl, children }: { email: string; curren
     }
   }
 
-  if (unlocked) return <>{children}</>;
-
-  const changeBtn: React.CSSProperties = {
+  const btn = (variant: 'ghost' | 'primary', enabled = true): React.CSSProperties => ({
     fontFamily: "'Space Mono', monospace",
     fontSize: '.62rem',
     letterSpacing: '.07em',
     textTransform: 'uppercase',
-    padding: '.6rem 1rem',
+    padding: '.6rem 1.1rem',
     borderRadius: 6,
-    border: '1px solid var(--border)',
-    background: 'transparent',
-    color: 'var(--muted)',
-    cursor: 'pointer',
+    border: variant === 'primary' ? 'none' : '1px solid var(--border)',
+    background: variant === 'primary' ? 'var(--neon)' : 'transparent',
+    color: variant === 'primary' ? 'var(--black)' : 'var(--muted)',
+    fontWeight: variant === 'primary' ? 700 : 400,
     whiteSpace: 'nowrap',
-  };
+    cursor: enabled ? 'pointer' : 'default',
+    opacity: enabled ? 1 : 0.45,
+  });
 
+  // ── Unlocked: edit a draft + Save next to the field ──
+  if (unlocked) {
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {renderInput({
+              value: draft,
+              onChange: (v) => { setDraft(v); setSaved(false); },
+              onStatusChange: setStatus,
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => { onSave((draft || '').trim()); setSaved(true); }}
+            style={btn('primary', canSave)}
+          >
+            Save
+          </button>
+        </div>
+        {saved && !changed ? (
+          <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: 'var(--success)' }}>
+            ✓ URL saved.
+          </p>
+        ) : (
+          <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)' }}>
+            Enter a new URL, then click Save to apply it.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Locked: read-only URL + password to unlock ──
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
         <input type="text" value={currentUrl} readOnly className={styles.input} style={{ flex: 1, opacity: 0.7 }} />
         {!open && (
-          <button type="button" onClick={() => { setOpen(true); setErr(null); }} style={changeBtn}>
+          <button type="button" onClick={() => { setOpen(true); setErr(null); }} style={btn('ghost')}>
             🔒 Change
           </button>
         )}
@@ -698,43 +765,10 @@ function SlugChangeGate({ email, currentUrl, children }: { email: string; curren
           />
           {err && <div style={{ color: '#ff6b6b', fontSize: '.75rem' }}>{err}</div>}
           <div style={{ display: 'flex', gap: '.5rem' }}>
-            <button
-              type="button"
-              onClick={verify}
-              disabled={busy}
-              style={{
-                fontFamily: "'Space Mono', monospace",
-                fontSize: '.62rem',
-                letterSpacing: '.07em',
-                textTransform: 'uppercase',
-                padding: '.6rem 1.1rem',
-                borderRadius: 6,
-                border: 'none',
-                background: 'var(--neon)',
-                color: 'var(--black)',
-                cursor: busy ? 'default' : 'pointer',
-                fontWeight: 700,
-                opacity: busy ? 0.6 : 1,
-              }}
-            >
+            <button type="button" onClick={verify} disabled={busy} style={btn('primary', !busy)}>
               {busy ? 'Verifying…' : 'Unlock'}
             </button>
-            <button
-              type="button"
-              onClick={() => { setOpen(false); setPw(''); setErr(null); }}
-              style={{
-                fontFamily: "'Space Mono', monospace",
-                fontSize: '.62rem',
-                letterSpacing: '.07em',
-                textTransform: 'uppercase',
-                padding: '.6rem 1.1rem',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: 'transparent',
-                color: 'var(--muted)',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={() => { setOpen(false); setPw(''); setErr(null); }} style={btn('ghost')}>
               Cancel
             </button>
           </div>
