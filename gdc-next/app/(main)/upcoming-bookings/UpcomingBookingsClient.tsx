@@ -1163,10 +1163,35 @@ function BookingDetails({
   // total. When there's a separately-charged cocktail price, show
   // "base + cocktail = total"; otherwise just the total.
   const agreedTotal = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
-  // Sales tax (post-discount price) and the tax-inclusive total. The deposit
-  // is taken on this total.
-  const cardTax = (taxPct > 0 && agreedTotal != null) ? Math.round((Number(agreedTotal) * taxPct) / 100) : 0;
-  const cardTotal = agreedTotal != null ? Number(agreedTotal) + cardTax : null;
+  // Sales tax and the tax-inclusive total. The booking row carries a FROZEN
+  // snapshot (tax_pct / tax_amount / total_with_tax) written at creation —
+  // the stored snapshot always wins, so a DJ changing their tax settings
+  // never re-prices existing bookings. The snapshot amounts were computed
+  // on the price at creation: if the agreed price has changed since
+  // (accepted counter, edited manual rate), recompute on the new price with
+  // the FROZEN tax % — still never the DJ's current settings. Only legacy
+  // rows with no snapshot at all (tax_pct null) fall back to the live
+  // settings % (taxPct) with the old whole-dollar rounding.
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const snapTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : null;
+  const snapTaxAmount = booking.tax_amount != null ? Number(booking.tax_amount) : null;
+  const snapTotal = booking.total_with_tax != null ? Number(booking.total_with_tax) : null;
+  // The pre-tax base the snapshot was computed on; "fresh" = it still
+  // matches the current agreed price, so the stored amounts are the truth.
+  const snapBase = (snapTaxAmount != null && snapTotal != null) ? round2(snapTotal - snapTaxAmount) : null;
+  const snapshotFresh =
+    snapBase != null && agreedTotal != null && Math.abs(Number(agreedTotal) - snapBase) < 0.005;
+  const effTaxPct = snapTaxPct ?? taxPct;
+  const cardTax = snapshotFresh
+    ? (snapTaxAmount as number)
+    : (effTaxPct > 0 && agreedTotal != null)
+      ? (snapTaxPct != null
+          ? round2((Number(agreedTotal) * effTaxPct) / 100)
+          : Math.round((Number(agreedTotal) * effTaxPct) / 100))
+      : 0;
+  const cardTotal = snapshotFresh
+    ? snapTotal
+    : (agreedTotal != null ? round2(Number(agreedTotal) + cardTax) : null);
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
   const agreedBase = hasSeparateCocktail ? (Number(agreedTotal) - cocktailCharge) : null;
@@ -1284,11 +1309,25 @@ function BookingDetails({
       {
         label: 'Deposit',
         value: (() => {
+          // Frozen snapshot first: deposit_amount as stored at creation
+          // (computed on the tax-inclusive total — the exact number the
+          // client's booking form showed). Trusted only while the agreed
+          // price still matches the snapshot's base; after a renegotiation
+          // we recompute below (still using the frozen tax %).
+          if (snapshotFresh && booking.deposit_amount != null) {
+            return booking.deposit_pct != null
+              ? `${money(Number(booking.deposit_amount))} (${booking.deposit_pct}%)`
+              : money(Number(booking.deposit_amount));
+          }
           // Deposit % is taken on the tax-inclusive total (cardTotal).
           // A stored % wins; else the DJ's standing club % as a fallback.
+          // Snapshot rows recompute to the cent; legacy rows keep the old
+          // whole-dollar rounding.
           if (booking.deposit_pct != null) {
             return cardTotal != null
-              ? `${money(Math.round((cardTotal * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
+              ? `${money(snapTaxPct != null
+                  ? round2((cardTotal * booking.deposit_pct) / 100)
+                  : Math.round((cardTotal * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
               : `${booking.deposit_pct}%`;
           }
           if (djType === 'club' && clubDepositPct > 0) {
@@ -1304,17 +1343,18 @@ function BookingDetails({
         })(),
       },
     ],
-    // Row 8: Tax + Total (only when the DJ has sales tax turned on).
+    // Row 8: Tax + Total. Uses the booking's FROZEN tax % (effTaxPct falls
+    // back to the DJ's live setting only for legacy rows with no snapshot).
     [
       {
         label: 'Tax',
-        value: (taxPct > 0 && cardTax > 0)
-          ? `${money(cardTax)} (${taxPct}%)`
+        value: (effTaxPct > 0 && cardTax > 0)
+          ? `${money(cardTax)} (${effTaxPct}%)`
           : null,
       },
       {
         label: 'Total (with tax)',
-        value: (taxPct > 0 && cardTotal != null && cardTax > 0)
+        value: (effTaxPct > 0 && cardTotal != null && cardTax > 0)
           ? money(cardTotal)
           : null,
       },
@@ -1914,7 +1954,7 @@ function AddManualBookingModal({
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;

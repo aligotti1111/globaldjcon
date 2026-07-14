@@ -71,6 +71,12 @@ export interface UpcomingBooking {
   discount_amount?: number | null;
   deposit_pct?: number | null;
   deposit_amount?: number | null;
+  // Frozen sales-tax snapshot, written at booking creation (null on legacy
+  // rows). Display surfaces read THESE — never the DJ's current settings —
+  // so later settings changes can't re-price existing bookings.
+  tax_pct?: number | null;
+  tax_amount?: number | null;
+  total_with_tax?: number | null;
   currency?: string | null;
   notes?: string | null;
   status?: string | null;
@@ -126,7 +132,7 @@ export default async function UpcomingBookingsPage() {
   // the dedicated /past-bookings page.)
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
