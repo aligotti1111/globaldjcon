@@ -279,9 +279,9 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           />
 
           {/* Premium: downloadable QR code for the public profile, sitting
-              right under the URL it points at. Uses the live slug value so
-              the preview updates as the DJ edits their URL. */}
-          <ProfileQrCode slug={state.slug} djName={state.name} />
+              right under the URL it points at. Encodes the permanent profile
+              ID (never breaks on a slug change); shows the live slug as caption. */}
+          <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
         </div>
       </div>
 
