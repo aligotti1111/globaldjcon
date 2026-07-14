@@ -54,9 +54,6 @@ interface Props {
   // The DJ's saved mobile packages by category ('general' | 'wedding' |
   // 'mitzvah'), used to populate the manual-booking package dropdown.
   mobPackages: Record<string, MobilePackage[]> | null;
-  // Archive mode — used by the dedicated /past-bookings page. Renders the same
-  // rows read-only-ish (no add / schedule tools), newest-first, "Past Bookings".
-  archive?: boolean;
 }
 
 // Mobile-DJ event types — kept in sync with the public booking form (and
@@ -96,7 +93,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 })();
 
 export default function UpcomingBookingsClient({
-  userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
+  userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // The DJ's standing club deposit % (from booking_settings). Lets club
@@ -202,8 +199,7 @@ export default function UpcomingBookingsClient({
     }
   }, [searchParams]);
 
-  // Group by month (YYYY-MM). Upcoming: soonest month first, ascending dates.
-  // Archive (Past): most-recent month first, most-recent date first.
+  // Group by month (YYYY-MM); keys sorted descending (most recent month first).
   const grouped = useMemo(() => {
     const map = new Map<string, UpcomingBooking[]>();
     for (const b of bookings) {
@@ -212,22 +208,20 @@ export default function UpcomingBookingsClient({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(b);
     }
-    for (const arr of map.values()) arr.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
-    const entries = Array.from(map.entries());
-    if (archive) {
-      entries.sort((a, b) => b[0].localeCompare(a[0]));
-      for (const [, arr] of entries) arr.reverse();
-      return entries;
-    }
-    return entries.sort((a, b) => a[0].localeCompare(b[0]));
-  }, [bookings, archive]);
+    // Sort ascending: soonest month first.
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [bookings]);
 
   // Flat list sorted by most recently booked first (created_at desc). Used
   // when the sort toggle is set to "Recently booked".
   const recentList = useMemo(() => {
     return [...bookings]
       .filter((b) => b.event_date)
-      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      .sort((a, b) => {
+        const ca = a.created_at || '';
+        const cb = b.created_at || '';
+        return cb.localeCompare(ca);
+      });
   }, [bookings]);
 
   // IDs of bookings whose time range overlaps another booking on the SAME
@@ -333,21 +327,17 @@ export default function UpcomingBookingsClient({
       {confirmDialog}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>{archive ? 'Past Bookings' : 'Upcoming Bookings'}</h1>
-          <Link href={archive ? '/upcoming-bookings' : '/booking-requests'} className={styles.backLink}>
-            {archive ? '← Back to upcoming bookings' : '← Back to booking requests'}
-          </Link>
+          <h1 className={styles.title}>Upcoming Bookings</h1>
+          <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          {!archive && (
-            <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
-              + Add Booking Manually
-            </button>
-          )}
+          <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
+            + Add Booking Manually
+          </button>
         </div>
       </div>
 
-      {!archive && bookings.length > 0 && (
+      {bookings.length > 0 && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
           <button
@@ -364,7 +354,7 @@ export default function UpcomingBookingsClient({
           >
             Recently booked
           </button>
-          {!archive && djType === 'club' && isPaid && (
+          {djType === 'club' && isPaid && (
             <button
               type="button"
               onClick={() => setShowStory(true)}
@@ -378,20 +368,11 @@ export default function UpcomingBookingsClient({
 
       {bookings.length === 0 ? (
         <div className={styles.empty}>
-          {archive ? (
-            <>
-              <p>No past bookings yet.</p>
-              <p className={styles.emptyHint}>Once an event date passes, the booking moves here so you keep a record of it.</p>
-            </>
-          ) : (
-            <>
-              <p>No upcoming bookings yet.</p>
-              <p className={styles.emptyHint}>
-                Approved booking requests show up here automatically. You can also add bookings
-                manually using the button above.
-              </p>
-            </>
-          )}
+          <p>No upcoming bookings yet.</p>
+          <p className={styles.emptyHint}>
+            Approved booking requests show up here automatically. You can also add bookings
+            manually using the button above.
+          </p>
         </div>
       ) : sortMode === 'recent' ? (
         <div className={styles.monthList}>
@@ -405,10 +386,9 @@ export default function UpcomingBookingsClient({
                 clubDepositPct={clubDepositPct}
                 taxPct={taxPct}
                 requireContract={requireContract}
-                archive={archive}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                onEdit={b.is_manual ? () => setEditing(b) : undefined}
               />
             ))}
           </div>
@@ -428,10 +408,9 @@ export default function UpcomingBookingsClient({
                     clubDepositPct={clubDepositPct}
                     taxPct={taxPct}
                     requireContract={requireContract}
-                    archive={archive}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                    onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                    onEdit={b.is_manual ? () => setEditing(b) : undefined}
                   />
                 ))}
               </div>
@@ -482,16 +461,13 @@ export default function UpcomingBookingsClient({
 // ───────────────────────────────────────────────────────────────────────
 
 function FlyerSlot({
-  bookingId, userId, flyerUrl, onChange, size = 'row', readOnly = false,
+  bookingId, userId, flyerUrl, onChange, size = 'row',
 }: {
   bookingId: string;
   userId: string;
   flyerUrl: string | null;
   onChange: (url: string | null) => void;
   size?: 'row' | 'card';
-  // Archive/past view: show an existing flyer (view + download) but no add,
-  // replace, or remove controls.
-  readOnly?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -572,8 +548,6 @@ function FlyerSlot({
     }
   }
 
-  if (readOnly && !flyerUrl) return null;
-
   return (
     <div className={styles.flyerInline}>
       {flyerUrl ? (
@@ -588,34 +562,29 @@ function FlyerSlot({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={flyerUrl} alt="Event flyer" className={styles.flyerThumbImg} />
             </button>
-            {/* Overlaid controls — pencil replaces the flyer, ✕ removes it.
-                Hidden in archive/read-only mode. */}
-            {!readOnly && (
-              <>
-                <button
-                  type="button"
-                  className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayEdit}`}
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  title="Replace flyer"
-                  aria-label="Replace flyer"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayDelete}`}
-                  onClick={handleRemove}
-                  title="Remove flyer"
-                  aria-label="Remove flyer"
-                >
-                  ✕
-                </button>
-              </>
-            )}
+            {/* Overlaid controls — pencil replaces the flyer, ✕ removes it. */}
+            <button
+              type="button"
+              className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayEdit}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Replace flyer"
+              aria-label="Replace flyer"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`${styles.flyerOverlayBtn} ${styles.flyerOverlayDelete}`}
+              onClick={handleRemove}
+              title="Remove flyer"
+              aria-label="Remove flyer"
+            >
+              ✕
+            </button>
           </div>
           {/* Download icon — card variant only. */}
           {size === 'card' && (
@@ -666,15 +635,13 @@ function FlyerSlot({
               <button type="button" className={styles.flyerLink} onClick={handleDownload}>
                 Download
               </button>
-              {!readOnly && (
-                <button
-                  type="button"
-                  className={styles.flyerLinkMuted}
-                  onClick={async () => { await handleRemove(); setShowLightbox(false); }}
-                >
-                  Remove
-                </button>
-              )}
+              <button
+                type="button"
+                className={styles.flyerLinkMuted}
+                onClick={async () => { await handleRemove(); setShowLightbox(false); }}
+              >
+                Remove
+              </button>
               <button
                 type="button"
                 className={styles.flyerLinkMuted}
@@ -692,7 +659,7 @@ function FlyerSlot({
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, overlaps, onDelete, onEdit,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, overlaps, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -700,7 +667,6 @@ function BookingRow({
   clubDepositPct: number;
   taxPct: number;
   requireContract: boolean;
-  archive?: boolean;
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -829,7 +795,6 @@ function BookingRow({
               flyerUrl={flyerUrl}
               onChange={setFlyerUrl}
               size="row"
-              readOnly={archive}
             />
           </span>
         )}
@@ -976,7 +941,6 @@ function BookingRow({
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
-          archive={archive}
         />
       )}
     </div>
@@ -991,7 +955,7 @@ function BookingRow({
 // ───────────────────────────────────────────────────────────────────────
 
 function BookingDetails({
-  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
+  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -1001,7 +965,6 @@ function BookingDetails({
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
   onContractSigned?: () => void;
-  archive?: boolean;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
@@ -1360,7 +1323,7 @@ function BookingDetails({
       </div>
       {/* Event flyer inside the card — small thumbnail with download icon,
           plus replace/remove overlay controls. Club/bar bookings only. */}
-      {djType === 'club' && (!archive || flyerUrl) && (
+      {djType === 'club' && (
         <div className={styles.flyerCardSection}>
           <div className={styles.detailLabel}>Event Flyer</div>
           <FlyerSlot
@@ -1369,7 +1332,6 @@ function BookingDetails({
             flyerUrl={flyerUrl}
             onChange={onFlyerChange}
             size="card"
-            readOnly={archive}
           />
         </div>
       )}
@@ -1409,13 +1371,11 @@ function BookingDetails({
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
-              {!archive && (
-                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
-                  <button type="button" onClick={copyClientLink} disabled={copyBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: copyBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{copyBusy ? 'Getting link…' : copyDone ? 'Link copied ✓' : '🔗 Copy client link'}</button>
-                  <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
+                <button type="button" onClick={copyClientLink} disabled={copyBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: copyBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{copyBusy ? 'Getting link…' : copyDone ? 'Link copied ✓' : '🔗 Copy client link'}</button>
+                <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
+              </div>
               {signedDocs ? (
                 <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
                   {signedDocs.contract && <a href={signedDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
@@ -1436,10 +1396,6 @@ function BookingDetails({
               ) : (
                 <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.8rem', marginTop: 8 }}>{signedBusy ? 'Loading…' : '⬇ Download signed contract'}</button>
               )}
-            </div>
-          ) : archive ? (
-            <div style={{ marginTop: 8, color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
-              {contractCancelled ? 'Contract was cancelled.' : 'No contract on file for this booking.'}
             </div>
           ) : (
             <div style={{ marginTop: 8 }}>
@@ -2498,7 +2454,7 @@ function AddManualBookingModal({
               "sent on X" banner + a Resend button, so the DJ can't double-
               fire emails by accident. */}
           <div className={styles.hostInviteBlock}>
-            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: 0.55, marginBottom: '.55rem' }}>Host Details</div>
+            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: 0.55, marginBottom: '.55rem' }}>Host Details <span className={styles.optional}>(optional)</span></div>
             <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
                 <span className={styles.fieldLabel}>Host Name</span>
