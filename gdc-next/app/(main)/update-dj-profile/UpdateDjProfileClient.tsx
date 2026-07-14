@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 // Booking configuration moved to its own page (/booking-settings); the
@@ -223,6 +224,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   //   - browser back button via popstate
   // …and prompts the user via ConfirmModal before letting them leave.
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
+  const { patchUser } = useAuth();
   useEffect(() => {
     setGlobalDirty(needsLeaveWarn);
     // Clear on unmount so we don't leave the guard armed after navigation.
@@ -235,10 +237,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   }
 
   // Called by the URL field's own Save (SlugChangeGate) AFTER it has written
-  // the new slug straight to the DB. We mirror the change into form state so
-  // the QR + preview update, and we overwrite ONLY the slug in the dirty
-  // snapshot so the leave-warning doesn't fire for a URL that's already saved
-  // (other unsaved fields keep their dirty state).
+  // the new slug straight to the DB. We (1) mirror it into form state so the
+  // QR + preview update, (2) overwrite ONLY the slug in the dirty snapshot so
+  // the leave-warning doesn't fire for an already-saved URL, and (3) patch the
+  // cached auth user so header links ("View My Profile") point at the new slug
+  // immediately instead of the stale one.
   function handleSlugSaved(newSlug: string) {
     setGeneral(prev => ({ ...prev, slug: newSlug }));
     try {
@@ -249,6 +252,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       /* snapshot stays as-is; worst case a harmless dirty flag */
     }
     setSavedVersion(v => v + 1);
+    patchUser({ slug: newSlug });
   }
 
   // ── Manual save ─────────────────────────────────────────────────
