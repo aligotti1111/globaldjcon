@@ -97,7 +97,7 @@ export default function ProfileQrCode({
    *  shown as the caption and used for the shareable "Copy Link" URL. */
   profileId?: string;
 }) {
-  const [style, setStyle] = useState<QrStyle>('neon');
+  const [style, setStyle] = useState<QrStyle>('classic');
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -207,8 +207,8 @@ export default function ProfileQrCode({
           Profile QR Code<span style={pill}>Premium</span>
         </span>
         <div style={{ display: 'flex', gap: '.35rem' }}>
-          <button type="button" style={seg(style === 'neon')} onClick={() => setStyle('neon')}>Neon</button>
           <button type="button" style={seg(style === 'classic')} onClick={() => setStyle('classic')}>Classic</button>
+          <button type="button" style={seg(style === 'neon')} onClick={() => setStyle('neon')}>Neon</button>
         </div>
       </div>
 
