@@ -34,6 +34,7 @@ import {
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import EmbedCodeSection from './EmbedCodeSection';
+import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -668,6 +669,9 @@ export default function BookingTab({
 
           {/* ── Embed Code ──────────────────────────────────────── */}
           <EmbedCodeSection slug={djSlug} />
+
+          {/* ── Profile QR Code (premium) ───────────────────────── */}
+          <ProfileQrCode slug={djSlug} />
         </>
       )}
     </div>
