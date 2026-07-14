@@ -93,6 +93,7 @@ interface DrawData {
   logoScale: number;
   textScale: number;
   cardAlpha: number; // fill opacity of each date/gig box
+  cardColor: string; // tint color of each date/gig box
   rows: StoryBooking[];
   layoutCount: number; // rows to SIZE for (keeps every page's cards the same size)
   pageIndex: number;
@@ -214,9 +215,9 @@ function drawStory(ctx: CanvasRenderingContext2D, w: number, h: number, d: DrawD
     const cy = ry + cardH / 2;
 
     roundRect(ctx, sideM, ry, w - 2 * sideM, cardH, 26);
-    ctx.fillStyle = `rgba(255,255,255,${d.cardAlpha})`;
+    ctx.fillStyle = hexToRgba(d.cardColor, d.cardAlpha);
     ctx.fill();
-    ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.5, d.cardAlpha * 1.6 + 0.05)})`;
+    ctx.strokeStyle = hexToRgba(d.cardColor, Math.min(0.6, d.cardAlpha * 1.6 + 0.05));
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -328,6 +329,7 @@ export default function MonthlyStory({
   const [logoScale, setLogoScale] = useState(1);
   const [textScale, setTextScale] = useState(1);
   const [cardAlpha, setCardAlpha] = useState(0.05);
+  const [cardColor, setCardColor] = useState('#ffffff');
   const [headlineColor, setHeadlineColor] = useState('#00e0a4');
   const [accentColor, setAccentColor] = useState('#00e0a4');
   const [textColor, setTextColor] = useState('#ffffff');
@@ -366,6 +368,7 @@ export default function MonthlyStory({
           if (cols.accent) setAccentColor(cols.accent);
           if (cols.text) setTextColor(cols.text);
           if (cols.address) setAddressColor(cols.address);
+          if (cols.box) setCardColor(cols.box);
           setSaveColors(true);
         }
       } catch { /* ignore */ }
@@ -387,7 +390,7 @@ export default function MonthlyStory({
   }
 
   // Persist (or clear) the chosen colors in booking_settings for reuse next time.
-  async function persistColors(save: boolean, cols?: { headline: string; accent: string; text: string; address: string }) {
+  async function persistColors(save: boolean, cols?: { headline: string; accent: string; text: string; address: string; box: string }) {
     try {
       const supabase = createClient();
       const next = { ...settingsRef.current } as Record<string, unknown>;
@@ -400,9 +403,9 @@ export default function MonthlyStory({
   // While "save colors" is on, keep the saved palette in sync with any edits.
   useEffect(() => {
     if (!saveColors) return;
-    persistColors(true, { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor });
+    persistColors(true, { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor, box: cardColor });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveColors, headlineColor, accentColor, textColor, addressColor]);
+  }, [saveColors, headlineColor, accentColor, textColor, addressColor, cardColor]);
 
   const now = useMemo(() => new Date(), []);
 
@@ -454,12 +457,12 @@ export default function MonthlyStory({
     drawStory(ctx, cfg.w, cfg.h, {
       headline, djName, logoImg, bgImg, bgColor,
       themeStops: THEMES[theme] || THEMES.Teal,
-      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha,
+      bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha, cardColor,
       rows: pageRows, layoutCount, pageIndex, pageCount: pages.length, size,
       footerUrl, showUrl,
       headlineColor, accentColor, textColor, addressColor,
     });
-  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor, addressColor]);
+  }, [size, headline, djName, logoImg, bgImg, bgColor, theme, bgScale, bgOffsetX, bgOffsetY, logoScale, textScale, cardAlpha, cardColor, pages.length, layoutCount, footerUrl, showUrl, headlineColor, accentColor, textColor, addressColor]);
 
   // Draw — synchronous, uses cached images. Fast, so sliders/drag glide.
   useEffect(() => {
@@ -694,6 +697,7 @@ export default function MonthlyStory({
                   { lbl: 'Accent', val: accentColor, set: setAccentColor },
                   { lbl: 'Venue', val: textColor, set: setTextColor },
                   { lbl: 'Address', val: addressColor, set: setAddressColor },
+                  { lbl: 'Box', val: cardColor, set: setCardColor },
                 ] as const).map((c) => (
                   <label key={c.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <span style={{ ...swatch(false), width: 30, height: 30 }}>
@@ -703,13 +707,13 @@ export default function MonthlyStory({
                     <span style={{ color: 'var(--white,#fff)', fontSize: '.78rem' }}>{c.lbl}</span>
                   </label>
                 ))}
-                {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff' || addressColor !== '#b9b9c8') && (
-                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); setAddressColor('#b9b9c8'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
+                {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff' || addressColor !== '#b9b9c8' || cardColor !== '#ffffff') && (
+                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); setAddressColor('#b9b9c8'); setCardColor('#ffffff'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
                 )}
               </div>
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times &amp; date badge · Venue &amp; Address = the two card lines.</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={saveColors} onChange={(e) => { const on = e.target.checked; setSaveColors(on); persistColors(on, on ? { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor } : undefined); }} style={{ accentColor: '#00e0a4' }} />
+                <input type="checkbox" checked={saveColors} onChange={(e) => { const on = e.target.checked; setSaveColors(on); persistColors(on, on ? { headline: headlineColor, accent: accentColor, text: textColor, address: addressColor, box: cardColor } : undefined); }} style={{ accentColor: '#00e0a4' }} />
                 Save these colors for future graphics
               </label>
             </div>
