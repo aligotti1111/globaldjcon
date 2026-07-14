@@ -1,38 +1,28 @@
 'use client';
 
-// ProfileQrCode — premium share tool. Generates a branded QR code that
-// points at the DJ's PUBLIC profile (globaldjconnect.com/<slug>) so the DJ
-// can drop it on flyers, business cards, IG stories, table tents, etc.
-// Scanning it opens their profile where clients can view and book them.
+// ProfileQrCode — compact, premium share tool that lives right under the
+// profile URL field on the General tab. Generates a scannable QR code that
+// opens the DJ's PUBLIC profile (globaldjconnect.com/<slug>) so they can
+// print it on flyers, cards, table tents, or drop it in an IG story.
 //
-// Everything is generated client-side (no server round-trip, no stored
-// image): we build the QR module matrix with the `qrcode` package, paint it
-// onto a canvas in the Global DJ Connect palette, add a caption (DJ name +
-// URL) baked into the image so the downloaded PNG is self-explanatory, then
+// Everything is client-side (no server round-trip, no stored image): we build
+// the QR module matrix with the `qrcode` package, paint it onto a canvas in
+// the Global DJ Connect palette with a baked-in caption (name + URL), then
 // export to PNG on demand.
 //
 // Two styles:
-//   - Neon    — neon-teal modules on near-black. On-brand; best on screens.
-//   - Classic — black on white. Maximum contrast; safest for print / bad
-//               lighting / cheap scanners. Always offer this as the reliable
-//               fallback.
+//   - Neon    — neon-teal on near-black. On-brand; best on screens.
+//   - Classic — black on white. Max contrast; safest for print / bad scanners.
 //
-// No center-logo knockout: the caption lives OUTSIDE the code so scanning is
-// never compromised.
-//
-// Placement: rendered right beside EmbedCodeSection in the Booking tab, which
-// only paid DJs reach — so this is inherently a paid/premium perk (and is
-// badged as such). Mirrors EmbedCodeSection's slug-gating and card styling.
+// The caption sits OUTSIDE the code (no center-logo knockout) so scanning is
+// never compromised. The `slug` passed in is the LIVE slug field value, so the
+// preview updates as the DJ edits their URL.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import styles from './updateDjProfile.module.css';
 
 type QrStyle = 'neon' | 'classic';
 
-// Hardcoded to production so a downloaded/printed code always resolves to the
-// live site regardless of where it was generated (staging, preview, etc.) —
-// same reasoning as the embed snippet's baseSrc.
 const PROFILE_BASE = 'https://globaldjconnect.com';
 
 const PALETTE: Record<QrStyle, { bg: string; fg: string; sub: string }> = {
@@ -40,26 +30,9 @@ const PALETTE: Record<QrStyle, { bg: string; fg: string; sub: string }> = {
   classic: { bg: '#ffffff', fg: '#000000', sub: '#555555' },
 };
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
 // Paint the QR matrix + caption onto the canvas at print resolution.
-function paint(canvas: HTMLCanvasElement, url: string, djName: string, style: QrStyle) {
+function paint(canvas: HTMLCanvasElement, slug: string, djName: string, style: QrStyle) {
+  const url = `${PROFILE_BASE}/${slug}`;
   const qr = QRCode.create(url, { errorCorrectionLevel: 'H' });
   const modCount = qr.modules.size;
   const bits = qr.modules.data; // row-major, 1 = dark
@@ -67,7 +40,6 @@ function paint(canvas: HTMLCanvasElement, url: string, djName: string, style: Qr
 
   const quiet = 4; // quiet-zone in modules (spec minimum)
   const gridMods = modCount + quiet * 2;
-  // Aim for a ~1200px-wide code, snapped to whole modules for crisp edges.
   const scale = Math.max(4, Math.floor(1200 / gridMods));
   const codePx = gridMods * scale;
 
@@ -81,11 +53,9 @@ function paint(canvas: HTMLCanvasElement, url: string, djName: string, style: Qr
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  // Background (whole image, code + caption band share it).
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Modules.
   ctx.fillStyle = fg;
   for (let y = 0; y < modCount; y++) {
     for (let x = 0; x < modCount; x++) {
@@ -95,7 +65,6 @@ function paint(canvas: HTMLCanvasElement, url: string, djName: string, style: Qr
     }
   }
 
-  // Caption band (baked into the export so the PNG stands alone).
   ctx.textAlign = 'center';
   const cx = w / 2;
   if (name) {
@@ -104,17 +73,12 @@ function paint(canvas: HTMLCanvasElement, url: string, djName: string, style: Qr
     ctx.fillText(name, cx, codePx + Math.round(scale * 4.6));
     ctx.fillStyle = sub;
     ctx.font = `${Math.round(scale * 2.3)}px 'Space Mono', ui-monospace, monospace`;
-    ctx.fillText(`globaldjconnect.com/${slugOf(url)}`, cx, codePx + Math.round(scale * 8.6));
+    ctx.fillText(`globaldjconnect.com/${slug}`, cx, codePx + Math.round(scale * 8.6));
   } else {
     ctx.fillStyle = sub;
     ctx.font = `${Math.round(scale * 2.3)}px 'Space Mono', ui-monospace, monospace`;
-    ctx.fillText(`globaldjconnect.com/${slugOf(url)}`, cx, codePx + Math.round(scale * 4.4));
+    ctx.fillText(`globaldjconnect.com/${slug}`, cx, codePx + Math.round(scale * 4.4));
   }
-}
-
-function slugOf(url: string): string {
-  const i = url.indexOf('/', PROFILE_BASE.length + 0);
-  return i >= 0 ? url.slice(i + 1) : url.replace(`${PROFILE_BASE}/`, '');
 }
 
 export default function ProfileQrCode({ slug, djName }: { slug: string; djName?: string }) {
@@ -122,28 +86,28 @@ export default function ProfileQrCode({ slug, djName }: { slug: string; djName?:
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const url = slug ? `${PROFILE_BASE}/${encodeURIComponent(slug)}` : '';
+  const clean = (slug || '').trim();
+  const url = clean ? `${PROFILE_BASE}/${clean}` : '';
 
   useEffect(() => {
-    if (!slug) return;
+    if (!clean) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     try {
-      paint(canvas, url, djName || '', style);
+      paint(canvas, clean, djName || '', style);
     } catch {
-      // If encoding ever fails (e.g. an absurdly long slug), leave the canvas
-      // blank rather than crashing the tab.
+      /* leave canvas blank rather than crash the tab */
     }
-  }, [slug, url, djName, style]);
+  }, [clean, djName, style]);
 
   const download = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement('a');
-    link.download = `globaldjconnect-${slug || 'profile'}-qr.png`;
+    link.download = `globaldjconnect-${clean || 'profile'}-qr.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-  }, [slug]);
+  }, [clean]);
 
   const copyLink = useCallback(async () => {
     if (!url) return;
@@ -163,153 +127,96 @@ export default function ProfileQrCode({ slug, djName }: { slug: string; djName?:
     setTimeout(() => setCopied(false), 1600);
   }, [url]);
 
-  // No slug yet — same explain-don't-break behavior as the embed section.
-  if (!slug) {
-    return (
-      <div className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionTitle}>Profile QR Code</div>
-        </div>
-        <div className={styles.sectionBody}>
-          <p className={styles.bodyHint}>
-            Set your URL slug on the General tab first — the QR code needs a
-            slug to point at.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+  const box: React.CSSProperties = {
+    marginTop: '.85rem',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    background: 'var(--deep)',
+    padding: '.85rem',
+  };
+  const capLabel: React.CSSProperties = {
+    fontFamily: "'Space Mono', monospace",
+    fontSize: '.58rem',
+    letterSpacing: '.1em',
+    textTransform: 'uppercase',
+    color: 'var(--muted)',
+  };
   const pill: React.CSSProperties = {
     fontFamily: "'Space Mono', monospace",
-    fontSize: '.52rem',
+    fontSize: '.48rem',
     letterSpacing: '.12em',
     textTransform: 'uppercase',
     fontWeight: 700,
-    padding: '.2rem .5rem',
+    padding: '.15rem .4rem',
     borderRadius: 999,
     color: 'var(--black)',
     background: 'var(--neon)',
-    marginLeft: '.6rem',
-    verticalAlign: 'middle',
+    marginLeft: '.5rem',
   };
-
-  const segBtn = (active: boolean): React.CSSProperties => ({
+  const seg = (active: boolean): React.CSSProperties => ({
     fontFamily: "'Space Mono', monospace",
-    fontSize: '.62rem',
+    fontSize: '.55rem',
     letterSpacing: '.06em',
     textTransform: 'uppercase',
-    padding: '.5rem .9rem',
-    borderRadius: 6,
+    padding: '.3rem .55rem',
+    borderRadius: 5,
     border: `1px solid ${active ? 'var(--neon)' : 'var(--border)'}`,
     background: active ? 'var(--neon)' : 'transparent',
     color: active ? 'var(--black)' : 'var(--muted)',
     cursor: 'pointer',
     fontWeight: 700,
   });
-
-  const actionBtn: React.CSSProperties = {
+  const act = (primary: boolean, done = false): React.CSSProperties => ({
     fontFamily: "'Space Mono', monospace",
-    fontSize: '.65rem',
-    letterSpacing: '.08em',
+    fontSize: '.6rem',
+    letterSpacing: '.06em',
     textTransform: 'uppercase',
-    padding: '.6rem 1.2rem',
-    borderRadius: 6,
-    border: 'none',
+    padding: '.45rem .7rem',
+    borderRadius: 5,
     cursor: 'pointer',
     fontWeight: 700,
-  };
+    border: primary ? 'none' : `1px solid ${done ? 'var(--success)' : 'var(--border)'}`,
+    background: done ? 'var(--success)' : primary ? 'var(--neon)' : 'transparent',
+    color: done || primary ? 'var(--black)' : 'var(--white)',
+  });
 
   return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>
-          Profile QR Code
-          <span style={pill}>Premium</span>
+    <div style={box}>
+      {/* Header row: label + Premium pill, style toggle on the right */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.7rem' }}>
+        <span style={capLabel}>
+          Profile QR Code<span style={pill}>Premium</span>
+        </span>
+        <div style={{ display: 'flex', gap: '.35rem' }}>
+          <button type="button" style={seg(style === 'neon')} onClick={() => setStyle('neon')}>Neon</button>
+          <button type="button" style={seg(style === 'classic')} onClick={() => setStyle('classic')}>Classic</button>
         </div>
       </div>
-      <div className={styles.sectionBody}>
-        <p className={styles.bodyHint}>
-          A scannable code that opens your public profile. Print it on flyers,
-          business cards, or table tents — or drop it in an Instagram story so
-          people can book you in one tap.
+
+      {!clean ? (
+        <p style={{ ...capLabel, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', margin: 0 }}>
+          Enter your URL above to generate a scannable QR code for your profile.
         </p>
-
-        {/* Style toggle */}
-        <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
-          <button type="button" style={segBtn(style === 'neon')} onClick={() => setStyle('neon')}>
-            Neon
-          </button>
-          <button type="button" style={segBtn(style === 'classic')} onClick={() => setStyle('classic')}>
-            Classic
-          </button>
-        </div>
-
-        {/* Preview */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '1rem',
-            background: 'var(--deep)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-          }}
-        >
+      ) : (
+        <div style={{ display: 'flex', gap: '.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <canvas
             ref={canvasRef}
-            style={{
-              width: '100%',
-              maxWidth: 240,
-              height: 'auto',
-              borderRadius: 8,
-              imageRendering: 'pixelated',
-            }}
+            style={{ width: 108, height: 'auto', borderRadius: 6, imageRendering: 'pixelated', flexShrink: 0 }}
           />
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <p style={{ ...capLabel, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', margin: '0 0 .6rem', lineHeight: 1.4 }}>
+              Scans open your public profile. Print it on flyers or cards to
+              drive bookings.
+            </p>
+            <div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={download} style={act(true)}>Download PNG</button>
+              <button type="button" onClick={copyLink} style={act(false, copied)}>
+                {copied ? '✓ Copied' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* URL line */}
-        <p
-          style={{
-            fontFamily: "'Space Mono', monospace",
-            fontSize: '.7rem',
-            color: 'var(--muted)',
-            textAlign: 'center',
-            margin: '.75rem 0 0',
-            wordBreak: 'break-all',
-          }}
-        >
-          {`globaldjconnect.com/${slug}`}
-        </p>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-          <button
-            type="button"
-            onClick={download}
-            style={{ ...actionBtn, background: 'var(--neon)', color: 'var(--black)' }}
-          >
-            Download PNG
-          </button>
-          <button
-            type="button"
-            onClick={copyLink}
-            style={{
-              ...actionBtn,
-              background: copied ? 'var(--success)' : 'transparent',
-              color: copied ? 'var(--black)' : 'var(--white)',
-              border: `1px solid ${copied ? 'var(--success)' : 'var(--border)'}`,
-            }}
-          >
-            {copied ? '✓ Link Copied' : 'Copy Profile Link'}
-          </button>
-        </div>
-
-        <p className={styles.bodyHint} style={{ marginTop: '.9rem' }}>
-          Tip: use <strong>Classic</strong> (black on white) for anything
-          printed — it scans more reliably in poor lighting.
-        </p>
-      </div>
+      )}
     </div>
   );
 }
