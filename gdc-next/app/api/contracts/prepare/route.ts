@@ -229,18 +229,48 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   // Sales tax on the post-discount price, then the TOTAL the client owes.
   // The deposit is taken on this tax-inclusive total.
-  const taxAmt = (taxPctVal > 0 && price != null) ? (price * taxPctVal) / 100 : 0;
-  const totalWithTax = price != null ? price + taxAmt : null;
+  //
+  // The contract is a LEGAL DOCUMENT, so tax comes from the booking row's
+  // FROZEN snapshot (tax_pct / tax_amount / total_with_tax, written at
+  // creation) — never from the DJ's current settings, which they can change
+  // at any time. The snapshot amounts were computed on the price at
+  // creation; if the agreed price has changed since (accepted counter),
+  // recompute on the new price with the frozen tax %. Only legacy rows with
+  // no snapshot at all fall back to the live-settings % (taxPctVal), which
+  // is the old behavior.
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const snapTaxPct = b.tax_pct != null ? Number(b.tax_pct) : null;
+  const snapTaxAmount = b.tax_amount != null ? Number(b.tax_amount) : null;
+  const snapTotal = b.total_with_tax != null ? Number(b.total_with_tax) : null;
+  const snapBase = (snapTaxAmount != null && snapTotal != null) ? round2(snapTotal - snapTaxAmount) : null;
+  const snapshotFresh =
+    snapBase != null && price != null && Math.abs(Number(price) - snapBase) < 0.005;
+  const taxPctEff = snapTaxPct ?? taxPctVal;
+  const taxAmt = snapshotFresh
+    ? (snapTaxAmount as number)
+    : (taxPctEff > 0 && price != null) ? round2((Number(price) * taxPctEff) / 100) : 0;
+  const totalWithTax = snapshotFresh
+    ? snapTotal
+    : (price != null ? round2(Number(price) + taxAmt) : null);
+
+  // The deposit the contract quotes for a %-based deposit: the STORED
+  // snapshot amount when it's still valid for this price (it's the exact
+  // number the client's booking form showed), else % of the tax-inclusive
+  // total (legacy rows / renegotiated price).
+  const depQuoted = (depositPct != null && depositPct > 0 && totalWithTax != null)
+    ? ((snapshotFresh && depositAmount != null && Number(depositAmount) > 0)
+        ? Number(depositAmount)
+        : (totalWithTax * depositPct) / 100)
+    : null;
 
   // Build the payment_terms sentence (handles deposit / no deposit). All
   // amounts are on the tax-inclusive total the client owes.
   let paymentTerms: string;
   if (totalWithTax == null) {
     paymentTerms = 'Payment terms as agreed between the DJ and Client.';
-  } else if (depositPct != null && depositPct > 0) {
-    const dep = (totalWithTax * depositPct) / 100;
-    const bal = Math.max(0, totalWithTax - dep);
-    paymentTerms = `A deposit of ${depositPct}% (${money(dep, currency)}) is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
+  } else if (depositPct != null && depositPct > 0 && depQuoted != null) {
+    const bal = Math.max(0, totalWithTax - depQuoted);
+    paymentTerms = `A deposit of ${depositPct}% (${money(depQuoted, currency)}) is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
   } else if (depositAmount != null && depositAmount > 0) {
     const bal = Math.max(0, totalWithTax - depositAmount);
     paymentTerms = `A deposit of ${money(depositAmount, currency)} is due upon signing to reserve the date, with the remaining balance of ${money(bal, currency)} due by the day of the event.`;
@@ -288,7 +318,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const values: Record<string, string> = {
     agreement_date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     cocktail_hour: cocktailHour,
-    tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctVal}%)` : '',
+    tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctEff}%)` : '',
     grand_total: (taxAmt > 0 && totalWithTax != null) ? money(totalWithTax, currency) : '',
     client_name: clientName,
     dj_name: companyName || dj?.name || 'DJ',
@@ -304,8 +334,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     duration: fmtDuration(b.start_time as string, b.end_time as string),
     overtime_rate: b.overtime_rate != null && b.overtime_rate !== '' ? (isNaN(Number(b.overtime_rate)) ? String(b.overtime_rate) : money(Number(b.overtime_rate), currency)) : '',
     price: price != null ? money(price, currency) : '',
-    deposit: (depositPct != null && depositPct > 0 && totalWithTax != null)
-      ? `${money((totalWithTax * depositPct) / 100, currency)} (${depositPct}%)`
+    deposit: (depQuoted != null && depositPct != null && depositPct > 0)
+      ? `${money(depQuoted, currency)} (${depositPct}%)`
       : (depositAmount != null && depositAmount > 0)
         ? money(depositAmount, currency)
         : '',
@@ -374,8 +404,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     const venueLine = [(b.venue_name as string) || '', (b.event_address as string) || (b.venue_address as string) || '']
       .map((p) => (p || '').trim()).filter(Boolean).join(', ');
     const priceStr = price != null ? money(price, currency) : '';
-    const depositStr = (depositPct != null && depositPct > 0 && totalWithTax != null)
-      ? money((totalWithTax * depositPct) / 100, currency)
+    const depositStr = (depQuoted != null && depositPct != null && depositPct > 0)
+      ? money(depQuoted, currency)
       : (depositAmount != null && depositAmount > 0 ? money(depositAmount, currency) : '');
 
     const brand = companyName || 'your DJ';
