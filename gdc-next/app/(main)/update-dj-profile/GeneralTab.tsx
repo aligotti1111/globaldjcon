@@ -268,15 +268,17 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             the name field. Border-left/indent removed so the input box
             aligns flush with the other fields above and below. */}
         <div style={{ marginTop: '.85rem' }}>
-          <SlugInput
-            value={state.slug}
-            onChange={(s) => onChange('slug', s)}
-            onStatusChange={() => { /* parent's save handler will catch any DB-side conflict */ }}
-            generateAlternatives={generateDjAlternatives}
-            placeholder="e.g. dj-nova"
-            excludeUserId={userId}
-            originalSlug={slug || ''}
-          />
+          <SlugChangeGate email={email} currentUrl={`${siteUrl}/${slugDisplay}`}>
+            <SlugInput
+              value={state.slug}
+              onChange={(s) => onChange('slug', s)}
+              onStatusChange={() => { /* parent's save handler will catch any DB-side conflict */ }}
+              generateAlternatives={generateDjAlternatives}
+              placeholder="e.g. dj-nova"
+              excludeUserId={userId}
+              originalSlug={slug || ''}
+            />
+          </SlugChangeGate>
 
           {/* Premium: downloadable QR code for the public profile, sitting
               right under the URL it points at. Encodes the permanent profile
@@ -607,6 +609,141 @@ function EmailChangeBlock({ currentEmail }: { currentEmail: string }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // PasswordChangeBlock — inline form to change the account's password.
+// ─────────────────────────────────────────────────────────────────────────
+// SlugChangeGate — the profile URL is a public-facing identity, so we don't
+// let it be edited casually. It stays locked (read-only) until the DJ
+// re-confirms their current password. Verification reuses the same
+// signInWithPassword re-auth pattern as the password/email change blocks.
+// Once unlocked, the real SlugInput (passed as children) is revealed for
+// this session.
+// ─────────────────────────────────────────────────────────────────────────
+function SlugChangeGate({ email, currentUrl, children }: { email: string; currentUrl: string; children: React.ReactNode }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function verify(e?: React.MouseEvent) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    setErr(null);
+    if (!pw) { setErr('Enter your password to continue.'); return; }
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const addr = user?.email || email;
+      if (!addr) throw new Error('Not signed in.');
+      const { error } = await supabase.auth.signInWithPassword({ email: addr, password: pw });
+      if (error) throw new Error('Incorrect password.');
+      setUnlocked(true);
+      setOpen(false);
+      setPw('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not verify.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (unlocked) return <>{children}</>;
+
+  const changeBtn: React.CSSProperties = {
+    fontFamily: "'Space Mono', monospace",
+    fontSize: '.62rem',
+    letterSpacing: '.07em',
+    textTransform: 'uppercase',
+    padding: '.6rem 1rem',
+    borderRadius: 6,
+    border: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--muted)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <input type="text" value={currentUrl} readOnly className={styles.input} style={{ flex: 1, opacity: 0.7 }} />
+        {!open && (
+          <button type="button" onClick={() => { setOpen(true); setErr(null); }} style={changeBtn}>
+            🔒 Change
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div style={{
+          marginTop: '.75rem',
+          padding: '1rem',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '.65rem',
+        }}>
+          <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+            For your security, confirm your password to change your profile URL.
+          </p>
+          <input
+            type="password"
+            placeholder="Current password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); verify(); } }}
+            className={styles.input}
+            autoComplete="current-password"
+          />
+          {err && <div style={{ color: '#ff6b6b', fontSize: '.75rem' }}>{err}</div>}
+          <div style={{ display: 'flex', gap: '.5rem' }}>
+            <button
+              type="button"
+              onClick={verify}
+              disabled={busy}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.6rem 1.1rem',
+                borderRadius: 6,
+                border: 'none',
+                background: 'var(--neon)',
+                color: 'var(--black)',
+                cursor: busy ? 'default' : 'pointer',
+                fontWeight: 700,
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              {busy ? 'Verifying…' : 'Unlock'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setPw(''); setErr(null); }}
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '.62rem',
+                letterSpacing: '.07em',
+                textTransform: 'uppercase',
+                padding: '.6rem 1.1rem',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'transparent',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Uses Supabase auth.updateUser directly after re-authenticating with
 // the current password. No server action needed since password updates
 // don't have the verification-email problem that email changes do.

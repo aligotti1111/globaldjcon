@@ -233,6 +233,12 @@ export default function ProfileQrCode({
                 {copied ? '✓ Copied' : 'Copy Link'}
               </button>
             </div>
+            {pid && (
+              <p style={{ margin: '.6rem 0 0', fontSize: '.62rem', color: 'var(--muted)', lineHeight: 1.35, opacity: 0.85 }}>
+                Changing your URL later won&apos;t affect this code — it always
+                points to your profile.
+              </p>
+            )}
           </div>
         </div>
       )}
