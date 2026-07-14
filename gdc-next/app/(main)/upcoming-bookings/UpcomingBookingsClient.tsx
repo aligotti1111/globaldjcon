@@ -199,6 +199,10 @@ export default function UpcomingBookingsClient({
         window.history.replaceState(null, '', url.toString());
       }
     }
+    // Deep-link to the Past archive (from the header / burger menus).
+    const v = searchParams?.get('view');
+    if (v === 'past') setView('past');
+    else if (v === 'upcoming') setView('upcoming');
   }, [searchParams]);
 
   // Today (YYYY-MM-DD) — anything strictly before this is "past".
