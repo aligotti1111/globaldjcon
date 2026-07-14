@@ -336,6 +336,19 @@ export default function MonthlyStory({
   const [textScale, setTextScale] = useState(1);
   const [cardAlpha, setCardAlpha] = useState(0.05);
   const [cardColor, setCardColor] = useState('#ffffff');
+  // Text-mirror drafts for the per-color hex inputs (lets you type/paste a code).
+  const [hexDrafts, setHexDrafts] = useState<Record<string, string>>({});
+  const isHex = (v: string) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v);
+  function typeHex(key: string, set: (v: string) => void, raw: string) {
+    const v = raw.trim();
+    setHexDrafts((d) => ({ ...d, [key]: v }));
+    const norm = v && v[0] !== '#' ? `#${v}` : v;
+    if (isHex(norm)) set(norm);
+  }
+  function pickHex(key: string, set: (v: string) => void, v: string) {
+    set(v);
+    setHexDrafts((d) => { const n = { ...d }; delete n[key]; return n; });
+  }
   const [headlineColor, setHeadlineColor] = useState('#00e0a4');
   const [accentColor, setAccentColor] = useState('#00e0a4');
   const [textColor, setTextColor] = useState('#ffffff');
@@ -724,7 +737,7 @@ export default function MonthlyStory({
 
             <div>
               <div style={label}>Text colors</div>
-              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {([
                   { lbl: 'Month', val: headlineColor, set: setHeadlineColor },
                   { lbl: 'Accent', val: accentColor, set: setAccentColor },
@@ -732,16 +745,24 @@ export default function MonthlyStory({
                   { lbl: 'Address', val: addressColor, set: setAddressColor },
                   { lbl: 'Box', val: cardColor, set: setCardColor },
                 ] as const).map((c) => (
-                  <label key={c.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <span style={{ ...swatch(false), width: 30, height: 30 }}>
+                  <div key={c.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ ...swatch(false), width: 26, height: 26, flexShrink: 0, cursor: 'pointer' }}>
                       <span style={{ position: 'absolute', inset: 0, background: c.val }} />
-                      <input type="color" value={c.val} onChange={(e) => c.set(e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                    </span>
-                    <span style={{ color: 'var(--white,#fff)', fontSize: '.78rem' }}>{c.lbl}</span>
-                  </label>
+                      <input type="color" value={c.val} onChange={(e) => pickHex(c.lbl, c.set, e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                    </label>
+                    <span style={{ color: 'var(--white,#fff)', fontSize: '.76rem', width: 62, flexShrink: 0 }}>{c.lbl}</span>
+                    <input
+                      type="text"
+                      value={hexDrafts[c.lbl] ?? c.val}
+                      spellCheck={false}
+                      placeholder="#000000"
+                      onChange={(e) => typeHex(c.lbl, c.set, e.target.value)}
+                      style={{ flex: 1, minWidth: 84, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.76rem', padding: '.32rem .5rem', outline: 'none' }}
+                    />
+                  </div>
                 ))}
                 {(headlineColor !== '#00e0a4' || accentColor !== '#00e0a4' || textColor !== '#ffffff' || addressColor !== '#b9b9c8' || cardColor !== '#ffffff') && (
-                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); setAddressColor('#b9b9c8'); setCardColor('#ffffff'); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline' }}>Reset</button>
+                  <button type="button" onClick={() => { setHeadlineColor('#00e0a4'); setAccentColor('#00e0a4'); setTextColor('#ffffff'); setAddressColor('#b9b9c8'); setCardColor('#ffffff'); setHexDrafts({}); }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: 'var(--muted,#9a9ab0)', fontSize: '.74rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>Reset colors</button>
                 )}
               </div>
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.68rem', marginTop: 6 }}>Month = title · Accent = times &amp; date badge · Venue &amp; Address = the two card lines.</div>
