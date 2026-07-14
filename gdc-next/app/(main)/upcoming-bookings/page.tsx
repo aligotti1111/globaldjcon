@@ -1,7 +1,6 @@
-// /upcoming-bookings — DJ-only page. Shows both an "Upcoming" list (future
-// approved + manual bookings) and a "Past" archive (events whose date has
-// passed), grouped by month. The client splits the rows by date into the two
-// views.
+// /upcoming-bookings — DJ-only page showing all FUTURE approved bookings
+// (real + DJ-added manual entries), grouped by month. Past events live on the
+// dedicated /past-bookings page (same client component in `archive` mode).
 //
 // Auth/redirect rules:
 //   - Not logged in → /login
@@ -120,16 +119,20 @@ export default async function UpcomingBookingsPage() {
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
 
-  // Fetch ALL approved-or-manual bookings for this DJ (past + future). The
-  // client splits them into the Upcoming and Past views by event_date.
+  // Today (YYYY-MM-DD). event_date is a plain date, so a string compare works.
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Fetch FUTURE approved-or-manual bookings for this DJ. (Past bookings live on
+  // the dedicated /past-bookings page.)
   const { data: rows } = await supabase
     .from('bookings')
     .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract')
     .eq('dj_id', user.id)
+    .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
-    .limit(500);
+    .limit(200);
 
   // Backfill the booker (host) name from requester_id when not already
   // denormalized on the row, so the "Booked By" field shows a name.
