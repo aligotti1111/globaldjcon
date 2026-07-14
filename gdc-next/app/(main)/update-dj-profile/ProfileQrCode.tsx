@@ -31,8 +31,11 @@ const PALETTE: Record<QrStyle, { bg: string; fg: string; sub: string }> = {
 };
 
 // Paint the QR matrix + caption onto the canvas at print resolution.
-function paint(canvas: HTMLCanvasElement, slug: string, djName: string, style: QrStyle) {
-  const url = `${PROFILE_BASE}/${slug}`;
+//   encodeTarget — the path the QR actually ENCODES (the permanent profile ID
+//     when available, so a printed code never breaks on a slug change).
+//   slug — the human-readable slug shown as the caption for branding.
+function paint(canvas: HTMLCanvasElement, encodeTarget: string, slug: string, djName: string, style: QrStyle) {
+  const url = `${PROFILE_BASE}/${encodeTarget}`;
   const qr = QRCode.create(url, { errorCorrectionLevel: 'H' });
   const modCount = qr.modules.size;
   const bits = qr.modules.data; // row-major, 1 = dark
@@ -81,24 +84,40 @@ function paint(canvas: HTMLCanvasElement, slug: string, djName: string, style: Q
   }
 }
 
-export default function ProfileQrCode({ slug, djName }: { slug: string; djName?: string }) {
+export default function ProfileQrCode({
+  slug,
+  djName,
+  profileId,
+}: {
+  slug: string;
+  djName?: string;
+  /** The DJ's permanent account ID. When provided, the QR ENCODES the ID
+   *  link (which never changes) so a printed code keeps resolving to the
+   *  profile even after the DJ renames their slug. The pretty slug is still
+   *  shown as the caption and used for the shareable "Copy Link" URL. */
+  profileId?: string;
+}) {
   const [style, setStyle] = useState<QrStyle>('neon');
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const clean = (slug || '').trim();
-  const url = clean ? `${PROFILE_BASE}/${clean}` : '';
+  const pid = (profileId || '').trim();
+  // What the QR encodes: permanent ID when we have it, else the slug.
+  const encodeTarget = pid || clean;
+  // What "Copy Link" shares: the pretty slug URL (falls back to the ID link).
+  const url = clean ? `${PROFILE_BASE}/${clean}` : pid ? `${PROFILE_BASE}/${pid}` : '';
 
   useEffect(() => {
     if (!clean) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     try {
-      paint(canvas, clean, djName || '', style);
+      paint(canvas, encodeTarget, clean, djName || '', style);
     } catch {
       /* leave canvas blank rather than crash the tab */
     }
-  }, [clean, djName, style]);
+  }, [clean, encodeTarget, djName, style]);
 
   const download = useCallback(() => {
     const canvas = canvasRef.current;
