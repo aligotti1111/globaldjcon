@@ -174,7 +174,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             </Link>
           )}
           {bookingEnabled && (
-            <Link href="/upcoming-bookings?view=past" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               Past Bookings
             </Link>
           )}

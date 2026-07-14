@@ -277,7 +277,7 @@ export default function MobileMenu() {
               </Link>
             )}
             {isDj && bookingEnabled && (
-              <Link href="/upcoming-bookings?view=past" onClick={close} className="mobile-menu-item">
+              <Link href="/past-bookings" onClick={close} className="mobile-menu-item">
                 <IconArchive />Past Bookings
               </Link>
             )}
