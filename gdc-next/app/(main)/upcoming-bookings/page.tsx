@@ -1,13 +1,15 @@
-// /upcoming-bookings — DJ-only page showing all future approved bookings
-// (real + DJ-added manual entries), grouped by month.
+// /upcoming-bookings — DJ-only page. Shows both an "Upcoming" list (future
+// approved + manual bookings) and a "Past" archive (events whose date has
+// passed), grouped by month. The client splits the rows by date into the two
+// views.
 //
 // Auth/redirect rules:
 //   - Not logged in → /login
 //   - Logged in but role is not 'dj' → /booking-requests
 //
 // Data shape sent to the client:
-//   - bookings: future-dated rows where dj_id matches the logged-in user
-//     AND (status = 'approved' OR is_manual = true).
+//   - bookings: ALL rows where dj_id matches the logged-in user AND
+//     (status = 'approved' OR is_manual = true) — past and future.
 //   - djType: 'mobile' or 'club' (from users.dj_type).
 //   - bookingsPerDay: mob_bookings_per_day from users.booking_settings JSON
 //     (defaults to 1 if unset). Used only for mobile DJs.
@@ -78,6 +80,10 @@ export interface UpcomingBooking {
   contract_status?: string | null;
   contract_sent_at?: string | null;
   contract_signed_at?: string | null;
+  // Booking-readiness pipeline: manual step overrides + per-booking snapshot of
+  // whether a contract was required at creation time (freezes the flow).
+  status_overrides?: Record<string, boolean> | null;
+  requires_contract?: boolean | null;
 }
 
 interface ProfileRow {
@@ -114,20 +120,16 @@ export default async function UpcomingBookingsPage() {
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
 
-  // Today's date in YYYY-MM-DD (server-side; Supabase stores event_date as
-  // a plain date so a string compare works).
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Fetch future approved-or-manual bookings for this DJ.
+  // Fetch ALL approved-or-manual bookings for this DJ (past + future). The
+  // client splits them into the Upcoming and Past views by event_date.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract')
     .eq('dj_id', user.id)
-    .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
-    .limit(200);
+    .limit(500);
 
   // Backfill the booker (host) name from requester_id when not already
   // denormalized on the row, so the "Booked By" field shows a name.

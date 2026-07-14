@@ -137,6 +137,8 @@ export default function UpcomingBookingsClient({
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
   // month) or 'recent' (most recently booked first, flat list).
   const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
+  // Upcoming (future/today) vs Past (archive of completed events).
+  const [view, setView] = useState<'upcoming' | 'past'>('upcoming');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStory, setShowStory] = useState(false);
   // Site-uniform confirm dialog — replaces window.confirm() for delete.
@@ -199,30 +201,42 @@ export default function UpcomingBookingsClient({
     }
   }, [searchParams]);
 
-  // Group by month (YYYY-MM); keys sorted descending (most recent month first).
+  // Today (YYYY-MM-DD) — anything strictly before this is "past".
+  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const hasPast = useMemo(() => bookings.some((b) => b.event_date && b.event_date < todayKey), [bookings, todayKey]);
+  // The subset shown for the current view (upcoming = today or later + undated).
+  const viewBookings = useMemo(() => bookings.filter((b) => {
+    const isPast = !!b.event_date && b.event_date < todayKey;
+    return view === 'past' ? isPast : !isPast;
+  }), [bookings, view, todayKey]);
+
+  // Group by month (YYYY-MM). Upcoming: soonest month first, ascending dates.
+  // Past: most-recent month first, most-recent date first (newest at top).
   const grouped = useMemo(() => {
     const map = new Map<string, UpcomingBooking[]>();
-    for (const b of bookings) {
+    for (const b of viewBookings) {
       if (!b.event_date) continue;
       const key = b.event_date.slice(0, 7);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(b);
     }
-    // Sort ascending: soonest month first.
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [bookings]);
+    for (const arr of map.values()) arr.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
+    const entries = Array.from(map.entries());
+    if (view === 'past') {
+      entries.sort((a, b) => b[0].localeCompare(a[0]));
+      for (const [, arr] of entries) arr.reverse();
+      return entries;
+    }
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+  }, [viewBookings, view]);
 
   // Flat list sorted by most recently booked first (created_at desc). Used
   // when the sort toggle is set to "Recently booked".
   const recentList = useMemo(() => {
-    return [...bookings]
+    return [...viewBookings]
       .filter((b) => b.event_date)
-      .sort((a, b) => {
-        const ca = a.created_at || '';
-        const cb = b.created_at || '';
-        return cb.localeCompare(ca);
-      });
-  }, [bookings]);
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  }, [viewBookings]);
 
   // IDs of bookings whose time range overlaps another booking on the SAME
   // date — CLUB/BAR DJs only (a club DJ can't be in two places at once).
@@ -327,17 +341,39 @@ export default function UpcomingBookingsClient({
       {confirmDialog}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Upcoming Bookings</h1>
+          <h1 className={styles.title}>{view === 'past' ? 'Past Bookings' : 'Upcoming Bookings'}</h1>
           <Link href="/booking-requests" className={styles.backLink}>← Back to booking requests</Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
-            + Add Booking Manually
-          </button>
+          {view === 'upcoming' && (
+            <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
+              + Add Booking Manually
+            </button>
+          )}
         </div>
       </div>
 
-      {bookings.length > 0 && (
+      {/* Upcoming / Past view switch — shown once there's any history to browse. */}
+      {(bookings.length > 0 || hasPast) && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: '.9rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${view === 'upcoming' ? styles.sortBtnActive : ''}`}
+            onClick={() => setView('upcoming')}
+          >
+            Upcoming
+          </button>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${view === 'past' ? styles.sortBtnActive : ''}`}
+            onClick={() => setView('past')}
+          >
+            Past
+          </button>
+        </div>
+      )}
+
+      {viewBookings.length > 0 && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
           <button
@@ -354,7 +390,7 @@ export default function UpcomingBookingsClient({
           >
             Recently booked
           </button>
-          {djType === 'club' && isPaid && (
+          {view === 'upcoming' && djType === 'club' && isPaid && (
             <button
               type="button"
               onClick={() => setShowStory(true)}
@@ -366,13 +402,22 @@ export default function UpcomingBookingsClient({
         </div>
       )}
 
-      {bookings.length === 0 ? (
+      {viewBookings.length === 0 ? (
         <div className={styles.empty}>
-          <p>No upcoming bookings yet.</p>
-          <p className={styles.emptyHint}>
-            Approved booking requests show up here automatically. You can also add bookings
-            manually using the button above.
-          </p>
+          {view === 'past' ? (
+            <>
+              <p>No past bookings yet.</p>
+              <p className={styles.emptyHint}>Once an event date passes, the booking moves here so you keep a record of it.</p>
+            </>
+          ) : (
+            <>
+              <p>No upcoming bookings yet.</p>
+              <p className={styles.emptyHint}>
+                Approved booking requests show up here automatically. You can also add bookings
+                manually using the button above.
+              </p>
+            </>
+          )}
         </div>
       ) : sortMode === 'recent' ? (
         <div className={styles.monthList}>
