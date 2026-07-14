@@ -22,6 +22,7 @@ import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 import EmbedCodeSection from './EmbedCodeSection';
+import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -770,6 +771,9 @@ export default function ClubBookingTab({
 
       {/* ── Embed Code ──────────────────────────────────────── */}
       <EmbedCodeSection slug={djSlug} />
+
+      {/* ── Profile QR Code (premium) ───────────────────────── */}
+      <ProfileQrCode slug={djSlug} />
         </>
       )}
     </div>
