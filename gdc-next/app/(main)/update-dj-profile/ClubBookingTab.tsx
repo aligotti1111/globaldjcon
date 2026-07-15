@@ -22,6 +22,7 @@ import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 import EmbedCodeSection from './EmbedCodeSection';
+import PaymentMethodsSection from './PaymentMethodsSection';
 import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
@@ -51,6 +52,9 @@ interface Props {
   // points at this profile. Read live from general.slug in the parent
   // so the embed snippet updates as the user edits the slug.
   djSlug: string;
+  // Auth user ID — PaymentMethodsSection loads/saves users.payment_methods
+  // directly (self-contained, outside the master save).
+  userId: string;
   // Aggregate dirty signal — true whenever the manual-save Rates section
   // has unsaved drafts. Bubbles up to UpdateDjProfileClient which combines
   // it with general-fields-dirty + mobile-package-drafts-dirty for the
@@ -67,7 +71,7 @@ interface Props {
 }
 
 export default function ClubBookingTab({
-  bookingSettings, onChange, autosaveStatus, djSlug, onDirtyChange, masterSaveTrigger,
+  bookingSettings, onChange, autosaveStatus, djSlug, userId, onDirtyChange, masterSaveTrigger,
   onActivationIncompleteChange,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
@@ -771,6 +775,10 @@ export default function ClubBookingTab({
 
       {/* ── Embed Code ──────────────────────────────────────── */}
       <EmbedCodeSection slug={djSlug} />
+
+      {/* Manual payment rails — deposits + invoices. Self-contained; saves
+          users.payment_methods directly, not via the master save. */}
+      <PaymentMethodsSection userId={userId} />
 
       {/* ── Profile QR Code (premium) ───────────────────────── */}
       <ProfileQrCode slug={djSlug} />

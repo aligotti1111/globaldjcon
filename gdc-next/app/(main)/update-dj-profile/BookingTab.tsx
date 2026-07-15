@@ -34,6 +34,7 @@ import {
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import EmbedCodeSection from './EmbedCodeSection';
+import PaymentMethodsSection from './PaymentMethodsSection';
 import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 
@@ -669,6 +670,10 @@ export default function BookingTab({
 
           {/* ── Embed Code ──────────────────────────────────────── */}
           <EmbedCodeSection slug={djSlug} />
+
+          {/* Manual payment rails — deposits + invoices. Self-contained;
+              saves users.payment_methods directly, not via the master save. */}
+          <PaymentMethodsSection userId={userId} />
 
           {/* ── Profile QR Code (premium) ───────────────────────── */}
           <ProfileQrCode slug={djSlug} />
