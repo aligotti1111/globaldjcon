@@ -96,6 +96,100 @@ function withDeadline<T>(p: PromiseLike<T>, label: string, ms = DEADLINE_MS): Pr
 const errMsg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 /**
+ * The `start` action, method-agnostic. Creates the connected account if the DJ
+ * doesn't have one yet, then mints a fresh single-use onboarding link.
+ *
+ * Shared by POST {action:'start'} and the GET ?run=start diagnostic so the two
+ * can't diverge — the entire value of that experiment rests on the paths being
+ * identical.
+ *
+ * Every hop is individually caught and labelled, and every network call is
+ * raced against a deadline. Returns JSON on every branch, always.
+ */
+async function runStart(req: Request): Promise<NextResponse> {
+  const supabase = await createClient();
+  const { data: { user }, error: authErr } = await withDeadline(supabase.auth.getUser(), 'Auth check');
+  if (authErr) return NextResponse.json({ error: `Auth: ${authErr.message}` }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  let admin: ReturnType<typeof createAdminClient> | null = null;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    return NextResponse.json({ error: `Admin client: ${errMsg(e, 'could not initialise')}` }, { status: 500 });
+  }
+  if (!admin) return NextResponse.json({ error: 'Admin client unavailable.' }, { status: 500 });
+
+  const { data: rowData, error: rowErr } = await withDeadline(
+    admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
+    'Database read',
+  );
+  if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 502 });
+  const row = rowData as unknown as ConnectRow | null;
+  if (!row) return NextResponse.json({ error: 'Profile not found.' }, { status: 404 });
+
+  const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || SITE_URL;
+
+  let stripe: ReturnType<typeof getStripe> | null = null;
+  try {
+    stripe = getStripe();
+  } catch (e) {
+    // A missing/blank STRIPE_SECRET_KEY throws right here.
+    return NextResponse.json({ error: `Stripe init: ${errMsg(e, 'no secret key configured')}` }, { status: 500 });
+  }
+  if (!stripe) return NextResponse.json({ error: 'Stripe unavailable.' }, { status: 500 });
+
+  let accountId = row.stripe_connect_id;
+  if (!accountId) {
+    try {
+      const account = await withDeadline(
+        stripe.accounts.create({
+          type: 'standard',
+          email: user.email || undefined,
+          metadata: { user_id: user.id },
+        }),
+        'Stripe account create',
+      );
+      accountId = account.id;
+    } catch (e) {
+      // Most common real-world failure: Connect not enabled on the platform
+      // dashboard, or live mode without a completed platform profile.
+      // Stripe's own message says which — surface it verbatim.
+      return NextResponse.json({ error: `Stripe (create account): ${errMsg(e, 'unknown error')}` }, { status: 502 });
+    }
+
+    const { error: upErr } = await withDeadline(
+      admin.from('users').update({ stripe_connect_id: accountId } as unknown as never).eq('id', user.id),
+      'Database write',
+    );
+    // If we can't persist the id we'd orphan the Stripe account and mint a
+    // second one next click — fail loudly instead.
+    if (upErr) return NextResponse.json({ error: `DB (save account id): ${upErr.message}` }, { status: 502 });
+  }
+  // Narrowing guard: the assignment above lives inside a try, which TS won't
+  // credit as definite, so accountId is still `string | null` here.
+  if (!accountId) return NextResponse.json({ error: 'No Stripe account id.' }, { status: 502 });
+
+  // Account links are single-use and expire in minutes — always fresh.
+  // refresh_url lands back on Booking Settings, where the section offers the
+  // resume button (this same action) again.
+  try {
+    const link = await withDeadline(
+      stripe.accountLinks.create({
+        account: accountId,
+        type: 'account_onboarding',
+        refresh_url: `${origin}/booking-settings?stripe=refresh`,
+        return_url: `${origin}/booking-settings?stripe=connected`,
+      }),
+      'Stripe account link',
+    );
+    return NextResponse.json({ url: link.url });
+  } catch (e) {
+    return NextResponse.json({ error: `Stripe (account link): ${errMsg(e, 'unknown error')}` }, { status: 502 });
+  }
+}
+
+/**
  * GET /api/stripe/connect — self-check, openable straight in a browser.
  *
  * Exists because "Could not start Stripe onboarding." is the CLIENT's fallback
@@ -114,9 +208,36 @@ const errMsg = (e: unknown, fallback: string) => (e instanceof Error && e.messag
  *
  * Leaks nothing: booleans and lengths only, never a key or a fragment of one.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  // ── ?run=start — the SAME start work, over GET ────────────────────────
+  //
+  // TEMPORARY DIAGNOSTIC. Delete once cards work.
+  //
+  // A GET to this route returns 200 through the same Cloudflare, the same
+  // Netlify function and the same module graph that a POST dies in with a
+  // Cloudflare 502 "Host Error". So the difference is the METHOD, not the
+  // code — unless the Stripe calls themselves are what kills it. Running the
+  // identical work under GET separates those two in one click:
+  //
+  //   • JSON with a url  → the Stripe path is fine; POST is being mangled
+  //                        somewhere between Cloudflare and the handler
+  //   • 502 again        → the Stripe call itself crashes the process,
+  //                        method is irrelevant
+  //
+  // Yes, a GET with side effects is wrong (it can create a Stripe account).
+  // It's authed, it's idempotent in practice — an existing stripe_connect_id
+  // is reused — and it is worth exactly one deploy to stop guessing.
+  const url = new URL(req.url);
+  if (url.searchParams.get('run') === 'start') {
+    try {
+      return await runStart(req);
+    } catch (e) {
+      return NextResponse.json({ error: `GET start: ${errMsg(e, 'threw')}` }, { status: 500 });
+    }
+  }
+
   const out: Record<string, unknown> = {
-    version: 'connect-v2-deadline',
+    version: 'connect-v3-getstart',
     node: process.version,
     hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
     stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
@@ -154,6 +275,13 @@ export async function POST(req: Request) {
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const action = typeof body.action === 'string' ? body.action : '';
 
+    // Delegated so GET ?run=start and POST {action:'start'} execute LITERALLY
+    // the same code. If one 502s and the other doesn't, the difference is the
+    // HTTP method — a fact about Cloudflare/Netlify, not about us.
+    // (runStart does its own auth + row read, so it goes before the lookups
+    // below rather than after them.)
+    if (action === 'start') return await runStart(req);
+
     // Throws if SUPABASE_SERVICE_ROLE_KEY is missing — in v1 that throw was
     // outside any try and would have escaped as a 502.
     // ( `| null` + an explicit guard rather than definite-assignment: TS treats
@@ -177,71 +305,6 @@ export async function POST(req: Request) {
     if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 502 });
     const row = rowData as unknown as ConnectRow | null;
     if (!row) return NextResponse.json({ error: 'Profile not found.' }, { status: 404 });
-
-    // Where Stripe sends the DJ afterwards. Origin first so previews/local work;
-    // the hardcoded fallback matches the rest of the codebase.
-    const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || SITE_URL;
-
-    // ─────────────────────────────── start ───────────────────────────────
-    if (action === 'start') {
-      let stripe: ReturnType<typeof getStripe> | null = null;
-      try {
-        stripe = getStripe();
-      } catch (e) {
-        // A missing/blank STRIPE_SECRET_KEY throws right here.
-        return NextResponse.json({ error: `Stripe init: ${errMsg(e, 'no secret key configured')}` }, { status: 500 });
-      }
-      if (!stripe) return NextResponse.json({ error: 'Stripe unavailable.' }, { status: 500 });
-
-      let accountId = row.stripe_connect_id;
-      if (!accountId) {
-        try {
-          const account = await withDeadline(
-            stripe.accounts.create({
-              type: 'standard',
-              email: user.email || undefined,
-              metadata: { user_id: user.id },
-            }),
-            'Stripe account create',
-          );
-          accountId = account.id;
-        } catch (e) {
-          // Most common real-world failure: Connect not enabled on the
-          // platform dashboard, or live mode without a completed platform
-          // profile. Stripe's own message says which — surface it verbatim.
-          return NextResponse.json({ error: `Stripe (create account): ${errMsg(e, 'unknown error')}` }, { status: 502 });
-        }
-
-        const { error: upErr } = await withDeadline(
-          admin.from('users').update({ stripe_connect_id: accountId } as unknown as never).eq('id', user.id),
-          'Database write',
-        );
-        // If we can't persist the id we'd orphan the Stripe account and mint
-        // a second one next click — fail loudly instead.
-        if (upErr) return NextResponse.json({ error: `DB (save account id): ${upErr.message}` }, { status: 502 });
-      }
-      // Narrowing guard: the assignment above lives inside a try, which TS
-      // won't credit as definite, so accountId is still `string | null` here.
-      if (!accountId) return NextResponse.json({ error: 'No Stripe account id.' }, { status: 502 });
-
-      // Account links are single-use and expire in minutes — always fresh.
-      // refresh_url lands back on Booking Settings, where the section offers
-      // the resume button (this same action) again.
-      try {
-        const link = await withDeadline(
-          stripe.accountLinks.create({
-            account: accountId,
-            type: 'account_onboarding',
-            refresh_url: `${origin}/booking-settings?stripe=refresh`,
-            return_url: `${origin}/booking-settings?stripe=connected`,
-          }),
-          'Stripe account link',
-        );
-        return NextResponse.json({ url: link.url });
-      } catch (e) {
-        return NextResponse.json({ error: `Stripe (account link): ${errMsg(e, 'unknown error')}` }, { status: 502 });
-      }
-    }
 
     // ─────────────────────────────── status ──────────────────────────────
     if (action === 'status') {
