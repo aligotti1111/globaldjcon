@@ -27,155 +27,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
-
-export type PaymentMethodType =
-  | 'zelle' | 'venmo' | 'cashapp' | 'paypal' | 'cash' | 'check' | 'other';
-
-export interface PaymentMethod {
-  id: string;
-  type: PaymentMethodType;
-  handle: string;
-  note: string;
-  enabled: boolean;
-}
-
-interface TypeConfig {
-  label: string;
-  /** What the DJ types. Empty = this rail has no handle (cash). */
-  handleLabel: string;
-  placeholder: string;
-  /** Shown under the field — the "what will the client actually do" hint. */
-  hint: string;
-  /** Instant, one-tap with the amount prefilled? Zelle is the odd one out. */
-  instant: boolean;
-  validate: (v: string) => string | null;
-}
-
-const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const digits = (v: string) => v.replace(/\D/g, '');
-
-export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
-  zelle: {
-    label: 'Zelle',
-    handleLabel: 'Email or phone',
-    placeholder: 'you@email.com or (555) 123-4567',
-    // Zelle has no link format at all — the client must open their own banking
-    // app and type this in by hand. Highest friction AND irreversible.
-    hint: 'Client sends from their bank app. No link exists for Zelle, so they copy this by hand — double-check it. Usually free, but business use needs a business bank account and not every bank offers it.',
-    instant: false,
-    validate: (v) => {
-      const t = v.trim();
-      if (!t) return 'Enter the email or phone your Zelle is registered to.';
-      if (isEmail(t)) return null;
-      if (digits(t).length >= 10) return null;
-      return 'Must be a valid email or a 10-digit phone number.';
-    },
-  },
-  venmo: {
-    label: 'Venmo',
-    handleLabel: 'Username',
-    placeholder: 'djnova',
-    hint: 'One tap on a phone with the Venmo app — amount filled in for them. Venmo blocks payments from their website, so on a laptop the client copies your handle instead. Unverified accounts also cap around $300/week received.',
-    instant: true,
-    validate: (v) => {
-      const t = v.trim().replace(/^@/, '');
-      if (!t) return 'Enter your Venmo username.';
-      if (!/^[A-Za-z0-9_-]{3,30}$/.test(t)) return 'Usernames are 3–30 letters, numbers, dashes or underscores.';
-      return null;
-    },
-  },
-  cashapp: {
-    label: 'Cash App',
-    handleLabel: 'Cashtag',
-    placeholder: 'djnova',
-    hint: 'One tap, amount filled in for them. Works best on a phone with the Cash App installed.',
-    instant: true,
-    validate: (v) => {
-      const t = v.trim().replace(/^\$/, '');
-      if (!t) return 'Enter your $cashtag.';
-      if (!/^[A-Za-z0-9_-]{1,20}$/.test(t)) return 'Cashtags are up to 20 letters, numbers, dashes or underscores.';
-      return null;
-    },
-  },
-  paypal: {
-    label: 'PayPal',
-    handleLabel: 'PayPal.me link or email',
-    placeholder: 'paypal.me/djnova',
-    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand. Note: PayPal requires a Business account for commercial payments (even unincorporated) and may close a personal account used mainly for business. Business rates run about 2.99% + $0.49.',
-    instant: true,
-    validate: (v) => {
-      const t = v.trim();
-      if (!t) return 'Enter your PayPal.me link or PayPal email.';
-      if (isEmail(t)) return null;
-      if (/^(https?:\/\/)?(www\.)?paypal\.me\/[A-Za-z0-9._-]+\/?$/i.test(t)) return null;
-      return 'Use a paypal.me/yourname link or your PayPal email.';
-    },
-  },
-  cash: {
-    label: 'Cash',
-    handleLabel: '',
-    placeholder: '',
-    // Worth saying plainly: a deposit exists to hold the date BEFORE the event,
-    // which cash usually can't do.
-    hint: 'In person only. Fine for the balance on the night — but it can\'t hold a date in advance, so it rarely works as a deposit.',
-    instant: false,
-    validate: () => null,
-  },
-  check: {
-    label: 'Check',
-    handleLabel: 'Payable to / mailing address',
-    placeholder: 'DJ Nova LLC — 123 Main St, Staten Island, NY 10307',
-    hint: 'Slowest rail. Client mails it; you confirm when it clears.',
-    instant: false,
-    validate: (v) => (v.trim() ? null : 'Tell the client who to make it out to and where to send it.'),
-  },
-  other: {
-    label: 'Other',
-    handleLabel: 'Details',
-    placeholder: 'Bank transfer — sort code / account no.',
-    hint: 'Anything else you accept. The client sees exactly what you type here.',
-    instant: false,
-    validate: (v) => (v.trim() ? null : 'Describe how the client should pay.'),
-  },
-};
-
-const TYPE_ORDER: PaymentMethodType[] = ['zelle', 'venmo', 'cashapp', 'paypal', 'cash', 'check', 'other'];
-
-/**
- * Deep-link formats (used by the pay page — keep in sync):
- *   venmo   → https://venmo.com/<user>?txn=pay&amount=600&note=GDC-1487
- *             MOBILE ONLY. Venmo no longer allows initiating a transaction
- *             from their website, so on desktop this opens a profile the
- *             client cannot pay from. The pay page must ALWAYS also show the
- *             handle + copy button as the fallback — never the button alone.
- *   cashapp → https://cash.app/$<cashtag>/600
- *   paypal  → https://paypal.me/<user>/600   (amount is a suggestion; the
- *             client can edit it, which is fine — the DJ confirms what
- *             actually arrived.)
- *
- * Is this rail one-tap (deep link, amount prefilled) or does the client have
- * to send it by hand? PayPal is the only type where it depends on what the DJ
- * entered: a PayPal.me link prefills the amount, a bare email cannot (the old
- * email-based button, PayPal Payments Standard, was deprecated Jan 2026 and
- * stops working entirely Jan 2027 — not something to build on).
- */
-export function isOneTap(m: PaymentMethod): boolean {
-  if (m.type === 'venmo' || m.type === 'cashapp') return true;
-  if (m.type === 'paypal') return /paypal\.me\//i.test(m.handle.trim());
-  return false;
-}
-
-/** What the client will literally see. Mirrors the pay page's rendering. */
-export function previewLine(m: PaymentMethod): string {
-  const t = m.handle.trim();
-  switch (m.type) {
-    case 'venmo':   return `@${t.replace(/^@/, '')}`;
-    case 'cashapp': return `$${t.replace(/^\$/, '')}`;
-    case 'paypal':  return t.replace(/^https?:\/\//i, '');
-    case 'cash':    return 'Pay in person';
-    default:        return t;
-  }
-}
+import {
+  METHOD_TYPES,
+  TYPE_ORDER,
+  isLinkable,
+  isMobileOnly,
+  displayHandle,
+  cleanHandle,
+  type PaymentMethod,
+  type PaymentMethodType,
+} from '@/lib/paymentMethods';
 
 function newId(): string {
   try {
@@ -260,10 +121,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
       const clean = methods.map((m) => ({
         id: m.id,
         type: m.type,
-        handle:
-          m.type === 'venmo' ? m.handle.trim().replace(/^@/, '')
-          : m.type === 'cashapp' ? m.handle.trim().replace(/^\$/, '')
-          : m.handle.trim(),
+        handle: cleanHandle(m),
         note: m.note.trim(),
         enabled: m.enabled,
       }));
@@ -420,18 +278,20 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                       wordBreak: 'break-all',
                     }}
                   >
-                    {cfg.label}: {previewLine(m)}
+                    {cfg.label}: {displayHandle(m)}
                   </span>
                   <span
                     style={{
                       display: 'block',
                       marginTop: '.3rem',
                       fontSize: '.68rem',
-                      color: isOneTap(m) ? 'var(--success)' : 'var(--muted)',
+                      color: isLinkable(m) ? 'var(--success)' : 'var(--muted)',
                     }}
                   >
-                    {isOneTap(m)
-                      ? '⚡ One tap on a phone — amount filled in for them'
+                    {isLinkable(m)
+                      ? (isMobileOnly(m)
+                          ? '⚡ One tap on a phone — amount filled in for them'
+                          : '⚡ One tap — amount filled in for them')
                       : m.type === 'cash' || m.type === 'check'
                       ? 'Handled in person'
                       : 'Client sends this manually — no link is possible'}
