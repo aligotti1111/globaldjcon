@@ -800,12 +800,13 @@ function BookingRow({
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
-    const cLabel =
-      isDone ? 'Signed'
-      : (cstatus === 'cancelled' || cstatus === 'voided') ? 'Void'
-      : cstatus === 'awaiting_client' ? 'Awaiting'
-      : cstatus === 'awaiting_dj' ? 'Sign'
-      : 'Contract';
+    // The label names the STAGE, never the state. The green check is what says
+    // complete, so a label that also mutates ('Sign' -> 'Awaiting' -> 'Signed')
+    // is a second, competing status readout — and the two disagree at a glance:
+    // 'Signed' with no check, or 'Sign' sitting next to a check, both look like
+    // bugs. One job each: emoji = which stage, label = its name, badge = done.
+    // Colour still carries trouble (void/cancelled goes red).
+    const cLabel = 'Contract';
     // Overridable only when it isn't genuinely signed (can't un-sign a real one).
     steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc', overridable: !trulySigned, done: isDone });
   }
