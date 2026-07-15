@@ -1326,9 +1326,22 @@ function BookingDetails({
   const [cancelBusy, setCancelBusy] = useState(false);
   const [copyBusy, setCopyBusy] = useState(false);
   const [copyDone, setCopyDone] = useState(false);
+  // The link, held for the explainer box rather than copied silently.
+  const [linkBox, setLinkBox] = useState<string | null>(null);
 
-  // Copy the client's DocuSeal signing link so the DJ can send it directly
-  // (e.g. if the email didn't reach the client).
+  // Fetch the client's DocuSeal signing link and SHOW it, rather than dropping
+  // it on the clipboard and saying "copied ✓".
+  //
+  // The link is a capability URL: the unguessable slug IS the credential.
+  // Whoever opens it can sign as the client — no login, no password. That's
+  // inherent to e-signature (the same link is what DocuSeal emails them, and
+  // it's how DocuSign et al work), so surfacing it doesn't weaken anything.
+  //
+  // What it DOES create is a new way to be careless. A silent copy puts a
+  // sign-as-the-client key on the clipboard with nothing said about it, and the
+  // next paste might be a group chat. So: show the link, say what it is, and
+  // let the DJ copy it having read that. One extra click, and the difference
+  // between a tool and a trap.
   async function copyClientLink() {
     setCopyBusy(true);
     try {
@@ -1337,19 +1350,25 @@ function BookingDetails({
         body: JSON.stringify({ bookingId: booking.id }),
       });
       const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (res.ok && json.url) {
-        try {
-          await navigator.clipboard.writeText(json.url);
-          setCopyDone(true);
-          setTimeout(() => setCopyDone(false), 2500);
-        } catch {
-          window.prompt('Copy this signing link and send it to the client:', json.url);
-        }
-      } else {
-        alert(json.error || 'Could not get the client link.');
-      }
-    } catch { alert('Could not copy the link. Try again in a moment.'); }
+      if (res.ok && json.url) setLinkBox(json.url);
+      else alert(json.error || 'Could not get the client link.');
+    } catch { alert('Could not get the link. Try again in a moment.'); }
     finally { setCopyBusy(false); }
+  }
+
+  // Copy from inside the box. Falls back to selecting the text when the
+  // clipboard API is blocked (non-HTTPS, some mobile browsers) — the link is
+  // on screen either way, which is the point of showing it.
+  async function copyFromBox() {
+    if (!linkBox) return;
+    try {
+      await navigator.clipboard.writeText(linkBox);
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 2500);
+    } catch {
+      const el = document.getElementById('gdc-link-box') as HTMLInputElement | null;
+      el?.select();
+    }
   }
   const [signedBusy, setSignedBusy] = useState(false);
   const [signedDocs, setSignedDocs] = useState<{ contract?: string; audit?: string } | null>(null);
@@ -1829,6 +1848,66 @@ function BookingDetails({
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap}>
           <NotesFeed bookingId={booking.id} currentUserId={userId} />
+        </div>
+      )}
+      {/* The signing-link explainer. A modal, not a toast: the DJ has to read
+          past it to get the link, which is the entire safeguard. */}
+      {linkBox && (
+        <div
+          onClick={() => setLinkBox(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 12, padding: '1.1rem 1.2rem', maxWidth: 460, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.6)',
+            }}
+          >
+            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.5rem' }}>
+              Client signing link
+            </div>
+            <p style={{ margin: '0 0 .5rem', color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', lineHeight: 1.55 }}>
+              This is the same link DocuSeal emailed your client. Useful when
+              the email didn&apos;t land — spam, a typo&apos;d address, a company filter.
+            </p>
+            <p style={{ margin: '0 0 .75rem', color: '#f5a623', fontSize: '.8rem', lineHeight: 1.55 }}>
+              <strong>Anyone who opens it can sign as your client.</strong> There&apos;s no
+              password on it. Send it straight to them — not into a group chat
+              or anywhere public.
+            </p>
+            <input
+              id="gdc-link-box"
+              readOnly
+              value={linkBox}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{
+                width: '100%', background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                fontFamily: "'Space Mono', monospace", fontSize: '.72rem', marginBottom: '.8rem',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setLinkBox(null)}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.8rem' }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyFromBox()}
+                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, borderRadius: 6, padding: '.5rem 1.1rem', cursor: 'pointer', fontSize: '.8rem' }}
+              >
+                {copyDone ? '\u2713 Copied' : 'Copy link'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {contractOpen && (
