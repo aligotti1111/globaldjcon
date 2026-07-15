@@ -807,14 +807,11 @@ function BookingRow({
   // changing the DJ's setting later never re-shapes existing bookings. Falls
   // back to the live setting only for rows created before the snapshot existed.
   const needsContract = (booking as { requires_contract?: boolean | null }).requires_contract ?? requireContract;
-  // Once this booking has had a contract, the stage stays on the pipeline.
-  //
-  // /api/contracts/cancel sets contract_status back to NULL so a fresh one can
-  // be sent. On a booking whose requires_contract is false, the step existed
-  // ONLY because cstatus was non-null — so cancelling made the whole icon
-  // vanish, taking "Send contract" with it at the exact moment the DJ needs to
-  // send a new one. Latching means cancel leaves the stage sitting there in
-  // amber, which is what a cancel actually means: back to un-sent.
+  // Belt-and-braces for the disappearing contract stage. /api/contracts/cancel
+  // now records 'cancelled' rather than nulling contract_status, so cstatus
+  // stays truthy and the gate below passes on its own — but bookings cancelled
+  // BEFORE that fix already have null in the column, and this keeps their stage
+  // visible for the session rather than silently swallowing "Send contract".
   const [everHadContract, setEverHadContract] = useState(!!cstatus);
   useEffect(() => {
     if (cstatus) setEverHadContract(true);
