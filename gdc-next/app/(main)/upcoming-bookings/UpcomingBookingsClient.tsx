@@ -879,7 +879,9 @@ function BookingRow({
       {/* Whole row is clickable — a click anywhere (date, empty space, time)
           toggles expand. Interactive children (flyer, edit, delete, chevron)
           stopPropagation so they run their own action instead of toggling. */}
-      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
+      {/* flexWrap lets the pipeline (flexBasis:100%) drop to its own line
+          inside this card instead of squeezing onto the header row. */}
+      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer', flexWrap: 'wrap' }}>
         {/* Date pill — first on the row. */}
         <div className={styles.rowDate}>
           <div className={styles.dayNum}>{day}</div>
@@ -975,129 +977,138 @@ function BookingRow({
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-      </div>
-      {/*
-        READINESS PIPELINE — its own row, under the header.
-        It used to live inline on the header row, competing for width with the
-        venue name and getting squeezed. It's the thing a DJ scans for, so it
-        gets its own line.
+        {/*
+          READINESS PIPELINE — its own line, inside the card.
+          It used to sit inline on the header row, competing for width with the
+          venue name and getting squeezed. It's the thing a DJ scans for, so it
+          gets its own line — but still within .row, which is the card surface.
 
-        Icon on top, label underneath, green check badged over the corner when
-        a step is done — so "what" and "done?" are two separate glances, not
-        one colour you have to decode.
-      */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          display: 'flex', alignItems: 'flex-start', gap: 0, flexWrap: 'wrap',
-          padding: '.1rem 1rem .7rem',
-          borderTop: '1px solid rgba(255,255,255,.05)',
-          marginTop: -2, paddingTop: '.7rem',
-        }}
-      >
-        {steps.map((st, i) => {
-          const c = stepColor(st.state);
-          const open = menuOpenKey === st.key;
-          const inner = (
-            <>
-              <span
-                style={{
-                  position: 'relative', display: 'inline-flex', alignItems: 'center',
-                  justifyContent: 'center', width: 30, height: 30, borderRadius: '50%',
-                  color: c, border: `1.5px solid ${c}`,
-                  background: st.done ? 'rgba(0,224,164,.1)' : 'transparent', flexShrink: 0,
-                }}
-              >
-                {st.icon === 'check' ? (
-                  // Booked — a diary, not a tick. The tick means "done", and
-                  // every step can be done; overloading it made Accepted read
-                  // as a status rather than a stage.
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                ) : st.icon === 'money' ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="14" y2="13" /><line x1="8" y1="17" x2="12" y2="17" /></svg>
-                )}
-                {/* The completion badge. Sits OVER the icon so the icon still
-                    says which stage it is — colour alone can't survive a
-                    glance, and a red/gray ring is easy to misread as done. */}
-                {st.done && (
-                  <span
-                    style={{
-                      position: 'absolute', right: -3, bottom: -3, width: 14, height: 14,
-                      borderRadius: '50%', background: '#00e0a4',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      border: '2px solid var(--bg-card,#14141f)',
-                    }}
-                  >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  </span>
-                )}
-              </span>
-              <span
-                style={{
-                  fontSize: '.58rem', fontWeight: 700, color: c, letterSpacing: '.04em',
-                  textTransform: 'uppercase', whiteSpace: 'nowrap', display: 'flex',
-                  alignItems: 'center', gap: 2,
-                }}
-              >
-                {st.label}
-                {st.overridable && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                )}
-              </span>
-            </>
-          );
-          return (
-            <div key={st.key} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              {/* Connector — makes three icons read as a sequence, not a set. */}
-              {i > 0 && (
+          Icon on top, label underneath, green check badged over the corner when
+          a step is done — so "what" and "done?" are two separate glances, not
+          one colour you have to decode.
+        */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            // .row is flex; giving it flex-wrap and this child flexBasis:100%
+            // forces the pipeline onto its own line INSIDE the card. Previously
+            // it sat after .row — and .row is what carries background:var(--card),
+            // so the strip was floating on the page behind the card, not in it.
+            // Negative side margins pull it to the card's edges so the divider
+            // spans the full width; no colour is guessed, we're on --card already.
+            flexBasis: '100%', width: '100%',
+            display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap',
+            borderTop: '1px solid var(--border)',
+            margin: '.15rem -1rem -.7rem', padding: '.6rem 1rem .5rem',
+          }}
+        >
+          {steps.map((st, i) => {
+            const c = stepColor(st.state);
+            const open = menuOpenKey === st.key;
+            const inner = (
+              <>
                 <span
-                  aria-hidden
                   style={{
-                    width: 18, height: 1.5, borderRadius: 1, margin: '0 6px',
-                    marginBottom: 14, flexShrink: 0,
-                    background: st.done ? '#00e0a4' : 'rgba(255,255,255,.14)',
+                    position: 'relative', display: 'inline-flex', alignItems: 'center',
+                    justifyContent: 'center', width: 30, height: 30, borderRadius: '50%',
+                    color: c, border: `1.5px solid ${c}`,
+                    background: st.done ? 'rgba(0,224,164,.1)' : 'transparent', flexShrink: 0,
                   }}
-                />
-              )}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                {st.overridable ? (
-                  <button
-                    type="button"
-                    title="Mark this step complete"
-                    onClick={(e) => {
-                      if (open) { setMenuOpenKey(null); return; }
-                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
-                      setMenuOpenKey(st.key);
+                >
+                  {st.icon === 'check' ? (
+                    // Booked — an open book, FILLED. The tick moved to the
+                    // badge: it means "done", and every step can be done, so
+                    // using it as Accepted's own icon made a stage read as a
+                    // status. Filled, not outlined: at 15px an outlined book
+                    // collapses into a rounded square — which is exactly what
+                    // it did on screen. A solid shape survives the size.
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.25 5.4A5.6 5.6 0 0 0 7.4 3.9H3.2a.7.7 0 0 0-.7.7v12.1a.7.7 0 0 0 .7.7h4.3a4 4 0 0 1 3.75 2.1z" /><path d="M12.75 5.4a5.6 5.6 0 0 1 3.85-1.5h4.2a.7.7 0 0 1 .7.7v12.1a.7.7 0 0 1-.7.7h-4.3a4 4 0 0 0-3.75 2.1z" /></svg>
+                  ) : st.icon === 'money' ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="14" y2="13" /><line x1="8" y1="17" x2="12" y2="17" /></svg>
+                  )}
+                  {/* The completion badge. Sits OVER the icon so the icon still
+                      says which stage it is — colour alone can't survive a
+                      glance, and a red/gray ring is easy to misread as done. */}
+                  {st.done && (
+                    <span
+                      style={{
+                        position: 'absolute', right: -3, bottom: -3, width: 14, height: 14,
+                        borderRadius: '50%', background: '#00e0a4',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid var(--bg-card,#14141f)',
+                      }}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </span>
+                <span
+                  style={{
+                    fontSize: '.58rem', fontWeight: 700, color: c, letterSpacing: '.04em',
+                    textTransform: 'uppercase', whiteSpace: 'nowrap', display: 'flex',
+                    alignItems: 'center', gap: 2,
+                  }}
+                >
+                  {st.label}
+                  {st.overridable && (
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  )}
+                </span>
+              </>
+            );
+            return (
+              <div key={st.key} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                {/* Connector — makes three icons read as a sequence, not a set. */}
+                {i > 0 && (
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 18, height: 1.5, borderRadius: 1, margin: '0 6px',
+                      marginBottom: 14, flexShrink: 0,
+                      background: st.done ? '#00e0a4' : 'rgba(255,255,255,.14)',
                     }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
-                  >
-                    {inner}
-                  </button>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
+                  />
                 )}
-                {open && st.overridable && menuPos && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
-                    <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => toggleStep(st.key, !st.done)}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
-                      >
-                        {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
-                      </button>
-                      <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
-                    </div>
-                  </>
-                )}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  {st.overridable ? (
+                    <button
+                      type="button"
+                      title="Mark this step complete"
+                      onClick={(e) => {
+                        if (open) { setMenuOpenKey(null); return; }
+                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                        setMenuOpenKey(st.key);
+                      }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
+                  )}
+                  {open && st.overridable && menuPos && (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
+                      <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleStep(st.key, !st.done)}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                        >
+                          {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
+                        </button>
+                        <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       {expanded && (
         <BookingDetails
