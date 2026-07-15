@@ -510,9 +510,38 @@ export async function POST(req: Request) {
           );
         }
 
+        // WHAT IS STRIPE ACTUALLY WAITING FOR?
+        //
+        // charges_enabled:false + details_submitted:true is not one state, it
+        // is two, and they need opposite things from the DJ:
+        //
+        //   • currently_due / past_due non-empty → Stripe wants MORE from
+        //     them. Resuming onboarding is the fix, and the button should say
+        //     so.
+        //   • both empty → Stripe is just thinking. There is nothing to do but
+        //     wait, and telling someone to "Finish setup" when they already
+        //     finished is a lie that sends them round the loop again to change
+        //     nothing. (Which is exactly what it did.)
+        //
+        // requirements.disabled_reason names the real blocker when there is
+        // one (e.g. "requirements.pending_verification", "rejected.fraud"),
+        // so pass it through rather than inventing our own guess.
+        const reqs = account.requirements;
+        const currentlyDue = reqs?.currently_due ?? [];
+        const pastDue = reqs?.past_due ?? [];
+        const pendingVerification = reqs?.pending_verification ?? [];
+        const disabledReason = reqs?.disabled_reason ?? null;
+
         return NextResponse.json({
           connected: true,
           ready: chargesEnabled,
+          // Empty due-lists mean "waiting on Stripe", not "waiting on you".
+          actionNeeded: currentlyDue.length > 0 || pastDue.length > 0,
+          currentlyDue,
+          pastDue,
+          pendingVerification,
+          disabledReason,
+          payoutsEnabled: !!account.payouts_enabled,
           chargesEnabled,
           detailsSubmitted: !!account.details_submitted,
         });
