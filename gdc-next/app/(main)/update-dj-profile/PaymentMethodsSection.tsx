@@ -61,7 +61,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     placeholder: 'you@email.com or (555) 123-4567',
     // Zelle has no link format at all — the client must open their own banking
     // app and type this in by hand. Highest friction AND irreversible.
-    hint: 'Client sends from their bank app. No link exists for Zelle, so they copy this by hand — double-check it.',
+    hint: 'Client sends from their bank app. No link exists for Zelle, so they copy this by hand — double-check it. Usually free, but business use needs a business bank account and not every bank offers it.',
     instant: false,
     validate: (v) => {
       const t = v.trim();
@@ -75,7 +75,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Venmo',
     handleLabel: 'Username',
     placeholder: 'djnova',
-    hint: 'One tap, amount prefilled. Note: unverified Venmo accounts can only receive limited amounts per week.',
+    hint: 'One tap on a phone with the Venmo app — amount filled in for them. Venmo blocks payments from their website, so on a laptop the client copies your handle instead. Unverified accounts also cap around $300/week received.',
     instant: true,
     validate: (v) => {
       const t = v.trim().replace(/^@/, '');
@@ -88,7 +88,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Cash App',
     handleLabel: 'Cashtag',
     placeholder: 'djnova',
-    hint: 'One tap, amount prefilled.',
+    hint: 'One tap, amount filled in for them. Works best on a phone with the Cash App installed.',
     instant: true,
     validate: (v) => {
       const t = v.trim().replace(/^\$/, '');
@@ -101,7 +101,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'PayPal',
     handleLabel: 'PayPal.me link or email',
     placeholder: 'paypal.me/djnova',
-    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand. Accepting business payments on a personal PayPal account is against their terms; upgrading to Business is free.',
+    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand. Note: PayPal requires a Business account for commercial payments (even unincorporated) and may close a personal account used mainly for business. Business rates run about 2.99% + $0.49.',
     instant: true,
     validate: (v) => {
       const t = v.trim();
@@ -142,6 +142,17 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
 const TYPE_ORDER: PaymentMethodType[] = ['zelle', 'venmo', 'cashapp', 'paypal', 'cash', 'check', 'other'];
 
 /**
+ * Deep-link formats (used by the pay page — keep in sync):
+ *   venmo   → https://venmo.com/<user>?txn=pay&amount=600&note=GDC-1487
+ *             MOBILE ONLY. Venmo no longer allows initiating a transaction
+ *             from their website, so on desktop this opens a profile the
+ *             client cannot pay from. The pay page must ALWAYS also show the
+ *             handle + copy button as the fallback — never the button alone.
+ *   cashapp → https://cash.app/$<cashtag>/600
+ *   paypal  → https://paypal.me/<user>/600   (amount is a suggestion; the
+ *             client can edit it, which is fine — the DJ confirms what
+ *             actually arrived.)
+ *
  * Is this rail one-tap (deep link, amount prefilled) or does the client have
  * to send it by hand? PayPal is the only type where it depends on what the DJ
  * entered: a PayPal.me link prefills the amount, a bare email cannot (the old
@@ -420,7 +431,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     }}
                   >
                     {isOneTap(m)
-                      ? '⚡ One tap — amount filled in for them'
+                      ? '⚡ One tap on a phone — amount filled in for them'
                       : m.type === 'cash' || m.type === 'check'
                       ? 'Handled in person'
                       : 'Client sends this manually — no link is possible'}
