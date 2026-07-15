@@ -15,13 +15,15 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
+import PaymentOptions from './PaymentOptions';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
 import HistoryModal from './HistoryModal';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { bookingsOverlap, formatShortDate, formatTime, timeToMins, MOB_EVENT_LABELS } from './helpers';
-import type { BookingRow } from './page';
+import type { PaymentMethod } from '@/lib/paymentMethods';
+import type { BookingRow, BookingPayment } from './page';
 
 interface CurrentUser {
   id: string;
@@ -51,6 +53,14 @@ interface Props {
   initialIncoming: BookingRow[];
   initialOutgoing: BookingRow[];
   initialBlocked: string[];
+  // Manual-payment rows for the user's OUTGOING bookings, keyed by
+  // booking_id. Loaded server-side by the page (the generated Supabase types
+  // predate booking_payments, so the page casts for that one query).
+  initialPayments?: Record<string, BookingPayment[]>;
+  // The DJ's saved payment handles, keyed by dj_id — populated by the page
+  // ONLY for DJs with a payment row on this user's bookings. These are the
+  // handles PaymentOptions renders; they must never reach a general payload.
+  djPaymentMethods?: Record<string, PaymentMethod[]>;
 }
 
 // Tab filters for both sections. 'respond' = bookings the viewer must
@@ -103,10 +113,15 @@ export default function BookingRequestsClient({
   initialIncoming,
   initialOutgoing,
   initialBlocked,
+  initialPayments,
+  djPaymentMethods,
 }: Props) {
   const [incoming, setIncoming] = useState<BookingRow[]>(initialIncoming);
   const [outgoing, setOutgoing] = useState<BookingRow[]>(initialOutgoing);
   const [blocked, setBlocked] = useState<string[]>(initialBlocked);
+  // Manual-payment rows per outgoing booking. Kept in state so a host action
+  // (mark-sent / pay-at-event) updates the card without a refetch.
+  const [payments, setPayments] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
   const [incomingTab, setIncomingTab] = useState<BookingFilter>('respond');
   const [outgoingTab, setOutgoingTab] = useState<BookingFilter>('respond');
 
@@ -660,6 +675,80 @@ export default function BookingRequestsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Manual payments (host side) ────────────────────────────────────
+  // Both actions are CLAIMS/intents — 'mark-sent' tops out at
+  // pending_confirmation and 'intent' only records "I'll pay at the event".
+  // Only the DJ's confirm (on their upcoming-bookings page) reaches
+  // partial/paid. Purely informational — never blocks any booking action.
+  async function paymentAction(
+    bookingId: string,
+    paymentId: string,
+    action: 'mark-sent' | 'intent',
+    method?: string,
+  ) {
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          action === 'mark-sent'
+            ? { action, paymentId, method: method || null }
+            : { action, paymentId }
+        ),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'Request failed');
+      setPayments((prev) => ({
+        ...prev,
+        [bookingId]: (prev[bookingId] || []).map((p) => {
+          if (p.id !== paymentId) return p;
+          if (action === 'intent') return { ...p, client_intent: 'pay_at_event' };
+          // Settled rows never regress — mirrors the route's early return.
+          if (p.status === 'paid' || p.status === 'waived') return p;
+          return { ...p, status: 'pending_confirmation', method: method || null, client_intent: 'pay_now' };
+        }),
+      }));
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
+    }
+  }
+
+  // PaymentOptions block(s) for one OUTGOING booking — one per payment row.
+  // Passed into the card as its paymentsSlot. Only ever built for the
+  // outgoing list, so the DJ's handles are only rendered to the host of the
+  // specific booking they were requested on.
+  function renderOutgoingPayments(b: BookingRow): React.ReactNode {
+    const rows = payments[b.id] || [];
+    if (rows.length === 0) return null;
+    const methods = (djPaymentMethods || {})[b.dj_id] || [];
+    const djName = b.dj_name || 'the DJ';
+    return (
+      <>
+        {rows.map((p) => (
+          <div key={p.id}>
+            <PaymentOptions
+              bookingId={b.id}
+              kind={p.kind}
+              amount={Number(p.amount)}
+              currency={p.currency || 'USD'}
+              amountPaid={Number(p.amount_paid || 0)}
+              status={p.status}
+              djName={djName}
+              methods={methods}
+              onMarkSent={(m) => paymentAction(b.id, p.id, 'mark-sent', m)}
+              onPayAtEvent={() => paymentAction(b.id, p.id, 'intent')}
+            />
+            {p.client_intent === 'pay_at_event' && p.status !== 'paid' && p.status !== 'waived' && (
+              <p style={{ margin: '.4rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>
+                You told {djName} you&apos;ll pay at the event. You can still pay ahead with an option above.
+              </p>
+            )}
+          </div>
+        ))}
+      </>
+    );
+  }
+
   // ── Modal open helpers ─────────────────────────────────────────────
   function openCounterModal(booking: BookingRow, group: 'in' | 'out') {
     setCounterModal({ booking, group });
@@ -947,6 +1036,7 @@ export default function BookingRequestsClient({
             <FlatList
               bookings={filteredOutgoing}
               isIncoming={false}
+              renderPayments={renderOutgoingPayments}
               blocked={blocked}
               currentUser={currentUser}
               currentTab={outgoingTab}
@@ -1082,13 +1172,17 @@ interface ListProps {
   onAcceptCounter: (id: string) => void;
   onDeclineCounter: (id: string) => void;
   onMessage: (recipientUserId: string, recipientName: string, subject: string) => void;
+  // Builds the card's paymentsSlot for a booking (PaymentOptions blocks).
+  // Only supplied for the OUTGOING list — payment handles must never render
+  // outside the host's own booking card.
+  renderPayments?: (b: BookingRow) => React.ReactNode;
 }
 
 function FlatList({
   bookings, isIncoming, blocked, currentUser, currentTab,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
-  onMessage,
+  onMessage, renderPayments,
 }: ListProps) {
   // Track which bookings are currently expanded. Default rules:
   //   - On the "pending" tab: ALL bookings expanded by default (the user
@@ -1180,6 +1274,7 @@ function FlatList({
               onAcceptCounter={onAcceptCounter}
               onDeclineCounter={onDeclineCounter}
               onMessage={onMessage}
+              paymentsSlot={renderPayments ? renderPayments(b) : null}
             />
           </div>
         );

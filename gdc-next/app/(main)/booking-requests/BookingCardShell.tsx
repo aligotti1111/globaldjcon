@@ -28,6 +28,13 @@ export interface BookingCardShellProps {
   eventLabel: string;          // Header big text (e.g. "Wedding" / "Club · Headliner")
   detailsSlot: ReactNode;      // Date+venue/equipment/etc — replaces the unique middle
   pricingSlot: ReactNode;      // Package&Price (mobile) or Rate (club)
+  // Manual payments (host side) — PaymentOptions block(s) built by
+  // BookingRequestsClient for OUTGOING bookings with booking_payments rows.
+  // Optional and flows through both card variants untouched (it isn't in
+  // their Omit<> list), so it renders for mobile AND club bookings. The
+  // client only ever supplies it on the outgoing list — a DJ's payment
+  // handles must never render outside the host's own booking card.
+  paymentsSlot?: ReactNode;
   // Action callbacks (same set across both card types)
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
@@ -59,6 +66,7 @@ export default function BookingCardShell({
   eventLabel,
   detailsSlot,
   pricingSlot,
+  paymentsSlot,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
@@ -233,6 +241,10 @@ export default function BookingCardShell({
       {/* Variant-specific pricing block (Package & Price for mobile, Rate
           for club). Falls in here so the actions row stays at the bottom. */}
       {pricingSlot}
+
+      {/* Manual payments — sits with the money, right under the pricing
+          section. Purely informational; never gates the actions row below. */}
+      {paymentsSlot}
 
       {/* Actions row — Approve/Deny/Counter (incoming pending) OR Cancel
           (outgoing pending/counter) OR Accept/Counter Back/Decline (when

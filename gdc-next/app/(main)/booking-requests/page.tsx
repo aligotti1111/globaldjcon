@@ -24,7 +24,9 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveUserEmail } from '@/lib/supabase/admin';
+import type { PaymentMethod } from '@/lib/paymentMethods';
 import BookingRequestsClient from './BookingRequestsClient';
 
 export const dynamic = 'force-dynamic';
@@ -112,6 +114,24 @@ interface BookingRow {
   // can reach the DJ to coordinate the gig. Never sent for pending/denied.
   dj_phone?: string | null;
   dj_email?: string | null;
+}
+
+// One booking_payments row — the manual-payment ledger (see
+// payments-setup.sql). amount = what the DJ asked for; amount_paid = what the
+// DJ has confirmed actually arrived.
+export interface BookingPayment {
+  id: string;
+  booking_id: string;
+  kind: string;               // 'deposit' | 'balance' | 'other'
+  label?: string | null;
+  amount: number;
+  amount_paid: number;
+  currency: string | null;
+  status: string;             // requested | pending_confirmation | partial | paid | waived
+  method: string | null;
+  client_intent: string | null; // 'pay_now' | 'pay_at_event' | null
+  due_date: string | null;
+  requested_at?: string | null;
 }
 
 export default async function BookingRequestsPage() {
@@ -236,9 +256,66 @@ export default async function BookingRequestsPage() {
       const bs = typeof me.booking_settings === 'string'
         ? JSON.parse(me.booking_settings)
         : me.booking_settings;
-      depositPct = Number(bs?.depositPct) || 0;
+      // Pick the key that matches this DJ's type. `bs?.depositPct` was a
+      // phantom key — nothing ever wrote it, so this silently resolved to 0
+      // and every DJ-typed quote stored deposit_amount: null, discarding the
+      // DJ's deposit policy. The real keys are mob_deposit_pct / club_deposit_pct.
+      depositPct = Number(
+        me.dj_type === 'club' ? bs?.club_deposit_pct : bs?.mob_deposit_pct
+      ) || 0;
     } catch {
       // non-fatal — default to 0
+    }
+  }
+
+  // ── Manual payments (host side) ──────────────────────────────────────
+  // Payment rows for the user's OUTGOING bookings only (RLS additionally
+  // limits booking_payments reads to the requester/DJ of the booking). One
+  // .in() query, keyed by booking_id for the client.
+  //
+  // The generated types/supabase.ts predates booking_payments, so
+  // .from('booking_payments') on the typed client is a build error — cast to
+  // an untyped client for this ONE table (same fix as /api/payments). Known
+  // tables stay on the typed client.
+  const db = supabase as unknown as SupabaseClient;
+  const paymentsByBooking: Record<string, BookingPayment[]> = {};
+  const djMethodsByDj: Record<string, PaymentMethod[]> = {};
+  const outgoingIds = outgoing.map((b) => b.id);
+  if (outgoingIds.length > 0) {
+    const { data: payRows } = await db
+      .from('booking_payments')
+      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at')
+      .in('booking_id', outgoingIds)
+      .order('requested_at', { ascending: true });
+    for (const p of ((payRows as BookingPayment[] | null) || [])) {
+      if (!paymentsByBooking[p.booking_id]) paymentsByBooking[p.booking_id] = [];
+      paymentsByBooking[p.booking_id].push(p);
+    }
+
+    // The DJ's payment handles — ONLY for DJs who have an actual payment row
+    // on one of THIS user's bookings. Handles are a phishing-list-grade leak
+    // if they ever reach a general payload; scoping to
+    // bookings-with-payment-rows keeps them strictly host-of-this-booking.
+    const djIdsWithPayments = [
+      ...new Set(
+        outgoing
+          .filter((b) => (paymentsByBooking[b.id] || []).length > 0 && b.dj_id)
+          .map((b) => b.dj_id)
+      ),
+    ];
+    if (djIdsWithPayments.length > 0) {
+      // payment_methods is a NEW column on users — fine on the typed client
+      // as long as it's selected explicitly (only the new TABLE needs the
+      // cast). Result cast goes through unknown because the generated types
+      // don't know the column yet.
+      const { data: mRows } = await supabase
+        .from('users')
+        .select('id, payment_methods')
+        .in('id', djIdsWithPayments);
+      const methodRows = (mRows as unknown as { id: string; payment_methods: unknown }[] | null) || [];
+      for (const r of methodRows) {
+        djMethodsByDj[r.id] = (Array.isArray(r.payment_methods) ? r.payment_methods : []) as PaymentMethod[];
+      }
     }
   }
 
@@ -259,6 +336,8 @@ export default async function BookingRequestsPage() {
       initialIncoming={incoming}
       initialOutgoing={outgoing}
       initialBlocked={blockedUsers}
+      initialPayments={paymentsByBooking}
+      djPaymentMethods={djMethodsByDj}
     />
   );
 }
