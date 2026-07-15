@@ -96,6 +96,17 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
 
   // Both connect AND resume: the route mints a fresh single-use Account Link
   // each time (they expire in minutes and can't be reused).
+  //
+  // WHY THIS READS .text() AND NOT .json():
+  // The original did `await res.json().catch(() => ({}))`, which turns ANY
+  // non-JSON response into an empty object — so a platform error page, a
+  // redirect to /login, and a killed function all collapsed into the same
+  // useless "Could not start Stripe onboarding." with no cause. That one line
+  // of defensive code hid the real failure for hours.
+  //
+  // Now: take the body as TEXT first, try to parse it, and if it isn't JSON
+  // show the status code and the first bit of whatever DID come back. An
+  // error the user can read is worth more than an error that looks tidy.
   async function connectStripe() {
     if (cardBusy) return;
     setCardBusy(true);
@@ -106,12 +117,33 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'start' }),
       });
-      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (!res.ok || !json.url) throw new Error(json.error || 'Could not start Stripe onboarding.');
+
+      const raw = await res.text();
+      let json: { url?: string; error?: string } = {};
+      let parsed = false;
+      try { json = JSON.parse(raw); parsed = true; } catch { /* not JSON — raw is the evidence */ }
+
+      if (!parsed) {
+        // Strip tags so an HTML error page reads as its actual message rather
+        // than a wall of markup.
+        const snippet = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+        throw new Error(
+          `HTTP ${res.status} — server sent ${raw.length} bytes of non-JSON` +
+          (snippet ? `: ${snippet}` : ' (empty body)'),
+        );
+      }
+      if (!res.ok || !json.url) throw new Error(json.error || `HTTP ${res.status} — no URL and no error field.`);
+
       // Off to Stripe. Don't reset busy — we're leaving the page.
       window.location.href = json.url;
     } catch (e) {
-      setCardErr(e instanceof Error ? e.message : 'Could not start Stripe onboarding.');
+      // A fetch that never completed (function killed mid-flight, network
+      // dropped) throws a TypeError with no useful text — say so plainly
+      // instead of blaming Stripe.
+      const msg = e instanceof TypeError
+        ? `Request failed before any reply arrived (${e.message}).`
+        : e instanceof Error ? e.message : 'Could not start Stripe onboarding.';
+      setCardErr(msg);
       setCardBusy(false);
     }
   }
@@ -365,7 +397,20 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           )}
 
           {cardErr && (
-            <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#ff6b6b' }}>{cardErr}</p>
+            // Diagnostics can be long and contain raw server text — wrap and
+            // preserve it rather than clipping the one line that explains why.
+            <p
+              style={{
+                margin: '.5rem 0 0',
+                fontSize: '.72rem',
+                color: '#ff6b6b',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                lineHeight: 1.5,
+              }}
+            >
+              {cardErr}
+            </p>
           )}
         </div>
 
