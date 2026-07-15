@@ -1871,14 +1871,10 @@ function BookingDetails({
             <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.5rem' }}>
               Client signing link
             </div>
-            <p style={{ margin: '0 0 .5rem', color: 'var(--muted,#8a8aa0)', fontSize: '.8rem', lineHeight: 1.55 }}>
-              This is the same link DocuSeal emailed your client. Useful when
-              the email didn&apos;t land — spam, a typo&apos;d address, a company filter.
-            </p>
             <p style={{ margin: '0 0 .75rem', color: '#f5a623', fontSize: '.8rem', lineHeight: 1.55 }}>
-              <strong>Anyone who opens it can sign as your client.</strong> There&apos;s no
-              password on it. Send it straight to them — not into a group chat
-              or anywhere public.
+              <strong>Anyone who opens it can sign as your client.</strong> Contracts
+              are not password protected. Send it straight to client/host — not
+              into a group chat or anywhere public.
             </p>
             <input
               id="gdc-link-box"
