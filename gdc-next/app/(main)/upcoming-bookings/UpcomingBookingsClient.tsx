@@ -711,7 +711,7 @@ function FlyerSlot({
 // stay identical in three places (icon, label, connector).
 // What the pipeline can ask BookingDetails to do about a contract. Named so
 // the two components can't drift on the strings.
-type ContractAction = 'open' | 'download' | 'resend' | 'cancel';
+type ContractAction = 'open' | 'download' | 'resend' | 'cancel' | 'copy-link';
 
 const NEON = '#00e0a4';   // done
 const AMBER = '#f5a623';  // needs the DJ to do something
@@ -889,6 +889,11 @@ function BookingRow({
           : awaiting
             ? [
                 { label: 'Resend contract', run: () => runContract('resend') },
+                // The DocuSeal email is the single point of failure in this
+                // whole flow — spam folder, typo'd address, corporate filter —
+                // and the DJ finds out by the contract never coming back.
+                // The link works regardless of whether the email ever landed.
+                { label: '\u{1F517} Copy link to contract', run: () => runContract('copy-link') },
                 { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
               ]
             : [{ label: 'Review & send contract', run: () => runContract('open') }],
@@ -1306,6 +1311,7 @@ function BookingDetails({
       case 'download': void downloadSigned(); break;
       case 'resend': void resendContract(); break;
       case 'cancel': void cancelContract(); break;
+      case 'copy-link': void copyClientLink(); break;
     }
     // The handlers are stable for this booking and re-created every render;
     // listing them would re-fire the effect on every render instead of only
