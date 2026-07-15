@@ -301,7 +301,67 @@ export async function GET(req: Request) {
         // test mode is cheaper than another round of guessing.
         return NextResponse.json({ step: 'acct', ms: Date.now() - t0, id: account.id });
       }
-      return NextResponse.json({ error: `Unknown run=${run}. Try auth, db, ping, acct, start.` }, { status: 400 });
+      // ── save / link — start, minus one half each ──────────────────────
+      //
+      // auth, db, ping and acct ALL return JSON on their own. start does not.
+      // So the fault is in one of the two calls no probe has touched yet:
+      // the DB write that persists the account id, or accountLinks.create.
+      // These two run everything start runs except one of those, which pins
+      // it exactly.
+      if (run === 'save' || run === 'link') {
+        const supabase = await createClient();
+        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
+        if (!user) return NextResponse.json({ step: run, error: 'Not signed in' }, { status: 401 });
+        const admin = createAdminClient();
+        const stripe = getStripe();
+
+        // Reuse an existing account so repeated probing doesn't litter Stripe.
+        const { data: rowData } = await withDeadline(
+          admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
+          'Database read',
+        );
+        const existing = (rowData as unknown as ConnectRow | null)?.stripe_connect_id ?? null;
+
+        let accountId = existing;
+        let created = false;
+        if (!accountId) {
+          const account = await withDeadline(
+            stripe.accounts.create({ type: 'standard', email: user.email || undefined, metadata: { user_id: user.id } }),
+            'Stripe account create',
+          );
+          accountId = account.id;
+          created = true;
+        }
+
+        if (run === 'save') {
+          // start MINUS accountLinks.create.
+          const t0 = Date.now();
+          const { error } = await withDeadline(
+            admin.from('users').update({ stripe_connect_id: accountId } as unknown as never).eq('id', user.id),
+            'Database write',
+          );
+          return NextResponse.json({
+            step: 'save', ms: Date.now() - t0, accountId, created, reusedExisting: !created,
+            error: error?.message ?? null,
+          });
+        }
+
+        // run === 'link' — start MINUS the DB write.
+        const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || SITE_URL;
+        const t0 = Date.now();
+        const link = await withDeadline(
+          stripe.accountLinks.create({
+            account: accountId as string,
+            type: 'account_onboarding',
+            refresh_url: `${origin}/booking-settings?stripe=refresh`,
+            return_url: `${origin}/booking-settings?stripe=connected`,
+          }),
+          'Stripe account link',
+        );
+        return NextResponse.json({ step: 'link', ms: Date.now() - t0, accountId, created, url: link.url });
+      }
+
+      return NextResponse.json({ error: `Unknown run=${run}. Try auth, db, ping, acct, save, link, start.` }, { status: 400 });
     } catch (e) {
       return NextResponse.json({ step: run, error: errMsg(e, 'threw'), name: (e as Error)?.name ?? null }, { status: 500 });
     }
@@ -316,7 +376,7 @@ export async function GET(req: Request) {
   }
 
   const out: Record<string, unknown> = {
-    version: 'connect-v4-bisect',
+    version: 'connect-v5-savelink',
     node: process.version,
     hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
     stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
