@@ -37,7 +37,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
   'Belgium': '🇧🇪', 'Switzerland': '🇨🇭', 'Portugal': '🇵🇹', 'Other': '🌍',
 };
 import styles from './upcomingBookings.module.css';
-import type { UpcomingBooking } from './page';
+import type { UpcomingBooking, BookingPayment } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
@@ -57,6 +57,10 @@ interface Props {
   // Archive mode — used by the dedicated /past-bookings page. Renders the same
   // rows read-only-ish (no add / schedule tools), newest-first, "Past Bookings".
   archive?: boolean;
+  // booking_payments rows keyed by booking_id, loaded server-side by the page
+  // (the generated Supabase types predate the table, so the page casts to an
+  // untyped client for that one query). Purely informational — never gates.
+  initialPayments?: Record<string, BookingPayment[]>;
 }
 
 // Mobile-DJ event types — kept in sync with the public booking form (and
@@ -97,8 +101,16 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 
 export default function UpcomingBookingsClient({
   userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
+  initialPayments,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
+  // Payment ledger rows per booking (booking_payments). Owned at the top so a
+  // row's expanded panel can update after request/confirm/waive without a
+  // refetch, and so collapse/expand doesn't lose the fresh state.
+  const [paymentsMap, setPaymentsMap] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
+  function handlePaymentsChange(bookingId: string, rows: BookingPayment[]) {
+    setPaymentsMap((prev) => ({ ...prev, [bookingId]: rows }));
+  }
   // The DJ's standing club deposit % (from booking_settings). Lets club
   // booking cards show the deposit even when it wasn't stored per-booking —
   // matching what the contract applies.
@@ -406,6 +418,8 @@ export default function UpcomingBookingsClient({
                 taxPct={taxPct}
                 requireContract={requireContract}
                 archive={archive}
+                payments={paymentsMap[b.id] || []}
+                onPaymentsChange={handlePaymentsChange}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                 onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
@@ -429,6 +443,8 @@ export default function UpcomingBookingsClient({
                     taxPct={taxPct}
                     requireContract={requireContract}
                     archive={archive}
+                    payments={paymentsMap[b.id] || []}
+                    onPaymentsChange={handlePaymentsChange}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
@@ -692,7 +708,7 @@ function FlyerSlot({
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, overlaps, onDelete, onEdit,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -701,6 +717,8 @@ function BookingRow({
   taxPct: number;
   requireContract: boolean;
   archive?: boolean;
+  payments: BookingPayment[];
+  onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -765,6 +783,12 @@ function BookingRow({
   // changing the DJ's setting later never re-shapes existing bookings. Falls
   // back to the live setting only for rows created before the snapshot existed.
   const needsContract = (booking as { requires_contract?: boolean | null }).requires_contract ?? requireContract;
+  // Contract-step completeness — the SAME rule the status strip uses:
+  // genuinely signed (stored status or the panel's live DocuSeal check) OR
+  // manually overridden via status_overrides (DJs often paper contracts
+  // off-platform; never trap them behind a step the system can't observe).
+  // Gates the Request Deposit action in the details panel below.
+  const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
   const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc'; overridable: boolean; done: boolean }[] = [
     { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check', overridable: false, done: true },
   ];
@@ -977,6 +1001,9 @@ function BookingRow({
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
           archive={archive}
+          payments={payments}
+          onPaymentsChange={onPaymentsChange}
+          canRequestDeposit={booking.is_manual || !needsContract || contractStepComplete}
         />
       )}
     </div>
@@ -992,6 +1019,7 @@ function BookingRow({
 
 function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
+  payments, onPaymentsChange, canRequestDeposit,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -1002,6 +1030,12 @@ function BookingDetails({
   onFlyerChange: (url: string | null) => void;
   onContractSigned?: () => void;
   archive?: boolean;
+  payments: BookingPayment[];
+  onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  // Contract-step gate for Request Deposit — computed by BookingRow from the
+  // same requires_contract / contract_status / status_overrides logic that
+  // drives the status strip.
+  canRequestDeposit: boolean;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
@@ -1489,6 +1523,25 @@ function BookingDetails({
           )}
         </div>
       )}
+      {/* Payments — the manual-payment ledger for this booking. Rendered for
+          the same set as the Contract section (real two-party bookings), plus
+          any booking that already has payment rows. Purely informational —
+          nothing here ever blocks another step. Archive mode still shows
+          existing rows (read-only) but skips the section entirely when there
+          is nothing to show. */}
+      {(bt === 'club' || bt === 'mobile' || payments.length > 0) && (!archive || payments.length > 0) && (
+        <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
+          <div className={styles.detailLabel}>Payments</div>
+          <PaymentsBlock
+            bookingId={booking.id}
+            currency={booking.currency || 'USD'}
+            payments={payments}
+            onChange={(rows) => onPaymentsChange(booking.id, rows)}
+            archive={archive}
+            canRequestDeposit={canRequestDeposit}
+          />
+        </div>
+      )}
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap}>
           <NotesFeed bookingId={booking.id} currentUserId={userId} />
@@ -1513,6 +1566,231 @@ function BookingDetails({
           onClose={() => setSendContractId(null)}
           onSent={() => { setContractSent(true); setSendContractId(null); setContractCancelled(false); setResendDone(false); }}
         />
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// PaymentsBlock — the DJ's ledger view of one booking's booking_payments
+// rows, plus the Request Deposit / Send Invoice actions.
+//
+// Rules (mirroring /api/payments):
+//   • Display is always "received / total due" — never the bare word
+//     "partial". The rails force partials (unverified Venmo caps at
+//     $299.99/week, Cash App $250 — below a typical deposit), so the
+//     fraction is the honest state.
+//   • Confirm records an AMOUNT (what actually arrived), not a boolean.
+//     amount_paid accumulates server-side; status flips to paid only when
+//     it covers the ask.
+//   • client_intent = 'pay_at_event' renders distinctly — "cash on the
+//     night" means something totally different to a DJ than an ignored
+//     invoice, though they look identical in the DB otherwise.
+//   • Purely informational — nothing here blocks any other step.
+//   • Archive mode still DISPLAYS rows but hides every action.
+// ───────────────────────────────────────────────────────────────────────
+
+function PaymentsBlock({
+  bookingId, currency, payments, onChange, archive, canRequestDeposit,
+}: {
+  bookingId: string;
+  currency: string;
+  payments: BookingPayment[];
+  onChange: (rows: BookingPayment[]) => void;
+  archive?: boolean;
+  canRequestDeposit: boolean;
+}) {
+  // Which action is in flight: 'request-deposit' | 'request-balance' | a paymentId.
+  const [busy, setBusy] = useState<string | null>(null);
+
+  function money(n: number): string {
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+    } catch {
+      return `$${Number(n).toFixed(2)}`;
+    }
+  }
+
+  async function post(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) {
+        alert(typeof json.error === 'string' ? json.error : 'Something went wrong. Try again in a moment.');
+        return null;
+      }
+      return json;
+    } catch {
+      alert('Something went wrong. Try again in a moment.');
+      return null;
+    }
+  }
+
+  // Request Deposit / Send Invoice. No amount in the payload — the server
+  // derives it (deposit_amount for deposits; agreed total minus everything
+  // already confirmed for invoices). Money math never comes from the client.
+  async function requestPayment(kind: 'deposit' | 'balance') {
+    setBusy(`request-${kind}`);
+    try {
+      const json = await post({ action: 'request', bookingId, kind });
+      if (json && json.payment) onChange([...payments, json.payment as BookingPayment]);
+    } finally { setBusy(null); }
+  }
+
+  // Confirm takes an AMOUNT — prefilled with what's outstanding, editable
+  // because a capped rail means the client may only have sent part of it.
+  async function confirmReceived(p: BookingPayment) {
+    const outstanding = Math.max(0, Math.round((Number(p.amount) - Number(p.amount_paid || 0)) * 100) / 100);
+    const raw = window.prompt(
+      'How much actually arrived? (Clients often have to split — unverified Venmo caps at $299.99/week.)',
+      outstanding > 0 ? String(outstanding) : '',
+    );
+    if (raw == null) return;
+    const received = Number(raw);
+    if (!Number.isFinite(received) || received <= 0) {
+      alert('Enter the amount you actually received.');
+      return;
+    }
+    setBusy(p.id);
+    try {
+      const json = await post({ action: 'confirm', paymentId: p.id, amountReceived: received });
+      if (json) {
+        onChange(payments.map((row) => (row.id === p.id
+          ? {
+              ...row,
+              amount_paid: typeof json.amount_paid === 'number' ? json.amount_paid : Number(row.amount_paid || 0) + received,
+              status: typeof json.status === 'string' ? json.status : row.status,
+            }
+          : row)));
+      }
+    } finally { setBusy(null); }
+  }
+
+  async function waive(p: BookingPayment) {
+    if (!confirm(`Waive this ${p.kind === 'balance' ? 'invoice' : 'deposit'}? The client won\u2019t owe it through the app anymore.`)) return;
+    setBusy(p.id);
+    try {
+      const json = await post({ action: 'waive', paymentId: p.id });
+      if (json) onChange(payments.map((row) => (row.id === p.id ? { ...row, status: 'waived' } : row)));
+    } finally { setBusy(null); }
+  }
+
+  const depositRow = payments.find((p) => p.kind === 'deposit');
+  const balanceRow = payments.find((p) => p.kind === 'balance');
+  // Invoice gate: the deposit must be settled (paid or waived) — or there is
+  // simply no deposit on this booking.
+  const canSendInvoice = !depositRow || depositRow.status === 'paid' || depositRow.status === 'waived';
+
+  const kindLabel = (p: BookingPayment) =>
+    p.kind === 'balance' ? 'Invoice' : p.kind === 'deposit' ? 'Deposit' : (p.label || 'Payment');
+
+  const statusChip = (p: BookingPayment): { text: string; color: string } => {
+    switch (p.status) {
+      case 'paid': return { text: 'Paid', color: '#00e0a4' };
+      case 'waived': return { text: 'Waived', color: 'var(--muted,#8a8aa0)' };
+      case 'partial': return { text: 'Partially paid', color: '#f0b23e' };
+      case 'pending_confirmation':
+        return { text: p.method ? `Client says sent via ${p.method}` : 'Client says sent', color: '#f0b23e' };
+      default: return { text: 'Requested', color: 'var(--muted,#8a8aa0)' };
+    }
+  };
+
+  const neonBtn = (disabled: boolean): React.CSSProperties => ({
+    background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
+    fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem',
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+  });
+  const redBtn = (disabled: boolean): React.CSSProperties => ({
+    background: 'transparent', border: '1px solid #ff7676', color: '#ff7676',
+    fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem',
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+  });
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {payments.length === 0 && (
+        <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
+          {archive ? 'No payments were recorded for this booking.' : 'No payments requested yet.'}
+        </div>
+      )}
+      {payments.map((p) => {
+        const chip = statusChip(p);
+        const settled = p.status === 'paid' || p.status === 'waived';
+        const rowBusy = busy === p.id;
+        return (
+          <div key={p.id} style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, padding: '.6rem .75rem', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, color: '#fff', fontSize: '.85rem' }}>{kindLabel(p)}</span>
+              {/* Received over total — always the fraction, never just "partial". */}
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem', color: '#fff' }}>
+                {money(Number(p.amount_paid || 0))} / {money(Number(p.amount))}{settled ? '' : ' due'}
+              </span>
+              <span style={{ color: chip.color, fontWeight: 700, fontSize: '.72rem', letterSpacing: '.03em' }}>{chip.text}</span>
+              {p.client_intent === 'pay_at_event' && !settled && (
+                <span style={{ border: '1px solid #f0b23e', color: '#f0b23e', borderRadius: 999, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  Cash at event
+                </span>
+              )}
+            </div>
+            {p.client_intent === 'pay_at_event' && !settled && (
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 4 }}>
+                The client plans to hand you this in person — expect an envelope, then confirm what you receive.
+              </div>
+            )}
+            {!archive && !settled && (
+              <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => confirmReceived(p)} disabled={rowBusy} style={neonBtn(rowBusy)}>
+                  {rowBusy ? 'Saving…' : 'Confirm received'}
+                </button>
+                <button type="button" onClick={() => waive(p)} disabled={rowBusy} style={redBtn(rowBusy)}>
+                  Waive
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {!archive && (
+        <div style={{ marginTop: payments.length > 0 ? 4 : 10 }}>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+            {!depositRow && (
+              <button
+                type="button"
+                onClick={() => requestPayment('deposit')}
+                disabled={!canRequestDeposit || busy === 'request-deposit'}
+                title={canRequestDeposit ? 'Email the client a deposit request with your payment options' : 'Complete the contract step first'}
+                style={neonBtn(!canRequestDeposit || busy === 'request-deposit')}
+              >
+                {busy === 'request-deposit' ? 'Requesting…' : 'Request Deposit'}
+              </button>
+            )}
+            {!balanceRow && (
+              <button
+                type="button"
+                onClick={() => requestPayment('balance')}
+                disabled={!canSendInvoice || busy === 'request-balance'}
+                title={canSendInvoice ? 'Invoice the client for the remaining balance' : 'The deposit must be paid or waived first'}
+                style={neonBtn(!canSendInvoice || busy === 'request-balance')}
+              >
+                {busy === 'request-balance' ? 'Sending…' : 'Send Invoice'}
+              </button>
+            )}
+          </div>
+          {!depositRow && !canRequestDeposit && (
+            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 6 }}>
+              Request Deposit unlocks once the contract step is complete — signed, or marked complete in the
+              status strip if you handled the contract outside the app.
+            </div>
+          )}
+          {!balanceRow && !canSendInvoice && (
+            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 6 }}>
+              Send Invoice unlocks once the deposit is paid or waived.
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
