@@ -83,6 +83,13 @@ interface BookingRow {
   }> | null;
   deposit_pct: number | null;
   deposit_amount: number | null;
+  // Frozen sales-tax snapshot, written at booking creation (null on legacy
+  // rows). tax_amount / total_with_tax stay null for quote-mode bookings
+  // until a price exists — QuoteModal fills them when the DJ sets the price.
+  // Rows arrive via select('*'), so no query change is needed here.
+  tax_pct: number | null;
+  tax_amount: number | null;
+  total_with_tax: number | null;
   // Cocktail pricing — only for mobile DJ wedding bookings
   cocktail_price: number | null;
   cocktail_included: boolean | null;

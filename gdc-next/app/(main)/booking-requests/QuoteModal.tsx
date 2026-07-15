@@ -87,10 +87,21 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   // which read awkwardly (e.g. "6 HOUR EVENT PRICE").
   const priceLabel = isClubBooking ? 'Set Rate' : 'Event Price';
 
-  // Live deposit preview — recomputes as user types
+  // Live deposit preview — recomputes as user types. Tax comes from the
+  // booking's FROZEN snapshot % (tax_pct, stamped at creation) — never the
+  // DJ's current settings — and the deposit is taken on the tax-inclusive
+  // total, matching the public booking form and /api/bookings/create.
+  // Legacy rows with no snapshot keep the old pre-tax behavior (taxPct 0).
   const priceNum = parseFloat(price);
-  const depositAmount = (depositPct > 0 && priceNum > 0)
-    ? (priceNum * depositPct / 100).toFixed(2)
+  const quoteTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+  const quoteTaxAmount = (quoteTaxPct > 0 && priceNum > 0)
+    ? Number(((priceNum * quoteTaxPct) / 100).toFixed(2))
+    : 0;
+  const quoteTotalWithTax = priceNum > 0
+    ? Number((priceNum + quoteTaxAmount).toFixed(2))
+    : null;
+  const depositAmount = (depositPct > 0 && quoteTotalWithTax != null)
+    ? ((quoteTotalWithTax * depositPct) / 100).toFixed(2)
     : null;
 
   async function submit() {
@@ -152,6 +163,13 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
       const updatePayload = {
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
+        // Keep the frozen tax snapshot coherent: quote-mode bookings have no
+        // price at creation, so their tax AMOUNTS were left null — fill them
+        // now from the frozen % and the price the DJ just set. Never written
+        // for legacy rows (no snapshot %), which keep their old behavior.
+        ...(booking.tax_pct != null
+          ? { tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
+          : {}),
         // Overtime now has its own dedicated column (no longer overloaded onto
         // counter_rate, which is reserved for genuine counter offers). Always
         // null for clubs — overtime is mobile-only per spec.
@@ -175,6 +193,9 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         ...booking,
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
+        ...(booking.tax_pct != null
+          ? { tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
+          : {}),
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
