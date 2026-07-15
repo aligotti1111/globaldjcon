@@ -835,7 +835,12 @@ function BookingRow({
     //
     // Cancelled deliberately reads "Send contract" rather than a red dead-end:
     // the next move is to send a new one, which is what the panel below says.
-    const awaiting = cstatus === 'awaiting_client' || cstatus === 'awaiting_dj';
+    // 'Pending' means SENT and waiting on the client — awaiting_client only.
+    // awaiting_dj is the opposite situation: the contract exists but the DJ
+    // hasn't signed it yet, so it has NOT gone out. Lumping the two together
+    // put "Contract pending" on bookings where nothing had been sent and the
+    // DJ was the one holding it up — telling them to wait for someone else.
+    const awaiting = cstatus === 'awaiting_client';
     const cLabel = isDone ? 'Contract' : awaiting ? 'Contract pending' : 'Send contract';
     steps.push({
       key: 'contract',
