@@ -309,7 +309,11 @@ export async function GET(req: Request) {
       if (run === 'whoami') {
         const stripe = getStripe();
         const t0 = Date.now();
-        const acct = await withDeadline(stripe.accounts.retrieve(), 'Stripe whoami');
+        // retrieveCurrent() is GET /v1/account — "the account this key belongs
+        // to", which is exactly the question. (accounts.retrieve() with no id
+        // reaches the same endpoint, but its typings demand an id and would
+        // need a cast. This one is typed for the job.)
+        const acct = await withDeadline(stripe.accounts.retrieveCurrent(), 'Stripe whoami');
         return NextResponse.json({
           step: 'whoami', ms: Date.now() - t0,
           accountId: acct.id,
