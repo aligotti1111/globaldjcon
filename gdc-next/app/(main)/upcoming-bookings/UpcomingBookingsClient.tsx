@@ -709,6 +709,10 @@ function FlyerSlot({
 
 // Pipeline colours. Named because they carry meaning, and the meaning has to
 // stay identical in three places (icon, label, connector).
+// What the pipeline can ask BookingDetails to do about a contract. Named so
+// the two components can't drift on the strings.
+type ContractAction = 'open' | 'download' | 'resend' | 'cancel';
+
 const NEON = '#00e0a4';   // done
 const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
@@ -743,16 +747,19 @@ function BookingRow({
   // viewport position to render it at (fixed, so the card's overflow can't clip it).
   const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
-  // "Review & send contract" lives on the pipeline (BookingRow) but the portal
-  // it opens is owned by BookingDetails, which only exists while expanded.
-  // Rather than duplicate ContractPortal up here — two mounts of the same modal
-  // is how you get two sources of truth — expand the row and hand Details a
-  // one-shot request. It opens the portal and immediately clears the flag, so
-  // closing the portal doesn't bounce straight back open.
-  const [autoOpenContract, setAutoOpenContract] = useState(false);
-  function openContract() {
+  // The pipeline's contract actions live here (BookingRow), but the portal and
+  // the send/resend/cancel/download handlers are all owned by BookingDetails,
+  // which only exists while the row is expanded.
+  //
+  // Rather than duplicate any of it up here — two copies of ContractPortal, or
+  // a second cancelContract(), is two sources of truth and two places to fix a
+  // bug — expand the row and hand Details a ONE-SHOT action. Details runs it
+  // and clears the flag immediately, so closing the portal doesn't bounce it
+  // straight back open.
+  const [contractAction, setContractAction] = useState<ContractAction | null>(null);
+  function runContract(a: ContractAction) {
     setExpanded(true);
-    setAutoOpenContract(true);
+    setContractAction(a);
   }
   async function toggleStep(key: string, next: boolean) {
     setMenuOpenKey(null);
@@ -810,10 +817,15 @@ function BookingRow({
   // when it's waiting on someone (an action the DJ can take), while Deposit
   // stays grey until it lands. Same state, different urgency — one shared
   // stepColor() couldn't say that.
-  // `canSend` puts "Review & send contract" in the dropdown.
+  // `actions` are the dropdown's items for that step, in its current state.
+  // `actions` are the dropdown's real options, and they change with the state:
+  // an unsent contract offers "Review & send", a sent one offers resend/cancel,
+  // a signed one offers download. Offering "Review & send" on a signed contract
+  // — as it did — invites a DJ to overwrite an agreement both parties signed.
   const steps: {
     key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money';
-    overridable: boolean; done: boolean; color: string; canSend?: boolean;
+    overridable: boolean; done: boolean; color: string;
+    actions?: { label: string; run: () => void; danger?: boolean }[];
   }[] = [
     { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true, color: NEON },
   ];
@@ -851,9 +863,26 @@ function BookingRow({
       overridable: !trulySigned,
       done: isDone,
       color: isDone ? NEON : AMBER,
-      // Offer "Review & send" until it's actually signed — including after a
-      // cancel, when sending a new one is the whole point.
-      canSend: !trulySigned && !archive,
+      // The dropdown offers what's actually possible RIGHT NOW:
+      //
+      //   signed        -> Download contract. Not "Review & send" — that
+      //                    invited overwriting an agreement both sides signed.
+      //   sent, pending -> Resend (client lost the email) or Cancel (void it
+      //                    and start again). Sending a second contract behind
+      //                    the first is how a client signs the wrong one.
+      //   not sent yet  -> Review & send.
+      //
+      // Archive is read-only apart from downloading what was signed.
+      actions: archive
+        ? (trulySigned ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }] : [])
+        : trulySigned
+          ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }]
+          : awaiting
+            ? [
+                { label: 'Resend contract', run: () => runContract('resend') },
+                { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
+              ]
+            : [{ label: 'Review & send contract', run: () => runContract('open') }],
     });
   }
   // Payment step — shown when a deposit is part of THIS booking's pipeline,
@@ -1067,6 +1096,10 @@ function BookingRow({
             // grey (waiting on the client) in the same 'not done' state.
             const c = st.color;
             const open = menuOpenKey === st.key;
+            // A signed contract ISN'T overridable (you can't un-sign a real
+            // one) but it does have Download — so the chevron can't key off
+            // `overridable` any more, or that menu would be unreachable.
+            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable;
             const inner = (
               <>
                 <span
@@ -1109,7 +1142,7 @@ function BookingRow({
                   }}
                 >
                   {st.label}
-                  {st.overridable && (
+                  {hasMenu && (
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
                   )}
                 </span>
@@ -1134,7 +1167,7 @@ function BookingRow({
                   />
                 )}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  {st.overridable ? (
+                  {hasMenu ? (
                     <button
                       type="button"
                       title="Mark this step complete"
@@ -1151,35 +1184,43 @@ function BookingRow({
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
                   )}
-                  {open && st.overridable && menuPos && (
+                  {open && hasMenu && menuPos && (
                     <>
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
                       <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
-                        {/* The primary action, when there is one: go do the
-                            thing. "Mark complete" is the escape hatch for work
-                            handled outside the app — it shouldn't be the only
-                            offer on a step whose actual job is to send a
-                            contract. */}
-                        {st.canSend && (
+                        {/* The real options for this step, right now — built
+                            in the steps array so the menu can't offer something
+                            the state doesn't allow (e.g. re-sending over a
+                            signed contract). */}
+                        {(st.actions ?? []).map((a) => (
+                          <button
+                            key={a.label}
+                            type="button"
+                            onClick={() => { setMenuOpenKey(null); a.run(); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: a.danger ? '#ff7676' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            {a.label}
+                          </button>
+                        ))}
+                        {/* "Mark complete" is the escape hatch for work handled
+                            outside the app — never offered on something real
+                            (a genuine signature, money that actually landed),
+                            which is what `overridable` guards. */}
+                        {st.overridable && (
                           <>
+                            {(st.actions ?? []).length > 0 && (
+                              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
+                            )}
                             <button
                               type="button"
-                              onClick={() => { setMenuOpenKey(null); openContract(); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                              onClick={() => toggleStep(st.key, !st.done)}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
                             >
-                              Review &amp; send contract
+                              {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
                             </button>
-                            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
+                            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
                           </>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => toggleStep(st.key, !st.done)}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
-                        >
-                          {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
-                        </button>
-                        <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
                       </div>
                     </>
                   )}
@@ -1200,8 +1241,8 @@ function BookingRow({
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
           archive={archive}
-          autoOpenContract={autoOpenContract}
-          onAutoOpenHandled={() => setAutoOpenContract(false)}
+          contractAction={contractAction}
+          onContractActionHandled={() => setContractAction(null)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
           canRequestDeposit={booking.is_manual || !needsContract || contractStepComplete}
@@ -1220,7 +1261,7 @@ function BookingRow({
 
 function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit, autoOpenContract, onAutoOpenHandled,
+  payments, onPaymentsChange, canRequestDeposit, contractAction, onContractActionHandled,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -1237,19 +1278,31 @@ function BookingDetails({
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
   canRequestDeposit: boolean;
-  // One-shot request from the pipeline's "Review & send contract" item. The
-  // portal lives here; the button that wants it lives a component up.
-  autoOpenContract?: boolean;
-  onAutoOpenHandled?: () => void;
+  // One-shot request from the pipeline's contract dropdown. The portal and the
+  // send/resend/cancel/download handlers all live here; the menu that wants
+  // them lives a component up, on a row that may not even be expanded yet.
+  contractAction?: ContractAction | null;
+  onContractActionHandled?: () => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
-  // Honour the pipeline's request once, then clear it — otherwise closing the
-  // portal would re-trigger on the next render while the flag was still true.
+  // Run the pipeline's request once, then clear it. Clearing FIRST matters:
+  // otherwise the flag is still set on the next render and the portal reopens
+  // the moment you close it. (downloadSigned/resendContract/cancelContract are
+  // function declarations, so they're hoisted and callable from up here.)
   useEffect(() => {
-    if (!autoOpenContract) return;
-    setContractOpen(true);
-    onAutoOpenHandled?.();
-  }, [autoOpenContract, onAutoOpenHandled]);
+    if (!contractAction) return;
+    onContractActionHandled?.();
+    switch (contractAction) {
+      case 'open': setContractOpen(true); break;
+      case 'download': void downloadSigned(); break;
+      case 'resend': void resendContract(); break;
+      case 'cancel': void cancelContract(); break;
+    }
+    // The handlers are stable for this booking and re-created every render;
+    // listing them would re-fire the effect on every render instead of only
+    // when a new action arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractAction]);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
   const [contractSent, setContractSent] = useState(false);
   const [contractCancelled, setContractCancelled] = useState(false);
