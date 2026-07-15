@@ -789,7 +789,7 @@ function BookingRow({
   // off-platform; never trap them behind a step the system can't observe).
   // Gates the Request Deposit action in the details panel below.
   const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
-  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc'; overridable: boolean; done: boolean }[] = [
+  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money'; overridable: boolean; done: boolean }[] = [
     { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check', overridable: false, done: true },
   ];
   if (!booking.is_manual && (needsContract || !!cstatus || overrides.contract)) {
@@ -808,6 +808,37 @@ function BookingRow({
       : 'Contract';
     // Overridable only when it isn't genuinely signed (can't un-sign a real one).
     steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc', overridable: !trulySigned, done: isDone });
+  }
+  // Payment step — only once something has actually been requested. No row
+  // means no step: we don't nag a DJ about money they never asked for.
+  //
+  // Deliberately NOT overridable. The contract step's dropdown works because
+  // "signed" is a yes/no; confirming a payment needs an AMOUNT (the rails cap
+  // below a typical deposit — unverified Venmo stops at $299.99/week — so
+  // partials are normal, not an edge case). A yes/no dropdown would force the
+  // DJ to lie. The details panel below owns confirming.
+  if (payments.length > 0) {
+    const settled = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
+    const allDone = payments.every(settled);
+    const anyPartial = payments.some((p) => p.status === 'partial');
+    const anyClaimed = payments.some((p) => p.status === 'pending_confirmation');
+    const atEvent = payments.some((p) => p.client_intent === 'pay_at_event' && !settled(p));
+    // Minimal text, same as the other steps — the detail lives below.
+    const pLabel =
+      allDone ? 'Paid'
+      : anyPartial ? 'Partial'
+      : anyClaimed ? 'Sent?'
+      : atEvent ? 'At event'
+      : payments.some((p) => p.kind === 'balance') ? 'Invoice'
+      : 'Deposit';
+    steps.push({
+      key: 'payment',
+      label: pLabel,
+      state: allDone ? 'done' : 'todo',
+      icon: 'money',
+      overridable: false,
+      done: allDone,
+    });
   }
   // Grayed out until the step is complete, then it lights up neon. (Void/
   // cancelled stays red since that's a problem state, not just "incomplete".)
@@ -899,6 +930,8 @@ function BookingRow({
                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', color: c, border: `1.5px solid ${c}`, background: st.state === 'done' ? 'rgba(0,224,164,.12)' : 'transparent', flexShrink: 0 }}>
                   {st.icon === 'check' ? (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : st.icon === 'money' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   ) : (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                   )}
