@@ -2,9 +2,17 @@
 
 // PaymentMethodsSection — where a DJ lists how clients can pay them.
 //
-// Phase 1 is MANUAL rails only: the platform never touches the money. We
-// publish the DJ's handle to one client, for one payment, and the DJ confirms
-// what actually arrived. No processing, no custody, no chargeback liability.
+// MANUAL rails: the platform never touches the money. We publish the DJ's
+// handle to one client, for one payment, and the DJ confirms what actually
+// arrived. No processing, no custody, no chargeback liability.
+//
+// CARDS (Phase 2) sit above the manual list but are a different animal: no
+// handle to type. The DJ connects their OWN Stripe account (Standard Connect,
+// direct charges — they're merchant of record, they pay Stripe's 2.9% + 30¢,
+// they own disputes) and availability is cached in users.stripe_connect_ready,
+// not stored in payment_methods. Onboarding happens on Stripe's site via a
+// single-use Account Link; this section only starts/resumes it and reads back
+// the result.
 //
 // Self-contained: loads and saves users.payment_methods on its own, exactly
 // like the email/password blocks. It does NOT go through the profile's master
@@ -50,6 +58,84 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  // ── Stripe Connect (cards) ────────────────────────────────────────
+  // null = still checking. The status action also re-caches charges_enabled
+  // into users.stripe_connect_ready server-side, so simply LANDING here after
+  // Stripe's ?stripe=connected redirect is what flips the ready flag on.
+  const [card, setCard] = useState<{ connected: boolean; ready: boolean; detailsSubmitted: boolean } | null>(null);
+  const [cardBusy, setCardBusy] = useState(false);
+  const [cardErr, setCardErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/stripe/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status' }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          connected?: boolean; ready?: boolean; detailsSubmitted?: boolean;
+        };
+        if (cancelled) return;
+        setCard({
+          connected: !!json.connected,
+          ready: !!json.ready,
+          detailsSubmitted: !!json.detailsSubmitted,
+        });
+      } catch {
+        // Treat "can't reach the API" as not-connected; the DJ can retry by
+        // pressing Connect, which surfaces the real error.
+        if (!cancelled) setCard({ connected: false, ready: false, detailsSubmitted: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Both connect AND resume: the route mints a fresh single-use Account Link
+  // each time (they expire in minutes and can't be reused).
+  async function connectStripe() {
+    if (cardBusy) return;
+    setCardBusy(true);
+    setCardErr(null);
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start' }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error || 'Could not start Stripe onboarding.');
+      // Off to Stripe. Don't reset busy — we're leaving the page.
+      window.location.href = json.url;
+    } catch (e) {
+      setCardErr(e instanceof Error ? e.message : 'Could not start Stripe onboarding.');
+      setCardBusy(false);
+    }
+  }
+
+  async function disconnectStripe() {
+    if (cardBusy) return;
+    if (!window.confirm('Stop accepting cards? Your Stripe account itself is untouched — this only unlinks it here. You can reconnect any time.')) return;
+    setCardBusy(true);
+    setCardErr(null);
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disconnect' }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'Could not disconnect.');
+      setCard({ connected: false, ready: false, detailsSubmitted: false });
+    } catch (e) {
+      setCardErr(e instanceof Error ? e.message : 'Could not disconnect.');
+    } finally {
+      setCardBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +284,90 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           they prefer — you&apos;re never handcuffing them to one. Money goes
           straight to you; Global DJ Connect never touches it and takes no cut.
         </p>
+
+        {/* ── Card payments (Stripe Connect) — above the manual rails ── */}
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '.9rem',
+            border: `1px solid ${card?.ready ? 'var(--success)' : 'var(--border)'}`,
+            borderRadius: 8,
+            background: 'rgba(255,255,255,.02)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments</span>
+            <span
+              style={{
+                ...label,
+                marginBottom: 0,
+                color: card === null ? 'var(--muted)' : card.ready ? 'var(--success)' : card.connected ? '#f5a623' : 'var(--muted)',
+              }}
+            >
+              {card === null ? 'Checking…' : card.ready ? '● Accepting cards' : card.connected ? '● Setup incomplete' : '○ Not connected'}
+            </span>
+          </div>
+
+          {/* Honest copy — the DJ decides with the costs in front of them. */}
+          <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+            Let clients pay deposits and invoices by debit or credit card, straight
+            into your own Stripe account. The fee is yours: 2.9% + 30¢ per charge
+            (clients pay face value). Stripe will ask for your SSN and bank details
+            during setup, and your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> —
+            about 2 days after that. Card is the only option that works the same on
+            desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.
+          </p>
+
+          {card !== null && !card.connected && (
+            <div style={{ marginTop: '.7rem' }}>
+              <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                {cardBusy ? 'Opening Stripe…' : 'Connect Stripe to accept cards'}
+              </button>
+            </div>
+          )}
+
+          {card !== null && card.connected && !card.ready && (
+            <div style={{ marginTop: '.7rem' }}>
+              <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: '#f5a623', lineHeight: 1.45 }}>
+                {card.detailsSubmitted
+                  ? 'Stripe is still verifying your details. Cards stay off until they finish — check back shortly, or open Stripe to see if anything else is needed.'
+                  : 'Stripe onboarding was started but not finished — clients can\u2019t pay by card until it\u2019s complete.'}
+              </p>
+              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                  {cardBusy ? 'Opening Stripe…' : 'Finish Stripe setup'}
+                </button>
+                <button type="button" onClick={() => void disconnectStripe()} disabled={cardBusy} style={btn(false, !cardBusy)}>
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          )}
+
+          {card !== null && card.connected && card.ready && (
+            <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', marginTop: '.7rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '.78rem', color: 'var(--white)' }}>
+                ✓ Connected — clients see &quot;Pay with Card&quot; on deposits and invoices.
+              </span>
+              <button
+                type="button"
+                onClick={() => void disconnectStripe()}
+                disabled={cardBusy}
+                style={{
+                  marginLeft: 'auto', background: 'transparent', border: 'none',
+                  color: 'var(--muted)', fontSize: '.72rem', cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
+
+          {cardErr && (
+            <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#ff6b6b' }}>{cardErr}</p>
+          )}
+        </div>
 
         {methods.length === 0 && (
           <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.8rem', marginTop: '1rem' }}>
