@@ -280,6 +280,10 @@ export default async function BookingRequestsPage() {
   const db = supabase as unknown as SupabaseClient;
   const paymentsByBooking: Record<string, BookingPayment[]> = {};
   const djMethodsByDj: Record<string, PaymentMethod[]> = {};
+  // Whether each DJ's Stripe Connect account can take card charges — cached
+  // in users.stripe_connect_ready by /api/stripe/connect. This is what makes
+  // the "Pay with Card" button appear; it is NOT a payment_methods entry.
+  const djCardReadyByDj: Record<string, boolean> = {};
   const outgoingIds = outgoing.map((b) => b.id);
   if (outgoingIds.length > 0) {
     const { data: payRows } = await db
@@ -310,11 +314,16 @@ export default async function BookingRequestsPage() {
       // don't know the column yet.
       const { data: mRows } = await supabase
         .from('users')
-        .select('id, payment_methods')
+        .select('id, payment_methods, stripe_connect_ready')
         .in('id', djIdsWithPayments);
-      const methodRows = (mRows as unknown as { id: string; payment_methods: unknown }[] | null) || [];
+      const methodRows = (mRows as unknown as {
+        id: string;
+        payment_methods: unknown;
+        stripe_connect_ready: boolean | null;
+      }[] | null) || [];
       for (const r of methodRows) {
         djMethodsByDj[r.id] = (Array.isArray(r.payment_methods) ? r.payment_methods : []) as PaymentMethod[];
+        djCardReadyByDj[r.id] = !!r.stripe_connect_ready;
       }
     }
   }
@@ -338,6 +347,7 @@ export default async function BookingRequestsPage() {
       initialBlocked={blockedUsers}
       initialPayments={paymentsByBooking}
       djPaymentMethods={djMethodsByDj}
+      djCardReady={djCardReadyByDj}
     />
   );
 }

@@ -61,6 +61,10 @@ interface Props {
   // ONLY for DJs with a payment row on this user's bookings. These are the
   // handles PaymentOptions renders; they must never reach a general payload.
   djPaymentMethods?: Record<string, PaymentMethod[]>;
+  // Whether each DJ's Stripe Connect account can take card charges
+  // (users.stripe_connect_ready, cached from Stripe). Drives the "Pay with
+  // Card" button — separate from djPaymentMethods because card has no handle.
+  djCardReady?: Record<string, boolean>;
 }
 
 // Tab filters for both sections. 'respond' = bookings the viewer must
@@ -115,6 +119,7 @@ export default function BookingRequestsClient({
   initialBlocked,
   initialPayments,
   djPaymentMethods,
+  djCardReady,
 }: Props) {
   const [incoming, setIncoming] = useState<BookingRow[]>(initialIncoming);
   const [outgoing, setOutgoing] = useState<BookingRow[]>(initialOutgoing);
@@ -675,6 +680,68 @@ export default function BookingRequestsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Card return leg. Stripe Checkout sends the host back to
+  //   /booking-requests?paid=<paymentId>&session_id=<cs_...>
+  // and we POST verify-checkout — the ONLY place the session is trusted
+  // (retrieved server-side on the DJ's connected account, never taken at the
+  // URL's word). The route is idempotent (stripe_session_id is recorded), so
+  // a refresh or back-button re-post applies nothing — we still strip the
+  // params first to avoid burning the round-trip.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const paidId = params.get('paid');
+    const sessionId = params.get('session_id');
+    if (!paidId || !sessionId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('paid');
+    url.searchParams.delete('session_id');
+    window.history.replaceState({}, '', url.pathname + url.search);
+    (async () => {
+      try {
+        const res = await fetch('/api/payments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify-checkout', paymentId: paidId, sessionId }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          ok?: boolean; error?: string; amount_paid?: number; status?: string;
+        };
+        if (!res.ok) throw new Error(json.error || 'Could not verify the card payment');
+        if (!json.ok || json.status == null) return;
+        // Fold the server's verdict into local state — server values, never
+        // client math (the route recomputed everything from Stripe's session).
+        setPayments((prev) => {
+          const next: Record<string, BookingPayment[]> = {};
+          for (const [bid, rows] of Object.entries(prev)) {
+            next[bid] = rows.map((p) =>
+              p.id === paidId
+                ? {
+                    ...p,
+                    amount_paid: Number(json.amount_paid ?? p.amount_paid),
+                    status: String(json.status),
+                    method: 'card',
+                    client_intent: 'pay_now',
+                  }
+                : p,
+            );
+          }
+          return next;
+        });
+      } catch (err) {
+        // Even on failure no money is lost: the charge lives in Stripe and
+        // the DJ's manual "Confirm received" still settles the row.
+        alert(
+          'Card payment: ' +
+            (err instanceof Error ? err.message : 'could not verify') +
+            '. If you were charged, your DJ can still confirm it manually.',
+        );
+      }
+    })();
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Manual payments (host side) ────────────────────────────────────
   // Both actions are CLAIMS/intents — 'mark-sent' tops out at
   // pending_confirmation and 'intent' only records "I'll pay at the event".
@@ -728,6 +795,8 @@ export default function BookingRequestsClient({
           <div key={p.id}>
             <PaymentOptions
               bookingId={b.id}
+              paymentId={p.id}
+              cardEnabled={!!(djCardReady || {})[b.dj_id]}
               kind={p.kind}
               amount={Number(p.amount)}
               currency={p.currency || 'USD'}
