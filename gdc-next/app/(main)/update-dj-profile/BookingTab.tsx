@@ -33,9 +33,7 @@ import {
   type PkgCategory,
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
-import EmbedCodeSection from './EmbedCodeSection';
 import PaymentMethodsSection from './PaymentMethodsSection';
-import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -103,11 +101,6 @@ function validatePkg(p: MobilePackage | undefined): PkgValidationResult {
 
 interface Props {
   djType: 'club' | 'mobile' | null;
-  // DJ's URL slug — needed for the Embed Code section so the iframe URL
-  // points at this profile. We take it as a separate prop rather than
-  // pulling from the user record so the embed snippet updates live as
-  // the user edits their slug on the General tab.
-  djSlug: string;
   selectedEventTypes: string[];   // from General tab — which event types are checked
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
@@ -132,7 +125,6 @@ interface Props {
 
 export default function BookingTab({
   djType,
-  djSlug,
   selectedEventTypes,
   bookingSettings,
   onChange,
@@ -668,15 +660,10 @@ export default function BookingTab({
             onChange={(p) => patch(p)}
           />
 
-          {/* ── Embed Code ──────────────────────────────────────── */}
-          <EmbedCodeSection slug={djSlug} />
-
           {/* Manual payment rails — deposits + invoices. Self-contained;
               saves users.payment_methods directly, not via the master save. */}
           <PaymentMethodsSection userId={userId} />
 
-          {/* ── Profile QR Code (premium) ───────────────────────── */}
-          <ProfileQrCode slug={djSlug} />
         </>
       )}
     </div>
