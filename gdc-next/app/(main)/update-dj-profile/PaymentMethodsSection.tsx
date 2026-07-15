@@ -101,7 +101,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'PayPal',
     handleLabel: 'PayPal.me link or email',
     placeholder: 'paypal.me/djnova',
-    hint: 'One tap when you use a PayPal.me link. Accepting business payments on a personal PayPal account is against their terms — upgrading to Business is free.',
+    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand. Accepting business payments on a personal PayPal account is against their terms; upgrading to Business is free.',
     instant: true,
     validate: (v) => {
       const t = v.trim();
@@ -140,6 +140,19 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
 };
 
 const TYPE_ORDER: PaymentMethodType[] = ['zelle', 'venmo', 'cashapp', 'paypal', 'cash', 'check', 'other'];
+
+/**
+ * Is this rail one-tap (deep link, amount prefilled) or does the client have
+ * to send it by hand? PayPal is the only type where it depends on what the DJ
+ * entered: a PayPal.me link prefills the amount, a bare email cannot (the old
+ * email-based button, PayPal Payments Standard, was deprecated Jan 2026 and
+ * stops working entirely Jan 2027 — not something to build on).
+ */
+export function isOneTap(m: PaymentMethod): boolean {
+  if (m.type === 'venmo' || m.type === 'cashapp') return true;
+  if (m.type === 'paypal') return /paypal\.me\//i.test(m.handle.trim());
+  return false;
+}
 
 /** What the client will literally see. Mirrors the pay page's rendering. */
 export function previewLine(m: PaymentMethod): string {
@@ -397,6 +410,20 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     }}
                   >
                     {cfg.label}: {previewLine(m)}
+                  </span>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: '.3rem',
+                      fontSize: '.68rem',
+                      color: isOneTap(m) ? 'var(--success)' : 'var(--muted)',
+                    }}
+                  >
+                    {isOneTap(m)
+                      ? '⚡ One tap — amount filled in for them'
+                      : m.type === 'cash' || m.type === 'check'
+                      ? 'Handled in person'
+                      : 'Client sends this manually — no link is possible'}
                   </span>
                 </div>
               )}
