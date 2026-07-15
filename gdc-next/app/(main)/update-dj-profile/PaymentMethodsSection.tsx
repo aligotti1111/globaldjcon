@@ -53,6 +53,82 @@ function newId(): string {
   return `m${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/**
+ * What /api/stripe/connect?action=status reports back.
+ *
+ * `actionNeeded` is the important one: charges_enabled:false means cards are
+ * off, but it does NOT mean the DJ did something wrong. Stripe may simply be
+ * verifying. Conflating those two is what produced a "Finish setup" button
+ * that looped forever on an account with nothing left to finish.
+ */
+interface CardState {
+  connected: boolean;
+  ready: boolean;
+  detailsSubmitted: boolean;
+  /** True only when Stripe wants something FROM THE DJ (currently_due/past_due). */
+  actionNeeded: boolean;
+  currentlyDue: string[];
+  pastDue: string[];
+  pendingVerification: string[];
+  disabledReason: string | null;
+  payoutsEnabled: boolean;
+}
+
+/**
+ * Stripe names requirements for engineers: "individual.verification.document",
+ * "external_account". A DJ reading that has no idea they need to photograph a
+ * driving licence. Translate the common ones; fall back to a de-snaked version
+ * of whatever Stripe sent so a new requirement still reads as English rather
+ * than vanishing.
+ */
+function prettyRequirement(field: string): string {
+  const MAP: Record<string, string> = {
+    'external_account': 'Bank account for payouts',
+    'individual.verification.document': 'Photo ID',
+    'individual.verification.additional_document': 'A second proof of identity',
+    'individual.id_number': 'Social Security number',
+    'individual.ssn_last_4': 'Last 4 of your SSN',
+    'individual.dob.day': 'Date of birth',
+    'individual.dob.month': 'Date of birth',
+    'individual.dob.year': 'Date of birth',
+    'individual.address.line1': 'Home address',
+    'individual.address.city': 'Home address',
+    'individual.address.postal_code': 'Home address',
+    'individual.address.state': 'Home address',
+    'individual.first_name': 'Your first name',
+    'individual.last_name': 'Your last name',
+    'individual.email': 'Email address',
+    'individual.phone': 'Phone number',
+    'business_profile.url': 'Your website (your Global DJ Connect profile URL works)',
+    'business_profile.mcc': 'What kind of business you run',
+    'business_profile.product_description': 'A description of what you sell',
+    'tos_acceptance.date': 'Accept Stripe\u2019s terms',
+    'tos_acceptance.ip': 'Accept Stripe\u2019s terms',
+    'settings.dashboard.display_name': 'A public business name',
+  };
+  if (MAP[field]) return MAP[field];
+  const tail = field.split('.').pop() || field;
+  const words = tail.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * The "no Stripe account" state. Named once so every place that resets it
+ * stays in step with CardState — the alternative is an object literal per call
+ * site, which is how disconnect ended up three fields behind.
+ */
+const DISCONNECTED: CardState = {
+  connected: false,
+  ready: false,
+  detailsSubmitted: false,
+  actionNeeded: false,
+  currentlyDue: [],
+  pastDue: [],
+  pendingVerification: [],
+  disabledReason: null,
+  payoutsEnabled: false,
+};
+
 export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -63,36 +139,80 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // null = still checking. The status action also re-caches charges_enabled
   // into users.stripe_connect_ready server-side, so simply LANDING here after
   // Stripe's ?stripe=connected redirect is what flips the ready flag on.
-  const [card, setCard] = useState<{ connected: boolean; ready: boolean; detailsSubmitted: boolean } | null>(null);
+  const [card, setCard] = useState<CardState | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
   const [cardErr, setCardErr] = useState<string | null>(null);
+
+  /**
+   * Ask the server for the account's real state. Also the "Check again"
+   * button: when Stripe is verifying there is nothing to fix, so re-asking IS
+   * the only honest action to offer.
+   *
+   * The status action re-caches charges_enabled into users.stripe_connect_ready
+   * server-side, so calling this is also what flips the host-facing card button
+   * on once Stripe finishes.
+   */
+  const loadCardStatus = useCallback(async (): Promise<CardState> => {
+    const res = await fetch('/api/stripe/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'status' }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      connected?: boolean; ready?: boolean; detailsSubmitted?: boolean;
+      actionNeeded?: boolean; currentlyDue?: string[]; pastDue?: string[];
+      pendingVerification?: string[]; disabledReason?: string | null;
+      payoutsEnabled?: boolean;
+    };
+    return {
+      connected: !!json.connected,
+      ready: !!json.ready,
+      detailsSubmitted: !!json.detailsSubmitted,
+      actionNeeded: !!json.actionNeeded,
+      currentlyDue: Array.isArray(json.currentlyDue) ? json.currentlyDue : [],
+      pastDue: Array.isArray(json.pastDue) ? json.pastDue : [],
+      pendingVerification: Array.isArray(json.pendingVerification) ? json.pendingVerification : [],
+      disabledReason: json.disabledReason ?? null,
+      payoutsEnabled: !!json.payoutsEnabled,
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/stripe/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'status' }),
-        });
-        const json = (await res.json().catch(() => ({}))) as {
-          connected?: boolean; ready?: boolean; detailsSubmitted?: boolean;
-        };
-        if (cancelled) return;
-        setCard({
-          connected: !!json.connected,
-          ready: !!json.ready,
-          detailsSubmitted: !!json.detailsSubmitted,
-        });
+        const next = await loadCardStatus();
+        if (!cancelled) setCard(next);
       } catch {
         // Treat "can't reach the API" as not-connected; the DJ can retry by
         // pressing Connect, which surfaces the real error.
-        if (!cancelled) setCard({ connected: false, ready: false, detailsSubmitted: false });
+        if (!cancelled) {
+          setCard(DISCONNECTED);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadCardStatus]);
+
+  /** "Check again" — re-ask Stripe, and say so if nothing changed. */
+  async function refreshCard() {
+    if (cardBusy) return;
+    setCardBusy(true);
+    setCardErr(null);
+    try {
+      const next = await loadCardStatus();
+      setCard(next);
+      if (!next.ready && !next.actionNeeded) {
+        // Silence would read as a broken button. Name the non-change.
+        setCardErr('Still verifying \u2014 nothing has changed on Stripe\u2019s side yet.');
+        setTimeout(() => setCardErr(null), 4000);
+      }
+    } catch (e) {
+      setCardErr(e instanceof Error ? e.message : 'Could not check status.');
+    } finally {
+      setCardBusy(false);
+    }
+  }
 
   // Both connect AND resume: the route mints a fresh single-use Account Link
   // each time (they expire in minutes and can't be reused).
@@ -161,7 +281,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(json.error || 'Could not disconnect.');
-      setCard({ connected: false, ready: false, detailsSubmitted: false });
+      setCard(DISCONNECTED);
     } catch (e) {
       setCardErr(e instanceof Error ? e.message : 'Could not disconnect.');
     } finally {
@@ -336,7 +456,16 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                 color: card === null ? 'var(--muted)' : card.ready ? 'var(--success)' : card.connected ? '#f5a623' : 'var(--muted)',
               }}
             >
-              {card === null ? 'Checking…' : card.ready ? '● Accepting cards' : card.connected ? '● Setup incomplete' : '○ Not connected'}
+              {/* "Setup incomplete" is a lie when the DJ has submitted
+                  everything and Stripe is verifying — it blames them for a
+                  wait that isn't theirs. Split the two. */}
+              {card === null
+                ? 'Checking\u2026'
+                : card.ready
+                  ? '\u25CF Accepting cards'
+                  : card.connected
+                    ? (card.actionNeeded ? '\u25CF Setup incomplete' : '\u25CF Verifying')
+                    : '\u25CB Not connected'}
             </span>
           </div>
 
@@ -358,17 +487,43 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
             </div>
           )}
 
+          {/*
+            Connected-but-not-ready is TWO situations, and the old copy said
+            "Finish Stripe setup" for both. When Stripe already has everything
+            and is merely verifying, that button sends the DJ back through
+            onboarding to change nothing, land back here, and read the same
+            sentence — a loop with no exit that implies they did it wrong.
+            `actionNeeded` (requirements.currently_due/past_due) is what
+            separates "we need you" from "we're thinking".
+          */}
           {card !== null && card.connected && !card.ready && (
             <div style={{ marginTop: '.7rem' }}>
               <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: '#f5a623', lineHeight: 1.45 }}>
-                {card.detailsSubmitted
-                  ? 'Stripe is still verifying your details. Cards stay off until they finish — check back shortly, or open Stripe to see if anything else is needed.'
-                  : 'Stripe onboarding was started but not finished — clients can\u2019t pay by card until it\u2019s complete.'}
+                {card.actionNeeded
+                  ? 'Stripe still needs a few details before cards can be switched on.'
+                  : card.disabledReason && card.disabledReason.startsWith('rejected')
+                    ? 'Stripe has declined this account. Contact Stripe support \u2014 nothing on this page can change it.'
+                    : 'Everything\u2019s submitted. Stripe is verifying it now \u2014 usually minutes, occasionally a day. Nothing for you to do; cards switch on by themselves.'}
               </p>
-              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
-                  {cardBusy ? 'Opening Stripe…' : 'Finish Stripe setup'}
-                </button>
+
+              {card.actionNeeded && card.currentlyDue.length > 0 && (
+                <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', color: 'var(--muted)', fontSize: '.7rem', lineHeight: 1.6 }}>
+                  {card.currentlyDue.slice(0, 6).map((f) => (
+                    <li key={f}>{prettyRequirement(f)}</li>
+                  ))}
+                </ul>
+              )}
+
+              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {card.actionNeeded ? (
+                  <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                    {cardBusy ? 'Opening Stripe\u2026' : 'Finish Stripe setup'}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => void refreshCard()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                    {cardBusy ? 'Checking\u2026' : 'Check again'}
+                  </button>
+                )}
                 <button type="button" onClick={() => void disconnectStripe()} disabled={cardBusy} style={btn(false, !cardBusy)}>
                   Disconnect
                 </button>
