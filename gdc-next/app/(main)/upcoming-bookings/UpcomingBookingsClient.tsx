@@ -844,17 +844,14 @@ function BookingRow({
     // NOT invent a payment row or an amount, so the ledger stays honest about
     // what it actually saw.
     const allDone = reallySettled || !!overrides.deposit;
-    const anyPartial = payments.some((p) => p.status === 'partial');
-    const anyClaimed = payments.some((p) => p.status === 'pending_confirmation');
-    const atEvent = payments.some((p) => p.client_intent === 'pay_at_event' && !settled(p));
-    // Minimal text, same as the other steps — the detail lives below.
-    const pLabel =
-      allDone ? 'Paid'
-      : anyPartial ? 'Partial'
-      : anyClaimed ? 'Sent?'
-      : atEvent ? 'At event'
-      : payments.some((p) => p.kind === 'balance') ? 'Invoice'
-      : 'Deposit';
+    // The label names the STAGE, never the state — same rule as Contract. The
+    // green check is what says complete. A label that mutated (Deposit -> Sent?
+    // -> Partial -> Paid) competed with the badge and could visibly contradict
+    // it. And 'Paid' was the worst of them: it read as settled-in-full while
+    // amount_paid might be $299.99 of $600, because the rails cap below a
+    // typical deposit. The real numbers live in the ledger below, which is the
+    // only place with room to be accurate.
+    const pLabel = 'Deposit';
     steps.push({
       // 'deposit', not 'payment': /api/bookings/status-override whitelists
       // ['contract','deposit','song_list'] and rejects anything else, so the
