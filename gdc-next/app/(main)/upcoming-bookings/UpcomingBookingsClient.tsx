@@ -886,17 +886,25 @@ function BookingRow({
         ? (trulySigned ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }] : [])
         : trulySigned
           ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }]
-          : awaiting
-            ? [
-                { label: 'Resend contract', run: () => runContract('resend') },
-                // The DocuSeal email is the single point of failure in this
-                // whole flow — spam folder, typo'd address, corporate filter —
-                // and the DJ finds out by the contract never coming back.
-                // The link works regardless of whether the email ever landed.
-                { label: '\u{1F517} Copy link to contract', run: () => runContract('copy-link') },
-                { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
-              ]
-            : [{ label: 'Review & send contract', run: () => runContract('open') }],
+          // Marked complete by hand: the DJ has said this stage is settled,
+          // usually because it happened off-platform. Everything else here
+          // contradicts that — cancelling a contract they've called done,
+          // or handing out a sign-as-the-client link for an agreement that's
+          // already agreed. The only honest option left is "Mark not
+          // complete", which the override block below owns.
+          : isDone
+            ? []
+            : awaiting
+              ? [
+                  { label: 'Resend contract', run: () => runContract('resend') },
+                  // The DocuSeal email is the single point of failure in this
+                  // whole flow — spam folder, typo'd address, corporate filter
+                  // — and the DJ finds out by the contract never coming back.
+                  // The link works regardless of whether the email landed.
+                  { label: '\u{1F517} Copy link to contract', run: () => runContract('copy-link') },
+                  { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
+                ]
+              : [{ label: 'Review & send contract', run: () => runContract('open') }],
     });
   }
   // Payment step — shown when a deposit is part of THIS booking's pipeline,
