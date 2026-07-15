@@ -718,7 +718,7 @@ export default function ClubBookingTab({
                   step="0.001"
                   value={clubTaxPct || ''}
                   onChange={(e) => setClubTax(parseFloat(e.target.value) || 0)}
-                  className={styles.settingNumber}
+                  className={`${styles.settingNumber} ${styles.noSpin}`}
                   placeholder="0"
                 />
                 <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
