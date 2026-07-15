@@ -1539,6 +1539,10 @@ function BookingDetails({
             onChange={(rows) => onPaymentsChange(booking.id, rows)}
             archive={archive}
             canRequestDeposit={canRequestDeposit}
+            suggestedDeposit={booking.deposit_amount != null ? Number(booking.deposit_amount) : null}
+            agreedTotal={
+              booking.total_with_tax ?? booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null
+            }
           />
         </div>
       )}
@@ -1592,6 +1596,7 @@ function BookingDetails({
 
 function PaymentsBlock({
   bookingId, currency, payments, onChange, archive, canRequestDeposit,
+  suggestedDeposit, agreedTotal,
 }: {
   bookingId: string;
   currency: string;
@@ -1599,6 +1604,12 @@ function PaymentsBlock({
   onChange: (rows: BookingPayment[]) => void;
   archive?: boolean;
   canRequestDeposit: boolean;
+  /** What the booking already says the deposit is — a SUGGESTION, not a rule.
+   *  Null when the DJ had no deposit policy when this booking was made, or on
+   *  manual bookings. */
+  suggestedDeposit?: number | null;
+  /** Agreed total (tax-inclusive snapshot first). Used to suggest the invoice. */
+  agreedTotal?: number | null;
 }) {
   // Which action is in flight: 'request-deposit' | 'request-balance' | a paymentId.
   const [busy, setBusy] = useState<string | null>(null);
@@ -1629,13 +1640,39 @@ function PaymentsBlock({
     }
   }
 
-  // Request Deposit / Send Invoice. No amount in the payload — the server
-  // derives it (deposit_amount for deposits; agreed total minus everything
-  // already confirmed for invoices). Money math never comes from the client.
+  // Request Deposit / Send Invoice.
+  //
+  // The DJ names the amount, prefilled with what the booking suggests. That is
+  // NOT the same as trusting a client-supplied price: a booker setting their own
+  // price is a forgery; a DJ setting their own invoice is just their price. It's
+  // their money and their call.
+  //
+  // It also has to work when nothing is suggested at all — a booking made before
+  // the DJ had a deposit policy, or a manual booking, has no stored
+  // deposit_amount. Deriving server-side ONLY meant those bookings hit
+  // "No amount to request on this booking" with no way forward.
   async function requestPayment(kind: 'deposit' | 'balance') {
+    const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const suggestion = kind === 'deposit'
+      ? (suggestedDeposit != null && suggestedDeposit > 0 ? suggestedDeposit : null)
+      : (agreedTotal != null ? Math.round((Number(agreedTotal) - paidSoFar) * 100) / 100 : null);
+
+    const raw = window.prompt(
+      kind === 'deposit'
+        ? 'How much deposit do you want to request?'
+        : 'Invoice amount? (Adjust for overtime or extras if needed.)',
+      suggestion != null && suggestion > 0 ? String(suggestion) : '',
+    );
+    if (raw == null) return; // cancelled
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert('Enter an amount greater than zero.');
+      return;
+    }
+
     setBusy(`request-${kind}`);
     try {
-      const json = await post({ action: 'request', bookingId, kind });
+      const json = await post({ action: 'request', bookingId, kind, amount: Math.round(amount * 100) / 100 });
       if (json && json.payment) onChange([...payments, json.payment as BookingPayment]);
     } finally { setBusy(null); }
   }
