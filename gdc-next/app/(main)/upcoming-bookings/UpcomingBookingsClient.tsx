@@ -790,7 +790,7 @@ function BookingRow({
   // Gates the Request Deposit action in the details panel below.
   const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
   const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money'; overridable: boolean; done: boolean }[] = [
-    { key: 'accepted', label: 'Accepted', state: 'done', icon: 'check', overridable: false, done: true },
+    { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true },
   ];
   if (!booking.is_manual && (needsContract || !!cstatus || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
@@ -1015,21 +1015,14 @@ function BookingRow({
                     // The emoji renders in its OWN colours — no ring, no tint.
                     // A step not reached yet is drained of colour and dimmed, so
                     // progress is legible at a glance without reading a label.
-                    // Emoji carry their own colour, so an unreached step gets
-                    // drained and dimmed. The contract SVG already draws itself
-                    // in `c` (grey until reached) — greying it AGAIN at 40% would
-                    // wash it out to nothing, so it's exempt.
-                    filter: st.done || st.icon === 'doc' ? 'none' : 'grayscale(1)',
-                    opacity: st.done || st.icon === 'doc' ? 1 : 0.4,
+                    // The emoji render in their OWN colours — no ring, no tint.
+                    // A step not reached yet is drained of colour and dimmed, so
+                    // progress is legible at a glance without reading a label.
+                    filter: st.done ? 'none' : 'grayscale(1)',
+                    opacity: st.done ? 1 : 0.4,
                   }}
                 >
-                  {/* Booked and Deposit are the emoji, in their own colours.
-                      Contract stays a drawn icon: 📄 is a blank sheet — it
-                      reads as "page", not "agreement". The ruled lines are what
-                      make it a document you sign. Deliberately mixed. */}
-                  {st.icon === 'doc' ? (
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="14" y2="13" /><line x1="8" y1="17" x2="12" y2="17" /></svg>
-                  ) : st.icon === 'check' ? '\u{1F4D6}' : '\u{1F4B5}'}
+                  {st.icon === 'check' ? '\u{1F4D6}' : st.icon === 'money' ? '\u{1F4B5}' : '\u{1F4DD}'}
                   {/* Completion badge — the only green on the icon, and it only
                       ever means done. Over the corner, so the emoji still says
                       which stage it is. */}
