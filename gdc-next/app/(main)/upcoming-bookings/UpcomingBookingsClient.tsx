@@ -913,13 +913,6 @@ function BookingRow({
       color: allDone ? NEON : MUTED,
     });
   }
-  // Each step now carries its own `color` (see the steps array) — the old
-  // stepColor() mapped state->colour globally, which couldn't express that a
-  // waiting Contract is amber (chase it) while a waiting Deposit is grey (just
-  // wait). Kept only for the void case.
-  const stepColor = (s: StepState) =>
-    s === 'done' ? NEON : s === 'void' ? '#ff9a9a' : MUTED;
-
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
   // header clean. The row no longer renders a CLUB/BAR pill.
@@ -1064,7 +1057,10 @@ function BookingRow({
           }}
         >
           {steps.map((st, i) => {
-            const c = stepColor(st.state);
+            // st.color, not stepColor(st.state): the step carries its own
+            // colour so Contract can be amber (your move) while Deposit stays
+            // grey (waiting on the client) in the same 'not done' state.
+            const c = st.color;
             const open = menuOpenKey === st.key;
             const inner = (
               <>
@@ -1123,7 +1119,12 @@ function BookingRow({
                     style={{
                       width: 18, height: 1.5, borderRadius: 1, margin: '0 6px',
                       marginBottom: 14, flexShrink: 0,
-                      background: st.done ? NEON : 'rgba(255,255,255,.14)',
+                      // Both ends, not just this one. A deposit can be paid
+                      // while the contract is still out (nothing here blocks
+                      // anything), and keying off st.done alone drew a green
+                      // line THROUGH a pending contract — progress appearing to
+                      // skip a step it hadn't finished.
+                      background: steps[i - 1].done && st.done ? NEON : 'rgba(255,255,255,.14)',
                     }}
                   />
                 )}
