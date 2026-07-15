@@ -8,8 +8,9 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from '../upcoming-bookings/UpcomingBookingsClient';
-import type { UpcomingBooking } from '../upcoming-bookings/page';
+import type { UpcomingBooking, BookingPayment } from '../upcoming-bookings/page';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
 import type { Metadata } from 'next';
 
@@ -96,6 +97,26 @@ export default async function PastBookingsPage() {
   // mobPackages is still needed below: the client uses it for the manual
   // add-booking form's package picker.
   const mobPackages = settings?.mob_packages;
+
+  // Payment rows for these bookings, keyed by booking_id. One .in() query.
+  // The generated types/supabase.ts predates booking_payments, so
+  // .from('booking_payments') on the typed client is a build error — cast to
+  // an untyped client for this ONE table (same fix as /api/payments).
+  const db = supabase as unknown as SupabaseClient;
+  const paymentsByBooking: Record<string, BookingPayment[]> = {};
+  const bookingIds = bookingRows.map((b) => b.id);
+  if (bookingIds.length > 0) {
+    const { data: payRows } = await db
+      .from('booking_payments')
+      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at')
+      .in('booking_id', bookingIds)
+      .order('requested_at', { ascending: true });
+    for (const p of ((payRows as BookingPayment[] | null) || [])) {
+      if (!paymentsByBooking[p.booking_id]) paymentsByBooking[p.booking_id] = [];
+      paymentsByBooking[p.booking_id].push(p);
+    }
+  }
+
   return (
     <UpcomingBookingsClient
       userId={user.id}
@@ -105,6 +126,7 @@ export default async function PastBookingsPage() {
       bookingsPerDay={bookingsPerDay}
       initialBookings={bookingRows}
       mobPackages={mobPackages ?? null}
+      initialPayments={paymentsByBooking}
       archive
     />
   );
