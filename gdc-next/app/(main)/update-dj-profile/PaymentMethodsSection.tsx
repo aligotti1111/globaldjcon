@@ -142,6 +142,11 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [card, setCard] = useState<CardState | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
   const [cardErr, setCardErr] = useState<string | null>(null);
+  // The DJ's public profile URL — the answer to Stripe's "Business website"
+  // field, which is where a DJ without a website stops dead.
+  const [slug, setSlug] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   /**
    * Ask the server for the account's real state. Also the "Check again"
@@ -296,11 +301,13 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods')
+          .select('payment_methods, slug')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
-        const raw = (data as { payment_methods?: unknown } | null)?.payment_methods;
+        const row = data as { payment_methods?: unknown; slug?: string | null } | null;
+        setSlug(typeof row?.slug === 'string' ? row.slug : null);
+        const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
         setMethods(
           arr.map((r) => {
@@ -479,6 +486,120 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
             desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.
           </p>
 
+          {/*
+            THE STALL POINTS.
+            Stripe's form asks a DJ things a DJ has no answer ready for:
+            "Business website" (most don't have one), "Industry" (a list of
+            hundreds), "Statement descriptor". Nobody abandons setup at "what's
+            your name" — they abandon at the question they can't answer, with
+            their bank details already half typed in. Every answer is knowable,
+            and the website one is literally a row in our own database. So hand
+            it over instead of sending them off to find it.
+          */}
+          {card !== null && !card.ready && (
+            <div style={{ marginTop: '.7rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowHelp((v) => !v)}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--neon)', fontSize: '.72rem', fontFamily: "'Space Mono', monospace",
+                  letterSpacing: '.04em', textDecoration: 'underline',
+                }}
+              >
+                {showHelp ? 'Hide the answers' : 'What will Stripe ask me?'}
+              </button>
+
+              {showHelp && (
+                <div
+                  style={{
+                    marginTop: '.6rem', padding: '.75rem', borderRadius: 6,
+                    border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)',
+                  }}
+                >
+                  <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                    Stripe asks for your SSN and bank details because anyone taking
+                    card payments has to be identity-checked by law — PayPal and
+                    Venmo do the same. It goes to Stripe, not to us. The questions
+                    that catch people out:
+                  </p>
+
+                  <div style={{ marginBottom: '.6rem' }}>
+                    <div style={{ ...label, marginBottom: '.25rem' }}>Business website</div>
+                    {slug ? (
+                      <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <code
+                          style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: '.72rem',
+                            color: 'var(--white)', background: 'var(--deep)',
+                            padding: '.3rem .5rem', borderRadius: 4, wordBreak: 'break-all',
+                          }}
+                        >
+                          {`https://globaldjconnect.com/${slug}`}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(`https://globaldjconnect.com/${slug}`);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 1800);
+                          }}
+                          style={{
+                            background: 'transparent', border: '1px solid var(--border)',
+                            borderRadius: 4, color: copied ? 'var(--success)' : 'var(--muted)',
+                            fontSize: '.65rem', padding: '.3rem .55rem', cursor: 'pointer',
+                            fontFamily: "'Space Mono', monospace",
+                          }}
+                        >
+                          {copied ? '\u2713 Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)' }}>
+                        Your Global DJ Connect profile URL.
+                      </p>
+                    )}
+                    <p style={{ margin: '.25rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                      No website? Use this. It&apos;s a real public page showing your
+                      services and prices — exactly what Stripe wants to see.
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: '.6rem' }}>
+                    <div style={{ ...label, marginBottom: '.25rem' }}>Type of business</div>
+                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                      Individual — unless you actually have an LLC, in which case use
+                      it and have the EIN handy.
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: '.6rem' }}>
+                    <div style={{ ...label, marginBottom: '.25rem' }}>Industry</div>
+                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                      Search &quot;DJ&quot; or &quot;band&quot; — the entertainment category for
+                      musicians and entertainers is the one you want.
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: '.6rem' }}>
+                    <div style={{ ...label, marginBottom: '.25rem' }}>What you sell</div>
+                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                      &quot;DJ services for weddings, parties and private events.&quot;
+                    </p>
+                  </div>
+
+                  <div>
+                    <div style={{ ...label, marginBottom: '.25rem' }}>Statement descriptor</div>
+                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                      Your DJ name. This is what shows on your client&apos;s card statement
+                      — make it something they&apos;ll recognise, or you&apos;ll get
+                      &quot;what&apos;s this charge?&quot; calls and chargebacks.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {card !== null && !card.connected && (
             <div style={{ marginTop: '.7rem' }}>
               <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
