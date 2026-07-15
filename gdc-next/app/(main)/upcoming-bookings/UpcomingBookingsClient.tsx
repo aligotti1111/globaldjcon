@@ -807,6 +807,18 @@ function BookingRow({
   // changing the DJ's setting later never re-shapes existing bookings. Falls
   // back to the live setting only for rows created before the snapshot existed.
   const needsContract = (booking as { requires_contract?: boolean | null }).requires_contract ?? requireContract;
+  // Once this booking has had a contract, the stage stays on the pipeline.
+  //
+  // /api/contracts/cancel sets contract_status back to NULL so a fresh one can
+  // be sent. On a booking whose requires_contract is false, the step existed
+  // ONLY because cstatus was non-null — so cancelling made the whole icon
+  // vanish, taking "Send contract" with it at the exact moment the DJ needs to
+  // send a new one. Latching means cancel leaves the stage sitting there in
+  // amber, which is what a cancel actually means: back to un-sent.
+  const [everHadContract, setEverHadContract] = useState(!!cstatus);
+  useEffect(() => {
+    if (cstatus) setEverHadContract(true);
+  }, [cstatus]);
   // Contract-step completeness — the SAME rule the status strip uses:
   // genuinely signed (stored status or the panel's live DocuSeal check) OR
   // manually overridden via status_overrides (DJs often paper contracts
@@ -829,7 +841,7 @@ function BookingRow({
   }[] = [
     { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true, color: NEON },
   ];
-  if (!booking.is_manual && (needsContract || !!cstatus || overrides.contract)) {
+  if (!booking.is_manual && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
     const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
