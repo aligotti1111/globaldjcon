@@ -25,32 +25,45 @@
 //                is the DJ's own property — we never delete it.
 //
 // ─────────────────────────────────────────────────────────────────────────
-// WHY THIS FILE IS SHAPED THE WAY IT IS (the 502 hunt):
+// NEVER RETURN 502 FROM THIS APP. THIS IS NOT A STYLE PREFERENCE.
 //
-// v1 returned a real JSON {error} on every failure path it knew about, yet
-// production served a 502 with an HTML body — so the client's
-// `res.json().catch(() => ({}))` produced an empty object and the UI fell back
-// to a generic "Could not start Stripe onboarding." with no cause. A GET to
-// this path returned 405, which proves the module loads and POST is exported.
-// So the handler was ENTERED and then died in a way its own catch never saw.
+// globaldjconnect.com sits behind Cloudflare. When the ORIGIN answers with a
+// 502, Cloudflare discards the body and substitutes its own "Bad gateway /
+// Host Error" HTML page. Your JSON never reaches the browser. The status code
+// is the only thing that survives.
 //
-// Two things cause that, and both are handled here now:
+// v1 of this route used `status: 502` for every Stripe and database failure —
+// the intuitive choice, since a bad answer from an upstream service IS what
+// 502 means. The result: Stripe was returning a perfectly clear error on every
+// single click...
 //
-//   1. A throw OUTSIDE a try block. v1 ran createClient / getUser /
-//      createAdminClient / the users select before any try. Any of those
-//      throwing escapes to the platform, which renders HTML. FIX: the entire
-//      handler body is wrapped, and the wrapper always returns JSON.
+//     "You can only create new accounts if you've signed up for Connect,
+//      which you can do at https://dashboard.stripe.com/connect."
 //
-//   2. The function being KILLED rather than throwing. Netlify's sync function
-//      limit is ~10s and `export const maxDuration` is a Vercel setting that
-//      does nothing here — v1's `maxDuration = 20` was meaningless. A killed
-//      process cannot run a catch block, so no amount of try/catch alone can
-//      save it. FIX: every network call is raced against a deadline well under
-//      the platform's, so we return a real message with time to spare.
+// ...and Cloudflare deleted it and served a gateway page instead. The client's
+// `res.json().catch(() => ({}))` then turned that HTML into `{}`, so the UI
+// showed a generic fallback with no cause. Hours went into hunting a crashed
+// process. Nothing ever crashed. The error was correct, complete, and thrown
+// away in transit — twice, by two different layers, each trying to be helpful.
 //
-// The rule this encodes: an API route must never be able to answer with
-// something that isn't JSON. A caller that can't parse the error is a caller
-// that can only guess.
+// So: this route returns 500 for upstream failures, and 4xx where it fits.
+// Cloudflare passes those through untouched. If you are ever tempted to
+// "correct" one of these to 502, don't — you will silently blind the app.
+//
+// The diagnostics below (GET ?run=…) exist because of that hunt, and they only
+// ever worked because their catch happened to return 500.
+//
+// Two smaller lessons, kept because they're cheap:
+//   • Wrap the WHOLE handler. v1 ran createClient / getUser / createAdminClient
+//     / the users select before any try, so a throw there escaped to the
+//     platform as HTML.
+//   • `export const maxDuration` is a Vercel setting and does nothing on
+//     Netlify. Netlify's sync limit is ~10s, so real network calls are raced
+//     against an 8s deadline instead.
+//
+// The rule all of this encodes: an API route must never be able to answer with
+// something the caller can't parse. A caller that can't read the error is a
+// caller that can only guess — and so is the person debugging it.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from 'next/server';
@@ -124,7 +137,7 @@ async function runStart(req: Request): Promise<NextResponse> {
     admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
     'Database read',
   );
-  if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 502 });
+  if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 500 });
   const row = rowData as unknown as ConnectRow | null;
   if (!row) return NextResponse.json({ error: 'Profile not found.' }, { status: 404 });
 
@@ -155,7 +168,7 @@ async function runStart(req: Request): Promise<NextResponse> {
       // Most common real-world failure: Connect not enabled on the platform
       // dashboard, or live mode without a completed platform profile.
       // Stripe's own message says which — surface it verbatim.
-      return NextResponse.json({ error: `Stripe (create account): ${errMsg(e, 'unknown error')}` }, { status: 502 });
+      return NextResponse.json({ error: `Stripe (create account): ${errMsg(e, 'unknown error')}` }, { status: 500 });
     }
 
     const { error: upErr } = await withDeadline(
@@ -164,11 +177,11 @@ async function runStart(req: Request): Promise<NextResponse> {
     );
     // If we can't persist the id we'd orphan the Stripe account and mint a
     // second one next click — fail loudly instead.
-    if (upErr) return NextResponse.json({ error: `DB (save account id): ${upErr.message}` }, { status: 502 });
+    if (upErr) return NextResponse.json({ error: `DB (save account id): ${upErr.message}` }, { status: 500 });
   }
   // Narrowing guard: the assignment above lives inside a try, which TS won't
   // credit as definite, so accountId is still `string | null` here.
-  if (!accountId) return NextResponse.json({ error: 'No Stripe account id.' }, { status: 502 });
+  if (!accountId) return NextResponse.json({ error: 'No Stripe account id.' }, { status: 500 });
 
   // Account links are single-use and expire in minutes — always fresh.
   // refresh_url lands back on Booking Settings, where the section offers the
@@ -185,7 +198,7 @@ async function runStart(req: Request): Promise<NextResponse> {
     );
     return NextResponse.json({ url: link.url });
   } catch (e) {
-    return NextResponse.json({ error: `Stripe (account link): ${errMsg(e, 'unknown error')}` }, { status: 502 });
+    return NextResponse.json({ error: `Stripe (account link): ${errMsg(e, 'unknown error')}` }, { status: 500 });
   }
 }
 
@@ -376,7 +389,7 @@ export async function GET(req: Request) {
   }
 
   const out: Record<string, unknown> = {
-    version: 'connect-v5-savelink',
+    version: 'connect-v6-no502',
     node: process.version,
     hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
     stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
@@ -441,7 +454,7 @@ export async function POST(req: Request) {
       admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
       'Database read',
     );
-    if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 502 });
+    if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 500 });
     const row = rowData as unknown as ConnectRow | null;
     if (!row) return NextResponse.json({ error: 'Profile not found.' }, { status: 404 });
 
@@ -495,7 +508,7 @@ export async function POST(req: Request) {
           .eq('id', user.id),
         'Database write',
       );
-      if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
     }
 
