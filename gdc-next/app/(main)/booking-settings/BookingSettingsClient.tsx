@@ -37,7 +37,6 @@ interface Props {
 export default function BookingSettingsClient({ initialProfile, hasBookingAccess }: Props) {
   const router = useRouter();
   const djType = initialProfile.dj_type;
-  const djSlug = initialProfile.slug || '';
 
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
   // as the profile editor: a brand-new mobile DJ with nothing saved gets all
@@ -182,7 +181,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             bookingSettings={bookingSettings}
             onChange={setBookingSettings}
             autosaveStatus={autosaveStatus}
-            djSlug={djSlug}
             userId={initialProfile.id}
             onDirtyChange={setHasDirtyClubRates}
             masterSaveTrigger={masterSaveTrigger}
@@ -191,7 +189,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         ) : (
           <BookingTab
             djType={djType}
-            djSlug={djSlug}
             selectedEventTypes={selectedEventTypes}
             bookingSettings={bookingSettings}
             onChange={setBookingSettings}
