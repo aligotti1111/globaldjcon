@@ -20,6 +20,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import {
@@ -162,6 +163,13 @@ export async function POST(req: Request) {
 
   const action = typeof body.action === 'string' ? body.action : '';
   const admin = createAdminClient();
+  // types/supabase.ts is generated and predates booking_payments, so the typed
+  // client rejects .from('booking_payments') outright ("not assignable to
+  // 'booking_drafts' | 'bookings' | ..."). Same family as the `as unknown as
+  // never` casts used for newer COLUMNS, but this is a whole TABLE.
+  // One cast to an untyped client for the new table beats scattering casts at
+  // every call site. Regenerating types/supabase.ts would remove the need.
+  const db = admin as unknown as SupabaseClient;
 
   // ───────────────────────────── request (DJ) ─────────────────────────────
   if (action === 'request') {
@@ -202,7 +210,7 @@ export async function POST(req: Request) {
     // invoice and their money (unlike a client-supplied price, which we never
     // trust). Still validated as a sane positive number.
     const agreed = b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
-    const { data: paidData } = await admin
+    const { data: paidData } = await db
       .from('booking_payments')
       .select('amount_paid')
       .eq('booking_id', bookingId);
@@ -236,7 +244,7 @@ export async function POST(req: Request) {
       status: 'requested',
       due_date: dueDate,
     };
-    const { data: created, error: insErr } = await admin
+    const { data: created, error: insErr } = await db
       .from('booking_payments')
       .insert(insertPayload as unknown as never)
       .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
@@ -295,7 +303,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
     const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
 
-    const { data: pData } = await admin
+    const { data: pData } = await db
       .from('booking_payments')
       .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
       .eq('id', paymentId)
@@ -323,7 +331,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
           method: typeof body.method === 'string' ? body.method : null,
           client_intent: 'pay_now' };
 
-    const { error: upErr } = await admin
+    const { error: upErr } = await db
       .from('booking_payments')
       .update(patch as unknown as never)
       .eq('id', paymentId);
@@ -359,7 +367,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
     const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
 
-    const { data: pData } = await admin
+    const { data: pData } = await db
       .from('booking_payments')
       .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
       .eq('id', paymentId)
@@ -377,7 +385,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
     if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
     if (action === 'waive') {
-      const { error } = await admin
+      const { error } = await db
         .from('booking_payments')
         .update({ status: 'waived', confirmed_at: new Date().toISOString() } as unknown as never)
         .eq('id', paymentId);
@@ -399,7 +407,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
     // Overpayment (a tip) still settles — surface it, don't swallow it.
     const status = nextPaid >= Number(p.amount) ? 'paid' : 'partial';
 
-    const { error } = await admin
+    const { error } = await db
       .from('booking_payments')
       .update({ amount_paid: nextPaid, status, confirmed_at: new Date().toISOString() } as unknown as never)
       .eq('id', paymentId);
