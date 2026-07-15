@@ -95,6 +95,52 @@ function withDeadline<T>(p: PromiseLike<T>, label: string, ms = DEADLINE_MS): Pr
 
 const errMsg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
+/**
+ * GET /api/stripe/connect — self-check, openable straight in a browser.
+ *
+ * Exists because "Could not start Stripe onboarding." is the CLIENT's fallback
+ * string: it appears whenever the response body isn't JSON, which is equally
+ * consistent with "the fix isn't deployed yet" and "the function was killed
+ * before it could answer". Those two are indistinguishable from the UI, and
+ * guessing between them has already cost hours.
+ *
+ * So: a GET that needs no auth, no request body, and no button — just report
+ * what the server can see about itself.
+ *   • it answering AT ALL proves this file is live (v1 had no GET → 405)
+ *   • `version` proves WHICH build is live
+ *   • the env booleans prove whether the runtime can see the keys, which a
+ *     green build says nothing about
+ *   • `stripeInit` runs the exact call that would throw first in `start`
+ *
+ * Leaks nothing: booleans and lengths only, never a key or a fragment of one.
+ */
+export async function GET() {
+  const out: Record<string, unknown> = {
+    version: 'connect-v2-deadline',
+    node: process.version,
+    hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
+    stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
+    stripeKeyLooksTest: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test'),
+    stripeKeyLength: (process.env.STRIPE_SECRET_KEY || '').length,
+    hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || null,
+  };
+  try {
+    getStripe();
+    out.stripeInit = 'ok';
+  } catch (e) {
+    out.stripeInit = errMsg(e, 'threw');
+  }
+  try {
+    createAdminClient();
+    out.adminInit = 'ok';
+  } catch (e) {
+    out.adminInit = errMsg(e, 'threw');
+  }
+  return NextResponse.json(out);
+}
+
 export async function POST(req: Request) {
   // EVERYTHING is inside this try. Nothing in this handler is permitted to
   // reach the platform's HTML error page.
