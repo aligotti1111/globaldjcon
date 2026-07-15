@@ -183,6 +183,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             onChange={setBookingSettings}
             autosaveStatus={autosaveStatus}
             djSlug={djSlug}
+            userId={initialProfile.id}
             onDirtyChange={setHasDirtyClubRates}
             masterSaveTrigger={masterSaveTrigger}
             onActivationIncompleteChange={setClubBookingActivationIncomplete}
