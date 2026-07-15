@@ -294,6 +294,35 @@ export async function GET(req: Request) {
           error: error?.message ?? null,
         });
       }
+      // ── whoami — WHICH Stripe account does this key belong to? ────────
+      //
+      // Stripe SANDBOXES are separate accounts with their own keys, and the
+      // dashboard makes them look like plain test mode: same UI, a small
+      // "you're testing in a sandbox" banner, and an acct_ id buried in the
+      // URL. Enabling Connect in a sandbox does nothing for a key issued by
+      // the main account's test mode, and vice versa — but the dashboard will
+      // happily show Connect as set up either way.
+      //
+      // retrieve() with no argument returns the account the KEY belongs to.
+      // Compare that id against the acct_ in the dashboard URL: if they
+      // differ, Connect was enabled somewhere the site never talks to.
+      if (run === 'whoami') {
+        const stripe = getStripe();
+        const t0 = Date.now();
+        const acct = await withDeadline(stripe.accounts.retrieve(), 'Stripe whoami');
+        return NextResponse.json({
+          step: 'whoami', ms: Date.now() - t0,
+          accountId: acct.id,
+          email: acct.email ?? null,
+          country: acct.country ?? null,
+          chargesEnabled: !!acct.charges_enabled,
+          detailsSubmitted: !!acct.details_submitted,
+          // The tell: if Connect isn't signed up for on THIS account, this is
+          // usually empty or missing entirely.
+          capabilities: acct.capabilities ?? null,
+          type: acct.type ?? null,
+        });
+      }
       if (run === 'ping') {
         const stripe = getStripe();
         const t0 = Date.now();
@@ -374,7 +403,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ step: 'link', ms: Date.now() - t0, accountId, created, url: link.url });
       }
 
-      return NextResponse.json({ error: `Unknown run=${run}. Try auth, db, ping, acct, save, link, start.` }, { status: 400 });
+      return NextResponse.json({ error: `Unknown run=${run}. Try whoami, auth, db, ping, acct, save, link, start.` }, { status: 400 });
     } catch (e) {
       return NextResponse.json({ step: run, error: errMsg(e, 'threw'), name: (e as Error)?.name ?? null }, { status: 500 });
     }
@@ -389,7 +418,7 @@ export async function GET(req: Request) {
   }
 
   const out: Record<string, unknown> = {
-    version: 'connect-v6-no502',
+    version: 'connect-v7-whoami',
     node: process.version,
     hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
     stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
