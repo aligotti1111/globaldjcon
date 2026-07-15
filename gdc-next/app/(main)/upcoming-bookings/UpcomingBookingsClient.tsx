@@ -1010,37 +1010,39 @@ function BookingRow({
                 <span
                   style={{
                     position: 'relative', display: 'inline-flex', alignItems: 'center',
-                    justifyContent: 'center', width: 30, height: 30, borderRadius: '50%',
-                    color: c, border: `1.5px solid ${c}`,
-                    background: st.done ? 'rgba(0,224,164,.1)' : 'transparent', flexShrink: 0,
+                    justifyContent: 'center', width: 28, height: 28, flexShrink: 0,
+                    fontSize: 21, lineHeight: 1,
+                    // The emoji renders in its OWN colours — no ring, no tint.
+                    // A step not reached yet is drained of colour and dimmed, so
+                    // progress is legible at a glance without reading a label.
+                    // Emoji carry their own colour, so an unreached step gets
+                    // drained and dimmed. The contract SVG already draws itself
+                    // in `c` (grey until reached) — greying it AGAIN at 40% would
+                    // wash it out to nothing, so it's exempt.
+                    filter: st.done || st.icon === 'doc' ? 'none' : 'grayscale(1)',
+                    opacity: st.done || st.icon === 'doc' ? 1 : 0.4,
                   }}
                 >
-                  {st.icon === 'check' ? (
-                    // Booked — an open book, FILLED. The tick moved to the
-                    // badge: it means "done", and every step can be done, so
-                    // using it as Accepted's own icon made a stage read as a
-                    // status. Filled, not outlined: at 15px an outlined book
-                    // collapses into a rounded square — which is exactly what
-                    // it did on screen. A solid shape survives the size.
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.25 5.4A5.6 5.6 0 0 0 7.4 3.9H3.2a.7.7 0 0 0-.7.7v12.1a.7.7 0 0 0 .7.7h4.3a4 4 0 0 1 3.75 2.1z" /><path d="M12.75 5.4a5.6 5.6 0 0 1 3.85-1.5h4.2a.7.7 0 0 1 .7.7v12.1a.7.7 0 0 1-.7.7h-4.3a4 4 0 0 0-3.75 2.1z" /></svg>
-                  ) : st.icon === 'money' ? (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                  ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="14" y2="13" /><line x1="8" y1="17" x2="12" y2="17" /></svg>
-                  )}
-                  {/* The completion badge. Sits OVER the icon so the icon still
-                      says which stage it is — colour alone can't survive a
-                      glance, and a red/gray ring is easy to misread as done. */}
+                  {/* Booked and Deposit are the emoji, in their own colours.
+                      Contract stays a drawn icon: 📄 is a blank sheet — it
+                      reads as "page", not "agreement". The ruled lines are what
+                      make it a document you sign. Deliberately mixed. */}
+                  {st.icon === 'doc' ? (
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="14" y2="13" /><line x1="8" y1="17" x2="12" y2="17" /></svg>
+                  ) : st.icon === 'check' ? '\u{1F4D6}' : '\u{1F4B5}'}
+                  {/* Completion badge — the only green on the icon, and it only
+                      ever means done. Over the corner, so the emoji still says
+                      which stage it is. */}
                   {st.done && (
                     <span
                       style={{
-                        position: 'absolute', right: -3, bottom: -3, width: 14, height: 14,
+                        position: 'absolute', right: -2, bottom: -2, width: 13, height: 13,
                         borderRadius: '50%', background: '#00e0a4',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        border: '2px solid var(--bg-card,#14141f)',
+                        border: '2px solid var(--card)',
                       }}
                     >
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
                 </span>
