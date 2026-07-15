@@ -23,13 +23,21 @@
 //              Jan 2026 and stops working entirely Jan 2027.
 //   Zelle    → NO LINK EXISTS, at all. Bank-app only. Copy-only, always.
 //   Cash/check/other → instructions only.
+//   Card     → NO STATIC LINK EITHER, but for the opposite reason: a Stripe
+//              Checkout session is minted per-payment, server-side
+//              (/api/payments { action: 'checkout' }). Card is also the ONLY
+//              rail with no handle — its availability comes from
+//              users.stripe_connect_ready (Stripe Connect onboarding), never
+//              from a payment_methods row. This module stays pure: it knows
+//              card EXISTS and that it can't be linked; the Stripe SDK lives
+//              entirely behind the API routes.
 //
 // The prefilled amount is a SUGGESTION on every rail — the client can edit it
 // before sending. That's fine: the DJ confirms what actually arrived, and
 // amount_paid (not amount) is what settles the ledger.
 
 export type PaymentMethodType =
-  | 'zelle' | 'venmo' | 'cashapp' | 'paypal' | 'cash' | 'check' | 'other';
+  | 'card' | 'zelle' | 'venmo' | 'cashapp' | 'paypal' | 'cash' | 'check' | 'other';
 
 export interface PaymentMethod {
   id: string;
@@ -53,6 +61,16 @@ export interface TypeConfig {
 }
 
 export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
+  card: {
+    label: 'Card',
+    // Deliberately no handle: cards aren't a payment_methods row. The DJ
+    // enables them by completing Stripe Connect onboarding, and availability
+    // is read from users.stripe_connect_ready.
+    handleLabel: '',
+    placeholder: '',
+    hint: 'Debit or credit card via Stripe. Costs you 2.9% + 30¢ per charge (the client pays face value). Requires Stripe onboarding — they\'ll ask for your SSN and bank details — and your FIRST payout takes 7–14 days (about 2 days after that). The only rail that works identically on desktop and mobile, and the only one that confirms itself.',
+    validate: () => null,
+  },
   zelle: {
     label: 'Zelle',
     handleLabel: 'Email or phone',
@@ -126,6 +144,9 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   },
 };
 
+// Display/dropdown order for the MANUAL rails. 'card' is deliberately absent:
+// it isn't something a DJ adds as a row in settings (no handle to type), and
+// the host-facing card renders it separately, always first.
 export const TYPE_ORDER: PaymentMethodType[] =
   ['venmo', 'cashapp', 'paypal', 'zelle', 'cash', 'check', 'other'];
 
@@ -141,6 +162,7 @@ export function cleanHandle(m: Pick<PaymentMethod, 'type' | 'handle'>): string {
 export function displayHandle(m: Pick<PaymentMethod, 'type' | 'handle'>): string {
   const t = cleanHandle(m);
   switch (m.type) {
+    case 'card':    return 'Pay by card';
     case 'venmo':   return `@${t}`;
     case 'cashapp': return `$${t}`;
     case 'paypal':  return t.replace(/^https?:\/\//i, '');
@@ -161,6 +183,11 @@ function linkAmount(amount: number): string {
  * Callers MUST handle null by showing the handle to copy instead.
  */
 export function buildPayLink(m: PaymentMethod, amount: number, reference: string): string | null {
+  // Card NEVER has a static URL: every payment gets a fresh Stripe Checkout
+  // session created server-side (/api/payments { action: 'checkout' }), so
+  // there is nothing to build here. Callers render a button that POSTs and
+  // redirects to the returned session URL — not a link.
+  if (m.type === 'card') return null;
   const h = cleanHandle(m);
   if (!h && m.type !== 'cash') return null;
   const amt = linkAmount(amount);
@@ -183,6 +210,8 @@ export function buildPayLink(m: PaymentMethod, amount: number, reference: string
 
 /** Can this method be rendered as a real "tap to pay" button right now? */
 export function isLinkable(m: PaymentMethod): boolean {
+  // No static link exists for card — checkout is a server round-trip.
+  if (m.type === 'card') return false;
   if (m.type === 'venmo' || m.type === 'cashapp') return !!cleanHandle(m);
   if (m.type === 'paypal') return /paypal\.me\//i.test(m.handle || '');
   return false;
@@ -223,6 +252,9 @@ export function referenceCode(bookingId: string, kind: string): string {
 export function usableMethods(methods: PaymentMethod[] | null | undefined): PaymentMethod[] {
   const list = Array.isArray(methods) ? methods : [];
   return list
-    .filter((m) => m && m.enabled && !METHOD_TYPES[m.type]?.validate(m.handle || ''))
+    // 'card' can never be a manual row — if one sneaks into the JSON it must
+    // not render as a handle-less rail. Its availability is decided by
+    // users.stripe_connect_ready, upstream of this module.
+    .filter((m) => m && m.type !== 'card' && m.enabled && !METHOD_TYPES[m.type]?.validate(m.handle || ''))
     .sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
 }
