@@ -9,8 +9,20 @@ export const CONTRACT_DATA_FIELDS = [
   'cocktail_hour', 'tax', 'grand_total', 'agreement_date',
 ] as const;
 
-// Shared clauses used by both contract types.
-const SHARED_CLAUSES = `PAYMENT
+// The OVERTIME clause differs by DJ type. Mobile DJs set a per-hour overtime
+// rate on each package, so their contract can name it (and the booking's
+// snapshotted overtime_rate fills the "Overtime rate:" line above). Club/bar
+// DJs have no overtime rate field anywhere in the product, so pointing at
+// "the DJ's overtime rate" would reference a number that doesn't exist —
+// theirs is agreed on the night instead.
+const OVERTIME_RATED = `OVERTIME
+Performance beyond the scheduled end time may be arranged on the day at the DJ's overtime rate, subject to venue approval.`;
+
+const OVERTIME_AGREED = `OVERTIME
+Performance beyond the scheduled end time may be arranged on the night by mutual agreement between the DJ and the Client, subject to venue approval.`;
+
+// Shared clauses used by all contract types; the overtime clause is injected.
+const sharedClauses = (overtime: string) => `PAYMENT
 {{payment_terms}}
 
 CANCELLATION
@@ -19,8 +31,7 @@ The deposit, if any, is non-refundable, as it reserves the date exclusively for 
 CLIENT RESPONSIBILITIES
 The Client will provide access to the venue for setup, along with adequate power and space for the DJ's equipment. The Client is responsible for communicating any venue rules, sound limits, or curfews in advance.
 
-OVERTIME
-Performance beyond the scheduled end time may be arranged on the day at the DJ's overtime rate, subject to venue approval.
+${overtime}
 
 EQUIPMENT
 All equipment provided remains the property of the DJ. The Client is responsible for damage caused by guests to the DJ's equipment.
@@ -53,7 +64,7 @@ Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
 Total: {{grand_total}}
 
-${SHARED_CLAUSES}`;
+${sharedClauses(OVERTIME_RATED)}`;
 
 // Club/Bar DJ contract — venue bookings (sets, residencies, etc.).
 export const CLUB_CONTRACT_TEXT = `DJ SERVICES AGREEMENT
@@ -73,7 +84,7 @@ Deposit: {{deposit}}
 Tax: {{tax}}
 Total: {{grand_total}}
 
-${SHARED_CLAUSES}`;
+${sharedClauses(OVERTIME_AGREED)}`;
 
 // Wedding DJ contract — mobile DJs only. Wedding-specific wording + fields, on
 // top of the shared clauses.
@@ -105,7 +116,7 @@ The Client may provide a must-play list, a do-not-play list, and selections for 
 TIMELINE
 The Client will provide the wedding-day timeline and the names to be announced in advance. The DJ will coordinate with the venue, photographer, and planner as needed to keep the reception running on schedule.
 
-${SHARED_CLAUSES}`;
+${sharedClauses(OVERTIME_RATED)}`;
 
 // Pick the right default contract text for a DJ's type.
 export function defaultContractText(djType?: string | null): string {
