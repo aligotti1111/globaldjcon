@@ -49,6 +49,7 @@ Venue: {{venue_name}}
 Address: {{event_address}}
 Price: {{price}}
 Package: {{package}}
+Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
 Total: {{grand_total}}
 
