@@ -10,7 +10,7 @@
 //   2. Rates           — manual save. Global rate type (flat/hourly/offers)
 //                        + currency + per-equipment pricing.
 //   3. Availability    — autosaves on change. 3-month calendar with the
-//                        same look as the embed; click a cell to edit.
+//                        click a cell to edit.
 //
 // Master Save All is rendered by the parent (UpdateDjProfileClient) at
 // the bottom of the page; this tab reports its dirty state up via
@@ -21,9 +21,7 @@ import styles from './updateDjProfile.module.css';
 import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
-import EmbedCodeSection from './EmbedCodeSection';
 import PaymentMethodsSection from './PaymentMethodsSection';
-import ProfileQrCode from './ProfileQrCode';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -48,10 +46,6 @@ interface Props {
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
   autosaveStatus: 'idle' | 'saving' | 'saved' | 'error';
-  // DJ's URL slug — needed for the EmbedCodeSection so the iframe URL
-  // points at this profile. Read live from general.slug in the parent
-  // so the embed snippet updates as the user edits the slug.
-  djSlug: string;
   // Auth user ID — PaymentMethodsSection loads/saves users.payment_methods
   // directly (self-contained, outside the master save).
   userId: string;
@@ -71,7 +65,7 @@ interface Props {
 }
 
 export default function ClubBookingTab({
-  bookingSettings, onChange, autosaveStatus, djSlug, userId, onDirtyChange, masterSaveTrigger,
+  bookingSettings, onChange, autosaveStatus, userId, onDirtyChange, masterSaveTrigger,
   onActivationIncompleteChange,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
@@ -773,15 +767,10 @@ export default function ClubBookingTab({
         onChange={(p) => patch(p)}
       />
 
-      {/* ── Embed Code ──────────────────────────────────────── */}
-      <EmbedCodeSection slug={djSlug} />
-
       {/* Manual payment rails — deposits + invoices. Self-contained; saves
           users.payment_methods directly, not via the master save. */}
       <PaymentMethodsSection userId={userId} />
 
-      {/* ── Profile QR Code (premium) ───────────────────────── */}
-      <ProfileQrCode slug={djSlug} />
         </>
       )}
     </div>
