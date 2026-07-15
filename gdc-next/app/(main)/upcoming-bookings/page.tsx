@@ -163,25 +163,17 @@ export default async function UpcomingBookingsPage() {
     );
   }
 
-  // Resolve each priced booking's overtime rate from the DJ's package
-  // definition when it wasn't snapshotted onto the row (older bookings).
-  // A value stored on the row always wins; otherwise fall back to the live
-  // package (category-specific, then the general package at the same index).
+  // NOTE: we deliberately do NOT hydrate overtime_rate from the DJ's current
+  // packages. That fallback used to fire whenever the row's overtime_rate was
+  // null — but null is ambiguous: it means both "not recorded" AND "this
+  // booking genuinely had no overtime rate" (the insert stores null on purpose
+  // for quote bookings). So adding an overtime rate to a package retroactively
+  // injected that term into already-accepted bookings — and into their
+  // contracts, which read overtime_rate. A booking shows only the terms it was
+  // made with; "not listed" is the truthful answer.
+  // mobPackages is still needed below: the client uses it for the manual
+  // add-booking form's package picker.
   const mobPackages = settings?.mob_packages;
-  if (mobPackages) {
-    bookingRows = bookingRows.map((b) => {
-      if (b.overtime_rate != null || b.package_index == null) return b;
-      const cat = b.package_category || '';
-      const idx = b.package_index;
-      const ot =
-        mobPackages[cat]?.[idx]?.overtime ??
-        mobPackages['general']?.[idx]?.overtime ??
-        null;
-      const otNum = ot != null ? Number(ot) : NaN;
-      return otNum > 0 ? { ...b, overtime_rate: otNum } : b;
-    });
-  }
-
   return (
     <UpcomingBookingsClient
       userId={user.id}
