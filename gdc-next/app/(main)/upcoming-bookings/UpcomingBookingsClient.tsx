@@ -822,19 +822,28 @@ function BookingRow({
   // must not make last month's bookings sprout a step they never had. Same
   // freeze rule as requires_contract and tax_pct.
   //
-  // Deliberately NOT overridable. The contract step's dropdown works because
-  // "signed" is a yes/no; confirming a payment needs an AMOUNT (the rails cap
-  // below a typical deposit — unverified Venmo stops at $299.99/week — so
-  // partials are normal, not an edge case). A yes/no dropdown would force the
-  // DJ to lie. The details panel below owns confirming.
+  // Overridable, like the contract step — for money handled outside the app.
+  //
+  // The override marks the STAGE done; it never fabricates a payment row or an
+  // amount. That distinction matters: the rails cap below a typical deposit
+  // (unverified Venmo stops at $299.99/week), so partials are routine, and the
+  // ledger below must keep showing what actually arrived — $299.99/$600 — even
+  // while the strip says the stage is handled. Confirming an amount still
+  // belongs to the details panel; this is only "stop asking me about it".
   const bookingHasDeposit =
     booking.deposit_pct != null || booking.deposit_amount != null;
-  if (payments.length > 0 || bookingHasDeposit) {
+  if (payments.length > 0 || bookingHasDeposit || overrides.deposit) {
     const settled = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
     // payments.every() is true for an empty array — a deposit that exists on
     // the booking but has never been requested would read as PAID. Require a
     // row before anything can be "done".
-    const allDone = payments.length > 0 && payments.every(settled);
+    const reallySettled = payments.length > 0 && payments.every(settled);
+    // ...or the DJ marked it done by hand, for money that never went through
+    // the app: cash on the night, a bank transfer, a client who paid before
+    // any of this existed. The override says "this stage is handled" — it does
+    // NOT invent a payment row or an amount, so the ledger stays honest about
+    // what it actually saw.
+    const allDone = reallySettled || !!overrides.deposit;
     const anyPartial = payments.some((p) => p.status === 'partial');
     const anyClaimed = payments.some((p) => p.status === 'pending_confirmation');
     const atEvent = payments.some((p) => p.client_intent === 'pay_at_event' && !settled(p));
@@ -847,11 +856,18 @@ function BookingRow({
       : payments.some((p) => p.kind === 'balance') ? 'Invoice'
       : 'Deposit';
     steps.push({
-      key: 'payment',
+      // 'deposit', not 'payment': /api/bookings/status-override whitelists
+      // ['contract','deposit','song_list'] and rejects anything else, so the
+      // step key has to be the one the server already trusts.
+      key: 'deposit',
       label: pLabel,
       state: allDone ? 'done' : 'todo',
       icon: 'money',
-      overridable: false,
+      // Same rule as the contract step: you can't un-do something real. If the
+      // rows genuinely settled, the dropdown is gone — otherwise a DJ could
+      // "mark not complete" on money that actually arrived and the strip would
+      // contradict the ledger sitting right beneath it.
+      overridable: !reallySettled,
       done: allDone,
     });
   }
