@@ -707,6 +707,12 @@ function FlyerSlot({
   );
 }
 
+// Pipeline colours. Named because they carry meaning, and the meaning has to
+// stay identical in three places (icon, label, connector).
+const NEON = '#00e0a4';   // done
+const AMBER = '#f5a623';  // needs the DJ to do something
+const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
+
 function BookingRow({
   booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit,
 }: {
@@ -737,6 +743,17 @@ function BookingRow({
   // viewport position to render it at (fixed, so the card's overflow can't clip it).
   const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  // "Review & send contract" lives on the pipeline (BookingRow) but the portal
+  // it opens is owned by BookingDetails, which only exists while expanded.
+  // Rather than duplicate ContractPortal up here — two mounts of the same modal
+  // is how you get two sources of truth — expand the row and hand Details a
+  // one-shot request. It opens the portal and immediately clears the flag, so
+  // closing the portal doesn't bounce straight back open.
+  const [autoOpenContract, setAutoOpenContract] = useState(false);
+  function openContract() {
+    setExpanded(true);
+    setAutoOpenContract(true);
+  }
   async function toggleStep(key: string, next: boolean) {
     setMenuOpenKey(null);
     setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
@@ -789,8 +806,16 @@ function BookingRow({
   // off-platform; never trap them behind a step the system can't observe).
   // Gates the Request Deposit action in the details panel below.
   const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
-  const steps: { key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money'; overridable: boolean; done: boolean }[] = [
-    { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true },
+  // `color` is per-step, not derived from state alone: Contract goes YELLOW
+  // when it's waiting on someone (an action the DJ can take), while Deposit
+  // stays grey until it lands. Same state, different urgency — one shared
+  // stepColor() couldn't say that.
+  // `canSend` puts "Review & send contract" in the dropdown.
+  const steps: {
+    key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money';
+    overridable: boolean; done: boolean; color: string; canSend?: boolean;
+  }[] = [
+    { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true, color: NEON },
   ];
   if (!booking.is_manual && (needsContract || !!cstatus || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
@@ -800,15 +825,31 @@ function BookingRow({
       : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
-    // The label names the STAGE, never the state. The green check is what says
-    // complete, so a label that also mutates ('Sign' -> 'Awaiting' -> 'Signed')
-    // is a second, competing status readout — and the two disagree at a glance:
-    // 'Signed' with no check, or 'Sign' sitting next to a check, both look like
-    // bugs. One job each: emoji = which stage, label = its name, badge = done.
-    // Colour still carries trouble (void/cancelled goes red).
-    const cLabel = 'Contract';
-    // Overridable only when it isn't genuinely signed (can't un-sign a real one).
-    steps.push({ key: 'contract', label: cLabel, state: cState, icon: 'doc', overridable: !trulySigned, done: isDone });
+    // Contract is the one step the DJ can ACT on, so its label is a verb until
+    // it's done. Not a status readout competing with the check — an instruction
+    // that disappears once there's nothing left to do:
+    //
+    //   nothing sent yet / cancelled -> "Send contract"    (yellow, actionable)
+    //   sent, waiting on a signature -> "Contract pending" (yellow, in flight)
+    //   signed or marked complete    -> "Contract"         (green + check)
+    //
+    // Cancelled deliberately reads "Send contract" rather than a red dead-end:
+    // the next move is to send a new one, which is what the panel below says.
+    const awaiting = cstatus === 'awaiting_client' || cstatus === 'awaiting_dj';
+    const cLabel = isDone ? 'Contract' : awaiting ? 'Contract pending' : 'Send contract';
+    steps.push({
+      key: 'contract',
+      label: cLabel,
+      state: cState,
+      icon: 'doc',
+      // Overridable only when it isn't genuinely signed (can't un-sign a real one).
+      overridable: !trulySigned,
+      done: isDone,
+      color: isDone ? NEON : AMBER,
+      // Offer "Review & send" until it's actually signed — including after a
+      // cancel, when sending a new one is the whole point.
+      canSend: !trulySigned && !archive,
+    });
   }
   // Payment step — shown when a deposit is part of THIS booking's pipeline,
   // greyed until it's settled. Two ways in:
@@ -866,12 +907,18 @@ function BookingRow({
       // contradict the ledger sitting right beneath it.
       overridable: !reallySettled,
       done: allDone,
+      // Grey, not amber: a deposit sitting unpaid isn't the DJ's action to
+      // take — they've asked, the client hasn't paid. Contract pending is
+      // yellow because the DJ can chase it; this is just waiting.
+      color: allDone ? NEON : MUTED,
     });
   }
-  // Grayed out until the step is complete, then it lights up neon. (Void/
-  // cancelled stays red since that's a problem state, not just "incomplete".)
+  // Each step now carries its own `color` (see the steps array) — the old
+  // stepColor() mapped state->colour globally, which couldn't express that a
+  // waiting Contract is amber (chase it) while a waiting Deposit is grey (just
+  // wait). Kept only for the void case.
   const stepColor = (s: StepState) =>
-    s === 'done' ? '#00e0a4' : s === 'void' ? '#ff9a9a' : 'rgba(255,255,255,.32)';
+    s === 'done' ? NEON : s === 'void' ? '#ff9a9a' : MUTED;
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
@@ -1044,7 +1091,7 @@ function BookingRow({
                     <span
                       style={{
                         position: 'absolute', right: -2, bottom: -2, width: 13, height: 13,
-                        borderRadius: '50%', background: '#00e0a4',
+                        borderRadius: '50%', background: NEON,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         border: '2px solid var(--card)',
                       }}
@@ -1076,7 +1123,7 @@ function BookingRow({
                     style={{
                       width: 18, height: 1.5, borderRadius: 1, margin: '0 6px',
                       marginBottom: 14, flexShrink: 0,
-                      background: st.done ? '#00e0a4' : 'rgba(255,255,255,.14)',
+                      background: st.done ? NEON : 'rgba(255,255,255,.14)',
                     }}
                   />
                 )}
@@ -1102,10 +1149,27 @@ function BookingRow({
                     <>
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
                       <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                        {/* The primary action, when there is one: go do the
+                            thing. "Mark complete" is the escape hatch for work
+                            handled outside the app — it shouldn't be the only
+                            offer on a step whose actual job is to send a
+                            contract. */}
+                        {st.canSend && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { setMenuOpenKey(null); openContract(); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                            >
+                              Review &amp; send contract
+                            </button>
+                            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => toggleStep(st.key, !st.done)}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : '#00e0a4', fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
                         >
                           {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
                         </button>
@@ -1130,6 +1194,8 @@ function BookingRow({
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
           archive={archive}
+          autoOpenContract={autoOpenContract}
+          onAutoOpenHandled={() => setAutoOpenContract(false)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
           canRequestDeposit={booking.is_manual || !needsContract || contractStepComplete}
@@ -1148,7 +1214,7 @@ function BookingRow({
 
 function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit,
+  payments, onPaymentsChange, canRequestDeposit, autoOpenContract, onAutoOpenHandled,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -1165,8 +1231,19 @@ function BookingDetails({
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
   canRequestDeposit: boolean;
+  // One-shot request from the pipeline's "Review & send contract" item. The
+  // portal lives here; the button that wants it lives a component up.
+  autoOpenContract?: boolean;
+  onAutoOpenHandled?: () => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
+  // Honour the pipeline's request once, then clear it — otherwise closing the
+  // portal would re-trigger on the next render while the flag was still true.
+  useEffect(() => {
+    if (!autoOpenContract) return;
+    setContractOpen(true);
+    onAutoOpenHandled?.();
+  }, [autoOpenContract, onAutoOpenHandled]);
   const [sendContractId, setSendContractId] = useState<string | null>(null);
   const [contractSent, setContractSent] = useState(false);
   const [contractCancelled, setContractCancelled] = useState(false);
