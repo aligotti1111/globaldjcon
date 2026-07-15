@@ -228,7 +228,86 @@ export async function GET(req: Request) {
   // It's authed, it's idempotent in practice — an existing stripe_connect_id
   // is reused — and it is worth exactly one deploy to stop guessing.
   const url = new URL(req.url);
-  if (url.searchParams.get('run') === 'start') {
+  const run = url.searchParams.get('run');
+
+  // ── BISECT ────────────────────────────────────────────────────────────
+  //
+  // TEMPORARY. Delete once cards work.
+  //
+  // Established so far: a bare GET returns 200 with stripeInit:"ok", while
+  // ?run=start dies as a Cloudflare 502 "Host Error" — origin returned an
+  // invalid response — over BOTH GET and POST. Identical route, identical
+  // module, identical everything except the work done. And the work is wrapped
+  // in try/catch on every branch, so a throw is impossible to miss. The only
+  // remaining explanation is that the PROCESS dies: a catch block can't run in
+  // a process that no longer exists.
+  //
+  // Three calls sit between the bare GET and start:
+  //   auth    → Supabase auth.getUser()      (network)
+  //   db      → users select                 (network)
+  //   ping    → stripe.accounts.list(1)      (network, READ-ONLY, no side effects)
+  //   acct    → stripe.accounts.create()     (network, creates the account)
+  //
+  // Each runs alone, in its own request, so whichever one 502s IS the culprit
+  // and the others still answer. `ping` is the interesting one: it's the
+  // cheapest possible Stripe API call, so if it dies while the bare GET lives,
+  // the problem is the Stripe SDK's network layer in this runtime and has
+  // nothing to do with Connect at all.
+  if (run && run !== 'start') {
+    try {
+      if (run === 'auth') {
+        const supabase = await createClient();
+        const t0 = Date.now();
+        const { data, error } = await withDeadline(supabase.auth.getUser(), 'Auth check');
+        return NextResponse.json({
+          step: 'auth', ms: Date.now() - t0,
+          userId: data?.user?.id ?? null, email: data?.user?.email ?? null,
+          error: error?.message ?? null,
+        });
+      }
+      if (run === 'db') {
+        const supabase = await createClient();
+        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
+        if (!user) return NextResponse.json({ step: 'db', error: 'Not signed in' }, { status: 401 });
+        const admin = createAdminClient();
+        const t0 = Date.now();
+        const { data, error } = await withDeadline(
+          admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
+          'Database read',
+        );
+        return NextResponse.json({
+          step: 'db', ms: Date.now() - t0,
+          row: (data as unknown as ConnectRow | null) ?? null,
+          error: error?.message ?? null,
+        });
+      }
+      if (run === 'ping') {
+        const stripe = getStripe();
+        const t0 = Date.now();
+        const list = await withDeadline(stripe.accounts.list({ limit: 1 }), 'Stripe ping');
+        return NextResponse.json({ step: 'ping', ms: Date.now() - t0, count: list.data.length });
+      }
+      if (run === 'acct') {
+        const supabase = await createClient();
+        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
+        if (!user) return NextResponse.json({ step: 'acct', error: 'Not signed in' }, { status: 401 });
+        const stripe = getStripe();
+        const t0 = Date.now();
+        const account = await withDeadline(
+          stripe.accounts.create({ type: 'standard', email: user.email || undefined, metadata: { user_id: user.id } }),
+          'Stripe account create',
+        );
+        // Deliberately NOT saved — this is a probe. An orphan test account in
+        // test mode is cheaper than another round of guessing.
+        return NextResponse.json({ step: 'acct', ms: Date.now() - t0, id: account.id });
+      }
+      return NextResponse.json({ error: `Unknown run=${run}. Try auth, db, ping, acct, start.` }, { status: 400 });
+    } catch (e) {
+      return NextResponse.json({ step: run, error: errMsg(e, 'threw'), name: (e as Error)?.name ?? null }, { status: 500 });
+    }
+  }
+
+  if (run === 'start') {
     try {
       return await runStart(req);
     } catch (e) {
@@ -237,7 +316,7 @@ export async function GET(req: Request) {
   }
 
   const out: Record<string, unknown> = {
-    version: 'connect-v3-getstart',
+    version: 'connect-v4-bisect',
     node: process.version,
     hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
     stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
