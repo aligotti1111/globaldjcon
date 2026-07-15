@@ -1,8 +1,9 @@
 // POST /api/contracts/cancel
 //
 // Cancels a contract that was already sent for a booking: voids (archives) the
-// DocuSeal submission so the client's copy is no longer signable, and clears
-// the booking's contract status so the DJ can review and send a new one.
+// DocuSeal submission so the client's copy is no longer signable, and marks
+// the booking's contract status 'cancelled' so the DJ can review and send a
+// new one.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -53,12 +54,30 @@ export async function POST(req: Request) {
     } catch { /* best-effort */ }
   }
 
-  // Clear the booking's contract state so "Review & Send Contract" comes back.
+  // Reset the booking's contract state so "Review & Send Contract" comes back.
+  //
+  // 'cancelled', NOT null. Nulling it erased the fact a contract ever existed,
+  // and the booking card's pipeline decides whether to show the contract stage
+  // with `requires_contract || contract_status`. A booking that never REQUIRED
+  // a contract but was sent one anyway — which the details panel allows, it has
+  // no requires_contract gate — had the stage only because contract_status was
+  // set. Cancelling nulled it, so the whole contract icon vanished from the
+  // pipeline, taking "Send contract" with it at the exact moment the DJ needs
+  // to send the replacement. The panel would say "review and send a new one"
+  // while the pipeline had just deleted the way to do it.
+  //
+  // Nothing gates sending on this being null: every other read checks only for
+  // 'awaiting_client' or 'signed'. 'cancelled' falls through both, so the panel
+  // still offers Review & Send, and the pipeline shows the stage in amber —
+  // which is what a cancel means. Back to un-sent, not never-existed.
+  //
+  // submission_id and sent_at still clear: those describe the DocuSeal document
+  // we just voided, and it's genuinely gone.
   try {
     await admin
       .from('bookings')
       .update({
-        contract_status: null,
+        contract_status: 'cancelled',
         contract_submission_id: null,
         contract_sent_at: null,
       } as unknown as never)
