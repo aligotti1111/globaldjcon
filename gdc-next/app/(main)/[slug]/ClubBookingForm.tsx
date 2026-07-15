@@ -307,7 +307,12 @@ export default function ClubBookingForm({
   const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
   const taxBase = discountedTotal != null ? discountedTotal : displayTotal;
-  const taxAmount = (taxPct > 0 && taxBase != null) ? Math.round((taxBase * taxPct) / 100) : 0;
+  // Cents, not whole dollars — must match the server (which stores this) and
+  // the mobile form. Math.round() here made $1,320 @ 4.5% preview as $59
+  // while the DB recorded $59.40.
+  const taxAmount = (taxPct > 0 && taxBase != null)
+    ? Number(((taxBase * taxPct) / 100).toFixed(2))
+    : 0;
   const grandTotal = taxBase != null ? taxBase + taxAmount : null;
 
   // Deposit % is taken on the tax-inclusive total.
@@ -955,15 +960,15 @@ export default function ClubBookingForm({
                     {taxPct > 0 && (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                          <span>Subtotal</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{discountedTotal.toLocaleString()}</span>
+                          <span>Subtotal</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                          <span>Tax ({taxPct}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                          <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
-                      <span>Total</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                      <span>Total</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     {clubDepositPct > 0 && (
                       <>

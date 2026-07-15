@@ -1126,7 +1126,7 @@ export default function MobileBookingForm({
                       <span>Subtotal</span><span>${discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Tax ({taxPct}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 )}
