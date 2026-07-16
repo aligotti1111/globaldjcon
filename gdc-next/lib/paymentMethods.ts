@@ -155,10 +155,13 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   },
   check: {
     label: 'Check',
-    handleLabel: 'Payable to / mailing address',
-    placeholder: 'DJ Nova LLC — 123 Main St, Staten Island, NY 10307',
-    hint: 'Slowest rail. Client mails it; you confirm when it clears.',
-    validate: (v) => (v.trim() ? null : 'Tell the client who to make it out to and where to send it.'),
+    handleLabel: 'Payable to',
+    placeholder: 'DJ Nova LLC',
+    contactLabel: 'Mailing address',
+    contactPlaceholder: '123 Main St, Staten Island, NY 10307',
+    hint: 'Slowest rail — it has to arrive AND clear, so don\'t use it for a deposit holding a date next week. The client is told to write your event date and venue on the memo line, which is the only way you\'ll know which booking an envelope belongs to.',
+    validate: (v) => (v.trim() ? null : 'Who should the check be made out to?'),
+    validateContact: (v) => (v.trim() ? null : 'Where should they mail it?'),
   },
   other: {
     label: 'Other',
@@ -267,13 +270,42 @@ export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
   return `Call ${phone} and ask for ${who}.`;
 }
 
+/**
+ * What to write on a check's memo line.
+ *
+ * A check arrives days later in an envelope with nothing on it but an amount.
+ * The reference code (GDC-1A2B-D) means nothing to the client and they'll
+ * mistype it; the event date and venue are things they already know and can't
+ * get wrong. That's what makes an envelope matchable to a booking.
+ *
+ * Falls back to the reference when we don't have the booking to hand.
+ */
+export function checkMemo(eventDate?: string | null, venueName?: string | null, reference?: string): string {
+  const parts: string[] = [];
+  if (eventDate) {
+    const d = new Date(eventDate);
+    if (!Number.isNaN(d.getTime())) {
+      // timeZone:'UTC' is load-bearing. event_date is a plain 'YYYY-MM-DD',
+      // which Date parses as UTC midnight — rendered in any US timezone that's
+      // the DAY BEFORE. A check memo reading "Jul 23" for a July 24 wedding is
+      // worse than no memo: it matches the wrong booking, or none.
+      parts.push(d.toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+      }));
+    }
+  }
+  if (venueName) parts.push(venueName);
+  if (parts.length > 0) return parts.join(' \u00b7 ');
+  return reference || '';
+}
+
 /** One-line instruction for a rail we cannot link. */
 export function copyInstruction(m: PaymentMethod): string {
   switch (m.type) {
     case 'zelle':  return 'Open your bank app, choose Zelle, and send to:';
     case 'paypal': return 'Open PayPal, choose Send, and send to:';
     case 'cash':   return 'Pay in person. Call to arrange:';
-    case 'check':  return 'Make the check out to:';
+    case 'check':  return 'Make the check payable to:';
     default:       return 'Send payment to:';
   }
 }
