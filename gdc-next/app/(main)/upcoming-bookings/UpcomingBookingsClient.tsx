@@ -41,6 +41,7 @@ import type { UpcomingBooking, BookingPayment } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
+import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
 import MonthlyStory from './MonthlyStory';
 import { useConfirm } from '@/components/ConfirmModal';
 
@@ -713,6 +714,19 @@ function FlyerSlot({
 // the two components can't drift on the strings.
 type ContractAction = 'open' | 'download' | 'download-audit' | 'resend' | 'cancel' | 'copy-link';
 
+// Module-level money formatter. BookingDetails and PaymentsBlock each have
+// their own local money() — BookingRow had none, so the deposit modal below
+// couldn't use either without a ReferenceError at open time.
+function fmtMoney(n: number, currency = 'USD'): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(n);
+  } catch {
+    return `$${n.toFixed(2)}`;
+  }
+}
+
 const NEON = '#00e0a4';   // done
 const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
@@ -760,6 +774,62 @@ function BookingRow({
   function runContract(a: ContractAction) {
     setExpanded(true);
     setContractAction(a);
+  }
+
+  // ── Deposit dropdown ──────────────────────────────────────────────────
+  // Both modals live here rather than in PaymentsBlock (two components down)
+  // because BookingRow already holds userId, payments and onPaymentsChange —
+  // everything needed to post the request and fold the new row into state.
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqAmount, setReqAmount] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
+  const [reqErr, setReqErr] = useState<string | null>(null);
+  const [methodsOpen, setMethodsOpen] = useState(false);
+
+  // The booking's OWN frozen deposit — never recomputed from today's settings.
+  const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
+  const depositRow = payments.find((p) => p.kind === 'deposit') || null;
+
+  function openRequest() {
+    setReqErr(null);
+    setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
+    setReqOpen(true);
+  }
+
+  async function submitRequest() {
+    const amount = Number(reqAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setReqErr('Enter an amount greater than zero.');
+      return;
+    }
+    setReqBusy(true);
+    setReqErr(null);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request',
+          bookingId: booking.id,
+          kind: 'deposit',
+          amount: Math.round(amount * 100) / 100,
+        }),
+      });
+      // .text() first: a non-JSON body (a platform error page) would otherwise
+      // become {} and surface as a shrug. Same lesson as the Stripe 502.
+      const raw = await res.text();
+      let json: { payment?: BookingPayment; error?: string } = {};
+      try { json = JSON.parse(raw); } catch { /* handled below */ }
+      if (!res.ok || !json.payment) {
+        throw new Error(json.error || `HTTP ${res.status} — ${raw.slice(0, 120) || 'no response'}`);
+      }
+      onPaymentsChange(booking.id, [...payments, json.payment]);
+      setReqOpen(false);
+    } catch (e) {
+      setReqErr(e instanceof Error ? e.message : 'Could not request the deposit.');
+    } finally {
+      setReqBusy(false);
+    }
   }
   async function toggleStep(key: string, next: boolean) {
     setMenuOpenKey(null);
@@ -822,6 +892,10 @@ function BookingRow({
   // off-platform; never trap them behind a step the system can't observe).
   // Gates the Request Deposit action in the details panel below.
   const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
+  // Defined once, used by BOTH the pipeline's Request-deposit item and the
+  // panel's Request Deposit button — they must never disagree about whether
+  // asking for money is allowed yet.
+  const canRequestDeposit = booking.is_manual || !needsContract || contractStepComplete;
   // `color` is per-step, not derived from state alone: Contract goes YELLOW
   // when it's waiting on someone (an action the DJ can take), while Deposit
   // stays grey until it lands. Same state, different urgency — one shared
@@ -978,6 +1052,20 @@ function BookingRow({
       // take — they've asked, the client hasn't paid. Contract pending is
       // yellow because the DJ can chase it; this is just waiting.
       color: allDone ? NEON : MUTED,
+      actions: archive
+        ? []
+        : [
+            // Only until it's been asked for. A second deposit request on the
+            // same booking is two rows for one payment, and the ledger would
+            // start double-counting what's owed.
+            ...(!depositRow && canRequestDeposit
+              ? [{ label: 'Request deposit', run: openRequest }]
+              : []),
+            // The rails the client will be offered. Reachable from the booking
+            // because that's where a DJ realises the client can't pay the way
+            // they've set up — not from Booking Settings three pages away.
+            { label: 'Payment options', run: () => setMethodsOpen(true) },
+          ],
     });
   }
   // The type-mismatch info is now shown only in the expanded details
@@ -1263,6 +1351,113 @@ function BookingRow({
           })}
         </div>
       </div>
+      {/* Request deposit — the amount, before it goes out, in something you can
+          read. It replaced a window.prompt(), which showed the number with no
+          currency, no context, and no way to see what it was a deposit ON. */}
+      {reqOpen && (
+        <div
+          onClick={() => !reqBusy && setReqOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 12, padding: '1.1rem 1.2rem', maxWidth: 420, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.6)',
+            }}
+          >
+            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.15rem' }}>
+              Request deposit
+            </div>
+            <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5 }}>
+              {booking.venue_name || booking.event_type || 'This booking'} — we&apos;ll email the
+              client their payment options.
+            </p>
+
+            <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+              Amount
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.5rem' }}>
+              <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>$</span>
+              <input
+                autoFocus
+                type="number"
+                min="0"
+                step="0.01"
+                value={reqAmount}
+                onChange={(e) => { setReqAmount(e.target.value); setReqErr(null); }}
+                style={{
+                  flex: 1, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                  borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                  fontFamily: "'Space Mono', monospace", fontSize: '.9rem',
+                }}
+              />
+            </div>
+
+            {suggestedDeposit != null && suggestedDeposit > 0 && (
+              <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>
+                This booking&apos;s agreed deposit: {fmtMoney(suggestedDeposit, booking.currency || 'USD')}
+                {booking.deposit_pct != null ? ` (${booking.deposit_pct}%)` : ''}
+              </p>
+            )}
+
+            {reqErr && (
+              <p style={{ margin: '0 0 .7rem', color: '#ff6b6b', fontSize: '.75rem', lineHeight: 1.5, wordBreak: 'break-word' }}>{reqErr}</p>
+            )}
+
+            <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={reqBusy}
+                onClick={() => setReqOpen(false)}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: reqBusy ? 'default' : 'pointer', fontSize: '.8rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={reqBusy}
+                onClick={() => void submitRequest()}
+                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, borderRadius: 6, padding: '.5rem 1.1rem', cursor: reqBusy ? 'wait' : 'pointer', fontSize: '.8rem', opacity: reqBusy ? .6 : 1 }}
+              >
+                {reqBusy ? 'Requesting…' : 'Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment options — the real editor, not a copy of it. Same component
+          as Booking Settings, so a rail added here is added everywhere and
+          there's one place for this logic to be wrong. */}
+      {methodsOpen && (
+        <div
+          onClick={() => setMethodsOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '2rem 1rem', overflowY: 'auto',
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620, width: '100%' }}>
+            <PaymentMethodsSection userId={userId} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.7rem' }}>
+              <button
+                type="button"
+                onClick={() => setMethodsOpen(false)}
+                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, borderRadius: 6, padding: '.5rem 1.2rem', cursor: 'pointer', fontSize: '.8rem' }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {expanded && (
         <BookingDetails
           booking={booking}
@@ -1278,7 +1473,7 @@ function BookingRow({
           onContractActionHandled={() => setContractAction(null)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
-          canRequestDeposit={booking.is_manual || !needsContract || contractStepComplete}
+          canRequestDeposit={canRequestDeposit}
         />
       )}
     </div>
