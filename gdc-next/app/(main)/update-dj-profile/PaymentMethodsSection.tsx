@@ -806,10 +806,17 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           const t = openTile;
           const cfg = METHOD_TYPES[t];
           const m = byType[t] || { id: 'draft', type: t, handle: '', note: '', enabled: true };
+          // Shown errors only appear once the DJ has typed something — nobody
+          // wants to be told a field is required before they've touched it.
           const err = (m.handle || '').trim() || !cfg.handleLabel ? cfg.validate(m.handle || '') : null;
           const contactErr = cfg.validateContact && (m.contact || '').trim()
             ? cfg.validateContact(m.contact || '')
             : null;
+          // Whether it COULD go live — evaluated against the real values, not
+          // against whether we're currently showing a complaint. An empty tile
+          // has no visible error and still isn't activatable.
+          const complete = !cfg.validate(m.handle || '')
+            && (!cfg.validateContact || !cfg.validateContact(m.contact || ''));
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -903,7 +910,19 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
               )}
 
               <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => void save()} disabled={saving} style={btn(true, !saving)}>
+                {/* Disabled until the rail would actually work. Before this,
+                    Activate on an empty tile ran the save, dropped the empty
+                    row on the floor (the save filters them out), and reported
+                    "✓ Saved" — so the DJ walked away believing Zelle was on
+                    when their clients would never see it. A button that lies
+                    about succeeding is worse than one that won't press. */}
+                <button
+                  type="button"
+                  onClick={() => void save()}
+                  disabled={saving || !complete}
+                  title={complete ? undefined : 'Fill in the fields above first'}
+                  style={btn(true, !saving && complete)}
+                >
                   {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Activate'}
                 </button>
                 {byType[t] && (
