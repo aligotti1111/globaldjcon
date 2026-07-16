@@ -806,6 +806,8 @@ export default function BookingRequestsClient({
               methods={methods}
               onMarkSent={(m) => paymentAction(b.id, p.id, 'mark-sent', m)}
               onPayAtEvent={() => paymentAction(b.id, p.id, 'intent')}
+              eventDate={b.event_date}
+              venueName={b.venue_name}
             />
             {p.client_intent === 'pay_at_event' && p.status !== 'paid' && p.status !== 'waived' && (
               <p style={{ margin: '.4rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>

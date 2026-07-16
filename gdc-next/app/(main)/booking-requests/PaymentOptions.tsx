@@ -34,6 +34,7 @@ import {
   copyInstruction,
   usableMethods,
   referenceCode,
+  checkMemo,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
 
@@ -52,6 +53,14 @@ export interface PaymentOptionsProps {
   /** Host taps "I'll pay at the event" (cash/check only). */
   onPayAtEvent?: () => Promise<void> | void;
   busy?: boolean;
+  /**
+   * The booking's date and venue — only used for the check memo line, and
+   * optional so every existing call site keeps compiling. Without them the
+   * memo falls back to the reference code, which works but asks the client to
+   * copy a string that means nothing to them.
+   */
+  eventDate?: string | null;
+  venueName?: string | null;
 }
 
 function money(n: number, currency = 'USD'): string {
@@ -94,7 +103,7 @@ function QrBlock({ link, label }: { link: string; label: string }) {
 
 export default function PaymentOptions({
   bookingId, kind, amount, currency = 'USD', amountPaid = 0, status = 'requested',
-  djName, methods, onMarkSent, onPayAtEvent, busy = false,
+  djName, methods, onMarkSent, onPayAtEvent, busy = false, eventDate, venueName,
 }: PaymentOptionsProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -259,7 +268,7 @@ export default function PaymentOptions({
               <div style={{ padding: '.75rem .85rem', borderRadius: 8, border: `1px solid var(--border)`, borderLeft: `3px solid ${tint}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>{cfg.label}</span>
-                  {(m.type !== 'cash' || !!m.handle) && (
+                  {(m.type !== 'cash' || !!m.handle) && m.type !== 'check' && (
                     <button
                       type="button"
                       onClick={() => copy(m.type === 'cash' ? (m.handle || '') : displayHandle(m).replace(/^[@$]/, ''), m.id)}
@@ -277,7 +286,28 @@ export default function PaymentOptions({
                 <p style={{ margin: '.35rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>
                   {copyInstruction(m)}
                 </p>
-                {m.type === 'cash' ? (
+                {m.type === 'check' ? (
+                  <>
+                    <p style={{ margin: '.2rem 0 0', fontSize: '.85rem', color: 'var(--white)' }}>{m.handle}</p>
+                    {m.contact && (
+                      <>
+                        <p style={{ margin: '.45rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>Mail to:</p>
+                        <p style={{ margin: '.1rem 0 0', fontSize: '.82rem', color: 'var(--white)', whiteSpace: 'pre-line' }}>{m.contact}</p>
+                      </>
+                    )}
+                    {/* The memo is what makes an envelope matchable. It arrives
+                        days later with nothing on it but an amount — and the
+                        client can't mistype their own event date. */}
+                    {checkMemo(eventDate, venueName, reference) && (
+                      <>
+                        <p style={{ margin: '.45rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>Write on the memo line:</p>
+                        <p style={{ margin: '.1rem 0 0', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', color: 'var(--neon)' }}>
+                          {checkMemo(eventDate, venueName, reference)}
+                        </p>
+                      </>
+                    )}
+                  </>
+                ) : m.type === 'cash' ? (
                   m.handle ? (
                     // tel: — on a phone this dials. The host is reading this on
                     // the way to the venue as often as at a desk, and "call to
