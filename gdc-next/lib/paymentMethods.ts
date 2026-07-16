@@ -159,7 +159,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     placeholder: 'DJ Nova LLC',
     contactLabel: 'Mailing address',
     contactPlaceholder: '123 Main St, Staten Island, NY 10307',
-    hint: 'Slowest rail — it has to arrive AND clear, so don\'t use it for a deposit holding a date next week. The client is told to write your event date and venue on the memo line, which is the only way you\'ll know which booking an envelope belongs to.',
+    hint: 'Slowest rail — it has to arrive AND clear, so don\'t use it for a deposit holding a date next week. The client is told to include event date and venue with check.',
     validate: (v) => (v.trim() ? null : 'Who should the check be made out to?'),
     validateContact: (v) => (v.trim() ? null : 'Where should they mail it?'),
   },
@@ -271,7 +271,12 @@ export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
 }
 
 /**
- * What to write on a check's memo line.
+ * What the client includes with their check so the DJ can match it.
+ *
+ * Deliberately NOT "write it on the memo line": a memo line is one short field
+ * that a date and a venue name often won't fit, and plenty of people are
+ * writing from a book where it's already used. "Include it" leaves them free to
+ * put it on a note, the envelope, or the memo if there's room.
  *
  * A check arrives days later in an envelope with nothing on it but an amount.
  * The reference code (GDC-1A2B-D) means nothing to the client and they'll
