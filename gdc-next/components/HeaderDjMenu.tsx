@@ -7,9 +7,9 @@
 // one menu.
 //
 // Grouped into sections for scannability:
-//   Account:   View My Profile · Upcoming Bookings · Add Booking Manually
-//   Settings:  Booking Settings · Notifications · Account Settings · Manage Subscription
-//   —          Sign Out
+//   Account:   View my profile · Upcoming bookings · Add booking manually
+//   Settings:  Booking settings · Notifications · Account settings · Manage subscription
+//   —          Sign out
 //
 // No avatar uploaded? Shows initials from the DJ's name.
 
@@ -39,14 +39,19 @@ function initialsFrom(name: string): string {
 
 // Small muted section caption inside the menu. Kept inline so this component
 // doesn't depend on new CSS classes being added to the global stylesheet.
+//
+// This one STAYS uppercase — a section caption is a signpost, not something you
+// read, and caps is how a signpost says "I'm not a menu item". It's the items
+// below that changed to sentence case: they're the things you're scanning.
+// Inter rather than the browser default so the caption and the items agree.
 const sectionLabelStyle: React.CSSProperties = {
   padding: '10px 16px 4px',
-  fontSize: '.6rem',
-  fontWeight: 700,
-  letterSpacing: '.1em',
+  fontFamily: 'var(--font-inter), Inter, sans-serif',
+  fontSize: '.65rem',
+  fontWeight: 600,
+  letterSpacing: '.08em',
   textTransform: 'uppercase',
   color: 'var(--muted, #8a8aa0)',
-  opacity: 0.65,
 };
 
 export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: HeaderDjMenuProps) {
@@ -165,22 +170,22 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <div style={sectionLabelStyle}>Account</div>
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              View My Profile
+              View my profile
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Upcoming Bookings
+              Upcoming bookings
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Past Bookings
+              Past bookings
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Add Booking Manually
+              Add booking manually
             </Link>
           )}
 
@@ -188,13 +193,13 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Settings</div>
           <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Booking Settings
+            Booking settings
           </Link>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
           </Link>
           <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Account Settings
+            Account settings
           </Link>
           <button
             type="button"
@@ -204,7 +209,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             disabled={portalLoading}
             style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
           >
-            {portalLoading ? 'Opening…' : 'Manage Subscription'}
+            {portalLoading ? 'Opening…' : 'Manage subscription'}
           </button>
 
           {/* ── Sign out ── */}
@@ -215,7 +220,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             role="menuitem"
             onClick={handleSignOut}
           >
-            Sign Out
+            Sign out
           </button>
         </div>
       )}
