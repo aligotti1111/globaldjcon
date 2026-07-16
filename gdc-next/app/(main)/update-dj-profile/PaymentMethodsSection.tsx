@@ -226,6 +226,9 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [accountPhone, setAccountPhone] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // Drop-off starts collapsed. Most DJs don't have an office, and two more
+  // fields on a rail whose whole point is "hand me the money" is noise for them.
+  const [showDropoff, setShowDropoff] = useState(false);
 
   const loadCardStatus = useCallback(async (): Promise<CardState> => {
     const res = await fetch('/api/stripe/connect', {
@@ -364,6 +367,8 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
               note: typeof o.note === 'string' ? o.note : '',
               enabled: o.enabled !== false,
               contact: typeof o.contact === 'string' ? o.contact : undefined,
+              dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
+              dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
             };
           }),
         );
@@ -456,6 +461,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           // Only written when the rail actually has a second field, so a Venmo
           // row doesn't carry a stray empty `contact` forever.
           ...(METHOD_TYPES[m.type].contactLabel ? { contact: (m.contact || '').trim() } : {}),
+          // Cash-only, and only when the DJ actually filled one in — an empty
+          // string here would make cashDropoff() think there's an address.
+          ...(m.type === 'cash' && (m.dropoffAddress || '').trim()
+            ? {
+                dropoffAddress: (m.dropoffAddress || '').trim(),
+                dropoffHours: (m.dropoffHours || '').trim(),
+              }
+            : {}),
         }));
       const { error } = await supabase
         .from('users')
@@ -887,11 +900,66 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     </>
                   )}
 
+                  {/* Drop-off — cash only, and behind a button because most DJs
+                      don't have an office. Two fields, not one: an address with
+                      no hours sends a client across town to a locked door, and
+                      a client who does that once pays at the event forever. */}
+                  {t === 'cash' && (
+                    <div style={{ marginTop: '.7rem' }}>
+                      {!showDropoff && !(m.dropoffAddress || '').trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowDropoff(true)}
+                          style={{
+                            background: 'transparent', border: '1px solid var(--border)',
+                            borderRadius: 6, color: 'var(--muted)', fontSize: '.68rem',
+                            padding: '.45rem .8rem', cursor: 'pointer',
+                            fontFamily: "'Space Mono', monospace", letterSpacing: '.06em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          + Add office address for drop-off
+                        </button>
+                      ) : (
+                        <>
+                          <label style={label}>Office address (optional)</label>
+                          <input
+                            value={m.dropoffAddress || ''}
+                            placeholder="123 Main St, Staten Island, NY 10307"
+                            onChange={(e) => patchType(t, { dropoffAddress: e.target.value })}
+                            style={field}
+                          />
+                          <label style={{ ...label, marginTop: '.7rem' }}>Open hours (optional)</label>
+                          <input
+                            value={m.dropoffHours || ''}
+                            placeholder="Mon–Fri 10am–6pm"
+                            onChange={(e) => patchType(t, { dropoffHours: e.target.value })}
+                            style={field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              patchType(t, { dropoffAddress: '', dropoffHours: '' });
+                              setShowDropoff(false);
+                            }}
+                            style={{
+                              marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
+                              color: 'var(--muted)', fontSize: '.68rem', cursor: 'pointer',
+                              textDecoration: 'underline', fontFamily: "'Space Mono', monospace",
+                            }}
+                          >
+                            Remove drop-off address
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {/* Check already tells the client everything: who to make it
                       out to, where to send it, and what to include. A third
                       free-text box invites a DJ to repeat one of those in
                       slightly different words, and then the two can disagree. */}
-                  {t !== 'check' && (
+                  {t !== 'check' && t !== 'cash' && (
                     <>
                       <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
                       <input
@@ -909,7 +977,19 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                 </p>
               )}
 
+              {/* Close left, Activate right. The primary action sits where the
+                  eye lands last after reading the fields, and the way out is
+                  where a way out belongs — not sharing an edge with the button
+                  that commits. */}
               <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setOpenTile(null)} style={btn(false)}>
+                  Close
+                </button>
+                {byType[t] && (
+                  <button type="button" onClick={() => removeType(t)} style={btn(false)}>
+                    Remove
+                  </button>
+                )}
                 {/* Disabled until the rail would actually work. Before this,
                     Activate on an empty tile ran the save, dropped the empty
                     row on the floor (the save filters them out), and reported
@@ -921,17 +1001,9 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   onClick={() => void save()}
                   disabled={saving || !complete}
                   title={complete ? undefined : 'Fill in the fields above first'}
-                  style={btn(true, !saving && complete)}
+                  style={{ ...btn(true, !saving && complete), marginLeft: 'auto' }}
                 >
                   {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Activate'}
-                </button>
-                {byType[t] && (
-                  <button type="button" onClick={() => removeType(t)} style={btn(false)}>
-                    Remove
-                  </button>
-                )}
-                <button type="button" onClick={() => setOpenTile(null)} style={{ ...btn(false), marginLeft: 'auto' }}>
-                  Close
                 </button>
               </div>
             </div>
