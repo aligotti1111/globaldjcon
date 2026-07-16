@@ -407,18 +407,24 @@
   flex-direction: column;
   gap: 2px;
 }
+/* Menu items are INTERFACE, not brand. Space Mono at .72rem, uppercase, with
+   .1em tracking made every item the same grey rectangle — you read it letter
+   by letter instead of recognising the word shape. Mono caps earns its place
+   on the public directory (badges, tagline, rates); in a menu you're
+   navigating, not being sold to.
+
+   Inter, sentence case, 14px: same list, half the width, scannable. */
 .hdr-dj-menu-item {
   display: block;
   width: 100%;
   text-align: left;
   background: transparent;
   border: none;
-  padding: 10px 14px;
+  padding: 9px 14px;
   color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  font-family: var(--font-inter), 'Inter', sans-serif;
+  font-size: .875rem;
+  letter-spacing: 0;
   border-radius: 6px;
   cursor: pointer;
   text-decoration: none;
