@@ -872,9 +872,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     </button>
                   )}
 
-                  {/* The readback. Zelle and Venmo are irreversible — a typo
-                      sends a stranger real money and no deploy claws it back. */}
-                  {shown && !err && (
+                  {/* The readback exists for the IRREVERSIBLE rails: a mistyped
+                      Zelle or Venmo handle sends a stranger real money and no
+                      deploy claws it back, so the DJ sees their own handle
+                      exactly as the client will, before it can be used.
+                      Cash is not that. A phone number costs a wrong call, not
+                      $600, and the client already sees it spelled out in the
+                      "Reach out to…" line. Showing it twice made a safety net
+                      into clutter. */}
+                  {shown && !err && t !== 'cash' && (
                     <div style={{ marginTop: '.6rem', padding: '.5rem .6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--deep)' }}>
                       <div style={{ ...label, marginBottom: '.2rem' }}>Client sees</div>
                       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem', color: 'var(--neon)', wordBreak: 'break-all' }}>
