@@ -155,7 +155,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 <p style="margin:4px 0 0;color:#666;font-size:13px;">${cashLine(m)}</p></div>`;
     }
 
-    // Check has two halves and a memo line — an envelope arrives days later with
+    // Check has two halves plus what to include — an envelope arrives days later
     // nothing on it but an amount, and the event date + venue are the only
     // things the client already knows and can't mistype.
     if (m.type === 'check') {
@@ -166,7 +166,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 <p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:6px 0 0;color:#666;font-size:12px;">Mail to:</p>
 <p style="margin:2px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
-${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Please write this on the memo line:</p>
+${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Please include this with your check:</p>
 <p style="margin:2px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
 </div>`;
     }
