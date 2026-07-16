@@ -798,7 +798,11 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
               <div style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem', marginBottom: '.4rem' }}>{cfg.label}</div>
-              <p className={styles.bodyHint} style={{ margin: '0 0 .7rem' }}>{cfg.hint}</p>
+              {/* White, not muted: this is the rail's actual behaviour — what
+                  the client will have to do, what it costs, what it can't do.
+                  Greying it made the one paragraph that answers "should I use
+                  this?" read as fine print. */}
+              <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
 
               {cfg.handleLabel ? (
                 <>
