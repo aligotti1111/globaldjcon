@@ -169,7 +169,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     placeholder: 'DJ Nova LLC',
     contactLabel: 'Mailing address',
     contactPlaceholder: '123 Main St, Staten Island, NY 10307',
-    hint: 'The client is told to include event date and venue with check.',
+    hint: 'The client will be informed to include event date and venue with check.',
     validate: (v) => (v.trim() ? null : 'Who should the check be made out to?'),
     validateContact: (v) => (v.trim() ? null : 'Where should they mail it?'),
   },
