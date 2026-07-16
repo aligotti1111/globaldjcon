@@ -61,7 +61,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import {
-  CardMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, OtherMark,
+  CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark,
 } from './BrandMarks';
 import {
   METHOD_TYPES,
@@ -150,16 +150,24 @@ function prettyRequirement(field: string): string {
  * that's the entire job of the tile. Emoji stand-ins made them all read as
  * generic coloured dots, which is the opposite.
  */
-const TILE_MARK: Record<TileKey, (p: { size?: number; color?: string }) => React.ReactElement> = {
-  card: CardMark,
+const TILE_MARK: Partial<Record<TileKey, (p: { size?: number }) => React.ReactElement>> = {
+  card: CardNetworksMark,
   venmo: VenmoMark,
   cashapp: CashAppMark,
   paypal: PaypalMark,
   zelle: ZelleMark,
   cash: CashMark,
   check: CheckMark,
-  other: OtherMark,
 };
+
+/**
+ * The tiles, in order. 'other' is deliberately NOT here: a free-text "describe
+ * how to pay me" box is the one rail we can't validate, can't link, can't QR
+ * and can't explain to a client — every other tile earns its place by doing at
+ * least one of those. Existing 'other' rows are still saved and still shown to
+ * clients; they just can't be created any more.
+ */
+const TILE_ORDER: TileKey[] = ['card', ...TYPE_ORDER.filter((t) => t !== 'other')];
 
 const TILE_LABEL: Record<TileKey, string> = {
   card: 'Card',
@@ -173,15 +181,14 @@ const TILE_LABEL: Record<TileKey, string> = {
 };
 
 /** One line, on the tile itself — the thing that decides if they tap it. */
-const TILE_BLURB: Record<TileKey, string> = {
-  card: 'Any card, any device',
+const TILE_BLURB: Partial<Record<TileKey, string>> = {
+  card: 'via Stripe Connect',
   venmo: 'Phone only',
   cashapp: 'One tap',
   paypal: 'Link or email',
   zelle: 'Copy by hand',
   cash: 'In person',
   check: 'By post',
-  other: 'Anything else',
 };
 
 export default function PaymentMethodsSection({ userId }: { userId: string }) {
@@ -478,7 +485,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     );
   }
 
-  const liveCount = (['card', ...TYPE_ORDER] as TileKey[]).filter(tileLive).length;
+  const liveCount = TILE_ORDER.filter(tileLive).length;
 
   return (
     <div className={styles.sectionCard}>
@@ -501,7 +508,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
             margin: '1rem 0 .25rem',
           }}
         >
-          {(['card', ...TYPE_ORDER] as TileKey[]).map((k) => {
+          {TILE_ORDER.map((k) => {
             const live = tileLive(k);
             const open = openTile === k;
             return (
@@ -514,8 +521,13 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '.7rem .4rem .6rem',
                   borderRadius: 8,
-                  border: `1px solid ${open ? 'var(--neon)' : live ? 'rgba(0,224,164,.45)' : 'var(--border)'}`,
-                  background: open ? 'rgba(0,224,164,.07)' : 'rgba(255,255,255,.02)',
+                  // Green frame = live. Not a tint, not a shade — the same
+                  // green as the dot, so "is this on?" has exactly one answer
+                  // on the tile and you can read the whole grid at arm's length.
+                  border: live
+                    ? '1.5px solid var(--neon)'
+                    : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
+                  background: live ? 'rgba(0,224,164,.06)' : open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)',
                   cursor: 'pointer',
                   textAlign: 'center',
                 }}
@@ -524,13 +536,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     height: 26,
-                    // Not-yet-set-up rails go grey rather than disappearing —
-                    // the DJ still needs to see the whole menu to choose from.
-                    filter: live ? 'none' : 'grayscale(1)',
-                    opacity: live ? 1 : .5,
+                    // Always full colour, live or not. Greying the unset ones
+                    // made the grid read as "these are broken" rather than
+                    // "these are available" — and a DJ recognises Venmo by its
+                    // blue, which is the one thing greyscale takes away. The
+                    // frame and the dot carry the state; the logo is just the
+                    // logo.
                   }}
                 >
-                  {TILE_MARK[k]({ size: 24 })}
+                  {TILE_MARK[k]?.({ size: k === 'card' ? 13 : 24 })}
                 </span>
                 <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
                 <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
