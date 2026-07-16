@@ -180,16 +180,33 @@ const TILE_LABEL: Record<TileKey, string> = {
   other: 'Other',
 };
 
-/** One line, on the tile itself — the thing that decides if they tap it. */
+/**
+ * Only Card gets a subtitle, because only Card needs one: four network logos
+ * don't say where the money goes, and "via Stripe Connect" is the answer to
+ * the question they raise.
+ *
+ * The rest had blurbs describing their quirks — "Phone only", "Copy by hand".
+ * True, but that's a caveat, and a grid of caveats reads as a list of reasons
+ * not to bother. The quirks belong in the expanded panel, where the DJ has
+ * actually chosen the rail and the hint can be a full sentence instead of two
+ * words. A logo and a name is all a tile owes anyone.
+ */
 const TILE_BLURB: Partial<Record<TileKey, string>> = {
   card: 'via Stripe Connect',
-  venmo: 'Phone only',
-  cashapp: 'One tap',
-  paypal: 'Link or email',
-  zelle: 'Copy by hand',
-  cash: 'In person',
-  check: 'By post',
 };
+
+/**
+ * Per-tile mark size. Not one number: these are different KINDS of mark.
+ * Venmo's is a wordmark — five letters squeezed into the same 24px box that
+ * holds Cash App's single $ glyph, so at a shared size it renders half as
+ * legible. Card is four marks in a row and needs the opposite treatment.
+ */
+const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
+  card: 14,
+  venmo: 40,
+  paypal: 30,
+};
+const DEFAULT_MARK_SIZE = 24;
 
 export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
@@ -537,7 +554,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                 <span
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: 26,
+                    height: 30,
                     // Always full colour, live or not. Greying the unset ones
                     // made the grid read as "these are broken" rather than
                     // "these are available" — and a DJ recognises Venmo by its
@@ -546,10 +563,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     // logo.
                   }}
                 >
-                  {TILE_MARK[k]?.({ size: k === 'card' ? 14 : 24 })}
+                  {TILE_MARK[k]?.({ size: TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE })}
                 </span>
                 <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
-                <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
+                {/* Only Card has one — don't leave an empty line reserving
+                    space under every other tile. */}
+                {TILE_BLURB[k] && (
+                  <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
+                )}
                 {/* The dot is the whole point of the grid: what can a client
                     actually use right now, without opening anything. */}
                 {live && (
