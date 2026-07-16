@@ -58,6 +58,16 @@ export interface PaymentMethod {
    * Optional, so every row saved before this field existed still loads.
    */
   contact?: string;
+  /**
+   * Cash only, both optional: an office or studio the client can drop the money
+   * at instead of handing it over at the event, and when someone's there.
+   *
+   * The hours are the point. An address with no hours is an invitation to drive
+   * across town and find a locked door — and a client who does that once pays
+   * at the event forever after.
+   */
+  dropoffAddress?: string;
+  dropoffHours?: string;
 }
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -144,7 +154,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     placeholder: '(555) 123-4567',
     contactLabel: 'Ask for',
     contactPlaceholder: 'Mike',
-    hint: 'In person only. Fine for the balance on the night — but it can\'t hold a date in advance, so it rarely works as a deposit. The client gets your number and a name to ask for, so handing over cash doesn\'t mean guessing who to find.',
+    hint: 'In person only. For deposits arranged meeting will be required. Include contact info and or office address below.',
     validate: (v) => {
       const t = v.trim();
       if (!t) return 'Enter a phone number the client can call.';
@@ -266,8 +276,27 @@ export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
   const phone = (m.handle || '').trim();
   const who = (m.contact || '').trim();
   if (!phone) return 'Pay in person.';
-  if (!who) return `Call ${phone} to arrange.`;
-  return `Call ${phone} and ask for ${who}.`;
+  // An instruction, not a fact. "Call (555) 123-4567" states a number; "reach
+  // out to Mike to arrange" tells them the thing they have to DO — cash can't
+  // hold a date on its own, someone has to actually meet.
+  if (!who) return `Reach out on ${phone} to arrange payment.`;
+  return `Reach out to ${who} on ${phone} to arrange payment.`;
+}
+
+/**
+ * The optional "drop it at my office" half of Cash, as one line — or null when
+ * the DJ hasn't offered one.
+ *
+ * Shared so the booking card and the email can't word it differently.
+ */
+export function cashDropoff(m: Pick<PaymentMethod, 'dropoffAddress' | 'dropoffHours'>): string | null {
+  const addr = (m.dropoffAddress || '').trim();
+  if (!addr) return null;
+  const hrs = (m.dropoffHours || '').trim();
+  // The hours ride WITH the address, never as a separate line that can get
+  // separated from it. "Drop it at 123 Main St" on its own is how someone ends
+  // up at a locked door on a Sunday.
+  return hrs ? `${addr} — open ${hrs}` : addr;
 }
 
 /**
