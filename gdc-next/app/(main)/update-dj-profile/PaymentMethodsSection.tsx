@@ -1,23 +1,48 @@
 'use client';
 
-// PaymentMethodsSection — where a DJ lists how clients can pay them.
+// PaymentMethodsSection — how a DJ tells us which ways a client can pay them.
+//
+// ─────────────────────────────────────────────────────────────────────────
+// THE REDESIGN, AND WHY
+//
+// The first version made the DJ build the page before they could read it: an
+// empty list, an "+ Add method" button, and a dropdown of types. To find out
+// whether Cash App was even supported you had to add a row and open a select.
+// Nothing was visible until you'd already committed to it, and the Stripe
+// block sat on top explaining SSNs and payout timings to someone who only
+// wanted to type a Venmo handle. It read as a form to survive rather than a
+// choice to make.
+//
+// Now: every rail is on screen from the first paint, as a tile. Green dot =
+// live, clients can pay you this way today. Click one to expand it and fill it
+// in. Nothing to add, nothing to discover, and the whole set is legible in a
+// glance — which is the actual question a DJ has ("what can I offer?").
+//
+// ONE ROW PER TYPE. The stored shape is still an array, but the UI treats type
+// as the key: nobody has two Venmos, and the old model let you create three
+// half-filled ones. Duplicates already in the data collapse to the first.
+//
+// PRESENCE IS THE SWITCH. The old rows had an "Offer this to clients" checkbox
+// on top of a handle field — two ways to say the same thing, which meant a DJ
+// could type a handle and still not be offering it, with nothing on screen
+// explaining why the client never saw it. Now: filled in = offered. Remove to
+// stop.
+// ─────────────────────────────────────────────────────────────────────────
 //
 // MANUAL rails: the platform never touches the money. We publish the DJ's
 // handle to one client, for one payment, and the DJ confirms what actually
 // arrived. No processing, no custody, no chargeback liability.
 //
-// CARDS (Phase 2) sit above the manual list but are a different animal: no
-// handle to type. The DJ connects their OWN Stripe account (Standard Connect,
-// direct charges — they're merchant of record, they pay Stripe's 2.9% + 30¢,
-// they own disputes) and availability is cached in users.stripe_connect_ready,
-// not stored in payment_methods. Onboarding happens on Stripe's site via a
-// single-use Account Link; this section only starts/resumes it and reads back
-// the result.
+// CARDS are a different animal: no handle to type. The DJ connects their OWN
+// Stripe account (Standard Connect, direct charges — they're merchant of
+// record, they pay Stripe's 2.9% + 30¢, they own disputes) and availability is
+// cached in users.stripe_connect_ready, not stored in payment_methods.
+// Onboarding happens on Stripe's site via a single-use Account Link; this
+// section only starts/resumes it and reads back the result.
 //
 // Self-contained: loads and saves users.payment_methods on its own, exactly
 // like the email/password blocks. It does NOT go through the profile's master
-// save, so a DJ can add a handle without touching the rest of the form (and
-// vice-versa).
+// save, so a DJ can add a handle without touching the rest of the form.
 //
 // WHY ITS OWN COLUMN, NOT booking_settings:
 // booking_settings is serialized to every visitor of a DJ's public profile —
@@ -32,14 +57,12 @@
 // own handle rendered exactly as the client will see it, before it can ever be
 // used. That readback is the cheapest defense that exists.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import {
   METHOD_TYPES,
   TYPE_ORDER,
-  isLinkable,
-  isMobileOnly,
   displayHandle,
   cleanHandle,
   type PaymentMethod,
@@ -53,19 +76,21 @@ function newId(): string {
   return `m${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Card is a tile like the rest, but it isn't a payment_methods row. */
+type TileKey = 'card' | PaymentMethodType;
+
 /**
  * What /api/stripe/connect?action=status reports back.
  *
  * `actionNeeded` is the important one: charges_enabled:false means cards are
  * off, but it does NOT mean the DJ did something wrong. Stripe may simply be
- * verifying. Conflating those two is what produced a "Finish setup" button
- * that looped forever on an account with nothing left to finish.
+ * verifying. Conflating those two produced a "Finish setup" button that
+ * looped forever on an account with nothing left to finish.
  */
 interface CardState {
   connected: boolean;
   ready: boolean;
   detailsSubmitted: boolean;
-  /** True only when Stripe wants something FROM THE DJ (currently_due/past_due). */
   actionNeeded: boolean;
   currentlyDue: string[];
   pastDue: string[];
@@ -74,12 +99,15 @@ interface CardState {
   payoutsEnabled: boolean;
 }
 
+const DISCONNECTED: CardState = {
+  connected: false, ready: false, detailsSubmitted: false, actionNeeded: false,
+  currentlyDue: [], pastDue: [], pendingVerification: [], disabledReason: null,
+  payoutsEnabled: false,
+};
+
 /**
- * Stripe names requirements for engineers: "individual.verification.document",
- * "external_account". A DJ reading that has no idea they need to photograph a
- * driving licence. Translate the common ones; fall back to a de-snaked version
- * of whatever Stripe sent so a new requirement still reads as English rather
- * than vanishing.
+ * Stripe names requirements for engineers: "individual.verification.document".
+ * A DJ reading that has no idea they need to photograph a driving licence.
  */
 function prettyRequirement(field: string): string {
   const MAP: Record<string, string> = {
@@ -102,8 +130,8 @@ function prettyRequirement(field: string): string {
     'business_profile.url': 'Your website (your Global DJ Connect profile URL works)',
     'business_profile.mcc': 'What kind of business you run',
     'business_profile.product_description': 'A description of what you sell',
-    'tos_acceptance.date': 'Accept Stripe\u2019s terms',
-    'tos_acceptance.ip': 'Accept Stripe\u2019s terms',
+    'tos_acceptance.date': 'Accept Stripe’s terms',
+    'tos_acceptance.ip': 'Accept Stripe’s terms',
     'settings.dashboard.display_name': 'A public business name',
   };
   if (MAP[field]) return MAP[field];
@@ -112,21 +140,39 @@ function prettyRequirement(field: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/**
- * The "no Stripe account" state. Named once so every place that resets it
- * stays in step with CardState — the alternative is an object literal per call
- * site, which is how disconnect ended up three fields behind.
- */
-const DISCONNECTED: CardState = {
-  connected: false,
-  ready: false,
-  detailsSubmitted: false,
-  actionNeeded: false,
-  currentlyDue: [],
-  pastDue: [],
-  pendingVerification: [],
-  disabledReason: null,
-  payoutsEnabled: false,
+/** Tile faces. Emoji, not brand logos — we don't have licence to ship those. */
+const TILE_ICON: Record<TileKey, string> = {
+  card: '\u{1F4B3}',
+  venmo: '\u{1F535}',
+  cashapp: '\u{1F7E2}',
+  paypal: '\u{1F535}',
+  zelle: '\u{1F7E3}',
+  cash: '\u{1F4B5}',
+  check: '\u{1F4C3}',
+  other: '\u{1F3E6}',
+};
+
+const TILE_LABEL: Record<TileKey, string> = {
+  card: 'Card',
+  venmo: 'Venmo',
+  cashapp: 'Cash App',
+  paypal: 'PayPal',
+  zelle: 'Zelle',
+  cash: 'Cash',
+  check: 'Check',
+  other: 'Other',
+};
+
+/** One line, on the tile itself — the thing that decides if they tap it. */
+const TILE_BLURB: Record<TileKey, string> = {
+  card: 'Any card, any device',
+  venmo: 'Phone only',
+  cashapp: 'One tap',
+  paypal: 'Link or email',
+  zelle: 'Copy by hand',
+  cash: 'In person',
+  check: 'By post',
+  other: 'Anything else',
 };
 
 export default function PaymentMethodsSection({ userId }: { userId: string }) {
@@ -134,29 +180,16 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [openTile, setOpenTile] = useState<TileKey | null>(null);
 
   // ── Stripe Connect (cards) ────────────────────────────────────────
-  // null = still checking. The status action also re-caches charges_enabled
-  // into users.stripe_connect_ready server-side, so simply LANDING here after
-  // Stripe's ?stripe=connected redirect is what flips the ready flag on.
   const [card, setCard] = useState<CardState | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
   const [cardErr, setCardErr] = useState<string | null>(null);
-  // The DJ's public profile URL — the answer to Stripe's "Business website"
-  // field, which is where a DJ without a website stops dead.
   const [slug, setSlug] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
-  /**
-   * Ask the server for the account's real state. Also the "Check again"
-   * button: when Stripe is verifying there is nothing to fix, so re-asking IS
-   * the only honest action to offer.
-   *
-   * The status action re-caches charges_enabled into users.stripe_connect_ready
-   * server-side, so calling this is also what flips the host-facing card button
-   * on once Stripe finishes.
-   */
   const loadCardStatus = useCallback(async (): Promise<CardState> => {
     const res = await fetch('/api/stripe/connect', {
       method: 'POST',
@@ -189,17 +222,12 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         const next = await loadCardStatus();
         if (!cancelled) setCard(next);
       } catch {
-        // Treat "can't reach the API" as not-connected; the DJ can retry by
-        // pressing Connect, which surfaces the real error.
-        if (!cancelled) {
-          setCard(DISCONNECTED);
-        }
+        if (!cancelled) setCard(DISCONNECTED);
       }
     })();
     return () => { cancelled = true; };
   }, [loadCardStatus]);
 
-  /** "Check again" — re-ask Stripe, and say so if nothing changed. */
   async function refreshCard() {
     if (cardBusy) return;
     setCardBusy(true);
@@ -208,8 +236,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
       const next = await loadCardStatus();
       setCard(next);
       if (!next.ready && !next.actionNeeded) {
-        // Silence would read as a broken button. Name the non-change.
-        setCardErr('Still verifying \u2014 nothing has changed on Stripe\u2019s side yet.');
+        setCardErr('Still verifying — nothing has changed on Stripe’s side yet.');
         setTimeout(() => setCardErr(null), 4000);
       }
     } catch (e) {
@@ -219,19 +246,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     }
   }
 
-  // Both connect AND resume: the route mints a fresh single-use Account Link
-  // each time (they expire in minutes and can't be reused).
-  //
-  // WHY THIS READS .text() AND NOT .json():
-  // The original did `await res.json().catch(() => ({}))`, which turns ANY
-  // non-JSON response into an empty object — so a platform error page, a
-  // redirect to /login, and a killed function all collapsed into the same
-  // useless "Could not start Stripe onboarding." with no cause. That one line
-  // of defensive code hid the real failure for hours.
-  //
-  // Now: take the body as TEXT first, try to parse it, and if it isn't JSON
-  // show the status code and the first bit of whatever DID come back. An
-  // error the user can read is worth more than an error that looks tidy.
+  // Reads .text() before parsing: a non-JSON body (a platform error page) would
+  // otherwise collapse to {} and surface as a generic shrug. That exact line of
+  // defensive code hid a real Stripe error behind "Could not start Stripe
+  // onboarding." for hours.
   async function connectStripe() {
     if (cardBusy) return;
     setCardBusy(true);
@@ -242,29 +260,17 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'start' }),
       });
-
       const raw = await res.text();
       let json: { url?: string; error?: string } = {};
       let parsed = false;
-      try { json = JSON.parse(raw); parsed = true; } catch { /* not JSON — raw is the evidence */ }
-
+      try { json = JSON.parse(raw); parsed = true; } catch { /* raw is the evidence */ }
       if (!parsed) {
-        // Strip tags so an HTML error page reads as its actual message rather
-        // than a wall of markup.
         const snippet = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
-        throw new Error(
-          `HTTP ${res.status} — server sent ${raw.length} bytes of non-JSON` +
-          (snippet ? `: ${snippet}` : ' (empty body)'),
-        );
+        throw new Error(`HTTP ${res.status} — server sent ${raw.length} bytes of non-JSON${snippet ? `: ${snippet}` : ' (empty body)'}`);
       }
       if (!res.ok || !json.url) throw new Error(json.error || `HTTP ${res.status} — no URL and no error field.`);
-
-      // Off to Stripe. Don't reset busy — we're leaving the page.
       window.location.href = json.url;
     } catch (e) {
-      // A fetch that never completed (function killed mid-flight, network
-      // dropped) throws a TypeError with no useful text — say so plainly
-      // instead of blaming Stripe.
       const msg = e instanceof TypeError
         ? `Request failed before any reply arrived (${e.message}).`
         : e instanceof Error ? e.message : 'Could not start Stripe onboarding.';
@@ -294,6 +300,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     }
   }
 
+  // ── Load saved rails + the DJ's slug ──────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -330,52 +337,82 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const patch = useCallback((id: string, next: Partial<PaymentMethod>) => {
-    setFeedback(null);
-    setMethods((prev) => prev.map((m) => (m.id === id ? { ...m, ...next } : m)));
-  }, []);
+  // One row per type. Old data may hold duplicates from the add-a-row era;
+  // the first wins and the rest are dropped on next save.
+  const byType = useMemo(() => {
+    const m: Partial<Record<PaymentMethodType, PaymentMethod>> = {};
+    for (const x of methods) if (!m[x.type]) m[x.type] = x;
+    return m;
+  }, [methods]);
 
-  const add = useCallback(() => {
-    setFeedback(null);
-    setMethods((prev) => [...prev, { id: newId(), type: 'zelle', handle: '', note: '', enabled: true }]);
-  }, []);
+  /** Live = filled in and valid. This is exactly what the client will see. */
+  const isLive = useCallback((t: PaymentMethodType): boolean => {
+    const m = byType[t];
+    if (!m || !m.enabled) return false;
+    return !METHOD_TYPES[t].validate(m.handle || '');
+  }, [byType]);
 
-  const remove = useCallback((id: string) => {
-    setFeedback(null);
-    setMethods((prev) => prev.filter((m) => m.id !== id));
-  }, []);
+  const tileLive = (k: TileKey): boolean => (k === 'card' ? !!card?.ready : isLive(k));
 
-  // Only ENABLED methods are validated. A disabled half-filled row is
-  // harmless — it's never shown to a client.
-  const errorFor = (m: PaymentMethod): string | null =>
-    m.enabled ? METHOD_TYPES[m.type].validate(m.handle) : null;
-  const firstError = methods.map(errorFor).find((e) => e) || null;
-  const enabledCount = methods.filter((m) => m.enabled).length;
+  function patchType(t: PaymentMethodType, next: Partial<PaymentMethod>) {
+    setFeedback(null);
+    setMethods((prev) => {
+      const i = prev.findIndex((m) => m.type === t);
+      if (i === -1) {
+        return [...prev, { id: newId(), type: t, handle: '', note: '', enabled: true, ...next }];
+      }
+      const copy = [...prev];
+      copy[i] = { ...copy[i], ...next };
+      return copy;
+    });
+  }
+
+  function removeType(t: PaymentMethodType) {
+    setFeedback(null);
+    setMethods((prev) => prev.filter((m) => m.type !== t));
+    setOpenTile(null);
+  }
+
+  const firstError = (TYPE_ORDER
+    .map((t) => {
+      const m = byType[t];
+      if (!m || !m.enabled) return null;
+      // A row that exists but is entirely empty is a tile the DJ opened and
+      // walked away from — not an error to shout about. It's dropped on save.
+      if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) return null;
+      return METHOD_TYPES[t].validate(m.handle || '');
+    })
+    .find((e) => e)) || null;
 
   async function save() {
     if (firstError) {
-      setFeedback({ msg: 'Fix the highlighted method before saving.', ok: false });
+      setFeedback({ msg: firstError, ok: false });
       return;
     }
     setSaving(true);
     setFeedback(null);
     try {
       const supabase = createClient();
-      // Normalise on the way in so the pay page never has to guess: strip the
-      // @ / $ prefixes and trim, storing the bare handle.
-      const clean = methods.map((m) => ({
-        id: m.id,
-        type: m.type,
-        handle: cleanHandle(m),
-        note: m.note.trim(),
-        enabled: m.enabled,
-      }));
+      // Only real, filled-in rails get written. An opened-but-empty tile
+      // vanishes rather than persisting as a broken option a client could see.
+      const clean = TYPE_ORDER
+        .map((t) => byType[t])
+        .filter((m): m is PaymentMethod => !!m)
+        .filter((m) => METHOD_TYPES[m.type].handleLabel === '' || !!cleanHandle(m))
+        .map((m) => ({
+          id: m.id,
+          type: m.type,
+          handle: cleanHandle(m),
+          note: (m.note || '').trim(),
+          enabled: true,
+        }));
       const { error } = await supabase
         .from('users')
         .update({ payment_methods: clean } as unknown as never)
         .eq('id', userId);
       if (error) throw error;
-      setFeedback({ msg: '✓ Payment methods saved.', ok: true });
+      setMethods(clean);
+      setFeedback({ msg: '✓ Saved.', ok: true });
       setTimeout(() => setFeedback(null), 2500);
     } catch (e) {
       setFeedback({ msg: e instanceof Error ? e.message : 'Could not save.', ok: false });
@@ -432,6 +469,8 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     );
   }
 
+  const liveCount = (['card', ...TYPE_ORDER] as TileKey[]).filter(tileLive).length;
+
   return (
     <div className={styles.sectionCard}>
       <div className={styles.sectionHeader}>
@@ -439,417 +478,309 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
       </div>
       <div className={styles.sectionBody}>
         <p className={styles.bodyHint}>
-          How clients can pay your deposit and invoice. They pick whichever
-          they prefer — you&apos;re never handcuffing them to one. Money goes
-          straight to you; Global DJ Connect never touches it and takes no cut.
+          Pick the ways you want to get paid. Clients choose whichever suits
+          them — you&apos;re never handcuffing them to one. Money goes straight
+          to you; Global DJ Connect never touches it and takes no cut.
         </p>
 
-        {/* ── Card payments (Stripe Connect) — above the manual rails ── */}
+        {/* ── The rails, all of them, from the first paint ──────────── */}
         <div
           style={{
-            marginTop: '1rem',
-            padding: '.9rem',
-            border: `1px solid ${card?.ready ? 'var(--success)' : 'var(--border)'}`,
-            borderRadius: 8,
-            background: 'rgba(255,255,255,.02)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))',
+            gap: '.5rem',
+            margin: '1rem 0 .25rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments</span>
-            <span
-              style={{
-                ...label,
-                marginBottom: 0,
-                color: card === null ? 'var(--muted)' : card.ready ? 'var(--success)' : card.connected ? '#f5a623' : 'var(--muted)',
-              }}
-            >
-              {/* "Setup incomplete" is a lie when the DJ has submitted
-                  everything and Stripe is verifying — it blames them for a
-                  wait that isn't theirs. Split the two. */}
-              {card === null
-                ? 'Checking\u2026'
-                : card.ready
-                  ? '\u25CF Accepting cards'
-                  : card.connected
-                    ? (card.actionNeeded ? '\u25CF Setup incomplete' : '\u25CF Verifying')
-                    : '\u25CB Not connected'}
-            </span>
-          </div>
-
-          {/* Honest copy — the DJ decides with the costs in front of them. */}
-          <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)', lineHeight: 1.45 }}>
-            Let clients pay deposits and invoices by debit or credit card, straight
-            into your own Stripe account. The fee is yours: 2.9% + 30¢ per charge
-            (clients pay face value). Stripe will ask for your SSN and bank details
-            during setup, and your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> —
-            about 2 days after that. Card is the only option that works the same on
-            desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.
-          </p>
-
-          {/*
-            THE STALL POINTS.
-            Stripe's form asks a DJ things a DJ has no answer ready for:
-            "Business website" (most don't have one), "Industry" (a list of
-            hundreds), "Statement descriptor". Nobody abandons setup at "what's
-            your name" — they abandon at the question they can't answer, with
-            their bank details already half typed in. Every answer is knowable,
-            and the website one is literally a row in our own database. So hand
-            it over instead of sending them off to find it.
-          */}
-          {card !== null && !card.ready && (
-            <div style={{ marginTop: '.7rem' }}>
+          {(['card', ...TYPE_ORDER] as TileKey[]).map((k) => {
+            const live = tileLive(k);
+            const open = openTile === k;
+            return (
               <button
+                key={k}
                 type="button"
-                onClick={() => setShowHelp((v) => !v)}
+                onClick={() => setOpenTile(open ? null : k)}
                 style={{
-                  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
-                  color: 'var(--neon)', fontSize: '.72rem', fontFamily: "'Space Mono', monospace",
-                  letterSpacing: '.04em', textDecoration: 'underline',
+                  position: 'relative',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  padding: '.7rem .4rem .6rem',
+                  borderRadius: 8,
+                  border: `1px solid ${open ? 'var(--neon)' : live ? 'rgba(0,224,164,.45)' : 'var(--border)'}`,
+                  background: open ? 'rgba(0,224,164,.07)' : 'rgba(255,255,255,.02)',
+                  cursor: 'pointer',
+                  textAlign: 'center',
                 }}
               >
-                {showHelp ? 'Hide the answers' : 'What will Stripe ask me?'}
+                <span style={{ fontSize: 20, lineHeight: 1, filter: live ? 'none' : 'grayscale(1)', opacity: live ? 1 : .55 }}>
+                  {TILE_ICON[k]}
+                </span>
+                <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
+                <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
+                {/* The dot is the whole point of the grid: what can a client
+                    actually use right now, without opening anything. */}
+                {live && (
+                  <span
+                    aria-label="Live"
+                    style={{
+                      position: 'absolute', top: 6, right: 6, width: 8, height: 8,
+                      borderRadius: '50%', background: 'var(--neon)',
+                    }}
+                  />
+                )}
               </button>
+            );
+          })}
+        </div>
 
-              {showHelp && (
-                <div
+        <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', marginBottom: '1rem' }}>
+          {liveCount === 0
+            ? 'Nothing live yet — tap one to set it up.'
+            : `${liveCount} live · green means clients can pay you that way today.`}
+        </p>
+
+        {/* ── The expanded rail ────────────────────────────────────── */}
+        {openTile === 'card' && (
+          <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
+              <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments</span>
+              <span
+                style={{
+                  ...label, marginBottom: 0,
+                  color: card === null ? 'var(--muted)' : card.ready ? 'var(--success)' : card.connected ? '#f5a623' : 'var(--muted)',
+                }}
+              >
+                {card === null
+                  ? 'Checking…'
+                  : card.ready
+                    ? '● Accepting cards'
+                    : card.connected
+                      ? (card.actionNeeded ? '● Setup incomplete' : '● Verifying')
+                      : '○ Not connected'}
+              </span>
+            </div>
+
+            <p className={styles.bodyHint} style={{ margin: '0 0 .6rem' }}>
+              Clients pay by debit or credit card, straight into your own Stripe
+              account. The fee is yours: 2.9% + 30¢ per charge. Stripe asks for
+              your SSN and bank details during setup, and your{' '}
+              <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> —
+              about 2 days after that. It&apos;s the only option that works the same
+              on desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.
+            </p>
+
+            {card !== null && !card.ready && (
+              <div style={{ marginBottom: '.7rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowHelp((v) => !v)}
                   style={{
-                    marginTop: '.6rem', padding: '.75rem', borderRadius: 6,
-                    border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)',
+                    background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                    color: 'var(--neon)', fontSize: '.72rem', fontFamily: "'Space Mono', monospace",
+                    letterSpacing: '.04em', textDecoration: 'underline',
                   }}
                 >
-                  <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                    Stripe asks for your SSN and bank details because anyone taking
-                    card payments has to be identity-checked by law — PayPal and
-                    Venmo do the same. It goes to Stripe, not to us. The questions
-                    that catch people out:
-                  </p>
+                  {showHelp ? 'Hide the answers' : 'What will Stripe ask me?'}
+                </button>
 
-                  <div style={{ marginBottom: '.6rem' }}>
-                    <div style={{ ...label, marginBottom: '.25rem' }}>Business website</div>
-                    {slug ? (
-                      <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <code
-                          style={{
-                            fontFamily: "'Space Mono', monospace", fontSize: '.72rem',
-                            color: 'var(--white)', background: 'var(--deep)',
-                            padding: '.3rem .5rem', borderRadius: 4, wordBreak: 'break-all',
-                          }}
-                        >
-                          {`https://globaldjconnect.com/${slug}`}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void navigator.clipboard.writeText(`https://globaldjconnect.com/${slug}`);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 1800);
-                          }}
-                          style={{
-                            background: 'transparent', border: '1px solid var(--border)',
-                            borderRadius: 4, color: copied ? 'var(--success)' : 'var(--muted)',
-                            fontSize: '.65rem', padding: '.3rem .55rem', cursor: 'pointer',
-                            fontFamily: "'Space Mono', monospace",
-                          }}
-                        >
-                          {copied ? '\u2713 Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    ) : (
-                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)' }}>
-                        Your Global DJ Connect profile URL.
+                {showHelp && (
+                  <div style={{ marginTop: '.6rem', padding: '.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
+                    <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                      Stripe asks for your SSN and bank details because anyone taking
+                      card payments has to be identity-checked by law — PayPal and
+                      Venmo do the same. It goes to Stripe, not to us. The questions
+                      that catch people out:
+                    </p>
+                    <div style={{ marginBottom: '.6rem' }}>
+                      <div style={{ ...label, marginBottom: '.25rem' }}>Business website</div>
+                      {slug ? (
+                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', color: 'var(--white)', background: 'var(--deep)', padding: '.3rem .5rem', borderRadius: 4, wordBreak: 'break-all' }}>
+                            {`https://globaldjconnect.com/${slug}`}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(`https://globaldjconnect.com/${slug}`);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 1800);
+                            }}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: copied ? 'var(--success)' : 'var(--muted)', fontSize: '.65rem', padding: '.3rem .55rem', cursor: 'pointer', fontFamily: "'Space Mono', monospace" }}
+                          >
+                            {copied ? '✓ Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)' }}>Your Global DJ Connect profile URL.</p>
+                      )}
+                      <p style={{ margin: '.25rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                        No website? Use this. It&apos;s a real public page showing your
+                        services and prices — exactly what Stripe wants to see.
                       </p>
-                    )}
-                    <p style={{ margin: '.25rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                      No website? Use this. It&apos;s a real public page showing your
-                      services and prices — exactly what Stripe wants to see.
-                    </p>
+                    </div>
+                    <div style={{ marginBottom: '.6rem' }}>
+                      <div style={{ ...label, marginBottom: '.25rem' }}>Type of business</div>
+                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                        Individual — unless you actually have an LLC, in which case use
+                        it and have the EIN handy.
+                      </p>
+                    </div>
+                    <div style={{ marginBottom: '.6rem' }}>
+                      <div style={{ ...label, marginBottom: '.25rem' }}>Industry</div>
+                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                        Search &quot;DJ&quot; or &quot;band&quot; — the entertainment category for
+                        musicians and entertainers is the one you want.
+                      </p>
+                    </div>
+                    <div style={{ marginBottom: '.6rem' }}>
+                      <div style={{ ...label, marginBottom: '.25rem' }}>What you sell</div>
+                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                        &quot;DJ services for weddings, parties and private events.&quot;
+                      </p>
+                    </div>
+                    <div>
+                      <div style={{ ...label, marginBottom: '.25rem' }}>Statement descriptor</div>
+                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                        Your DJ name. This is what shows on your client&apos;s card statement
+                        — make it something they&apos;ll recognise, or you&apos;ll get
+                        &quot;what&apos;s this charge?&quot; calls and chargebacks.
+                      </p>
+                    </div>
                   </div>
+                )}
+              </div>
+            )}
 
-                  <div style={{ marginBottom: '.6rem' }}>
-                    <div style={{ ...label, marginBottom: '.25rem' }}>Type of business</div>
-                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                      Individual — unless you actually have an LLC, in which case use
-                      it and have the EIN handy.
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: '.6rem' }}>
-                    <div style={{ ...label, marginBottom: '.25rem' }}>Industry</div>
-                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                      Search &quot;DJ&quot; or &quot;band&quot; — the entertainment category for
-                      musicians and entertainers is the one you want.
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: '.6rem' }}>
-                    <div style={{ ...label, marginBottom: '.25rem' }}>What you sell</div>
-                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                      &quot;DJ services for weddings, parties and private events.&quot;
-                    </p>
-                  </div>
-
-                  <div>
-                    <div style={{ ...label, marginBottom: '.25rem' }}>Statement descriptor</div>
-                    <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                      Your DJ name. This is what shows on your client&apos;s card statement
-                      — make it something they&apos;ll recognise, or you&apos;ll get
-                      &quot;what&apos;s this charge?&quot; calls and chargebacks.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {card !== null && !card.connected && (
-            <div style={{ marginTop: '.7rem' }}>
+            {card !== null && !card.connected && (
               <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
                 {cardBusy ? 'Opening Stripe…' : 'Connect Stripe to accept cards'}
               </button>
-            </div>
-          )}
+            )}
 
-          {/*
-            Connected-but-not-ready is TWO situations, and the old copy said
-            "Finish Stripe setup" for both. When Stripe already has everything
-            and is merely verifying, that button sends the DJ back through
-            onboarding to change nothing, land back here, and read the same
-            sentence — a loop with no exit that implies they did it wrong.
-            `actionNeeded` (requirements.currently_due/past_due) is what
-            separates "we need you" from "we're thinking".
-          */}
-          {card !== null && card.connected && !card.ready && (
-            <div style={{ marginTop: '.7rem' }}>
-              <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: '#f5a623', lineHeight: 1.45 }}>
-                {card.actionNeeded
-                  ? 'Stripe still needs a few details before cards can be switched on.'
-                  : card.disabledReason && card.disabledReason.startsWith('rejected')
-                    ? 'Stripe has declined this account. Contact Stripe support \u2014 nothing on this page can change it.'
-                    : 'Everything\u2019s submitted. Stripe is verifying it now \u2014 usually minutes, occasionally a day. Nothing for you to do; cards switch on by themselves.'}
-              </p>
-
-              {card.actionNeeded && card.currentlyDue.length > 0 && (
-                <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', color: 'var(--muted)', fontSize: '.7rem', lineHeight: 1.6 }}>
-                  {card.currentlyDue.slice(0, 6).map((f) => (
-                    <li key={f}>{prettyRequirement(f)}</li>
-                  ))}
-                </ul>
-              )}
-
-              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                {card.actionNeeded ? (
-                  <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
-                    {cardBusy ? 'Opening Stripe\u2026' : 'Finish Stripe setup'}
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => void refreshCard()} disabled={cardBusy} style={btn(true, !cardBusy)}>
-                    {cardBusy ? 'Checking\u2026' : 'Check again'}
-                  </button>
+            {card !== null && card.connected && !card.ready && (
+              <div>
+                <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: '#f5a623', lineHeight: 1.45 }}>
+                  {card.actionNeeded
+                    ? 'Stripe still needs a few details before cards can be switched on.'
+                    : card.disabledReason && card.disabledReason.startsWith('rejected')
+                      ? 'Stripe has declined this account. Contact Stripe support — nothing on this page can change it.'
+                      : 'Everything’s submitted. Stripe is verifying it now — usually minutes, occasionally a day. Nothing for you to do; cards switch on by themselves.'}
+                </p>
+                {card.actionNeeded && card.currentlyDue.length > 0 && (
+                  <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', color: 'var(--muted)', fontSize: '.7rem', lineHeight: 1.6 }}>
+                    {card.currentlyDue.slice(0, 6).map((f) => (
+                      <li key={f}>{prettyRequirement(f)}</li>
+                    ))}
+                  </ul>
                 )}
-                <button type="button" onClick={() => void disconnectStripe()} disabled={cardBusy} style={btn(false, !cardBusy)}>
+                <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {card.actionNeeded ? (
+                    <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                      {cardBusy ? 'Opening Stripe…' : 'Finish Stripe setup'}
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => void refreshCard()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                      {cardBusy ? 'Checking…' : 'Check again'}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => void disconnectStripe()} disabled={cardBusy} style={btn(false, !cardBusy)}>
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {card !== null && card.ready && (
+              <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '.78rem', color: 'var(--white)' }}>
+                  ✓ Connected — clients see &quot;Pay with Card&quot; on deposits and invoices.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void disconnectStripe()}
+                  disabled={cardBusy}
+                  style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--muted)', fontSize: '.72rem', cursor: 'pointer', textDecoration: 'underline' }}
+                >
                   Disconnect
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {card !== null && card.connected && card.ready && (
-            <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', marginTop: '.7rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '.78rem', color: 'var(--white)' }}>
-                ✓ Connected — clients see &quot;Pay with Card&quot; on deposits and invoices.
-              </span>
-              <button
-                type="button"
-                onClick={() => void disconnectStripe()}
-                disabled={cardBusy}
-                style={{
-                  marginLeft: 'auto', background: 'transparent', border: 'none',
-                  color: 'var(--muted)', fontSize: '.72rem', cursor: 'pointer',
-                  textDecoration: 'underline',
-                }}
-              >
-                Disconnect
-              </button>
-            </div>
-          )}
-
-          {cardErr && (
-            // Diagnostics can be long and contain raw server text — wrap and
-            // preserve it rather than clipping the one line that explains why.
-            <p
-              style={{
-                margin: '.5rem 0 0',
-                fontSize: '.72rem',
-                color: '#ff6b6b',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                lineHeight: 1.5,
-              }}
-            >
-              {cardErr}
-            </p>
-          )}
-        </div>
-
-        {methods.length === 0 && (
-          <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.8rem', marginTop: '1rem' }}>
-            No methods yet. Add the ones you actually use.
-          </p>
+            {cardErr && (
+              <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#ff6b6b', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                {cardErr}
+              </p>
+            )}
+          </div>
         )}
 
-        {methods.map((m) => {
-          const cfg = METHOD_TYPES[m.type];
-          const err = errorFor(m);
+        {openTile !== null && openTile !== 'card' && (() => {
+          const t = openTile;
+          const cfg = METHOD_TYPES[t];
+          const m = byType[t] || { id: 'draft', type: t, handle: '', note: '', enabled: true };
+          const err = (m.handle || '').trim() || !cfg.handleLabel ? cfg.validate(m.handle || '') : null;
+          const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
-            <div
-              key={m.id}
-              style={{
-                marginTop: '1rem',
-                padding: '.9rem',
-                border: `1px solid ${err ? '#ff6b6b' : 'var(--border)'}`,
-                borderRadius: 8,
-                background: 'rgba(255,255,255,.02)',
-                opacity: m.enabled ? 1 : 0.55,
-              }}
-            >
-              <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: '0 0 130px' }}>
-                  <label style={label}>Method</label>
-                  <select
-                    value={m.type}
-                    onChange={(e) => patch(m.id, { type: e.target.value as PaymentMethodType, handle: '' })}
-                    style={{ ...field, cursor: 'pointer' }}
-                  >
-                    {TYPE_ORDER.map((t) => (
-                      <option key={t} value={t}>{METHOD_TYPES[t].label}</option>
-                    ))}
-                  </select>
-                </div>
+            <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem', marginBottom: '.4rem' }}>{cfg.label}</div>
+              <p className={styles.bodyHint} style={{ margin: '0 0 .7rem' }}>{cfg.hint}</p>
 
-                {cfg.handleLabel && (
-                  <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                    <label style={label}>{cfg.handleLabel}</label>
-                    <input
-                      type="text"
-                      value={m.handle}
-                      onChange={(e) => patch(m.id, { handle: e.target.value })}
-                      placeholder={cfg.placeholder}
-                      style={field}
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)', lineHeight: 1.45 }}>
-                {cfg.hint}
-              </p>
-              {err && (
-                <p style={{ margin: '.4rem 0 0', fontSize: '.72rem', color: '#ff6b6b' }}>{err}</p>
-              )}
-
-              {/* The readback. Irreversible rails demand the DJ sees their own
-                  handle exactly as the client will. */}
-              {m.enabled && !err && (m.handle.trim() || m.type === 'cash') && (
-                <div
-                  style={{
-                    marginTop: '.6rem',
-                    padding: '.5rem .7rem',
-                    borderRadius: 6,
-                    background: 'var(--deep)',
-                    border: '1px solid var(--border)',
-                  }}
-                >
-                  <span style={{ ...label, marginBottom: '.2rem' }}>Client sees</span>
-                  <span
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.85rem',
-                      color: 'var(--neon)',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {cfg.label}: {displayHandle(m)}
-                  </span>
-                  <span
-                    style={{
-                      display: 'block',
-                      marginTop: '.3rem',
-                      fontSize: '.68rem',
-                      color: isLinkable(m) ? 'var(--success)' : 'var(--muted)',
-                    }}
-                  >
-                    {isLinkable(m)
-                      ? (isMobileOnly(m)
-                          ? '⚡ One tap on a phone — amount filled in for them'
-                          : '⚡ One tap — amount filled in for them')
-                      : m.type === 'cash' || m.type === 'check'
-                      ? 'Handled in person'
-                      : 'Client sends this manually — no link is possible'}
-                  </span>
-                </div>
-              )}
-
-              <div style={{ marginTop: '.7rem' }}>
-                <label style={label}>Note to client (optional)</label>
-                <input
-                  type="text"
-                  value={m.note}
-                  onChange={(e) => patch(m.id, { note: e.target.value })}
-                  placeholder="e.g. Put the reference code in the memo"
-                  style={field}
-                  autoComplete="off"
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', marginTop: '.7rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer' }}>
+              {cfg.handleLabel ? (
+                <>
+                  <label style={label}>{cfg.handleLabel}</label>
                   <input
-                    type="checkbox"
-                    checked={m.enabled}
-                    onChange={(e) => patch(m.id, { enabled: e.target.checked })}
-                    style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }}
+                    autoFocus
+                    value={m.handle}
+                    placeholder={cfg.placeholder}
+                    onChange={(e) => patchType(t, { handle: e.target.value })}
+                    style={{ ...field, borderColor: err ? '#ff6b6b' : 'var(--border)' }}
                   />
-                  <span style={{ fontSize: '.78rem', color: 'var(--white)' }}>Offer this to clients</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => remove(m.id)}
-                  style={{
-                    marginLeft: 'auto',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--muted)',
-                    fontSize: '.72rem',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Remove
+                  {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+
+                  {/* The readback. Zelle and Venmo are irreversible — a typo
+                      sends a stranger real money and no deploy claws it back. */}
+                  {shown && !err && (
+                    <div style={{ marginTop: '.6rem', padding: '.5rem .6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--deep)' }}>
+                      <div style={{ ...label, marginBottom: '.2rem' }}>Client sees</div>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem', color: 'var(--neon)', wordBreak: 'break-all' }}>
+                        {cfg.label}: {shown}
+                      </div>
+                    </div>
+                  )}
+
+                  <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
+                  <input
+                    value={m.note}
+                    placeholder="e.g. Put the reference code in the memo"
+                    onChange={(e) => patchType(t, { note: e.target.value })}
+                    style={field}
+                  />
+                </>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--white)', fontSize: '.82rem' }}>
+                  Nothing to fill in — turn it on and clients will see it as an option.
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => void save()} disabled={saving} style={btn(true, !saving)}>
+                  {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Turn on'}
+                </button>
+                {byType[t] && (
+                  <button type="button" onClick={() => removeType(t)} style={btn(false)}>
+                    Remove
+                  </button>
+                )}
+                <button type="button" onClick={() => setOpenTile(null)} style={{ ...btn(false), marginLeft: 'auto' }}>
+                  Close
                 </button>
               </div>
             </div>
           );
-        })}
+        })()}
 
-        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '1rem', alignItems: 'center' }}>
-          <button type="button" onClick={add} style={btn(false)}>+ Add method</button>
-          <button type="button" onClick={save} disabled={saving || !!firstError} style={btn(true, !saving && !firstError)}>
-            {saving ? 'Saving…' : 'Save methods'}
-          </button>
-          {feedback && (
-            <span style={{ fontSize: '.75rem', color: feedback.ok ? 'var(--success)' : '#ff6b6b' }}>
-              {feedback.msg}
-            </span>
-          )}
-        </div>
-
-        {/* Only a warning, never a block: a DJ may legitimately want a deposit
-            policy set up before they've added a handle. The request flow is
-            what needs a method, not this screen. */}
-        {enabledCount === 0 && methods.length > 0 && (
-          <p style={{ margin: '.8rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>
-            Nothing is switched on — clients won&apos;t see a way to pay until you enable at least one.
+        {feedback && (
+          <p style={{ margin: '.7rem 0 0', fontSize: '.75rem', color: feedback.ok ? 'var(--success)' : '#ff6b6b', lineHeight: 1.5 }}>
+            {feedback.msg}
           </p>
         )}
       </div>
