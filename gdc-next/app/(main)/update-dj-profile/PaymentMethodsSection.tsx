@@ -13,9 +13,9 @@
 // wanted to type a Venmo handle. It read as a form to survive rather than a
 // choice to make.
 //
-// Now: every rail is on screen from the first paint, as a tile. Green dot =
-// live, clients can pay you this way today. Click one to expand it and fill it
-// in. Nothing to add, nothing to discover, and the whole set is legible in a
+// Now: every rail is on screen from the first paint, as a tile. Green check =
+// active, clients can pay you this way today. Click one to expand it and fill
+// it in. Nothing to add, nothing to discover, and the whole set is legible in a
 // glance — which is the actual question a DJ has ("what can I offer?").
 //
 // ONE ROW PER TYPE. The stored shape is still an array, but the UI treats type
@@ -596,23 +596,36 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     actually use right now, without opening anything. */}
                 {live && (
                   <span
-                    aria-label="Live"
+                    aria-label="Active"
                     style={{
-                      position: 'absolute', top: 6, right: 6, width: 8, height: 8,
+                      position: 'absolute', top: 5, right: 5, width: 14, height: 14,
                       borderRadius: '50%', background: 'var(--neon)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}
-                  />
+                  >
+                    {/* A check, not a dot. A dot is a colour you have to be
+                        taught to read; a tick means done in every interface
+                        anyone has ever used. Same badge the booking pipeline
+                        puts on a finished step, so the two agree. */}
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
 
-        <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', marginBottom: '1rem' }}>
-          {liveCount === 0
-            ? 'Nothing live yet — tap one to set it up.'
-            : `${liveCount} live · green means clients can pay you that way today.`}
-        </p>
+        {/* The green check on each live tile says this already — a line
+            underneath restating it in words was the caption to a picture that
+            didn't need one. Kept only for the empty state, where there's
+            nothing green to read yet. */}
+        {liveCount === 0 && (
+          <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', marginBottom: '1rem' }}>
+            Nothing live yet — tap one to set it up.
+          </p>
+        )}
 
         {/* ── The expanded rail ────────────────────────────────────── */}
         {openTile === 'card' && (
