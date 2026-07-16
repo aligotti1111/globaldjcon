@@ -30,6 +30,7 @@ import {
   displayHandle,
   copyInstruction,
   referenceCode,
+  cashLine,
   METHOD_TYPES,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
@@ -145,9 +146,12 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
     }
 
     if (m.type === 'cash') {
+      // "Pay in person" told the client nothing. Cash now carries a number and
+      // a name, so say them: someone about to hand over $600 at a venue they've
+      // never been to needs to know who to ask for.
       return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
 <p style="margin:0;font-weight:600;color:#111;font-size:14px;">Cash</p>
-<p style="margin:4px 0 0;color:#666;font-size:13px;">Pay ${djName} in person.</p></div>`;
+<p style="margin:4px 0 0;color:#666;font-size:13px;">${cashLine(m)}</p></div>`;
     }
 
     return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
