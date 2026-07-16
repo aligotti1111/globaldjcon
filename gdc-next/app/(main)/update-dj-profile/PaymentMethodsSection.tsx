@@ -61,6 +61,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import {
+  CardMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, OtherMark,
+} from './BrandMarks';
+import {
   METHOD_TYPES,
   TYPE_ORDER,
   displayHandle,
@@ -140,16 +143,22 @@ function prettyRequirement(field: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** Tile faces. Emoji, not brand logos — we don't have licence to ship those. */
-const TILE_ICON: Record<TileKey, string> = {
-  card: '\u{1F4B3}',
-  venmo: '\u{1F535}',
-  cashapp: '\u{1F7E2}',
-  paypal: '\u{1F535}',
-  zelle: '\u{1F7E3}',
-  cash: '\u{1F4B5}',
-  check: '\u{1F4C3}',
-  other: '\u{1F3E6}',
+/**
+ * Tile faces — the real marks, in each brand's own colour.
+ *
+ * A DJ scanning this grid recognises the Venmo blue before they've read a word;
+ * that's the entire job of the tile. Emoji stand-ins made them all read as
+ * generic coloured dots, which is the opposite.
+ */
+const TILE_MARK: Record<TileKey, (p: { size?: number; color?: string }) => React.ReactElement> = {
+  card: CardMark,
+  venmo: VenmoMark,
+  cashapp: CashAppMark,
+  paypal: PaypalMark,
+  zelle: ZelleMark,
+  cash: CashMark,
+  check: CheckMark,
+  other: OtherMark,
 };
 
 const TILE_LABEL: Record<TileKey, string> = {
@@ -511,8 +520,17 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   textAlign: 'center',
                 }}
               >
-                <span style={{ fontSize: 20, lineHeight: 1, filter: live ? 'none' : 'grayscale(1)', opacity: live ? 1 : .55 }}>
-                  {TILE_ICON[k]}
+                <span
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: 26,
+                    // Not-yet-set-up rails go grey rather than disappearing —
+                    // the DJ still needs to see the whole menu to choose from.
+                    filter: live ? 'none' : 'grayscale(1)',
+                    opacity: live ? 1 : .5,
+                  }}
+                >
+                  {TILE_MARK[k]({ size: 24 })}
                 </span>
                 <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
                 <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
