@@ -711,7 +711,7 @@ function FlyerSlot({
 // stay identical in three places (icon, label, connector).
 // What the pipeline can ask BookingDetails to do about a contract. Named so
 // the two components can't drift on the strings.
-type ContractAction = 'open' | 'download' | 'resend' | 'cancel' | 'copy-link';
+type ContractAction = 'open' | 'download' | 'download-audit' | 'resend' | 'cancel' | 'copy-link';
 
 const NEON = '#00e0a4';   // done
 const AMBER = '#f5a623';  // needs the DJ to do something
@@ -883,9 +883,20 @@ function BookingRow({
       //
       // Archive is read-only apart from downloading what was signed.
       actions: archive
-        ? (trulySigned ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }] : [])
+        ? (trulySigned
+            ? [
+                { label: '\u2b07 Download contract', run: () => runContract('download') },
+                { label: '\u2b07 Download audit log', run: () => runContract('download-audit') },
+              ]
+            : [])
         : trulySigned
-          ? [{ label: '\u2b07 Download contract', run: () => runContract('download') }]
+          ? [
+              { label: '\u2b07 Download contract', run: () => runContract('download') },
+              // The audit log is the proof: who signed, from what IP, when.
+              // It's the half of a signed contract that matters if the client
+              // ever says "that wasn't me" — and it was buried in the panel.
+              { label: '\u2b07 Download audit log', run: () => runContract('download-audit') },
+            ]
           // Marked complete by hand: the DJ has said this stage is settled,
           // usually because it happened off-platform. Everything else here
           // contradicts that — cancelling a contract they've called done,
@@ -1316,7 +1327,8 @@ function BookingDetails({
     onContractActionHandled?.();
     switch (contractAction) {
       case 'open': setContractOpen(true); break;
-      case 'download': void downloadSigned(); break;
+      case 'download': void openSignedDoc('contract'); break;
+      case 'download-audit': void openSignedDoc('audit'); break;
       case 'resend': void resendContract(); break;
       case 'cancel': void cancelContract(); break;
       case 'copy-link': void copyClientLink(); break;
@@ -1412,6 +1424,26 @@ function BookingDetails({
 
   // Fetch the finished, signed contract PDF + audit log so the DJ can download both.
   async function downloadSigned() {
+    await openSignedDoc('contract');
+  }
+
+  /**
+   * Open one of the signed documents.
+   *
+   * The pipeline's dropdown says "Download …", so it has to actually open
+   * something — the old behaviour only revealed two buttons further down the
+   * expanded panel, which is a link, not a download.
+   *
+   * If we already have the URLs (the panel fetches them on mount for signed
+   * bookings) we open straight away, keeping the user's click — browsers block
+   * window.open once a gesture has been through an await. When we have to
+   * fetch first that gesture may be gone, so setSignedDocs() still runs and the
+   * panel's buttons appear as the fallback. The DJ gets the file either way.
+   */
+  async function openSignedDoc(which: 'contract' | 'audit') {
+    const known = which === 'audit' ? signedDocs?.audit : signedDocs?.contract;
+    if (known) { window.open(known, '_blank', 'noopener,noreferrer'); return; }
+
     setSignedBusy(true);
     try {
       const res = await fetch('/api/contracts/signed-doc', {
@@ -1419,8 +1451,15 @@ function BookingDetails({
         body: JSON.stringify({ bookingId: booking.id }),
       });
       const json = (await res.json().catch(() => ({}))) as { contract?: string; audit?: string; error?: string };
-      if (res.ok && (json.contract || json.audit)) setSignedDocs({ contract: json.contract, audit: json.audit });
-      else alert(json.error || 'The signed contract isn’t ready yet.');
+      if (res.ok && (json.contract || json.audit)) {
+        setSignedDocs({ contract: json.contract, audit: json.audit });
+        const url = which === 'audit' ? json.audit : json.contract;
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        else if (which === 'audit') alert('The audit log isn’t available for this contract yet.');
+        else alert('The signed contract isn’t ready yet.');
+      } else {
+        alert(json.error || 'The signed contract isn’t ready yet.');
+      }
     } catch { alert('Could not fetch the signed contract. Try again in a moment.'); }
     finally { setSignedBusy(false); }
   }
