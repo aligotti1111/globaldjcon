@@ -220,6 +220,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [cardBusy, setCardBusy] = useState(false);
   const [cardErr, setCardErr] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
+  // The DJ's number from their account. Cash needs a phone, and they've
+  // already given us one — asking them to type it again is asking them to
+  // maintain the same fact in two places, which is how one of them goes stale.
+  const [accountPhone, setAccountPhone] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -341,12 +345,13 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods, slug')
+          .select('payment_methods, slug, phone')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
-        const row = data as { payment_methods?: unknown; slug?: string | null } | null;
+        const row = data as { payment_methods?: unknown; slug?: string | null; phone?: string | null } | null;
         setSlug(typeof row?.slug === 'string' ? row.slug : null);
+        setAccountPhone(typeof row?.phone === 'string' && row.phone.trim() ? row.phone.trim() : null);
         const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
         setMethods(
@@ -358,6 +363,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
               handle: typeof o.handle === 'string' ? o.handle : '',
               note: typeof o.note === 'string' ? o.note : '',
               enabled: o.enabled !== false,
+              contact: typeof o.contact === 'string' ? o.contact : undefined,
             };
           }),
         );
@@ -382,7 +388,11 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const isLive = useCallback((t: PaymentMethodType): boolean => {
     const m = byType[t];
     if (!m || !m.enabled) return false;
-    return !METHOD_TYPES[t].validate(m.handle || '');
+    if (METHOD_TYPES[t].validate(m.handle || '')) return false;
+    // Both halves, or it isn't live. A green dot on a Cash rail with a number
+    // and no name would promise the client something the email can't deliver.
+    const vc = METHOD_TYPES[t].validateContact;
+    return vc ? !vc(m.contact || '') : true;
   }, [byType]);
 
   const tileLive = (k: TileKey): boolean => (k === 'card' ? !!card?.ready : isLive(k));
@@ -413,7 +423,12 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
       // A row that exists but is entirely empty is a tile the DJ opened and
       // walked away from — not an error to shout about. It's dropped on save.
       if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) return null;
-      return METHOD_TYPES[t].validate(m.handle || '');
+      const e = METHOD_TYPES[t].validate(m.handle || '');
+      if (e) return e;
+      // A phone with no name is half a Cash rail: the client rings a stranger
+      // and says "...hi?". Both halves or neither.
+      const vc = METHOD_TYPES[t].validateContact;
+      return vc ? vc(m.contact || '') : null;
     })
     .find((e) => e)) || null;
 
@@ -438,6 +453,9 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           handle: cleanHandle(m),
           note: (m.note || '').trim(),
           enabled: true,
+          // Only written when the rail actually has a second field, so a Venmo
+          // row doesn't carry a stray empty `contact` forever.
+          ...(METHOD_TYPES[m.type].contactLabel ? { contact: (m.contact || '').trim() } : {}),
         }));
       const { error } = await supabase
         .from('users')
@@ -773,6 +791,9 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           const cfg = METHOD_TYPES[t];
           const m = byType[t] || { id: 'draft', type: t, handle: '', note: '', enabled: true };
           const err = (m.handle || '').trim() || !cfg.handleLabel ? cfg.validate(m.handle || '') : null;
+          const contactErr = cfg.validateContact && (m.contact || '').trim()
+            ? cfg.validateContact(m.contact || '')
+            : null;
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -791,6 +812,26 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   />
                   {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
 
+                  {/* Offered, not auto-filled. Silently writing their account
+                      number into a field they didn't touch means they can't
+                      tell what's saved from what's suggested — and a DJ may
+                      well want clients calling a different number than the one
+                      we text them on. One tap if it's the same, ignorable if
+                      it isn't. */}
+                  {t === 'cash' && accountPhone && cleanHandle(m) !== accountPhone && (
+                    <button
+                      type="button"
+                      onClick={() => patchType(t, { handle: accountPhone })}
+                      style={{
+                        marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
+                        color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
+                        fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                      }}
+                    >
+                      Use my account number ({accountPhone})
+                    </button>
+                  )}
+
                   {/* The readback. Zelle and Venmo are irreversible — a typo
                       sends a stranger real money and no deploy claws it back. */}
                   {shown && !err && (
@@ -800,6 +841,23 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                         {cfg.label}: {shown}
                       </div>
                     </div>
+                  )}
+
+                  {/* Second field, where the rail has one. Cash: who to ask
+                      for. A client holding $600 at a venue they've never been
+                      to needs a name as much as a number — "call this number"
+                      gets them a stranger saying "who?". */}
+                  {cfg.contactLabel && (
+                    <>
+                      <label style={{ ...label, marginTop: '.7rem' }}>{cfg.contactLabel}</label>
+                      <input
+                        value={m.contact || ''}
+                        placeholder={cfg.contactPlaceholder}
+                        onChange={(e) => patchType(t, { contact: e.target.value })}
+                        style={{ ...field, borderColor: contactErr ? '#ff6b6b' : 'var(--border)' }}
+                      />
+                      {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
+                    </>
                   )}
 
                   <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
