@@ -102,20 +102,33 @@ export function DiscoverMark({ size = 20, color }: MarkProps) {
 /**
  * The card tile's face: the four networks Stripe actually accepts.
  *
- * "Card" as a word means nothing to a DJ deciding whether to bother with the
- * SSN and the 7–14 day wait. Visa/Mastercard/Amex/Discover means "everything
- * my clients already carry" — the reason to do it, said without a sentence.
+ * "Card" as a word means nothing to a DJ weighing up an SSN and a 7–14 day
+ * wait. Visa/Mastercard/Amex/Discover means "everything my clients already
+ * carry" — the reason to do it, said without a sentence.
  *
- * Honest, not decorative: Stripe genuinely processes all four, so the marks
- * promise nothing we don't deliver.
+ * EACH ON A WHITE CHIP, and that's not decoration. Visa's mark is navy
+ * (#1A1F71) and Amex's is a mid blue — on a near-black tile they were dark
+ * shapes on a dark background, i.e. invisible. Recolouring them white would
+ * fix the contrast and break the brands' guidelines at the same time. A white
+ * chip keeps every mark in its true colour and legible, which is also how card
+ * logos appear at every checkout on earth.
  */
-export function CardNetworksMark({ size = 15 }: { size?: number }) {
+export function CardNetworksMark({ size = 14 }: { size?: number }) {
+  const chip: React.CSSProperties = {
+    background: '#fff',
+    borderRadius: 3,
+    padding: '2px 3px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 0,
+  };
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-      <VisaMark size={size} />
-      <MastercardMark size={size} />
-      <AmexMark size={size} />
-      <DiscoverMark size={size} />
+      <span style={chip}><VisaMark size={size} /></span>
+      <span style={chip}><MastercardMark size={size} /></span>
+      <span style={chip}><AmexMark size={size} /></span>
+      <span style={chip}><DiscoverMark size={size} /></span>
     </span>
   );
 }

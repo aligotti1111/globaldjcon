@@ -521,13 +521,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '.7rem .4rem .6rem',
                   borderRadius: 8,
-                  // Green frame = live. Not a tint, not a shade — the same
-                  // green as the dot, so "is this on?" has exactly one answer
-                  // on the tile and you can read the whole grid at arm's length.
+                  // Green frame + green dot = live. NOTHING else changes.
+                  // A green wash behind the tile as well was a third signal for
+                  // the same fact, and it tinted the brand marks sitting on top
+                  // of it — the one thing on the tile that has to stay true to
+                  // itself. Frame and dot say the state; the body stays out of it.
                   border: live
                     ? '1.5px solid var(--neon)'
                     : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
-                  background: live ? 'rgba(0,224,164,.06)' : open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)',
+                  background: open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)',
                   cursor: 'pointer',
                   textAlign: 'center',
                 }}
@@ -544,7 +546,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     // logo.
                   }}
                 >
-                  {TILE_MARK[k]?.({ size: k === 'card' ? 13 : 24 })}
+                  {TILE_MARK[k]?.({ size: k === 'card' ? 14 : 24 })}
                 </span>
                 <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
                 <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
