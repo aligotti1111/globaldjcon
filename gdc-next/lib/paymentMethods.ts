@@ -45,6 +45,19 @@ export interface PaymentMethod {
   handle: string;
   note: string;
   enabled: boolean;
+  /**
+   * Second field, only some rails have one. Cash uses it for WHO to ask for:
+   * "call (555) 123-4567 and ask for Mike".
+   *
+   * A client holding $600 in an envelope at a venue they've never been to
+   * needs a name as much as a number — "call this number" gets them a stranger
+   * saying "who?". It's separate from `handle` because both halves are looked
+   * up and rendered independently; concatenating them into one string would
+   * mean parsing it back out everywhere it's shown.
+   *
+   * Optional, so every row saved before this field existed still loads.
+   */
+  contact?: string;
 }
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -52,12 +65,16 @@ const digitsOf = (v: string) => v.replace(/\D/g, '');
 
 export interface TypeConfig {
   label: string;
-  /** What the DJ types. Empty = this rail has no handle (cash). */
+  /** What the DJ types. Empty = this rail has no handle at all. */
   handleLabel: string;
   placeholder: string;
   /** Shown to the DJ in settings — what the client will actually have to do. */
   hint: string;
   validate: (v: string) => string | null;
+  /** Second field's label. Undefined = this rail doesn't have one. */
+  contactLabel?: string;
+  contactPlaceholder?: string;
+  validateContact?: (v: string) => string | null;
 }
 
 export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
@@ -123,10 +140,18 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   },
   cash: {
     label: 'Cash',
-    handleLabel: '',
-    placeholder: '',
-    hint: 'In person only. Fine for the balance on the night — but it can\'t hold a date in advance, so it rarely works as a deposit.',
-    validate: () => null,
+    handleLabel: 'Phone to call',
+    placeholder: '(555) 123-4567',
+    contactLabel: 'Ask for',
+    contactPlaceholder: 'Mike',
+    hint: 'In person only. Fine for the balance on the night — but it can\'t hold a date in advance, so it rarely works as a deposit. The client gets your number and a name to ask for, so handing over cash doesn\'t mean guessing who to find.',
+    validate: (v) => {
+      const t = v.trim();
+      if (!t) return 'Enter a phone number the client can call.';
+      if (digitsOf(t).length >= 10) return null;
+      return 'Must be a 10-digit phone number.';
+    },
+    validateContact: (v) => (v.trim() ? null : 'Who should they ask for?'),
   },
   check: {
     label: 'Check',
@@ -166,7 +191,9 @@ export function displayHandle(m: Pick<PaymentMethod, 'type' | 'handle'>): string
     case 'venmo':   return `@${t}`;
     case 'cashapp': return `$${t}`;
     case 'paypal':  return t.replace(/^https?:\/\//i, '');
-    case 'cash':    return 'Pay in person';
+    // Cash now carries a number and a name — "Pay in person" threw both away
+    // and told the client nothing they didn't already know.
+    case 'cash':    return t ? `Call ${t}` : 'Pay in person';
     default:        return t;
   }
 }
@@ -225,12 +252,27 @@ export function isMobileOnly(m: PaymentMethod): boolean {
   return m.type === 'venmo';
 }
 
+/**
+ * Cash, as one line for the client: who to call, and who to ask for.
+ *
+ * Both halves or nothing — a number with no name leaves someone standing in a
+ * venue with $600 in an envelope asking strangers. Shared here so the booking
+ * card and the email can't word it differently.
+ */
+export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
+  const phone = (m.handle || '').trim();
+  const who = (m.contact || '').trim();
+  if (!phone) return 'Pay in person.';
+  if (!who) return `Call ${phone} to arrange.`;
+  return `Call ${phone} and ask for ${who}.`;
+}
+
 /** One-line instruction for a rail we cannot link. */
 export function copyInstruction(m: PaymentMethod): string {
   switch (m.type) {
     case 'zelle':  return 'Open your bank app, choose Zelle, and send to:';
     case 'paypal': return 'Open PayPal, choose Send, and send to:';
-    case 'cash':   return 'Pay the DJ in person.';
+    case 'cash':   return 'Pay in person. Call to arrange:';
     case 'check':  return 'Make the check out to:';
     default:       return 'Send payment to:';
   }
