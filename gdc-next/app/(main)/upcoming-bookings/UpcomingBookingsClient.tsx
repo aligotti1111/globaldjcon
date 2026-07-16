@@ -908,6 +908,8 @@ function BookingRow({
   const steps: {
     key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money';
     overridable: boolean; done: boolean; color: string;
+    /** A read-only line at the top of the dropdown — the amounts, for Deposit. */
+    info?: string;
     actions?: { label: string; run: () => void; danger?: boolean }[];
   }[] = [
     { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true, color: NEON },
@@ -1037,11 +1039,25 @@ function BookingRow({
     // amount_paid might be $299.99 of $600 — the rails cap below a typical
     // deposit, so partials are routine. The real numbers live in the ledger
     // below, which is the only place with room to be accurate.
+    // 'Partially paid' is its own state, not a rounding of 'requested'. The
+    // rails force it — unverified Venmo caps at $299.99/week against a typical
+    // $600 deposit — so a client sending it in two goes is the normal path, not
+    // an edge case. A DJ seeing "Deposit requested" on money that's half in has
+    // no idea anything arrived.
+    const anyPartial = payments.some((p) => Number(p.amount_paid || 0) > 0 && !settled(p));
     const pLabel = allDone
       ? 'Deposit'
-      : depositRow
-        ? 'Deposit requested'
-        : 'Request deposit';
+      : anyPartial
+        ? 'Partially paid'
+        : depositRow
+          ? 'Deposit requested'
+          : 'Request deposit';
+
+    // The numbers, for the dropdown. The strip has room for two words; this is
+    // where "how much actually landed" lives without opening the booking.
+    const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const askedFor = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const currency = booking.currency || 'USD';
     steps.push({
       // 'deposit', not 'payment': /api/bookings/status-override whitelists
       // ['contract','deposit','song_list'] and rejects anything else, so the
@@ -1061,6 +1077,11 @@ function BookingRow({
       // and a request sitting unpaid is one they can chase. Grey said "nothing
       // to see here" about the money the booking exists to collect.
       color: allDone ? NEON : AMBER,
+      // Shown at the top of the dropdown, above the actions. Only once money
+      // has actually been asked for — before that there's nothing to report.
+      info: depositRow
+        ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
+        : undefined,
       actions: archive
         ? []
         : [
@@ -1229,7 +1250,10 @@ function BookingRow({
             // A signed contract ISN'T overridable (you can't un-sign a real
             // one) but it does have Download — so the chevron can't key off
             // `overridable` any more, or that menu would be unreachable.
-            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable;
+            // `info` counts: a settled deposit in the archive has no actions
+            // and isn't overridable, but it still knows what was paid — and
+            // that's exactly what someone opens an old booking to check.
+            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info;
             const inner = (
               <>
                 <span
@@ -1318,6 +1342,18 @@ function BookingRow({
                     <>
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
                       <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                        {/* The amounts, when there are any. Two words fit on
+                            the strip; "$299.99 of $600.00 received" doesn't —
+                            and that's the number a DJ actually wants when they
+                            tap a half-paid deposit. */}
+                        {st.info && (
+                          <>
+                            <div style={{ color: 'var(--white,#fff)', fontSize: '.78rem', fontWeight: 700, padding: '.45rem .6rem .35rem' }}>
+                              {st.info}
+                            </div>
+                            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
+                          </>
+                        )}
                         {/* The real options for this step, right now — built
                             in the steps array so the menu can't offer something
                             the state doesn't allow (e.g. re-sending over a
