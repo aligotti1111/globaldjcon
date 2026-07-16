@@ -880,13 +880,21 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     </>
                   )}
 
-                  <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
-                  <input
-                    value={m.note}
-                    placeholder="e.g. Put the reference code in the memo"
-                    onChange={(e) => patchType(t, { note: e.target.value })}
-                    style={field}
-                  />
+                  {/* Check already tells the client everything: who to make it
+                      out to, where to send it, and what to include. A third
+                      free-text box invites a DJ to repeat one of those in
+                      slightly different words, and then the two can disagree. */}
+                  {t !== 'check' && (
+                    <>
+                      <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
+                      <input
+                        value={m.note}
+                        placeholder="e.g. Put the reference code in the memo"
+                        onChange={(e) => patchType(t, { note: e.target.value })}
+                        style={field}
+                      />
+                    </>
+                  )}
                 </>
               ) : (
                 <p style={{ margin: 0, color: 'var(--white)', fontSize: '.82rem' }}>
