@@ -472,12 +472,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     }
   }
 
+  // Field titles are white. They name what you're being asked for — the one
+  // thing you have to read to fill the form in — and muted grey put them below
+  // the placeholder text they're labelling.
   const label: React.CSSProperties = {
     fontFamily: "'Space Mono', monospace",
     fontSize: '.6rem',
     letterSpacing: '.08em',
     textTransform: 'uppercase',
-    color: 'var(--muted)',
+    color: 'var(--white)',
     marginBottom: '.35rem',
     display: 'block',
   };
@@ -880,7 +883,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
 
               <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => void save()} disabled={saving} style={btn(true, !saving)}>
-                  {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Turn on'}
+                  {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Activate'}
                 </button>
                 {byType[t] && (
                   <button type="button" onClick={() => removeType(t)} style={btn(false)}>
