@@ -372,13 +372,13 @@ export default function PaymentOptions({
                         <p style={{ margin: '.1rem 0 0', fontSize: '.82rem', color: 'var(--white)', whiteSpace: 'pre-line' }}>{m.contact}</p>
                       </>
                     )}
-                    {/* The memo is what makes an envelope matchable. It arrives
-                        days later with nothing on it but an amount, and the
-                        client can't mistype their own event date. */}
+                    {/* What makes the envelope matchable. It arrives days later
+                        with nothing on it but an amount, and the client can't
+                        mistype their own event date. */}
                     {checkMemo(eventDate, venueName, reference) && (
                       <>
-                        <p style={{ margin: '.45rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>Write on the memo line:</p>
-                        <p style={{ margin: '.1rem 0 0', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', color: 'var(--neon)' }}>
+                        <p style={{ margin: '.45rem 0 0', fontSize: '.72rem', color: 'var(--muted)' }}>Include with your check:</p>
+                        <p style={{ margin: '.1rem 0 0', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', color: 'var(--white)' }}>
                           {checkMemo(eventDate, venueName, reference)}
                         </p>
                       </>
