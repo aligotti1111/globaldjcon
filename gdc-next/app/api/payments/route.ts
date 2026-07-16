@@ -31,6 +31,7 @@ import {
   copyInstruction,
   referenceCode,
   cashLine,
+  checkMemo,
   METHOD_TYPES,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
@@ -116,7 +117,7 @@ const BRAND: Record<string, string> = {
  * email can't detect the device, so we say so in words here; the booking card
  * (which can detect it) shows a QR instead.
  */
-function optionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, djName: string, paymentId: string): string {
+function optionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, djName: string, paymentId: string, eventDate?: string | null, venueName?: string | null): string {
   const rows = methods.map((m) => {
     const cfg = METHOD_TYPES[m.type];
     const link = buildPayLink(m, amount, reference);
@@ -152,6 +153,22 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
       return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
 <p style="margin:0;font-weight:600;color:#111;font-size:14px;">Cash</p>
 <p style="margin:4px 0 0;color:#666;font-size:13px;">${cashLine(m)}</p></div>`;
+    }
+
+    // Check has two halves and a memo line — an envelope arrives days later with
+    // nothing on it but an amount, and the event date + venue are the only
+    // things the client already knows and can't mistype.
+    if (m.type === 'check') {
+      const memo = checkMemo(eventDate, venueName, reference);
+      return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
+<p style="margin:0;font-weight:600;color:#111;font-size:14px;">Check</p>
+<p style="margin:4px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
+<p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
+${m.contact ? `<p style="margin:6px 0 0;color:#666;font-size:12px;">Mail to:</p>
+<p style="margin:2px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
+${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Please write this on the memo line:</p>
+<p style="margin:2px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
+</div>`;
     }
 
     return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
@@ -290,7 +307,7 @@ ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
 </p>
-${optionsHtml(methods, amount, b.currency || 'USD', reference, djName, payment.id)}
+${optionsHtml(methods, amount, b.currency || 'USD', reference, djName, payment.id, b.event_date, b.venue_name)}
 <div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
 <p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
 <p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
