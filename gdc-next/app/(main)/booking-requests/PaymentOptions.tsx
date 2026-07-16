@@ -22,6 +22,15 @@
 //
 // The host can only ever CLAIM they paid. Only the DJ confirming turns it into
 // money received — otherwise the pipeline would lie to the DJ.
+//
+// THE ONE EXCEPTION: CARD. When cardEnabled (the DJ finished Stripe Connect
+// onboarding), "Pay with Card" renders FIRST — it's the only rail that works
+// identically on desktop and mobile, with no app, no QR, no copy-paste. It's
+// a button, not a link: no static URL exists, so we POST to /api/payments
+// { action:'checkout' } and redirect to the Stripe-hosted session it returns.
+// Cards also AUTO-CONFIRM on return (verify-checkout) — Stripe reporting a
+// session paid is a fact, not a claim, so it may reach paid/partial without
+// the DJ.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -40,6 +49,17 @@ import {
 
 export interface PaymentOptionsProps {
   bookingId: string;
+  /**
+   * The booking_payments row id — required for the card rail (the checkout
+   * action is per-payment). Manual rails don't need it.
+   */
+  paymentId?: string;
+  /**
+   * True when this DJ's Stripe Connect account is READY (charges_enabled
+   * cached in users.stripe_connect_ready). Comes from the page load, not
+   * from payment_methods — card has no handle.
+   */
+  cardEnabled?: boolean;
   /** 'deposit' | 'balance' — drives the wording and the reference suffix. */
   kind: string;
   amount: number;
@@ -55,9 +75,9 @@ export interface PaymentOptionsProps {
   busy?: boolean;
   /**
    * The booking's date and venue — only used for the check memo line, and
-   * optional so every existing call site keeps compiling. Without them the
-   * memo falls back to the reference code, which works but asks the client to
-   * copy a string that means nothing to them.
+   * optional so every existing call site keeps compiling. Without them the memo
+   * falls back to the reference code, which works but asks the client to copy a
+   * string that means nothing to them.
    */
   eventDate?: string | null;
   venueName?: string | null;
@@ -102,11 +122,13 @@ function QrBlock({ link, label }: { link: string; label: string }) {
 }
 
 export default function PaymentOptions({
-  bookingId, kind, amount, currency = 'USD', amountPaid = 0, status = 'requested',
+  bookingId, paymentId, cardEnabled = false, kind, amount, currency = 'USD',
+  amountPaid = 0, status = 'requested',
   djName, methods, onMarkSent, onPayAtEvent, busy = false, eventDate, venueName,
 }: PaymentOptionsProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [cardBusy, setCardBusy] = useState(false);
   // Venmo's link is mobile-only, so we must know the device. Done after mount
   // to stay SSR-safe.
   const [isDesktop, setIsDesktop] = useState(false);
@@ -116,6 +138,7 @@ export default function PaymentOptions({
   }, []);
 
   const list = useMemo(() => usableMethods(methods), [methods]);
+  const canPayByCard = cardEnabled && !!paymentId;
   const reference = referenceCode(bookingId, kind);
   const outstanding = Math.max(0, amount - (amountPaid || 0));
   const isPaid = status === 'paid' || status === 'waived';
@@ -133,6 +156,29 @@ export default function PaymentOptions({
     }
     setCopied(tag);
     setTimeout(() => setCopied((c) => (c === tag ? null : c)), 1600);
+  }
+
+  // Card: POST for a fresh Stripe Checkout session (amount recomputed
+  // server-side — never sent from here) and hand the browser to Stripe.
+  // Stripe returns to /booking-requests?paid=<id>&session_id=<cs_...>, where
+  // BookingRequestsClient runs verify-checkout and the row settles itself.
+  async function payWithCard() {
+    if (!paymentId || cardBusy) return;
+    setCardBusy(true);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'checkout', paymentId }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error || 'Could not open card checkout.');
+      window.location.href = json.url;
+      // No busy reset — we're leaving the page.
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
+      setCardBusy(false);
+    }
   }
 
   async function markSent(methodType: string) {
@@ -171,7 +217,9 @@ export default function PaymentOptions({
     );
   }
 
-  if (list.length === 0) {
+  // A card-only DJ (Stripe connected, no manual handles) is a legitimate
+  // setup — only fall back to "no way to pay" when card is ALSO unavailable.
+  if (list.length === 0 && !canPayByCard) {
     return (
       <div style={card}>
         <p style={{ margin: 0, fontSize: '.82rem', color: 'var(--muted)' }}>
@@ -234,6 +282,35 @@ export default function PaymentOptions({
         </span>
       </div>
 
+      {/* Card first — the primary option: the only rail that works the same
+          on desktop and mobile, and the only one that confirms itself. */}
+      {canPayByCard && (
+        <div style={{ marginBottom: '.8rem' }}>
+          <button
+            type="button"
+            onClick={() => { void payWithCard(); }}
+            disabled={busy || cardBusy}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: '.6rem', padding: '.95rem 1rem', borderRadius: 8, width: '100%',
+              background: 'var(--neon)', color: 'var(--black)', border: 'none',
+              fontWeight: 800, fontSize: '.95rem',
+              cursor: busy || cardBusy ? 'default' : 'pointer',
+              opacity: busy || cardBusy ? 0.7 : 1,
+            }}
+          >
+            <span>{cardBusy ? 'Opening secure checkout…' : 'Pay with Card'}</span>
+            <span style={{ fontWeight: 600, fontSize: '.85rem' }}>
+              {money(outstanding, currency)} →
+            </span>
+          </button>
+          <p style={{ margin: '.3rem 0 0', fontSize: '.7rem', color: 'var(--muted)' }}>
+            Debit or credit — secure checkout by Stripe, confirmed instantly.
+            No app needed{list.length > 0 ? ', or use an option below' : ''}.
+          </p>
+        </div>
+      )}
+
       {/* The rails */}
       {list.map((m) => {
         const cfg = METHOD_TYPES[m.type];
@@ -268,7 +345,7 @@ export default function PaymentOptions({
               <div style={{ padding: '.75rem .85rem', borderRadius: 8, border: `1px solid var(--border)`, borderLeft: `3px solid ${tint}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>{cfg.label}</span>
-                  {(m.type !== 'cash' || !!m.handle) && m.type !== 'check' && (
+                  {m.type !== 'check' && (m.type !== 'cash' || !!m.handle) && (
                     <button
                       type="button"
                       onClick={() => copy(m.type === 'cash' ? (m.handle || '') : displayHandle(m).replace(/^[@$]/, ''), m.id)}
@@ -296,7 +373,7 @@ export default function PaymentOptions({
                       </>
                     )}
                     {/* The memo is what makes an envelope matchable. It arrives
-                        days later with nothing on it but an amount — and the
+                        days later with nothing on it but an amount, and the
                         client can't mistype their own event date. */}
                     {checkMemo(eventDate, venueName, reference) && (
                       <>
@@ -309,10 +386,9 @@ export default function PaymentOptions({
                   </>
                 ) : m.type === 'cash' ? (
                   m.handle ? (
-                    // tel: — on a phone this dials. The host is reading this on
-                    // the way to the venue as often as at a desk, and "call to
-                    // arrange" with a number they have to retype is a step that
-                    // doesn't need to exist.
+                    // tel: — the host reads this on the way to the venue as
+                    // often as at a desk. A number they have to retype is a step
+                    // that doesn't need to exist.
                     <p style={{ margin: '.2rem 0 0', fontSize: '.85rem', color: 'var(--white)' }}>
                       <a href={`tel:${(m.handle || '').replace(/[^\d+]/g, '')}`} style={{ color: 'var(--neon)', textDecoration: 'none', fontFamily: "'Space Mono', monospace" }}>
                         {m.handle}
