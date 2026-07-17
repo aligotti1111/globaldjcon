@@ -45,6 +45,7 @@ import ContractPortal from '../update-dj-profile/ContractPortal';
 import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
 import MonthlyStory from './MonthlyStory';
 import PlannerPanel from './PlannerPanel';
+import PlannerSendModal from './PlannerSendModal';
 import { useConfirm } from '@/components/ConfirmModal';
 
 interface Props {
@@ -1205,6 +1206,9 @@ function BookingRow({
   // client is halfway through, and recomposing would orphan their answers.
   const [plannerBusy, setPlannerBusy] = useState(false);
   const [plannerErr, setPlannerErr] = useState<string | null>(null);
+  // Request opens the modal; the modal does the sending. Resend still fires
+  // directly — there's nothing to confirm about "send that same link again".
+  const [sendOpen, setSendOpen] = useState(false);
 
   async function requestPlanner() {
     if (plannerBusy) return;
@@ -1756,7 +1760,10 @@ function BookingRow({
               ? (onAddHost || onEdit
                   ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                   : [])
-              : [{ label: plannerBusy ? 'Sending…' : 'Request planner', run: requestPlanner }],
+              // Opens the modal rather than firing. The DJ sees which planner,
+              // how many questions and who it's going to before it goes — and
+              // can change any of the three.
+              : [{ label: 'Request planner', run: () => { setPlannerErr(null); setSendOpen(true); } }],
     });
   }
 
@@ -2385,6 +2392,27 @@ function BookingRow({
           hasHostContact={hasHostContact}
           plannerStatus={planner?.status || booking.planner_status || null}
           onEdit={onAddHost || onEdit}
+        />
+      )}
+      {sendOpen && (
+        <PlannerSendModal
+          bookingId={booking.id}
+          onClose={() => setSendOpen(false)}
+          onSent={(r) => {
+            setSendOpen(false);
+            onPlannerChange(booking.id, {
+              id: r.id,
+              status: r.status,
+              // A fresh planner is prefilled, so it is NOT 0 answered — but the
+              // count lives on the server. 0/0 makes the fraction fall back to
+              // "Pending" (see the caption), which is honest until the next
+              // load rather than a number invented here.
+              answered: 0,
+              total: 0,
+            });
+            // Created but not emailed (dead Resend key). The link works; say so.
+            if (r.warning) setPlannerErr(r.warning);
+          }}
         />
       )}
     </div>

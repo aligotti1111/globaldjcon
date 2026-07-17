@@ -232,6 +232,21 @@ export async function POST(req: Request) {
         .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
       const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
+      // "Use a different planner" — the modal's escape hatch for when the
+      // event type guessed wrong (a Reunion that's really a wedding reception,
+      // say). Optional: with no plannerId this resolves exactly as before, so
+      // the one-click path is untouched.
+      const forcedId = typeof body.plannerId === 'string' ? body.plannerId : '';
+      if (forcedId) {
+        // Must be a template this DJ can actually use: stock, or their own.
+        // Without this check a plannerId is a read of any DJ's private
+        // template by anyone who can guess a uuid.
+        const forced = templates.find((t) => t.id === forcedId);
+        if (!forced) {
+          return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+        }
+      }
+
       const { base, override } = pickTemplate(templates, user.id, b.event_type);
       if (!base) {
         // The stock base is seeded. Missing means the seed never ran — a
@@ -241,7 +256,15 @@ export async function POST(req: Request) {
         );
       }
 
-      const fields = composeFields(base.fields || [], override?.fields || []);
+      // A forced pick REPLACES the override, not the base. The base carries
+      // Do NOT play and Notes and the shared spine every event needs; the
+      // override is the event-specific half. "Send the wedding one instead"
+      // means swap that half — not throw away the questions every planner has.
+      const forcedTpl = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
+      const overrideFields = forcedTpl
+        ? (forcedTpl.id === base.id ? [] : forcedTpl.fields || [])
+        : (override?.fields || []);
+      const fields = composeFields(base.fields || [], overrideFields);
       // Prefill runs ONCE, here, and is stored. Not recomputed per page load:
       // if the DJ edits the booking tomorrow the client's form must not shift
       // under them mid-answer.
@@ -262,7 +285,7 @@ export async function POST(req: Request) {
         .insert({
           booking_id: bookingId,
           dj_id: user.id,
-          planner_id: (override?.id || base.id) ?? null,
+          planner_id: (forcedTpl?.id || override?.id || base.id) ?? null,
           fields,
           responses,
           status: 'sent',
