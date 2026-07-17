@@ -43,6 +43,20 @@ export function currencySymbol(code: string | null | undefined): string {
 // MOBILE DJ — event types
 // Used by mobile DJ profiles + booking forms (event_type column on
 // public.bookings). The labels here are what the booker sees.
+//
+// NOTE ON THE RULE ABOVE ("never inline the string elsewhere"):
+// this map is currently copied, not imported, in three places —
+//   • app/(main)/[slug]/mobileBookingForm.ts  (MOB_EVENT_TYPE_LABELS)
+//   • app/api/send-email/route.ts
+//   • app/(main)/upcoming-events/UpcomingEventsClient.tsx
+// which is why splitting one event type is a ten-file change. Those three
+// are identical to this map and could genuinely be replaced by an import.
+//
+// The two OTHER label maps are NOT duplicates and must not be merged in:
+// [slug]/constants.ts and update-dj-profile/constants.ts use the PLURAL
+// ("Weddings", "Sweet 16s") because they label what a DJ offers. This map is
+// singular ("Wedding", "Sweet 16") because it labels one booking. Same keys,
+// different sentence.
 // ───────────────────────────────────────────────────────────────────
 
 export const MOB_EVENT_LABELS: Record<string, string> = {
@@ -51,7 +65,12 @@ export const MOB_EVENT_LABELS: Record<string, string> = {
   corporate: 'Corporate Event',
   anniversary: 'Anniversary',
   graduation: 'Graduation',
-  sweet16: 'Sweet 16 / Quinceañera',
+  // Split from a single 'sweet16' => 'Sweet 16 / Quinceañera' entry. They're
+  // two different parties — a quinceañera has its own running order, its own
+  // traditions — and a DJ who does one may not do the other. The combined
+  // option made a booker pick a label that was half wrong either way.
+  sweet16: 'Sweet 16',
+  quinceanera: 'Quinceañera',
   mitzvah: 'Bar/Bat Mitzvah',
   reunion: 'Reunion',
   holiday: 'Holiday Party',
