@@ -1150,7 +1150,24 @@ function BookingRow({
     hint?: string;
     actions?: { label: string; run: () => void; danger?: boolean }[];
   }[] = [];
-  if (!booking.is_manual && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
+  /*
+    MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,
+    full stop, so the step never rendered for one no matter what.
+
+    That wasn't a decision, it was a leftover. The expanded panel has offered
+    "Review & Send Contract" on manual bookings this whole time (it gates on
+    booking_type, which for a manual booking is the DJ's own type — always
+    true). So you could send one; the strip just refused to ever say so.
+    Because the exclusion ignored `cstatus` too, a manual booking's Contract
+    column stayed a dash after sending, after signing, forever.
+
+    Now: same rules as any other booking, plus a recipient. hasHostContact is
+    the only extra condition — a contract with no name and no email has nobody
+    to sign it, and `prepare` would reject it with NO_CLIENT_EMAIL after the DJ
+    had already picked a template and signed.
+  */
+  const contractPossible = !booking.is_manual || hasHostContact;
+  if (contractPossible && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
     const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
@@ -1278,8 +1295,26 @@ function BookingRow({
    */
   const rowValue: number | null = bookingTotalWithTax(booking, taxPct);
 
+  /*
+    A booking that came through the app carries a frozen deposit snapshot
+    (deposit_pct / deposit_amount) written at creation from the DJ's settings.
+    That snapshot is what makes the Deposit step exist at all.
+
+    A MANUAL booking has neither — the add form doesn't write a single deposit
+    field (grep deposit_pct: / deposit_amount: — the insert payload has none).
+    So `bookingHasDeposit` was false forever and the Deposit column was a dash
+    on every manual booking, with no way to ask for money on a gig you'd typed
+    in yourself.
+
+    Once a manual booking has a host to send to, the step exists. There's no
+    snapshot to suggest an amount from — suggestedDeposit will be null and the
+    request modal opens blank — which is correct: nobody ever agreed a deposit
+    percentage on this booking, so the DJ types what they actually want.
+  */
   const bookingHasDeposit =
-    booking.deposit_pct != null || booking.deposit_amount != null;
+    booking.deposit_pct != null
+    || booking.deposit_amount != null
+    || (booking.is_manual && hasHostContact);
   // Only the DEPOSIT rows, not every payment on the booking.
   //
   // This step used to read `payments` whole. That was fine while deposit was
@@ -2061,6 +2096,8 @@ function BookingRow({
           payments={payments}
           onPaymentsChange={onPaymentsChange}
           canRequestDeposit={canRequestDeposit}
+          hasHostContact={hasHostContact}
+          onEdit={onEdit}
         />
       )}
     </div>
@@ -2076,7 +2113,7 @@ function BookingRow({
 
 function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit, contractAction, onContractActionHandled,
+  payments, onPaymentsChange, canRequestDeposit, hasHostContact, onEdit, contractAction, onContractActionHandled,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -2093,6 +2130,17 @@ function BookingDetails({
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
   canRequestDeposit: boolean;
+  /**
+   * Does this booking have a host name AND email to send to?
+   *
+   * Passed down rather than recomputed here, for the same reason
+   * canRequestDeposit is: the strip and this panel must never disagree about
+   * whether there's a recipient. Two copies of that rule is how you get a
+   * greyed-out icon sitting above a live "Review & Send Contract" button.
+   */
+  hasHostContact: boolean;
+  /** Opens the Add/Edit Manual Booking modal. Manual, non-archive rows only. */
+  onEdit?: () => void;
   // One-shot request from the pipeline's contract dropdown. The portal and the
   // send/resend/cancel/download handlers all live here; the menu that wants
   // them lives a component up, on a row that may not even be expanded yet.
@@ -2642,6 +2690,26 @@ function BookingDetails({
           ) : archive ? (
             <div style={{ marginTop: 8, color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
               {contractCancelled ? 'Contract was cancelled.' : 'No contract on file for this booking.'}
+            </div>
+          ) : (booking.is_manual && !hasHostContact) ? (
+            /*
+              A manual booking with nobody to send to.
+              This button was live regardless — the section is gated on
+              booking_type, which for a manual booking is the DJ's OWN type, so
+              it's always true. Clicking it opened the contract portal, made the
+              DJ pick a template and sign it, and only then hit NO_CLIENT_EMAIL.
+              All that work before finding out there's no recipient.
+              Same rule as the deposit, same door out: the modal the row's pencil
+              opens, which already has Host Name, Host Email and the "Send
+              booking details to host" checkbox.
+            */
+            <div style={{ marginTop: 8 }}>
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5, marginBottom: 10 }}>
+                Add the host&rsquo;s name and email to this booking before sending a contract &mdash; there&rsquo;s nobody to send it to yet.
+              </div>
+              {onEdit && (
+                <button type="button" onClick={onEdit} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Add host details&hellip;</button>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 8 }}>
