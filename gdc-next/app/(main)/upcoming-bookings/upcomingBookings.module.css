@@ -611,9 +611,15 @@ select.input {
   order: 1;
   min-width: 0;
   display: grid;
-  /* auto, not 1fr: 1fr only means "fill" when there's width to fill, and this
-     element no longer has any. Saying auto states the intent. */
-  grid-template-columns: 150px auto;
+  /* BOTH columns fixed. The event-type column was `auto`, i.e. as wide as
+     whatever that booking happened to be called — so "REUNION" ended its
+     column ~150px before "SWEET 16 / QUINCEAÑERA" ended its own, and the
+     pipeline after it started somewhere different on every single card. That
+     raggedness was most of what made the list look messy; the pipeline was
+     only where it showed up.
+     210px fits the longest event type in the picker; longer ones ellipsize
+     (see .rowContext) rather than push the column and break the alignment. */
+  grid-template-columns: 150px 210px;
   gap: 1rem;
   align-items: center;
   background: none;
@@ -674,6 +680,51 @@ select.input {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+}
+
+/*
+ * The three readiness columns. FIXED widths, not auto — this is the whole
+ * point: every card's Contract icon sits at the same x as the one above it, so
+ * the page reads as a table you can scan down a column of, instead of a stack
+ * of ragged strips that all start somewhere different.
+ *
+ * Widths are set by the LONGEST label each column can ever hold, because the
+ * label is what's wide, not the icon:
+ *   Booked   — always exactly "Booked". Never changes, so it needs no slack.
+ *   Contract — "Send contract" / "Contract pending" / "Contract"
+ *   Deposit  — "Request deposit" / "Deposit requested" / "Partially paid"
+ * "Deposit requested" (17 chars) is the longest string on the strip and is what
+ * 152px is measured against — ~125px of text plus the 30px connector that lives
+ * inside columns 2 and 3. If a label is ever added that's longer than that,
+ * these numbers move with it.
+ */
+.pipeGrid {
+  display: grid;
+  grid-template-columns: 62px 152px 152px;
+  align-items: center;
+}
+
+/* One readiness column. Also rendered EMPTY when a booking has no step for it
+   — an empty cell is what holds the column open, and a booking with no deposit
+   requested says so by leaving a gap rather than sliding the next icon left. */
+.pipeCell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The step caption. Colour is applied inline per step (green = done, amber =
+   your move, grey = waiting) — everything else lives here so mobile can relax
+   the nowrap. */
+.pipeLabel {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 /* The divider between the event type and the pipeline. Lives inside
@@ -874,10 +925,30 @@ select.input {
        break the moment the area stops being full-width. */
     margin-right: 0;
     justify-content: flex-start;
+    min-width: 0;
   }
   /* No event type on this line to separate from — the pipeline has its own
      row down here. A leading pipe with nothing before it is just debris. */
   .pipeSep { display: none; }
+  /* 62 + 152 + 152 = 366px of fixed columns. A 390px phone gives the card
+     interior about 320px, so the desktop grid would run off the right edge —
+     and .row has no horizontal scroll, it would simply be cut. Equal thirds of
+     whatever width exists instead. minmax(0, 1fr) rather than 1fr: a bare 1fr
+     floors at min-content, which for a nowrap label is the whole string, and
+     the track would refuse to shrink — the exact overflow this is fixing.
+     The columns still align down the page, which is the point; they're just
+     narrower. */
+  .pipeGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  /* Now that a column can be narrower than its label, the label has to be
+     allowed to use two lines. On desktop it never needs to. */
+  .pipeLabel {
+    white-space: normal;
+    line-height: 1.15;
+    text-align: center;
+  }
   .rowDate {
     grid-area: date;
     align-self: center;

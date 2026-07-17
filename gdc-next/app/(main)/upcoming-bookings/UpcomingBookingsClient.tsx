@@ -731,6 +731,20 @@ const NEON = '#00e0a4';   // done
 const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
 
+/**
+ * The readiness columns, left to right — the order a booking actually moves
+ * through, and the reason every card lines up with the one above it.
+ *
+ * This is the layout contract, so it lives here rather than being implied by
+ * the order things happen to get pushed into `steps`. Each key must match a
+ * step key exactly; a typo here silently blanks that column for every booking
+ * on the page, which looks like "no contracts exist" rather than like a bug.
+ *
+ * 'deposit' (not 'payment') because /api/bookings/status-override whitelists
+ * ['contract','deposit','song_list'] server-side — see the steps array.
+ */
+const PIPE_SLOTS = ['accepted', 'contract', 'deposit'] as const;
+
 function BookingRow({
   booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit,
 }: {
@@ -1253,7 +1267,34 @@ function BookingRow({
               already says what it is, so a screen reader reading "pipe" here
               would only add noise. */}
           <span className={styles.pipeSep} aria-hidden="true">|</span>
-          {steps.map((st, i) => {
+          <div className={styles.pipeGrid}>
+          {/*
+            FIXED SLOTS, NOT steps.map.
+
+            `steps` is variable-length — Booked is always there, Contract only
+            if one is needed, Deposit only if one was raised. Mapping it laid
+            the icons out left-to-right in whatever order they happened to
+            exist, so a booking with no contract put its DEPOSIT icon exactly
+            where the row above put its CONTRACT icon. Nothing lined up down
+            the page, and scanning a column meant re-reading every label.
+
+            Now each step owns a column whether or not it exists on this
+            booking. A missing step leaves its column empty rather than letting
+            the next one slide left. Empty is information too: "no deposit
+            requested" is a real state, and the gap says it.
+          */}
+          {PIPE_SLOTS.map((slotKey, slot) => {
+            const st = steps.find((s) => s.key === slotKey);
+            // Reserve the column. Without this the grid collapses the cell and
+            // the alignment this whole block exists for goes away.
+            if (!st) return <div key={slotKey} className={styles.pipeCell} aria-hidden="true" />;
+            // The nearest step that actually EXISTS before this one — not
+            // steps[i-1], and not the previous slot, which may be empty. The
+            // connector joins this step to the last real one before it.
+            const prev = PIPE_SLOTS.slice(0, slot)
+              .map((k) => steps.find((s) => s.key === k))
+              .filter(Boolean)
+              .pop();
             // st.color, not stepColor(st.state): the step carries its own
             // colour so Contract can be amber (your move) while Deposit stays
             // grey (waiting on the client) in the same 'not done' state.
@@ -1300,13 +1341,12 @@ function BookingRow({
                     </span>
                   )}
                 </span>
-                <span
-                  style={{
-                    fontSize: '.58rem', fontWeight: 700, color: c, letterSpacing: '.04em',
-                    textTransform: 'uppercase', whiteSpace: 'nowrap', display: 'flex',
-                    alignItems: 'center', gap: 2,
-                  }}
-                >
+                {/* Everything here EXCEPT the colour is in .pipeLabel. The
+                    colour is per-step and dynamic, so it stays inline; the rest
+                    had to leave, because mobile needs to let this text wrap and
+                    an inline `white-space: nowrap` can't be overridden from a
+                    stylesheet without !important. */}
+                <span className={styles.pipeLabel} style={{ color: c }}>
                   {st.label}
                   {hasMenu && (
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1315,9 +1355,12 @@ function BookingRow({
               </>
             );
             return (
-              <div key={st.key} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                {/* Connector — makes three icons read as a sequence, not a set. */}
-                {i > 0 && (
+              <div key={st.key} className={styles.pipeCell}>
+                {/* Connector — makes three icons read as a sequence, not a set.
+                    Keyed off the SLOT, not the array index: a deposit sitting in
+                    column 3 with no contract in column 2 still needs its line
+                    back to Booked. */}
+                {slot > 0 && (
                   <span
                     aria-hidden
                     style={{
@@ -1328,7 +1371,7 @@ function BookingRow({
                       // anything), and keying off st.done alone drew a green
                       // line THROUGH a pending contract — progress appearing to
                       // skip a step it hadn't finished.
-                      background: steps[i - 1].done && st.done ? NEON : 'rgba(255,255,255,.14)',
+                      background: prev?.done && st.done ? NEON : 'rgba(255,255,255,.14)',
                     }}
                   />
                 )}
@@ -1406,6 +1449,7 @@ function BookingRow({
               </div>
             );
           })}
+          </div>
         </div>
       </div>
       {/* Request deposit — the amount, before it goes out, in something you can
