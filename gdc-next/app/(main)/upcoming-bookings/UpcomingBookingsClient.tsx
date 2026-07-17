@@ -1478,7 +1478,7 @@ function BookingRow({
       // reason, no next step. An invisible rule reads as a broken app.
       hint: (!depositRow && !canRequestDeposit && !archive)
         ? (booking.is_manual
-            ? 'Add the host’s name and email to this booking first — there’s nobody to send the request to.'
+            ? 'Add the host’s full name and email to this booking first — there’s nobody to send the request to.'
             : 'The contract has to be signed before you can request a deposit.')
         : undefined,
       actions: archive
@@ -2733,7 +2733,7 @@ function BookingDetails({
             */
             <div style={{ marginTop: 8 }}>
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5, marginBottom: 10 }}>
-                Add the host&rsquo;s name and email to this booking before sending a contract &mdash; there&rsquo;s nobody to send it to yet.
+                Add the host&rsquo;s full name and email to this booking before sending a contract &mdash; there&rsquo;s nobody to send it to yet.
               </div>
               {onEdit && (
                 <button type="button" onClick={onEdit} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Add host details&hellip;</button>
@@ -4238,14 +4238,18 @@ function AddManualBookingModal({
             </div>
             {flagHost && (
               <div style={{ color: '#ff8a8a', fontSize: '.76rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
-                Add a name and email to send a contract or request a deposit &mdash; there&rsquo;s nobody
-                to send them to without one. Tick &ldquo;Send booking details to host&rdquo; below and
-                they&rsquo;ll get the booking too.
+                Add the host&rsquo;s full name and email to send a contract or request a deposit
+                &mdash; there&rsquo;s nobody to send them to without one. Tick &ldquo;Send booking
+                details to host&rdquo; below and they&rsquo;ll get the booking too.
               </div>
             )}
             <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
-                <span className={styles.fieldLabel}>Host Name</span>
+                {/* "Full name", not "Name" — this goes on the contract. A DJ
+                    typing "Jordan" here is putting "Jordan" on a signed
+                    agreement, and the label is the only thing that says
+                    otherwise before it's too late. */}
+                <span className={styles.fieldLabel}>Host Full Name</span>
                 <input
                   ref={hostNameRef}
                   type="text"
