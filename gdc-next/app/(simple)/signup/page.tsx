@@ -512,7 +512,7 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
           // dropdown is populated immediately. Club DJs get none (genres are
           // opt-in). Order matches the editor default in UpdateDjProfileClient.
           event_types: djType === 'mobile'
-            ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,mitzvah,reunion,holiday,school,community,other'
+            ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,quinceanera,mitzvah,reunion,holiday,school,community,other'
             : null,
         } as unknown as never, { onConflict: 'id' });
 
