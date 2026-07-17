@@ -4178,13 +4178,18 @@ function AddManualBookingModal({
                           style={{ fontSize: '.78rem', opacity: 0.7, lineHeight: 1.5 }}
                           dangerouslySetInnerHTML={{ __html: shown }}
                         />
-                        <div style={{ textAlign: 'right', marginTop: '.1rem' }}>
+                        {/* Centred under the package text, not tucked in the
+                            right margin. "Edit" alone sat below a paragraph of
+                            package details, level with nothing, and named no
+                            object — at a glance it read as the edit control for
+                            whatever field happened to be nearest. */}
+                        <div style={{ textAlign: 'center', marginTop: '.5rem' }}>
                           <button
                             type="button"
                             onClick={() => { setEditedDetails((prev) => prev ?? sel?.details ?? ''); setEditingDetails(true); }}
                             style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                           >
-                            Edit
+                            Edit package details
                           </button>
                         </div>
                       </>
@@ -4215,10 +4220,14 @@ function AddManualBookingModal({
               // Only when we KNOW they're blocked (arrived from "Add host
               // details"), never on a routine pencil edit — a red box round a
               // block genuinely marked optional would be crying wolf.
+              //
+              // Frame only, no fill. The tint sat behind the inputs and pushed
+              // every field in the block off the modal's own surface colour —
+              // so the whole area read as broken rather than as "these two
+              // fields are the point". The border says it once.
               border: '1px solid rgba(255,86,86,.5)',
               borderRadius: 8,
               padding: '.9rem',
-              background: 'rgba(255,86,86,.05)',
             } : undefined}
           >
             <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: flagHost ? 1 : 0.55, marginBottom: '.55rem' }}>
