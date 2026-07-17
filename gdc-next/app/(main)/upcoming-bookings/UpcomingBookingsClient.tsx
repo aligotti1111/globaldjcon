@@ -789,6 +789,12 @@ function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
       <span>Event</span>
       <span className={styles.headRight}>Value</span>
       {PIPE_SLOTS.map((k) => <span key={k}>{PIPE_HEADS[k]}</span>)}
+      {/* Two empty cells: the actions track and the chevron track. Unlabelled
+          on purpose — "Actions" over a column that's blank on most rows is
+          noise — but they MUST be here. The header shares .row's track list,
+          so a missing cell doesn't leave a gap at the end, it shifts every
+          heading one column left and silently mislabels the whole table. */}
+      <span />
       <span />
     </div>
   );
@@ -1394,8 +1400,10 @@ function BookingRow({
         </button>
         {/* 4 — Event. minmax(0,1fr): takes what's left and ellipsizes, so a
             long name can never push the status columns out of alignment.
-            The manual pill and edit/delete ride along here — they're metadata
-            about this event, and this is the only cell with slack. */}
+            The manual pill and edit/delete USED to ride along in here, which is
+            exactly why "Birthday party" was rendering as "Birthday …" — this is
+            the only track that flexes, so they ate it. They have their own
+            track now. */}
         <div className={styles.rowContext}>
           {context && <span className={styles.rowEventType}>{context}</span>}
           {overlaps && (
@@ -1404,34 +1412,6 @@ function BookingRow({
               title="This booking's time overlaps another booking on the same day"
             >
               ⚠
-            </span>
-          )}
-          {booking.is_manual && (
-            <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
-          )}
-          {onEdit && (
-            <span
-              onClick={handleEdit}
-              className={styles.editBtn}
-              role="button"
-              aria-label="Edit manual booking"
-              title="Edit"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </span>
-          )}
-          {onDelete && (
-            <span
-              onClick={handleDelete}
-              className={styles.deleteBtn}
-              role="button"
-              aria-label="Delete manual booking"
-              title="Delete"
-            >
-              ✕
             </span>
           )}
         </div>
@@ -1643,7 +1623,45 @@ function BookingRow({
             );
           })}
         </div>
-        {/* 10 — Chevron. Last track, last thing on the row. */}
+        {/* 10 — Actions. Right corner, its own track, so nothing it contains
+            can squeeze the event name.
+            The pill and the buttons occupy the SAME space: pill at rest,
+            buttons on hover. You don't need telling it's a manual booking at
+            the moment you've reached over to edit it — and showing all three
+            at once cost ~106px and gave the event cell nothing back.
+            Empty on non-manual rows, which is what keeps every chevron on the
+            same x. */}
+        <div className={styles.rowActionsCell} onClick={(e) => e.stopPropagation()}>
+          {booking.is_manual && (
+            <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+          )}
+          {onEdit && (
+            <span
+              onClick={handleEdit}
+              className={styles.editBtn}
+              role="button"
+              aria-label="Edit manual booking"
+              title="Edit"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </span>
+          )}
+          {onDelete && (
+            <span
+              onClick={handleDelete}
+              className={styles.deleteBtn}
+              role="button"
+              aria-label="Delete manual booking"
+              title="Delete"
+            >
+              ✕
+            </span>
+          )}
+        </div>
+        {/* 11 — Chevron. Last track, last thing on the row. */}
         <button
           type="button"
           className={styles.rowChevronBtn}

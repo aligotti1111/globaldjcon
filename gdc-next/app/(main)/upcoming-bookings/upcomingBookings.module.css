@@ -111,16 +111,31 @@
  * booking row both read it, so they cannot drift apart — which they would
  * within a week if the same nine track widths were typed out in two places.
  *
- *   date · time · event · value · contract · deposit · playlist · invoice · ⌄
+ *   date · time · event · value · contract · deposit · playlist · invoice · ⋯ · ⌄
  *
- * The four status tracks are 100px because that fits their longest caption
+ * The four status tracks are 96px — enough for their longest caption
  * ("Requested") under a 36px icon. Event is minmax(0,1fr): it takes whatever
  * is left and ellipsizes rather than pushing the status columns out of
  * alignment. minmax(0,…) not plain 1fr — a bare 1fr floors at min-content and
  * refuses to shrink below the longest event name.
+ *
+ * THE 84px ACTIONS TRACK (second from the end) is new. The MANUAL pill and the
+ * edit/delete buttons used to live inside the event cell, because when this was
+ * a flex row they could just sit at the end. In a grid they had nowhere to go —
+ * and event is the ONLY track that flexes, so they ate it: "Birthday party"
+ * rendered as "Birthday …" purely to make room for a pill.
+ *
+ * It costs 84px on every row to hold space that only manual bookings use. That
+ * is what a table costs. The alternative — letting the cluster overlay the
+ * invoice column on hover — breaks the moment a manual booking has a deposit.
+ *
+ * The budget only balances because Sweet 16 / Quinceañera is being split in
+ * two: the longest event label drops from ~200px to "Bar/Bat Mitzvah" at ~118.
+ * Time gave up 10px (the cocktail note still fits at 9px) and each status
+ * column gave up 4px to pay the rest.
  */
 .monthList {
-  --row-cols: 86px 142px minmax(0, 1fr) 74px 100px 100px 100px 100px 26px;
+  --row-cols: 86px 132px minmax(0, 1fr) 74px 96px 96px 96px 96px 84px 26px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -132,7 +147,7 @@
    the thumbnail would simply overhang into the time column. Time gives up the
    10px to pay for it. */
 .monthListClub {
-  --row-cols: 86px 56px 132px minmax(0, 1fr) 74px 100px 100px 100px 100px 26px;
+  --row-cols: 86px 56px 122px minmax(0, 1fr) 74px 96px 96px 96px 96px 84px 26px;
 }
 .month { }
 .monthLabel {
@@ -267,15 +282,40 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* The pill and the two buttons never shrink — the event name gives way first.
-   Squeezing a 28px icon button to 11px to save a long event name is the wrong
-   trade: the name has an ellipsis, the button has nothing. */
-.rowContext .manualPill,
-.rowContext .editBtn,
-.rowContext .deleteBtn,
+/* The overlap warning stays in the event cell and never shrinks — the name
+   gives way first. It's about the event, and it's one glyph. */
 .rowContext .overlapPill {
   flex-shrink: 0;
 }
+
+/*
+ * THE ACTIONS CELL — second-to-last track, right-aligned.
+ *
+ * The MANUAL pill and the edit/delete buttons swap places in the SAME 84px:
+ * at rest you see the pill, on hover you see the buttons. Never both.
+ *
+ * That's deliberate, not a trick to save space. The pill is a fact about the
+ * booking ("you typed this in yourself") and the buttons are things you do to
+ * it — you don't need to be told it's manual at the moment you've reached over
+ * to edit it. Showing all three at once needed ~106px and gave the event cell
+ * nothing back.
+ *
+ * Non-manual rows leave the cell empty. That's the track doing its job: every
+ * row's chevron lands at the same x whether or not it has actions.
+ */
+.rowActionsCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+/* At rest: the pill. On hover: gone, and the buttons take its place. */
+.row:hover .rowActionsCell .manualPill { display: none; }
+.rowActionsCell .editBtn,
+.rowActionsCell .deleteBtn { display: none; }
+.row:hover .rowActionsCell .editBtn,
+.row:hover .rowActionsCell .deleteBtn { display: inline-flex; }
 /* The agreed total. Right-aligned so the dollar amounts stack on their commas;
    tabular figures are inherited from .row, which is what makes that work.
    Reads the same fallback chain the details panel already uses — the tax-
@@ -291,21 +331,22 @@
   color: var(--amber, #ffb347);
   font-size: .8rem;
 }
+/* Retyped in Inter with the rest of the row — Space Mono at .55rem was one of
+   the things reading as amateur, and it's the only mono left on the line.
+   Sized to fit the 84px actions track alongside nothing else. */
 .manualPill {
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .12em;
+  font-family: var(--font-inter);
+  font-size: 9px;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  padding: .25rem .5rem;
-  border: 1px solid rgba(247, 201, 72, .4);
+  padding: 3px 6px;
+  border: 1px solid rgba(247, 201, 72, .35);
   background: rgba(247, 201, 72, .08);
   color: var(--amber, #f7c948);
   border-radius: 4px;
-  font-weight: 700;
-  /* order 3 — the manual-booking cluster (pill, edit, delete) rides on the
-     right with the chevron, where it has always been. It must not land
-     between the event type and the pipeline. */
-  order: 3;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Inline pill shown next to the booking context when the booking type
@@ -1103,7 +1144,7 @@ select.input {
       "date  flyer  toggle  chev"
       "event event  event   event"
       "stat  stat   stat    stat"
-      "val   val    val     val";
+      "val   val    acts    acts";
     column-gap: .5rem;
     row-gap: .4rem;
     /* Height is fixed on desktop to keep the caption line from making rows
@@ -1158,27 +1199,39 @@ select.input {
     text-align: left;
     gap: .4rem;
   }
-  /* Value gets its own band on the right rather than a column. It's the least
-     urgent thing on a phone — you're looking for what's next, not what it
-     pays — so it goes last and stays quiet. */
+  /* Bottom band: value on the left, actions on the right. Value is the least
+     urgent thing on a phone — you're looking for what's next, not what it pays
+     — so it goes last and stays quiet. */
   .rowValue {
     grid-area: val;
-    text-align: right;
+    text-align: left;
     font-size: 12px;
   }
+  /*
+   * There is no hover on a phone, so the pill/buttons swap can't work — a
+   * touch device would show the pill and never the buttons, and editing a
+   * manual booking would become impossible. Show all three, always.
+   * That's what the desktop swap buys back: down here there's a full-width
+   * band for them and nothing to compete with.
+   */
+  .rowActionsCell {
+    grid-area: acts;
+    justify-content: flex-end;
+  }
+  .row .rowActionsCell .manualPill,
+  .row:hover .rowActionsCell .manualPill { display: inline-block; }
+  .row .rowActionsCell .editBtn,
+  .row .rowActionsCell .deleteBtn { display: inline-flex; }
   .rowChevronBtn {
     grid-area: chev;
     justify-self: end;
     align-self: center;
   }
-  /* No grid-area on these any more, and no translateX(36px) to fake a second
-     button beside the first. They're flex children of the event cell now, so
-     they simply sit next to the event name — which is what the transform was
-     imitating, badly: it moved the delete button visually without moving its
-     layout box, so it overlapped whatever came after it. */
-  .manualPill {
-    white-space: nowrap;
-  }
+  /* No grid-area on the pill/buttons any more, and no translateX(36px) to fake
+     a second button beside the first — they're flex children of .rowActionsCell
+     now and simply sit next to each other. The transform moved the delete
+     button visually without moving its layout box, so it overlapped whatever
+     came after it. */
 
   /* Bigger, prominent date pill on mobile. */
   .dayNum { font-size: 28px; }
