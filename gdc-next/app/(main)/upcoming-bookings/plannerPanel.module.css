@@ -159,14 +159,20 @@
 }
 .artist { color: #8a8aa0; }
 
-.trackLink {
+.trackLink,
+.trackLinkWeak {
   margin-left: auto;
   flex-shrink: 0;
   font-size: .72rem;
-  color: #5e5e77;
   text-decoration: underline;
 }
-.trackLink:hover { color: #4ddcb4; }
+/* An exact track link is worth a colour — it's the one the DJ wants and it
+   lands. A search link is the fallback and reads dimmer on purpose, so a row
+   that didn't resolve is visible while scanning rather than a surprise at 9pm. */
+.trackLink { color: #4ddcb4; }
+.trackLinkWeak { color: #5e5e77; }
+.trackLink:hover,
+.trackLinkWeak:hover { color: #00e0a4; }
 
 /* ── People ───────────────────────────────────────────────────────────── */
 

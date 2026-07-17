@@ -490,15 +490,83 @@ function Control({
 
 /** "At Last — Etta James" → { title, artist }. One split, on the first dash. */
 function parseSong(s: string): Track {
-  const m = s.split(/\s+[—–-]\s+/);
+  const t = s.trim();
+  // A pasted link is a link, not a title. They asked for this explicitly:
+  // "if they wanna add song on another site can they paste link" — so the same
+  // box takes both, and works out which it got.
+  if (/^https?:\/\//i.test(t)) return { title: t, source: 'link', url: t };
+  const m = t.split(/\s+[—–-]\s+/);
   return m.length >= 2
     ? { title: m[0].trim(), artist: m.slice(1).join(' - ').trim(), source: 'manual' }
-    : { title: s.trim(), source: 'manual' };
+    : { title: t, source: 'manual' };
 }
 
 const songToText = (t: Track | undefined): string =>
   !t ? '' : t.artist ? `${t.title} — ${t.artist}` : t.title;
 
+/**
+ * ONE audio element for the whole page.
+ *
+ * Thirty <audio> tags is thirty songs that can play at once, and a client who
+ * taps three previews in a row hearing all three. One element, one playing
+ * track, and starting a new one stops the last.
+ */
+let sharedAudio: HTMLAudioElement | null = null;
+
+function PreviewButton({ src }: { src: string }) {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => () => {
+    // Leaving the field mid-preview must not leave music playing.
+    if (playing && sharedAudio) { sharedAudio.pause(); }
+  }, [playing]);
+
+  function toggle(e: React.MouseEvent) {
+    // Inside a results row — without this, previewing PICKS the track.
+    e.stopPropagation();
+    if (!sharedAudio) sharedAudio = new Audio();
+    if (playing) { sharedAudio.pause(); setPlaying(false); return; }
+    sharedAudio.pause();
+    sharedAudio.src = src;
+    sharedAudio.onended = () => setPlaying(false);
+    sharedAudio.onpause = () => setPlaying(false);
+    // Autoplay policy blocks this without a user gesture — a tap IS one, so it
+    // resolves. If it rejects anyway (data saver, locked device), fail quiet:
+    // they lose a preview, not the form.
+    sharedAudio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+  }
+
+  return (
+    <button type="button" className={styles.play} onClick={toggle}
+      aria-label={playing ? 'Stop preview' : 'Play 30 second preview'}>
+      {playing ? '❙❙' : '▶'}
+    </button>
+  );
+}
+
+function TrackRow({ t, onPick }: { t: Track; onPick: () => void }) {
+  return (
+    <button type="button" className={styles.hit} onClick={onPick}>
+      {t.album_art
+        // eslint-disable-next-line @next/next/no-img-element -- the catalogue's CDN, not our bucket. next/image would proxy someone else's art through our origin for nothing.
+        ? <img src={t.album_art} alt="" className={styles.hitArt} />
+        : <span className={styles.hitArt} aria-hidden="true" />}
+      <span className={styles.hitText}>
+        <span className={styles.hitTitle}>{t.title}</span>
+        {t.artist ? <span className={styles.hitArtist}>{t.artist}</span> : null}
+      </span>
+      {t.preview ? <PreviewButton src={t.preview} /> : null}
+    </button>
+  );
+}
+
+/**
+ * The song picker.
+ *
+ * Search the catalogue, hear it, tap it. Falls all the way back to plain text:
+ * a client whose first dance is a demo their cousin recorded must still be able
+ * to answer, so the picker is a convenience and NEVER a gate.
+ */
 function SongInput({
   value, onChange,
 }: {
@@ -509,16 +577,111 @@ function SongInput({
   // and re-deriving the string from it on every keystroke would fight the user
   // mid-word.
   const [text, setText] = useState(() => songToText(value));
+  const [hits, setHits] = useState<Track[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const picked = value?.source === 'catalogue';
+
+  // 300ms. Every keystroke would be a request per letter — "uptown funk" is 11
+  // calls for one answer, against a catalogue that rate-limits.
+  useEffect(() => {
+    if (picked) return;
+    const q = text.trim();
+    if (q.length < 2) { setHits([]); return; }
+    let active = true;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/songs/search?q=${encodeURIComponent(q)}`);
+        const j = await res.json().catch(() => ({}));
+        if (!active) return;
+        setHits(Array.isArray(j.tracks) ? j.tracks : []);
+        setOpen(true);
+      } catch {
+        if (active) setHits([]);
+      } finally {
+        if (active) setSearching(false);
+      }
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [text, picked]);
+
+  async function pick(t: Track) {
+    setOpen(false);
+    setHits([]);
+    setText(songToText(t));
+    // Store it IMMEDIATELY, then resolve. If the resolve is slow or fails, the
+    // client's answer is already saved — the DJ's link is the only thing that
+    // degrades, and it degrades to a search.
+    onChange(t);
+    if (!t.url) return;
+    try {
+      const res = await fetch('/api/songs/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: t.url }),
+      });
+      const j = await res.json().catch(() => ({}));
+      const l = j?.links || {};
+      if (l.spotify || l.apple || l.youtube) {
+        onChange({
+          ...t,
+          ...(l.spotify ? { spotify_url: l.spotify } : {}),
+          ...(l.apple ? { apple_url: l.apple } : {}),
+          ...(l.youtube ? { youtube_url: l.youtube } : {}),
+        });
+      }
+    } catch {
+      // Already saved above. The DJ gets a search link. Nobody notices.
+    }
+  }
+
+  // Picked: show what they chose, not a text box they might fight with.
+  if (picked && value) {
+    return (
+      <div className={styles.chosen}>
+        {value.album_art
+          // eslint-disable-next-line @next/next/no-img-element -- see TrackRow.
+          ? <img src={value.album_art} alt="" className={styles.hitArt} />
+          : <span className={styles.hitArt} aria-hidden="true" />}
+        <span className={styles.hitText}>
+          <span className={styles.hitTitle}>{value.title}</span>
+          {value.artist ? <span className={styles.hitArtist}>{value.artist}</span> : null}
+        </span>
+        {value.preview ? <PreviewButton src={value.preview} /> : null}
+        <button
+          type="button"
+          className={styles.rm}
+          aria-label="Change song"
+          onClick={() => { setText(''); onChange(null); }}
+        >✕</button>
+      </div>
+    );
+  }
+
   return (
-    <input
-      className={styles.input}
-      placeholder="Song title — artist"
-      value={text}
-      onChange={(e) => {
-        setText(e.target.value);
-        onChange(e.target.value.trim() ? parseSong(e.target.value) : null);
-      }}
-    />
+    <div className={styles.songWrap}>
+      <input
+        className={styles.input}
+        placeholder="Search a song, or type it"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(e.target.value.trim() ? parseSong(e.target.value) : null);
+        }}
+        onFocus={() => { if (hits.length) setOpen(true); }}
+      />
+      {open && hits.length > 0 && (
+        <div className={styles.hits}>
+          {hits.map((t, i) => <TrackRow key={t.deezer_id || i} t={t} onPick={() => pick(t)} />)}
+        </div>
+      )}
+      {/* Says the quiet part out loud. A client who can't find their song has
+          to know the box isn't the only way through, or they abandon here. */}
+      <p className={styles.songHint}>
+        {searching ? 'Searching…' : 'Can\'t find it? Type it in, or paste a link — that works too.'}
+      </p>
+    </div>
   );
 }
 

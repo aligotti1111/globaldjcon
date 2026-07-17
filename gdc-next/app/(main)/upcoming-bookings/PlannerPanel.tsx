@@ -22,6 +22,8 @@ import {
   isNa,
   responseValue,
   plannerProgress,
+  playLink,
+  isExactLink,
   DO_NOT_PLAY_FIELD_ID,
   type PlannerField,
   type PlannerResponses,
@@ -52,21 +54,33 @@ function fmtTime(t: string): string {
 
 function TrackLine({ t }: { t: Track }) {
   const title = t.title || '(untitled)';
+  const href = playLink(t, 'spotify');
+  // Exact vs search. The client picked it out of a list, so we resolved the real
+  // Spotify track at that moment — this is the payoff: at 9pm you tap once and
+  // land on the song, instead of tapping into a search and scanning it. When we
+  // couldn't resolve one (typed free text, or the track isn't on Spotify), the
+  // link is a search and says so, because a DJ who taps expecting the track and
+  // gets a search needs to know why.
+  const exact = isExactLink(t);
   return (
     <div className={styles.track}>
       {t.album_art
-        // eslint-disable-next-line @next/next/no-img-element -- Spotify's CDN, not our bucket; next/image would proxy someone else's art through our origin for no gain.
+        // eslint-disable-next-line @next/next/no-img-element -- the catalogue's CDN, not our bucket; next/image would proxy someone else's art through our origin for no gain.
         ? <img src={t.album_art} alt="" className={styles.art} />
         : <span className={styles.artFallback} aria-hidden="true">♪</span>}
       <span className={styles.trackText}>
         <strong>{title}</strong>
         {t.artist ? <span className={styles.artist}> — {t.artist}</span> : null}
       </span>
-      {/* The link back. Spotify's terms require it where we show their data,
-          and for a 'link' source it's the only thing that identifies the song. */}
-      {t.url ? (
-        <a href={t.url} target="_blank" rel="noopener noreferrer" className={styles.trackLink}>open</a>
-      ) : null}
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={exact ? styles.trackLink : styles.trackLinkWeak}
+        title={exact ? 'Open this track in Spotify' : 'Search Spotify — this one wasn\'t matched automatically'}
+      >
+        {exact ? 'Spotify' : 'search'}
+      </a>
     </div>
   );
 }

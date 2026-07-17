@@ -83,17 +83,68 @@ export interface PlannerField {
  * app assists the transaction, it doesn't own it.
  */
 export interface Track {
-  /** Never empty. For a bare link with no oEmbed, the url itself. */
+  /** Never empty. For a bare link with no title, the url itself. */
   title: string;
   artist?: string;
-  source: 'spotify' | 'manual' | 'link';
-  spotify_id?: string;
-  /** spotify → the track url (ALSO the link-back their terms require).
-   *  link → whatever they pasted. */
+  /**
+   * Where it came from.
+   *   catalogue — picked from search results. The good case: exact, with art.
+   *   manual    — typed. Their cousin's demo, a bootleg, no signal on the train.
+   *   link      — pasted a url we didn't resolve.
+   *   spotify   — LEGACY. Rows written before the picker existed. Never written
+   *               now; kept because `responses` is jsonb and old rows are real.
+   */
+  source: 'catalogue' | 'manual' | 'link' | 'spotify';
+  /** Whatever they pasted (link), or the catalogue's own page. */
   url?: string;
-  /** Spotify CDN or a YouTube/SoundCloud oEmbed thumb. Never rehosted. */
+  /** The catalogue's CDN. Never rehosted — we don't own this art. */
   album_art?: string;
+
+  // ── Resolved at PICK time, then stored ──────────────────────────────────
+  //
+  // Not resolved on render. A wedding's 30 songs would be 30 lookups every time
+  // the DJ opened the row, against an API that allows 10 a minute — and the
+  // answer never changes. One call, when they choose it, forever.
+
+  /** 30-second mp3 on the catalogue's CDN. What lets a client HEAR it before
+   *  committing — the thing that stops the wedding-band cover getting picked. */
+  preview?: string;
+  /** The catalogue's id. Kept so a link can be rebuilt without re-searching. */
+  deezer_id?: string;
+  /**
+   * The DJ's link, resolved once via Odesli.
+   *
+   * The client picks in our search box; the DJ plays it in Spotify. These carry
+   * that across. Absent when: the client typed free text, Odesli was down, or
+   * the track genuinely isn't on that service — in which case the panel falls
+   * back to a search link rather than showing nothing.
+   */
+  spotify_url?: string;
+  apple_url?: string;
+  youtube_url?: string;
+  /** LEGACY, same reason as source:'spotify'. */
+  spotify_id?: string;
 }
+
+/**
+ * The DJ's "open this" link, best available.
+ *
+ * A direct track url when we resolved one; otherwise a SEARCH url built from
+ * the title and artist. The fallback is deliberately still a link — at 9pm in a
+ * booth, "search this for me" beats "here is a name, go type it".
+ */
+export function playLink(t: Track, service: 'spotify' | 'apple' | 'youtube' = 'spotify'): string {
+  if (service === 'apple' && t.apple_url) return t.apple_url;
+  if (service === 'youtube' && t.youtube_url) return t.youtube_url;
+  if (service === 'spotify' && t.spotify_url) return t.spotify_url;
+  const q = encodeURIComponent([t.title, t.artist].filter(Boolean).join(' '));
+  if (service === 'apple') return `https://music.apple.com/search?term=${q}`;
+  if (service === 'youtube') return `https://www.youtube.com/results?search_query=${q}`;
+  return `https://open.spotify.com/search/${q}`;
+}
+
+/** Did we resolve a real track link, or are we guessing with a search? */
+export const isExactLink = (t: Track): boolean => !!t.spotify_url;
 
 export interface Person {
   name: string;

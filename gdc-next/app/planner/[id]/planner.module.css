@@ -308,6 +308,115 @@ select.input {
 }
 .add:hover { text-decoration: underline; }
 
+/* ── Song picker ──────────────────────────────────────────────────────── */
+
+.songWrap { position: relative; }
+
+/* The results. Absolute, over whatever's below — the alternative is the form
+   jumping 200px down every time somebody types, which loses their place. */
+.hits {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 2px;
+  background: #0d0d14;
+  border: 1px solid #23233a;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+}
+
+.hit,
+.chosen {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: .5rem .6rem;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.hit + .hit { border-top: 1px solid #16161f; }
+.hit:hover { background: rgba(255, 255, 255, .04); }
+
+/* The picked one. Neon frame — it's an answer now, not a search. */
+.chosen {
+  cursor: default;
+  background: rgba(0, 224, 164, .06);
+  border: 1px solid rgba(0, 224, 164, .35);
+  border-radius: 8px;
+  padding: .5rem .6rem;
+}
+
+/* 44px. The artwork IS the answer to "is this the right Uptown Funk" — at 30px
+   you can't tell the single from the wedding-band cover, which is the entire
+   reason this isn't a text field. */
+.hitArt {
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, .05);
+}
+
+.hitText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.hitTitle {
+  font-size: .9rem;
+  color: #f2f2f7;
+  /* One line. Two-line titles make every row a different height and the list
+     stops being scannable. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hitArtist {
+  font-size: .76rem;
+  color: #8a8aa0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 36px, and it sits inside a row that's also a button. Anything smaller and a
+   thumb aiming for play picks the track instead. */
+.play {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: transparent;
+  color: #9d9db5;
+  font-size: .7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.play:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .45); }
+
+.songHint {
+  margin: .3rem 0 0;
+  font-size: .74rem;
+  color: #4e4e66;
+  line-height: 1.4;
+}
+
 /* ── Yes / no ─────────────────────────────────────────────────────────── */
 
 .yesno { display: flex; gap: .5rem; }

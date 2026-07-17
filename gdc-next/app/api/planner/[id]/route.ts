@@ -57,21 +57,44 @@ const clamp = (s: unknown, max: number): string =>
  * a component that trusts the type.
  */
 function sanitise(field: PlannerField, raw: unknown): unknown {
+  // Only ever http(s). A `javascript:` url here becomes an href on the DJ's
+  // panel — a stored XSS with a human trigger.
+  const webUrl = (v: unknown): string | undefined =>
+    typeof v === 'string' && /^https?:\/\//i.test(v) ? v.slice(0, MAX_URL) : undefined;
+  const httpsUrl = (v: unknown): string | undefined =>
+    typeof v === 'string' && /^https:\/\//i.test(v) ? v.slice(0, MAX_URL) : undefined;
+
   const track = (t: unknown) => {
     const o = (t ?? {}) as Record<string, unknown>;
-    const src = o.source === 'spotify' || o.source === 'link' ? o.source : 'manual';
-    return {
+    const src =
+      o.source === 'catalogue' || o.source === 'link' || o.source === 'spotify'
+        ? o.source
+        : 'manual';
+    const out: Record<string, unknown> = {
       title: clamp(o.title, MAX_TEXT),
       ...(o.artist ? { artist: clamp(o.artist, MAX_TEXT) } : {}),
       source: src,
       ...(o.spotify_id ? { spotify_id: clamp(o.spotify_id, 64) } : {}),
-      // Only ever http(s). A javascript: url here becomes an href on the DJ's
-      // panel, which is a stored XSS with a human trigger.
-      ...(typeof o.url === 'string' && /^https?:\/\//i.test(o.url)
-        ? { url: o.url.slice(0, MAX_URL) } : {}),
-      ...(typeof o.album_art === 'string' && /^https:\/\//i.test(o.album_art)
-        ? { album_art: o.album_art.slice(0, MAX_URL) } : {}),
+      ...(o.deezer_id ? { deezer_id: clamp(o.deezer_id, 64) } : {}),
     };
+    // Every url rebuilt through the same guard. These come from our own search
+    // route, but they arrive here via the CLIENT — so they're client input, and
+    // a picked track is exactly as untrusted as a typed one.
+    const url = webUrl(o.url);
+    if (url) out.url = url;
+    const art = httpsUrl(o.album_art);
+    if (art) out.album_art = art;
+    // The preview mp3 the client actually heard, and the DJ's resolved links.
+    // https only: an http mp3 is a mixed-content block on our page anyway.
+    const preview = httpsUrl(o.preview);
+    if (preview) out.preview = preview;
+    const sp = httpsUrl(o.spotify_url);
+    if (sp) out.spotify_url = sp;
+    const ap = httpsUrl(o.apple_url);
+    if (ap) out.apple_url = ap;
+    const yt = httpsUrl(o.youtube_url);
+    if (yt) out.youtube_url = yt;
+    return out;
   };
 
   switch (field.type) {
