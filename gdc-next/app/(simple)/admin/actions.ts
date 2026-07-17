@@ -178,7 +178,7 @@ export async function createUserAction(input: CreateUserInput): Promise<CreateUs
     // default) so the public booking form's event-type dropdown is populated.
     // Club DJs get none. Order matches the editor default in UpdateDjProfileClient.
     event_types: input.dj_type === 'mobile'
-      ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,mitzvah,reunion,holiday,school,community,other'
+      ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,quinceanera,mitzvah,reunion,holiday,school,community,other'
       : null,
   };
 
