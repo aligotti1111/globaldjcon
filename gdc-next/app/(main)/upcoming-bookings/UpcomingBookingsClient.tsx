@@ -737,6 +737,60 @@ const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
 
 /**
+ * What a booking is worth, tax included — the number the client actually owes.
+ *
+ * WHY THIS EXISTS RATHER THAN JUST READING total_with_tax:
+ * total_with_tax is a FROZEN SNAPSHOT written when the booking was created. If
+ * the price changed afterwards — an accepted counter, an edited manual rate —
+ * the snapshot still describes the OLD price and is simply wrong.
+ *
+ * The expanded details panel already knows this and recomputes when the
+ * snapshot has gone stale. The row header did not: it read total_with_tax
+ * blindly, so a renegotiated booking would show one total on the row and a
+ * different one in the panel that opens directly underneath it. Two numbers,
+ * same booking, six pixels apart.
+ *
+ * This is that same logic, extracted, so the two cannot drift.
+ *
+ * The freeze rule still holds throughout: a stale snapshot is recomputed using
+ * the booking's OWN frozen tax_pct, never the DJ's current tax settings.
+ * Changing your tax rate today must never re-price a booking you agreed in
+ * March. Only legacy rows with no snapshot at all (tax_pct null) fall back to
+ * the live settings pct, with the old whole-dollar rounding they were made with.
+ *
+ * Returns null when there's no agreed price at all (a manual add with no rate).
+ * Null renders as empty — zero is a price, "we never said" isn't.
+ */
+function bookingTotalWithTax(
+  booking: UpcomingBooking,
+  liveTaxPct: number,
+): number | null {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const agreed = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+  if (agreed == null) return null;
+
+  const snapTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : null;
+  const snapTaxAmount = booking.tax_amount != null ? Number(booking.tax_amount) : null;
+  const snapTotal = booking.total_with_tax != null ? Number(booking.total_with_tax) : null;
+
+  // The pre-tax base the snapshot was computed on. "Fresh" = it still matches
+  // the current agreed price, so the stored amounts are the truth.
+  const snapBase = (snapTaxAmount != null && snapTotal != null)
+    ? round2(snapTotal - snapTaxAmount)
+    : null;
+  const snapshotFresh =
+    snapBase != null && Math.abs(Number(agreed) - snapBase) < 0.005;
+  if (snapshotFresh) return snapTotal;
+
+  const effTaxPct = snapTaxPct ?? liveTaxPct;
+  if (!(effTaxPct > 0)) return round2(Number(agreed));
+  const tax = snapTaxPct != null
+    ? round2((Number(agreed) * effTaxPct) / 100)
+    : Math.round((Number(agreed) * effTaxPct) / 100);
+  return round2(Number(agreed) + tax);
+}
+
+/**
  * The status columns, left to right — the order a booking actually moves
  * through, and the reason every row lines up with the one above it.
  *
@@ -1108,19 +1162,19 @@ function BookingRow({
   // while the strip says the stage is handled. Confirming an amount still
   // belongs to the details panel; this is only "stop asking me about it".
   /**
-   * The Value column — what this booking is worth.
+   * The Value column — what this booking is worth, tax included.
    *
-   * Same fallback chain the expanded details panel already uses, deliberately:
-   * the row and the panel quoting different numbers for the same booking is
-   * worse than the row quoting none. Tax-inclusive snapshot first, because
-   * that's the figure that was agreed; then the accepted counter, the quote,
-   * the original offer.
+   * Tax-INCLUSIVE on purpose: Value is what the client owes and what the
+   * invoice will say. Bookings with no tax on them show the plain agreed rate,
+   * because for those the rate IS the total — that's not an inconsistency in
+   * the column, it's an accurate description of two different bookings.
    *
-   * Null is possible (a manual add with no rate) and renders as empty rather
-   * than $0.00 — zero is a price, "we never said" isn't.
+   * This was `booking.total_with_tax ?? counter_rate ?? ...`, which read the
+   * frozen snapshot blind. See bookingTotalWithTax: on a renegotiated booking
+   * that snapshot is stale, and the row would have quoted a different total
+   * from the details panel opening directly beneath it.
    */
-  const rowValue: number | null =
-    booking.total_with_tax ?? booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+  const rowValue: number | null = bookingTotalWithTax(booking, taxPct);
 
   const bookingHasDeposit =
     booking.deposit_pct != null || booking.deposit_amount != null;
