@@ -7,9 +7,9 @@
 // one menu.
 //
 // Grouped into sections for scannability:
-//   Account:   View my profile · Upcoming bookings · Add booking manually
-//   Settings:  Booking settings · Notifications · Account settings · Manage subscription
-//   —          Sign out
+//   Account:   View My Profile · Upcoming Bookings · Add Booking Manually
+//   Settings:  Booking Settings · Notifications · Account Settings · Manage subscription
+//   —          Sign Out
 //
 // No avatar uploaded? Shows initials from the DJ's name.
 
@@ -170,22 +170,22 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <div style={sectionLabelStyle}>Account</div>
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              View my profile
+              View My Profile
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Upcoming bookings
+              Upcoming Bookings
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Past bookings
+              Past Bookings
             </Link>
           )}
           {bookingEnabled && (
             <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Add booking manually
+              Add Booking Manually
             </Link>
           )}
 
@@ -193,13 +193,13 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Settings</div>
           <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Booking settings
+            Booking Settings
           </Link>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
           </Link>
           <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Account settings
+            Account Settings
           </Link>
           <button
             type="button"
@@ -209,10 +209,10 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             disabled={portalLoading}
             style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
           >
-            {portalLoading ? 'Opening…' : 'Manage subscription'}
+            {portalLoading ? 'Opening…' : 'Manage Subscription'}
           </button>
 
-          {/* ── Sign out ── */}
+          {/* ── Sign Out ── */}
           <div className="hdr-dj-menu-sep" />
           <button
             type="button"
@@ -220,7 +220,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             role="menuitem"
             onClick={handleSignOut}
           >
-            Sign out
+            Sign Out
           </button>
         </div>
       )}
