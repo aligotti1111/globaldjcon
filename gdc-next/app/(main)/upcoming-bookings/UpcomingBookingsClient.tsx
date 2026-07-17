@@ -4236,11 +4236,30 @@ function AddManualBookingModal({
                 ? <span style={{ color: '#ff5656', fontWeight: 700 }}>(required)</span>
                 : <span className={styles.optional}>(optional)</span>}
             </div>
-            {flagHost && (
+            {/*
+              The block ALWAYS says what it's for — including on a brand-new
+              booking, which is the only moment the DJ is actually in a position
+              to fill it in without coming back.
+
+              It said "(optional)" and nothing else, which is true and useless:
+              optional for WHAT? The DJ finds out days later, when they go to
+              send a contract and can't. The consequence belongs next to the
+              decision, not at the point it bites.
+
+              Two voices, same fact:
+                red   — you clicked "Add host details…", you're blocked NOW
+                muted — just so you know, this is what these two fields buy you
+            */}
+            {flagHost ? (
               <div style={{ color: '#ff8a8a', fontSize: '.76rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
                 Add the host&rsquo;s full name and email to send a contract or request a deposit
                 &mdash; there&rsquo;s nobody to send them to without one. Tick &ldquo;Send booking
                 details to host&rdquo; below and they&rsquo;ll get the booking too.
+              </div>
+            ) : (
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
+                Needed to send a contract or request a deposit &mdash; there&rsquo;s nobody to send
+                them to without a name and email. Leave blank if you just want the date held.
               </div>
             )}
             <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
