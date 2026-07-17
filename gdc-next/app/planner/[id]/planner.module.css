@@ -417,6 +417,17 @@ select.input {
   line-height: 1.4;
 }
 
+/* A must-play row: the picker, plus a remove. The picker has to be able to
+   grow (its results drop under it) so the row can't be a rigid grid. */
+.songRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+}
+/* min-width: 0 or the input refuses to shrink below its content and pushes the
+   remove button off the edge on a phone. */
+.songRowMain { flex: 1; min-width: 0; }
+
 /* ── Yes / no ─────────────────────────────────────────────────────────── */
 
 .yesno { display: flex; gap: .5rem; }

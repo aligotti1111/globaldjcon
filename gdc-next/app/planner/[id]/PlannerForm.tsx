@@ -13,8 +13,10 @@
 // my event". A DJ at 8pm deciding whether to call the father to the floor needs
 // to tell those apart, and an empty field can't.
 //
-// The Spotify picker is step 3b. Every song field here is free text today, and
-// free text must keep working forever — see `source: 'manual'` in lib/planner.
+// THE PICKER IS NOT A GATE. Every song field searches a catalogue (Deezer) and
+// every one of them still takes plain text — a client whose first dance is a
+// demo their cousin recorded on a phone must be able to answer. See
+// `source: 'manual'` in lib/planner.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './planner.module.css';
@@ -484,8 +486,7 @@ function Control({
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Song — free text today. The Spotify button lands in 3b, beside this input,
-// never replacing it.
+// Song — search, hear it, tap it. Or type it. Or paste a link.
 // ─────────────────────────────────────────────────────────────────────────
 
 /** "At Last — Etta James" → { title, artist }. One split, on the first dash. */
@@ -685,39 +686,51 @@ function SongInput({
   );
 }
 
+/**
+ * Must-plays. The longest list of songs in the planner — so this is where the
+ * picker earns its keep, not the one-off fields.
+ *
+ * Every row is a full SongInput: search, preview, pick. The rows hold Tracks,
+ * not strings, because a picked track carries artwork, a preview and the DJ's
+ * resolved Spotify link — flattening it to text on the way in would throw all
+ * of that away and leave the DJ back where they started.
+ */
 function SongList({
   value, onChange,
 }: {
   value: Track[];
   onChange: (v: Track[]) => void;
 }) {
-  const [rows, setRows] = useState<string[]>(() =>
-    value.length ? value.map(songToText) : ['']);
+  // undefined = an empty row they haven't filled yet. Kept in local state so an
+  // empty row can exist on screen without being saved as an answer.
+  const [rows, setRows] = useState<(Track | undefined)[]>(() =>
+    value.length ? [...value] : [undefined]);
 
-  const push = (next: string[]) => {
+  const push = (next: (Track | undefined)[]) => {
     setRows(next);
-    onChange(next.filter((s) => s.trim()).map(parseSong));
+    // Only real answers cross to the server. An empty row is someone mid-thought.
+    onChange(next.filter((t): t is Track => !!t && !!t.title.trim()));
   };
 
   return (
     <div className={styles.list}>
-      {rows.map((r, i) => (
-        <div key={i} className={styles.listRow}>
-          <input
-            className={styles.input}
-            placeholder="Song title — artist"
-            value={r}
-            onChange={(e) => { const n = [...rows]; n[i] = e.target.value; push(n); }}
-          />
+      {rows.map((t, i) => (
+        <div key={i} className={styles.songRow}>
+          <div className={styles.songRowMain}>
+            <SongInput
+              value={t}
+              onChange={(v) => { const n = [...rows]; n[i] = v || undefined; push(n); }}
+            />
+          </div>
           <button
             type="button"
             className={styles.rm}
             aria-label="Remove"
-            onClick={() => push(rows.length === 1 ? [''] : rows.filter((_, j) => j !== i))}
+            onClick={() => push(rows.length === 1 ? [undefined] : rows.filter((_, j) => j !== i))}
           >✕</button>
         </div>
       ))}
-      <button type="button" className={styles.add} onClick={() => push([...rows, ''])}>
+      <button type="button" className={styles.add} onClick={() => push([...rows, undefined])}>
         + Add another
       </button>
     </div>
