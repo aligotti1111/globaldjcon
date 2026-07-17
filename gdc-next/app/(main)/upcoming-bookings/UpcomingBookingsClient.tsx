@@ -1925,8 +1925,27 @@ function BookingRow({
                   )}
                   {open && hasMenu && menuPos && (
                     <>
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setMenuOpenKey(null)} />
-                      <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                      {/*
+                        BOTH OF THESE MUST STOP THEIR CLICKS.
+
+                        position:fixed moves them on screen; it does NOT move
+                        them in the DOM. They're still children of the row, so
+                        every click in the menu — and every click on the
+                        dismiss backdrop, which is the whole viewport — bubbles
+                        into .row's onClick and toggles it.
+
+                        That's how "Review & send contract" broke: runContract
+                        does setExpanded(true), then the same click reached the
+                        row and flipped it straight back shut. The portal opened
+                        and the row closed on top of it, in one tick.
+
+                        These used to be covered by a blanket stopPropagation on
+                        the statusStrip wrapper — which also swallowed every
+                        click on the row's dead space, so removing it was right.
+                        The stop belongs on the floating elements themselves.
+                      */}
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); setMenuOpenKey(null); }} />
+                      <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
                         {/* The amounts, when there are any. Two words fit on
                             the strip; "$299.99 of $600.00 received" doesn't —
                             and that's the number a DJ actually wants when they
