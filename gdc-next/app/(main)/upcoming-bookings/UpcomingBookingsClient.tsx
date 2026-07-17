@@ -1923,21 +1923,24 @@ function BookingRow({
                             the menu itself is nowrap — a sentence inherits that
                             and stretches the dropdown to the width of the
                             sentence, which is how you get a 600px menu. */}
+                        {/*
+                          Red, not muted: this is the one line in the menu that
+                          says you CAN'T do the thing you opened it for. In grey
+                          it read as a footnote and got skipped, which is how you
+                          end up hunting for a button that was never going to be
+                          there.
+
+                          NO DIVIDER after it, and the bottom padding is gone.
+                          A rule between the problem and its fix filed them as
+                          two unrelated things — "here's a message" / "here's a
+                          menu" — when they're one sentence: what's wrong, and
+                          the way out. Dividers separate; these two belong
+                          together.
+                        */}
                         {st.hint && (
-                          <>
-                            {/* Red, not muted. This is the one line in the menu
-                                that says you CAN'T do the thing you opened it
-                                for — in grey it read as a footnote and got
-                                skipped, which is how you end up clicking around
-                                looking for a button that was never going to be
-                                there. */}
-                            <div style={{ color: '#ff8a8a', fontSize: '.7rem', lineHeight: 1.45, padding: '.45rem .6rem .4rem', whiteSpace: 'normal', maxWidth: 190 }}>
-                              {st.hint}
-                            </div>
-                            {((st.actions?.length ?? 0) > 0 || st.overridable) && (
-                              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
-                            )}
-                          </>
+                          <div style={{ color: '#ff8a8a', fontSize: '.7rem', lineHeight: 1.45, padding: '.5rem .6rem .1rem', whiteSpace: 'normal', maxWidth: 190 }}>
+                            {st.hint}
+                          </div>
                         )}
                         {/* The real options for this step, right now — built
                             in the steps array so the menu can't offer something
