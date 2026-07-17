@@ -1183,17 +1183,23 @@ function BookingRow({
     That wasn't a decision, it was a leftover. The expanded panel has offered
     "Review & Send Contract" on manual bookings this whole time (it gates on
     booking_type, which for a manual booking is the DJ's own type — always
-    true). So you could send one; the strip just refused to ever say so.
-    Because the exclusion ignored `cstatus` too, a manual booking's Contract
+    true). So you could send one; the strip just refused to ever say so. And
+    because the exclusion ignored `cstatus` too, a manual booking's Contract
     column stayed a dash after sending, after signing, forever.
 
-    Now: same rules as any other booking, plus a recipient. hasHostContact is
-    the only extra condition — a contract with no name and no email has nobody
-    to sign it, and `prepare` would reject it with NO_CLIENT_EMAIL after the DJ
-    had already picked a template and signed.
+    NO hasHostContact GATE HERE, deliberately — I had one and it was wrong for
+    the same reason the grayscale icon was wrong. A dash means "this stage does
+    not apply to this booking". On a DJ who requires contracts, a contract very
+    much applies; it's blocked, which is a different thing. Hiding the icon
+    answered a question the DJ wasn't asking ("is there a contract stage?") and
+    stayed silent on the one they were ("why can't I send it?").
+
+    The step shows. The recipient gate lives in the caption and the dropdown —
+    see `blockedNoHost` below — where it can name the problem and hand over the
+    fix instead of just not being there.
   */
-  const contractPossible = !booking.is_manual || hasHostContact;
-  if (contractPossible && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
+  const blockedNoHost = !!booking.is_manual && !hasHostContact;
+  if (needsContract || !!cstatus || everHadContract || overrides.contract) {
     const trulySigned = cstatus === 'signed' || signedOverride;
     const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
@@ -1283,7 +1289,20 @@ function BookingRow({
                   { label: '\u{1F517} Copy link to contract', run: () => runContract('copy-link') },
                   { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
                 ]
-              : [{ label: 'Review & send contract', run: () => runContract('open') }],
+              // Nobody to send it to — offer the fix, not the dead end.
+              // "Review & send" here walks the DJ through picking a template
+              // and signing it, and only then does prepare come back with
+              // NO_CLIENT_EMAIL. All that work to be told there's no recipient.
+              : blockedNoHost
+                ? (onAddHost || onEdit
+                    ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                    : [])
+                : [{ label: 'Review & send contract', run: () => runContract('open') }],
+      // Named here rather than left to an absent button. The step is visible
+      // precisely so it CAN say this.
+      hint: blockedNoHost && !archive
+        ? 'Add the host’s full name and email to this booking first — there’s nobody to send a contract to.'
+        : undefined,
     });
   }
   // Payment step — shown when a deposit is part of THIS booking's pipeline,
@@ -1332,15 +1351,21 @@ function BookingRow({
     on every manual booking, with no way to ask for money on a gig you'd typed
     in yourself.
 
-    Once a manual booking has a host to send to, the step exists. There's no
-    snapshot to suggest an amount from — suggestedDeposit will be null and the
-    request modal opens blank — which is correct: nobody ever agreed a deposit
-    percentage on this booking, so the DJ types what they actually want.
+    So: the step exists on every manual booking, host details or not. It was
+    gated on hasHostContact and that was the same mistake as hiding the contract
+    icon — a dash claims the stage doesn't apply, when really it's blocked. You
+    can always ask for money on a gig you typed in yourself; you just need
+    somewhere to send the request. That's the caption's job (see the hint and
+    the "Add host details…" action below), not the column's.
+
+    There's no snapshot to suggest an amount from — suggestedDeposit is null and
+    the request modal opens blank — which is correct: nobody ever agreed a
+    deposit percentage on this booking, so the DJ types what they actually want.
   */
   const bookingHasDeposit =
     booking.deposit_pct != null
     || booking.deposit_amount != null
-    || (booking.is_manual && hasHostContact);
+    || !!booking.is_manual;
   // Only the DEPOSIT rows, not every payment on the booking.
   //
   // This step used to read `payments` whole. That was fine while deposit was
@@ -1477,7 +1502,7 @@ function BookingRow({
       // to send it, and find Payment options and Mark complete — no button, no
       // reason, no next step. An invisible rule reads as a broken app.
       hint: (!depositRow && !canRequestDeposit && !archive)
-        ? (booking.is_manual
+        ? (blockedNoHost
             ? 'Add the host’s full name and email to this booking first — there’s nobody to send the request to.'
             : 'The contract has to be signed before you can request a deposit.')
         : undefined,
@@ -1501,7 +1526,7 @@ function BookingRow({
             //
             // onEdit is only ever passed for manual, non-archive bookings (see
             // where BookingRow is used), so this can't appear anywhere else.
-            ...(booking.is_manual && !hasHostContact && (onAddHost || onEdit)
+            ...(blockedNoHost && (onAddHost || onEdit)
               ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
               : []),
             // The rails the client will be offered. Reachable from the booking
