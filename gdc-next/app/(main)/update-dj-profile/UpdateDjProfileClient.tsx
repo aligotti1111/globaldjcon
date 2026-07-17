@@ -131,7 +131,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     const defaultMobileEvents = savedEventTypes.length > 0
       ? savedEventTypes
       : (initialProfile.dj_type === 'mobile'
-          ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','mitzvah','reunion','holiday','school','community','other']
+          ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','quinceanera','mitzvah','reunion','holiday','school','community','other']
           : []);
 
     // Parse testimonials JSON (stored as a stringified array on users.testimonials).
