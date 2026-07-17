@@ -3278,6 +3278,39 @@ function AddManualBookingModal({
   const [hostName, setHostName] = useState<string>(existing?.requester_name || '');
   const [sendInvite, setSendInvite] = useState<boolean>(false);
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
+
+  /**
+   * Tick "Send booking details to host" by itself once a valid email is typed.
+   *
+   * WHY IT ISN'T JUST `sendInvite = hostEmailValid`:
+   *
+   * 1. ONLY ON THE TRANSITION invalid -> valid. If it keyed off "the email is
+   *    valid" it would arm itself the instant you opened an existing booking
+   *    that already has an address — you'd click the pencil to fix a typo in
+   *    the end time, hit Save, and a booking-details email would go out that
+   *    you never asked for. prevValid starts at the email's validity AT MOUNT,
+   *    so a booking that arrives with an address is already "valid" and never
+   *    triggers. Only actually typing one does.
+   *
+   * 2. A MANUAL UNTICK STICKS. Once you've touched the checkbox you've made a
+   *    decision; the next keystroke in the email field must not overrule it.
+   *    Without this, unticking and then fixing a typo in the address silently
+   *    re-arms the send.
+   *
+   * 3. NOT ONCE IT'S ALREADY SENT — that path renders the "sent on X" banner
+   *    with a Resend button instead of a checkbox, and re-arming a control that
+   *    isn't on screen is how you double-fire.
+   */
+  const hostEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail.trim());
+  const inviteTouched = useRef(false);
+  const prevEmailValid = useRef(hostEmailValid);
+  useEffect(() => {
+    const wasValid = prevEmailValid.current;
+    prevEmailValid.current = hostEmailValid;
+    if (hostEmailAlreadySent) return;
+    if (inviteTouched.current) return;
+    if (!wasValid && hostEmailValid) setSendInvite(true);
+  }, [hostEmailValid, hostEmailAlreadySent]);
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
     existing?.host_email_sent_at || null,
   );
@@ -4247,12 +4280,20 @@ function AddManualBookingModal({
                 <input
                   type="checkbox"
                   checked={sendInvite}
-                  onChange={(e) => setSendInvite(e.target.checked)}
-                  disabled={!hostEmail.trim() || !hostEmail.includes('@')}
+                  // inviteTouched, not just setSendInvite: this is the DJ making
+                  // a decision, and it has to outrank the auto-tick. Without it,
+                  // unticking and then fixing a typo in the address silently
+                  // re-arms the send.
+                  onChange={(e) => { inviteTouched.current = true; setSendInvite(e.target.checked); }}
+                  // The same regex the auto-tick uses. It was `includes('@')`,
+                  // which called "a@" valid — so the box could be ticked on an
+                  // address that can't receive anything, and the two rules would
+                  // have disagreed about what "valid" means.
+                  disabled={!hostEmailValid}
                 />
                 <span>
                   Send booking details to host
-                  {(!hostEmail.trim() || !hostEmail.includes('@')) && (
+                  {!hostEmailValid && (
                     <span className={styles.checkHint}> · enter a valid email first</span>
                   )}
                 </span>
