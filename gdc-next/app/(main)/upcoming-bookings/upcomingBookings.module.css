@@ -219,6 +219,10 @@
   color: var(--amber, #f7c948);
   border-radius: 4px;
   font-weight: 700;
+  /* order 3 — the manual-booking cluster (pill, edit, delete) rides on the
+     right with the chevron, where it has always been. It must not land
+     between the event type and the pipeline. */
+  order: 3;
 }
 
 /* Inline pill shown next to the booking context when the booking type
@@ -596,11 +600,20 @@ select.input {
 }
 /* Clickable middle area of the row — toggles expand/collapse. Holds the
    date pill, time, and context. Button-reset so it blends into the row. */
+/* flex: 0 1 auto, NOT 1 1 auto. Growing made this element eat every spare
+   pixel on the row, which is what stranded the pipeline against the far right
+   edge — it wasn't positioned there, it was pushed there. Sized to its
+   content, the pipeline can sit directly after the event type.
+   Still shrinks (0 1) so a long event name ellipsizes instead of shoving the
+   pipeline off the row. */
 .rowToggle {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  order: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 150px 1fr;
+  /* auto, not 1fr: 1fr only means "fill" when there's width to fill, and this
+     element no longer has any. Saying auto states the intent. */
+  grid-template-columns: 150px auto;
   gap: 1rem;
   align-items: center;
   background: none;
@@ -622,6 +635,57 @@ select.input {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  /* Last thing on the row, always. DOM order still has it before the
+     pipeline; order puts it after without moving the markup, which matters
+     because mobile places everything by named grid area and would ignore a
+     reshuffle anyway. */
+  order: 4;
+}
+
+/* ── Readiness pipeline (Booked → Contract → Deposit) ───────────────── */
+/*
+ * THESE RULES MUST STAY ABOVE THE @media (max-width: 600px) BLOCK.
+ * They lived below it for one version, and that was a bug: a media query adds
+ * no specificity, so two `.pipelineRow` rules of equal weight are settled by
+ * source order alone — the desktop one, being last, silently beat the mobile
+ * override it was supposed to defer to. It looked fine only by luck (an auto
+ * margin on a full-width grid item happens to land near the right place). The
+ * next property added would not have been lucky.
+ *
+ * Desktop: directly after the event type, separated by a pipe — the same
+ * divider that already separates the time from the event type, so the row
+ * reads as one sentence in three clauses: when · what · how far along.
+ *
+ * It used to be margin-left: auto, jammed against the right edge with a lake of
+ * dead space in between, which read as an unrelated widget rather than part of
+ * the same line.
+ *
+ * margin-right: auto is what now absorbs the leftover width — one auto margin,
+ * placed AFTER the pipeline, so everything from order 3 on (manual pill, edit,
+ * delete, chevron) still rides the right edge exactly as before. Giving those
+ * items their own auto margins instead would have split the free space between
+ * them and scattered the cluster.
+ *
+ * Mobile is a different mechanism entirely; see the grid rule below.
+ */
+.pipelineRow {
+  order: 2;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* The divider between the event type and the pipeline. Lives inside
+   .pipelineRow rather than beside it so it can never be orphaned on the wrong
+   side of a wrap, and so hiding it on mobile is one rule.
+   align-self overrides the container's align-items so the pipe centres against
+   the icon+label block, level with the event type it divides — rather than
+   floating at the top of it. */
+.pipeSep {
+  color: var(--muted);
+  margin-right: .55rem;
+  align-self: center;
 }
 
 /* Down chevron at the end of the row; rotates 180° when expanded. */
@@ -745,6 +809,7 @@ select.input {
   justify-content: center;
   transition: color .15s, border-color .15s, background .15s;
   user-select: none;
+  order: 3;
 }
 .deleteBtn:hover {
   color: var(--error, #ff5577);
@@ -766,6 +831,7 @@ select.input {
   justify-content: center;
   transition: color .15s, border-color .15s, background .15s;
   user-select: none;
+  order: 3;
 }
 .editBtn:hover {
   color: var(--neon);
@@ -802,9 +868,16 @@ select.input {
      full width instead, on its own line, which is what a phone has room for. */
   .pipelineRow {
     grid-area: pipe;
-    margin-left: 0;
+    /* Kill the desktop auto margin. This is a grid item now — a stale
+       margin-right: auto would shove the icons to the left edge of their own
+       full-width area, which happens to look almost right, and would then
+       break the moment the area stops being full-width. */
+    margin-right: 0;
     justify-content: flex-start;
   }
+  /* No event type on this line to separate from — the pipeline has its own
+     row down here. A leading pipe with nothing before it is just debris. */
+  .pipeSep { display: none; }
   .rowDate {
     grid-area: date;
     align-self: center;
@@ -858,18 +931,6 @@ select.input {
   .dow    { font-size: 10px; }
   .mo     { font-size: 10px; }
   .rowDate { gap: 6px; }
-}
-
-/* ── Readiness pipeline (Booked → Contract → Deposit) ───────────────── */
-/* Desktop: sits on the header row, pushed right. On a narrow desktop window
-   .row is flex-wrap, so it drops to its own line by itself — no breakpoint to
-   maintain. Mobile is a different story; see the grid rule below. */
-.pipelineRow {
-  margin-left: auto;
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  flex-shrink: 0;
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */

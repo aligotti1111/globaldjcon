@@ -1217,19 +1217,29 @@ function BookingRow({
           </svg>
         </button>
         {/*
-          READINESS PIPELINE — on the header row, pushed right.
+          READINESS PIPELINE — on the header row, immediately after the event
+          type, divided from it by the same pipe that divides the time from the
+          event type. The row reads as one sentence: when · what · how far along.
 
           It had its own full-width line, which cost a whole row of height per
-          booking and pushed the list down. One line per event is denser and
-          scans better: date, time, what it is, how far along — left to right,
-          one glance.
+          booking. It then spent a version pinned to the right edge with a lake
+          of dead space in the middle, which made it look like an unrelated
+          widget parked at the end of the row rather than the third clause of
+          the same line.
+
+          DOM ORDER IS NOT VISUAL ORDER HERE. This div still sits after the
+          chevron in the markup; CSS `order` does the arranging. That's
+          deliberate — mobile places every child by named grid area and would
+          ignore a markup reshuffle anyway, so moving it in the JSX would buy
+          nothing and cost a diff.
 
           MOBILE: .row is NOT flex below 600px — it's a grid with named areas.
-          flex-wrap does nothing there, and an element with no grid-area gets
-          auto-placed into the implicit grid: row 3, column 1, which is the 64px
-          date column. So .pipelineRow claims its own full-width area in the
-          stylesheet. Layout lives in upcomingBookings.module.css, not inline,
-          precisely because the two viewports need different mechanisms.
+          `order` and flex-wrap both do nothing there, and an element with no
+          grid-area gets auto-placed into the implicit grid: row 3, column 1,
+          which is the 64px date column. So .pipelineRow claims its own
+          full-width area in the stylesheet. Layout lives in
+          upcomingBookings.module.css, not inline, precisely because the two
+          viewports need different mechanisms.
 
           Icon on top, label underneath, green check badged over the corner when
           a step is done — so "what" and "done?" are two separate glances, not
@@ -1239,6 +1249,10 @@ function BookingRow({
           className={styles.pipelineRow}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Divider, desktop only — see .pipeSep. Decorative: the pipeline
+              already says what it is, so a screen reader reading "pipe" here
+              would only add noise. */}
+          <span className={styles.pipeSep} aria-hidden="true">|</span>
           {steps.map((st, i) => {
             // st.color, not stepColor(st.state): the step carries its own
             // colour so Contract can be amber (your move) while Deposit stays
