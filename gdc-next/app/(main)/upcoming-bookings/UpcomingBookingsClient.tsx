@@ -1075,10 +1075,39 @@ function BookingRow({
   // off-platform; never trap them behind a step the system can't observe).
   // Gates the Request Deposit action in the details panel below.
   const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
+  /**
+   * Does this booking have somebody to send things TO?
+   *
+   * A booking that came through the app has a requester — an account, an email,
+   * a name. A MANUAL booking has whatever the DJ typed, which may be nothing:
+   * Host Name and Host Email are marked "(optional)" on the add form, and a DJ
+   * adding a gig they already agreed over the phone has no reason to fill them.
+   *
+   * Both fields, not just the email. The email is who it goes to; the name is
+   * who the contract is made out to. `prepare` falls back to the part of the
+   * address before the @ when there's no name, so a contract with no host name
+   * gets addressed to "jordan91" — which is nobody.
+   */
+  const hasHostContact =
+    !!String((booking as { host_email?: string | null }).host_email || '').trim() &&
+    !!String((booking as { requester_name?: string | null }).requester_name || '').trim();
+
   // Defined once, used by BOTH the pipeline's Request-deposit item and the
   // panel's Request Deposit button — they must never disagree about whether
   // asking for money is allowed yet.
-  const canRequestDeposit = booking.is_manual || !needsContract || contractStepComplete;
+  //
+  // `is_manual` used to be the first clause on its own, which meant a manual
+  // booking could ALWAYS request a deposit — gated on nothing. Including the
+  // ones with no host email, where the request had no recipient and went
+  // nowhere. The DJ clicked Request deposit, the UI said it was requested, and
+  // nothing was ever sent.
+  //
+  // Manual bookings now need host contact instead of the contract gate (they
+  // have no contract requirement to satisfy). The other two clauses are
+  // untouched, so a real booking's path through here is exactly what it was.
+  const canRequestDeposit = booking.is_manual
+    ? hasHostContact
+    : (!needsContract || contractStepComplete);
   // `color` is per-step, not derived from state alone: Contract goes YELLOW
   // when it's waiting on someone (an action the DJ can take), while Deposit
   // stays grey until it lands. Same state, different urgency — one shared
@@ -1375,19 +1404,21 @@ function BookingRow({
       info: depositRow
         ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
         : undefined,
-      // The gate, said out loud.
+      // The gate, said out loud — and there are TWO of them now, so it has to
+      // say the right one. Telling a DJ to sign a contract on a manual booking
+      // that has no contract is worse than saying nothing.
       //
-      // canRequestDeposit is `is_manual || !needsContract || contractStepComplete`
-      // — so on a booking that requires a contract, Request deposit does not
-      // appear until that contract is signed. The rule is right: don't ask a
-      // client for money before there's an agreement.
+      //   manual, no host contact -> nobody to send it to
+      //   real booking, unsigned  -> no agreement yet
       //
-      // But the menu enforced it by simply not rendering the item, which tells
-      // the DJ nothing. They see "Not sent", open the menu to send it, and the
-      // only things there are Payment options and Mark complete — no button, no
+      // Either way the menu used to enforce the rule by simply not rendering
+      // the item, which tells the DJ nothing. They see "Not sent", open the menu
+      // to send it, and find Payment options and Mark complete — no button, no
       // reason, no next step. An invisible rule reads as a broken app.
       hint: (!depositRow && !canRequestDeposit && !archive)
-        ? 'The contract has to be signed before you can request a deposit.'
+        ? (booking.is_manual
+            ? 'Add the host’s name and email to this booking first — there’s nobody to send the request to.'
+            : 'The contract has to be signed before you can request a deposit.')
         : undefined,
       actions: archive
         ? []
@@ -1397,6 +1428,20 @@ function BookingRow({
             // start double-counting what's owed.
             ...(!depositRow && canRequestDeposit
               ? [{ label: 'Request deposit', run: openRequest }]
+              : []),
+            // The way out of the gate, next to the reason for it.
+            //
+            // Naming a problem without offering the fix just moves the dead end
+            // one click later. This opens the Add/Edit Manual Booking modal —
+            // the same thing the row's pencil opens, which already has Host
+            // Name, Host Email, and a "Send booking details to host" checkbox
+            // wired to the invite email. Nothing new to build and nothing new
+            // to learn; it just needs a door from where the DJ actually is.
+            //
+            // onEdit is only ever passed for manual, non-archive bookings (see
+            // where BookingRow is used), so this can't appear anywhere else.
+            ...(booking.is_manual && !hasHostContact && onEdit
+              ? [{ label: 'Add host details…', run: onEdit }]
               : []),
             // The rails the client will be offered. Reachable from the booking
             // because that's where a DJ realises the client can't pay the way
