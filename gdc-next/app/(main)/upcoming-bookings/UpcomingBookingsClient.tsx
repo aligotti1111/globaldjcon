@@ -160,6 +160,20 @@ export default function UpcomingBookingsClient({
   // When set, the modal opens in edit mode prefilled with this booking's data.
   // Mutually exclusive with showAddModal — opening one closes the other.
   const [editing, setEditing] = useState<UpcomingBooking | null>(null);
+  /**
+   * The edit modal was opened by "Add host details…", not by the pencil.
+   *
+   * Same modal either way, but the intent is different and the modal opens
+   * scrolled to the top with Host Details below the fold — so arriving from
+   * "Add host details" landed you on a form that looked exactly like the one
+   * you'd have got from the pencil, with no sign of the thing you came for.
+   *
+   * Not derived from "host details are missing": that's true when you click the
+   * pencil to fix a typo in the date too, and yanking the scroll position to a
+   * block you didn't ask about is its own annoyance. The flag records that you
+   * asked.
+   */
+  const [focusHost, setFocusHost] = useState(false);
   // Optional date to prefill into the add modal when it opens. Set when the
   // page is loaded with `?addManual=YYYY-MM-DD` (used by the public profile
   // calendar's "Add Booking Details" button so the date is already populated).
@@ -425,6 +439,7 @@ export default function UpcomingBookingsClient({
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                 onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
               />
             ))}
           </div>
@@ -454,6 +469,7 @@ export default function UpcomingBookingsClient({
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
                   />
                 ))}
               </div>
@@ -481,8 +497,9 @@ export default function UpcomingBookingsClient({
           mobPackages={mobPackages}
           existingBookings={bookings}
           existing={editing}
+          focusHost={focusHost}
           prefillDate={prefillDate}
-          onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); }}
+          onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); setFocusHost(false); }}
           onAdded={handleAdded}
           onUpdated={handleUpdated}
         />
@@ -878,7 +895,7 @@ function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit, onAddHost,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -892,6 +909,15 @@ function BookingRow({
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
+  /**
+   * Opens the SAME modal as onEdit, but scrolled to Host Details with the name
+   * field focused and the block called out.
+   *
+   * A separate prop rather than a flag on onEdit because the two are different
+   * intents that happen to share a form: the pencil means "change something",
+   * this means "the thing blocking me is in there somewhere".
+   */
+  onAddHost?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   // Set true when the details panel's live DocuSeal check confirms the contract
@@ -1475,8 +1501,8 @@ function BookingRow({
             //
             // onEdit is only ever passed for manual, non-archive bookings (see
             // where BookingRow is used), so this can't appear anywhere else.
-            ...(booking.is_manual && !hasHostContact && onEdit
-              ? [{ label: 'Add host details…', run: onEdit }]
+            ...(booking.is_manual && !hasHostContact && (onAddHost || onEdit)
+              ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
               : []),
             // The rails the client will be offered. Reachable from the booking
             // because that's where a DJ realises the client can't pay the way
@@ -2099,7 +2125,7 @@ function BookingRow({
           onPaymentsChange={onPaymentsChange}
           canRequestDeposit={canRequestDeposit}
           hasHostContact={hasHostContact}
-          onEdit={onEdit}
+          onEdit={onAddHost || onEdit}
         />
       )}
     </div>
@@ -3109,7 +3135,7 @@ function formatLongDate(d: string): string {
 
 function AddManualBookingModal({
   userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
-  existing, prefillDate, onClose, onAdded, onUpdated,
+  existing, focusHost, prefillDate, onClose, onAdded, onUpdated,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
@@ -3119,6 +3145,14 @@ function AddManualBookingModal({
   mobPackages: Record<string, MobilePackage[]> | null;
   existingBookings: UpcomingBooking[];
   existing: UpcomingBooking | null;
+  /**
+   * Opened via "Add host details…" rather than the pencil. Scrolls to the Host
+   * Details block, focuses Host Name, and calls the block out — the modal opens
+   * at the top and that block is below the fold, so without this you arrive at
+   * a form that looks identical to a normal edit and shows no sign of the thing
+   * you clicked for.
+   */
+  focusHost?: boolean;
   // Optional initial date for the new-booking flow — used when the modal
   // is opened from the public calendar's "Add Booking Details" button so
   // the date is already populated.
@@ -3247,6 +3281,41 @@ function AddManualBookingModal({
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
     existing?.host_email_sent_at || null,
   );
+
+  /**
+   * Host Details is REQUIRED, not optional, the moment you want a contract or a
+   * deposit on this booking — there's nobody to send either one to without it.
+   * The block is labelled "(optional)" because for a gig you just want on your
+   * calendar, it is. Both are true; which one applies depends on what you're
+   * trying to do, and the form can't know that on its own.
+   *
+   * So: when you arrived here from "Add host details…", say it in red. That's
+   * the only moment we know for certain you're blocked.
+   */
+  const hostBlockRef = useRef<HTMLDivElement | null>(null);
+  const hostNameRef = useRef<HTMLInputElement | null>(null);
+  const hostMissing = !hostName.trim() || !hostEmail.trim();
+  const flagHost = !!focusHost && hostMissing;
+
+  // Scroll the block into view and put the cursor in the first empty field.
+  //
+  // rAF, not a bare call: the modal is mounting on this same tick and its
+  // scroll container has no height yet, so scrollIntoView would measure zero
+  // and do nothing. One frame later the layout is real.
+  useEffect(() => {
+    if (!focusHost) return;
+    const id = requestAnimationFrame(() => {
+      hostBlockRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      // Focus whichever field is actually empty — jumping the cursor to Host
+      // Name when the name is filled and only the email is missing just makes
+      // them tab past it.
+      if (!hostName.trim()) hostNameRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+    // Mount-only: re-running on every hostName keystroke would drag the scroll
+    // position back mid-typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusHost]);
   // Optional flat rate. Stored as offer_amount + currency so it flows
   // through the same fields used by the normal booking flow.
   const [rate, setRate] = useState<string>(
@@ -4106,18 +4175,43 @@ function AddManualBookingModal({
               sends once, the checkbox/send-button UI is replaced with a
               "sent on X" banner + a Resend button, so the DJ can't double-
               fire emails by accident. */}
-          <div className={styles.hostInviteBlock}>
-            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: 0.55, marginBottom: '.55rem' }}>Host Details <span className={styles.optional}>(optional)</span></div>
+          <div
+            ref={hostBlockRef}
+            className={styles.hostInviteBlock}
+            style={flagHost ? {
+              // Only when we KNOW they're blocked (arrived from "Add host
+              // details"), never on a routine pencil edit — a red box round a
+              // block genuinely marked optional would be crying wolf.
+              border: '1px solid rgba(255,86,86,.5)',
+              borderRadius: 8,
+              padding: '.9rem',
+              background: 'rgba(255,86,86,.05)',
+            } : undefined}
+          >
+            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: flagHost ? 1 : 0.55, marginBottom: '.55rem' }}>
+              Host Details{' '}
+              {flagHost
+                ? <span style={{ color: '#ff5656', fontWeight: 700 }}>(required)</span>
+                : <span className={styles.optional}>(optional)</span>}
+            </div>
+            {flagHost && (
+              <div style={{ color: '#ff8a8a', fontSize: '.76rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
+                Add a name and email to send a contract or request a deposit &mdash; there&rsquo;s nobody
+                to send them to without one. Tick &ldquo;Send booking details to host&rdquo; below and
+                they&rsquo;ll get the booking too.
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
                 <span className={styles.fieldLabel}>Host Name</span>
                 <input
+                  ref={hostNameRef}
                   type="text"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
                   placeholder="e.g. Jordan Smith"
                   className={styles.input}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', ...(flagHost && !hostName.trim() ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
                   autoComplete="off"
                 />
               </label>
@@ -4129,7 +4223,7 @@ function AddManualBookingModal({
                   onChange={(e) => setHostEmail(e.target.value)}
                   placeholder="host@example.com"
                   className={styles.input}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', ...(flagHost && !hostEmail.trim() ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
                   autoComplete="off"
                 />
               </label>
