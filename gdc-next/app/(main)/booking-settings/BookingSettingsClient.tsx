@@ -46,7 +46,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       .split(',').map((s) => s.trim()).filter(Boolean);
     if (saved.length > 0) return saved;
     return djType === 'mobile'
-      ? ['weddings', 'corporate', 'birthday', 'anniversary', 'graduation', 'sweet16', 'mitzvah', 'reunion', 'holiday', 'school', 'community', 'other']
+      ? ['weddings', 'corporate', 'birthday', 'anniversary', 'graduation', 'sweet16', 'quinceanera', 'mitzvah', 'reunion', 'holiday', 'school', 'community', 'other']
       : [];
   }, [initialProfile.event_types, djType]);
 
