@@ -37,7 +37,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
   'Belgium': '🇧🇪', 'Switzerland': '🇨🇭', 'Portugal': '🇵🇹', 'Other': '🌍',
 };
 import styles from './upcomingBookings.module.css';
-import type { UpcomingBooking, BookingPayment } from './page';
+import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
@@ -62,6 +62,9 @@ interface Props {
   // (the generated Supabase types predate the table, so the page casts to an
   // untyped client for that one query). Purely informational — never gates.
   initialPayments?: Record<string, BookingPayment[]>;
+  // booking_planners, reduced to a fraction server-side (the answers never come
+  // to the browser). Keyed by booking_id; absent = never requested.
+  initialPlanners?: Record<string, BookingPlannerSummary>;
 }
 
 // Mobile-DJ event types — kept in sync with the public booking form (and
@@ -102,7 +105,7 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
 
 export default function UpcomingBookingsClient({
   userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
-  initialPayments,
+  initialPayments, initialPlanners,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -111,6 +114,20 @@ export default function UpcomingBookingsClient({
   const [paymentsMap, setPaymentsMap] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
   function handlePaymentsChange(bookingId: string, rows: BookingPayment[]) {
     setPaymentsMap((prev) => ({ ...prev, [bookingId]: rows }));
+  }
+  // Planner summaries per booking. Owned at the top for the same reason as the
+  // payments: after a Request the row must go amber immediately, and collapsing
+  // it must not throw that away.
+  //
+  // Also mirrored onto booking.planner_status below — the row reads BOTH (the
+  // column via this map, and `planner_status` elsewhere), and one updating
+  // without the other is how a strip starts contradicting itself.
+  const [plannerMap, setPlannerMap] = useState<Record<string, BookingPlannerSummary>>(initialPlanners || {});
+  function handlePlannerChange(bookingId: string, row: BookingPlannerSummary) {
+    setPlannerMap((prev) => ({ ...prev, [bookingId]: row }));
+    setBookings((prev) => prev.map((b) => (
+      b.id === bookingId ? { ...b, planner_status: row.status } : b
+    )));
   }
   // The DJ's standing club deposit % (from booking_settings). Lets club
   // booking cards show the deposit even when it wasn't stored per-booking —
@@ -436,6 +453,8 @@ export default function UpcomingBookingsClient({
                 archive={archive}
                 payments={paymentsMap[b.id] || []}
                 onPaymentsChange={handlePaymentsChange}
+                planner={plannerMap[b.id]}
+                onPlannerChange={handlePlannerChange}
                 overlaps={overlapIds.has(b.id)}
                 onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                 onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
@@ -466,6 +485,8 @@ export default function UpcomingBookingsClient({
                     archive={archive}
                     payments={paymentsMap[b.id] || []}
                     onPaymentsChange={handlePaymentsChange}
+                    planner={plannerMap[b.id]}
+                    onPlannerChange={handlePlannerChange}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
                     onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
@@ -903,7 +924,7 @@ function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit, onAddHost,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -914,6 +935,9 @@ function BookingRow({
   archive?: boolean;
   payments: BookingPayment[];
   onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  /** The booking's planner, or undefined if one was never requested. */
+  planner?: BookingPlannerSummary;
+  onPlannerChange: (bookingId: string, row: BookingPlannerSummary) => void;
   overlaps?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -1151,6 +1175,50 @@ function BookingRow({
   // an unsent contract offers "Review & send", a sent one offers resend/cancel,
   // a signed one offers download. Offering "Review & send" on a signed contract
   // — as it did — invites a DJ to overwrite an agreement both parties signed.
+  // ── Planner: request / resend ─────────────────────────────────────────────
+  //
+  // One call for both. The server decides which it is — a planner that already
+  // exists is never rebuilt, only re-emailed, because `fields` is a snapshot
+  // and `responses` is keyed to it. Resending is most likely exactly when the
+  // client is halfway through, and recomposing would orphan their answers.
+  const [plannerBusy, setPlannerBusy] = useState(false);
+  const [plannerErr, setPlannerErr] = useState<string | null>(null);
+
+  async function requestPlanner() {
+    if (plannerBusy) return;
+    setPlannerBusy(true);
+    setPlannerErr(null);
+    try {
+      const res = await fetch('/api/planner/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPlannerErr(j?.error || 'Could not send the planner.');
+        return;
+      }
+      // The server returns the row's status. Trust it rather than assuming
+      // 'sent': a resend on a half-filled planner is still 'partial', and
+      // optimistically writing 'sent' would walk the fraction backwards on
+      // screen until the next reload.
+      onPlannerChange(booking.id, {
+        id: j.id,
+        status: (j.status as BookingPlannerSummary['status']) || 'sent',
+        answered: planner?.answered ?? 0,
+        total: planner?.total ?? 0,
+      });
+      // Created, but Resend is down or unkeyed. The link works — say so rather
+      // than claiming it was emailed.
+      if (j.warning) setPlannerErr(j.warning);
+    } catch {
+      setPlannerErr('Could not send the planner.');
+    } finally {
+      setPlannerBusy(false);
+    }
+  }
+
   const steps: {
     key: string; label: string; state: StepState;
     icon: 'doc' | 'money' | 'music' | 'receipt';
@@ -1547,48 +1615,113 @@ function BookingRow({
     });
   }
 
-  // ── Playlist ────────────────────────────────────────────────────────────
+  // ── Planner & Playlist ──────────────────────────────────────────────────
   //
-  // THE FEATURE DOES NOT EXIST YET. There is no playlist table, no request
-  // email, no client-facing page, no track count — nothing behind this but the
-  // status_overrides column, which already whitelists 'song_list' server-side.
+  // MOBILE ONLY. A club booking has no first dance, no bridal party and no run
+  // of show, so the step isn't pushed at all and the cell renders a dash —
+  // which is the honest reading: not "nothing has happened yet", but "this
+  // doesn't apply here". Club gets its own system (spec §1).
   //
-  // The column is here anyway, and deliberately: it was designed in alongside
-  // the other three, and adding a fifth column later means re-deriving every
-  // track width on the row. Holding the space now costs 100px; retrofitting it
-  // later costs the layout.
-  //
-  // So this renders exactly one honest state — a dimmed icon meaning "nothing
-  // has happened" — plus the manual override, which genuinely works today: a
-  // DJ who took the song list by text message can mark it done and the row
-  // will stop asking. When the real feature lands it replaces this block and
-  // nothing around it moves.
-  {
-    const done = !!overrides.song_list;
+  // The colour moved MUTED → AMBER the moment this shipped. It was grey
+  // *because* there was nothing to do; now there is, and grey would make the
+  // one column the DJ can act on look like the one they can't.
+  if (booking.booking_type !== 'club') {
+    const pstatus = planner?.status || booking.planner_status || null;
+    const done = pstatus === 'submitted' || !!overrides.song_list;
+
+    // Same gate as the deposit, same reasoning: a manual booking may have no
+    // client attached, and a planner with no recipient goes nowhere. The icon
+    // still shows — a planner always applies to a mobile booking, so a dash
+    // here would be a lie. The dropdown names the problem and hands over the
+    // fix. (Hiding the action and saying nothing was the original bug in BOTH
+    // the contract and deposit columns; it's not being repeated here.)
+    const state: StepState =
+      done ? 'done'
+      : (pstatus === 'sent' || pstatus === 'partial') ? 'pending'
+      : 'todo';
+
+    // The fraction, and it's the whole reason `partial` is worth a state of its
+    // own: "they haven't started" and "they're three questions from done" are
+    // different problems for the DJ, and "Pending" says neither. Same idea as
+    // the deposit's $300/$600.
+    //
+    // total can be 0 if the snapshot somehow has no visible fields — show
+    // Pending rather than "0/0", which reads like a bug because it is one.
+    const frac = planner && planner.total > 0
+      ? `${planner.answered}/${planner.total}`
+      : null;
+
+    const caption =
+      done ? undefined
+      : pstatus === 'partial' ? (frac || 'Pending')
+      : pstatus === 'sent' ? 'Pending'
+      : 'Not sent';
+
+    const plannerUrl = planner ? `/planner/${planner.id}` : null;
+
     steps.push({
       key: 'song_list',
       // Matches the column heading. `label` is the icon's title attribute — the
       // tooltip you get hovering it — so if it says "Playlist" while the header
       // above says "Planner & Playlist", they read as two different things.
-      label: done ? 'Planner & Playlist' : 'Planner & Playlist not requested',
-      state: done ? 'done' : 'todo',
+      label:
+        done ? 'Planner & Playlist'
+        : pstatus ? 'Planner & Playlist sent, not finished'
+        : 'Planner & Playlist not requested',
+      state,
       icon: 'music',
       overridable: true,
       done,
-      color: done ? NEON : MUTED,
-      // "Not sent" — the same word as every other column, which is convenient,
-      // because it's also the only honest one available: there's nothing to
-      // send yet.
+      color: done ? NEON : AMBER,
+      caption,
+      info: plannerErr
+        ? undefined
+        : (planner && pstatus === 'partial' && frac ? `${frac} answered` : undefined),
+      // plannerErr wins the hint when there is one — it's the newest thing that
+      // happened and the only one the DJ hasn't read yet.
       //
-      // It stays GREY though (see MUTED above), unlike the amber "Not sent" on
-      // contract and deposit. Same word, different colour, and the colour is
-      // what says "this isn't waiting on you" — the feature doesn't exist, so
-      // an amber caption here would be indistinguishable from the real call to
-      // action sitting one column to the left. When the request feature lands,
-      // this goes amber and 'Pending' starts appearing, with no wording change.
-      caption: done ? undefined : 'Not sent',
-      info: done ? undefined : 'Requesting playlists is coming soon.',
-      actions: [],
+      // The wording changes once a planner exists. "Add host email and name to
+      // send planner" is false on a booking where the planner went out last
+      // week and the DJ has since cleared the email — it's already sent; what's
+      // blocked is sending it AGAIN.
+      hint: plannerErr
+        ? plannerErr
+        : blockedNoHost
+          ? (planner
+              ? 'Add host email and name to resend. The link still works.'
+              : 'Add host email and name to send planner.')
+          : undefined,
+      actions: archive
+        ? []
+        : planner
+          ? [
+              // Open and Copy survive the host gate. They don't email anybody —
+              // the planner exists and the link is live, and a DJ whose client
+              // lost the link needs to be able to hand it over by text. Only
+              // Resend needs a recipient, so only Resend goes away.
+              { label: 'Open planner', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
+              {
+                label: 'Copy link',
+                run: () => {
+                  if (!plannerUrl) return;
+                  // The absolute url — the DJ is copying this to text it to a
+                  // client, and "/planner/abc" pasted into Messages is not a
+                  // link.
+                  const abs = `${window.location.origin}${plannerUrl}`;
+                  navigator.clipboard?.writeText(abs).catch(() => {});
+                },
+              },
+              ...(blockedNoHost
+                ? (onAddHost || onEdit
+                    ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                    : [])
+                : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
+            ]
+          : blockedNoHost
+            ? (onAddHost || onEdit
+                ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                : [])
+            : [{ label: plannerBusy ? 'Sending…' : 'Request planner', run: requestPlanner }],
     });
   }
 

@@ -18,6 +18,11 @@ import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
+import {
+  plannerProgress,
+  type PlannerField,
+  type PlannerResponses,
+} from '@/lib/planner';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -90,6 +95,26 @@ export interface UpcomingBooking {
   // whether a contract was required at creation time (freezes the flow).
   status_overrides?: Record<string, boolean> | null;
   requires_contract?: boolean | null;
+  // Playlist & Planner. Written ONLY by trg_sync_planner_status, never by the
+  // app — so it can't drift from booking_planners.status the way it would with
+  // two writers (the DJ's Request, the client's autosave on a page with no
+  // session). See planner-schema.sql §4.
+  planner_status?: 'sent' | 'partial' | 'submitted' | null;
+}
+
+/**
+ * What the row needs to draw the Planner & Playlist cell — and nothing more.
+ *
+ * `fields` and `responses` are 30-question jsonb blobs, per booking. They are
+ * read on the server, reduced to a fraction here, and never sent to the
+ * browser: the DJ's row needs "12/34", not the client's answers. The panel
+ * fetches the full planner on demand when it's opened (step 5).
+ */
+export interface BookingPlannerSummary {
+  id: string;
+  status: 'sent' | 'partial' | 'submitted';
+  answered: number;
+  total: number;
 }
 
 
@@ -152,7 +177,7 @@ export default async function UpcomingBookingsPage() {
   // the dedicated /past-bookings page.)
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract, planner_status')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -214,6 +239,32 @@ export default async function UpcomingBookingsPage() {
     }
   }
 
+  // Planner rows for these bookings. Same untyped-client cast as the payments
+  // query above, and for the same reason: booking_planners postdates
+  // types/supabase.ts.
+  //
+  // The jsonb is read here and thrown away here. plannerProgress() runs on the
+  // server and only the fraction crosses to the browser — shipping every
+  // client's answers to the DJ's row to render "12/34" would be a payload for
+  // nothing and would put a stranger's notes in the page source.
+  const plannersByBooking: Record<string, BookingPlannerSummary> = {};
+  if (bookingIds.length > 0) {
+    const { data: planRows } = await db
+      .from('booking_planners')
+      .select('id, booking_id, status, fields, responses')
+      .in('booking_id', bookingIds);
+    for (const p of (((planRows as unknown) as {
+      id: string;
+      booking_id: string;
+      status: 'sent' | 'partial' | 'submitted';
+      fields: PlannerField[] | null;
+      responses: PlannerResponses | null;
+    }[] | null) || [])) {
+      const { answered, total } = plannerProgress(p.fields || [], p.responses || {});
+      plannersByBooking[p.booking_id] = { id: p.id, status: p.status, answered, total };
+    }
+  }
+
   return (
     <UpcomingBookingsClient
       userId={user.id}
@@ -224,6 +275,7 @@ export default async function UpcomingBookingsPage() {
       initialBookings={bookingRows}
       mobPackages={mobPackages ?? null}
       initialPayments={paymentsByBooking}
+      initialPlanners={plannersByBooking}
     />
   );
 }
