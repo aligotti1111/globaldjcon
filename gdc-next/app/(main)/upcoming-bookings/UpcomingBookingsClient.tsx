@@ -44,6 +44,7 @@ import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
 import MonthlyStory from './MonthlyStory';
+import PlannerPanel from './PlannerPanel';
 import { useConfirm } from '@/components/ConfirmModal';
 
 interface Props {
@@ -2382,6 +2383,7 @@ function BookingRow({
           onPaymentsChange={onPaymentsChange}
           canRequestDeposit={canRequestDeposit}
           hasHostContact={hasHostContact}
+          plannerStatus={planner?.status || booking.planner_status || null}
           onEdit={onAddHost || onEdit}
         />
       )}
@@ -2399,6 +2401,7 @@ function BookingRow({
 function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
   payments, onPaymentsChange, canRequestDeposit, hasHostContact, onEdit, contractAction, onContractActionHandled,
+  plannerStatus,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -2411,6 +2414,14 @@ function BookingDetails({
   archive?: boolean;
   payments: BookingPayment[];
   onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  /**
+   * Non-null when a planner exists for this booking.
+   *
+   * Gates the fetch, not the render: the panel handles null perfectly well, but
+   * most bookings have no planner and opening a row shouldn't cost a round trip
+   * to be told so.
+   */
+  plannerStatus?: 'sent' | 'partial' | 'submitted' | null;
   // Contract-step gate for Request Deposit — computed by BookingRow from the
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
@@ -3025,6 +3036,23 @@ function BookingDetails({
               booking.total_with_tax ?? booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null
             }
           />
+        </div>
+      )}
+      {/* Planner & Playlist — MOBILE ONLY, same rule as the column: a club
+          booking has no first dance and no bridal party.
+
+          Mounted only when `plannerStatus` says one exists, so opening a row
+          doesn't fire a request for a planner that was never sent. The panel
+          handles null anyway (a row can go stale), but the common case is "no
+          planner" and the common case shouldn't cost a round trip.
+
+          Below Payments and above Notes on purpose: it's the longest block on
+          the card, and burying the money under 30 questions to find out whether
+          the deposit landed is the wrong trade. */}
+      {bt === 'mobile' && !!plannerStatus && (
+        <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
+          <div className={styles.detailLabel}>Planner &amp; Playlist</div>
+          <PlannerPanel bookingId={booking.id} />
         </div>
       )}
       {(bt === 'club' || bt === 'mobile') && (

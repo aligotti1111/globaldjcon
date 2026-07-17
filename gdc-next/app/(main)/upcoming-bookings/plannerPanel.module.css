@@ -1,0 +1,213 @@
+/* The DJ's read view of a planner, inside the expanded booking card.
+ *
+ * Denser than the client's form and quieter than the rest of the panel — it
+ * sits inside a card that already has its own headings, so it can't compete
+ * with them. Colour is spent on exactly two things: Do NOT play, and what's
+ * missing. Everything else is text.
+ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+
+/* ── Head ─────────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding-bottom: .6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.badge,
+.badgeDone {
+  font-size: .68rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: .18rem .5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.badge {
+  color: #f5a623;
+  background: rgba(245, 166, 35, .12);
+  border: 1px solid rgba(245, 166, 35, .3);
+}
+.badgeDone {
+  color: #4ddcb4;
+  background: rgba(0, 224, 164, .1);
+  border: 1px solid rgba(0, 224, 164, .32);
+}
+
+.count { font-size: .76rem; color: #8a8aa0; }
+.when  { font-size: .72rem; color: #5e5e77; margin-left: auto; }
+
+/* ── Fields ───────────────────────────────────────────────────────────── */
+
+.field { min-width: 0; }
+
+/* Do NOT play. A left bar, not a fill: this sits among a dozen other blocks
+   and a red panel would drag the eye off everything else on the card. The bar
+   is enough to find it while scrolling and quiet enough to ignore when you're
+   not looking for it. */
+.fieldNo {
+  min-width: 0;
+  border-left: 2px solid rgba(255, 86, 86, .55);
+  padding-left: .7rem;
+}
+
+.label {
+  font-size: .68rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #6c6c86;
+  margin-bottom: .22rem;
+}
+
+.val {
+  font-size: .88rem;
+  color: #e8e8f0;
+  line-height: 1.5;
+}
+
+.longVal {
+  font-size: .86rem;
+  color: #e8e8f0;
+  line-height: 1.6;
+  /* The client typed this in a textarea. Their paragraph breaks are how they
+     grouped their thoughts — collapsing them turns a list into a wall. */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* The two states that are NOT the same thing, and the whole reason both are
+   rendered rather than hidden: one says "no", the other says "no answer yet". */
+.na {
+  font-size: .82rem;
+  color: #75758d;
+  font-style: italic;
+}
+.blank {
+  font-size: .82rem;
+  color: #4a4a60;
+}
+
+.link {
+  font-size: .84rem;
+  color: #4ddcb4;
+  word-break: break-all;
+}
+
+/* ── Lists ────────────────────────────────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: .86rem;
+  color: #e8e8f0;
+  line-height: 1.6;
+}
+.bullets li { word-break: break-word; }
+/* Do NOT play, in the list itself as well as the bar — the bar is off-screen
+   once you've scrolled into a long list. */
+.bulletsNo { color: #ffb3b3; }
+
+/* ── Tracks ───────────────────────────────────────────────────────────── */
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.art {
+  width: 30px;
+  height: 30px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.artFallback {
+  width: 30px;
+  height: 30px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, .05);
+  color: #5e5e77;
+  font-size: .8rem;
+}
+
+.trackText {
+  font-size: .86rem;
+  color: #e8e8f0;
+  min-width: 0;
+  line-height: 1.4;
+}
+.artist { color: #8a8aa0; }
+
+.trackLink {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: .72rem;
+  color: #5e5e77;
+  text-decoration: underline;
+}
+.trackLink:hover { color: #4ddcb4; }
+
+/* ── People ───────────────────────────────────────────────────────────── */
+
+.person {
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+  flex-wrap: wrap;
+  font-size: .86rem;
+  line-height: 1.5;
+}
+.personName { color: #e8e8f0; font-weight: 500; }
+.role { color: #8a8aa0; font-size: .78rem; }
+
+/* Pronunciation. Neon, because this is the one line on the card that stops a
+   DJ saying a name wrong in front of 150 people — and the moment it's needed
+   they are scanning, not reading. */
+.say {
+  color: #4ddcb4;
+  font-size: .76rem;
+  font-family: var(--font-space-mono), monospace;
+}
+
+/* ── Timeline ─────────────────────────────────────────────────────────── */
+
+.timeRow {
+  display: flex;
+  gap: .6rem;
+  font-size: .86rem;
+  color: #e8e8f0;
+  line-height: 1.5;
+}
+.timeCell {
+  flex: 0 0 74px;
+  color: #8a8aa0;
+  font-family: var(--font-space-mono), monospace;
+  font-size: .8rem;
+}
+
+.quiet {
+  font-size: .82rem;
+  color: #6c6c86;
+  padding: .2rem 0;
+}
