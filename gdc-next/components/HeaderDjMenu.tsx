@@ -7,8 +7,9 @@
 // one menu.
 //
 // Grouped into sections for scannability:
-//   Account:   View My Profile · Upcoming Bookings · Add Booking Manually
-//   Settings:  Booking Settings · Notifications · Account Settings · Manage subscription
+//   —          View My Profile
+//   Bookings:  Upcoming · Past · Add Manually · Booking Settings
+//   Account:   Notifications · Account Settings · Manage Subscription
 //   —          Sign Out
 //
 // No avatar uploaded? Shows initials from the DJ's name.
@@ -166,35 +167,52 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           role="menu"
           style={{ top: popPos.top, right: popPos.right }}
         >
-          {/* ── Account ── */}
-          <div style={sectionLabelStyle}>Account</div>
+          {/* Profile first, on its own. It's the only item that leaves the
+              app for the DJ's public page — the thing they show people — so it
+              doesn't belong under a heading with settings. */}
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               View My Profile
             </Link>
           )}
+
+          {/* ── Bookings ── */}
+          {/* Booking Settings lives here, not under Settings. A DJ looking for
+              it is thinking about bookings, not about their account — grouping
+              by what you're doing beats grouping by what kind of page it is. */}
           {bookingEnabled && (
-            <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Upcoming Bookings
-            </Link>
-          )}
-          {bookingEnabled && (
-            <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Past Bookings
-            </Link>
-          )}
-          {bookingEnabled && (
-            <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Add Booking Manually
-            </Link>
+            <>
+              <div className="hdr-dj-menu-sep" />
+              <div style={sectionLabelStyle}>Bookings</div>
+              <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Upcoming Bookings
+              </Link>
+              <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Past Bookings
+              </Link>
+              <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Add Booking Manually
+              </Link>
+              <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Booking Settings
+              </Link>
+            </>
           )}
 
-          {/* ── Settings ── */}
+          {/* Booking Settings still reachable when bookings aren't switched on
+              — that page is where you'd go to set them up. */}
+          {!bookingEnabled && (
+            <>
+              <div className="hdr-dj-menu-sep" />
+              <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Booking Settings
+              </Link>
+            </>
+          )}
+
+          {/* ── Account ── */}
           <div className="hdr-dj-menu-sep" />
-          <div style={sectionLabelStyle}>Settings</div>
-          <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Booking Settings
-          </Link>
+          <div style={sectionLabelStyle}>Account</div>
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
           </Link>
@@ -212,7 +230,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
             {portalLoading ? 'Opening…' : 'Manage Subscription'}
           </button>
 
-          {/* ── Sign Out ── */}
+          {/* ── Sign out ── */}
           <div className="hdr-dj-menu-sep" />
           <button
             type="button"
