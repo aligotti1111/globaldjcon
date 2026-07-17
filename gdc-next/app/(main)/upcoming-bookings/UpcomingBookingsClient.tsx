@@ -1296,15 +1296,29 @@ function BookingRow({
       // The denominator is what was ASKED for, so "$600/$600" still reads as
       // settled-in-full rather than as an amount floating with no context.
       //
-      // Marked complete by hand with no payment row is the one done state with
-      // no caption: there are no amounts to show, and "$0/$0" would be a lie
-      // about money that arrived outside the app. The check carries it.
-      caption: depositRow
+      // allDone IS CHECKED FIRST, and that ordering is the whole point.
+      //
+      // The bug it fixes: this used to branch on `depositRow` first and reach
+      // 'Pending' whenever paidSoFar was 0 — but there are two settled states
+      // where no money ever arrives:
+      //   • WAIVED. `settled` counts 'waived', so the badge goes green while
+      //     amount_paid stays 0.
+      //   • marked complete by hand, for money that landed outside the app.
+      // Both produced a green check AND the word "Pending" in the same cell.
+      // The badge was reading the status, the caption was reading the payments,
+      // and nothing was checking they agreed.
+      //
+      // Done means done. Show the fraction if there are real amounts to show,
+      // otherwise say nothing and let the check carry it — "$0/$0" on a waived
+      // deposit would be a lie about money that was never owed.
+      caption: allDone
         ? (paidSoFar > 0
             ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
-            : 'Pending')
-        : allDone
-          ? undefined
+            : undefined)
+        : depositRow
+          ? (paidSoFar > 0
+              ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
+              : 'Pending')
           : 'Not sent',
       // Shown at the top of the dropdown, above the actions. Only once money
       // has actually been asked for — before that there's nothing to report.
@@ -1560,6 +1574,9 @@ function BookingRow({
             // In flight: it exists and it's out there, but it isn't done. This
             // is the state the dot is for — and the reason the caption exists,
             // because a dot alone can't tell "sent, waiting" from "signed".
+            // !st.done leads, same as the caption: the amber "waiting on
+            // someone" dot and the green "done" badge are mutually exclusive by
+            // construction, not by the states happening not to overlap.
             const waiting = !st.done && (!!st.caption || st.state === 'pending');
             // The caption takes the step's own colour, softened.
             //
@@ -1583,6 +1600,18 @@ function BookingRow({
               : st.color === MUTED
                 ? '#5a5a72'
                 : '#c08a3e';
+            /*
+              INVARIANT: a done step can never say it's waiting.
+              A green check next to the word "Pending" is the cell contradicting
+              itself, and it shipped — a WAIVED deposit is settled with
+              amount_paid still 0, so the badge read the status, the caption read
+              the payments, and the two disagreed with nobody checking.
+              Each step builds its own caption, so this is the one place that can
+              enforce the rule for all four columns at once. Cheap, and it makes
+              the next person's mistake here impossible instead of merely
+              unlikely.
+            */
+            const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
             const inner = (
               <>
                 {/*
@@ -1658,12 +1687,12 @@ function BookingRow({
                       }}
                     >
                       <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap} style={{ color: capColor }}>{st.caption || ''}</span>
+                      <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                     </button>
                   ) : (
                     <div className={styles.stBtn} style={{ cursor: 'default' }} title={st.label}>
                       <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap} style={{ color: capColor }}>{st.caption || ''}</span>
+                      <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                     </div>
                   )}
                   {open && hasMenu && menuPos && (
