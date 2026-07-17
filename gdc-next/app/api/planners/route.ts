@@ -158,6 +158,14 @@ export async function GET(req: Request) {
       },
       eventType: b.event_type,
       bookingType: b.booking_type,
+      // The booking, in one line: date · venue · who. The DJ is confirming they
+      // picked the right ROW as much as the right planner — "am I about to mail
+      // the Venetian wedding's planner to the birthday party?" — and a question
+      // count can't answer that.
+      event: {
+        date: (b.event_date as string | null) || null,
+        venue: (b.venue_name as string | null) || null,
+      },
       // For "use a different planner". Stock rows plus the DJ's own.
       templates: templates.map((t) => ({
         id: t.id,

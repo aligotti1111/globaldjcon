@@ -134,7 +134,7 @@
 .linkBtn:hover { color: #f2f2f7; }
 .dot { color: #3a3a4a; font-size: .78rem; }
 
-/* ── Pick ─────────────────────────────────────────────────────────────── */
+/* ── Notes ───────────────────────────────────────────────────────────── */
 
 .note {
   font-size: .82rem;
@@ -144,34 +144,97 @@
 }
 .note strong { color: #e8e8f0; }
 
-.tplList {
+/* ── The alternatives, inline ─────────────────────────────────────────── */
+
+.altList {
   display: flex;
   flex-direction: column;
-  gap: .4rem;
+  gap: .1rem;
+  /* Indented to the value column so it reads as "more of the Planner row",
+     not as a new section competing with Event below it. */
+  margin: -.2rem 0 .2rem 90px;
 }
 
-.tpl,
-.tplOn {
+.alt,
+.altOn {
   display: flex;
   align-items: center;
-  gap: .6rem;
-  width: 100%;
+  gap: .45rem;
   text-align: left;
-  background: rgba(255, 255, 255, .02);
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 8px;
-  padding: .65rem .8rem;
+  background: none;
+  border: none;
+  padding: .18rem 0;
   font-family: inherit;
+  font-size: .8rem;
+  color: #8a8aa0;
   cursor: pointer;
 }
-.tplOn {
-  background: rgba(0, 224, 164, .08);
-  border-color: rgba(0, 224, 164, .45);
-}
-.tpl:hover { border-color: rgba(255, 255, 255, .25); }
+.alt:hover { color: #e8e8f0; }
+.altOn { color: #e8e8f0; }
 
-.tplName { font-size: .88rem; color: #e8e8f0; }
-.tplCount { margin-left: auto; font-size: .74rem; color: #6c6c86; flex-shrink: 0; }
+.altDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .3);
+  flex-shrink: 0;
+}
+.altOn .altDot {
+  border-color: #00e0a4;
+  box-shadow: inset 0 0 0 2px #00e0a4;
+}
+
+.sep { color: #3a3a4a; }
+
+/* ── Preview ──────────────────────────────────────────────────────────── */
+
+.preview {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.pvRow {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  color: #6c6c86;
+}
+
+.pvLabel {
+  font-size: .86rem;
+  color: #e8e8f0;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+.pvHelp { font-size: .74rem; color: #75758d; line-height: 1.45; }
+
+/* The control they'll get. Not decoration — "One song" vs "Song list" is the
+   difference between the first dance and the must-plays, and it's the only way
+   to tell them apart from the label alone. */
+.pvType {
+  font-size: .62rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #4e4e66;
+  font-family: var(--font-space-mono), monospace;
+}
+
+.req {
+  font-size: .58rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, .35);
+  border-radius: 3px;
+  padding: .03rem .25rem;
+}
 
 /* ── Edit ─────────────────────────────────────────────────────────────── */
 

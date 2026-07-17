@@ -6,9 +6,12 @@
 // event type resolved to a template, so it says "Wedding planner · 34 questions
 // · going to Jordan" and offers one button. The 90% case is Send and gone.
 //
-// The two escape hatches are for the other 10%:
-//   · Use a different planner — the event type guessed wrong.
-//   · Customize — this DJ wants different questions.
+// The other planners are listed right in the box rather than hidden behind a
+// link: a DJ who doesn't know an alternative exists never goes looking for one,
+// and the list is four lines.
+//
+// Preview shows the client's actual questions, and Customize lives inside it —
+// because "change this" is a thought you have while READING it, not before.
 //
 // AND CUSTOMISING SAVES. That's the whole point of the editor existing here
 // rather than being a per-send scratchpad: edit the wedding planner once, and
@@ -38,11 +41,21 @@ interface TemplateLite {
 interface Loaded {
   resolved: { id: string; name: string; eventType: string | null; isStandard: boolean; isMine: boolean };
   fields: PlannerField[];
-  questionCount: number;
   prefillCount: number;
   recipient: { name: string | null; email: string | null; hasAccount: boolean };
   eventType: string | null;
+  event: { date: string | null; venue: string | null };
   templates: TemplateLite[];
+}
+
+// "2027-01-11" -> "January 11, 2027".
+// T12:00:00, not bare — `new Date('2027-01-11')` is UTC midnight and renders as
+// the 10th in every US timezone. Same bug as the check memo and the planner page.
+function fmtDate(d: string | null): string {
+  if (!d) return 'Date TBC';
+  return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
 }
 
 const TYPE_LABELS: Record<PlannerFieldType, string> = {
@@ -67,7 +80,7 @@ export default function PlannerSendModal({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [mode, setMode] = useState<'confirm' | 'pick' | 'edit'>('confirm');
+  const [mode, setMode] = useState<'confirm' | 'preview' | 'edit'>('confirm');
   // Which template to send. null = whatever the server resolves, which is the
   // default and the one-click path.
   const [forcedId, setForcedId] = useState<string | null>(null);
@@ -196,7 +209,7 @@ export default function PlannerSendModal({
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.head}>
           <h2 className={styles.title}>
-            {mode === 'edit' ? 'Customize questions' : mode === 'pick' ? 'Choose a planner' : 'Send Planner & Playlist'}
+            {mode === 'edit' ? 'Customize questions' : mode === 'preview' ? 'Preview / customize' : 'Send Planner & Playlist'}
           </h2>
           <button type="button" className={styles.x} onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -219,21 +232,57 @@ export default function PlannerSendModal({
                   </span>
                 </span>
               </div>
+
+              {/* The alternatives, in the box. The auto pick is a row like any
+                  other so it can be chosen BACK after a wander down the list —
+                  a link that only goes one way is a trap. */}
+              {data.templates.length > 1 && (
+                <div className={styles.altList}>
+                  <button
+                    type="button"
+                    className={!forcedId ? styles.altOn : styles.alt}
+                    onClick={() => setForcedId(null)}
+                  >
+                    <span className={styles.altDot} aria-hidden="true" />
+                    {data.resolved.name}
+                    <span className={styles.tagAuto}>auto</span>
+                  </button>
+                  {data.templates
+                    .filter((t) => t.id !== data.resolved.id)
+                    .map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={forcedId === t.id ? styles.altOn : styles.alt}
+                        onClick={() => setForcedId(t.id)}
+                      >
+                        <span className={styles.altDot} aria-hidden="true" />
+                        {t.name}
+                        {t.isMine && <span className={styles.tag}>yours</span>}
+                      </button>
+                    ))}
+                </div>
+              )}
+
+              {/* Date · venue · who, on one line. The DJ is confirming they're
+                  on the right ROW as much as the right planner — "am I about to
+                  mail the Venetian wedding's planner to the birthday party?" —
+                  and a question count can't answer that. */}
               <div className={styles.sumRow}>
-                <span className={styles.k}>Questions</span>
-                <span className={styles.v}>{chosen ? chosen.count : visibleCount}</span>
-              </div>
-              <div className={styles.sumRow}>
-                <span className={styles.k}>To</span>
+                <span className={styles.k}>Event</span>
                 <span className={styles.v}>
-                  {data.recipient.name || <em className={styles.warn}>no name</em>}
+                  {fmtDate(data.event.date)}
+                  {data.event.venue ? <span className={styles.sep}> · </span> : null}
+                  {data.event.venue}
+                  <span className={styles.sep}> · </span>
                   {data.recipient.email
-                    ? <span className={styles.dim}> · {data.recipient.email}</span>
+                    ? data.recipient.email
                     : data.recipient.hasAccount
-                      ? <span className={styles.dim}> · their account email</span>
-                      : <em className={styles.warn}> · no email</em>}
+                      ? <span className={styles.dim}>their account email</span>
+                      : <em className={styles.warn}>no email</em>}
                 </span>
               </div>
+
               {data.prefillCount > 0 && (
                 <div className={styles.sumRow}>
                   <span className={styles.k}>Prefilled</span>
@@ -245,9 +294,11 @@ export default function PlannerSendModal({
             </div>
 
             <div className={styles.links}>
-              <button type="button" className={styles.linkBtn} onClick={() => setMode('pick')}>Use a different planner</button>
+              <button type="button" className={styles.linkBtn} onClick={() => setMode('preview')}>
+                Preview / customize
+              </button>
               <span className={styles.dot}>·</span>
-              <button type="button" className={styles.linkBtn} onClick={() => setMode('edit')}>Customize questions</button>
+              <span className={styles.dim}>{visibleCount} questions</span>
             </div>
 
             <div className={styles.foot}>
@@ -259,43 +310,31 @@ export default function PlannerSendModal({
           </>
         )}
 
-        {data && mode === 'pick' && (
+        {data && mode === 'preview' && (
           <>
             <p className={styles.note}>
-              Normally the event type picks this for you. Choose one here to override it for this booking only.
+              What your client sees. {data.prefillCount > 0 ? `${data.prefillCount} answers arrive already filled in from the booking. ` : ''}
+              Nothing is required — they fill in what they know and come back for the rest.
             </p>
-            <div className={styles.tplList}>
-              <button
-                type="button"
-                className={!forcedId ? styles.tplOn : styles.tpl}
-                onClick={() => setForcedId(null)}
-              >
-                <span className={styles.tplName}>
-                  {data.resolved.name}
-                  <span className={styles.tag}>{data.resolved.isMine ? 'yours' : 'standard'}</span>
-                  <span className={styles.tagAuto}>auto</span>
-                </span>
-                <span className={styles.tplCount}>{visibleCount} questions</span>
-              </button>
-              {data.templates
-                .filter((t) => t.id !== data.resolved.id)
-                .map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={forcedId === t.id ? styles.tplOn : styles.tpl}
-                    onClick={() => setForcedId(t.id)}
-                  >
-                    <span className={styles.tplName}>
-                      {t.name}
-                      <span className={styles.tag}>{t.isMine ? 'yours' : 'standard'}</span>
-                    </span>
-                    <span className={styles.tplCount}>{t.count} questions</span>
-                  </button>
-                ))}
-            </div>
+            <ol className={styles.preview}>
+              {fields.filter((f) => !f.hidden).map((f) => (
+                <li key={f.id} className={styles.pvRow}>
+                  <span className={styles.pvLabel}>
+                    {f.label}
+                    {f.required ? <span className={styles.req}>required</span> : null}
+                  </span>
+                  {f.help ? <span className={styles.pvHelp}>{f.help}</span> : null}
+                  <span className={styles.pvType}>{TYPE_LABELS[f.type]}</span>
+                </li>
+              ))}
+            </ol>
             <div className={styles.foot}>
               <button type="button" className={styles.ghost} onClick={() => setMode('confirm')}>Back</button>
+              {/* Customize is here, not on the confirm screen: "change this" is
+                  a thought you have while reading the questions. */}
+              <button type="button" className={styles.primary} onClick={() => setMode('edit')}>
+                Customize
+              </button>
             </div>
           </>
         )}
@@ -374,12 +413,14 @@ export default function PlannerSendModal({
             </div>
 
             <div className={styles.foot}>
-              <button type="button" className={styles.ghost} onClick={() => setMode('confirm')}>Back</button>
+              {/* Back to the preview, not the confirm screen — that's where you
+                  came from, and you'll want to see what you just changed. */}
+              <button type="button" className={styles.ghost} onClick={() => setMode('preview')}>Back</button>
               <button
                 type="button"
                 className={styles.primary}
                 disabled={busy}
-                onClick={async () => { const ok = await saveTemplate(); if (ok) setMode('confirm'); }}
+                onClick={async () => { const ok = await saveTemplate(); if (ok) setMode('preview'); }}
               >
                 Save
               </button>
