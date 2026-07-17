@@ -858,7 +858,7 @@ const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice'] as const;
 /**
  * Column headings, in PIPE_SLOTS order. Rendered by ColumnHeaders.
  *
- * "Playlist & Planner" is 18 characters against a 96px track, so it wraps —
+ * "Planner & Playlist" is 18 characters against a 96px track, so it wraps —
  * deliberately, and it breaks at the ampersand's space, which is the break you'd
  * choose anyway. No <br> needed: .colHeads is align-items:end, so the two-line
  * heading bottom-aligns with the single-line ones and the row of headings still
@@ -867,7 +867,7 @@ const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice'] as const;
 const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   contract: 'Contract',
   deposit: 'Deposit',
-  song_list: 'Playlist & Planner',
+  song_list: 'Planner & Playlist',
   invoice: 'Invoice',
 };
 
@@ -1569,8 +1569,8 @@ function BookingRow({
       key: 'song_list',
       // Matches the column heading. `label` is the icon's title attribute — the
       // tooltip you get hovering it — so if it says "Playlist" while the header
-      // above says "Playlist & Planner", they read as two different things.
-      label: done ? 'Playlist & Planner' : 'Playlist & Planner not requested',
+      // above says "Planner & Playlist", they read as two different things.
+      label: done ? 'Planner & Playlist' : 'Planner & Playlist not requested',
       state: done ? 'done' : 'todo',
       icon: 'music',
       overridable: true,
