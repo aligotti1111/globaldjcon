@@ -737,6 +737,29 @@ const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
 
 /**
+ * Money for the 9.5px caption under an icon — "$300/$600", not "$300.00/$600.00".
+ *
+ * fmtMoney always renders 2dp, which is right in the dropdown and in the ledger
+ * where the exact figure is the point. Here it isn't: two of them plus a slash
+ * is "$544.38/$544.38" — 15 characters in a 96px column, at a size where every
+ * character costs. Whole amounts drop the ".00"; anything with real cents keeps
+ * them, because $81.66 rounded to $82 in a money column is a lie.
+ */
+function capMoney(n: number, currency = 'USD'): string {
+  const whole = Math.abs(n % 1) < 0.005;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(n);
+  } catch {
+    return whole ? `$${Math.round(n)}` : `$${n.toFixed(2)}`;
+  }
+}
+
+/**
  * What a booking is worth, tax included — the number the client actually owes.
  *
  * WHY THIS EXISTS RATHER THAN JUST READING total_with_tax:
@@ -1255,22 +1278,34 @@ function BookingRow({
       // outright, because half the money arriving is the normal path here (an
       // unverified Venmo caps at $299.99/week against a typical deposit) and a
       // DJ reading "Requested" on money that's half in has been misled.
-      // Same vocabulary as every other column: Not sent / Pending / check.
+      // Deposit is the one column that shows a NUMBER instead of a word, the
+      // moment there is a number to show:
       //
-      // "Part paid" is the ONE exception, and it's deliberate. Strictly it's a
-      // sub-case of Pending — the request went out and hasn't fully landed —
-      // but half the money arriving is the NORMAL path here, not an edge case:
-      // an unverified Venmo caps at $299.99/week against a typical deposit, so
-      // clients routinely send it in two goes. A DJ reading "Pending" on money
-      // that's half in their account has been told something false. The exact
-      // amounts are one click down, in the dropdown.
-      caption: allDone
-        ? undefined
-        : anyPartial
-          ? 'Part paid'
-          : depositRow
-            ? 'Pending'
-            : 'Not sent',
+      //   nothing requested        -> "Not sent"      amber
+      //   requested, nothing in    -> "Pending"       amber
+      //   part of it landed        -> "$300/$600"     amber — not total
+      //   all of it landed         -> "$600/$600"     neon  — total
+      //
+      // This replaces "Part paid", which was true but useless: it told a DJ
+      // money had arrived without telling them how much, so they had to open
+      // the dropdown to learn the one fact they wanted. The fraction says the
+      // same thing and answers the question in the same glance. Partials are
+      // routine here — an unverified Venmo caps at $299.99/week against a
+      // typical deposit — so this is the normal case, not an edge case.
+      //
+      // The denominator is what was ASKED for, so "$600/$600" still reads as
+      // settled-in-full rather than as an amount floating with no context.
+      //
+      // Marked complete by hand with no payment row is the one done state with
+      // no caption: there are no amounts to show, and "$0/$0" would be a lie
+      // about money that arrived outside the app. The check carries it.
+      caption: depositRow
+        ? (paidSoFar > 0
+            ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
+            : 'Pending')
+        : allDone
+          ? undefined
+          : 'Not sent',
       // Shown at the top of the dropdown, above the actions. Only once money
       // has actually been asked for — before that there's nothing to report.
       info: depositRow
@@ -1528,17 +1563,26 @@ function BookingRow({
             const waiting = !st.done && (!!st.caption || st.state === 'pending');
             // The caption takes the step's own colour, softened.
             //
-            // It can't be one hard-coded amber any more. Every incomplete stage
-            // has a caption now, including Playlist — and Playlist's colour is
-            // MUTED because there's nothing you can do about it yet. An amber
-            // "Not sent" there would read exactly like the amber "Request" in
-            // the deposit column beside it and promise an action the app can't
-            // perform. Grey step, grey word.
+            //   done  -> neon   — "$600/$600", the whole ask landed
+            //   muted -> grey   — Playlist: real stage, nothing you can do yet.
+            //                     An amber "Not sent" there would read exactly
+            //                     like the amber "Not sent" on deposit beside it
+            //                     and promise an action the app can't perform.
+            //   else  -> amber  — your move, or waiting on them
             //
-            // The amber is deliberately #c08a3e, not the AMBER the icon dot
-            // uses: at 9.5px the full-strength value vibrates against the dark
-            // row. Same hue, dialled back for the size it's rendered at.
-            const capColor = st.color === MUTED ? '#5a5a72' : '#c08a3e';
+            // st.done drives the neon, NOT st.color: the two agree today, but
+            // the caption's job is to say whether the thing is finished, and
+            // reading that off a colour is how these two got out of sync in the
+            // first place.
+            //
+            // Both values are dialled back from the icon's NEON/AMBER — at
+            // 9.5px the full-strength ones vibrate against the dark row. Same
+            // hues, sized for the text they're rendering.
+            const capColor = st.done
+              ? '#3fd6ab'
+              : st.color === MUTED
+                ? '#5a5a72'
+                : '#c08a3e';
             const inner = (
               <>
                 {/*

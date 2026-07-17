@@ -912,20 +912,27 @@ select.input {
 
 /* Done. An SVG stroke, not a ✓ character: at 19px the text glyph renders
    soft, and differently on every OS. */
+/* 16px, down from 19. It's a confirmation, not an announcement — at 19 it was
+   competing with the emoji it sits on rather than annotating it.
+   The ring is the ROW's background, not --card: it's a knockout, so it has to
+   match whatever is actually behind it or it draws a grey halo. #16161f is the
+   expanded-row surface; on a collapsed row the page is black and the ring
+   reads as a dark outline either way. */
 .stBadge {
   position: absolute;
-  right: -3px;
+  right: -2px;
   bottom: -2px;
-  width: 19px;
-  height: 19px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--neon, #00e0a4);
-  border: 2.5px solid var(--card, #14141f);
+  border: 2px solid #000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.stBadge svg { width: 11px; height: 11px; }
+.stBadge svg { width: 9px; height: 9px; }
+.rowWrapExpanded .stBadge { border-color: #16161f; }
 
 /* In flight — out there, waiting on someone. */
 .stDot {
@@ -958,19 +965,33 @@ select.input {
  * text stands taller than one without and the icons stop lining up across the
  * row, which is the whole thing this page was rebuilt for.
  */
+/*
+ * min-width, NOT width: 36px.
+ *
+ * A fixed 36px box with centred nowrap text overflows equally both ways. That
+ * was invisible while the longest caption was "Not sent" (~44px, 4px of spill
+ * each side). "$544.38/$544.38" is ~78px — it would have hung 21px off the LEFT
+ * edge, into the Playlist column next door.
+ *
+ * min-width keeps short captions ("Sent", "Pending") centred on the 36px icon
+ * above them, which is the alignment that took three rounds to get right. Long
+ * ones grow the button instead and centre on that — still under their own icon,
+ * still inside their own 96px track, and nothing lands in a neighbour's column.
+ *
+ * Colour is applied inline, per step — neon when settled, amber when it's your
+ * move, grey when nothing can be done yet. See capColor in
+ * UpcomingBookingsClient.
+ */
 .stCap {
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: .03em;
   line-height: 1;
   height: 10px;
-  width: 36px;
+  min-width: 36px;
   text-align: center;
   white-space: nowrap;
-  /* Colour is applied inline, per step — amber for a stage you can act on,
-     grey for one you can't (Playlist, until the feature exists). It was one
-     hard-coded amber here, which made every caption look like a call to
-     action. See capColor in UpcomingBookingsClient. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Nothing to do here and nothing to open — no contract required, no deposit
