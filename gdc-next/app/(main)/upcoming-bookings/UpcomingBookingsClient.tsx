@@ -4287,15 +4287,16 @@ function AddManualBookingModal({
                 muted — just so you know, this is what these two fields buy you
             */}
             {flagHost ? (
+              // The "tick Send booking details" half is gone and shouldn't come
+              // back — the checkbox ticks itself now, so it was telling the DJ
+              // to do something the form had already done.
               <div style={{ color: '#ff8a8a', fontSize: '.76rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
-                Add the host&rsquo;s full name and email to send a contract or request a deposit
-                &mdash; there&rsquo;s nobody to send them to without one. Tick &ldquo;Send booking
-                details to host&rdquo; below and they&rsquo;ll get the booking too.
+                Add the host&rsquo;s full name and email to send a contract or request a deposit.
               </div>
             ) : (
               <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
-                Needed to send a contract or request a deposit &mdash; there&rsquo;s nobody to send
-                them to without a name and email. Leave blank if you just want the date held.
+                Needed to send a contract or request a deposit. Leave blank if you just want the
+                date held.
               </div>
             )}
             <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
