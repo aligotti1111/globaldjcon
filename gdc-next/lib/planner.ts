@@ -237,6 +237,54 @@ export function composeFields(
 export const visibleFields = (fields: PlannerField[]): PlannerField[] =>
   fields.filter((f) => !f.hidden);
 
+/** Is there an actual answer in here? Empty string and empty list are not. */
+export function hasAnswer(r: PlannerResponse | undefined): boolean {
+  if (!r) return false;
+  if (isNa(r)) return true;
+  const v = responseValue(r);
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'string' && v.trim() === '') return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  return true;
+}
+
+/**
+ * IF WE KNOW IT, SHOW IT. IF WE DON'T, ASK IT.
+ *
+ * A prefilled field that actually came back with a value isn't a question — we
+ * took it off the booking. "Music starts" on a booking that says 7pm is us
+ * asking the client to confirm our own database, and every question a client
+ * scrolls past costs completion on the ones that matter (the first dance, the
+ * do-not-play list). So it renders as a read-only line in the strip at the top
+ * instead of a control.
+ *
+ * A prefill field with NO value stays a question, because there's nothing to
+ * show. That's the whole rule, and it's why this is derived rather than stored:
+ * the same field is a question on one booking and a fact on another.
+ *
+ * The cost, taken deliberately: a client whose venue changed can't fix it here.
+ * The notes box catches that, and the strip says so.
+ */
+export function isInfoField(f: PlannerField, responses: PlannerResponses): boolean {
+  return !!f.prefill && hasAnswer(responses[f.id]);
+}
+
+/** The questions. What the client is actually being asked. */
+export function askedFields(
+  fields: PlannerField[],
+  responses: PlannerResponses,
+): PlannerField[] {
+  return visibleFields(fields).filter((f) => !isInfoField(f, responses));
+}
+
+/** The facts. What we already know, shown but not asked. */
+export function infoFields(
+  fields: PlannerField[],
+  responses: PlannerResponses,
+): PlannerField[] {
+  return visibleFields(fields).filter((f) => isInfoField(f, responses));
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // PREFILL
 // ─────────────────────────────────────────────────────────────────────────
@@ -300,24 +348,20 @@ export function applyPrefill(
  * Counts VISIBLE fields only, so a DJ hiding half the template doesn't leave
  * every client permanently stuck short of the total. Counts N/A as answered,
  * because it is one.
+ *
+ * And counts ASKED fields only — a prefilled fact the client was shown rather
+ * than asked isn't progress. Counting it would open every planner at 4/24
+ * before the client had done a thing, which flatters the number and lies to the
+ * DJ about whether anyone has started.
  */
 export function plannerProgress(
   fields: PlannerField[],
   responses: PlannerResponses,
 ): { answered: number; total: number } {
-  const vis = visibleFields(fields);
+  const asked = askedFields(fields, responses);
   let answered = 0;
-  for (const f of vis) {
-    const r = responses[f.id];
-    if (!r) continue;
-    if (isNa(r)) { answered++; continue; }
-    const v = responseValue(r);
-    if (v === null || v === undefined) continue;
-    if (typeof v === 'string' && v.trim() === '') continue;
-    // An empty list is not an answer. A client who clicked "+ Add another" and
-    // then didn't type anything hasn't told us a thing.
-    if (Array.isArray(v) && v.length === 0) continue;
-    answered++;
-  }
-  return { answered, total: vis.length };
+  // An empty list is not an answer. A client who clicked "+ Add another" and
+  // then didn't type anything hasn't told us a thing. (hasAnswer.)
+  for (const f of asked) if (hasAnswer(responses[f.id])) answered++;
+  return { answered, total: asked.length };
 }

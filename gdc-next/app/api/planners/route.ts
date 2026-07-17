@@ -146,8 +146,11 @@ export async function GET(req: Request) {
         isMine: !resolved.is_standard && resolved.dj_id === userId,
       },
       fields,
-      questionCount: visibleFields(fields).length,
       prefillCount: Object.keys(prefilled).length,
+      // Which ones the client will be SHOWN rather than asked. Derived from the
+      // same applyPrefill the send uses, so the preview can't promise a
+      // question that never appears (or hide one that does).
+      prefilledIds: Object.keys(prefilled),
       recipient: {
         name: b.requester_name || null,
         // Only what's ON the booking. A requester_id account email is resolved

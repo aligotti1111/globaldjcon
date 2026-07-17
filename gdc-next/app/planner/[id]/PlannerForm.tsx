@@ -21,6 +21,8 @@ import styles from './planner.module.css';
 import {
   isNa,
   responseValue,
+  askedFields,
+  infoFields,
   type PlannerField,
   type PlannerResponses,
   type Track,
@@ -47,9 +49,34 @@ const TIME_OPTIONS: { val: string; label: string }[] = (() => {
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
+/**
+ * A known value, as one line of text.
+ *
+ * Only the simple types turn up here — `prefill` keys map to booking columns,
+ * which are dates, times, names and numbers. A songlist can't be prefilled, so
+ * it can't reach this. The fallback exists so a future prefill key can't render
+ * "[object Object]" at a client.
+ */
+function infoText(f: PlannerField, responses: PlannerResponses): string {
+  const v = responseValue(responses[f.id]);
+  if (v === null || v === undefined) return '';
+  if (f.type === 'time' && typeof v === 'string') {
+    const [hRaw, m] = v.split(':');
+    const h = Number(hRaw);
+    if (!Number.isFinite(h)) return v;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${m || '00'} ${ampm}`;
+  }
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  if (v === true) return 'Yes';
+  if (v === false) return 'No';
+  return '';
+}
+
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName,
+  djName, hostName, eventDateLabel, venueName, known,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -59,6 +86,8 @@ export default function PlannerForm({
   hostName: string | null;
   eventDateLabel: string;
   venueName: string | null;
+  /** What we already know off the booking. Shown, never asked. */
+  known: { k: string; v: string }[];
 }) {
   const [responses, setResponses] = useState<PlannerResponses>(initialResponses);
   const [status, setStatus] = useState(initialStatus);
@@ -199,6 +228,12 @@ export default function PlannerForm({
     }
   }
 
+  // If we know it, show it; if we don't, ask it. Derived from the responses, so
+  // the same field is a fact on a booking that has a start time and a question
+  // on one that doesn't.
+  const asked = askedFields(fields, responses);
+  const info = infoFields(fields, responses);
+
   return (
     <div className={styles.page}>
       <div className={styles.sheet}>
@@ -222,8 +257,44 @@ export default function PlannerForm({
           )}
         </header>
 
+        {/* WHAT WE ALREADY KNOW.
+            Everything in here came off the booking. Asking a client to type
+            their own venue back to us is how they abandon the form on question
+            three and never tell us the first dance — which is the only reason
+            any of this exists.
+
+            Read-only, and NOT as a compromise: the venue and times are in the
+            signed contract. A client editing them in a planner would create two
+            sources of truth that disagree, and the one with a signature on it
+            would lose. A venue change is a conversation with the DJ. */}
+        {(known.length > 0 || info.length > 0) && (
+          <div className={styles.known}>
+            <div className={styles.knownHead}>Your booking</div>
+            {known.map((r) => (
+              <div key={r.k} className={styles.knownRow}>
+                <span className={styles.knownK}>{r.k}</span>
+                <span className={styles.knownV}>{r.v}</span>
+              </div>
+            ))}
+            {/* Prefilled QUESTIONS that came back with a real value — same
+                thing, so they read the same way. A prefill with no value is
+                still a question and stays in the list below. */}
+            {info.map((f) => (
+              <div key={f.id} className={styles.knownRow}>
+                <span className={styles.knownK}>{f.label}</span>
+                <span className={styles.knownV}>{infoText(f, responses)}</span>
+              </div>
+            ))}
+            <p className={styles.knownNote}>
+              These come from your booking and contract. If something has changed &mdash;
+              a new venue, a different time &mdash; message {djName} directly; it has to be
+              changed there, not here.
+            </p>
+          </div>
+        )}
+
         <div className={styles.fields}>
-          {fields.map((f) => (
+          {asked.map((f) => (
             <Field
               key={f.id}
               field={f}

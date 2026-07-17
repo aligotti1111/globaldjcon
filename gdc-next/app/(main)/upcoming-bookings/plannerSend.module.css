@@ -188,6 +188,28 @@
 
 /* ── Preview ──────────────────────────────────────────────────────────── */
 
+/* Facts, not questions — the ones the client gets read-only at the top of their
+   form. One dim line: it's reassurance that the DJ doesn't have to read, not a
+   list to work through. */
+.shown {
+  font-size: .76rem;
+  line-height: 1.55;
+  color: #5e5e77;
+  margin: 0 0 .9rem;
+  padding-bottom: .8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+}
+
+.shownHead {
+  display: block;
+  font-family: var(--font-space-mono), monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #4e4e66;
+  margin-bottom: .2rem;
+}
+
 .preview {
   list-style: decimal;
   margin: 0;

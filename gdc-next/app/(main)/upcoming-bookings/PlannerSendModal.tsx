@@ -42,6 +42,7 @@ interface Loaded {
   resolved: { id: string; name: string; eventType: string | null; isStandard: boolean; isMine: boolean };
   fields: PlannerField[];
   prefillCount: number;
+  prefilledIds: string[];
   recipient: { name: string | null; email: string | null; hasAccount: boolean };
   eventType: string | null;
   event: { date: string | null; venue: string | null };
@@ -104,7 +105,16 @@ export default function PlannerSendModal({
     return () => { active = false; };
   }, [bookingId]);
 
-  const visibleCount = fields.filter((f) => !f.hidden).length;
+  // If we know it, we show it; if we don't, we ask it. `prefilledIds` is what
+  // the server's own applyPrefill came back with for THIS booking — so a field
+  // with no value on this booking correctly stays a question.
+  const prefilled = new Set(data?.prefilledIds || []);
+  const visible = fields.filter((f) => !f.hidden);
+  const asked = visible.filter((f) => !prefilled.has(f.id));
+  const shown = visible.filter((f) => prefilled.has(f.id));
+  // The number the client actually faces. Counting the ones we fill in for them
+  // would overstate the form by four and understate the feature.
+  const visibleCount = asked.length;
 
   function patch(id: string, p: Partial<PlannerField>) {
     setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...p } : f)));
@@ -313,11 +323,24 @@ export default function PlannerSendModal({
         {data && mode === 'preview' && (
           <>
             <p className={styles.note}>
-              What your client sees. {data.prefillCount > 0 ? `${data.prefillCount} answers arrive already filled in from the booking. ` : ''}
-              Nothing is required — they fill in what they know and come back for the rest.
+              What your client sees. Nothing is required — they fill in what they know
+              and come back for the rest.
             </p>
+
+            {/* Shown, not asked. Anything we already have off the booking is a
+                read-only line at the top of their form — asking a client to type
+                their own venue back to us is how they abandon it on question
+                three and never tell you the first dance. They're listed here so
+                the count below is the real one. */}
+            {shown.length > 0 && (
+              <div className={styles.shown}>
+                <span className={styles.shownHead}>Filled in for them</span>
+                {shown.map((f) => f.label).join(' · ')}
+              </div>
+            )}
+
             <ol className={styles.preview}>
-              {fields.filter((f) => !f.hidden).map((f) => (
+              {asked.map((f) => (
                 <li key={f.id} className={styles.pvRow}>
                   <span className={styles.pvLabel}>
                     {f.label}

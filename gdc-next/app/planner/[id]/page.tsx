@@ -46,6 +46,23 @@ interface PlannerRow {
   submitted_at: string | null;
 }
 
+/** "19:30:00" -> "7:30 PM". The DB stores seconds; nobody reads clocks in 24h. */
+function fmtTime(t: string | null): string {
+  if (!t) return '';
+  const [hRaw, m] = t.split(':');
+  const h = Number(hRaw);
+  if (!Number.isFinite(h)) return '';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m || '00'} ${ampm}`;
+}
+
+function fmtRange(s: string | null, e: string | null): string {
+  const a = fmtTime(s), b = fmtTime(e);
+  if (a && b) return `${a} – ${b}`;
+  return a || b || '';
+}
+
 function fmtDate(d: string | null): string {
   if (!d) return '';
   // T12:00:00, not bare — `new Date('2026-07-25')` parses as UTC midnight and
@@ -80,12 +97,18 @@ export default async function PlannerPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_date, start_time, end_time, venue_name, event_type, requester_name')
+    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, requester_name')
     .eq('id', planner.booking_id)
     .maybeSingle();
   const booking = bData as unknown as {
     event_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
     venue_name: string | null;
+    venue_address: string | null;
+    guest_count: number | null;
+    phone: string | null;
+    package_title: string | null;
     requester_name: string | null;
   } | null;
 
@@ -106,6 +129,25 @@ export default async function PlannerPage({
   // we hand to a stranger.
   const fields = visibleFields(planner.fields ?? []);
 
+  /**
+   * What we already know, from the booking itself — not from a question.
+   *
+   * None of this was ever a field. We have it because they booked; asking for
+   * it again is asking a client to type our own database back to us, and every
+   * question they scroll past costs an answer on the ones that matter.
+   *
+   * Empty values are dropped rather than rendered as "—": a blank row is a
+   * question mark, and this block exists to remove question marks.
+   */
+  const known: { k: string; v: string }[] = [
+    { k: 'Date', v: fmtDate(booking?.event_date ?? null) },
+    { k: 'Time', v: fmtRange(booking?.start_time ?? null, booking?.end_time ?? null) },
+    { k: 'Venue', v: [booking?.venue_name, booking?.venue_address].filter(Boolean).join(' · ') },
+    { k: 'Package', v: booking?.package_title || '' },
+    { k: 'Guests', v: booking?.guest_count ? `${booking.guest_count}` : '' },
+    { k: 'Your number', v: booking?.phone || '' },
+  ].filter((r) => !!r.v);
+
   return (
     <PlannerForm
       plannerId={planner.id}
@@ -116,6 +158,7 @@ export default async function PlannerPage({
       hostName={booking?.requester_name || null}
       eventDateLabel={fmtDate(booking?.event_date ?? null)}
       venueName={booking?.venue_name || null}
+      known={known}
     />
   );
 }

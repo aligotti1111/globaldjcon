@@ -73,6 +73,63 @@
 }
 .submitted strong { color: #4ddcb4; }
 
+/* ── What we already know ─────────────────────────────────────────────── */
+/*
+ * Deliberately not a card. A bordered box at the top of a form reads as the
+ * first section — the thing to deal with before you can start — and this is
+ * the opposite: it's here so you DON'T have to deal with it. Flat, dim, and
+ * out of the way.
+ */
+
+.known {
+  margin: 0 0 1.8rem;
+  padding: .9rem 0 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.knownHead {
+  font-family: var(--font-space-mono), monospace;
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #4e4e66;
+  margin-bottom: .3rem;
+}
+
+.knownRow {
+  display: flex;
+  gap: .7rem;
+  align-items: baseline;
+  font-size: .84rem;
+  line-height: 1.5;
+}
+
+.knownK {
+  flex: 0 0 88px;
+  color: #5e5e77;
+  font-size: .76rem;
+}
+
+.knownV { color: #b8b8c8; min-width: 0; word-break: break-word; }
+
+/* Why it's read-only, in words. These facts are in the signed contract — the
+   planner can't be a second place they're editable or the two disagree and the
+   one with a signature wins. Points at the DJ instead of being a dead end. */
+.knownNote {
+  margin: .55rem 0 0;
+  font-size: .74rem;
+  color: #4e4e66;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .knownRow { gap: .5rem; }
+  .knownK { flex-basis: 74px; }
+}
+
 /* ── Fields ───────────────────────────────────────────────────────────── */
 
 .fields {
