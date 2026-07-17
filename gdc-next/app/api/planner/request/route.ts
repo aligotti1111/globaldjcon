@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
+import { canUsePro, type AccessFields } from '@/lib/access';
 import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
 import {
   pickTemplate,
@@ -167,11 +168,33 @@ export async function POST(req: Request) {
 
     const { data: djData } = await admin
       .from('users')
-      .select('name, dj_name')
+      .select('name, dj_name, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
       .eq('id', user.id)
       .maybeSingle();
-    const djRow = djData as unknown as { name?: string | null; dj_name?: string | null } | null;
+    const djRow = djData as unknown as
+      (AccessFields & { name?: string | null; dj_name?: string | null }) | null;
     const djName = djRow?.dj_name || djRow?.name || 'your DJ';
+
+    // Tier gate, SERVER-side. The planner is part of the Pro suite that
+    // lib/access already describes as "contracts / deposits / event info
+    // sheet" — this is the event info sheet.
+    //
+    // The row hides the action too, but that is not a paywall: anyone can POST
+    // here directly. This is the paywall.
+    //
+    // The CLIENT is never gated and never will be. They have no account, they
+    // pay nobody, and charging the person filling in the form would be
+    // charging the wrong end of the transaction.
+    //
+    // NOTE: lib/access says an existing booking should be judged by
+    // bookingAllows(tier_stamp) — but tier_stamp is still never written
+    // anywhere, so it would deny everyone. Current standing is the only honest
+    // signal that exists today. (Same compromise as /api/payments.)
+    if (!djRow || !canUsePro(djRow)) {
+      return NextResponse.json(
+        { error: 'Planners are a Pro feature.' }, { status: 403 },
+      );
+    }
 
     // ── The planner row ───────────────────────────────────────────────────
     //

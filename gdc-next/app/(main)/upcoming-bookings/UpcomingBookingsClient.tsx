@@ -38,6 +38,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
+import { canUsePro, type AccessFields } from '@/lib/access';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
@@ -139,6 +140,19 @@ export default function UpcomingBookingsClient({
   // Paid-subscriber flag — the Schedule Graphic tool is premium-only. Uses the
   // app's standard access check: sub_status 'active' or 'grace'.
   const [isPaid, setIsPaid] = useState(false);
+  /**
+   * Pro (tier 2) — the suite lib/access calls "contracts / deposits / event
+   * info sheet". The Planner & Playlist IS the event info sheet.
+   *
+   * Deliberately NOT `isPaid`. isPaid is sub_status active|grace, which a
+   * tier-1 DJ satisfies — they're paying, just not for this. Gating the
+   * planner on isPaid would offer Request to someone the server is about to
+   * refuse, so the button would work exactly until it didn't.
+   *
+   * This is a courtesy, not the paywall. The paywall is in
+   * /api/planner/request, because anyone can POST there directly.
+   */
+  const [canPro, setCanPro] = useState(false);
   // Whether the DJ requires a signed contract per booking — drives the Contract
   // segment in each row's status strip.
   const [requireContract, setRequireContract] = useState(false);
@@ -147,13 +161,16 @@ export default function UpcomingBookingsClient({
     (async () => {
       try {
         const supabase = createClient();
-        const { data } = await supabase.from('users').select('booking_settings, sub_status').eq('id', userId).maybeSingle();
-        const row = data as { booking_settings?: string | null; sub_status?: string | null } | null;
+        const { data } = await supabase.from('users').select('booking_settings, sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', userId).maybeSingle();
+        const row = data as (AccessFields & { booking_settings?: string | null; sub_status?: string | null }) | null;
         const raw = row?.booking_settings;
         const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean };
         if (!active) return;
         const ss = row?.sub_status;
         setIsPaid(ss === 'active' || ss === 'grace');
+        // Same helper the server gate uses, so the row and /api/planner/request
+        // can't come to different conclusions about the same DJ.
+        setCanPro(!!row && canUsePro(row));
         setRequireContract(!!bs?.require_contract);
         if (djType === 'club') {
           const v = Number(bs?.club_deposit_pct);
@@ -453,6 +470,7 @@ export default function UpcomingBookingsClient({
                 archive={archive}
                 payments={paymentsMap[b.id] || []}
                 onPaymentsChange={handlePaymentsChange}
+                canPro={canPro}
                 planner={plannerMap[b.id]}
                 onPlannerChange={handlePlannerChange}
                 overlaps={overlapIds.has(b.id)}
@@ -485,7 +503,8 @@ export default function UpcomingBookingsClient({
                     archive={archive}
                     payments={paymentsMap[b.id] || []}
                     onPaymentsChange={handlePaymentsChange}
-                    planner={plannerMap[b.id]}
+                    canPro={canPro}
+                planner={plannerMap[b.id]}
                     onPlannerChange={handlePlannerChange}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
@@ -924,7 +943,7 @@ function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -935,6 +954,8 @@ function BookingRow({
   archive?: boolean;
   payments: BookingPayment[];
   onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  /** Tier 2. A courtesy so the row doesn't offer what the server will refuse. */
+  canPro: boolean;
   /** The booking's planner, or undefined if one was never requested. */
   planner?: BookingPlannerSummary;
   onPlannerChange: (bookingId: string, row: BookingPlannerSummary) => void;
@@ -1684,13 +1705,19 @@ function BookingRow({
       // send planner" is false on a booking where the planner went out last
       // week and the DJ has since cleared the email — it's already sent; what's
       // blocked is sending it AGAIN.
+      //
+      // Pro is checked BEFORE the host gate: telling a free DJ to go and fill
+      // in host details, and then refusing them anyway, wastes their time on
+      // the wrong problem.
       hint: plannerErr
         ? plannerErr
-        : blockedNoHost
-          ? (planner
-              ? 'Add host email and name to resend. The link still works.'
-              : 'Add host email and name to send planner.')
-          : undefined,
+        : !canPro
+          ? 'Planners are a Pro feature.'
+          : blockedNoHost
+            ? (planner
+                ? 'Add host email and name to resend. The link still works.'
+                : 'Add host email and name to send planner.')
+            : undefined,
       actions: archive
         ? []
         : planner
@@ -1711,17 +1738,24 @@ function BookingRow({
                   navigator.clipboard?.writeText(abs).catch(() => {});
                 },
               },
-              ...(blockedNoHost
-                ? (onAddHost || onEdit
-                    ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
-                    : [])
-                : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
+              // A lapsed DJ keeps Open and Copy. The planner is their client's
+              // answers on their booking — a subscription buys sending one,
+              // not seeing the ones already in.
+              ...(!canPro
+                ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
+                : blockedNoHost
+                  ? (onAddHost || onEdit
+                      ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                      : [])
+                  : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
             ]
-          : blockedNoHost
-            ? (onAddHost || onEdit
-                ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
-                : [])
-            : [{ label: plannerBusy ? 'Sending…' : 'Request planner', run: requestPlanner }],
+          : !canPro
+            ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
+            : blockedNoHost
+              ? (onAddHost || onEdit
+                  ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                  : [])
+              : [{ label: plannerBusy ? 'Sending…' : 'Request planner', run: requestPlanner }],
     });
   }
 
