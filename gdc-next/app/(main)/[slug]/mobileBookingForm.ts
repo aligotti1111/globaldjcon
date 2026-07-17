@@ -16,7 +16,17 @@ export const MOB_EVENT_TYPE_LABELS: Record<string, string> = {
   corporate: 'Corporate Event',
   anniversary: 'Anniversary',
   graduation: 'Graduation',
-  sweet16: 'Sweet 16 / Quinceañera',
+  // Split from a single 'sweet16' => 'Sweet 16 / Quinceañera' entry. They're
+  // two different parties — a quinceañera has its own running order and its
+  // own traditions — and a DJ who does one may not do the other. The combined
+  // option forced a booker to pick a label that was half wrong either way.
+  //
+  // SINGULAR here, per the note above: this map names ONE booking. The
+  // plural forms ("Sweet 16s", "Quinceañeras") live in the "what I do" lists
+  // in [slug]/constants.ts and update-dj-profile/constants.ts. Same keys,
+  // different sentence — don't merge the maps.
+  sweet16: 'Sweet 16',
+  quinceanera: 'Quinceañera',
   mitzvah: 'Bar/Bat Mitzvah',
   reunion: 'Reunion',
   holiday: 'Holiday Party',
@@ -36,6 +46,8 @@ export interface EventSubFieldConfig {
   isBirthday?: boolean;      // birthday gets age + surprise instead of text
 }
 
+// Note: neither 'sweet16' nor 'quinceanera' has an entry here — same as
+// before the split. Neither type shows extra fields on the booking form.
 export const EVENT_SUBFIELDS: Record<string, EventSubFieldConfig> = {
   anniversary: { textLabel: 'Type of Anniversary', textPlaceholder: 'e.g. 25th Wedding Anniversary' },
   graduation:  { textLabel: 'Type of Graduation', textPlaceholder: 'e.g. College Graduation' },
@@ -100,6 +112,11 @@ export function formatUSPhone(raw: string): string {
 
 // Map an event type to its package category — vanilla mobPubGetCategory.
 // Mobile DJs organize packages into 'wedding', 'mitzvah', and 'general'.
+//
+// 'quinceanera' needs no branch here: anything that isn't a wedding or a
+// mitzvah falls through to 'general', which is where it belongs. (The DJ-side
+// list MOB_CAT_GENERAL_TYPES in update-dj-profile/constants.ts is explicit and
+// DID need the new key added — that one enumerates rather than defaults.)
 export function getPackageCategory(eventType: string): 'wedding' | 'mitzvah' | 'general' {
   if (eventType === 'weddings') return 'wedding';
   if (eventType === 'mitzvah') return 'mitzvah';
