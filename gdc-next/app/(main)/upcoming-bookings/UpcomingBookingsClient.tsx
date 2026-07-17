@@ -1703,10 +1703,12 @@ function BookingRow({
                 </div>
               );
             }
-            // st.color, not stepColor(st.state): the step carries its own
-            // colour so Contract can be amber (your move) while Playlist stays
-            // grey (nothing to do yet) in the same 'not done' state.
-            const c = st.color;
+            // `const c = st.color` used to live here, feeding the old text
+            // label's colour and the chevron's stroke. Both are gone — the
+            // caption uses capColor (below) and the chevron now inherits
+            // currentColor — so it sat declared and never read, which fails the
+            // build on no-unused-vars. st.color is still the source of truth;
+            // it's read directly where it's needed.
             const open = menuOpenKey === st.key;
             // A signed contract ISN'T overridable (you can't un-sign a real
             // one) but it does have Download — so the chevron can't key off
@@ -2829,7 +2831,8 @@ function BookingDetails({
 
 // ───────────────────────────────────────────────────────────────────────
 // PaymentsBlock — the DJ's ledger view of one booking's booking_payments
-// rows, plus the Request Deposit / Send Invoice actions.
+// rows, plus the Request Deposit action. (Send Invoice used to live here too —
+// it's gone; Invoice is a column on the row now.)
 //
 // Rules (mirroring /api/payments):
 //   • Display is always "received / total due" — never the bare word
@@ -2892,7 +2895,8 @@ function PaymentsBlock({
     }
   }
 
-  // Request Deposit / Send Invoice.
+  // Request Deposit. (requestPayment still takes 'balance' — the kind is alive
+  // in the data and in the Invoice column; only the panel's button is gone.)
   //
   // The DJ names the amount, prefilled with what the booking suggests. That is
   // NOT the same as trusting a client-supplied price: a booker setting their own
@@ -2968,10 +2972,14 @@ function PaymentsBlock({
   }
 
   const depositRow = payments.find((p) => p.kind === 'deposit');
-  const balanceRow = payments.find((p) => p.kind === 'balance');
-  // Invoice gate: the deposit must be settled (paid or waived) — or there is
-  // simply no deposit on this booking.
-  const canSendInvoice = !depositRow || depositRow.status === 'paid' || depositRow.status === 'waived';
+  // balanceRow and canSendInvoice lived here to drive the Send Invoice button.
+  // With the button gone they were declared and never read, which fails the
+  // build on no-unused-vars — removing a control means removing what fed it.
+  //
+  // Both still exist where they're still needed: BookingRow computes its own
+  // balancePays/balanceRow and the deposit-settled gate for the Invoice column.
+  // kindLabel below still renders 'balance' rows as "Invoice" in the ledger, so
+  // an invoice raised before this change still displays correctly.
 
   const kindLabel = (p: BookingPayment) =>
     p.kind === 'balance' ? 'Invoice' : p.kind === 'deposit' ? 'Deposit' : (p.label || 'Payment');
@@ -3056,17 +3064,12 @@ function PaymentsBlock({
                 {busy === 'request-deposit' ? 'Requesting…' : 'Request Deposit'}
               </button>
             )}
-            {!balanceRow && (
-              <button
-                type="button"
-                onClick={() => requestPayment('balance')}
-                disabled={!canSendInvoice || busy === 'request-balance'}
-                title={canSendInvoice ? 'Invoice the client for the remaining balance' : 'The deposit must be paid or waived first'}
-                style={neonBtn(!canSendInvoice || busy === 'request-balance')}
-              >
-                {busy === 'request-balance' ? 'Sending…' : 'Send Invoice'}
-              </button>
-            )}
+            {/* Send Invoice removed from the panel — Invoice is a column on the
+                row now, and two places to send the same thing is how the row
+                and the panel end up disagreeing about whether it went. The
+                'balance' payment kind, requestPayment('balance') and the
+                canSendInvoice gate are all still here and still used by the
+                Invoice column's state; only this button is gone. */}
           </div>
           {!depositRow && !canRequestDeposit && (
             <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 6 }}>
@@ -3074,11 +3077,10 @@ function PaymentsBlock({
               status strip if you handled the contract outside the app.
             </div>
           )}
-          {!balanceRow && !canSendInvoice && (
-            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 6 }}>
-              Send Invoice unlocks once the deposit is paid or waived.
-            </div>
-          )}
+          {/* The "Send Invoice unlocks once the deposit is paid or waived" note
+              went with the button. A hint explaining a control that isn't on
+              screen is worse than no hint — it describes something the DJ can't
+              find and will go looking for. */}
         </div>
       )}
     </div>
