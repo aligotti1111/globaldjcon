@@ -1301,7 +1301,7 @@ function BookingRow({
       // Named here rather than left to an absent button. The step is visible
       // precisely so it CAN say this.
       hint: blockedNoHost && !archive
-        ? 'Add the host’s full name and email to this booking first — there’s nobody to send a contract to.'
+        ? 'Add host email and name to send contract.'
         : undefined,
     });
   }
@@ -1501,10 +1501,12 @@ function BookingRow({
       // the item, which tells the DJ nothing. They see "Not sent", open the menu
       // to send it, and find Payment options and Mark complete — no button, no
       // reason, no next step. An invisible rule reads as a broken app.
+      // Same terse voice as the contract hint next to it — two blockers in the
+      // same row shouldn't sound like they were written by different people.
       hint: (!depositRow && !canRequestDeposit && !archive)
         ? (blockedNoHost
-            ? 'Add the host’s full name and email to this booking first — there’s nobody to send the request to.'
-            : 'The contract has to be signed before you can request a deposit.')
+            ? 'Add host email and name to request deposit.'
+            : 'Contract must be signed to request deposit.')
         : undefined,
       actions: archive
         ? []
@@ -1923,7 +1925,13 @@ function BookingRow({
                             sentence, which is how you get a 600px menu. */}
                         {st.hint && (
                           <>
-                            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.7rem', lineHeight: 1.45, padding: '.45rem .6rem .4rem', whiteSpace: 'normal', maxWidth: 190 }}>
+                            {/* Red, not muted. This is the one line in the menu
+                                that says you CAN'T do the thing you opened it
+                                for — in grey it read as a footnote and got
+                                skipped, which is how you end up clicking around
+                                looking for a button that was never going to be
+                                there. */}
+                            <div style={{ color: '#ff8a8a', fontSize: '.7rem', lineHeight: 1.45, padding: '.45rem .6rem .4rem', whiteSpace: 'normal', maxWidth: 190 }}>
                               {st.hint}
                             </div>
                             {((st.actions?.length ?? 0) > 0 || st.overridable) && (
