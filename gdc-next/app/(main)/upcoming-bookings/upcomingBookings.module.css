@@ -106,10 +106,33 @@
 .emptyHint { font-size: .85rem; max-width: 480px; margin: .5rem auto 0; }
 
 /* ── Month groups ───────────────────────────────────────────────────── */
+/*
+ * --row-cols is THE column definition for this page. The header row and every
+ * booking row both read it, so they cannot drift apart — which they would
+ * within a week if the same nine track widths were typed out in two places.
+ *
+ *   date · time · event · value · contract · deposit · playlist · invoice · ⌄
+ *
+ * The four status tracks are 100px because that fits their longest caption
+ * ("Requested") under a 36px icon. Event is minmax(0,1fr): it takes whatever
+ * is left and ellipsizes rather than pushing the status columns out of
+ * alignment. minmax(0,…) not plain 1fr — a bare 1fr floors at min-content and
+ * refuses to shrink below the longest event name.
+ */
 .monthList {
+  --row-cols: 86px 142px minmax(0, 1fr) 74px 100px 100px 100px 100px 26px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+/* Club/bar DJs get a flyer thumbnail after the date; mobile DJs have no flyer
+   at all. One extra track rather than a 0-width column that still eats a gap. */
+/* 56px because that is what .flyerBoxRow actually is. A narrower track would
+   not shrink the flyer — a fixed-px grid track doesn't clip its contents, so
+   the thumbnail would simply overhang into the time column. Time gives up the
+   10px to pay for it. */
+.monthListClub {
+  --row-cols: 86px 56px 132px minmax(0, 1fr) 74px 100px 100px 100px 100px 26px;
 }
 .month { }
 .monthLabel {
@@ -121,87 +144,147 @@
   padding-bottom: .45rem;
   border-bottom: 1px solid var(--border);
 }
+/* gap: 0 — this is a table, not a stack of cards.
+   The 4px gap (plus a border and an 8px radius on every row) is what made the
+   list read as a pile of separate boxes rather than one scannable set of
+   records. Rows are flush now; a single hairline divides them. */
 .monthItems {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
+
+/* ── Column headers ─────────────────────────────────────────────────────
+   Repeated under every month heading, not just once at the top. That costs a
+   row per month and means you can never scroll to a point where you've lost
+   track of which column is which.
+   MUST share .row's grid-template-columns exactly — see .row. Any edit to one
+   is an edit to both, or the headers stop sitting above their columns. */
+.colHeads {
+  display: grid;
+  grid-template-columns: var(--row-cols);
+  gap: 13px;
+  padding: 2px 12px 9px;
+  align-items: end;
+  font-family: var(--font-inter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: #5e5e77;
+  line-height: 1.3;
+}
+.headRight { text-align: right; }
 
 /* ── Row content cells (used by the new clickable .row in expand section) ── */
 /* Stacked date pill: big day number with day-of-week + month stacked
    beside it. Mirrors the public profile event-list aesthetic. */
+/* The date pill — kept, because it's the thing you look for first and the one
+   part of the old row that was working. Retyped in Inter: Bebas is a condensed
+   poster face with one weight, and a poster face inside a data row is most of
+   what read as amateur. It stays the loudest element on the line. */
 .rowDate {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   flex-shrink: 0;
-  min-width: 76px;
+  min-width: 0;
 }
 .dayNum {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 26px;
+  font-family: var(--font-inter);
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: -.035em;
   color: var(--neon);
   line-height: 1;
 }
 .dayMeta {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  line-height: 1.3;
 }
-.dow {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  color: var(--neon);
-  font-weight: 700;
-}
+/* Both DOW and MONTH are muted now. The old .dow was neon on top of a neon day
+   number — two greens stacked, so neither meant anything. The number carries
+   the colour; these two are its footnote. */
+.dow,
 .mo {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .15em;
+  font-family: var(--font-inter);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .05em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: #75758d;
 }
+/* Inter, not Space Mono. Space Mono is a display monospace — the quirks that
+   make it good on a poster (that curly $, the wide 2) read as amateur at 13px
+   in a data column. Inter's tabular figures, inherited from .row, do the
+   alignment job the mono was there for. */
 .rowTime {
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  color: var(--white);
+  font-family: var(--font-inter);
+  font-size: 13px;
+  color: #9d9db5;
   white-space: nowrap;
 }
-.rowTimeWrap {
-  display: flex;
-  flex-direction: column;
-  gap: .15rem;
-}
+/* .rowTimeWrap is gone — it wrapped the cocktail note above the time inside
+   the old nested toggle grid. .rowToggle IS that column now, so the wrapper
+   had nothing left to wrap. */
+/* "INCLUDES COCKTAIL HOUR" — the full phrase, no abbreviation. 9px with tight
+   tracking is what makes 22 characters fit the 142px time track; the time
+   column took the 10px it needed off the four status columns, which had it
+   spare. If this ever has to say more, the column moves, not the words. */
 .rowCocktailNote {
-  font-family: 'Space Mono', monospace;
-  font-size: .52rem;
-  letter-spacing: .08em;
+  font-family: var(--font-inter);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .01em;
   text-transform: uppercase;
-  color: var(--neon, #00f5c4);
+  color: #4ddcb4;
   white-space: nowrap;
 }
+/* The event name — its own grid track now, so it can't push anything.
+   The pipe separator that used to sit before it is gone: a column header says
+   "Event", and a divider between two labelled columns is just debris. */
 .rowContext {
-  font-size: .9rem;
-  color: var(--white);
+  font-size: 14.5px;
+  font-weight: 450;
+  color: #f2f2f7;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+/* Event type is no longer a separate face at a separate size — it IS the
+   event cell. Bebas at 14px made "SWEET 16 / QUINCEAÑERA" a movie title
+   sitting in a table.
+   min-width: 0 is what lets it actually ellipsize. A flex item's default
+   min-width is auto, i.e. "never shrink below your longest word" — without
+   this the name would refuse to shrink and would instead push the pill and the
+   edit/delete buttons out of the cell. */
+.rowEventType {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Pipe separator between time and event type — desktop only. */
-.rowContextSep {
-  color: var(--muted);
-  margin-right: .55rem;
-  margin-left: .15rem;
+/* The pill and the two buttons never shrink — the event name gives way first.
+   Squeezing a 28px icon button to 11px to save a long event name is the wrong
+   trade: the name has an ellipsis, the button has nothing. */
+.rowContext .manualPill,
+.rowContext .editBtn,
+.rowContext .deleteBtn,
+.rowContext .overlapPill {
+  flex-shrink: 0;
 }
-/* Event type uses the display font, larger than the monospace time, so it
-   reads as a distinct heading on the row. */
-.rowEventType {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1rem;
-  letter-spacing: .02em;
-  color: var(--white);
+/* The agreed total. Right-aligned so the dollar amounts stack on their commas;
+   tabular figures are inherited from .row, which is what makes that work.
+   Reads the same fallback chain the details panel already uses — the tax-
+   inclusive snapshot first, then the agreed rate. */
+.rowValue {
+  font-size: 13px;
+  color: #c8c8d8;
+  text-align: right;
+  white-space: nowrap;
 }
 .overlapPill {
   margin-left: .6rem;
@@ -570,58 +653,77 @@ select.input {
 /* ── Inline expand on click ────────────────────────────────────────── */
 /* Wrap around each row + its (conditional) details panel. Lets us
    reset the row's border-radius so the panel reads as joined. */
+/* No radius: a table row has no corners. The radius, the 1px border and the
+   4px gap between rows were the three things that made this read as cards. */
 .rowWrap {
-  border-radius: 8px;
   overflow: hidden;
 }
 .rowWrapExpanded { }
 
-/* The clickable summary row. Same look as the previous static .row, but
-   now actually a <button> for proper a11y. */
+/*
+ * The clickable summary row — one record in a table.
+ *
+ * Was: display:flex, a card with its own border, an 8px radius, a --card fill
+ * and a gap to the next one. Every row was a little box, which is what made a
+ * page of them look like a pile rather than a list, and left the status strip
+ * floating in whatever space the flex run happened to leave.
+ *
+ * Now: a grid on the shared --row-cols track list, flush against its
+ * neighbours, divided by a single hairline. Nothing is positioned by "whatever
+ * is left over" any more — every cell has a named track and lands at the same
+ * x on every row.
+ *
+ * Height is fixed at 62px rather than derived from padding: the caption line
+ * under the status icons only exists on some cells, and left to itself a row
+ * with a caption would stand taller than one without.
+ */
 .row {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--row-cols);
+  gap: 13px;
   align-items: center;
-  gap: 1rem;
-  padding: .7rem 1rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  height: 62px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 0;
   width: 100%;
-  transition: background .15s, border-color .15s;
+  font-family: var(--font-inter);
+  /* Digits all one width. Without this a column of dates and dollar amounts
+     jitters, because a 1 is narrower than a 4 in proportional Inter — it is
+     most of what separates "looks like software" from "looks like a webpage". */
+  font-variant-numeric: tabular-nums;
+  transition: background .12s;
 }
 .row:hover {
-  background: var(--deep);
-  border-color: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .03);
 }
-.rowWrapExpanded .row {
-  /* When expanded, join the row's bottom edge to the panel. */
-  border-radius: 8px 8px 0 0;
-  border-bottom-color: transparent;
+/* Expanded: the row has no border to join to the panel any more, so it says
+   "this one is open" by staying lit instead. */
+.rowWrapExpanded .row,
+.rowWrapExpanded .row:hover {
+  background: rgba(255, 255, 255, .05);
 }
-/* Clickable middle area of the row — toggles expand/collapse. Holds the
-   date pill, time, and context. Button-reset so it blends into the row. */
-/* flex: 0 1 auto, NOT 1 1 auto. Growing made this element eat every spare
-   pixel on the row, which is what stranded the pipeline against the far right
-   edge — it wasn't positioned there, it was pushed there. Sized to its
-   content, the pipeline can sit directly after the event type.
-   Still shrinks (0 1) so a long event name ellipsizes instead of shoving the
-   pipeline off the row. */
+/*
+ * .rowToggle is now just the TIME cell.
+ *
+ * It used to be a nested 2-column grid holding time AND event, sized
+ * flex: 1 1 auto — which meant it ate every spare pixel on the row, and that
+ * is what stranded the status strip against the far right edge. The strip
+ * wasn't positioned there; it was pushed there.
+ *
+ * Time and event are now separate tracks in .row's own grid, so nothing nests
+ * and nothing grows. Everything left here is the button reset — it still
+ * toggles the row, so it still has to look like the row and not like a button.
+ */
 .rowToggle {
-  flex: 0 1 auto;
-  order: 1;
   min-width: 0;
-  display: grid;
-  /* BOTH columns fixed. The event-type column was `auto`, i.e. as wide as
-     whatever that booking happened to be called — so "REUNION" ended its
-     column ~150px before "SWEET 16 / QUINCEAÑERA" ended its own, and the
-     pipeline after it started somewhere different on every single card. That
-     raggedness was most of what made the list look messy; the pipeline was
-     only where it showed up.
-     210px fits the longest event type in the picker; longer ones ellipsize
-     (see .rowContext) rather than push the column and break the alignment. */
-  grid-template-columns: 150px 210px;
-  gap: 1rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: .15rem;
   background: none;
   border: none;
   padding: 0;
@@ -648,95 +750,160 @@ select.input {
   order: 4;
 }
 
-/* ── Readiness pipeline (Booked → Contract → Deposit) ───────────────── */
-/*
+/* ── Status cells: contract · deposit · playlist · invoice ──────────────
+ *
  * THESE RULES MUST STAY ABOVE THE @media (max-width: 600px) BLOCK.
- * They lived below it for one version, and that was a bug: a media query adds
- * no specificity, so two `.pipelineRow` rules of equal weight are settled by
- * source order alone — the desktop one, being last, silently beat the mobile
- * override it was supposed to defer to. It looked fine only by luck (an auto
- * margin on a full-width grid item happens to land near the right place). The
- * next property added would not have been lucky.
+ * They lived below it once and that was a bug: a media query adds no
+ * specificity, so two rules of equal weight are settled by source order alone
+ * — the desktop one, being last, silently beat the mobile override it was
+ * meant to defer to. It looked fine only by luck. The check at the bottom of
+ * the build script exists because of that.
  *
- * Desktop: directly after the event type, separated by a pipe — the same
- * divider that already separates the time from the event type, so the row
- * reads as one sentence in three clauses: when · what · how far along.
+ * WHAT'S GONE: the Booked step. It was green on every row in the list — a
+ * column that never varies is not information, and it was paying for a quarter
+ * of the width. If it's on this page, it's booked.
  *
- * It used to be margin-left: auto, jammed against the right edge with a lake of
- * dead space in between, which read as an unrelated widget rather than part of
- * the same line.
- *
- * margin-right: auto is what now absorbs the leftover width — one auto margin,
- * placed AFTER the pipeline, so everything from order 3 on (manual pill, edit,
- * delete, chevron) still rides the right edge exactly as before. Giving those
- * items their own auto margins instead would have split the free space between
- * them and scattered the cluster.
- *
- * Mobile is a different mechanism entirely; see the grid rule below.
+ * WHAT'S GONE: the connectors. They sold the four icons as a sequence. The
+ * column headers do that now, and a connector into an empty column had nothing
+ * to connect to — it drew a dash hanging off nothing.
  */
-.pipelineRow {
-  order: 2;
-  margin-right: auto;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
 
 /*
- * The three readiness columns. FIXED widths, not auto — this is the whole
- * point: every card's Contract icon sits at the same x as the one above it, so
- * the page reads as a table you can scan down a column of, instead of a stack
- * of ragged strips that all start somewhere different.
+ * The four status cells need to be four separate grid items on desktop (one
+ * per track) and one full-width band on mobile. Those are different parents,
+ * and an element can't have two.
  *
- * Widths are set by the LONGEST label each column can ever hold, because the
- * label is what's wide, not the icon:
- *   Booked   — always exactly "Booked". Never changes, so it needs no slack.
- *   Contract — "Send contract" / "Contract pending" / "Contract"
- *   Deposit  — "Request deposit" / "Deposit requested" / "Partially paid"
- * "Deposit requested" (17 chars) is the longest string on the strip and is what
- * 152px is measured against — ~125px of text plus the 30px connector that lives
- * inside columns 2 and 3. If a label is ever added that's longer than that,
- * these numbers move with it.
+ * display: contents is the way out: the wrapper stops generating a box of its
+ * own and its children are promoted to grid items of .row, exactly as if the
+ * wrapper weren't in the markup. On mobile it becomes a real grid again and
+ * claims the "stat" area. One element, both jobs, no duplicated JSX.
  */
-.pipeGrid {
-  display: grid;
-  grid-template-columns: 62px 152px 152px;
-  align-items: center;
+.statusStrip {
+  display: contents;
 }
 
-/* One readiness column. Also rendered EMPTY when a booking has no step for it
-   — an empty cell is what holds the column open, and a booking with no deposit
-   requested says so by leaving a gap rather than sliding the next icon left. */
-.pipeCell {
+/* One status column. Fixed-width by its grid track, so a booking with no
+   deposit leaves its column empty rather than letting the next icon slide
+   left — that raggedness is what made the list unscannable. */
+.stCell {
   display: flex;
   align-items: center;
   min-width: 0;
 }
 
-/* The step caption. Colour is applied inline per step (green = done, amber =
-   your move, grey = waiting) — everything else lives here so mobile can relax
-   the nowrap. */
-.pipeLabel {
-  font-size: .58rem;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  display: flex;
+/* The clickable unit: icon + chevron on top, caption underneath.
+   A <button>, not a div — this opens a menu, and it should be reachable by
+   keyboard and announce itself as pressable. */
+.stBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 3px 4px 2px 2px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.stBtn:hover { background: rgba(255, 255, 255, .07); }
+.stBtnOpen {
+  background: rgba(255, 255, 255, .09);
+  border-color: rgba(255, 255, 255, .18);
+}
+.stTop {
+  display: inline-flex;
   align-items: center;
   gap: 2px;
 }
 
-/* The divider between the event type and the pipeline. Lives inside
-   .pipelineRow rather than beside it so it can never be orphaned on the wrong
-   side of a wrap, and so hiding it on mobile is one rule.
-   align-self overrides the container's align-items so the pipe centres against
-   the icon+label block, level with the event type it divides — rather than
-   floating at the top of it. */
-.pipeSep {
-  color: var(--muted);
-  margin-right: .55rem;
-  align-self: center;
+/* The stage icon. 36px with room around it — the old 28px square was carrying
+   three jobs at once (which stage, what state, is it clickable) under a
+   grayscale filter with a badge on the corner and a label beneath. */
+.stIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 21px;
+  line-height: 1;
+}
+/* Not reached yet: drained of colour and dimmed. No badge — the absence IS
+   the state. */
+.stIconOff {
+  filter: grayscale(1);
+  opacity: .28;
+}
+
+/* Done. An SVG stroke, not a ✓ character: at 19px the text glyph renders
+   soft, and differently on every OS. */
+.stBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--neon, #00e0a4);
+  border: 2.5px solid var(--card, #14141f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stBadge svg { width: 11px; height: 11px; }
+
+/* In flight — out there, waiting on someone. */
+.stDot {
+  position: absolute;
+  right: -1px;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--amber, #eaa94a);
+  border: 2.5px solid var(--card, #14141f);
+}
+
+.stChev {
+  color: #6c6c86;
+  font-size: 11px;
+}
+
+/*
+ * The caption — "Sent", "Requested". Only for states the icon alone can't
+ * distinguish: a contract that's been sent but not signed looks exactly like
+ * one that's signed if all you have is a dot.
+ *
+ * Fixed 36px wide and centred, matching the icon above it, so "Sent" (4 chars)
+ * and "Requested" (9) share the same axis instead of both starting at the left
+ * edge and looking accidental. Overflows its box on purpose — the 100px track
+ * has the room.
+ *
+ * The height is reserved even when the caption is EMPTY. Otherwise a cell with
+ * text stands taller than one without and the icons stop lining up across the
+ * row, which is the whole thing this page was rebuilt for.
+ */
+.stCap {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  line-height: 1;
+  height: 10px;
+  width: 36px;
+  text-align: center;
+  white-space: nowrap;
+  color: #c08a3e;
+}
+
+/* Nothing to do here and nothing to open — no contract required, no deposit
+   set. A dash, not a dimmed icon: a dimmed icon implies a stage that exists
+   and hasn't been done. */
+.stDash {
+  color: #3a3a4c;
+  font-size: 15px;
+  padding-left: 12px;
 }
 
 /* Down chevron at the end of the row; rotates 180° when expanded. */
@@ -896,59 +1063,74 @@ select.input {
     grid-template-columns: 1fr;
     gap: .75rem;
   }
-  /* Compact mobile card. Row 1: date pill, flyer, the toggle area
-     (time + context), and the chevron. Row 2 (manual bookings only):
-     edit + delete on the left, MANUAL ADD pill on the right. The
-     toggle area is a single-column grid on mobile so time and context
-     stack instead of fighting for horizontal space. */
+  /*
+   * MOBILE IS A CARD, NOT A TABLE.
+   *
+   * The desktop layout is ten tracks totalling ~1000px. A 390px phone gives
+   * the content about 350px. There is no font size or gap that makes ten
+   * columns fit that — and .row has no horizontal scroll, so it wouldn't be
+   * squeezed, it would simply be cut off at the right edge. The value, the
+   * invoice and the chevron would be gone with no indication they existed.
+   *
+   * So below 600px the whole thing goes back to being a card and stacks:
+   *
+   *     date · flyer · time+event ·············· ⌄
+   *     [edit] [delete] ················ MANUAL ADD
+   *     📝  💵  🎵  🧾   ← full width, its own line
+   *     ································· $1,400
+   *
+   * Named areas, not tracks, because at this size the arrangement is a shape
+   * rather than a set of columns. Every child needs an area: anything without
+   * one gets auto-placed into the implicit grid at row 1 column 1 — the 64px
+   * date cell — which is how the status strip once ended up stacked inside the
+   * date pill.
+   */
   .row {
     display: grid;
     grid-template-columns: 64px auto 1fr auto;
+    /* Event gets its own band rather than sharing "toggle" with the time.
+       Both were assigned grid-area: toggle for a moment, which does not stack
+       them vertically — it puts two elements in the SAME cell, drawn on top of
+       one another. The time was rendering underneath the event name.
+       "acts"/"pill" are gone: the manual pill and edit/delete are children of
+       the event cell now, not of .row, so a grid-area on them is inert — grid
+       placement only applies to direct children. They flow inside the event
+       band instead. */
     grid-template-areas:
       "date  flyer  toggle  chev"
-      "acts  acts   acts    pill"
-      "pipe  pipe   pipe    pipe";
+      "event event  event   event"
+      "stat  stat   stat    stat"
+      "val   val    val     val";
     column-gap: .5rem;
     row-gap: .4rem;
-    padding: .6rem .7rem;
+    /* Height is fixed on desktop to keep the caption line from making rows
+       uneven. Here the row genuinely has four bands, so it has to grow. */
+    height: auto;
+    padding: .7rem;
     align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, .07);
   }
-  /* The pipeline needs a named area on mobile. Without one it gets
-     auto-placed into the implicit grid — row 3, column 1 — which is the 64px
-     date column, and three icons with labels do not fit in 64px. It spans the
-     full width instead, on its own line, which is what a phone has room for. */
-  .pipelineRow {
-    grid-area: pipe;
-    /* Kill the desktop auto margin. This is a grid item now — a stale
-       margin-right: auto would shove the icons to the left edge of their own
-       full-width area, which happens to look almost right, and would then
-       break the moment the area stops being full-width. */
-    margin-right: 0;
-    justify-content: flex-start;
-    min-width: 0;
-  }
-  /* No event type on this line to separate from — the pipeline has its own
-     row down here. A leading pipe with nothing before it is just debris. */
-  .pipeSep { display: none; }
-  /* 62 + 152 + 152 = 366px of fixed columns. A 390px phone gives the card
-     interior about 320px, so the desktop grid would run off the right edge —
-     and .row has no horizontal scroll, it would simply be cut. Equal thirds of
-     whatever width exists instead. minmax(0, 1fr) rather than 1fr: a bare 1fr
-     floors at min-content, which for a nowrap label is the whole string, and
-     the track would refuse to shrink — the exact overflow this is fixing.
-     The columns still align down the page, which is the point; they're just
-     narrower. */
-  .pipeGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* The column headers are the one thing that cannot survive the trip. They
+     label tracks, and there are no tracks down here. */
+  .colHeads { display: none; }
+
+  /* The four status cells share one full-width band, evenly split.
+     minmax(0, 1fr) rather than 1fr: a bare 1fr floors at min-content, and
+     min-content for a nowrap caption is the entire word — the track would
+     refuse to shrink, which is the exact overflow this is preventing. */
+  .statusStrip {
+    grid-area: stat;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
+    margin-top: .15rem;
   }
-  /* Now that a column can be narrower than its label, the label has to be
-     allowed to use two lines. On desktop it never needs to. */
-  .pipeLabel {
-    white-space: normal;
-    line-height: 1.15;
-    text-align: center;
-  }
+  .stCell { justify-content: flex-start; }
+  /* ~87px per cell at 390px. "Requested" is ~50px, so it still fits — but the
+     caption is centred on a 36px icon inside an 87px cell, and left alone it
+     would sit off to one side. Let it use the cell. */
+  .stCap { width: 100%; }
+
   .rowDate {
     grid-area: date;
     align-self: center;
@@ -958,42 +1140,40 @@ select.input {
   .flyerInline { grid-area: flyer; }
   .rowToggle {
     grid-area: toggle;
-    grid-template-columns: 1fr;
-    gap: .15rem;
     min-width: 0;
   }
   .rowTime {
     justify-self: start;
-    font-size: .82rem;
+    font-size: 12px;
   }
   .rowContext {
+    grid-area: event;
     justify-self: start;
     white-space: normal;
-    font-size: .82rem;
+    font-size: 13px;
     line-height: 1.3;
     text-align: left;
+    gap: .4rem;
   }
-  /* Mobile: hide the desktop pipe separator. Overlap warning is club-only
-     (gated in the component), so it can still show on small screens. */
-  .rowContextSep { display: none; }
+  /* Value gets its own band on the right rather than a column. It's the least
+     urgent thing on a phone — you're looking for what's next, not what it
+     pays — so it goes last and stays quiet. */
+  .rowValue {
+    grid-area: val;
+    text-align: right;
+    font-size: 12px;
+  }
   .rowChevronBtn {
     grid-area: chev;
     justify-self: end;
     align-self: center;
   }
-  /* Row 2: edit + delete tight together on the left. */
-  .editBtn {
-    grid-area: acts;
-    justify-self: start;
-  }
-  .deleteBtn {
-    grid-area: acts;
-    justify-self: start;
-    transform: translateX(36px);
-  }
+  /* No grid-area on these any more, and no translateX(36px) to fake a second
+     button beside the first. They're flex children of the event cell now, so
+     they simply sit next to the event name — which is what the transform was
+     imitating, badly: it moved the delete button visually without moving its
+     layout box, so it overlapped whatever came after it. */
   .manualPill {
-    grid-area: pill;
-    justify-self: end;
     white-space: nowrap;
   }
 

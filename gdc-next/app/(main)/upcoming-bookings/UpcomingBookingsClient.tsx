@@ -407,7 +407,8 @@ export default function UpcomingBookingsClient({
           )}
         </div>
       ) : sortMode === 'recent' ? (
-        <div className={styles.monthList}>
+        <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
+          <ColumnHeaders djType={djType} />
           <div className={styles.monthItems}>
             {recentList.map((b) => (
               <BookingRow
@@ -429,10 +430,14 @@ export default function UpcomingBookingsClient({
           </div>
         </div>
       ) : (
-        <div className={styles.monthList}>
+        <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
           {grouped.map(([monthKey, items]) => (
             <section key={monthKey} className={styles.month}>
               <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
+              {/* Headers under EVERY month, not once at the top. A month of
+                  bookings is taller than a viewport, and a header you've
+                  scrolled past isn't labelling anything. Costs one row. */}
+              <ColumnHeaders djType={djType} />
               <div className={styles.monthItems}>
                 {items.map((b) => (
                   <BookingRow
@@ -732,18 +737,62 @@ const AMBER = '#f5a623';  // needs the DJ to do something
 const MUTED = 'rgba(255,255,255,.32)'; // not reached yet
 
 /**
- * The readiness columns, left to right — the order a booking actually moves
- * through, and the reason every card lines up with the one above it.
+ * The status columns, left to right — the order a booking actually moves
+ * through, and the reason every row lines up with the one above it.
  *
- * This is the layout contract, so it lives here rather than being implied by
- * the order things happen to get pushed into `steps`. Each key must match a
+ * This is the layout contract: the header cells and the row cells both read
+ * it, so a column can't exist in one and not the other. Each key must match a
  * step key exactly; a typo here silently blanks that column for every booking
- * on the page, which looks like "no contracts exist" rather than like a bug.
+ * on the page, which reads as "no contracts exist" rather than as a bug.
  *
- * 'deposit' (not 'payment') because /api/bookings/status-override whitelists
- * ['contract','deposit','song_list'] server-side — see the steps array.
+ * WHY 'accepted' IS GONE: it was the first column and it was green on every
+ * single row, because a booking can't be on this page without being booked. A
+ * column that never varies isn't information — it was spending a quarter of the
+ * width to tell you nothing.
+ *
+ * WHY 'invoice' IS LAST: it's a receipt. It cannot do anything until money has
+ * actually landed, so it can only ever react to the deposit column to its left.
+ * Its position is the sequence.
+ *
+ * 'deposit' (not 'payment') and 'song_list' (not 'playlist') because
+ * /api/bookings/status-override whitelists ['contract','deposit','song_list']
+ * server-side and rejects anything else. The key is what the server already
+ * trusts; the column header is what the DJ reads. They don't have to match.
  */
-const PIPE_SLOTS = ['accepted', 'contract', 'deposit'] as const;
+const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice'] as const;
+
+/** Column headings, in PIPE_SLOTS order. Rendered by ColumnHeaders. */
+const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
+  contract: 'Contract',
+  deposit: 'Deposit',
+  song_list: 'Playlist',
+  invoice: 'Invoice',
+};
+
+/**
+ * The column headers, repeated under every month heading.
+ *
+ * Repeated, not rendered once at the top: a month of bookings is taller than a
+ * viewport, and headers you've scrolled past are headers that aren't doing
+ * their job. Costs one row per month.
+ *
+ * Shares .row's grid via the --row-cols custom property rather than repeating
+ * the track list, because two copies of nine widths drift apart the first time
+ * anyone touches one of them.
+ */
+function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
+  return (
+    <div className={styles.colHeads} aria-hidden="true">
+      <span>Date</span>
+      {djType === 'club' && <span />}
+      <span>Time</span>
+      <span>Event</span>
+      <span className={styles.headRight}>Value</span>
+      {PIPE_SLOTS.map((k) => <span key={k}>{PIPE_HEADS[k]}</span>)}
+      <span />
+    </div>
+  );
+}
 
 function BookingRow({
   booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, overlaps, onDelete, onEdit,
@@ -920,14 +969,25 @@ function BookingRow({
   // a signed one offers download. Offering "Review & send" on a signed contract
   // — as it did — invites a DJ to overwrite an agreement both parties signed.
   const steps: {
-    key: string; label: string; state: StepState; icon: 'check' | 'doc' | 'money';
+    key: string; label: string; state: StepState;
+    icon: 'doc' | 'money' | 'music' | 'receipt';
     overridable: boolean; done: boolean; color: string;
+    /**
+     * The small word under the icon. ONLY for states the icon can't say on its
+     * own — a contract that's been sent but not signed is otherwise identical
+     * to one that's sitting there unsent, and that difference is the whole
+     * question a DJ has when they look at this column.
+     *
+     * Deliberately absent on 'done' and on 'nothing started': the green check
+     * already says done, and a dimmed icon already says untouched. Captioning
+     * every state would put a word under all four icons, which is the version
+     * that read as a control panel.
+     */
+    caption?: string;
     /** A read-only line at the top of the dropdown — the amounts, for Deposit. */
     info?: string;
     actions?: { label: string; run: () => void; danger?: boolean }[];
-  }[] = [
-    { key: 'accepted', label: 'Booked', state: 'done', icon: 'check', overridable: false, done: true, color: NEON },
-  ];
+  }[] = [];
   if (!booking.is_manual && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
     const trulySigned = cstatus === 'signed' || signedOverride;
     const isDone = trulySigned || !!overrides.contract;
@@ -962,6 +1022,15 @@ function BookingRow({
       overridable: !trulySigned,
       done: isDone,
       color: isDone ? NEON : AMBER,
+      // THE reason the caption exists. Three states, and without a word here
+      // two of them look identical:
+      //   not sent   -> dimmed icon, no caption. Nothing has happened.
+      //   sent       -> full colour, amber dot, "Sent". It's out there.
+      //   signed     -> green check, no caption. Done.
+      // 'awaiting' is awaiting_client only — awaiting_dj means the contract
+      // exists but the DJ hasn't signed, so it has NOT gone out and must not
+      // claim to have.
+      caption: awaiting ? 'Sent' : undefined,
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
@@ -1028,14 +1097,39 @@ function BookingRow({
   // ledger below must keep showing what actually arrived — $299.99/$600 — even
   // while the strip says the stage is handled. Confirming an amount still
   // belongs to the details panel; this is only "stop asking me about it".
+  /**
+   * The Value column — what this booking is worth.
+   *
+   * Same fallback chain the expanded details panel already uses, deliberately:
+   * the row and the panel quoting different numbers for the same booking is
+   * worse than the row quoting none. Tax-inclusive snapshot first, because
+   * that's the figure that was agreed; then the accepted counter, the quote,
+   * the original offer.
+   *
+   * Null is possible (a manual add with no rate) and renders as empty rather
+   * than $0.00 — zero is a price, "we never said" isn't.
+   */
+  const rowValue: number | null =
+    booking.total_with_tax ?? booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+
   const bookingHasDeposit =
     booking.deposit_pct != null || booking.deposit_amount != null;
-  if (payments.length > 0 || bookingHasDeposit || overrides.deposit) {
+  // Only the DEPOSIT rows, not every payment on the booking.
+  //
+  // This step used to read `payments` whole. That was fine while deposit was
+  // the only money column — but Invoice is its own column now, and an invoice
+  // is a `kind: 'balance'` row sitting in the same array. Left as it was, a
+  // sent-but-unpaid invoice would have dragged the DEPOSIT icon back out of
+  // green: `payments.every(settled)` would go false because of a row that has
+  // nothing to do with the deposit. The two columns have to read their own
+  // rows or they lie about each other.
+  const depositPays = payments.filter((p) => p.kind === 'deposit');
+  if (depositPays.length > 0 || bookingHasDeposit || overrides.deposit) {
     const settled = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
-    // payments.every() is true for an empty array — a deposit that exists on
-    // the booking but has never been requested would read as PAID. Require a
-    // row before anything can be "done".
-    const reallySettled = payments.length > 0 && payments.every(settled);
+    // .every() is true for an empty array — a deposit that exists on the
+    // booking but has never been requested would read as PAID. Require a row
+    // before anything can be "done".
+    const reallySettled = depositPays.length > 0 && depositPays.every(settled);
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
     // any of this existed. The override says "this stage is handled" — it does
@@ -1058,7 +1152,7 @@ function BookingRow({
     // $600 deposit — so a client sending it in two goes is the normal path, not
     // an edge case. A DJ seeing "Deposit requested" on money that's half in has
     // no idea anything arrived.
-    const anyPartial = payments.some((p) => Number(p.amount_paid || 0) > 0 && !settled(p));
+    const anyPartial = depositPays.some((p) => Number(p.amount_paid || 0) > 0 && !settled(p));
     const pLabel = allDone
       ? 'Deposit'
       : anyPartial
@@ -1067,10 +1161,11 @@ function BookingRow({
           ? 'Deposit requested'
           : 'Request deposit';
 
-    // The numbers, for the dropdown. The strip has room for two words; this is
-    // where "how much actually landed" lives without opening the booking.
-    const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-    const askedFor = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    // The numbers, for the dropdown. Deposit rows only — same reason as
+    // depositPays above: totalling every payment would have this line report
+    // the deposit and the invoice added together as if they were one ask.
+    const paidSoFar = depositPays.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const askedFor = depositPays.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const currency = booking.currency || 'USD';
     steps.push({
       // 'deposit', not 'payment': /api/bookings/status-override whitelists
@@ -1091,6 +1186,18 @@ function BookingRow({
       // and a request sitting unpaid is one they can chase. Grey said "nothing
       // to see here" about the money the booking exists to collect.
       color: allDone ? NEON : AMBER,
+      // Same problem the contract had: "asked for and waiting" looks exactly
+      // like "never asked" if all you have is an icon. A partial says so
+      // outright, because half the money arriving is the normal path here (an
+      // unverified Venmo caps at $299.99/week against a typical deposit) and a
+      // DJ reading "Requested" on money that's half in has been misled.
+      caption: allDone
+        ? undefined
+        : anyPartial
+          ? 'Part paid'
+          : depositRow
+            ? 'Requested'
+            : undefined,
       // Shown at the top of the dropdown, above the actions. Only once money
       // has actually been asked for — before that there's nothing to report.
       info: depositRow
@@ -1112,6 +1219,91 @@ function BookingRow({
           ],
     });
   }
+
+  // ── Playlist ────────────────────────────────────────────────────────────
+  //
+  // THE FEATURE DOES NOT EXIST YET. There is no playlist table, no request
+  // email, no client-facing page, no track count — nothing behind this but the
+  // status_overrides column, which already whitelists 'song_list' server-side.
+  //
+  // The column is here anyway, and deliberately: it was designed in alongside
+  // the other three, and adding a fifth column later means re-deriving every
+  // track width on the row. Holding the space now costs 100px; retrofitting it
+  // later costs the layout.
+  //
+  // So this renders exactly one honest state — a dimmed icon meaning "nothing
+  // has happened" — plus the manual override, which genuinely works today: a
+  // DJ who took the song list by text message can mark it done and the row
+  // will stop asking. When the real feature lands it replaces this block and
+  // nothing around it moves.
+  {
+    const done = !!overrides.song_list;
+    steps.push({
+      key: 'song_list',
+      label: done ? 'Playlist' : 'Playlist not requested',
+      state: done ? 'done' : 'todo',
+      icon: 'music',
+      overridable: true,
+      done,
+      color: done ? NEON : MUTED,
+      // No caption. There's nothing in flight to report until the feature can
+      // actually send a request — a caption here would be a promise the app
+      // can't keep.
+      info: done ? undefined : 'Requesting playlists is coming soon.',
+      actions: [],
+    });
+  }
+
+  // ── Invoice ─────────────────────────────────────────────────────────────
+  //
+  // A RECEIPT, not a demand. It confirms money that has already arrived, which
+  // is why it's the last column and why it can't do anything on its own: it
+  // reacts to the deposit column to its left.
+  //
+  // 'balance' is the existing payment kind for it — PaymentsBlock already
+  // labels kind:'balance' as "Invoice" and already gates sending one on the
+  // deposit being settled (canSendInvoice). This column reads the same rows so
+  // the two can't disagree.
+  //
+  // Five states, and the gate is the interesting one: with no deposit settled
+  // there is nothing to write a receipt about, so the cell is a dash rather
+  // than a button that would open a menu offering nothing.
+  {
+    const settledP = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
+    const balancePays = payments.filter((p) => p.kind === 'balance');
+    const depositSettled = !depositRow || settledP(depositRow);
+    const balanceRow = balancePays[0] || null;
+    const balanceSettled = balancePays.length > 0 && balancePays.every(settledP);
+    // Money has landed somewhere — a deposit that settled, or a balance that
+    // did. Before that, a receipt has nothing to describe.
+    const anyMoneyIn =
+      (!!depositRow && settledP(depositRow)) || balanceSettled || !!overrides.invoice;
+    const done = balanceSettled || !!overrides.invoice;
+    if (anyMoneyIn || balanceRow) {
+      const currency = balanceRow ? (booking.currency || 'USD') : (booking.currency || 'USD');
+      steps.push({
+        key: 'invoice',
+        label: done ? 'Invoice' : balanceRow ? 'Invoice sent' : 'Send invoice',
+        state: done ? 'done' : 'todo',
+        icon: 'receipt',
+        overridable: !balanceSettled,
+        done,
+        color: done ? NEON : AMBER,
+        // Nothing under invoice — his call, and the right one. The icon plus
+        // the dot is enough here because, unlike contract, there is no state
+        // where "sent" and "not sent" look the same: an unsent invoice can
+        // only exist once the deposit is in, and that's already the amber dot.
+        caption: undefined,
+        info: balanceRow
+          ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
+          : depositSettled
+            ? 'Deposit settled — a receipt can go out.'
+            : undefined,
+        actions: archive ? [] : [],
+      });
+    }
+  }
+
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
   // header clean. The row no longer renders a CLUB/BAR pill.
@@ -1129,13 +1321,19 @@ function BookingRow({
 
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
-      {/* Whole row is clickable — a click anywhere (date, empty space, time)
-          toggles expand. Interactive children (flyer, edit, delete, chevron)
-          stopPropagation so they run their own action instead of toggling. */}
-      {/* flexWrap lets the pipeline (flexBasis:100%) drop to its own line
-          inside this card instead of squeezing onto the header row. */}
-      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer', flexWrap: 'wrap' }}>
-        {/* Date pill — first on the row. */}
+      {/*
+        THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
+        There are exactly as many direct children here as there are tracks in
+        --row-cols. Anything extra doesn't overflow — it gets auto-placed into
+        an implicit SECOND row, silently, under the date. That's why the manual
+        pill and the edit/delete buttons now live inside the event cell rather
+        than floating as siblings the way they did when this was a flex row.
+
+        A click anywhere toggles expand; interactive children stopPropagation so
+        they run their own action instead.
+      */}
+      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
+        {/* 1 — Date pill. Kept as-is: it's what you look for first. */}
         <div className={styles.rowDate}>
           <div className={styles.dayNum}>{day}</div>
           <div className={styles.dayMeta}>
@@ -1143,8 +1341,10 @@ function BookingRow({
             <div className={styles.mo}>{mo}</div>
           </div>
         </div>
-        {/* Event flyer — club/bar bookings only. Sits right of the date.
-            Same flyer the host can manage on the Upcoming Events page. */}
+        {/* 2 — Flyer. Club/bar only, which is why --row-cols has a club
+            variant with an extra track rather than a 0-width column that would
+            still eat a gap. display:contents on the wrapper so FlyerSlot itself
+            is the grid item. */}
         {djType === 'club' && (
           <span style={{ display: 'contents' }} onClick={(e) => e.stopPropagation()}>
             <FlyerSlot
@@ -1157,147 +1357,104 @@ function BookingRow({
             />
           </span>
         )}
-        {/* Time/context area — clicking it toggles too (stops propagation to
-            avoid a double-toggle with the row wrapper). */}
+        {/* 3 — Time. Its own track now; it used to be half of a nested grid
+            that ate the whole row's spare width. */}
         <button
           type="button"
           className={styles.rowToggle}
           onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
           aria-expanded={expanded}
         >
-          <div className={styles.rowTimeWrap}>
-            {booking.cocktail_needed && (
-              <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
-            )}
-            <div className={styles.rowTime}>{timeRange}</div>
-          </div>
-          {(context || overlaps) ? (
-            <div className={styles.rowContext}>
-              {context && <span className={styles.rowContextSep} aria-hidden="true">|</span>}
-              {context && <span className={styles.rowEventType}>{context}</span>}
-              {overlaps && (
-                <span
-                  className={styles.overlapPill}
-                  title="This booking's time overlaps another booking on the same day"
-                >
-                  ⚠ Time overlap
-                </span>
-              )}
-            </div>
-          ) : (
-            <div />
+          {booking.cocktail_needed && (
+            <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
           )}
+          <div className={styles.rowTime}>{timeRange}</div>
         </button>
-        {booking.is_manual && (
-          <span className={styles.manualPill} title="Added manually by you">MANUAL ADD</span>
-        )}
-        {onEdit && (
-          <span
-            onClick={handleEdit}
-            className={styles.editBtn}
-            role="button"
-            aria-label="Edit manual booking"
-            title="Edit"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-          </span>
-        )}
-        {onDelete && (
-          <span
-            onClick={handleDelete}
-            className={styles.deleteBtn}
-            role="button"
-            aria-label="Delete manual booking"
-            title="Delete"
-          >
-            ✕
-          </span>
-        )}
-        <button
-          type="button"
-          className={styles.rowChevronBtn}
-          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          <svg
-            className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
-            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+        {/* 4 — Event. minmax(0,1fr): takes what's left and ellipsizes, so a
+            long name can never push the status columns out of alignment.
+            The manual pill and edit/delete ride along here — they're metadata
+            about this event, and this is the only cell with slack. */}
+        <div className={styles.rowContext}>
+          {context && <span className={styles.rowEventType}>{context}</span>}
+          {overlaps && (
+            <span
+              className={styles.overlapPill}
+              title="This booking's time overlaps another booking on the same day"
+            >
+              ⚠
+            </span>
+          )}
+          {booking.is_manual && (
+            <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
+          )}
+          {onEdit && (
+            <span
+              onClick={handleEdit}
+              className={styles.editBtn}
+              role="button"
+              aria-label="Edit manual booking"
+              title="Edit"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </span>
+          )}
+          {onDelete && (
+            <span
+              onClick={handleDelete}
+              className={styles.deleteBtn}
+              role="button"
+              aria-label="Delete manual booking"
+              title="Delete"
+            >
+              ✕
+            </span>
+          )}
+        </div>
+        {/* 5 — Value. The agreed total, right-aligned on tabular figures.
+            Same fallback chain the details panel uses, so the row and the panel
+            can't quote different numbers. */}
+        <div className={styles.rowValue}>
+          {rowValue != null ? fmtMoney(rowValue, booking.currency || 'USD') : ''}
+        </div>
         {/*
-          READINESS PIPELINE — on the header row, immediately after the event
-          type, divided from it by the same pipe that divides the time from the
-          event type. The row reads as one sentence: when · what · how far along.
+          6–9 — THE STATUS COLUMNS: contract · deposit · playlist · invoice.
 
-          It had its own full-width line, which cost a whole row of height per
-          booking. It then spent a version pinned to the right edge with a lake
-          of dead space in the middle, which made it look like an unrelated
-          widget parked at the end of the row rather than the third clause of
-          the same line.
+          display:contents on this wrapper — it generates no box, so the four
+          cells below become direct grid items of .row and land in tracks 6–9.
+          On mobile it becomes a real grid and claims a full-width band. One
+          element, two layouts, no duplicated markup. See .statusStrip.
 
-          DOM ORDER IS NOT VISUAL ORDER HERE. This div still sits after the
-          chevron in the markup; CSS `order` does the arranging. That's
-          deliberate — mobile places every child by named grid area and would
-          ignore a markup reshuffle anyway, so moving it in the JSX would buy
-          nothing and cost a diff.
+          FIXED SLOTS, NOT steps.map. `steps` is variable-length — contract only
+          if one is required, deposit only if one exists, invoice only once
+          money has landed. Mapping it laid icons out in whatever order they
+          happened to exist, so a booking with no contract put its DEPOSIT icon
+          exactly where the row above put its CONTRACT icon: same emoji column,
+          different meaning. Nothing lined up down the page.
 
-          MOBILE: .row is NOT flex below 600px — it's a grid with named areas.
-          `order` and flex-wrap both do nothing there, and an element with no
-          grid-area gets auto-placed into the implicit grid: row 3, column 1,
-          which is the 64px date column. So .pipelineRow claims its own
-          full-width area in the stylesheet. Layout lives in
-          upcomingBookings.module.css, not inline, precisely because the two
-          viewports need different mechanisms.
-
-          Icon on top, label underneath, green check badged over the corner when
-          a step is done — so "what" and "done?" are two separate glances, not
-          one colour you have to decode.
+          Now each stage owns a column whether or not this booking has it. A
+          missing one leaves a dash. That's information too — "no deposit
+          requested" is a real state, and the gap says it.
         */}
-        <div
-          className={styles.pipelineRow}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Divider, desktop only — see .pipeSep. Decorative: the pipeline
-              already says what it is, so a screen reader reading "pipe" here
-              would only add noise. */}
-          <span className={styles.pipeSep} aria-hidden="true">|</span>
-          <div className={styles.pipeGrid}>
-          {/*
-            FIXED SLOTS, NOT steps.map.
-
-            `steps` is variable-length — Booked is always there, Contract only
-            if one is needed, Deposit only if one was raised. Mapping it laid
-            the icons out left-to-right in whatever order they happened to
-            exist, so a booking with no contract put its DEPOSIT icon exactly
-            where the row above put its CONTRACT icon. Nothing lined up down
-            the page, and scanning a column meant re-reading every label.
-
-            Now each step owns a column whether or not it exists on this
-            booking. A missing step leaves its column empty rather than letting
-            the next one slide left. Empty is information too: "no deposit
-            requested" is a real state, and the gap says it.
-          */}
-          {PIPE_SLOTS.map((slotKey, slot) => {
+        <div className={styles.statusStrip} onClick={(e) => e.stopPropagation()}>
+          {PIPE_SLOTS.map((slotKey) => {
             const st = steps.find((s) => s.key === slotKey);
-            // Reserve the column. Without this the grid collapses the cell and
-            // the alignment this whole block exists for goes away.
-            if (!st) return <div key={slotKey} className={styles.pipeCell} aria-hidden="true" />;
-            // The nearest step that actually EXISTS before this one — not
-            // steps[i-1], and not the previous slot, which may be empty. The
-            // connector joins this step to the last real one before it.
-            const prev = PIPE_SLOTS.slice(0, slot)
-              .map((k) => steps.find((s) => s.key === k))
-              .filter(Boolean)
-              .pop();
+            // Hold the column open. A dash, not a dimmed icon: dimmed implies a
+            // stage that exists and hasn't been done, and there's a real
+            // difference between "no contract needed on this booking" and "the
+            // contract hasn't gone out".
+            if (!st) {
+              return (
+                <div key={slotKey} className={styles.stCell}>
+                  <span className={styles.stDash} aria-hidden="true">—</span>
+                </div>
+              );
+            }
             // st.color, not stepColor(st.state): the step carries its own
-            // colour so Contract can be amber (your move) while Deposit stays
-            // grey (waiting on the client) in the same 'not done' state.
+            // colour so Contract can be amber (your move) while Playlist stays
+            // grey (nothing to do yet) in the same 'not done' state.
             const c = st.color;
             const open = menuOpenKey === st.key;
             // A signed contract ISN'T overridable (you can't un-sign a real
@@ -1307,91 +1464,80 @@ function BookingRow({
             // and isn't overridable, but it still knows what was paid — and
             // that's exactly what someone opens an old booking to check.
             const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info;
+            // In flight: it exists and it's out there, but it isn't done. This
+            // is the state the dot is for — and the reason the caption exists,
+            // because a dot alone can't tell "sent, waiting" from "signed".
+            const waiting = !st.done && (!!st.caption || st.state === 'pending');
             const inner = (
               <>
-                <span
-                  style={{
-                    position: 'relative', display: 'inline-flex', alignItems: 'center',
-                    justifyContent: 'center', width: 28, height: 28, flexShrink: 0,
-                    fontSize: 21, lineHeight: 1,
-                    // The emoji renders in its OWN colours — no ring, no tint.
-                    // A step not reached yet is drained of colour and dimmed, so
-                    // progress is legible at a glance without reading a label.
-                    // The emoji render in their OWN colours — no ring, no tint.
-                    // A step not reached yet is drained of colour and dimmed, so
-                    // progress is legible at a glance without reading a label.
-                    filter: st.done ? 'none' : 'grayscale(1)',
-                    opacity: st.done ? 1 : 0.4,
-                  }}
-                >
-                  {st.icon === 'check' ? '\u{1F4D6}' : st.icon === 'money' ? '\u{1F4B5}' : '\u{1F4DD}'}
-                  {/* Completion badge — the only green on the icon, and it only
-                      ever means done. Over the corner, so the emoji still says
-                      which stage it is. */}
+                <span className={`${styles.stIcon} ${st.done ? '' : styles.stIconOff}`}>
+                  {/* The emoji render in their OWN colours — no ring, no tint.
+                      Not reached yet = drained and dimmed, so progress is
+                      legible without reading anything.
+                      NOTE: emoji render differently on every OS — 🧾 on Windows
+                      is not 🧾 on macOS. If these ever matter to the brand, the
+                      real fix is a small custom SVG set, not a bigger emoji. */}
+                  {st.icon === 'money' ? '\u{1F4B5}'
+                    : st.icon === 'music' ? '\u{1F3B5}'
+                    : st.icon === 'receipt' ? '\u{1F9FE}'
+                    : '\u{1F4DD}'}
+                  {/* Done. An SVG stroke rather than a ✓ character: at this size
+                      the glyph renders soft, and differently per platform. */}
                   {st.done && (
-                    <span
-                      style={{
-                        position: 'absolute', right: -2, bottom: -2, width: 13, height: 13,
-                        borderRadius: '50%', background: NEON,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        border: '2px solid var(--card)',
-                      }}
-                    >
-                      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    <span className={styles.stBadge}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
+                  {/* Waiting on someone. Never both — done wins. */}
+                  {!st.done && waiting && <span className={styles.stDot} />}
                 </span>
-                {/* Everything here EXCEPT the colour is in .pipeLabel. The
-                    colour is per-step and dynamic, so it stays inline; the rest
-                    had to leave, because mobile needs to let this text wrap and
-                    an inline `white-space: nowrap` can't be overridden from a
-                    stylesheet without !important. */}
-                <span className={styles.pipeLabel} style={{ color: c }}>
-                  {st.label}
-                  {hasMenu && (
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                  )}
-                </span>
+                {/* The chevron is the affordance: it's what says this icon
+                    opens something, standing still, without hovering. */}
+                {hasMenu && (
+                  <span className={styles.stChev} aria-hidden="true">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  </span>
+                )}
               </>
             );
+            /*
+              THE CONNECTORS ARE GONE. They existed to make the icons read as a
+              sequence rather than a set — the column headers do that job now,
+              and better. They also had a bug that only showed once columns were
+              reserved: a connector was drawn for any slot > 0, including ones
+              whose left-hand neighbour was empty, so a deposit with no contract
+              beside it drew a dash hanging off nothing.
+
+              The caption line is rendered even when EMPTY. It has to be: a cell
+              with a caption is 10px taller than one without, and left to
+              themselves the icons would sit at different heights across the row
+              — which is the exact misalignment this page was rebuilt to fix.
+            */
             return (
-              <div key={st.key} className={styles.pipeCell}>
-                {/* Connector — makes three icons read as a sequence, not a set.
-                    Keyed off the SLOT, not the array index: a deposit sitting in
-                    column 3 with no contract in column 2 still needs its line
-                    back to Booked. */}
-                {slot > 0 && (
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 18, height: 1.5, borderRadius: 1, margin: '0 6px',
-                      marginBottom: 14, flexShrink: 0,
-                      // Both ends, not just this one. A deposit can be paid
-                      // while the contract is still out (nothing here blocks
-                      // anything), and keying off st.done alone drew a green
-                      // line THROUGH a pending contract — progress appearing to
-                      // skip a step it hadn't finished.
-                      background: prev?.done && st.done ? NEON : 'rgba(255,255,255,.14)',
-                    }}
-                  />
-                )}
+              <div key={st.key} className={styles.stCell}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {hasMenu ? (
                     <button
                       type="button"
-                      title="Mark this step complete"
+                      className={`${styles.stBtn} ${open ? styles.stBtnOpen : ''}`}
+                      title={st.label}
+                      aria-haspopup="menu"
+                      aria-expanded={open}
                       onClick={(e) => {
                         if (open) { setMenuOpenKey(null); return; }
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
                         setMenuOpenKey(st.key);
                       }}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
                     >
-                      {inner}
+                      <span className={styles.stTop}>{inner}</span>
+                      <span className={styles.stCap}>{st.caption || ''}</span>
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }} title={st.label}>{inner}</div>
+                    <div className={styles.stBtn} style={{ cursor: 'default' }} title={st.label}>
+                      <span className={styles.stTop}>{inner}</span>
+                      <span className={styles.stCap}>{st.caption || ''}</span>
+                    </div>
                   )}
                   {open && hasMenu && menuPos && (
                     <>
@@ -1449,8 +1595,22 @@ function BookingRow({
               </div>
             );
           })}
-          </div>
         </div>
+        {/* 10 — Chevron. Last track, last thing on the row. */}
+        <button
+          type="button"
+          className={styles.rowChevronBtn}
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+          aria-label={expanded ? 'Collapse' : 'Expand'}
+        >
+          <svg
+            className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
       </div>
       {/* Request deposit — the amount, before it goes out, in something you can
           read. It replaced a window.prompt(), which showed the number with no
