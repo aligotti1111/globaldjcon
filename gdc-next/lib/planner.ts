@@ -161,6 +161,15 @@ export interface BookingPlanner {
 /** Reserved. A custom field must never collide with these in `responses`. */
 export const NOTES_FIELD_ID = 'notes';
 export const DO_NOT_PLAY_FIELD_ID = 'do_not_play';
+/**
+ * Who the party is FOR. Pinned FIRST, and only on event types that have one.
+ *
+ * It lives on the event-type templates rather than the base because "guest of
+ * honour" is not a universal idea — a corporate party and a reunion don't have
+ * one, and an empty "Guest of honour" on a company mixer is a question that
+ * makes the form look like it wasn't written for you.
+ */
+export const HONOREE_FIELD_ID = 'honoree';
 
 /**
  * Which template applies to this booking, in order:
@@ -226,9 +235,24 @@ export function composeFields(
   const overrideIds = new Set(override.map((f) => f.id));
   const keptRest = rest.filter((f) => !overrideIds.has(f.id));
 
+  // Who the party is for goes FIRST — before setup times and genres.
+  //
+  // The overrides APPEND, so left alone "Guest of honour" lands somewhere past
+  // question ten, after we've asked a bride what time we can park. The first
+  // question a form asks is the one that says whether it was written for this
+  // event or fired at everybody, and a client decides which in about a second.
+  //
+  // Same mechanism as the pin at the other end, opposite direction: the two
+  // ends of the form are the only parts everyone reads.
+  const honoree = override.filter((f) => f.id === HONOREE_FIELD_ID);
+  const overrideRest = override.filter(
+    (f) => f.id !== HONOREE_FIELD_ID && !pinnedIds.has(f.id),
+  );
+
   return [
+    ...honoree,
     ...keptRest,
-    ...override.filter((f) => !pinnedIds.has(f.id)),
+    ...overrideRest,
     ...pinned,
   ];
 }

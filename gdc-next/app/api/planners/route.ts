@@ -30,6 +30,7 @@ import {
   visibleFields,
   NOTES_FIELD_ID,
   DO_NOT_PLAY_FIELD_ID,
+  HONOREE_FIELD_ID,
   type PlannerTemplate,
   type PlannerField,
   type PlannerFieldType,
@@ -236,13 +237,21 @@ function sanitiseFields(raw: unknown): { fields: PlannerField[]; error?: string 
     out.push(f);
   }
 
-  // Do NOT play and Notes are re-pinned to the end regardless of where the DJ
-  // dragged them. Same rule composeFields() enforces, for the same reason: the
-  // note is the client's only way to say something we didn't ask about, and
-  // buried mid-form nobody scrolls back to it.
+  // The two ends of the form are re-pinned regardless of where the DJ dragged
+  // things — the same rule composeFields() enforces, so a saved template and a
+  // freshly composed one can't come out in different orders:
+  //
+  //   · Guest of honour FIRST. It's what says the form was written for this
+  //     event rather than fired at everybody.
+  //   · Do NOT play and Notes LAST. The note is the client's only way to say
+  //     something we didn't ask about, and buried mid-form nobody scrolls back.
   const pinned = new Set([DO_NOT_PLAY_FIELD_ID, NOTES_FIELD_ID]);
   return {
-    fields: [...out.filter((f) => !pinned.has(f.id)), ...out.filter((f) => pinned.has(f.id))],
+    fields: [
+      ...out.filter((f) => f.id === HONOREE_FIELD_ID),
+      ...out.filter((f) => f.id !== HONOREE_FIELD_ID && !pinned.has(f.id)),
+      ...out.filter((f) => pinned.has(f.id)),
+    ],
   };
 }
 
