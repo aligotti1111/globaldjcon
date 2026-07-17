@@ -789,11 +789,21 @@ select.input {
     grid-template-columns: 64px auto 1fr auto;
     grid-template-areas:
       "date  flyer  toggle  chev"
-      "acts  acts   acts    pill";
+      "acts  acts   acts    pill"
+      "pipe  pipe   pipe    pipe";
     column-gap: .5rem;
     row-gap: .4rem;
     padding: .6rem .7rem;
     align-items: center;
+  }
+  /* The pipeline needs a named area on mobile. Without one it gets
+     auto-placed into the implicit grid — row 3, column 1 — which is the 64px
+     date column, and three icons with labels do not fit in 64px. It spans the
+     full width instead, on its own line, which is what a phone has room for. */
+  .pipelineRow {
+    grid-area: pipe;
+    margin-left: 0;
+    justify-content: flex-start;
   }
   .rowDate {
     grid-area: date;
@@ -848,6 +858,18 @@ select.input {
   .dow    { font-size: 10px; }
   .mo     { font-size: 10px; }
   .rowDate { gap: 6px; }
+}
+
+/* ── Readiness pipeline (Booked → Contract → Deposit) ───────────────── */
+/* Desktop: sits on the header row, pushed right. On a narrow desktop window
+   .row is flex-wrap, so it drops to its own line by itself — no breakpoint to
+   maintain. Mobile is a different story; see the grid rule below. */
+.pipelineRow {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */

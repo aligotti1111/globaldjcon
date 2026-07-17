@@ -1217,29 +1217,27 @@ function BookingRow({
           </svg>
         </button>
         {/*
-          READINESS PIPELINE — its own line, inside the card.
-          It used to sit inline on the header row, competing for width with the
-          venue name and getting squeezed. It's the thing a DJ scans for, so it
-          gets its own line — but still within .row, which is the card surface.
+          READINESS PIPELINE — on the header row, pushed right.
+
+          It had its own full-width line, which cost a whole row of height per
+          booking and pushed the list down. One line per event is denser and
+          scans better: date, time, what it is, how far along — left to right,
+          one glance.
+
+          MOBILE: .row is NOT flex below 600px — it's a grid with named areas.
+          flex-wrap does nothing there, and an element with no grid-area gets
+          auto-placed into the implicit grid: row 3, column 1, which is the 64px
+          date column. So .pipelineRow claims its own full-width area in the
+          stylesheet. Layout lives in upcomingBookings.module.css, not inline,
+          precisely because the two viewports need different mechanisms.
 
           Icon on top, label underneath, green check badged over the corner when
           a step is done — so "what" and "done?" are two separate glances, not
           one colour you have to decode.
         */}
         <div
+          className={styles.pipelineRow}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            // .row is flex; giving it flex-wrap and this child flexBasis:100%
-            // forces the pipeline onto its own line INSIDE the card. Previously
-            // it sat after .row — and .row is what carries background:var(--card),
-            // so the strip was floating on the page behind the card, not in it.
-            // Negative side margins pull it to the card's edges so the divider
-            // spans the full width; no colour is guessed, we're on --card already.
-            flexBasis: '100%', width: '100%',
-            display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap',
-            borderTop: '1px solid var(--border)',
-            margin: '.15rem -1rem -.7rem', padding: '.6rem 1rem .5rem',
-          }}
         >
           {steps.map((st, i) => {
             // st.color, not stepColor(st.state): the step carries its own
