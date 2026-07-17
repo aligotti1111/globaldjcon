@@ -907,6 +907,43 @@ function BookingRow({
   // viewport position to render it at (fixed, so the card's overflow can't clip it).
   const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  /**
+   * The button the open menu belongs to.
+   *
+   * The menu is position:fixed — i.e. positioned in VIEWPORT coordinates — from
+   * a getBoundingClientRect() taken at the moment of the click. That rect is a
+   * photograph, not a subscription: scroll one pixel and the row moves while
+   * the menu stays exactly where it was, until it's floating in the middle of
+   * somebody else's booking with no visible relationship to the icon it
+   * belongs to.
+   *
+   * Fixed IS the right choice here — the menu has to escape .rowWrap's
+   * `overflow: hidden` — but it has to re-anchor. Keeping the element lets the
+   * effect below recompute against the live rect. Same pattern HeaderDjMenu
+   * already uses, and for the same reason.
+   */
+  const menuBtnRef = useRef<HTMLElement | null>(null);
+
+  // Re-anchor the open menu to its button on scroll and resize.
+  // Capture phase (the `true`) matters: a scroll inside any ancestor container
+  // doesn't bubble, so a listener on window without it never fires and the menu
+  // silently detaches again in exactly the case that's hardest to notice.
+  useEffect(() => {
+    if (!menuOpenKey) return;
+    function compute() {
+      const el = menuBtnRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+    }
+    compute();
+    window.addEventListener('scroll', compute, true);
+    window.addEventListener('resize', compute);
+    return () => {
+      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', compute);
+    };
+  }, [menuOpenKey]);
   // The pipeline's contract actions live here (BookingRow), but the portal and
   // the send/resend/cancel/download handlers are all owned by BookingDetails,
   // which only exists while the row is expanded.
@@ -1069,6 +1106,19 @@ function BookingRow({
     caption?: string;
     /** A read-only line at the top of the dropdown — the amounts, for Deposit. */
     info?: string;
+    /**
+     * Why an action you'd expect isn't offered.
+     *
+     * Separate from `info` because it wraps: `info` is a single bold line and
+     * the menu is white-space:nowrap, so a sentence in there stretches the
+     * dropdown to the width of the sentence.
+     *
+     * This exists because a menu can silently omit an option — Request deposit
+     * vanishes until the contract is signed — and an absent button explains
+     * nothing. The DJ sees "Not sent", opens the menu to send it, and finds it
+     * isn't there. The gate is right; being invisible is not.
+     */
+    hint?: string;
     actions?: { label: string; run: () => void; danger?: boolean }[];
   }[] = [];
   if (!booking.is_manual && (needsContract || !!cstatus || everHadContract || overrides.contract)) {
@@ -1325,6 +1375,20 @@ function BookingRow({
       info: depositRow
         ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
         : undefined,
+      // The gate, said out loud.
+      //
+      // canRequestDeposit is `is_manual || !needsContract || contractStepComplete`
+      // — so on a booking that requires a contract, Request deposit does not
+      // appear until that contract is signed. The rule is right: don't ask a
+      // client for money before there's an agreement.
+      //
+      // But the menu enforced it by simply not rendering the item, which tells
+      // the DJ nothing. They see "Not sent", open the menu to send it, and the
+      // only things there are Payment options and Mark complete — no button, no
+      // reason, no next step. An invisible rule reads as a broken app.
+      hint: (!depositRow && !canRequestDeposit && !archive)
+        ? 'The contract has to be signed before you can request a deposit.'
+        : undefined,
       actions: archive
         ? []
         : [
@@ -1570,7 +1634,11 @@ function BookingRow({
             // `info` counts: a settled deposit in the archive has no actions
             // and isn't overridable, but it still knows what was paid — and
             // that's exactly what someone opens an old booking to check.
-            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info;
+            // `hint` counts. A step whose only content is "here's why you can't
+            // do the thing" still needs a chevron and a menu to say it in —
+            // otherwise the explanation exists in the code and nowhere a DJ can
+            // reach it, which is the same as not existing.
+            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
             // In flight: it exists and it's out there, but it isn't done. This
             // is the state the dot is for — and the reason the caption exists,
             // because a dot alone can't tell "sent, waiting" from "signed".
@@ -1681,6 +1749,10 @@ function BookingRow({
                       aria-expanded={open}
                       onClick={(e) => {
                         if (open) { setMenuOpenKey(null); return; }
+                        // Hand the button to the re-anchor effect. Without this
+                        // the menu is positioned once, from a rect that stops
+                        // being true the moment anything scrolls.
+                        menuBtnRef.current = e.currentTarget as HTMLElement;
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
                         setMenuOpenKey(st.key);
@@ -1709,6 +1781,21 @@ function BookingRow({
                               {st.info}
                             </div>
                             <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
+                          </>
+                        )}
+                        {/* Why the button you came here for isn't here.
+                            whiteSpace:'normal' and an explicit maxWidth because
+                            the menu itself is nowrap — a sentence inherits that
+                            and stretches the dropdown to the width of the
+                            sentence, which is how you get a 600px menu. */}
+                        {st.hint && (
+                          <>
+                            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.7rem', lineHeight: 1.45, padding: '.45rem .6rem .4rem', whiteSpace: 'normal', maxWidth: 190 }}>
+                              {st.hint}
+                            </div>
+                            {((st.actions?.length ?? 0) > 0 || st.overridable) && (
+                              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
+                            )}
                           </>
                         )}
                         {/* The real options for this step, right now — built
