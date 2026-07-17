@@ -297,7 +297,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     if (!clientEmail && emailRes.status === 'fulfilled') clientEmail = emailRes.value?.data?.user?.email || '';
     if (nameRes.status === 'fulfilled') accountName = (nameRes.value?.data?.name || '').trim();
   }
-  if (!clientEmail && manualClientEmail) clientEmail = manualClientEmail;
+  // Remember whether the DJ typed this email into the contract modal's
+  // "we couldn't find a client email" prompt, rather than it coming from the
+  // booking or a linked account. If they did, we persist it below — see the
+  // bookings update near the end of this function.
+  let savedManualEmail = false;
+  if (!clientEmail && manualClientEmail) { clientEmail = manualClientEmail; savedManualEmail = true; }
   if (!clientEmail) {
     return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
   }
@@ -509,6 +514,16 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         contract_id: usedContractId,
         contract_status: 'awaiting_dj',
         contract_sent_at: new Date().toISOString(),
+        // Persist an email the DJ typed into the NO_CLIENT_EMAIL prompt.
+        // It was previously used for this one send and thrown away, so the
+        // booking still had no host_email afterwards — meaning the deposit
+        // request had no recipient and the DJ got asked for the same address
+        // a second time, separately, with no memory of the first.
+        // Only when savedManualEmail: if the address came from the booking or
+        // a linked account we must not write it back onto host_email, because
+        // host_email means "the address the DJ nominated" and overwriting it
+        // with an account lookup would quietly change what the booking says.
+        ...(savedManualEmail ? { host_email: clientEmail } : {}),
       } as unknown as never)
       .eq('id', bookingId)
       .eq('dj_id', user.id);
