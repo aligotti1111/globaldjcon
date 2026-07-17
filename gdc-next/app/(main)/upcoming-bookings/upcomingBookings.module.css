@@ -135,7 +135,12 @@
  * column gave up 4px to pay the rest.
  */
 .monthList {
-  --row-cols: 86px 132px minmax(0, 1fr) 74px 96px 96px 96px 96px 84px 26px;
+  /* Value is 88px, not 74 — the extra 14 is breathing room, not text space.
+     See .rowValue: it's right-aligned, so its last character sat 13px (one grid
+     gap) from the Contract icon and the two read as one lump. The padding-right
+     there pushes the number back off the icon; widening the track by the same
+     amount means the number itself didn't lose any room to do it. */
+  --row-cols: 86px 132px minmax(0, 1fr) 88px 96px 96px 96px 96px 84px 26px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -147,7 +152,10 @@
    the thumbnail would simply overhang into the time column. Time gives up the
    10px to pay for it. */
 .monthListClub {
-  --row-cols: 86px 56px 122px minmax(0, 1fr) 74px 96px 96px 96px 96px 84px 26px;
+  /* Value is 88 here too — .rowValue's padding-right applies to club rows just
+     the same, and leaving this at 74 would have silently eaten 14px off the
+     number for club DJs only. Two track lists is two places to forget. */
+  --row-cols: 86px 56px 122px minmax(0, 1fr) 88px 96px 96px 96px 96px 84px 26px;
 }
 .month { }
 .monthLabel {
@@ -188,7 +196,13 @@
   color: #5e5e77;
   line-height: 1.3;
 }
-.headRight { text-align: right; }
+/* Matches .rowValue's padding-right exactly. The heading is right-aligned over
+   a right-aligned column, so if it doesn't take the same inset it stops sitting
+   above its own numbers. */
+.headRight {
+  text-align: right;
+  padding-right: 14px;
+}
 
 /* ── Row content cells (used by the new clickable .row in expand section) ── */
 /* Stacked date pill: big day number with day-of-week + month stacked
@@ -325,6 +339,12 @@
   color: #c8c8d8;
   text-align: right;
   white-space: nowrap;
+  /* The only thing separating "$544.38" from the Contract icon was the 13px
+     grid gap — and because this cell is right-aligned, the number's last digit
+     sat right on the edge of it. Money and a status icon aren't related and
+     shouldn't touch. The track grew by the same 14px, so this is pure spacing
+     and costs the number nothing. */
+  padding-right: 14px;
 }
 .overlapPill {
   margin-left: .6rem;

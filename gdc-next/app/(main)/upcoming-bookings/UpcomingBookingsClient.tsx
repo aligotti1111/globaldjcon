@@ -1742,7 +1742,22 @@ function BookingRow({
           missing one leaves a dash. That's information too — "no deposit
           requested" is a real state, and the gap says it.
         */}
-        <div className={styles.statusStrip} onClick={(e) => e.stopPropagation()}>
+        {/*
+          NO stopPropagation ON THIS WRAPPER.
+
+          It had one, and `display: contents` is why that was a bug rather than
+          a convenience: contents removes the element's BOX, not the element.
+          It's still in the DOM and clicks still bubble through it — so the
+          handler swallowed every click landing anywhere in the four status
+          columns. Roughly 400px of row: the gaps around the icons, the space
+          under the captions, and every dash. All of it dead.
+
+          The things that genuinely must not toggle the row — the icon buttons —
+          stop their own clicks now, which is where that belongs. Everything
+          else in these columns is inert and should toggle like the rest of the
+          row does.
+        */}
+        <div className={styles.statusStrip}>
           {PIPE_SLOTS.map((slotKey) => {
             const st = steps.find((s) => s.key === slotKey);
             // Hold the column open. A dash, not a dimmed icon: dimmed implies a
@@ -1883,6 +1898,12 @@ function BookingRow({
                       aria-haspopup="menu"
                       aria-expanded={open}
                       onClick={(e) => {
+                        // This click opens a menu; it must not ALSO expand the
+                        // row underneath. It used to rely on the statusStrip
+                        // wrapper for this — that wrapper was swallowing clicks
+                        // meant for the row, so the stop lives here now, on the
+                        // one element that actually needs it.
+                        e.stopPropagation();
                         if (open) { setMenuOpenKey(null); return; }
                         // Hand the button to the re-anchor effect. Without this
                         // the menu is positioned once, from a rect that stops
@@ -1991,7 +2012,10 @@ function BookingRow({
             at once cost ~106px and gave the event cell nothing back.
             Empty on non-manual rows, which is what keeps every chevron on the
             same x. */}
-        <div className={styles.rowActionsCell} onClick={(e) => e.stopPropagation()}>
+        {/* No stopPropagation here either — handleEdit and handleDelete already
+            stop their own, so this only ever blocked the empty part of the
+            cell (and, on a non-manual booking, the entire 84px of it). */}
+        <div className={styles.rowActionsCell}>
           {booking.is_manual && (
             <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
           )}
