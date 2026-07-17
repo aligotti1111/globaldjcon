@@ -1028,17 +1028,19 @@ function BookingRow({
       overridable: !trulySigned,
       done: isDone,
       color: isDone ? NEON : AMBER,
-      // The caption carries every state the icon can't. Now that the icon is
-      // always full colour, it says nothing about progress at all — so an
-      // incomplete stage MUST have a word, or it's just a picture.
-      //   not sent -> "Send"   (your move)
-      //   sent     -> "Sent"   (out there, waiting on them)
-      //   signed   -> no caption. The green check already said it, and
-      //               repeating it in text is noise on the row.
-      // 'awaiting' is awaiting_client ONLY — awaiting_dj means the contract
-      // exists but the DJ hasn't signed it, so it has NOT gone out and must
-      // not claim to have.
-      caption: isDone ? undefined : awaiting ? 'Sent' : 'Send',
+      // ONE vocabulary across all four columns — see PIPE_SLOTS:
+      //   not sent -> "Not sent"
+      //   sent     -> "Pending"
+      //   done     -> no caption; the green check is the word.
+      //
+      // The captions used to be per-column verbs ("Send", "Request"), which
+      // meant each column had its own dialect and you had to learn four. A
+      // shared vocabulary means you read the row once and know every column.
+      //
+      // 'awaiting' is awaiting_client ONLY. awaiting_dj means the contract
+      // exists but the DJ hasn't signed it — it has NOT gone out, so it reads
+      // "Not sent" and must not claim to be pending on someone else.
+      caption: isDone ? undefined : awaiting ? 'Pending' : 'Not sent',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
@@ -1199,21 +1201,22 @@ function BookingRow({
       // outright, because half the money arriving is the normal path here (an
       // unverified Venmo caps at $299.99/week against a typical deposit) and a
       // DJ reading "Requested" on money that's half in has been misled.
-      //   not requested -> "Request"   (your move)
-      //   requested     -> "Requested" (out there, waiting on them)
-      //   part paid     -> "Part paid" — its own state, not a rounding of
-      //                    "Requested". Half the money arriving is the normal
-      //                    path (an unverified Venmo caps at $299.99/week
-      //                    against a typical deposit), and a DJ reading
-      //                    "Requested" on money that's half in has been misled.
-      //   settled       -> no caption. The check says it.
+      // Same vocabulary as every other column: Not sent / Pending / check.
+      //
+      // "Part paid" is the ONE exception, and it's deliberate. Strictly it's a
+      // sub-case of Pending — the request went out and hasn't fully landed —
+      // but half the money arriving is the NORMAL path here, not an edge case:
+      // an unverified Venmo caps at $299.99/week against a typical deposit, so
+      // clients routinely send it in two goes. A DJ reading "Pending" on money
+      // that's half in their account has been told something false. The exact
+      // amounts are one click down, in the dropdown.
       caption: allDone
         ? undefined
         : anyPartial
           ? 'Part paid'
           : depositRow
-            ? 'Requested'
-            : 'Request',
+            ? 'Pending'
+            : 'Not sent',
       // Shown at the top of the dropdown, above the actions. Only once money
       // has actually been asked for — before that there's nothing to report.
       info: depositRow
@@ -1262,16 +1265,16 @@ function BookingRow({
       overridable: true,
       done,
       color: done ? NEON : MUTED,
-      // "Not sent", NOT "Request".
+      // "Not sent" — the same word as every other column, which is convenient,
+      // because it's also the only honest one available: there's nothing to
+      // send yet.
       //
-      // Every other column's incomplete caption is a verb — it names the move
-      // you can make. This one can't: there is no request to send yet. An amber
-      // "Request" sitting under a full-colour icon would read exactly like the
-      // deposit column next to it and promise a button that doesn't exist.
-      //
-      // So it states the fact and stays grey (see MUTED above): the stage is
-      // real, nothing has happened, and nothing is being asked of you. When the
-      // feature lands this becomes "Request" / "Requested" like the rest.
+      // It stays GREY though (see MUTED above), unlike the amber "Not sent" on
+      // contract and deposit. Same word, different colour, and the colour is
+      // what says "this isn't waiting on you" — the feature doesn't exist, so
+      // an amber caption here would be indistinguishable from the real call to
+      // action sitting one column to the left. When the request feature lands,
+      // this goes amber and 'Pending' starts appearing, with no wording change.
       caption: done ? undefined : 'Not sent',
       info: done ? undefined : 'Requesting playlists is coming soon.',
       actions: [],
@@ -1313,15 +1316,14 @@ function BookingRow({
         overridable: !balanceSettled,
         done,
         color: done ? NEON : AMBER,
-        // NOTE — this reverses the earlier "nothing under invoice".
+        // Same vocabulary as the rest: Not sent / Pending / check.
         //
-        // That call was right when the icon was greyed until done: dim meant
-        // not-done, so the column could stay bare. Now the icon is always full
-        // colour, and a full-colour receipt with no check and no word is a cell
-        // that says nothing at all — it looks identical whether the receipt has
-        // gone out or hasn't. The same rule has to apply here as everywhere
-        // else, or invoice becomes the one column you can't read.
-        caption: done ? undefined : balanceRow ? 'Sent' : 'Send',
+        // (This is the column that was briefly bare. That was right when the
+        // icon greyed out until done — dim carried the state. Once the icon is
+        // always full colour, a receipt with no check and no word looks
+        // identical whether it's gone out or not, and invoice becomes the one
+        // column you can't read.)
+        caption: done ? undefined : balanceRow ? 'Pending' : 'Not sent',
         info: balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
