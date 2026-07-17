@@ -830,12 +830,12 @@ select.input {
   font-size: 21px;
   line-height: 1;
 }
-/* Not reached yet: drained of colour and dimmed. No badge — the absence IS
-   the state. */
-.stIconOff {
-  filter: grayscale(1);
-  opacity: .28;
-}
+/* .stIconOff (grayscale + 28% opacity for any not-done step) is GONE.
+   It made a contract that had been sent and was sitting with the client look
+   identical to one nobody had touched — both drained and dim — while the
+   caption underneath said "Sent". The picture contradicted the word.
+   The icon now only ever answers "which stage is this". Done is the badge,
+   everything else is the caption. */
 
 /* Done. An SVG stroke, not a ✓ character: at 19px the text glyph renders
    soft, and differently on every OS. */
@@ -894,7 +894,10 @@ select.input {
   width: 36px;
   text-align: center;
   white-space: nowrap;
-  color: #c08a3e;
+  /* Colour is applied inline, per step — amber for a stage you can act on,
+     grey for one you can't (Playlist, until the feature exists). It was one
+     hard-coded amber here, which made every caption look like a call to
+     action. See capColor in UpcomingBookingsClient. */
 }
 
 /* Nothing to do here and nothing to open — no contract required, no deposit

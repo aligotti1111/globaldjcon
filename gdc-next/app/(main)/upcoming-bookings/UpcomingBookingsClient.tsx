@@ -1022,15 +1022,17 @@ function BookingRow({
       overridable: !trulySigned,
       done: isDone,
       color: isDone ? NEON : AMBER,
-      // THE reason the caption exists. Three states, and without a word here
-      // two of them look identical:
-      //   not sent   -> dimmed icon, no caption. Nothing has happened.
-      //   sent       -> full colour, amber dot, "Sent". It's out there.
-      //   signed     -> green check, no caption. Done.
-      // 'awaiting' is awaiting_client only — awaiting_dj means the contract
-      // exists but the DJ hasn't signed, so it has NOT gone out and must not
-      // claim to have.
-      caption: awaiting ? 'Sent' : undefined,
+      // The caption carries every state the icon can't. Now that the icon is
+      // always full colour, it says nothing about progress at all — so an
+      // incomplete stage MUST have a word, or it's just a picture.
+      //   not sent -> "Send"   (your move)
+      //   sent     -> "Sent"   (out there, waiting on them)
+      //   signed   -> no caption. The green check already said it, and
+      //               repeating it in text is noise on the row.
+      // 'awaiting' is awaiting_client ONLY — awaiting_dj means the contract
+      // exists but the DJ hasn't signed it, so it has NOT gone out and must
+      // not claim to have.
+      caption: isDone ? undefined : awaiting ? 'Sent' : 'Send',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
@@ -1191,13 +1193,21 @@ function BookingRow({
       // outright, because half the money arriving is the normal path here (an
       // unverified Venmo caps at $299.99/week against a typical deposit) and a
       // DJ reading "Requested" on money that's half in has been misled.
+      //   not requested -> "Request"   (your move)
+      //   requested     -> "Requested" (out there, waiting on them)
+      //   part paid     -> "Part paid" — its own state, not a rounding of
+      //                    "Requested". Half the money arriving is the normal
+      //                    path (an unverified Venmo caps at $299.99/week
+      //                    against a typical deposit), and a DJ reading
+      //                    "Requested" on money that's half in has been misled.
+      //   settled       -> no caption. The check says it.
       caption: allDone
         ? undefined
         : anyPartial
           ? 'Part paid'
           : depositRow
             ? 'Requested'
-            : undefined,
+            : 'Request',
       // Shown at the top of the dropdown, above the actions. Only once money
       // has actually been asked for — before that there's nothing to report.
       info: depositRow
@@ -1246,9 +1256,17 @@ function BookingRow({
       overridable: true,
       done,
       color: done ? NEON : MUTED,
-      // No caption. There's nothing in flight to report until the feature can
-      // actually send a request — a caption here would be a promise the app
-      // can't keep.
+      // "Not sent", NOT "Request".
+      //
+      // Every other column's incomplete caption is a verb — it names the move
+      // you can make. This one can't: there is no request to send yet. An amber
+      // "Request" sitting under a full-colour icon would read exactly like the
+      // deposit column next to it and promise a button that doesn't exist.
+      //
+      // So it states the fact and stays grey (see MUTED above): the stage is
+      // real, nothing has happened, and nothing is being asked of you. When the
+      // feature lands this becomes "Request" / "Requested" like the rest.
+      caption: done ? undefined : 'Not sent',
       info: done ? undefined : 'Requesting playlists is coming soon.',
       actions: [],
     });
@@ -1289,11 +1307,15 @@ function BookingRow({
         overridable: !balanceSettled,
         done,
         color: done ? NEON : AMBER,
-        // Nothing under invoice — his call, and the right one. The icon plus
-        // the dot is enough here because, unlike contract, there is no state
-        // where "sent" and "not sent" look the same: an unsent invoice can
-        // only exist once the deposit is in, and that's already the amber dot.
-        caption: undefined,
+        // NOTE — this reverses the earlier "nothing under invoice".
+        //
+        // That call was right when the icon was greyed until done: dim meant
+        // not-done, so the column could stay bare. Now the icon is always full
+        // colour, and a full-colour receipt with no check and no word is a cell
+        // that says nothing at all — it looks identical whether the receipt has
+        // gone out or hasn't. The same rule has to apply here as everywhere
+        // else, or invoice becomes the one column you can't read.
+        caption: done ? undefined : balanceRow ? 'Sent' : 'Send',
         info: balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
@@ -1468,9 +1490,34 @@ function BookingRow({
             // is the state the dot is for — and the reason the caption exists,
             // because a dot alone can't tell "sent, waiting" from "signed".
             const waiting = !st.done && (!!st.caption || st.state === 'pending');
+            // The caption takes the step's own colour, softened.
+            //
+            // It can't be one hard-coded amber any more. Every incomplete stage
+            // has a caption now, including Playlist — and Playlist's colour is
+            // MUTED because there's nothing you can do about it yet. An amber
+            // "Not sent" there would read exactly like the amber "Request" in
+            // the deposit column beside it and promise an action the app can't
+            // perform. Grey step, grey word.
+            //
+            // The amber is deliberately #c08a3e, not the AMBER the icon dot
+            // uses: at 9.5px the full-strength value vibrates against the dark
+            // row. Same hue, dialled back for the size it's rendered at.
+            const capColor = st.color === MUTED ? '#5a5a72' : '#c08a3e';
             const inner = (
               <>
-                <span className={`${styles.stIcon} ${st.done ? '' : styles.stIconOff}`}>
+                {/*
+                  ALWAYS FULL COLOUR. The icon used to be grayscale+28% until
+                  the step was DONE, which meant a contract that had been sent
+                  and was sitting with the client rendered identically to one
+                  nobody had touched — drained and dim — while the caption right
+                  under it said "Sent". The icon was contradicting the word.
+
+                  The icon's job is only ever "which stage is this". The badge
+                  says done, the caption says the rest. A stage that exists on
+                  this booking is a real stage; greying it out was the picture
+                  saying it wasn't.
+                */}
+                <span className={styles.stIcon}>
                   {/* The emoji render in their OWN colours — no ring, no tint.
                       Not reached yet = drained and dimmed, so progress is
                       legible without reading anything.
@@ -1531,12 +1578,12 @@ function BookingRow({
                       }}
                     >
                       <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap}>{st.caption || ''}</span>
+                      <span className={styles.stCap} style={{ color: capColor }}>{st.caption || ''}</span>
                     </button>
                   ) : (
                     <div className={styles.stBtn} style={{ cursor: 'default' }} title={st.label}>
                       <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap}>{st.caption || ''}</span>
+                      <span className={styles.stCap} style={{ color: capColor }}>{st.caption || ''}</span>
                     </div>
                   )}
                   {open && hasMenu && menuPos && (
