@@ -89,12 +89,17 @@ export default async function PlannerPage({
     requester_name: string | null;
   } | null;
 
+  // `name`, NOT `dj_name`. There is no users.dj_name — it's a column on BOOKINGS
+  // and a contract placeholder. Selecting it made PostgREST reject the query,
+  // which returned null, which silently fell back to "your DJ" on every planner
+  // ever sent. A wrong column in a select doesn't throw; it hands you nothing,
+  // and a fallback that reads fine is how it goes unnoticed.
   const { data: djData } = await admin
     .from('users')
-    .select('dj_name')
+    .select('name')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const djName = (djData as unknown as { dj_name?: string | null } | null)?.dj_name || 'your DJ';
+  const djName = (djData as unknown as { name?: string | null } | null)?.name || 'your DJ';
 
   // Hidden fields never reach the browser. Filtering here rather than in the
   // form means a hidden question isn't sitting in the page source of a document

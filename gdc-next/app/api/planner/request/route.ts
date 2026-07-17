@@ -166,14 +166,24 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: djData } = await admin
+    // `name`, NOT `dj_name`. There is no users.dj_name — dj_name is a column on
+    // BOOKINGS (denormalised) and a placeholder in the contract template, and
+    // selecting it here made PostgREST reject the whole query. That returned
+    // null, which fell through to the !djRow branch below and told every DJ
+    // alive they weren't Pro. A wrong column name in a select doesn't throw;
+    // it just quietly hands you nothing.
+    const { data: djData, error: djErr } = await admin
       .from('users')
-      .select('name, dj_name, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .select('name, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
       .eq('id', user.id)
       .maybeSingle();
-    const djRow = djData as unknown as
-      (AccessFields & { name?: string | null; dj_name?: string | null }) | null;
-    const djName = djRow?.dj_name || djRow?.name || 'your DJ';
+    const djRow = djData as unknown as (AccessFields & { name?: string | null }) | null;
+    // A failed QUERY and a genuinely un-subscribed DJ are different problems and
+    // must not share an answer. That conflation is exactly what hid this bug.
+    if (djErr) {
+      return NextResponse.json({ error: 'Could not read your account.' }, { status: 500 });
+    }
+    const djName = djRow?.name || 'your DJ';
 
     // Tier gate, SERVER-side. The planner is part of the Pro suite that
     // lib/access already describes as "contracts / deposits / event info
