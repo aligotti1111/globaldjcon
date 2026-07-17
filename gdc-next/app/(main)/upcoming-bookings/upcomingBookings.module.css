@@ -699,7 +699,33 @@ select.input {
 .rowWrap {
   overflow: hidden;
 }
-.rowWrapExpanded { }
+
+/*
+ * ── THE ELEVATION LADDER ────────────────────────────────────────────────
+ *
+ * The page body is --black: #000000. Pure black. Against that, the expanded
+ * row was rgba(255,255,255,.05) — which composites to #0d0d0d — and the details
+ * panel was --deep: #0a0a10. So the page, the open row and its panel were
+ * #000000 / #0d0d0d / #0a0a10: three surfaces within four percent lightness of
+ * each other. They weren't blending by accident, they were the same colour.
+ *
+ * Four distinct steps now, each one clearly above the last:
+ *
+ *   page             #000000   --black
+ *   row (hover)      #0a0a0a   a hint, so hover reads without shouting
+ *   row (expanded)   #16161f   the HEADER of the open thing — the lightest
+ *   panel            #0d0d14   above the page, below its own header
+ *
+ * The header is deliberately lighter than the body it heads. That's what makes
+ * it read as a header rather than as more page.
+ *
+ * The neon left edge binds the two together: without it an expanded row and its
+ * panel are just two stacked rectangles, and in a flush table with no gaps
+ * there's nothing else to say they're one unit — or which row it belongs to.
+ */
+.rowWrapExpanded {
+  box-shadow: inset 3px 0 0 var(--neon);
+}
 
 /*
  * The clickable summary row — one record in a table.
@@ -738,13 +764,19 @@ select.input {
   transition: background .12s;
 }
 .row:hover {
-  background: rgba(255, 255, 255, .03);
+  background: rgba(255, 255, 255, .04);
 }
-/* Expanded: the row has no border to join to the panel any more, so it says
-   "this one is open" by staying lit instead. */
+/*
+ * Expanded = the header of the open block, and the LIGHTEST surface on screen.
+ * It was rgba(255,255,255,.05) — #0d0d0d against a #000000 page, a 5% lift that
+ * you could not see. A solid value, not an alpha: alphas over pure black are
+ * where the whole no-contrast problem started, and this needs to be a step, not
+ * a hint.
+ */
 .rowWrapExpanded .row,
 .rowWrapExpanded .row:hover {
-  background: rgba(255, 255, 255, .05);
+  background: #16161f;
+  border-top-color: transparent;
 }
 /*
  * .rowToggle is now just the TIME cell.
@@ -959,12 +991,24 @@ select.input {
 .rowChevronOpen { transform: rotate(180deg); }
 
 /* The details panel that drops down below the row when expanded. */
+/*
+ * The panel body. --deep (#0a0a10) against a #000000 page was a 4% lift — it
+ * read as "the page continues", not as a panel.
+ *
+ * The border and `border-radius: 0 0 8px 8px` were vestigial: they existed to
+ * join the bottom of a rounded CARD. There is no card any more, so the rounded
+ * bottom corners were floating under a square row, and `border-top: none` was
+ * removing a join to an edge that no longer exists.
+ *
+ * Now: a real surface, square, with one hairline separating it from its own
+ * header. The neon left edge comes from .rowWrapExpanded and runs through both.
+ */
 .detailsPanel {
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  padding: 1rem 1.1rem 1.25rem;
+  background: #0d0d14;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 0;
+  padding: 1.1rem 1.25rem 1.4rem 1.5rem;
 }
 .detailsStack {
   display: flex;
