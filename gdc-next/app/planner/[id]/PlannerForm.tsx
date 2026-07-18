@@ -665,7 +665,7 @@ function SongInput({
   return (
     <div className={styles.songWrap}>
       <input
-        className={`${styles.input} ${styles.inputSong}`}
+        className={styles.input}
         placeholder="Search a song, or type it"
         value={text}
         onChange={(e) => {

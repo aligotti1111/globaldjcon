@@ -198,9 +198,11 @@
   background: #0a0a10;
   border: 1px solid #23233a;
   border-radius: 8px;
-  padding: .75rem .85rem;
+  /* Compact — every text box on the form is this height, matching the must-play
+     boxes. Font stays 16px (iOS zooms anything smaller and never zooms back);
+     only the vertical padding comes down. */
+  padding: .45rem .7rem;
   color: #f2f2f7;
-  /* 16px. See the header — anything smaller and iOS zooms and never returns. */
   font-size: 16px;
   font-family: inherit;
   outline: none;
@@ -213,16 +215,11 @@
 
 .textarea { resize: vertical; line-height: 1.5; }
 
-/* The must-play search boxes. Shorter than a normal input so five of them stack
-   without dominating the page. Font stays 16px — anything smaller and iOS zooms
-   the whole form on focus and never zooms back. Only the height comes down. */
-.inputSong { padding: .45rem .7rem; }
-
 select.input {
   appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, #5e5e77 50%),
                     linear-gradient(135deg, #5e5e77 50%, transparent 50%);
-  background-position: calc(100% - 18px) 1.15rem, calc(100% - 13px) 1.15rem;
+  background-position: calc(100% - 18px) .85rem, calc(100% - 13px) .85rem;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
   padding-right: 2.2rem;
