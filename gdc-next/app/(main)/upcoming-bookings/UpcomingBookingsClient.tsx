@@ -1763,7 +1763,10 @@ function BookingRow({
               // Opens the modal rather than firing. The DJ sees which planner,
               // how many questions and who it's going to before it goes — and
               // can change any of the three.
-              : [{ label: 'Request planner', run: () => { setPlannerErr(null); setSendOpen(true); } }],
+              // Opens the modal — which is the whole choose-a-planner, preview,
+              // customise and send flow. "Request planner" undersold it as one
+              // action; it's the doorway to all of it.
+              : [{ label: 'Choose & send planner', run: () => { setPlannerErr(null); setSendOpen(true); } }],
     });
   }
 
