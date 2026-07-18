@@ -60,6 +60,26 @@
   cursor: pointer;
 }
 .print:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .5); }
+.print:disabled { opacity: .6; cursor: default; }
+
+/* Download PDF (primary) + Print (fallback), stacked tight in the header. */
+.dlWrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.printAlt {
+  background: transparent;
+  border: none;
+  color: #6c6c86;
+  font-family: inherit;
+  font-size: .74rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: .4rem .2rem;
+}
+.printAlt:hover { color: #9d9db5; }
 
 .meta {
   font-size: .95rem;
@@ -256,6 +276,33 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 .noPrint { }
+
+/* ── PDF export (one-click Download) ──────────────────────────────────────
+ * html2canvas captures the LIVE screen styles, not @media print — so the same
+ * dark→white inversion has to exist as a class the Download button toggles on
+ * the page root just for the capture, then removes. Kept in lockstep with the
+ * @media print block below: if you change a colour there, change it here. */
+.export { background: #fff !important; color: #000 !important; }
+.export .noPrint { display: none !important; }
+.export .head { border-bottom-color: #000 !important; }
+.export .title { color: #000 !important; }
+.export .meta { color: #000 !important; }
+.export .metaSub,
+.export .label,
+.export .trackNum,
+.export .tTime,
+.export .pRole,
+.export .artist { color: #444 !important; }
+.export .blank,
+.export .na { color: #888 !important; }
+.export .foot { color: #888 !important; border-top-color: #ccc !important; }
+.export .label { border-bottom-color: #ccc !important; }
+.export .warn { color: #000 !important; font-weight: 700; }
+.export .dnp { border: 2px solid #000 !important; border-radius: 0; }
+.export .dnpHead { color: #000 !important; }
+.export .dnpList { color: #000 !important; font-weight: 500; }
+.export .say { color: #000 !important; font-weight: 700; }
+.export .trackLink { display: none !important; }
 
 @media print {
   /* The rules below are the whole point of this file. They come LAST because

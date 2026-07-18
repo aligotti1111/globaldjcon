@@ -142,8 +142,12 @@ export default async function SheetPage({
   const hasDnp = Array.isArray(dnp) && dnp.length > 0;
 
   return (
-    <div className={styles.page}>
-      <div className={styles.sheet}>
+    // id + data-sheet let the Download button find the page root (to force the
+    // light/paper styling during capture) and the sheet itself (what actually
+    // goes into the PDF). See PrintButton.
+    <div className={styles.page} id="runSheet">
+      <div className={styles.sheet} data-sheet>
+
 
         <header className={styles.head}>
           <div className={styles.headTop}>
