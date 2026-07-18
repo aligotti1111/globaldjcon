@@ -218,6 +218,23 @@
 .act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
 .lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
 
+/* The enable/disable toggle — a text button, not an eye. Quiet by default so it
+   doesn't shout over the question; the label is the point. */
+.toggle {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #9d9db5;
+  padding: .18rem .5rem;
+  white-space: nowrap;
+}
+.toggle:hover { color: #f2f2f7; border-color: rgba(255, 255, 255, .3); }
+
 .help {
   font-size: .74rem;
   color: #75758d;

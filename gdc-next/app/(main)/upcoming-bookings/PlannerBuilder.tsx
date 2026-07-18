@@ -201,10 +201,10 @@ export default function PlannerBuilder({
                     ) : null}
                     <button
                       type="button"
-                      className={styles.act}
+                      className={styles.toggle}
                       title={f.hidden ? 'Turn on — client will see this' : 'Turn off — hide from the client'}
                       onClick={() => onPatch(f.id, { hidden: !f.hidden })}
-                    >{f.hidden ? '🙈' : '👁'}</button>
+                    >{f.hidden ? 'Enable' : 'Disable'}</button>
                     {f.is_custom ? (
                       <button
                         type="button"
