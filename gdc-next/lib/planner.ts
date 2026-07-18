@@ -209,6 +209,16 @@ export interface BookingPlanner {
 // RESOLUTION
 // ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * Title-case a field label for DISPLAY only. Capitalises the first letter of
+ * every whitespace-separated word and leaves the rest untouched, so
+ * "first dance song" reads "First Dance Song" and "don't play" stays "Don't
+ * Play". Never mutates what's stored — applied at the point the client or DJ
+ * sees the question, so a DJ can still type freely in the editor.
+ */
+export const titleCaseLabel = (s: string): string =>
+  (s || '').replace(/(^|\s)(\S)/g, (_m, sp, c) => sp + c.toUpperCase());
+
 /** Reserved. A custom field must never collide with these in `responses`. */
 export const NOTES_FIELD_ID = 'notes';
 export const DO_NOT_PLAY_FIELD_ID = 'do_not_play';

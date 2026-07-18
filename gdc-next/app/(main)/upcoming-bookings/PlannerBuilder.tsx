@@ -25,12 +25,22 @@
 
 import { useState } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, titleCaseLabel } from '@/lib/planner';
 import styles from './plannerBuilder.module.css';
 
 // The booking facts that are never planner fields — they come straight off the
 // booking row. Same set the client's page shows in its "Your booking" strip.
-const BOOKING_FACTS = ['Date', 'Time', 'Venue', 'Package', 'Guests', 'Your number'];
+// The sample values are illustrative — there's no client while you arrange a
+// template — so the strip reads like a real filled page instead of eight
+// repeated "filled from the booking" lines.
+const BOOKING_FACTS: { label: string; sample: string }[] = [
+  { label: 'Date', sample: 'Sat, Aug 15, 2026' },
+  { label: 'Time', sample: '6:00 PM' },
+  { label: 'Venue', sample: 'The Grand Ballroom' },
+  { label: 'Package', sample: 'Premium — 5 hours' },
+  { label: 'Guests', sample: '150' },
+  { label: 'Your number', sample: '(555) 012-3456' },
+];
 
 const ADDABLE: { type: PlannerFieldType; label: string }[] = [
   { type: 'text', label: 'Short text' },
@@ -104,21 +114,22 @@ export default function PlannerBuilder({
           arranges the WHOLE page, not just the middle of it. The values are
           illustrative (there's no client yet) — the point is the layout. */}
       <div className={styles.known}>
-        <div className={styles.knownHead}>Your booking</div>
-        {BOOKING_FACTS.map((label) => (
-          <div key={label} className={styles.knownRow}>
-            <span className={styles.knownK}>{label}</span>
-            <span className={styles.knownV}>filled from the booking</span>
+        <div className={styles.knownHead}>Your booking · example</div>
+        {BOOKING_FACTS.map((f) => (
+          <div key={f.label} className={styles.knownRow}>
+            <span className={styles.knownK}>{f.label}</span>
+            <span className={styles.knownV}>{f.sample}</span>
           </div>
         ))}
         {shownAtTop.map((f) => (
           <div key={f.id} className={styles.knownRow}>
-            <span className={styles.knownK}>{f.label}</span>
-            <span className={styles.knownV}>filled from the booking</span>
+            <span className={styles.knownK}>{titleCaseLabel(f.label)}</span>
+            <span className={styles.knownV}>—</span>
           </div>
         ))}
         <p className={styles.knownNote}>
-          These come from the booking and contract — shown to the client, never asked.
+          Sample values shown. On a real planner these are filled from the booking and
+          contract — the client sees them read-only at the top, never asked.
         </p>
       </div>
 
@@ -178,7 +189,7 @@ export default function PlannerBuilder({
                       onClick={() => setEditing(f.id)}
                       title="Click to rename"
                     >
-                      {f.label || 'Untitled question'}
+                      {f.label ? titleCaseLabel(f.label) : 'Untitled question'}
                       {f.required ? <span className={styles.req}>required</span> : null}
                       {f.is_custom ? <span className={styles.mine}>yours</span> : null}
                     </button>

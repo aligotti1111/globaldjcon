@@ -33,6 +33,7 @@ import {
   DO_NOT_PLAY_FIELD_ID,
   NOTES_FIELD_ID,
   HONOREE_FIELD_ID,
+  titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
   type Track,
@@ -186,7 +187,7 @@ export default async function SheetPage({
         <div className={styles.grid}>
           {rest.map((f) => (
             <section key={f.id} className={styles.block}>
-              <div className={styles.label}>{f.label}</div>
+              <div className={styles.label}>{titleCaseLabel(f.label)}</div>
               <Answer field={f} responses={responses} />
             </section>
           ))}
@@ -194,7 +195,7 @@ export default async function SheetPage({
 
         {notes && hasAnswer(responses[notes.id]) && (
           <section className={styles.notes}>
-            <div className={styles.label}>{notes.label}</div>
+            <div className={styles.label}>{titleCaseLabel(notes.label)}</div>
             <div className={styles.notesBody}>{String(responseValue(responses[notes.id]) ?? '')}</div>
           </section>
         )}

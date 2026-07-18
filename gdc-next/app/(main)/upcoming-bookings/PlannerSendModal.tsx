@@ -25,6 +25,7 @@
 // field id, and a deleted field takes every answer ever given to it with it.
 
 import { useEffect, useState } from 'react';
+import { titleCaseLabel } from '@/lib/planner';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import PlannerBuilder from './PlannerBuilder';
 import styles from './plannerSend.module.css';
@@ -383,7 +384,7 @@ export default function PlannerSendModal({
             {shown.length > 0 && (
               <div className={styles.shown}>
                 <span className={styles.shownHead}>Filled in for them</span>
-                {shown.map((f) => f.label).join(' · ')}
+                {shown.map((f) => titleCaseLabel(f.label)).join(' · ')}
               </div>
             )}
 
@@ -391,7 +392,7 @@ export default function PlannerSendModal({
               {asked.map((f) => (
                 <li key={f.id} className={styles.pvRow}>
                   <span className={styles.pvLabel}>
-                    {f.label}
+                    {titleCaseLabel(f.label)}
                     {f.required ? <span className={styles.req}>required</span> : null}
                   </span>
                   {f.help ? <span className={styles.pvHelp}>{f.help}</span> : null}

@@ -25,6 +25,7 @@ import {
   responseValue,
   askedFields,
   infoFields,
+  titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
   type Track,
@@ -284,7 +285,7 @@ export default function PlannerForm({
                 still a question and stays in the list below. */}
             {info.map((f) => (
               <div key={f.id} className={styles.knownRow}>
-                <span className={styles.knownK}>{f.label}</span>
+                <span className={styles.knownK}>{titleCaseLabel(f.label)}</span>
                 <span className={styles.knownV}>{infoText(f, responses)}</span>
               </div>
             ))}
@@ -358,7 +359,7 @@ function Field({
   return (
     <div className={`${styles.field} ${na ? styles.fieldNa : ''}`}>
       <div className={styles.fieldHead}>
-        <label className={styles.label}>{field.label}</label>
+        <label className={styles.label}>{titleCaseLabel(field.label)}</label>
         {/* Every field gets this. A client can't delete a question the DJ asked
             (spec §7) — but "doesn't apply to us" is a real answer and they need
             a way to give it. */}

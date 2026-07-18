@@ -24,6 +24,7 @@ import {
   plannerProgress,
   playLink,
   isExactLink,
+  titleCaseLabel,
   DO_NOT_PLAY_FIELD_ID,
   type PlannerField,
   type PlannerResponses,
@@ -224,7 +225,7 @@ export default function PlannerPanel({ bookingId }: { bookingId: string }) {
 
       {planner.fields.map((f) => (
         <div key={f.id} className={f.id === DO_NOT_PLAY_FIELD_ID ? styles.fieldNo : styles.field}>
-          <div className={styles.label}>{f.label}</div>
+          <div className={styles.label}>{titleCaseLabel(f.label)}</div>
           <Answer field={f} responses={planner.responses} />
         </div>
       ))}
