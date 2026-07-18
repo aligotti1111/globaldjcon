@@ -103,7 +103,13 @@ function TypeBadge({
     current === 'host' ? styles.formTypeLabelHost
     : current === 'venue' ? styles.formTypeLabelVenue
     : '';
-  const others = (['dj', 'host', 'venue'] as const).filter((t) => t !== current);
+  // Venue accounts are hidden at launch — not offered in the switcher. To
+  // bring them back, drop 'venue' from HIDDEN_TYPES below (and re-add the Venue
+  // button in TypeSelect). Everything else for venue signup is still wired up.
+  const HIDDEN_TYPES: ReadonlyArray<'dj' | 'host' | 'venue'> = ['venue'];
+  const others = (['dj', 'host', 'venue'] as const).filter(
+    (t) => t !== current && !HIDDEN_TYPES.includes(t),
+  );
 
   return (
     <div ref={wrapRef} className={styles.typeBadgeWrap}>
@@ -290,6 +296,12 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
           </svg>
         </button>
 
+        {/* Venue account — HIDDEN AT LAUNCH. Venues aren't onboarding yet, so
+            the option is removed from the chooser (and from the TypeBadge
+            switcher above). The VenueForm and 'venue' routing below are left
+            intact; restore this button and drop 'venue' from HIDDEN_TYPES to
+            turn it back on.
+
         <button
           type="button"
           className={styles.acctTypeBtn}
@@ -309,6 +321,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
             <path d="M9 18l6-6-6-6" />
           </svg>
         </button>
+        */}
       </div>
     </>
   );
