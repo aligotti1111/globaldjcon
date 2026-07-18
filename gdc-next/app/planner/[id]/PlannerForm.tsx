@@ -253,8 +253,9 @@ export default function PlannerForm({
           </p>
           {status === 'submitted' && (
             <div className={styles.submitted}>
-              <strong>Sent to {djName}.</strong> You can still change anything below
-              &mdash; they&rsquo;ll see the update.
+              <strong>Sent to {djName}.</strong> You still have time to update the
+              information below &mdash; {djName} will be notified. Please have
+              everything completed at least <strong>10 days before</strong> the event.
             </div>
           )}
         </header>

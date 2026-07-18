@@ -14,7 +14,8 @@
 
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { Resend } from 'resend';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import {
   visibleFields,
   type PlannerField,
@@ -25,6 +26,9 @@ import {
 export const runtime = 'nodejs';
 // Per-planner state. Must never be cached or prerendered.
 export const dynamic = 'force-dynamic';
+
+const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
+const SITE_URL = 'https://globaldjconnect.com';
 
 // ── Caps ──────────────────────────────────────────────────────────────────
 // A booking_planners row is ONE booking's answers, not a bucket. Without caps
@@ -37,6 +41,7 @@ const MAX_BODY_BYTES = 256 * 1024;
 
 interface PlannerRow {
   id: string;
+  booking_id: string;
   status: string;
   fields: PlannerField[];
   responses: PlannerResponses;
@@ -188,10 +193,122 @@ function mergeResponses(
 async function load(db: SupabaseClient, id: string): Promise<PlannerRow | null> {
   const { data } = await db
     .from('booking_planners')
-    .select('id, status, fields, responses')
+    .select('id, booking_id, status, fields, responses')
     .eq('id', id)
     .maybeSingle();
   return (data as unknown as PlannerRow | null) ?? null;
+}
+
+/** Minimal escape — a venue called "Smith & Sons <Hall>" must not break the HTML. */
+const esc = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Cosmetic shell — the same one /api/payments and the request email use. */
+function shell(content: string): string {
+  return `
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<tr><td style="background:#000000;padding:24px 32px;" align="center">
+<div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div>
+</td></tr>
+<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
+<p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
+</td></tr></table>
+</td></tr></table>`;
+}
+
+/**
+ * The client hit Send. Tell BOTH of them.
+ *
+ * This did not exist: submitting flipped a status and told nobody. The DJ found
+ * out by opening the app and noticing a green check — which means the answer to
+ * "has anyone sent their planner?" was "go and look", forever.
+ *
+ * Two different emails because they need opposite things:
+ *   · the DJ gets the RUN SHEET link — the thing they work from
+ *   · the client gets their own link back, and the deadline
+ *
+ * NEVER THROWS. It's called after the save has already committed. A dead Resend
+ * key must not turn a successful submit into an error the client sees — they'd
+ * hit Send again, and again, on a planner that saved the first time.
+ */
+async function notifySubmitted(admin: ReturnType<typeof createAdminClient>, plannerId: string, bookingId: string) {
+  if (!process.env.RESEND_API_KEY) return;
+  try {
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('dj_id, requester_id, host_email, requester_name, event_date, venue_name')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as unknown as {
+      dj_id: string | null; requester_id: string | null; host_email: string | null;
+      requester_name: string | null; event_date: string | null; venue_name: string | null;
+    } | null;
+    if (!b) return;
+
+    const { data: djData } = await admin
+      .from('users')
+      .select('name')
+      .eq('id', b.dj_id as string)
+      .maybeSingle();
+    const djName = (djData as unknown as { name?: string | null } | null)?.name || 'your DJ';
+
+    const djEmail = b.dj_id ? await resolveUserEmail(b.dj_id) : null;
+    const clientEmail = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
+
+    const when = b.event_date
+      // T12:00:00 — bare parses as UTC midnight and reads as the day before.
+      ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        })
+      : 'the event';
+    const who = b.requester_name?.trim() || 'Your client';
+    const recap = `<div style="background:#f8f8f8;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#666;font-size:13px;line-height:1.7;">${esc(when)}${b.venue_name ? ` · ${esc(b.venue_name)}` : ''}</p></div>`;
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    // ── The DJ ──────────────────────────────────────────────────────────
+    if (djEmail) {
+      await resend.emails.send({
+        from: FROM,
+        to: djEmail,
+        subject: `${who} sent their Planner & Playlist — ${when}`,
+        html: shell(`
+<h1 style="margin:0 0 6px;font-size:22px;color:#111;">${esc(who)} sent their planner</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Songs, names and the do-not-play list are in. They can still change things until the night, and anything they change appears here automatically.</p>
+${recap}
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+<tr><td style="background:#000000;border-radius:8px;">
+<a href="${SITE_URL}/sheet/${bookingId}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open the run sheet</a>
+</td></tr></table>
+<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">One page, built for the night. Print it or keep it on your phone.</p>`),
+      });
+    }
+
+    // ── The client ──────────────────────────────────────────────────────
+    if (clientEmail) {
+      await resend.emails.send({
+        from: FROM,
+        to: clientEmail,
+        subject: `Your Planner & Playlist is with ${djName}`,
+        html: shell(`
+<h1 style="margin:0 0 6px;font-size:22px;color:#111;">Sent to ${esc(djName)}</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">You still have time to update the information — ${esc(djName)} will be notified. Please have everything completed <strong style="color:#111;">at least 10 days before</strong> the event.</p>
+${recap}
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+<tr><td style="background:#000000;border-radius:8px;">
+<a href="${SITE_URL}/planner/${plannerId}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open your planner</a>
+</td></tr></table>
+<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">Same link as before — it still works, and it still saves as you go.</p>`),
+      });
+    }
+  } catch {
+    // The planner IS submitted. Silence here is correct: an email that didn't
+    // send must never look like a submit that didn't happen.
+  }
 }
 
 /** PATCH — autosave. Body: { responses: { [fieldId]: {value}|{na:true}|null } } */
@@ -311,6 +428,16 @@ export async function POST(
       .eq('id', id);
     if (error) {
       return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
+    }
+
+    // AFTER the write, and only on the FIRST submit.
+    //
+    // `row.status` is the value BEFORE this update, so this fires once and
+    // never again — a client who tidies an answer next week doesn't re-mail the
+    // DJ. Awaited rather than fired-and-forgotten: a serverless function can be
+    // frozen the instant it responds, and a floating promise dies with it.
+    if (isSubmit && row.status !== 'submitted') {
+      await notifySubmitted(createAdminClient(), id, row.booking_id);
     }
 
     // planner_status on the booking is NOT set here. The trigger
