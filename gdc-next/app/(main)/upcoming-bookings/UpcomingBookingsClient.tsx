@@ -1677,9 +1677,17 @@ function BookingRow({
       ? `${planner.answered}/${planner.total}`
       : null;
 
+    // Percent complete — what shows under the icon. A planner fills in over
+    // days, so the DJ's real question is "how far along is this?", and "35%"
+    // answers it at a glance where "12/34" makes them do the division. The
+    // exact fraction still rides along in the hover tooltip (info) below.
+    const pct = planner && planner.total > 0
+      ? Math.round((planner.answered / planner.total) * 100)
+      : null;
+
     const caption =
       done ? undefined
-      : pstatus === 'partial' ? (frac || 'Pending')
+      : pct !== null ? `${pct}%`
       : pstatus === 'sent' ? 'Pending'
       : 'Not sent';
 
@@ -1702,7 +1710,7 @@ function BookingRow({
       caption,
       info: plannerErr
         ? undefined
-        : (planner && pstatus === 'partial' && frac ? `${frac} answered` : undefined),
+        : (planner && pstatus === 'partial' && frac ? `${frac} answered (${pct}%)` : undefined),
       // plannerErr wins the hint when there is one — it's the newest thing that
       // happened and the only one the DJ hasn't read yet.
       //
