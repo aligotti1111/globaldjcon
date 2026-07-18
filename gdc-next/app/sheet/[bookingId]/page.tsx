@@ -30,12 +30,16 @@ import {
   responseValue,
   hasAnswer,
   playLink,
+  pickTemplate,
+  composeFields,
+  applyPrefill,
   DO_NOT_PLAY_FIELD_ID,
   NOTES_FIELD_ID,
   HONOREE_FIELD_ID,
   titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
+  type PlannerTemplate,
   type Track,
   type Person,
   type TimelineRow,
@@ -99,16 +103,15 @@ export default async function SheetPage({
     submitted_at: string | null;
   } | null;
 
-  // 404 rather than 403 on someone else's booking — a DJ probing ids shouldn't
-  // learn which ones exist.
-  if (!planner || planner.dj_id !== user.id) notFound();
-
+  // The booking is needed either way — for the header, and (when no planner has
+  // been sent yet) for its dj_id and event_type so we can resolve a BLANK sheet.
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, package_title')
+    .select('dj_id, event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, package_title')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as {
+    dj_id: string | null;
     event_type: string | null;
     // Event-type detail from the booking form (surprise party, type of
     // anniversary/graduation/reunion, birthday age). Null when the type has no
@@ -125,8 +128,59 @@ export default async function SheetPage({
     package_title: string | null;
   } | null;
 
-  const responses = planner.responses ?? {};
-  const fields = visibleFields(planner.fields ?? []);
+  // 404 rather than 403 on someone else's booking — a DJ probing ids shouldn't
+  // learn which ones exist. Ownership is read from whichever record we have:
+  // the planner if one exists, otherwise the booking itself.
+  const ownerId = planner?.dj_id ?? b?.dj_id ?? null;
+  if (!b || ownerId !== user.id) notFound();
+
+  // ── Fields + responses, at ANY stage ───────────────────────────────────
+  //
+  // The run sheet has to be downloadable before a planner is even sent — a DJ
+  // wants to print a blank and fill it by hand, or just have the document. So:
+  //
+  //   · planner exists  → show its snapshot (blank, partial, or submitted).
+  //   · no planner yet  → resolve the DJ's template for this event type and
+  //                       render it blank, prefilled only with what the booking
+  //                       already knows (times, venue). Nothing is written to
+  //                       the DB — sending the planner is still a separate,
+  //                       deliberate act.
+  let responses: PlannerResponses;
+  let fields: PlannerField[];
+  let status: string;
+  let submitted_at: string | null;
+
+  if (planner) {
+    responses = planner.responses ?? {};
+    fields = visibleFields(planner.fields ?? []);
+    status = planner.status;
+    submitted_at = planner.submitted_at;
+  } else {
+    const { data: tData } = await db
+      .from('planners')
+      .select('id, dj_id, name, event_type, is_standard, fields')
+      .or(`is_standard.eq.true,dj_id.eq.${b.dj_id}`);
+    const templates = (tData as unknown as PlannerTemplate[] | null) || [];
+    const { base, override } = pickTemplate(templates, b.dj_id ?? '', b.event_type);
+    const composed = composeFields(base?.fields || [], override?.fields || []);
+
+    const { data: djData } = await admin
+      .from('users')
+      .select('name')
+      .eq('id', b.dj_id ?? '')
+      .maybeSingle();
+    const djName = (djData as unknown as { name?: string | null } | null)?.name || null;
+
+    responses = applyPrefill(
+      composed,
+      b as unknown as Parameters<typeof applyPrefill>[1],
+      djName,
+      {},
+    );
+    fields = visibleFields(composed);
+    status = 'sent';       // not started — the "not submitted" banner shows
+    submitted_at = null;
+  }
 
   // ── The three things that get their own place on the page ──────────────
   //
@@ -169,12 +223,14 @@ export default async function SheetPage({
           <div className={styles.metaSub}>
             {[b?.requester_name, b?.phone].filter(Boolean).join('  ·  ')}
           </div>
-          {planner.status !== 'submitted' && (
-            // The client hasn't finished. Printing a half-filled sheet is fine
-            // — it's most of the night — but the DJ must not read a blank as
+          {status !== 'submitted' && (
+            // The client hasn't finished. Printing a half-filled (or blank,
+            // not-yet-sent) sheet is fine — but the DJ must not read a blank as
             // "nothing planned" when it's "not answered yet".
             <div className={styles.warn}>
-              Not submitted yet — the client may still be filling this in.
+              {planner
+                ? 'Not submitted yet — the client may still be filling this in.'
+                : 'Blank planner — not sent to the client yet.'}
             </div>
           )}
         </header>
@@ -210,8 +266,8 @@ export default async function SheetPage({
         )}
 
         <footer className={styles.foot}>
-          Global DJ Connect · {planner.submitted_at
-            ? `submitted ${new Date(planner.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          Global DJ Connect · {submitted_at
+            ? `submitted ${new Date(submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
             : 'in progress'}
         </footer>
       </div>
