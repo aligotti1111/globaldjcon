@@ -341,7 +341,17 @@ export function hasAnswer(r: PlannerResponse | undefined): boolean {
  * The notes box catches that, and the strip says so.
  */
 export function isInfoField(f: PlannerField, responses: PlannerResponses): boolean {
-  return !!f.prefill && hasAnswer(responses[f.id]);
+  const r = responses[f.id];
+  // N/A is an ANSWER but it is not a FACT. This shipped as `hasAnswer(r)`,
+  // which counts N/A as answered — correct everywhere else, wrong here. A
+  // client marking "Contact on the night" as not applicable moved it into the
+  // strip, where it rendered as a label with nothing next to it: a blank fact,
+  // which reads as us knowing something and losing it.
+  //
+  // N/A on a prefilled field means "you filled this in and it's wrong" — so it
+  // stays a QUESTION, showing its N/A state, where they can undo it.
+  if (isNa(r)) return false;
+  return !!f.prefill && hasAnswer(r);
 }
 
 /** The questions. What the client is actually being asked. */

@@ -525,3 +525,112 @@ select.input {
   .progress { text-align: center; }
   .note { text-align: center; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAPER
+   ═══════════════════════════════════════════════════════════════════════
+ *
+ * Clients print this. Their mother wants a copy, or they want to sit at a
+ * kitchen table with a pen and think about it away from a phone.
+ *
+ * Without these rules that print is UNREADABLE — and not slightly. The page is
+ * near-white text on black, every browser drops background colours when
+ * printing by default, and what comes out of the printer is #f2f2f7 text on
+ * white paper. A grey ghost of a form. (Which is exactly what happened the
+ * first time anyone tried it.)
+ *
+ * So: paper gets black on white, the empty input boxes become RULED LINES to
+ * write on, and everything that only makes sense on a screen goes away.
+ *
+ * Last in the file on purpose — media queries add no specificity, so a print
+ * rule above its screen twin loses on source order and does nothing.
+ */
+
+@media print {
+  .page {
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .brand { color: #000 !important; }
+  .title { color: #000 !important; font-size: 1.7rem; }
+  .sub { color: #000 !important; }
+  .intro,
+  .help,
+  .knownNote,
+  .songHint { color: #444 !important; }
+  .intro { border-bottom-color: #000 !important; }
+
+  .label { color: #000 !important; }
+  .knownHead { color: #444 !important; }
+  .knownK { color: #444 !important; }
+  .knownV { color: #000 !important; }
+  .known { border-bottom-color: #000 !important; }
+
+  /* An empty box printed is a box. A LINE is somewhere to write — which is the
+     only reason a printed form exists at all. */
+  .input,
+  .textarea {
+    background: #fff !important;
+    color: #000 !important;
+    border: none !important;
+    border-bottom: 1px solid #000 !important;
+    border-radius: 0 !important;
+    padding: .2rem 0 !important;
+    /* Chrome and Safari refuse to print an input's value without this. Every
+       answer they already gave would come out blank. */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .textarea { min-height: 4em; }
+  .inputNo:focus { border-bottom-color: #000 !important; }
+
+  select.input { background-image: none !important; padding-right: 0 !important; }
+
+  .chosen {
+    background: #fff !important;
+    border: none !important;
+    border-bottom: 1px solid #000 !important;
+    border-radius: 0 !important;
+    padding-left: 0 !important;
+  }
+  .hitTitle, .hitArtist { color: #000 !important; }
+  .hitArt { display: none !important; }
+
+  .toggle {
+    background: #fff !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+  .toggleOn { background: #000 !important; color: #fff !important; }
+
+  .naBox { color: #000 !important; border-color: #000 !important; background: #fff !important; }
+  .fieldNa { opacity: 1 !important; }
+
+  /* Screen-only. A Send button, a Not-applicable link, a search results
+     dropdown and a "Saving…" note are all instructions to a browser. On paper
+     they're clutter that makes the page look like a screenshot of software
+     rather than a form. */
+  .naBtn,
+  .submit,
+  .note,
+  .hits,
+  .play,
+  .add,
+  .rm,
+  .mv,
+  .rowTools { display: none !important; }
+
+  .foot { border-top-color: #000 !important; }
+  .progress { color: #000 !important; }
+  .submitted { border-color: #000 !important; background: #fff !important; color: #000 !important; }
+  .submitted strong { color: #000 !important; }
+
+  /* A question and its answer never split across two sheets. */
+  .field { break-inside: avoid; }
+  .fields { gap: 1rem; }
+
+  @page { margin: 14mm; }
+}
