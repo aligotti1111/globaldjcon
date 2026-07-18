@@ -1,0 +1,307 @@
+/* The run sheet. ONE page doing two jobs.
+ *
+ * SCREEN: a phone, held in a booth, lights down, at 9pm. Dark, big enough to
+ * read at arm's length, tappable links.
+ *
+ * PAPER: black on white. Every dark rule below is undone in @media print at the
+ * bottom — a dark theme sent to a printer is a page of grey mush and an empty
+ * cartridge, and half the DJs who use this will print it and tape it to the
+ * booth.
+ *
+ * Neither job compromises for the other. That's the whole reason print CSS
+ * exists and it's worth using properly.
+ */
+
+.page {
+  min-height: 100vh;
+  background: #000;
+  color: #f2f2f7;
+  padding: 1.5rem 1rem 4rem;
+  font-family: var(--font-inter), 'DM Sans', sans-serif;
+}
+
+.sheet {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+/* ── Head ─────────────────────────────────────────────────────────────── */
+
+.head {
+  border-bottom: 2px solid rgba(255, 255, 255, .18);
+  padding-bottom: .8rem;
+  margin-bottom: 1.2rem;
+}
+
+.headTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.title {
+  font-family: var(--font-bebas), sans-serif;
+  font-size: 2rem;
+  letter-spacing: .03em;
+  margin: 0 0 .3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.print {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 6px;
+  color: #9d9db5;
+  font-family: inherit;
+  font-size: .78rem;
+  padding: .4rem .8rem;
+  cursor: pointer;
+}
+.print:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .5); }
+
+.meta {
+  font-size: .95rem;
+  color: #e8e8f0;
+  line-height: 1.5;
+}
+.metaSub {
+  font-size: .82rem;
+  color: #8a8aa0;
+  line-height: 1.5;
+}
+
+/* The client is still typing. Not an error — most of the night is here — but a
+   blank has to read as "not answered yet", never as "nothing planned". */
+.warn {
+  margin-top: .5rem;
+  font-size: .78rem;
+  color: #f5a623;
+}
+
+/* ── Do NOT play ──────────────────────────────────────────────────────── */
+/*
+ * The one block that gets a box. It's last on the client's form and first here,
+ * because the client needs to think about the night before they know what they
+ * hate, and the DJ needs to know BEFORE someone requests it.
+ */
+
+.dnp {
+  border: 2px solid rgba(255, 86, 86, .5);
+  border-radius: 8px;
+  padding: .7rem .9rem;
+  margin-bottom: 1.2rem;
+  /* Never split this across two sheets of paper. Half a do-not-play list is
+     worse than none — you'd trust the half you're holding. */
+  break-inside: avoid;
+}
+
+.dnpHead {
+  font-size: .72rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #ff7676;
+  font-weight: 700;
+  margin-bottom: .3rem;
+}
+
+.dnpList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: .95rem;
+  line-height: 1.6;
+  color: #ffb3b3;
+  columns: 2;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem 1.6rem;
+}
+
+.block {
+  min-width: 0;
+  /* A question and its answer never break apart. A label at the bottom of page
+     one with its song at the top of page two is a sheet you can't trust. */
+  break-inside: avoid;
+}
+
+.label {
+  font-size: .66rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #75758d;
+  margin-bottom: .2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  padding-bottom: .15rem;
+}
+
+.val { font-size: .95rem; line-height: 1.5; }
+.na { font-size: .88rem; color: #75758d; font-style: italic; }
+.blank { font-size: .88rem; color: #4a4a60; }
+
+.list { display: flex; flex-direction: column; gap: .15rem; }
+
+.bullets {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: .92rem;
+  line-height: 1.6;
+}
+
+/* ── Tracks ───────────────────────────────────────────────────────────── */
+/*
+ * No artwork here, on purpose. It's 40 images that mean nothing to a DJ who
+ * already knows what the song is, it's a slow page on venue wifi, and printed
+ * it's a page of grey squares. The artwork's job was helping the CLIENT pick
+ * the right one — that job is done.
+ */
+
+.track {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  font-size: .92rem;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.trackNum {
+  flex-shrink: 0;
+  color: #5e5e77;
+  font-size: .78rem;
+  min-width: 1.2em;
+}
+
+.trackText { min-width: 0; }
+.artist { color: #8a8aa0; }
+
+.trackLink {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: .72rem;
+  color: #4ddcb4;
+  text-decoration: underline;
+}
+
+/* ── People ───────────────────────────────────────────────────────────── */
+
+.people {
+  margin: 0;
+  padding-left: 1.3rem;
+  font-size: .92rem;
+  line-height: 1.65;
+}
+
+.pName { font-weight: 500; }
+.pRole { color: #8a8aa0; font-size: .84rem; }
+
+/* Pronunciation. Mono and bracketed so it reads as an instruction rather than
+   part of the name — this is the line that stops you saying it wrong in front
+   of 150 people, and you're reading it with the mic already up. */
+.say {
+  font-family: var(--font-space-mono), monospace;
+  color: #4ddcb4;
+  font-size: .82rem;
+}
+
+/* ── Timeline ─────────────────────────────────────────────────────────── */
+
+.timeline {
+  border-collapse: collapse;
+  font-size: .92rem;
+  width: 100%;
+}
+.timeline td {
+  padding: .12rem 0;
+  vertical-align: baseline;
+  line-height: 1.5;
+}
+.tTime {
+  width: 5.5em;
+  color: #8a8aa0;
+  font-family: var(--font-space-mono), monospace;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+
+/* ── Notes ────────────────────────────────────────────────────────────── */
+
+.notes {
+  margin-top: 1.2rem;
+  break-inside: avoid;
+}
+
+.notesBody {
+  font-size: .92rem;
+  line-height: 1.65;
+  /* Their paragraph breaks are how they grouped their thoughts. */
+  white-space: pre-wrap;
+}
+
+.foot {
+  margin-top: 2rem;
+  padding-top: .6rem;
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  font-size: .7rem;
+  color: #4e4e66;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAPER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.noPrint { }
+
+@media print {
+  /* The rules below are the whole point of this file. They come LAST because
+     media queries add no specificity — a print rule above its screen twin
+     silently loses on source order. (Learned the hard way on the bookings
+     table.) */
+
+  .noPrint { display: none !important; }
+
+  .page {
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .sheet { max-width: none; }
+
+  .head { border-bottom-color: #000 !important; }
+  .title { font-size: 1.6rem; }
+  .meta { color: #000 !important; }
+  .metaSub, .label, .trackNum, .tTime, .pRole, .artist { color: #444 !important; }
+  .blank, .na { color: #888 !important; }
+  .foot { color: #888 !important; border-top-color: #ccc !important; }
+  .label { border-bottom-color: #ccc !important; }
+  .warn { color: #000 !important; font-weight: 700; }
+
+  /* Still the loudest thing on the page, in a way that survives a mono laser
+     printer: heavy black rule, black text, not a red that prints as light grey. */
+  .dnp {
+    border: 2px solid #000 !important;
+    border-radius: 0;
+  }
+  .dnpHead { color: #000 !important; }
+  .dnpList { color: #000 !important; font-weight: 500; }
+
+  /* Underlined and dark — a printed name has to survive being read by
+     torchlight, and neon on white is invisible. */
+  .say { color: #000 !important; font-weight: 700; }
+
+  /* A url printed on paper is noise. The title and artist are the content. */
+  .trackLink { display: none !important; }
+
+  .grid { gap: .8rem 1.4rem; }
+
+  /* Every browser defaults to stripping backgrounds and colours when printing.
+     Nothing above depends on a background — that's deliberate, not luck. */
+  @page { margin: 14mm; }
+}

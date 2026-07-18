@@ -210,6 +210,16 @@ export default function PlannerPanel({ bookingId }: { bookingId: string }) {
             {new Date(planner.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         ) : null}
+        {/* The night version. Opens outside the app chrome — one page, prints
+            to paper, saves as a PDF, works on a phone in a booth. */}
+        <a
+          href={`/sheet/${bookingId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={planner.submitted_at ? styles.sheetLink : `${styles.sheetLink} ${styles.sheetLinkPush}`}
+        >
+          Run sheet
+        </a>
       </div>
 
       {planner.fields.map((f) => (

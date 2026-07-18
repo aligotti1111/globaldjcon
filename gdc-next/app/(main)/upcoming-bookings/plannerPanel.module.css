@@ -46,6 +46,18 @@
 .count { font-size: .76rem; color: #8a8aa0; }
 .when  { font-size: .72rem; color: #5e5e77; margin-left: auto; }
 
+/* The printable version. A link, not a button: it opens a page, and dressing
+   it as a button would put a second call-to-action next to nothing. */
+.sheetLink {
+  font-size: .72rem;
+  color: #8a8aa0;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+/* When there's no date to push against, this takes the right edge itself. */
+.sheetLinkPush { margin-left: auto; }
+.sheetLink:hover { color: #00e0a4; }
+
 /* ── Fields ───────────────────────────────────────────────────────────── */
 
 .field { min-width: 0; }
