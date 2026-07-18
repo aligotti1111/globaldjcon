@@ -105,11 +105,15 @@ export default async function SheetPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, package_title')
+    .select('event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, package_title')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as {
     event_type: string | null;
+    // Event-type detail from the booking form (surprise party, type of
+    // anniversary/graduation/reunion, birthday age). Null when the type has no
+    // sub-question.
+    event_details: string | null;
     event_date: string | null;
     start_time: string | null;
     end_time: string | null;
@@ -157,6 +161,7 @@ export default async function SheetPage({
             ].filter(Boolean).join('  ·  ')}
           </div>
           {b?.venue_address ? <div className={styles.metaSub}>{b.venue_address}</div> : null}
+          {b?.event_details ? <div className={styles.metaSub}>{b.event_details}</div> : null}
           <div className={styles.metaSub}>
             {[b?.requester_name, b?.phone].filter(Boolean).join('  ·  ')}
           </div>

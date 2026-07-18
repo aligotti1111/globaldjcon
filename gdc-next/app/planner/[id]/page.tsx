@@ -97,7 +97,7 @@ export default async function PlannerPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, requester_name')
+    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, requester_name')
     .eq('id', planner.booking_id)
     .maybeSingle();
   const booking = bData as unknown as {
@@ -109,6 +109,10 @@ export default async function PlannerPage({
     guest_count: number | null;
     phone: string | null;
     package_title: string | null;
+    // The event-type detail the client entered on the booking form — "25th
+    // Anniversary", "College Graduation", "Guest of honor age: 30 · Surprise
+    // party: Yes". Null for event types with no sub-question.
+    event_details: string | null;
     requester_name: string | null;
   } | null;
 
@@ -143,6 +147,10 @@ export default async function PlannerPage({
     { k: 'Date', v: fmtDate(booking?.event_date ?? null) },
     { k: 'Time', v: fmtRange(booking?.start_time ?? null, booking?.end_time ?? null) },
     { k: 'Venue', v: [booking?.venue_name, booking?.venue_address].filter(Boolean).join(' · ') },
+    // The event-type detail from the booking form (surprise party, type of
+    // anniversary/graduation/reunion, birthday age). Carries through as a known
+    // fact — shown, never re-asked. Empty for event types without a sub-field.
+    { k: 'Occasion', v: booking?.event_details || '' },
     { k: 'Package', v: booking?.package_title || '' },
     { k: 'Guests', v: booking?.guest_count ? `${booking.guest_count}` : '' },
     { k: 'Your number', v: booking?.phone || '' },
