@@ -213,6 +213,11 @@
 
 .textarea { resize: vertical; line-height: 1.5; }
 
+/* The must-play search boxes. Shorter than a normal input so five of them stack
+   without dominating the page. Font stays 16px — anything smaller and iOS zooms
+   the whole form on focus and never zooms back. Only the height comes down. */
+.inputSong { padding: .45rem .7rem; }
+
 select.input {
   appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, #5e5e77 50%),

@@ -665,7 +665,7 @@ function SongInput({
   return (
     <div className={styles.songWrap}>
       <input
-        className={styles.input}
+        className={`${styles.input} ${styles.inputSong}`}
         placeholder="Search a song, or type it"
         value={text}
         onChange={(e) => {
@@ -705,8 +705,15 @@ function SongList({
 }) {
   // undefined = an empty row they haven't filled yet. Kept in local state so an
   // empty row can exist on screen without being saved as an answer.
+  //
+  // Open with FIVE empty rows. A must-play list wants a few songs, and one lone
+  // box reads like "name a song" — five boxes read like "list your songs". They
+  // still only cross to the server when filled, and "+ Add another" adds more.
+  const MIN_ROWS = 5;
   const [rows, setRows] = useState<(Track | undefined)[]>(() =>
-    value.length ? [...value] : [undefined]);
+    value.length >= MIN_ROWS
+      ? [...value]
+      : [...value, ...Array(MIN_ROWS - value.length).fill(undefined)]);
 
   const push = (next: (Track | undefined)[]) => {
     setRows(next);
