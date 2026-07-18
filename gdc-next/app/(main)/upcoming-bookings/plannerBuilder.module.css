@@ -1,0 +1,321 @@
+/* The visual planner editor. It has to LOOK like the client's page — same dark
+ * sheet, same inputs — because the whole point is that the DJ edits the actual
+ * page, not a settings screen. The controls are dead (disabled, empty); the
+ * only live things are the grip, the label, and the hide/delete actions.
+ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── The page's own header, faint ─────────────────────────────────────── */
+
+.pageHead {
+  padding-bottom: .9rem;
+  margin-bottom: .9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.brand {
+  font-family: var(--font-space-mono), monospace;
+  font-size: .56rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #00e0a4;
+  margin-bottom: .35rem;
+}
+.pageTitle {
+  font-family: var(--font-bebas), sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  color: #f2f2f7;
+}
+.pageSub {
+  font-size: .76rem;
+  color: #75758d;
+  margin-top: .2rem;
+}
+
+/* ── List ─────────────────────────────────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.field {
+  display: flex;
+  gap: .5rem;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 10px;
+  padding: .6rem .7rem .7rem;
+  background: rgba(255, 255, 255, .015);
+}
+/* Off, not gone. Greyed, struck, but sitting in place so the DJ can turn it
+   back — hiding exists to protect answers keyed to the field id. */
+.hidden { opacity: .5; }
+.hidden .label { text-decoration: line-through; }
+
+/* The row being dragged, and the gap that opens above the drop target. */
+.dragging { opacity: .4; }
+.over { border-top: 2px solid #00e0a4; }
+
+/* ── Drag rail ────────────────────────────────────────────────────────── */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  flex-shrink: 0;
+  padding-top: .1rem;
+}
+
+.grip {
+  color: #5e5e77;
+  font-size: 1rem;
+  cursor: grab;
+  line-height: 1;
+  user-select: none;
+}
+.grip:active { cursor: grabbing; }
+
+/* The touch fallback. Drag fights the page scroll on a phone; arrows never do.
+   Hidden on a pointer that hovers (a mouse); shown on touch. */
+.arrows { display: none; flex-direction: column; gap: 1px; }
+@media (hover: none) {
+  .grip { display: none; }
+  .arrows { display: flex; }
+}
+.arrow {
+  width: 22px;
+  height: 20px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 4px;
+  color: #8a8aa0;
+  font-size: .7rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.arrow:disabled { opacity: .25; cursor: default; }
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+
+.body { flex: 1; min-width: 0; }
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+}
+
+/* The label is a button — click it to rename in place. Looks like the client's
+   field label until you touch it. */
+.label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: .96rem;
+  font-weight: 500;
+  color: #f2f2f7;
+  cursor: text;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.label:hover { color: #fff; }
+
+.labelEdit {
+  flex: 1;
+  min-width: 0;
+  background: #0a0a10;
+  border: 1px solid rgba(0, 224, 164, .5);
+  border-radius: 6px;
+  padding: .3rem .5rem;
+  color: #f2f2f7;
+  font-family: inherit;
+  font-size: .96rem;
+  outline: none;
+}
+
+.req {
+  font-size: .56rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, .35);
+  border-radius: 3px;
+  padding: .03rem .28rem;
+}
+.mine {
+  font-size: .56rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #00e0a4;
+  border: 1px solid rgba(0, 224, 164, .4);
+  border-radius: 3px;
+  padding: .03rem .28rem;
+}
+
+.acts {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+  flex-shrink: 0;
+}
+.act {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .9rem;
+  padding: .1rem .25rem;
+  border-radius: 5px;
+  opacity: .8;
+}
+.act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
+.lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
+
+.help {
+  font-size: .74rem;
+  color: #75758d;
+  margin: .15rem 0 .4rem;
+}
+
+/* ── Field previews — dead controls, real shapes ──────────────────────── */
+
+.pv {
+  background: #0a0a10;
+  border: 1px solid #23233a;
+  border-radius: 7px;
+  padding: .55rem .7rem;
+  min-height: 1.1rem;
+  color: #4a4a60;
+  font-size: .86rem;
+  margin-top: .3rem;
+}
+.pvArea { min-height: 2.6rem; }
+.pvPh { color: #3a3a4a; }
+
+.pvSelect {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pvSelect::after {
+  content: '';
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #4a4a60;
+}
+
+.pvSong { color: #5e5e77; }
+
+.pvStack { display: flex; flex-direction: column; gap: .3rem; margin-top: .3rem; }
+.pvStack .pv { margin-top: 0; }
+
+.pvAdd {
+  font-size: .8rem;
+  color: rgba(0, 224, 164, .55);
+  padding-left: .1rem;
+}
+
+.pvYesno { display: flex; gap: .4rem; margin-top: .3rem; }
+.pvToggle {
+  min-width: 64px;
+  text-align: center;
+  background: #0a0a10;
+  border: 1px solid #23233a;
+  border-radius: 7px;
+  padding: .45rem .8rem;
+  color: #5e5e77;
+  font-size: .84rem;
+}
+
+.pvPeople {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr;
+  gap: .4rem;
+}
+.pvPeople span {
+  background: #0a0a10;
+  border: 1px solid #23233a;
+  border-radius: 7px;
+  padding: .45rem .6rem;
+  color: #4a4a60;
+  font-size: .8rem;
+}
+
+.pvTimeline { display: flex; gap: .4rem; }
+.pvTimeCell {
+  flex: 0 0 110px;
+  background: #0a0a10;
+  border: 1px solid #23233a;
+  border-radius: 7px;
+  padding: .45rem .6rem;
+  color: #4a4a60;
+  font-size: .8rem;
+}
+
+/* ── Add ──────────────────────────────────────────────────────────────── */
+
+.addWrap { margin-top: .7rem; }
+
+.addBtn {
+  width: 100%;
+  background: rgba(255, 255, 255, .03);
+  border: 1px dashed rgba(255, 255, 255, .2);
+  border-radius: 8px;
+  color: #9d9db5;
+  font-family: inherit;
+  font-size: .86rem;
+  padding: .7rem;
+  cursor: pointer;
+}
+.addBtn:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+
+.addMenu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  align-items: center;
+  border: 1px dashed rgba(255, 255, 255, .2);
+  border-radius: 8px;
+  padding: .6rem;
+}
+.addPick {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 5px;
+  color: #9d9db5;
+  font-family: inherit;
+  font-size: .76rem;
+  padding: .3rem .55rem;
+  cursor: pointer;
+}
+.addPick:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+.addCancel {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #6c6c86;
+  font-family: inherit;
+  font-size: .76rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.foot {
+  font-size: .78rem;
+  line-height: 1.55;
+  color: #75758d;
+  margin: 1rem 0 0;
+}
+.foot strong { color: #e8e8f0; }

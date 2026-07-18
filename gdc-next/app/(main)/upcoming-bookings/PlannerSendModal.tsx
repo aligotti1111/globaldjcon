@@ -27,6 +27,7 @@
 import { useEffect, useState } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID } from '@/lib/planner';
+import PlannerBuilder from './PlannerBuilder';
 import styles from './plannerSend.module.css';
 
 interface TemplateLite {
@@ -64,11 +65,6 @@ const TYPE_LABELS: Record<PlannerFieldType, string> = {
   songlist: 'Song list', textlist: 'Text list', people: 'People', timeline: 'Run of show',
   yesno: 'Yes / no', select: 'Choice', link: 'Link',
 };
-
-// What a DJ can add. Deliberately a subset — `select` needs options and
-// `prefill` needs a booking column, neither of which a free-text editor can
-// safely invent.
-const ADDABLE: PlannerFieldType[] = ['text', 'longtext', 'time', 'song', 'songlist', 'textlist', 'people', 'yesno'];
 
 export default function PlannerSendModal({
   bookingId, onClose, onSent,
@@ -121,15 +117,15 @@ export default function PlannerSendModal({
     setDirty(true);
   }
 
-  function move(i: number, dir: -1 | 1) {
+  // Drag-drop reorder: pull `from` out and splice it back at `to`. move() (the
+  // arrow version) is a special case of this, but keeping both is cheaper than
+  // rewriting the arrow calls.
+  function moveTo(from: number, to: number) {
     setFields((prev) => {
-      const j = i + dir;
-      if (j < 0 || j >= prev.length) return prev;
-      // Do NOT play and Notes are pinned to the end by the server on save, so
-      // dragging them is theatre. Don't offer the move rather than silently
-      // undoing it.
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
       const next = [...prev];
-      [next[i], next[j]] = [next[j], next[i]];
+      const [row] = next.splice(from, 1);
+      next.splice(to, 0, row);
       return next;
     });
     setDirty(true);
@@ -364,76 +360,14 @@ export default function PlannerSendModal({
 
         {data && mode === 'edit' && (
           <>
-            <p className={styles.note}>
-              Saves to <strong>your {data.eventType || 'default'} planner</strong> — every {data.eventType || 'booking'} after
-              this one uses it automatically. Turned-off questions are kept, not deleted, so you can turn them back on.
-            </p>
-
-            <div className={styles.editList}>
-              {fields.map((f, i) => {
-                const pinned = f.id === NOTES_FIELD_ID || f.id === DO_NOT_PLAY_FIELD_ID;
-                return (
-                  <div key={f.id} className={f.hidden ? styles.rowOff : styles.row}>
-                    <div className={styles.rowTop}>
-                      <input
-                        className={styles.labelInput}
-                        value={f.label}
-                        placeholder="Question"
-                        onChange={(e) => patch(f.id, { label: e.target.value })}
-                      />
-                      <span className={styles.type}>{TYPE_LABELS[f.type]}</span>
-                    </div>
-                    <input
-                      className={styles.helpInput}
-                      value={f.help || ''}
-                      placeholder="Help text (optional)"
-                      onChange={(e) => patch(f.id, { help: e.target.value })}
-                    />
-                    <div className={styles.rowTools}>
-                      <label className={styles.check}>
-                        <input
-                          type="checkbox"
-                          checked={!f.hidden}
-                          onChange={(e) => patch(f.id, { hidden: !e.target.checked })}
-                        />
-                        Ask this
-                      </label>
-                      <label className={styles.check}>
-                        <input
-                          type="checkbox"
-                          checked={!!f.required}
-                          onChange={(e) => patch(f.id, { required: e.target.checked })}
-                        />
-                        Required
-                      </label>
-                      <span className={styles.spacer} />
-                      {/* Pinned questions don't move — the server re-pins them
-                          to the end on save, so an arrow here would be a lie. */}
-                      {!pinned && (
-                        <>
-                          <button type="button" className={styles.mv} onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
-                          <button type="button" className={styles.mv} onClick={() => move(i, 1)} disabled={i === fields.length - 1}>↓</button>
-                        </>
-                      )}
-                      {/* Only a custom field can be removed, and only because it
-                          has no answers anywhere yet. Stock fields hide. */}
-                      {f.is_custom && (
-                        <button type="button" className={styles.rm} onClick={() => removeCustom(f.id)}>Remove</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={styles.addRow}>
-              <span className={styles.addLabel}>Add a question:</span>
-              {ADDABLE.map((t) => (
-                <button key={t} type="button" className={styles.addBtn} onClick={() => addField(t)}>
-                  + {TYPE_LABELS[t]}
-                </button>
-              ))}
-            </div>
+            <PlannerBuilder
+              fields={fields}
+              eventType={data.eventType}
+              onPatch={patch}
+              onMoveTo={moveTo}
+              onRemove={removeCustom}
+              onAdd={addField}
+            />
 
             <div className={styles.foot}>
               {/* Back to the preview, not the confirm screen — that's where you
