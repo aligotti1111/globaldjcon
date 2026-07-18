@@ -216,10 +216,12 @@ export default function PlannerBuilder({
                   </div>
                 </div>
 
-                {f.help ? <div className={styles.help}>{f.help}</div> : null}
-
-                {/* The real control, empty and disabled — the whole point. */}
-                <FieldPreview field={f} />
+                {/* Disabled = collapsed. A turned-off question is just its name
+                    and the eye to switch it back on — no help, no preview box.
+                    The box only earns its space when the client will actually
+                    see the field. */}
+                {!f.hidden && f.help ? <div className={styles.help}>{f.help}</div> : null}
+                {!f.hidden ? <FieldPreview field={f} /> : null}
               </div>
             </div>
           );
