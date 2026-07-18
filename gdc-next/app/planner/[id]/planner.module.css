@@ -245,7 +245,7 @@ select.input {
 
 .peopleHead {
   display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1.2fr 84px;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 108px;
   gap: .4rem;
   padding: 0 .2rem;
 }
@@ -258,14 +258,14 @@ select.input {
 
 .peopleRow {
   display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1.2fr 84px;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 108px;
   gap: .4rem;
   align-items: center;
 }
 
 .timeRow {
   display: grid;
-  grid-template-columns: 130px 1fr 84px;
+  grid-template-columns: 130px 1fr 108px;
   gap: .4rem;
   align-items: center;
 }
