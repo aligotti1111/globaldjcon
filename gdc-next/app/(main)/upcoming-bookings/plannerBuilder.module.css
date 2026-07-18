@@ -36,6 +36,42 @@
   margin-top: .2rem;
 }
 
+/* ── Your booking (read-only strip) ───────────────────────────────────── */
+/* Mirrors the client page's top strip so the DJ arranges the whole page. Flat
+   and dim — it's here so they DON'T have to deal with it. */
+
+.known {
+  margin: 0 0 1.1rem;
+  padding: 0 0 .9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.knownHead {
+  font-family: var(--font-space-mono), monospace;
+  font-size: .56rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #4e4e66;
+  margin-bottom: .3rem;
+}
+.knownRow {
+  display: flex;
+  gap: .7rem;
+  align-items: baseline;
+  font-size: .82rem;
+}
+.knownK { flex: 0 0 130px; color: #5e5e77; font-size: .76rem; }
+.knownV { color: #4a4a60; font-style: italic; min-width: 0; }
+.knownNote {
+  margin: .5rem 0 0;
+  font-size: .72rem;
+  color: #4e4e66;
+  line-height: 1.5;
+}
+
+
 /* ── List ─────────────────────────────────────────────────────────────── */
 
 .list {

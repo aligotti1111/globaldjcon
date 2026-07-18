@@ -28,6 +28,10 @@ import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID } from '@/lib/planner';
 import styles from './plannerBuilder.module.css';
 
+// The booking facts that are never planner fields — they come straight off the
+// booking row. Same set the client's page shows in its "Your booking" strip.
+const BOOKING_FACTS = ['Date', 'Time', 'Venue', 'Package', 'Guests', 'Your number'];
+
 const ADDABLE: { type: PlannerFieldType; label: string }[] = [
   { type: 'text', label: 'Short text' },
   { type: 'longtext', label: 'Paragraph' },
@@ -72,6 +76,7 @@ export default function PlannerBuilder({
   // their exact index — and the editable questions reorder around them.
   const anchored = (f: PlannerField) => !!f.prefill;
   const editable = fields.filter((f) => !anchored(f));
+  const shownAtTop = fields.filter(anchored);
 
   // Reorder the editable subsequence, leave anchored fields pinned to their
   // absolute slots, hand the whole thing back.
@@ -92,6 +97,29 @@ export default function PlannerBuilder({
         <div className={styles.brand}>Global DJ Connect</div>
         <div className={styles.pageTitle}>Planner &amp; Playlist</div>
         <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder, click a question to rename.</div>
+      </div>
+
+      {/* YOUR BOOKING — the read-only strip the client sees at the top, filled
+          from the booking. Not questions, not draggable. Shown here so the DJ
+          arranges the WHOLE page, not just the middle of it. The values are
+          illustrative (there's no client yet) — the point is the layout. */}
+      <div className={styles.known}>
+        <div className={styles.knownHead}>Your booking</div>
+        {BOOKING_FACTS.map((label) => (
+          <div key={label} className={styles.knownRow}>
+            <span className={styles.knownK}>{label}</span>
+            <span className={styles.knownV}>filled from the booking</span>
+          </div>
+        ))}
+        {shownAtTop.map((f) => (
+          <div key={f.id} className={styles.knownRow}>
+            <span className={styles.knownK}>{f.label}</span>
+            <span className={styles.knownV}>filled from the booking</span>
+          </div>
+        ))}
+        <p className={styles.knownNote}>
+          These come from the booking and contract — shown to the client, never asked.
+        </p>
       </div>
 
       <div className={styles.list}>
