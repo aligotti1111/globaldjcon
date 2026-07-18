@@ -26,7 +26,6 @@
 
 import { useEffect, useState } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID } from '@/lib/planner';
 import PlannerBuilder from './PlannerBuilder';
 import styles from './plannerSend.module.css';
 
@@ -41,6 +40,7 @@ interface TemplateLite {
 
 interface Loaded {
   resolved: { id: string; name: string; eventType: string | null; isStandard: boolean; isMine: boolean };
+  editEventType: string | null;
   fields: PlannerField[];
   prefillCount: number;
   prefilledIds: string[];
@@ -82,7 +82,15 @@ export default function PlannerSendModal({
   // default and the one-click path.
   const [forcedId, setForcedId] = useState<string | null>(null);
   const [fields, setFields] = useState<PlannerField[]>([]);
-  const [dirty, setDirty] = useState(false);
+
+  // THE EDITOR IS ITS OWN WORLD. Customising a planner must not disturb the one
+  // you're about to send — a DJ tidying their Sweet 16 template from a wedding
+  // booking shouldn't change the wedding send. So the builder edits its own
+  // copy, keyed to whichever template was opened, and only writes back into the
+  // send flow's `fields` if it happens to be the same event type.
+  const [editFields, setEditFields] = useState<PlannerField[]>([]);
+  const [editTarget, setEditTarget] = useState<{ eventType: string | null; name: string } | null>(null);
+  const [editDirty, setEditDirty] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -112,64 +120,67 @@ export default function PlannerSendModal({
   // would overstate the form by four and understate the feature.
   const visibleCount = asked.length;
 
-  function patch(id: string, p: Partial<PlannerField>) {
-    setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...p } : f)));
-    setDirty(true);
+  // ── Editor callbacks (operate on editFields) ──────────────────────────
+  function editPatch(id: string, p: Partial<PlannerField>) {
+    setEditFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...p } : f)));
+    setEditDirty(true);
+  }
+  // The builder hands back the WHOLE reordered array — it owns the anchored /
+  // editable split, so the modal just stores what it's given.
+  function editReorder(next: PlannerField[]) { setEditFields(next); setEditDirty(true); }
+  function editAdd(type: PlannerFieldType) {
+    setEditFields((prev) => [...prev, { id: crypto.randomUUID(), type, label: '', is_custom: true }]);
+    setEditDirty(true);
+  }
+  function editRemove(id: string) {
+    setEditFields((prev) => prev.filter((f) => f.id !== id));
+    setEditDirty(true);
   }
 
-  // The builder hands back the whole reordered array — it owns the logic for
-  // which fields are anchored (prefilled) and how the editable ones flow around
-  // them, so the modal just stores the result.
-  function reorderAll(next: PlannerField[]) {
-    setFields(next);
-    setDirty(true);
-  }
-
-  function addField(type: PlannerFieldType) {
-    setFields((prev) => [
-      ...prev,
-      {
-        // A FRESH uuid, always. Reusing or deriving an id is how two questions
-        // collide in `responses` and the second silently overwrites the first.
-        id: crypto.randomUUID(),
-        type,
-        label: '',
-        is_custom: true,
-      },
-    ]);
-    setDirty(true);
-  }
-
-  function removeCustom(id: string) {
-    // Only ever a custom field the DJ just added, and only here in the editor.
-    // Stock fields hide; they never splice.
-    setFields((prev) => prev.filter((f) => f.id !== id));
-    setDirty(true);
-  }
-
-  async function saveTemplate(): Promise<boolean> {
-    if (!data) return false;
+  // Open the editor for a SPECIFIC planner — the "customise" link on each row.
+  // Fetches that event type's composed page so the DJ arranges the real thing,
+  // not the one the booking happened to resolve to.
+  async function openCustomize(eventType: string | null, name: string) {
     setErr(null);
-    const blank = fields.find((f) => !f.label.trim());
+    try {
+      const qs = eventType === null ? '' : `&eventType=${encodeURIComponent(eventType)}`;
+      const res = await fetch(`/api/planners?bookingId=${bookingId}${qs}`);
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); return; }
+      setEditFields(j.fields || []);
+      setEditTarget({ eventType, name });
+      setEditDirty(false);
+      setMode('edit');
+    } catch {
+      setErr('Could not open the planner.');
+    }
+  }
+
+  async function editSave(): Promise<boolean> {
+    if (!data || !editTarget) return false;
+    setErr(null);
+    const blank = editFields.find((f) => !f.label.trim());
     if (blank) { setErr('Every question needs a label.'); return false; }
     try {
       const res = await fetch('/api/planners', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Scoped to THIS booking's event type. Editing from a wedding saves
-          // your wedding planner — it doesn't touch your Sweet 16 one.
-          eventType: data.eventType,
-          name: data.eventType ? `My ${data.eventType} planner` : 'My planner',
-          fields,
+          eventType: editTarget.eventType,
+          name: editTarget.eventType ? `My ${editTarget.eventType} planner` : 'My planner',
+          fields: editFields,
         }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { setErr(j?.error || 'Could not save.'); return false; }
-      setDirty(false);
-      // Saved as THEIR template — so the send must now resolve to it, not to
-      // the stock row that was picked when the modal opened.
-      setForcedId(null);
+      setEditDirty(false);
+      // Edited the planner this booking would actually send? Then the send must
+      // now use it — mirror into the send flow and drop any forced pick so the
+      // resolver lands on the freshly-saved template.
+      if (editTarget.eventType === data.editEventType) {
+        setFields(editFields);
+        setForcedId(null);
+      }
       return true;
     } catch {
       setErr('Could not save.');
@@ -177,17 +188,12 @@ export default function PlannerSendModal({
     }
   }
 
+
   async function send() {
     if (busy) return;
     setBusy(true);
     setErr(null);
     try {
-      // Unsaved edits get saved first. A DJ who edited, hit Send, and watched
-      // the old questions go out would be right to never trust the editor again.
-      if (dirty) {
-        const ok = await saveTemplate();
-        if (!ok) { setBusy(false); return; }
-      }
       const res = await fetch('/api/planner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,17 +217,17 @@ export default function PlannerSendModal({
   // page and rearranging it, and a 560px column can't be that. So edit breaks
   // out to a full-screen dark surface with the same centred column the real
   // /planner/[id] uses. Same feature, but now it looks like the thing it edits.
-  if (data && mode === 'edit') {
+  if (data && mode === 'edit' && editTarget) {
     return (
       <div className={styles.editor}>
         <div className={styles.editorBar}>
           <button type="button" className={styles.ghost} onClick={() => setMode('preview')}>← Back</button>
-          <span className={styles.editorTitle}>Customize your {data.eventType || 'default'} planner</span>
+          <span className={styles.editorTitle}>Customize {editTarget?.name || 'your planner'}</span>
           <button
             type="button"
             className={styles.primary}
             disabled={busy}
-            onClick={async () => { const ok = await saveTemplate(); if (ok) setMode('preview'); }}
+            onClick={async () => { const ok = await editSave(); if (ok) setMode('confirm'); }}
           >
             {busy ? 'Saving…' : 'Save'}
           </button>
@@ -229,12 +235,12 @@ export default function PlannerSendModal({
         {err && <div className={styles.editorErr}>{err}</div>}
         <div className={styles.editorSheet}>
           <PlannerBuilder
-            fields={fields}
-            eventType={data.eventType}
-            onPatch={patch}
-            onReorder={reorderAll}
-            onRemove={removeCustom}
-            onAdd={addField}
+            fields={editFields}
+            eventType={editTarget?.eventType ?? null}
+            onPatch={editPatch}
+            onReorder={editReorder}
+            onRemove={editRemove}
+            onAdd={editAdd}
           />
         </div>
       </div>
@@ -275,28 +281,43 @@ export default function PlannerSendModal({
                   a link that only goes one way is a trap. */}
               {data.templates.length > 1 && (
                 <div className={styles.altList}>
-                  <button
-                    type="button"
-                    className={!forcedId ? styles.altOn : styles.alt}
-                    onClick={() => setForcedId(null)}
-                  >
-                    <span className={styles.altDot} aria-hidden="true" />
-                    {data.resolved.name}
-                    <span className={styles.tagAuto}>auto</span>
-                  </button>
+                  <div className={styles.altRow}>
+                    <button
+                      type="button"
+                      className={!forcedId ? styles.altOn : styles.alt}
+                      onClick={() => setForcedId(null)}
+                    >
+                      <span className={styles.altDot} aria-hidden="true" />
+                      {data.resolved.name}
+                      <span className={styles.tagAuto}>auto</span>
+                    </button>
+                    {/* Customise THIS planner — opens the full-page editor bound
+                        to it, not to whatever's selected. */}
+                    <button
+                      type="button"
+                      className={styles.altEdit}
+                      onClick={() => openCustomize(data.editEventType, data.resolved.name)}
+                    >Preview / customize</button>
+                  </div>
                   {data.templates
                     .filter((t) => t.id !== data.resolved.id)
                     .map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={forcedId === t.id ? styles.altOn : styles.alt}
-                        onClick={() => setForcedId(t.id)}
-                      >
-                        <span className={styles.altDot} aria-hidden="true" />
-                        {t.name}
-                        {t.isMine && <span className={styles.tag}>yours</span>}
-                      </button>
+                      <div key={t.id} className={styles.altRow}>
+                        <button
+                          type="button"
+                          className={forcedId === t.id ? styles.altOn : styles.alt}
+                          onClick={() => setForcedId(t.id)}
+                        >
+                          <span className={styles.altDot} aria-hidden="true" />
+                          {t.name}
+                          {t.isMine && <span className={styles.tag}>yours</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.altEdit}
+                          onClick={() => openCustomize(t.eventType, t.name)}
+                        >Preview / customize</button>
+                      </div>
                     ))}
                 </div>
               )}
@@ -380,9 +401,10 @@ export default function PlannerSendModal({
             </ol>
             <div className={styles.foot}>
               <button type="button" className={styles.ghost} onClick={() => setMode('confirm')}>Back</button>
-              {/* Customize is here, not on the confirm screen: "change this" is
-                  a thought you have while reading the questions. */}
-              <button type="button" className={styles.primary} onClick={() => setMode('edit')}>
+              {/* Customize opens the full-page editor for the planner being
+                  sent — arrange it, then Save returns here. */}
+              <button type="button" className={styles.primary}
+                onClick={() => openCustomize(data.editEventType, data.resolved.name)}>
                 Customize
               </button>
             </div>

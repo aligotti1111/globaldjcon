@@ -118,7 +118,15 @@ export async function GET(req: Request) {
     if (b.dj_id !== userId) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
 
     const templates = await loadTemplates(db, userId);
-    const { base, override } = pickTemplate(templates, userId, b.event_type);
+
+    // Which planner to compose? Normally the booking's own event type. But the
+    // editor can ask for a SPECIFIC one via ?eventType= — that's how "customise"
+    // next to a planner in the list opens that planner, not the resolved one.
+    // The empty string means the base (event_type null).
+    const raw = new URL(req.url).searchParams.get('eventType');
+    const wantType = raw === null ? b.event_type : (raw.trim() || null);
+
+    const { base, override } = pickTemplate(templates, userId, wantType);
     if (!base) {
       return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
     }
@@ -130,10 +138,11 @@ export async function GET(req: Request) {
     // one is the one the client sees.
     const prefilled = applyPrefill(fields, b, null, {});
 
-    // The resolved template is whichever row actually decided the outcome —
-    // the event-type override if there is one, else the base. That's the row
-    // the DJ is about to edit when they hit Customize.
+    // Whichever row decided the outcome for the requested type — override if
+    // there is one, else base. That's the row the DJ edits, and `editEventType`
+    // is what a Save must write to (null = the base planner).
     const resolved = override || base;
+    const editEventType = wantType;
 
     return NextResponse.json({
       resolved: {
@@ -146,6 +155,9 @@ export async function GET(req: Request) {
         // this up" and "this is what everyone gets".
         isMine: !resolved.is_standard && resolved.dj_id === userId,
       },
+      // The event type this composed set edits. The client-facing `event.date`
+      // etc. still describe the BOOKING; this describes the TEMPLATE.
+      editEventType,
       fields,
       prefillCount: Object.keys(prefilled).length,
       // Which ones the client will be SHOWN rather than asked. Derived from the
