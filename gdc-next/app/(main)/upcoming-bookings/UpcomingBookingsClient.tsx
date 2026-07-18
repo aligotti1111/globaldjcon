@@ -1583,7 +1583,12 @@ function BookingRow({
             ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
             : undefined)
         : depositRow
-          ? (paidSoFar > 0
+          // Show received/asked from the moment it's requested — "$0/$600"
+          // before anything lands, "$300/$600" once part is in. The DJ sees the
+          // target the whole time, not just after a partial arrives. Guard on
+          // askedFor > 0 so a zero-amount row never prints a meaningless
+          // "$0/$0" (same reason the waived case above says nothing).
+          ? (askedFor > 0
               ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
               : 'Pending')
           : 'Not sent',
