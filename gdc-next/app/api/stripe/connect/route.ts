@@ -50,8 +50,8 @@
 // Cloudflare passes those through untouched. If you are ever tempted to
 // "correct" one of these to 502, don't — you will silently blind the app.
 //
-// The diagnostics below (GET ?run=…) exist because of that hunt, and they only
-// ever worked because their catch happened to return 500.
+// (The diagnostics that hunt produced lived at GET ?run=… . They're gone now —
+// see the note above POST.)
 //
 // Two smaller lessons, kept because they're cheap:
 //   • Wrap the WHOLE handler. v1 ran createClient / getUser / createAdminClient
@@ -112,9 +112,9 @@ const errMsg = (e: unknown, fallback: string) => (e instanceof Error && e.messag
  * The `start` action, method-agnostic. Creates the connected account if the DJ
  * doesn't have one yet, then mints a fresh single-use onboarding link.
  *
- * Shared by POST {action:'start'} and the GET ?run=start diagnostic so the two
- * can't diverge — the entire value of that experiment rests on the paths being
- * identical.
+ * Split out from POST for the GET-vs-POST bisect that's since been deleted.
+ * Kept as its own function anyway: it's the one action with side effects, and
+ * it reads better with its failure modes in one place.
  *
  * Every hop is individually caught and labelled, and every network call is
  * raced against a deadline. Returns JSON on every branch, always.
@@ -202,250 +202,32 @@ async function runStart(req: Request): Promise<NextResponse> {
   }
 }
 
-/**
- * GET /api/stripe/connect — self-check, openable straight in a browser.
- *
- * Exists because "Could not start Stripe onboarding." is the CLIENT's fallback
- * string: it appears whenever the response body isn't JSON, which is equally
- * consistent with "the fix isn't deployed yet" and "the function was killed
- * before it could answer". Those two are indistinguishable from the UI, and
- * guessing between them has already cost hours.
- *
- * So: a GET that needs no auth, no request body, and no button — just report
- * what the server can see about itself.
- *   • it answering AT ALL proves this file is live (v1 had no GET → 405)
- *   • `version` proves WHICH build is live
- *   • the env booleans prove whether the runtime can see the keys, which a
- *     green build says nothing about
- *   • `stripeInit` runs the exact call that would throw first in `start`
- *
- * Leaks nothing: booleans and lengths only, never a key or a fragment of one.
- */
-export async function GET(req: Request) {
-  // ── ?run=start — the SAME start work, over GET ────────────────────────
-  //
-  // TEMPORARY DIAGNOSTIC. Delete once cards work.
-  //
-  // A GET to this route returns 200 through the same Cloudflare, the same
-  // Netlify function and the same module graph that a POST dies in with a
-  // Cloudflare 502 "Host Error". So the difference is the METHOD, not the
-  // code — unless the Stripe calls themselves are what kills it. Running the
-  // identical work under GET separates those two in one click:
-  //
-  //   • JSON with a url  → the Stripe path is fine; POST is being mangled
-  //                        somewhere between Cloudflare and the handler
-  //   • 502 again        → the Stripe call itself crashes the process,
-  //                        method is irrelevant
-  //
-  // Yes, a GET with side effects is wrong (it can create a Stripe account).
-  // It's authed, it's idempotent in practice — an existing stripe_connect_id
-  // is reused — and it is worth exactly one deploy to stop guessing.
-  const url = new URL(req.url);
-  const run = url.searchParams.get('run');
-
-  // ── BISECT ────────────────────────────────────────────────────────────
-  //
-  // TEMPORARY. Delete once cards work.
-  //
-  // Established so far: a bare GET returns 200 with stripeInit:"ok", while
-  // ?run=start dies as a Cloudflare 502 "Host Error" — origin returned an
-  // invalid response — over BOTH GET and POST. Identical route, identical
-  // module, identical everything except the work done. And the work is wrapped
-  // in try/catch on every branch, so a throw is impossible to miss. The only
-  // remaining explanation is that the PROCESS dies: a catch block can't run in
-  // a process that no longer exists.
-  //
-  // Three calls sit between the bare GET and start:
-  //   auth    → Supabase auth.getUser()      (network)
-  //   db      → users select                 (network)
-  //   ping    → stripe.accounts.list(1)      (network, READ-ONLY, no side effects)
-  //   acct    → stripe.accounts.create()     (network, creates the account)
-  //
-  // Each runs alone, in its own request, so whichever one 502s IS the culprit
-  // and the others still answer. `ping` is the interesting one: it's the
-  // cheapest possible Stripe API call, so if it dies while the bare GET lives,
-  // the problem is the Stripe SDK's network layer in this runtime and has
-  // nothing to do with Connect at all.
-  if (run && run !== 'start') {
-    try {
-      if (run === 'auth') {
-        const supabase = await createClient();
-        const t0 = Date.now();
-        const { data, error } = await withDeadline(supabase.auth.getUser(), 'Auth check');
-        return NextResponse.json({
-          step: 'auth', ms: Date.now() - t0,
-          userId: data?.user?.id ?? null, email: data?.user?.email ?? null,
-          error: error?.message ?? null,
-        });
-      }
-      if (run === 'db') {
-        const supabase = await createClient();
-        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
-        if (!user) return NextResponse.json({ step: 'db', error: 'Not signed in' }, { status: 401 });
-        const admin = createAdminClient();
-        const t0 = Date.now();
-        const { data, error } = await withDeadline(
-          admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
-          'Database read',
-        );
-        return NextResponse.json({
-          step: 'db', ms: Date.now() - t0,
-          row: (data as unknown as ConnectRow | null) ?? null,
-          error: error?.message ?? null,
-        });
-      }
-      // ── whoami — WHICH Stripe account does this key belong to? ────────
-      //
-      // Stripe SANDBOXES are separate accounts with their own keys, and the
-      // dashboard makes them look like plain test mode: same UI, a small
-      // "you're testing in a sandbox" banner, and an acct_ id buried in the
-      // URL. Enabling Connect in a sandbox does nothing for a key issued by
-      // the main account's test mode, and vice versa — but the dashboard will
-      // happily show Connect as set up either way.
-      //
-      // retrieve() with no argument returns the account the KEY belongs to.
-      // Compare that id against the acct_ in the dashboard URL: if they
-      // differ, Connect was enabled somewhere the site never talks to.
-      if (run === 'whoami') {
-        const stripe = getStripe();
-        const t0 = Date.now();
-        // retrieveCurrent() is GET /v1/account — "the account this key belongs
-        // to", which is exactly the question. (accounts.retrieve() with no id
-        // reaches the same endpoint, but its typings demand an id and would
-        // need a cast. This one is typed for the job.)
-        const acct = await withDeadline(stripe.accounts.retrieveCurrent(), 'Stripe whoami');
-        return NextResponse.json({
-          step: 'whoami', ms: Date.now() - t0,
-          accountId: acct.id,
-          email: acct.email ?? null,
-          country: acct.country ?? null,
-          chargesEnabled: !!acct.charges_enabled,
-          detailsSubmitted: !!acct.details_submitted,
-          // The tell: if Connect isn't signed up for on THIS account, this is
-          // usually empty or missing entirely.
-          capabilities: acct.capabilities ?? null,
-          type: acct.type ?? null,
-        });
-      }
-      if (run === 'ping') {
-        const stripe = getStripe();
-        const t0 = Date.now();
-        const list = await withDeadline(stripe.accounts.list({ limit: 1 }), 'Stripe ping');
-        return NextResponse.json({ step: 'ping', ms: Date.now() - t0, count: list.data.length });
-      }
-      if (run === 'acct') {
-        const supabase = await createClient();
-        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
-        if (!user) return NextResponse.json({ step: 'acct', error: 'Not signed in' }, { status: 401 });
-        const stripe = getStripe();
-        const t0 = Date.now();
-        const account = await withDeadline(
-          stripe.accounts.create({ type: 'standard', email: user.email || undefined, metadata: { user_id: user.id } }),
-          'Stripe account create',
-        );
-        // Deliberately NOT saved — this is a probe. An orphan test account in
-        // test mode is cheaper than another round of guessing.
-        return NextResponse.json({ step: 'acct', ms: Date.now() - t0, id: account.id });
-      }
-      // ── save / link — start, minus one half each ──────────────────────
-      //
-      // auth, db, ping and acct ALL return JSON on their own. start does not.
-      // So the fault is in one of the two calls no probe has touched yet:
-      // the DB write that persists the account id, or accountLinks.create.
-      // These two run everything start runs except one of those, which pins
-      // it exactly.
-      if (run === 'save' || run === 'link') {
-        const supabase = await createClient();
-        const { data: { user } } = await withDeadline(supabase.auth.getUser(), 'Auth check');
-        if (!user) return NextResponse.json({ step: run, error: 'Not signed in' }, { status: 401 });
-        const admin = createAdminClient();
-        const stripe = getStripe();
-
-        // Reuse an existing account so repeated probing doesn't litter Stripe.
-        const { data: rowData } = await withDeadline(
-          admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
-          'Database read',
-        );
-        const existing = (rowData as unknown as ConnectRow | null)?.stripe_connect_id ?? null;
-
-        let accountId = existing;
-        let created = false;
-        if (!accountId) {
-          const account = await withDeadline(
-            stripe.accounts.create({ type: 'standard', email: user.email || undefined, metadata: { user_id: user.id } }),
-            'Stripe account create',
-          );
-          accountId = account.id;
-          created = true;
-        }
-
-        if (run === 'save') {
-          // start MINUS accountLinks.create.
-          const t0 = Date.now();
-          const { error } = await withDeadline(
-            admin.from('users').update({ stripe_connect_id: accountId } as unknown as never).eq('id', user.id),
-            'Database write',
-          );
-          return NextResponse.json({
-            step: 'save', ms: Date.now() - t0, accountId, created, reusedExisting: !created,
-            error: error?.message ?? null,
-          });
-        }
-
-        // run === 'link' — start MINUS the DB write.
-        const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || SITE_URL;
-        const t0 = Date.now();
-        const link = await withDeadline(
-          stripe.accountLinks.create({
-            account: accountId as string,
-            type: 'account_onboarding',
-            refresh_url: `${origin}/booking-settings?stripe=refresh`,
-            return_url: `${origin}/booking-settings?stripe=connected`,
-          }),
-          'Stripe account link',
-        );
-        return NextResponse.json({ step: 'link', ms: Date.now() - t0, accountId, created, url: link.url });
-      }
-
-      return NextResponse.json({ error: `Unknown run=${run}. Try whoami, auth, db, ping, acct, save, link, start.` }, { status: 400 });
-    } catch (e) {
-      return NextResponse.json({ step: run, error: errMsg(e, 'threw'), name: (e as Error)?.name ?? null }, { status: 500 });
-    }
-  }
-
-  if (run === 'start') {
-    try {
-      return await runStart(req);
-    } catch (e) {
-      return NextResponse.json({ error: `GET start: ${errMsg(e, 'threw')}` }, { status: 500 });
-    }
-  }
-
-  const out: Record<string, unknown> = {
-    version: 'connect-v7-whoami',
-    node: process.version,
-    hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
-    stripeKeyLooksLive: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live'),
-    stripeKeyLooksTest: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test'),
-    stripeKeyLength: (process.env.STRIPE_SECRET_KEY || '').length,
-    hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || null,
-  };
-  try {
-    getStripe();
-    out.stripeInit = 'ok';
-  } catch (e) {
-    out.stripeInit = errMsg(e, 'threw');
-  }
-  try {
-    createAdminClient();
-    out.adminInit = 'ok';
-  } catch (e) {
-    out.adminInit = errMsg(e, 'threw');
-  }
-  return NextResponse.json(out);
-}
+// NO GET HANDLER — deliberately.
+//
+// There was one. It was a bisect rig built during the 502 hunt described above,
+// and it did two things that should never have outlived that afternoon:
+//
+//   1. `?run=start` CREATED A STRIPE ACCOUNT OVER GET. The comment at the time
+//      admitted it — "yes, a GET with side effects is wrong… it is worth
+//      exactly one deploy to stop guessing". It was worth one deploy. It was
+//      not worth being the shape of the route in live mode, where any prefetch,
+//      crawler, link preview or cmd-click carrying the DJ's cookie could mint a
+//      connected account.
+//
+//   2. The bare GET was UNAUTHENTICATED and reported node version, whether the
+//      Stripe key was live or test, its LENGTH, whether the service role and
+//      Supabase url were present, and the site url — to anyone who typed the
+//      url. None of that is a key, and all of it is reconnaissance, and
+//      `stripeKeyLooksTest: true` told the whole internet the money wasn't
+//      real yet.
+//
+// The lessons from that hunt are kept at the top of this file, where they cost
+// nothing. The rig is gone. GET now 405s, which is what it should always have
+// been.
+//
+// If a future outage needs a probe: write it, use it, delete it the same day. A
+// diagnostic that survives the bug it was written for stops being a diagnostic
+// and starts being an endpoint.
 
 export async function POST(req: Request) {
   // EVERYTHING is inside this try. Nothing in this handler is permitted to
@@ -460,11 +242,8 @@ export async function POST(req: Request) {
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const action = typeof body.action === 'string' ? body.action : '';
 
-    // Delegated so GET ?run=start and POST {action:'start'} execute LITERALLY
-    // the same code. If one 502s and the other doesn't, the difference is the
-    // HTTP method — a fact about Cloudflare/Netlify, not about us.
-    // (runStart does its own auth + row read, so it goes before the lookups
-    // below rather than after them.)
+    // runStart does its own auth + row read, so it goes before the lookups
+    // below rather than after them.
     if (action === 'start') return await runStart(req);
 
     // Throws if SUPABASE_SERVICE_ROLE_KEY is missing — in v1 that throw was

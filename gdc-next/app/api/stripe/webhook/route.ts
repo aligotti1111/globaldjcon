@@ -18,6 +18,37 @@
 //
 // SECURITY: every request is verified against STRIPE_WEBHOOK_SECRET. An
 // unsigned or tampered request is rejected before any DB write.
+//
+// ─────────────────────────────────────────────────────────────────────────
+// WHY THIS RE-FETCHES INSTEAD OF TRUSTING THE PAYLOAD
+//
+// Stripe does not guarantee delivery ORDER, and it retries on any non-2xx —
+// so this route must assume it will receive the same event twice, and two
+// events in the wrong order, and it must be right anyway.
+//
+// The old version applied `event.data.object` directly. That's a photograph of
+// the subscription at the moment the event fired, and writing photographs in
+// arrival order gets you:
+//
+//   • REPLAY: Stripe retries a `subscription.updated` from an hour ago (its
+//     first attempt timed out). We re-apply an hour-old tier over the current
+//     one. A DJ who upgraded in between is silently downgraded.
+//   • REORDER: `updated`(active) and `deleted`(canceled) fire seconds apart and
+//     arrive backwards. We write `active` last. A cancelled account keeps Pro
+//     forever, and nothing ever corrects it because no further event is coming.
+//
+// Both are the same bug: the payload says what WAS true, and we're writing it
+// as what IS true.
+//
+// So every handler here re-fetches the subscription from Stripe and applies
+// THAT. Stripe's answer is current by definition, which makes this route
+// idempotent and order-independent for free — replay the same event ten times
+// in any order and the row lands on the same value, because the value doesn't
+// come from the event at all. The event is only a signal that something
+// changed; Stripe is the source of truth for what it changed TO.
+//
+// Cost: one API call per event. Correctness for a fraction of a second.
+// ─────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
@@ -53,8 +84,18 @@ function customerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer 
   return typeof customer === 'string' ? customer : customer.id;
 }
 
-// Sync a subscription's current state onto the user.
-async function applySubscription(admin: Admin, sub: Stripe.Subscription) {
+/**
+ * Sync a subscription's CURRENT state onto the user.
+ *
+ * Takes an id, not an object — see the header. The caller has a payload; it is
+ * deliberately not used for anything but the id, because it may be stale.
+ */
+async function applySubscription(admin: Admin, subscriptionId: string) {
+  const stripe = getStripe();
+  // The whole point. Stripe's copy is current; the webhook's copy is a
+  // photograph of some earlier moment that may already be wrong.
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+
   const cid = customerId(sub.customer);
   const userId = sub.metadata?.user_id || (await userIdByCustomer(admin, cid));
   if (!userId) {
@@ -83,17 +124,31 @@ async function applySubscription(admin: Admin, sub: Stripe.Subscription) {
     .eq('id', userId);
 }
 
-// A failed payment puts the account into the grace window. Stripe's dunning
-// retries; if it recovers, a subscription.updated (active) event restores it,
-// and if it gives up, a subscription.deleted (lapsed) event lands.
-async function markGrace(admin: Admin, invoice: Stripe.Invoice) {
-  const cid = customerId(invoice.customer);
-  const userId = await userIdByCustomer(admin, cid);
-  if (!userId) return;
-  await admin
-    .from('users')
-    .update({ sub_status: 'grace' } as unknown as never)
-    .eq('id', userId);
+/**
+ * A failed payment.
+ *
+ * Does NOT write 'grace' directly. The old version did, and it had the replay
+ * bug in its purest form: Stripe retries this event, dunning succeeds in the
+ * meantime, and the retry lands 'grace' on an account that is now healthily
+ * active. The DJ gets a lapse banner for a payment that went through.
+ *
+ * Instead: find the subscription, re-fetch it, apply whatever Stripe says it
+ * is NOW. past_due maps to grace through the same mapStatus as everything
+ * else, so a genuine failure still reaches grace — via the current truth
+ * rather than an assumption about it.
+ */
+async function onPaymentFailed(admin: Admin, invoice: Stripe.Invoice) {
+  // `subscription` is a top-level field on older API versions and lives on the
+  // line item on newer ones. Read both — an invoice with neither is a one-off
+  // payment, not a subscription, and there's nothing here to sync.
+  const inv = invoice as unknown as {
+    subscription?: string | { id?: string } | null;
+    parent?: { subscription_details?: { subscription?: string | { id?: string } | null } | null } | null;
+  };
+  const raw = inv.subscription ?? inv.parent?.subscription_details?.subscription ?? null;
+  const subId = typeof raw === 'string' ? raw : raw?.id ?? null;
+  if (!subId) return;
+  await applySubscription(admin, subId);
 }
 
 export async function POST(req: Request) {
@@ -125,11 +180,13 @@ export async function POST(req: Request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        await applySubscription(admin, event.data.object as Stripe.Subscription);
+        // The id is the only thing taken from the payload. An id can't go stale.
+        const { id } = event.data.object as Stripe.Subscription;
+        await applySubscription(admin, id);
         break;
       }
       case 'invoice.payment_failed': {
-        await markGrace(admin, event.data.object as Stripe.Invoice);
+        await onPaymentFailed(admin, event.data.object as Stripe.Invoice);
         break;
       }
       default:
