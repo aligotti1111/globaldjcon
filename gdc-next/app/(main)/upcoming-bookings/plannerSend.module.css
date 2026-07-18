@@ -442,3 +442,63 @@
   .sumRow { flex-direction: column; gap: .1rem; }
   .rowTools { flex-wrap: wrap; gap: .5rem; }
 }
+
+/* ── Full-screen editor ───────────────────────────────────────────────── */
+/*
+ * Edit mode is NOT the slim modal. The DJ is rearranging the client's whole
+ * page, so it gets the whole screen — a dark surface with the same centred
+ * column /planner/[id] uses, so it reads as the page it's editing.
+ */
+
+.editor {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: #000;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Back / title / Save, stuck to the top so Save is always in reach down a long
+   form. */
+.editorBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .8rem 1.1rem;
+  background: rgba(0, 0, 0, .92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+
+.editorTitle {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: .84rem;
+  color: #9d9db5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorSheet {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.4rem 1.1rem 5rem;
+}
+
+.editorErr {
+  max-width: 640px;
+  margin: .8rem auto 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 1.1rem;
+  font-size: .82rem;
+  color: #ff8a8a;
+}

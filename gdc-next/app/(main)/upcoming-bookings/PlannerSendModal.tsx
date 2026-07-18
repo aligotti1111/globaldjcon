@@ -210,12 +210,49 @@ export default function PlannerSendModal({
 
   const chosen = forcedId ? data?.templates.find((t) => t.id === forcedId) : null;
 
+  // EDIT MODE IS A FULL PAGE, NOT A BOX.
+  //
+  // The other two steps are a confirmation and a preview — they belong in a
+  // slim modal. Editing is different: the DJ is looking at the client's whole
+  // page and rearranging it, and a 560px column can't be that. So edit breaks
+  // out to a full-screen dark surface with the same centred column the real
+  // /planner/[id] uses. Same feature, but now it looks like the thing it edits.
+  if (data && mode === 'edit') {
+    return (
+      <div className={styles.editor}>
+        <div className={styles.editorBar}>
+          <button type="button" className={styles.ghost} onClick={() => setMode('preview')}>← Back</button>
+          <span className={styles.editorTitle}>Customize your {data.eventType || 'default'} planner</span>
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={busy}
+            onClick={async () => { const ok = await saveTemplate(); if (ok) setMode('preview'); }}
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        {err && <div className={styles.editorErr}>{err}</div>}
+        <div className={styles.editorSheet}>
+          <PlannerBuilder
+            fields={fields}
+            eventType={data.eventType}
+            onPatch={patch}
+            onMoveTo={moveTo}
+            onRemove={removeCustom}
+            onAdd={addField}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.head}>
           <h2 className={styles.title}>
-            {mode === 'edit' ? 'Customize questions' : mode === 'preview' ? 'Preview / customize' : 'Send Planner & Playlist'}
+            {mode === 'preview' ? 'Preview / customize' : 'Send Planner & Playlist'}
           </h2>
           <button type="button" className={styles.x} onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -358,32 +395,7 @@ export default function PlannerSendModal({
           </>
         )}
 
-        {data && mode === 'edit' && (
-          <>
-            <PlannerBuilder
-              fields={fields}
-              eventType={data.eventType}
-              onPatch={patch}
-              onMoveTo={moveTo}
-              onRemove={removeCustom}
-              onAdd={addField}
-            />
-
-            <div className={styles.foot}>
-              {/* Back to the preview, not the confirm screen — that's where you
-                  came from, and you'll want to see what you just changed. */}
-              <button type="button" className={styles.ghost} onClick={() => setMode('preview')}>Back</button>
-              <button
-                type="button"
-                className={styles.primary}
-                disabled={busy}
-                onClick={async () => { const ok = await saveTemplate(); if (ok) setMode('preview'); }}
-              >
-                Save
-              </button>
-            </div>
-          </>
-        )}
+        {/* edit mode is handled full-screen above, before this modal */}
       </div>
     </div>
   );
