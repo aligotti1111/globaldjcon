@@ -153,6 +153,10 @@ export default async function PlannerPage({
     { k: 'Occasion', v: booking?.event_details || '' },
     { k: 'Package', v: booking?.package_title || '' },
     { k: 'Guests', v: booking?.guest_count ? `${booking.guest_count}` : '' },
+    // The person who booked — the host/client on file. Shown here as a known
+    // fact with their number, so the day-of contact lives in the strip instead
+    // of being asked as a question.
+    { k: 'Booked by', v: booking?.requester_name || '' },
     { k: 'Your number', v: booking?.phone || '' },
   ].filter((r) => !!r.v);
 
