@@ -117,17 +117,11 @@ export default function PlannerSendModal({
     setDirty(true);
   }
 
-  // Drag-drop reorder: pull `from` out and splice it back at `to`. move() (the
-  // arrow version) is a special case of this, but keeping both is cheaper than
-  // rewriting the arrow calls.
-  function moveTo(from: number, to: number) {
-    setFields((prev) => {
-      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
-      const next = [...prev];
-      const [row] = next.splice(from, 1);
-      next.splice(to, 0, row);
-      return next;
-    });
+  // The builder hands back the whole reordered array — it owns the logic for
+  // which fields are anchored (prefilled) and how the editable ones flow around
+  // them, so the modal just stores the result.
+  function reorderAll(next: PlannerField[]) {
+    setFields(next);
     setDirty(true);
   }
 
@@ -238,7 +232,7 @@ export default function PlannerSendModal({
             fields={fields}
             eventType={data.eventType}
             onPatch={patch}
-            onMoveTo={moveTo}
+            onReorder={reorderAll}
             onRemove={removeCustom}
             onAdd={addField}
           />

@@ -45,12 +45,14 @@ const isPinned = (id: string) =>
 
 export default function PlannerBuilder({
   fields, eventType,
-  onPatch, onMoveTo, onRemove, onAdd,
+  onPatch, onReorder, onRemove, onAdd,
 }: {
   fields: PlannerField[];
   eventType: string | null;
   onPatch: (id: string, p: Partial<PlannerField>) => void;
-  onMoveTo: (from: number, to: number) => void;
+  // Takes the WHOLE reordered array — the builder rebuilds it so the modal
+  // stays dumb about which fields are hidden from the editor.
+  onReorder: (next: PlannerField[]) => void;
   onRemove: (id: string) => void;
   onAdd: (type: PlannerFieldType) => void;
 }) {
@@ -60,10 +62,26 @@ export default function PlannerBuilder({
   const [editing, setEditing] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  function drop(to: number) {
-    if (dragI !== null && dragI !== to) onMoveTo(dragI, to);
-    setDragI(null);
-    setOverI(null);
+  // PREFILLED FIELDS ARE NOT QUESTIONS. Setup time, music start/end, cocktail
+  // start — the client sees these as read-only facts in the "Your booking"
+  // strip, filled from the booking. They are not things the DJ curates, so they
+  // don't belong in this editor at all.
+  //
+  // But they must survive the save: dropping them from the array would delete
+  // them from the template. So they're ANCHORED — hidden from view, held at
+  // their exact index — and the editable questions reorder around them.
+  const anchored = (f: PlannerField) => !!f.prefill;
+  const editable = fields.filter((f) => !anchored(f));
+
+  // Reorder the editable subsequence, leave anchored fields pinned to their
+  // absolute slots, hand the whole thing back.
+  function reorderEditable(fromE: number, toE: number) {
+    if (fromE === toE || fromE < 0 || toE < 0 || fromE >= editable.length || toE >= editable.length) return;
+    const moved = [...editable];
+    const [row] = moved.splice(fromE, 1);
+    moved.splice(toE, 0, row);
+    let k = 0;
+    onReorder(fields.map((f) => (anchored(f) ? f : moved[k++])));
   }
 
   return (
@@ -77,7 +95,7 @@ export default function PlannerBuilder({
       </div>
 
       <div className={styles.list}>
-        {fields.map((f, i) => {
+        {editable.map((f, i) => {
           const pinned = isPinned(f.id);
           const dragging = dragI === i;
           const over = overI === i && dragI !== null && dragI !== i;
@@ -93,7 +111,7 @@ export default function PlannerBuilder({
               // Whole row is draggable via the handle only (draggable set on the
               // handle would still need the row to carry the events).
               onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
-              onDrop={(e) => { e.preventDefault(); drop(i); }}
+              onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
             >
               <div className={styles.rail}>
                 <span
@@ -107,10 +125,10 @@ export default function PlannerBuilder({
                 <div className={styles.arrows}>
                   <button type="button" className={styles.arrow}
                     aria-label="Move up" disabled={pinned || i === 0}
-                    onClick={() => onMoveTo(i, i - 1)}>↑</button>
+                    onClick={() => reorderEditable(i, i - 1)}>↑</button>
                   <button type="button" className={styles.arrow}
-                    aria-label="Move down" disabled={pinned || i === fields.length - 1}
-                    onClick={() => onMoveTo(i, i + 1)}>↓</button>
+                    aria-label="Move down" disabled={pinned || i === editable.length - 1}
+                    onClick={() => reorderEditable(i, i + 1)}>↓</button>
                 </div>
               </div>
 
