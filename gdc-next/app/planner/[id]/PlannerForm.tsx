@@ -79,7 +79,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, known,
+  djName, hostName, eventDateLabel, venueName, logoUrl, known,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -89,6 +89,8 @@ export default function PlannerForm({
   hostName: string | null;
   eventDateLabel: string;
   venueName: string | null;
+  /** The DJ's business logo (users.contract_logo_url), shown at the top. */
+  logoUrl: string | null;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
 }) {
@@ -242,6 +244,12 @@ export default function PlannerForm({
       <div className={styles.sheet}>
 
         <header className={styles.head}>
+          {/* The DJ's own logo, if they've set one — so the client sees THEIR
+              brand at the top, not just ours. */}
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
+          ) : null}
           <div className={styles.headBar}>
             <div>
               <div className={styles.brand}>Global DJ Connect</div>

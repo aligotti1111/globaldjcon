@@ -22,6 +22,7 @@ import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
+import BrandLogoSection from './BrandLogoSection';
 
 interface ProfileInit {
   id: string;
@@ -34,6 +35,9 @@ interface ProfileInit {
   zip: string;
   address: string;
   venueName: string;
+  // The single business logo (users.contract_logo_url). Shown on the planner,
+  // contracts, everywhere — edited here or in Contract setup, one source.
+  logoUrl: string | null;
 }
 
 interface BlockedUser {
@@ -499,6 +503,12 @@ export default function AccountSettingsClient({
           {profileSaving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Business Logo — DJs only. One logo, shared with contracts and the
+          planner. Saves on its own (no form), so it sits as its own card. */}
+      {isDj && (
+        <BrandLogoSection userId={initialProfile.id} initialUrl={initialProfile.logoUrl} />
+      )}
 
       {/* Email */}
       <div className={styles.card}>

@@ -40,6 +40,7 @@ interface ProfileRow {
   venue_name: string | null;
   blocked_users: string[] | null;
   phone: string | null;
+  contract_logo_url: string | null;
 }
 
 export default async function AccountSettingsPage() {
@@ -49,7 +50,7 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone')
+    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, contract_logo_url')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -84,6 +85,7 @@ export default async function AccountSettingsPage() {
         zip: profile.zip || '',
         address: profile.address || '',
         venueName: profile.venue_name || '',
+        logoUrl: profile.contract_logo_url || null,
       }}
       currentEmail={authUser.email || ''}
       initialBlocked={blockedNames}

@@ -29,6 +29,17 @@
   margin-bottom: 2rem;
 }
 
+/* The DJ's business logo at the very top of the planner. Capped so a big upload
+   can't dominate the page; centred on mobile-first single column. */
+.djLogo {
+  display: block;
+  max-height: 64px;
+  max-width: 220px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
    any time. Quiet outline; it's a utility, not the point of the page. */
 .headBar {

@@ -63,7 +63,7 @@ function fmtDate(d: string | null): string {
 }
 
 export default function PlannerSheetView({
-  b, fields, responses, status, submittedAt, plannerExists, paper = false,
+  b, fields, responses, status, submittedAt, plannerExists, logoUrl = null, paper = false,
 }: {
   b: SheetBooking | null;
   fields: PlannerField[];
@@ -71,6 +71,8 @@ export default function PlannerSheetView({
   status: string;
   submittedAt: string | null;
   plannerExists: boolean;
+  /** The DJ's business logo (users.contract_logo_url), printed at the top. */
+  logoUrl?: string | null;
   // `paper` = always render black-on-white (the client's download page), so it
   // reads as a document and there's no dark flash when the PDF is captured. The
   // DJ's /sheet leaves this off — dark on screen for the booth, white only in
@@ -103,6 +105,10 @@ export default function PlannerSheetView({
       <div className={styles.sheet} data-sheet>
 
         <header className={styles.head}>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="Logo" className={styles.sheetLogo} />
+          ) : null}
           <div className={styles.headTop}>
             <h1 className={styles.title}>
               {honoree ? peopleText(responses[honoree.id]) || (b?.requester_name ?? 'Planner & Playlist') : (b?.requester_name ?? 'Planner & Playlist')}

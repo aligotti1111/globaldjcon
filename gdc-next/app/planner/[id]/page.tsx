@@ -129,10 +129,14 @@ export default async function PlannerPage({
   // and a fallback that reads fine is how it goes unnoticed.
   const { data: djData } = await admin
     .from('users')
-    .select('name')
+    .select('name, contract_logo_url')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const djName = (djData as unknown as { name?: string | null } | null)?.name || 'your DJ';
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
+  const djName = dj?.name || 'your DJ';
+  // The DJ's single business logo (users.contract_logo_url) — shown at the top
+  // of the planner so it's clearly THEIR page.
+  const djLogo = dj?.contract_logo_url || null;
 
   // Hidden fields never reach the browser. Filtering here rather than in the
   // form means a hidden question isn't sitting in the page source of a document
@@ -200,6 +204,7 @@ export default async function PlannerPage({
       hostName={booking?.requester_name || null}
       eventDateLabel={fmtDate(booking?.event_date ?? null)}
       venueName={booking?.venue_name || null}
+      logoUrl={djLogo}
       known={known}
     />
   );

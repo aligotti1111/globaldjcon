@@ -114,6 +114,14 @@ export default async function SheetPage({
 
   fields = fields.filter((f) => !LEGACY_TIME_FIELD_IDS.has(f.id));
 
+  // The DJ's business logo (users.contract_logo_url) — printed at the top.
+  const { data: logoData } = await admin
+    .from('users')
+    .select('contract_logo_url')
+    .eq('id', ownerId)
+    .maybeSingle();
+  const logoUrl = (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
+
   return (
     <PlannerSheetView
       b={b}
@@ -122,6 +130,7 @@ export default async function SheetPage({
       status={status}
       submittedAt={submittedAt}
       plannerExists={!!planner}
+      logoUrl={logoUrl}
     />
   );
 }
