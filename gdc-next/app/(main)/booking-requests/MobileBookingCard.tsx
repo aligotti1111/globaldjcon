@@ -62,6 +62,19 @@ export default function MobileBookingCard(props: Props) {
     if (hrs === 0.5) return '30 mins';
     return `${hrs} ${hrs === 1 ? 'hr' : 'hrs'}`;
   })();
+  // Ceremony duration (half-hour granularity) from ceremony start to
+  // event start, for display on the card.
+  const ceremonyDurationLabel = (() => {
+    if (!b.ceremony_start_time || !b.start_time) return '';
+    const [csh, csm] = b.ceremony_start_time.split(':').map(Number);
+    const [esh, esm] = b.start_time.split(':').map(Number);
+    let mins = (esh * 60 + esm) - (csh * 60 + csm);
+    if (mins <= 0) mins += 1440;
+    const hrs = Math.round(mins / 30) / 2;
+    if (hrs <= 0) return '';
+    if (hrs === 0.5) return '30 mins';
+    return `${hrs} ${hrs === 1 ? 'hr' : 'hrs'}`;
+  })();
   const cleanedAddr = cleanAddress(b.venue_address);
 
   // ── Distance + outside-range warning ─────────────────────────────
@@ -208,9 +221,22 @@ export default function MobileBookingCard(props: Props) {
             </div>
           </div>
         )}
+        {b.ceremony_needed && (
+          <div className={styles.timeBlock}>
+            <div className={styles.tinyLabel}>Ceremony</div>
+            <div className={styles.cocktailLine}>
+              {b.ceremony_start_time ? formatTime(b.ceremony_start_time) : 'TBD'}
+              {ceremonyDurationLabel ? ` · ${ceremonyDurationLabel}` : ''}
+              {b.ceremony_same_room ? ' · Same room' : ' · Separate room'}
+            </div>
+          </div>
+        )}
         <div className={styles.timeBlock}>
           {b.cocktail_needed && (
             <div className={styles.cocktailIncludesNote}>Includes cocktail hour</div>
+          )}
+          {b.ceremony_needed && (
+            <div className={styles.cocktailIncludesNote}>Includes ceremony</div>
           )}
           <div className={styles.tinyLabel}>
             {b.event_type === 'weddings' ? 'Reception Start' : 'Event Start'}
@@ -364,6 +390,11 @@ export default function MobileBookingCard(props: Props) {
             {b.cocktail_price != null && Number(b.cocktail_price) > 0 && bigPriceVal != null && (
               <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
                 ${(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + ${Number(b.cocktail_price).toLocaleString()} cocktail
+              </div>
+            )}
+            {b.ceremony_price != null && Number(b.ceremony_price) > 0 && bigPriceVal != null && (
+              <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
+                ${(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + ${Number(b.ceremony_price).toLocaleString()} ceremony
               </div>
             )}
             {overtimeRate != null && (

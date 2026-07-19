@@ -321,6 +321,9 @@ export default function BookingRequestsClient({
             cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
             cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
             cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
+            ceremonyNeeded: (b as BookingRow & { ceremony_needed?: boolean | null }).ceremony_needed ?? null,
+            ceremonyStart: (b as BookingRow & { ceremony_start_time?: string | null }).ceremony_start_time ?? null,
+            ceremonySameRoom: (b as BookingRow & { ceremony_same_room?: boolean | null }).ceremony_same_room ?? null,
             setupHours: (b as BookingRow & { setup_hours?: string | null }).setup_hours ?? null,
           };
           try {
@@ -592,6 +595,9 @@ export default function BookingRequestsClient({
           cocktailNeeded: (b as BookingRow & { cocktail_needed?: boolean | null }).cocktail_needed ?? null,
           cocktailStart: (b as BookingRow & { cocktail_start_time?: string | null }).cocktail_start_time ?? null,
           cocktailSameRoom: (b as BookingRow & { cocktail_same_room?: boolean | null }).cocktail_same_room ?? null,
+          ceremonyNeeded: (b as BookingRow & { ceremony_needed?: boolean | null }).ceremony_needed ?? null,
+          ceremonyStart: (b as BookingRow & { ceremony_start_time?: string | null }).ceremony_start_time ?? null,
+          ceremonySameRoom: (b as BookingRow & { ceremony_same_room?: boolean | null }).ceremony_same_room ?? null,
           setupHours: (b as BookingRow & { setup_hours?: string | null }).setup_hours ?? null,
         };
         // To DJ

@@ -69,6 +69,13 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   const [cocktailPrice, setCocktailPrice] = useState(
     booking.cocktail_price != null ? String(booking.cocktail_price) : ''
   );
+  const hasCeremony = !!booking.ceremony_needed;
+  const [ceremonyIncluded, setCeremonyIncluded] = useState(
+    booking.ceremony_included == null ? true : booking.ceremony_included
+  );
+  const [ceremonyPrice, setCeremonyPrice] = useState(
+    booking.ceremony_price != null ? String(booking.ceremony_price) : ''
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,6 +132,14 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         cocktailPriceFinal = !isNaN(cp) && cp > 0 ? cp : null;
       }
 
+      // Ceremony values — only relevant if booking includes ceremony music
+      // (mobile DJ only). Forced null for club bookings.
+      let ceremonyPriceFinal: number | null = null;
+      if (!isClubBooking && hasCeremony && !ceremonyIncluded) {
+        const cp = parseFloat(ceremonyPrice);
+        ceremonyPriceFinal = !isNaN(cp) && cp > 0 ? cp : null;
+      }
+
       // Overtime — mobile DJ only; clubs don't use overtime per spec.
       const overtimeNum = parseFloat(overtime);
       const overtimeFinal = !isClubBooking && !isNaN(overtimeNum) && overtimeNum > 0
@@ -177,6 +192,8 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
+        ceremony_price: ceremonyPriceFinal,
+        ceremony_included: !isClubBooking && hasCeremony ? ceremonyIncluded : null,
         status: nextStatus,
         ...(nextStatus === 'counter' ? { negotiation_log: negotiationLog } : {}),
         updated_at: new Date().toISOString(),
@@ -200,6 +217,8 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
+        ceremony_price: ceremonyPriceFinal,
+        ceremony_included: !isClubBooking && hasCeremony ? ceremonyIncluded : null,
         status: nextStatus,
         negotiation_log: negotiationLog,
         updated_at: new Date().toISOString(),
@@ -537,6 +556,36 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
                   placeholder="0"
                   value={cocktailPrice}
                   onChange={(e) => setCocktailPrice(e.target.value)}
+                  className={styles.counterAmountInput}
+                />
+                <span className={styles.counterCurrencyCode}>Add-on</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ceremony pricing — mobile DJ weddings only. */}
+        {!isClubBooking && hasCeremony && (
+          <div className={styles.cocktailBox}>
+            <div className={styles.cocktailHeader}>💍 Music For Ceremony Pricing</div>
+            <label className={styles.cocktailCheckLabel}>
+              <input
+                type="checkbox"
+                checked={ceremonyIncluded}
+                onChange={(e) => setCeremonyIncluded(e.target.checked)}
+                style={{ accentColor: 'var(--neon)', width: 15, height: 15 }}
+              />
+              <span>Included in package price</span>
+            </label>
+            {!ceremonyIncluded && (
+              <div className={styles.counterAmountRow} style={{ marginTop: '.6rem' }}>
+                <span className={styles.counterCurrencySym}>$</span>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={ceremonyPrice}
+                  onChange={(e) => setCeremonyPrice(e.target.value)}
                   className={styles.counterAmountInput}
                 />
                 <span className={styles.counterCurrencyCode}>Add-on</span>

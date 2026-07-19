@@ -51,6 +51,9 @@ interface BookingRow {
   cocktail_needed: boolean | null;
   cocktail_start_time: string | null;
   cocktail_same_room: boolean | null;
+  ceremony_needed: boolean | null;
+  ceremony_start_time: string | null;
+  ceremony_same_room: boolean | null;
   package_title: string | null;
   package_category: string | null;
   package_index: number | null;
@@ -95,6 +98,8 @@ interface BookingRow {
   // Cocktail pricing — only for mobile DJ wedding bookings
   cocktail_price: number | null;
   cocktail_included: boolean | null;
+  ceremony_price: number | null;
+  ceremony_included: boolean | null;
   setup_hours: string | null;
   is_quote: boolean | null;
   // Set when the DJ explicitly sends a drafted quote to the booker.
