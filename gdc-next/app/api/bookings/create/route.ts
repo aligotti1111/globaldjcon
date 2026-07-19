@@ -178,6 +178,9 @@ export async function POST(req: Request) {
     const cocktailNeeded = boolOrNull(body.cocktailNeeded);
     const cocktailStart = str(body.cocktailStart);
     const cocktailSameRoom = boolOrNull(body.cocktailSameRoom);
+    const ceremonyNeeded = boolOrNull(body.ceremonyNeeded);
+    const ceremonyStart = str(body.ceremonyStart);
+    const ceremonySameRoom = boolOrNull(body.ceremonySameRoom);
     const rawPackageIndex = body.packageIndex;
     const packageIndex =
       typeof rawPackageIndex === 'number' && Number.isInteger(rawPackageIndex)
@@ -188,10 +191,14 @@ export async function POST(req: Request) {
     if (cocktailStart && !TIME_RE.test(cocktailStart)) {
       return bad('Please select a valid cocktail hour start time.');
     }
+    if (ceremonyStart && !TIME_RE.test(ceremonyStart)) {
+      return bad('Please select a valid ceremony start time.');
+    }
 
     // Derivations — EXACT mirror of MobileBookingForm's submit handler.
     const isWedding = eventType === 'weddings';
     const wantsCocktail = isWedding && cocktailNeeded === true;
+    const wantsCeremony = isWedding && ceremonyNeeded === true;
     const cat = getPackageCategory(eventType);
     const packagesAll = settings.mob_packages || {};
     const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
@@ -205,6 +212,10 @@ export async function POST(req: Request) {
       if (cocktailSameRoom == null) {
         return bad('Please choose whether the cocktail hour is in the same room as the reception.');
       }
+    }
+    if (wantsCeremony) {
+      if (!ceremonyStart) return bad('Please select a ceremony start time.');
+      if (ceremonySameRoom == null) return bad('Please choose whether the ceremony is in the same room as the reception.');
     }
     // cocktailWarn — same condition as the client (cocktail must start
     // before the reception/event start).
@@ -224,8 +235,8 @@ export async function POST(req: Request) {
     // Recompute EVERYTHING money-related server-side — same helpers, same
     // order, same rounding as the client's submit handler.
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart)
-      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
+      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony)
+      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
     const finalDiscount: DiscountResult =
       finalPrice.price != null
@@ -306,6 +317,11 @@ export async function POST(req: Request) {
       cocktail_included: wantsCocktail
         ? (selectedPkg?.cocktailIncluded !== false)
         : null,
+      ceremony_needed: wantsCeremony ? true : (isWedding ? !!ceremonyNeeded : null),
+      ceremony_start_time: wantsCeremony ? ceremonyStart : null,
+      ceremony_same_room: wantsCeremony ? !!ceremonySameRoom : null,
+      ceremony_price: wantsCeremony && (finalPrice.ceremonyAddon ?? 0) > 0 ? finalPrice.ceremonyAddon : null,
+      ceremony_included: wantsCeremony ? (((selectedPkg as { ceremonyIncluded?: boolean } | null)?.ceremonyIncluded) !== false) : null,
       setup_hours: selectedPkg?.setupHours
         ? String(selectedPkg.setupHours)
         : null,
@@ -372,6 +388,7 @@ export async function POST(req: Request) {
         total_with_tax: insertPayload.total_with_tax,
         is_quote: insertPayload.is_quote,
         cocktail_price: insertPayload.cocktail_price,
+        ceremony_price: insertPayload.ceremony_price,
       },
     });
   }

@@ -150,6 +150,12 @@ export default function MobileBookingForm({
   const [cocktailStart, setCocktailStart] = useState('');
   const [cocktailSameRoom, setCocktailSameRoom] = useState<boolean | null>(null);
 
+  // Music-for-ceremony fields (weddings only). Independent add-on that
+  // mirrors the cocktail-hour trio: needed? / start time / same room?
+  const [ceremonyNeeded, setCeremonyNeeded] = useState<boolean | null>(null);
+  const [ceremonyStart, setCeremonyStart] = useState('');
+  const [ceremonySameRoom, setCeremonySameRoom] = useState<boolean | null>(null);
+
   // Package selection (index into packages array)
   const [selectedPkgIdx, setSelectedPkgIdx] = useState<number | null>(null);
 
@@ -226,10 +232,11 @@ export default function MobileBookingForm({
     selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
   const wantsCocktail = isWedding && cocktailNeeded === true;
+  const wantsCeremony = isWedding && ceremonyNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
-    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
-  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart]);
+    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
+  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart, wantsCeremony]);
 
   // Discount layer — applied on top of the computed price. Better of an active
   // sale and the applied promo code wins (no stacking). Deposit is taken from
@@ -281,6 +288,9 @@ export default function MobileBookingForm({
   useEffect(() => {
     setSelectedPkgIdx(null);
     setCocktailNeeded(null);
+    setCeremonyNeeded(null);
+    setCeremonyStart('');
+    setCeremonySameRoom(null);
     // Clear event-type-specific sub-fields so stale values don't carry over
     // when the booker switches event type.
     setEventSubType('');
@@ -306,12 +316,14 @@ export default function MobileBookingForm({
       (errorFieldId === 'mpf-venue-address' && venueAddress.trim()) ||
       (errorFieldId === 'mpf-start-time' && startTime) ||
       (errorFieldId === 'mpf-cocktail-start' && !!cocktailStart && !cocktailWarn) ||
-      (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null);
+      (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null) ||
+      (errorFieldId === 'mpf-ceremony-start' && !!ceremonyStart) ||
+      (errorFieldId === 'mpf-ceremony-room' && ceremonySameRoom != null);
     if (fixed) {
       setErrorFieldId(null);
       setErrorMsg(null);
     }
-  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn]);
+  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom]);
 
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -367,6 +379,10 @@ export default function MobileBookingForm({
       if (!cocktailStart && fail('Please select a cocktail hour start time.', 'mpf-cocktail-start')) return;
       if (cocktailSameRoom == null && fail('Please choose whether the cocktail hour is in the same room as the reception.', 'mpf-cocktail-room')) return;
     }
+    if (wantsCeremony) {
+      if (!ceremonyStart && fail('Please select a ceremony start time.', 'mpf-ceremony-start')) return;
+      if (ceremonySameRoom == null && fail('Please choose whether the ceremony is in the same room as the reception.', 'mpf-ceremony-room')) return;
+    }
     if (cocktailWarn && fail(`Cocktail hour start time must be before the ${isWedding ? 'reception' : 'event'} start time.`, 'mpf-cocktail-start')) return;
     // Package validation only applies when the DJ has packages defined.
     // No-packages mode → fall through and submit as a quote-style request.
@@ -379,8 +395,8 @@ export default function MobileBookingForm({
     // the booking is a pure quote request, same shape vanilla uses for
     // is_quote bookings (price null, deposit null, package_title null).
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart)
-      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
+      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony)
+      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
     // Apply the discount to the final total; deposit comes off the discounted
     // amount. Stamp the booking with which discount was used so the DJ's
@@ -440,6 +456,9 @@ export default function MobileBookingForm({
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
+          ceremonyNeeded,
+          ceremonyStart,
+          ceremonySameRoom,
           packageIndex: selectedPkgIdx,
           promoCode: appliedCode,
           message,
@@ -507,6 +526,9 @@ export default function MobileBookingForm({
             cocktailNeeded: wantsCocktail ? true : null,
             cocktailStart: wantsCocktail ? cocktailStart : null,
             cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
+            ceremonyNeeded: wantsCeremony ? true : null,
+            ceremonyStart: wantsCeremony ? ceremonyStart : null,
+            ceremonySameRoom: wantsCeremony ? !!ceremonySameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             // Computed package price for this gig (null for is_quote
             // bookings). The email route reads quotedRate to show the
@@ -549,6 +571,9 @@ export default function MobileBookingForm({
             cocktailNeeded: wantsCocktail ? true : null,
             cocktailStart: wantsCocktail ? cocktailStart : null,
             cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
+            ceremonyNeeded: wantsCeremony ? true : null,
+            ceremonyStart: wantsCeremony ? ceremonyStart : null,
+            ceremonySameRoom: wantsCeremony ? !!ceremonySameRoom : null,
             setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
             quotedRate: created.quoted_rate,
             originalRate: created.original_rate,
@@ -1052,6 +1077,91 @@ export default function MobileBookingForm({
           </div>
         )}
 
+        {/* Music-for-ceremony subsection — WEDDINGS ONLY. Independent add-on
+            that mirrors the cocktail-hour block above. */}
+        {isWedding && (
+          <div className={styles.weddingFields}>
+            <div className={styles.cocktailHeaderRow}>
+              <div className={styles.weddingHeader}>Music For Ceremony</div>
+            </div>
+            <div className={styles.weddingPrompt}>Is music needed for the ceremony?</div>
+            <div className={styles.radioGroup}>
+              <label className={styles.radioPill}>
+                <input
+                  type="radio"
+                  name="mpf-ceremony-yn"
+                  checked={ceremonyNeeded === true}
+                  onChange={() => setCeremonyNeeded(true)}
+                />
+                <span className={styles.radioPillLabel}>Yes</span>
+              </label>
+              <label className={styles.radioPill}>
+                <input
+                  type="radio"
+                  name="mpf-ceremony-yn"
+                  checked={ceremonyNeeded === false}
+                  onChange={() => setCeremonyNeeded(false)}
+                />
+                <span className={styles.radioPillLabel}>No</span>
+              </label>
+            </div>
+            {ceremonyNeeded === true && (
+              <div>
+                <div style={{ marginBottom: '.6rem' }}>
+                  <label
+                    htmlFor="mpf-ceremony-start"
+                    style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.58rem',
+                      letterSpacing: '.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--white)',
+                      display: 'block',
+                      marginBottom: '.3rem',
+                    }}
+                  >
+                    Ceremony Start Time
+                  </label>
+                  <select
+                    id="mpf-ceremony-start"
+                    value={ceremonyStart}
+                    onChange={(e) => setCeremonyStart(e.target.value)}
+                    className={fieldClass('mpf-ceremony-start', styles.select)}
+                  >
+                    <option value="">Select time...</option>
+                    {MOB_TIME_OPTIONS.map(o => (
+                      <option key={o.val} value={o.val}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div id="mpf-ceremony-room" style={{ fontSize: '.85rem', color: errorFieldId === 'mpf-ceremony-room' ? 'var(--danger, #ff5f5f)' : 'var(--white)', marginBottom: '.5rem', scrollMarginTop: '90px' }}>
+                  Is the ceremony in the same room as the reception?
+                </div>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioPill}>
+                    <input
+                      type="radio"
+                      name="mpf-ceremony-room"
+                      checked={ceremonySameRoom === true}
+                      onChange={() => setCeremonySameRoom(true)}
+                    />
+                    <span className={styles.radioPillLabel}>Yes</span>
+                  </label>
+                  <label className={styles.radioPill}>
+                    <input
+                      type="radio"
+                      name="mpf-ceremony-room"
+                      checked={ceremonySameRoom === false}
+                      onChange={() => setCeremonySameRoom(false)}
+                    />
+                    <span className={styles.radioPillLabel}>No</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Packages */}
         {hasAnyPackages ? (
           <div className={styles.formRow}>
@@ -1068,6 +1178,7 @@ export default function MobileBookingForm({
               depositPct={depositPct}
               wantsCocktail={wantsCocktail}
               cocktailStart={cocktailStart}
+              wantsCeremony={wantsCeremony}
             />
           </div>
         ) : (
@@ -1152,6 +1263,9 @@ export default function MobileBookingForm({
               <div className={styles.cocktailNote}>
                 Includes cocktail hour: +${priceResult.cocktailAddon.toLocaleString()}
               </div>
+            )}
+            {(priceResult.ceremonyAddon ?? 0) > 0 && (
+              <div className={styles.cocktailNote}>Includes ceremony music: +${(priceResult.ceremonyAddon ?? 0).toLocaleString()}</div>
             )}
             {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
@@ -1307,6 +1421,7 @@ function PackagesSection({
   depositPct,
   wantsCocktail,
   cocktailStart,
+  wantsCeremony,
 }: {
   formReady: boolean;
   eventType: string;
@@ -1320,6 +1435,7 @@ function PackagesSection({
   depositPct: number;
   wantsCocktail: boolean;
   cocktailStart: string;
+  wantsCeremony: boolean;
 }) {
   if (!formReady) {
     return (
@@ -1380,7 +1496,7 @@ function PackagesSection({
           if (pkg.reqAll) {
             priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
           } else {
-            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart);
+            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
             if (cardPrice.isQuote || cardPrice.price == null) {
               if (packageTiers(pkg).length > 0) {
                 priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;

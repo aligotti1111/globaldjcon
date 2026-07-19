@@ -130,7 +130,16 @@ export interface PriceResult {
   overtimeHours: number;     // overtime hours included in the price (0 if none)
   depositAmount: number | null; // computed when price + depositPct
   cocktailAddon: number;     // wedding cocktail-hour charge added to price (0 if none)
+  // Optional so existing callers that build a PriceResult literal (the quote
+  // fallbacks in the form + create route) keep compiling until they're updated
+  // to include it. calcPrice always sets it.
+  ceremonyAddon?: number;    // wedding ceremony-music charge added to price (0 if none)
 }
+
+// A package may carry the ceremony-music add-on fields alongside the cocktail
+// ones. They live in the package JSON (set in PackageEditor) but aren't on the
+// public MobilePackage type, so read them through this narrow cast.
+type CeremonyPkg = { ceremonyIncluded?: boolean; ceremonyPrice?: number | string };
 
 // Compute total price for a package given event duration.
 // Faithful port of vanilla mobPubCalcPrice + the duplicated logic in
@@ -146,10 +155,14 @@ export function calcPrice(
   endTime: string,
   depositPct: number,
   wantsCocktail: boolean = false,
-  cocktailStart: string = ''
+  cocktailStart: string = '',
+  // Music For Ceremony — a separate wedding add-on from cocktail hour. A flat
+  // fee (the ceremony has no fixed end time to bill per hour), added when the
+  // host wants it and the DJ didn't bundle it into the package.
+  wantsCeremony: boolean = false
 ): PriceResult {
   if (pkg.reqAll) {
-    return { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0 };
+    return { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
   }
 
   let totalHours = 0;
@@ -227,12 +240,34 @@ export function calcPrice(
     }
   }
 
+  // Wedding ceremony-music add-on (independent of cocktail hour): a FLAT fee.
+  // Charged when the booker wants ceremony music and the DJ did NOT bundle it
+  // (ceremonyIncluded === false) and set a price. No duration billing — the
+  // ceremony has no fixed end time — so it's the flat ceremonyPrice.
+  let ceremonyAddon = 0;
+  {
+    const cp = pkg as unknown as CeremonyPkg;
+    if (
+      wantsCeremony &&
+      price != null &&
+      cp.ceremonyIncluded === false &&
+      cp.ceremonyPrice != null &&
+      cp.ceremonyPrice !== ''
+    ) {
+      const fee = Number(cp.ceremonyPrice);
+      if (Number.isFinite(fee) && fee > 0) {
+        ceremonyAddon = fee;
+        price += ceremonyAddon;
+      }
+    }
+  }
+
   let depositAmount: number | null = null;
   if (price != null && depositPct > 0) {
     depositAmount = Number((price * depositPct / 100).toFixed(2));
   }
 
-  return { isQuote, price, overtimeHours, depositAmount, cocktailAddon };
+  return { isQuote, price, overtimeHours, depositAmount, cocktailAddon, ceremonyAddon };
 }
 
 // Whole hours between two "HH:MM" times (end - start), rounded up, handling
