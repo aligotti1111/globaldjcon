@@ -159,9 +159,14 @@ export default function PlannerSendModal({
     return () => { active = false; };
   }, [bookingId]);
 
-  // Preview the REAL client page for a specific planner, in its own window.
-  function openPreview(plannerId: string) {
-    const qs = new URLSearchParams({ bookingId, plannerId });
+  // Preview the REAL client page, in its own window. Keyed by EVENT TYPE (the
+  // same key Customize saves under) so a just-saved customization shows up — a
+  // fixed planner id would keep pointing at the old (stock) row.
+  //   · auto row  → omit eventType, so it resolves the booking's own type
+  //   · other row → that template's event type ('' means the base planner)
+  function openPreview(auto: boolean, eventType: string | null) {
+    const qs = new URLSearchParams({ bookingId });
+    if (!auto) qs.set('eventType', eventType ?? '');
     window.open(`/planner-preview?${qs.toString()}`, '_blank');
   }
 
@@ -333,7 +338,11 @@ export default function PlannerSendModal({
                         >
                           ✎
                         </button>
-                        <button type="button" onClick={() => openPreview(t.id)} style={miniBtnStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openPreview(isAuto, isAuto ? data.editEventType : t.eventType)}
+                          style={miniBtnStyle}
+                        >
                           Preview
                         </button>
                         <button

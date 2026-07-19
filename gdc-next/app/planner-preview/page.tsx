@@ -7,11 +7,11 @@
 // same <PlannerForm> component the client uses, in `preview` mode: nothing
 // saves, there's no Send button, and a banner makes clear it's a look.
 //
-// It resolves the template EXACTLY as /api/planner/request does — same
-// pickTemplate → composeFields → applyPrefill — so what the DJ previews is what
-// the client would actually receive. An optional ?plannerId lets the modal
-// preview a specific alternative (the forced pick), mirroring request's
-// "forced REPLACES the override, not the base" rule.
+// It resolves the template the same way the send does — pickTemplate →
+// composeFields → applyPrefill — but keyed by EVENT TYPE (?eventType), not a
+// planner id. That's deliberate: Customize saves a new DJ-owned row (new id)
+// per event type, so resolving by type is what lets a just-saved change appear
+// here. No eventType param → the booking's own type (the "auto" planner).
 //
 // DJ-ONLY. This reads with the DJ's session and refuses any booking that isn't
 // theirs — the opposite of /planner/[id], which is a no-login capability URL
@@ -70,11 +70,18 @@ function fmtDate(d: string | null): string {
 export default async function PlannerPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bookingId?: string; plannerId?: string }>;
+  searchParams: Promise<{ bookingId?: string; eventType?: string }>;
 }) {
   const sp = await searchParams;
   const bookingId = sp.bookingId || '';
-  const forcedId = sp.plannerId || '';
+  // Resolve by EVENT TYPE, the same key Customize saves under — NOT a fixed
+  // planner id. Saving a customization creates a NEW row with a new id, so a
+  // preview pinned to an id would keep showing the old (stock) template. By
+  // type, pickTemplate always finds the DJ's latest saved version.
+  //   · key absent          → use the booking's own event type (the "auto" row)
+  //   · key present, value   → that event type
+  //   · key present, empty    → the base/default planner (event_type null)
+  const rawType = sp.eventType;
   if (!/^[0-9a-f-]{36}$/i.test(bookingId)) notFound();
 
   // DJ session — this is the DJ looking, not the client. No capability URL here.
@@ -130,19 +137,16 @@ export default async function PlannerPreviewPage({
     .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
   const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
-  // If a specific planner was asked for, it must be one this DJ can use.
-  if (forcedId && !templates.find((t) => t.id === forcedId)) notFound();
+  // wantType, mirroring /api/planners GET and the Customize editor exactly:
+  const wantType = rawType === undefined ? b.event_type : (rawType.trim() ? rawType.trim() : null);
 
-  const { base, override } = pickTemplate(templates, user.id, b.event_type);
+  // Resolve by type — base + the DJ's override for that type if they have one.
+  // This is what makes a just-saved customization show up: pickTemplate returns
+  // the DJ's row (whatever its id) over the stock one.
+  const { base, override } = pickTemplate(templates, user.id, wantType);
   if (!base) notFound();
 
-  // A forced pick REPLACES the override, not the base — identical to
-  // /api/planner/request, so a previewed alternative matches the sent one.
-  const forcedTpl = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
-  const overrideFields = forcedTpl
-    ? (forcedTpl.id === base.id ? [] : forcedTpl.fields || [])
-    : (override?.fields || []);
-  const composed = composeFields(base.fields || [], overrideFields);
+  const composed = composeFields(base.fields || [], override?.fields || []);
 
   // Real prefill, same helper and args as the send — so the preview's "Your
   // booking" answers are the ones the client would actually see filled in.
