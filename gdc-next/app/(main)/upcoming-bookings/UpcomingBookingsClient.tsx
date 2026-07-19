@@ -1735,22 +1735,26 @@ function BookingRow({
                 ? 'Add host email and name to resend. The link still works.'
                 : 'Add host email and name to send planner.')
             : undefined,
+      // Two buttons, one name. It's the Planner & Playlist throughout — "Open"
+      // to view/fill it, "Download" to get the PDF. No "run sheet" jargon.
+      //
+      //   · Open Planner & Playlist  — the live page, once one exists.
+      //   · Download Planner & Playlist — ALWAYS here, at every stage. Even
+      //     blank/not-sent, the sheet page renders from the template, so the DJ
+      //     can download a blank to fill by hand or email. ?download=1 makes it
+      //     download on open — one click, no dialog.
       actions: archive
         ? []
-        // Run sheet ALWAYS comes first, at every stage — even before a planner
-        // is sent (the page renders a blank sheet from the template). It's the
-        // print/download view with the one-click Download PDF, and the only
-        // in-app way to it now that the panel is off the card. So a DJ can grab
-        // the sheet at any point in the planner's life.
         : [
-            { label: 'Run sheet', run: () => { window.open(`/sheet/${booking.id}`, '_blank', 'noopener,noreferrer'); } },
+            ...(planner
+              ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
+              : []),
+            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank', 'noopener,noreferrer'); } },
             ...(planner
               ? [
-                  // Open and Copy survive the host gate. They don't email anybody
-                  // — the planner exists and the link is live, and a DJ whose
-                  // client lost the link needs to hand it over by text. Only
-                  // Resend needs a recipient, so only Resend goes away.
-                  { label: 'Open planner', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
+                  // Copy survives the host gate — the planner exists and the link
+                  // is live, and a DJ whose client lost it needs to hand it over
+                  // by text. Only Resend needs a recipient, so only Resend goes.
                   {
                     label: 'Copy link',
                     run: () => {
@@ -1762,9 +1766,9 @@ function BookingRow({
                       navigator.clipboard?.writeText(abs).catch(() => {});
                     },
                   },
-                  // A lapsed DJ keeps Open and Copy. The planner is their client's
-                  // answers on their booking — a subscription buys sending one,
-                  // not seeing the ones already in.
+                  // A lapsed DJ keeps Open, Download and Copy. The planner is
+                  // their client's answers on their booking — a subscription buys
+                  // SENDING one, not seeing the ones already in.
                   ...(!canPro
                     ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
                     : blockedNoHost
@@ -1780,8 +1784,7 @@ function BookingRow({
                       ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                       : [])
                   // Opens the modal — the whole choose-a-planner, preview,
-                  // customise and send flow. "Request planner" undersold it as
-                  // one action; it's the doorway to all of it.
+                  // customise and send flow.
                   : [{ label: 'Choose & send planner', run: () => { setPlannerErr(null); setSendOpen(true); } }]),
           ],
     });

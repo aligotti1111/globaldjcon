@@ -164,6 +164,20 @@
 .na { font-size: .88rem; color: #75758d; font-style: italic; }
 .blank { font-size: .88rem; color: #4a4a60; }
 
+/* Unanswered questions print as writable rules, so a downloaded planner reads
+   like a form you can fill by hand. Each is a line; a filled one shows the
+   answer, an empty one is a blank line. */
+.fillLines {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  margin-top: .15rem;
+}
+.fillLine {
+  height: 1.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .2);
+}
+
 .list { display: flex; flex-direction: column; gap: .15rem; }
 
 .bullets {
@@ -307,6 +321,7 @@
 .export .dnpList { color: #000 !important; font-weight: 500; }
 .export .say { color: #000 !important; font-weight: 700; }
 .export .trackLink { display: none !important; }
+.export .fillLine { border-bottom-color: #999 !important; }
 
 @media print {
   /* The rules below are the whole point of this file. They come LAST because
@@ -349,6 +364,7 @@
 
   /* A url printed on paper is noise. The title and artist are the content. */
   .trackLink { display: none !important; }
+  .fillLine { border-bottom-color: #999 !important; }
 
   .grid { gap: .8rem 1.4rem; }
 

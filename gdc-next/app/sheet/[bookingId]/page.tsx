@@ -58,7 +58,7 @@ export const dynamic = 'force-dynamic';
 
 // A page with a client's names, songs and phone number on it. Never indexed.
 export const metadata = {
-  title: 'Run sheet — Global DJ Connect',
+  title: 'Planner & Playlist — Global DJ Connect',
   robots: { index: false, follow: false },
 };
 
@@ -218,7 +218,7 @@ export default async function SheetPage({
         <header className={styles.head}>
           <div className={styles.headTop}>
             <h1 className={styles.title}>
-              {honoree ? peopleText(responses[honoree.id]) || (b?.requester_name ?? 'Run sheet') : (b?.requester_name ?? 'Run sheet')}
+              {honoree ? peopleText(responses[honoree.id]) || (b?.requester_name ?? 'Planner & Playlist') : (b?.requester_name ?? 'Planner & Playlist')}
             </h1>
             <PrintButton />
           </div>
@@ -295,10 +295,26 @@ function peopleText(r: PlannerResponses[string] | undefined): string {
   return (v as Person[]).map((p) => p.name).filter(Boolean).join(' & ');
 }
 
+// A blank answer prints as writable rule(s), not a dash — so a downloaded
+// planner (blank or half-filled) is a form you can fill by hand. List questions
+// get a few lines; a single-value question gets one.
+function BlankLines({ type }: { type: PlannerField['type'] }) {
+  const count =
+    type === 'songlist' ? 5 :
+    type === 'textlist' || type === 'people' || type === 'timeline' ? 4 :
+    type === 'longtext' ? 3 :
+    1;
+  return (
+    <div className={styles.fillLines}>
+      {Array.from({ length: count }).map((_, i) => <div key={i} className={styles.fillLine} />)}
+    </div>
+  );
+}
+
 function Answer({ field, responses }: { field: PlannerField; responses: PlannerResponses }) {
   const r = responses[field.id];
   if (isNa(r)) return <div className={styles.na}>N/A</div>;
-  if (!hasAnswer(r)) return <div className={styles.blank}>—</div>;
+  if (!hasAnswer(r)) return <BlankLines type={field.type} />;
   const v = responseValue(r);
 
   switch (field.type) {

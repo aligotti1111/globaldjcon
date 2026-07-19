@@ -17,7 +17,7 @@
 // button baked into a downloaded document makes it look like a screenshot of an
 // app rather than a document.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './sheet.module.css';
 
 const HTML2PDF_SRC =
@@ -48,6 +48,21 @@ function safeFilename(): string {
 
 export default function PrintButton() {
   const [busy, setBusy] = useState(false);
+  // "Download Planner & Playlist" in the bookings list opens this page with
+  // ?download=1 — so the PDF downloads on open, no second click. Guarded so it
+  // only fires once even under React's dev double-mount.
+  const autoFired = useRef(false);
+
+  useEffect(() => {
+    if (autoFired.current) return;
+    const wantsDownload = new URLSearchParams(window.location.search).get('download') === '1';
+    if (!wantsDownload) return;
+    autoFired.current = true;
+    // A tick after paint, so the sheet is fully laid out before we capture.
+    const t = setTimeout(() => { void download(); }, 150);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function download() {
     if (busy) return;
