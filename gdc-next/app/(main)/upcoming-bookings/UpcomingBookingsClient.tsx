@@ -1745,50 +1745,46 @@ function BookingRow({
       //     download on open — one click, no dialog.
       actions: archive
         ? []
-        : [
-            ...(planner
-              ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
-              : []),
-            // No 'noopener' — the opened tab downloads the PDF then closes
-            // itself, and self-close is only allowed for script-opened tabs.
-            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
-            ...(planner
-              ? [
-                  // Copy survives the host gate — the planner exists and the link
-                  // is live, and a DJ whose client lost it needs to hand it over
-                  // by text. Only Resend needs a recipient, so only Resend goes.
-                  {
-                    label: 'Copy link',
-                    run: () => {
-                      if (!plannerUrl) return;
-                      // The absolute url — the DJ is copying this to text it to a
-                      // client, and "/planner/abc" pasted into Messages is not a
-                      // link.
-                      const abs = `${window.location.origin}${plannerUrl}`;
-                      navigator.clipboard?.writeText(abs).catch(() => {});
-                    },
-                  },
-                  // A lapsed DJ keeps Open, Download and Copy. The planner is
-                  // their client's answers on their booking — a subscription buys
-                  // SENDING one, not seeing the ones already in.
-                  ...(!canPro
-                    ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
-                    : blockedNoHost
-                      ? (onAddHost || onEdit
-                          ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
-                          : [])
-                      : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
-                ]
-              : !canPro
+        : planner
+          ? [
+              { label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
+              // Download only exists once a planner has been sent — before that
+              // there's no specific planner to render. window.open (no noopener)
+              // so the opened tab can download the PDF and close itself.
+              { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
+              // Copy survives the host gate — the planner exists and the link is
+              // live, and a DJ whose client lost it needs to hand it over by text.
+              // Only Resend needs a recipient, so only Resend goes.
+              {
+                label: 'Copy link',
+                run: () => {
+                  if (!plannerUrl) return;
+                  // The absolute url — the DJ is copying this to text it to a
+                  // client, and "/planner/abc" pasted into Messages is not a link.
+                  const abs = `${window.location.origin}${plannerUrl}`;
+                  navigator.clipboard?.writeText(abs).catch(() => {});
+                },
+              },
+              // A lapsed DJ keeps Open, Download and Copy. The planner is their
+              // client's answers on their booking — a subscription buys SENDING
+              // one, not seeing the ones already in.
+              ...(!canPro
                 ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
                 : blockedNoHost
                   ? (onAddHost || onEdit
                       ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                       : [])
-                  // Opens the modal — the whole choose-a-planner, preview,
-                  // customise and send flow.
-                  : [{ label: 'Choose & send planner', run: () => { setPlannerErr(null); setSendOpen(true); } }]),
-          ],
+                  : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
+            ]
+          : !canPro
+            ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
+            : blockedNoHost
+              ? (onAddHost || onEdit
+                  ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                  : [])
+              // Opens the modal — the whole choose-a-planner, preview, customise
+              // and send flow.
+              : [{ label: 'Select and Send Planner & Playlist', run: () => { setPlannerErr(null); setSendOpen(true); } }],
     });
   }
 
