@@ -412,20 +412,6 @@
   min-width: 140px;
   outline: none;
 }
-/* Hides the native number spinners. Applied alongside .settingNumber on the
-   tax inputs only: their step is 0.001 (real local rates need 3 decimals —
-   NYC is 8.875%), so the arrows would nudge by a thousandth of a percent and
-   are useless. Bookings-per-day keeps its arrows, where stepping 1→2→3 helps. */
-.noSpin {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.noSpin::-webkit-outer-spin-button,
-.noSpin::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
 .settingNumber {
   width: 80px;
   background: var(--card);
