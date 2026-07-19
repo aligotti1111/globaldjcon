@@ -23,7 +23,7 @@
 //   · Guest of honour / Do NOT play / Notes are draggable here, but the server
 //     re-pins them (first / last) on save — so the DJ sees a lock, not a fight.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, titleCaseLabel } from '@/lib/planner';
@@ -80,18 +80,24 @@ export default function PlannerBuilder({
   const [addOpen, setAddOpen] = useState(false);
 
   // The DJ's business logo — the SAME one on the client's planner (top) and the
-  // contract, read straight from their profile (users.contract_logo_url). Shown
-  // here so the editor previews the real branded page. If they haven't set one,
-  // an "Add your logo" button sends them to Account settings, where setting it
-  // makes it appear here, on the planner, and on contracts at once.
+  // contract (users.contract_logo_url). Shown here so the editor previews the
+  // real branded page. If they haven't set one, "Add your logo" uploads it right
+  // here — no trip to another page — and it lands on this field, so it shows on
+  // the planner and contracts too. (The same field is also managed on the DJ
+  // profile page.)
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoInput = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user || !active) return;
+        setUserId(user.id);
         const { data } = await supabase
           .from('users')
           .select('contract_logo_url')
@@ -102,6 +108,33 @@ export default function PlannerBuilder({
     })();
     return () => { active = false; };
   }, []);
+
+  // Upload + save the logo right from the editor. Same storage bucket + column
+  // the contract logo uses, so it's one shared logo everywhere.
+  async function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (!file.type.startsWith('image/') || file.size > 4 * 1024 * 1024) {
+      if (logoInput.current) logoInput.current.value = '';
+      return;
+    }
+    setLogoBusy(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${userId}/contract_logo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = `${data.publicUrl}?t=${Date.now()}`;
+      const { error: dbErr } = await supabase.from('users').update({ contract_logo_url: url } as unknown as never).eq('id', userId);
+      if (dbErr) throw dbErr;
+      setLogoUrl(url);
+    } catch { /* leave the button; the DJ can retry */ } finally {
+      setLogoBusy(false);
+      if (logoInput.current) logoInput.current.value = '';
+    }
+  }
 
   // PREFILLED FIELDS ARE NOT QUESTIONS. Setup time, music start/end, cocktail
   // start — the client sees these as read-only facts in the "Your booking"
@@ -128,19 +161,30 @@ export default function PlannerBuilder({
 
   return (
     <div className={styles.wrap}>
-      {/* The DJ's logo at the very top — exactly where the client sees it. If
-          they haven't set one, a prompt to add it (opens Account settings). */}
+      {/* The DJ's logo at the very top — exactly where the client sees it. Add
+          or replace it right here: it uploads in place and saves to the shared
+          logo, so it shows on the planner and contracts too. */}
+      <input ref={logoInput} type="file" accept="image/*" hidden onChange={onPickLogo} />
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="Your logo" className={styles.logo} />
+        <button
+          type="button"
+          className={styles.logoBtn}
+          onClick={() => logoInput.current?.click()}
+          disabled={logoBusy}
+          title="Click to replace your logo"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="Your logo" className={styles.logo} />
+        </button>
       ) : (
         <button
           type="button"
           className={styles.addLogo}
-          onClick={() => window.open('/account-settings', '_blank')}
+          onClick={() => logoInput.current?.click()}
+          disabled={logoBusy}
           title="Add your business logo — shows here, on the planner, and on contracts"
         >
-          + Add your logo
+          {logoBusy ? 'Uploading…' : '+ Add your logo'}
         </button>
       )}
 

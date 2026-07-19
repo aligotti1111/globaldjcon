@@ -9,14 +9,23 @@
   flex-direction: column;
 }
 
-/* The DJ's logo at the top of the editor — where the client sees it. */
+/* The DJ's logo at the top of the editor — where the client sees it. Wrapped in
+   a button so clicking it replaces the logo. */
+.logoBtn {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+.logoBtn:disabled { cursor: wait; opacity: .6; }
 .logo {
   display: block;
   max-height: 60px;
   max-width: 200px;
   width: auto;
   object-fit: contain;
-  margin-bottom: 1rem;
 }
 /* Shown instead when no logo is set — a way to add one right from here. */
 .addLogo {
