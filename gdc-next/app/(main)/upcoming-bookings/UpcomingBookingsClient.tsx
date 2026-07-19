@@ -1749,7 +1749,9 @@ function BookingRow({
             ...(planner
               ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
               : []),
-            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank', 'noopener,noreferrer'); } },
+            // No 'noopener' — the opened tab downloads the PDF then closes
+            // itself, and self-close is only allowed for script-opened tabs.
+            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
             ...(planner
               ? [
                   // Copy survives the host gate — the planner exists and the link

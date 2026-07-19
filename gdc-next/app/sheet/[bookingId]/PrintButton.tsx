@@ -64,13 +64,20 @@ export default function PrintButton() {
     if (!wantsDownload) return;
     autoFired.current = true;
     // A tick after paint, so the sheet is fully laid out before we capture.
-    const t = setTimeout(() => { void download(); }, 150);
+    // This page was opened just to produce the file — once the PDF actually
+    // saved, close the throwaway tab and return the user to where they were. We
+    // do NOT close if it fell back to the print dialog (that needs the tab).
+    const t = setTimeout(() => {
+      void download().then((saved) => {
+        if (saved) setTimeout(() => { try { window.close(); } catch { /* ignore */ } }, 900);
+      });
+    }, 150);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function download() {
-    if (busy) return;
+  async function download(): Promise<boolean> {
+    if (busy) return false;
     setBusy(true);
     // Capture the PAGE element itself — it's the node that carries the .export
     // class, so the light styling AND the "hide the buttons" rule both apply to
@@ -123,10 +130,12 @@ export default function PrintButton() {
         })
         .from(page)
         .save();
+      return true;
     } catch {
       // CDN blocked, offline, or anything else — the print dialog always works,
       // and its "Save as PDF" is the same result in two clicks instead of one.
       window.print();
+      return false;
     } finally {
       if (!alreadyPaper) page?.classList.remove(styles.export);
       if (wrapRef.current) wrapRef.current.style.visibility = '';

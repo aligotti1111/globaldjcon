@@ -256,15 +256,16 @@ export default function PlannerForm({
               <h1 className={styles.title}>Planner &amp; Playlist</h1>
             </div>
             {/* Download a PDF anytime — client or DJ. Opens the print view with
-                ?download=1 so it downloads on open. Blank, half-filled, or done. */}
-            <a
+                ?download=1 so it downloads on open, then that tab closes itself.
+                window.open (not a plain link) so the opened tab is allowed to
+                self-close once the file is saved. */}
+            <button
+              type="button"
               className={styles.download}
-              href={`/planner/${plannerId}/print?download=1`}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
             >
               ↓ Download PDF
-            </a>
+            </button>
           </div>
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
