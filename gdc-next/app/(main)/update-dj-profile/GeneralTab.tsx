@@ -251,10 +251,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       {/* Password — inline edit form. Same pattern as email. */}
       <PasswordChangeBlock />
 
-      {/* Blocked Users — moved here from the old account-settings page, which
-          DJs no longer see. */}
-      <BlockedUsersSection />
-
       {/* Name + Custom URL — grouped together since the URL derives from
           and lives under the name on signup. Label adapts to dj_type:
           mobile DJs are typically a company brand ("DJ Nova Productions")
@@ -429,6 +425,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           className={styles.input}
         />
       </div>
+
+      {/* Blocked Users — at the bottom of the tab. Moved here from the old
+          account-settings page, which DJs no longer see. */}
+      <BlockedUsersSection />
 
     </div>
   );
