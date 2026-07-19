@@ -1303,7 +1303,7 @@ export async function POST(req: Request) {
     // Extra detail rows below the card — overtime rate + any message. (Cocktail
     // and ceremony now live in the bill breakdown above.)
     const extraRows = (overtimeLine || messageLine)
-      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${messageLine}</div>`
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;">${overtimeLine}${messageLine}</div>`
       : '';
 
     const subject = `Offer sent for your event – ${dateStr}`;
@@ -1647,7 +1647,7 @@ export async function POST(req: Request) {
         })}
         ${billBox}
         ${overtimeRate != null
-          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
+          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
           : ''}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
