@@ -224,7 +224,6 @@ export default async function SheetPage({
     { k: endLabel, v: fmtTime(b?.end_time ?? null) },
     { k: 'Venue', v: [b?.venue_name, b?.venue_address].filter(Boolean).join(' · ') },
     { k: 'Occasion', v: b?.event_details || '' },
-    { k: 'Package', v: b?.package_title || '' },
     { k: 'Guests', v: b?.guest_count ? `${b.guest_count}` : '' },
     { k: 'Booked by', v: b?.requester_name || '' },
     { k: 'Your number', v: b?.phone || '' },

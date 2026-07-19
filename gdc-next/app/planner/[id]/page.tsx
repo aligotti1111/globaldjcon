@@ -182,7 +182,6 @@ export default async function PlannerPage({
     // anniversary/graduation/reunion, birthday age). Carries through as a known
     // fact — shown, never re-asked. Empty for event types without a sub-field.
     { k: 'Occasion', v: booking?.event_details || '' },
-    { k: 'Package', v: booking?.package_title || '' },
     { k: 'Guests', v: booking?.guest_count ? `${booking.guest_count}` : '' },
     // The person who booked — the host/client on file. Shown here as a known
     // fact with their number, so the day-of contact lives in the strip instead

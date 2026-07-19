@@ -39,7 +39,6 @@ const BOOKING_FACTS: { label: string; sample: string }[] = [
   { label: 'Start time', sample: '6:00 PM' },
   { label: 'End time', sample: '11:00 PM' },
   { label: 'Venue', sample: 'The Grand Ballroom' },
-  { label: 'Package', sample: 'Premium — 5 hours' },
   { label: 'Guests', sample: '150' },
   { label: 'Your number', sample: '(555) 012-3456' },
 ];
