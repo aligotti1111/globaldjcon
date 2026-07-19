@@ -1774,7 +1774,7 @@ function BookingRow({
                   ? (onAddHost || onEdit
                       ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                       : [])
-                  : [{ label: plannerBusy ? 'Sending…' : 'Resend email', run: requestPlanner }]),
+                  : [{ label: plannerBusy ? 'Sending…' : 'Send reminder email', run: requestPlanner }]),
             ]
           : !canPro
             ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
