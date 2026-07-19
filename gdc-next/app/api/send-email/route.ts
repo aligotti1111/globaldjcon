@@ -452,6 +452,11 @@ function billBreakdownBox(
 async function billBreakdownForBooking(
   bookingId: string | undefined | null,
   currency: string,
+  // A counter/quote sends a NEW flat price that isn't the stored quoted_rate.
+  // Pass it here and the bill is computed FROM it — taxed at the booking's
+  // stored tax %, deposit at its stored deposit % — instead of the stale
+  // snapshot. (No add-on itemization: a counter is a single all-in number.)
+  overrideRate?: number | null,
 ): Promise<string> {
   if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return '';
   try {
@@ -459,15 +464,48 @@ async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency')
+      .select('quoted_rate, cocktail_price, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
+        dj_id: string | null; booking_type: string | null;
       }>();
     if (!data) return '';
     const cur = data.currency || currency || 'USD';
+    if (overrideRate != null && Number.isFinite(Number(overrideRate)) && Number(overrideRate) > 0) {
+      const rate = Number(overrideRate);
+      // A counter/quote is a NEW proposal, so tax + deposit apply at the DJ's
+      // CURRENT setting (fetched live), falling back to the booking's frozen
+      // snapshot when the DJ has no live setting. This is what makes tax count
+      // even when the DJ turned it on AFTER the original request arrived.
+      let taxPct = data.tax_pct != null ? Number(data.tax_pct) : 0;
+      let depPct = data.deposit_pct != null ? Number(data.deposit_pct) : 0;
+      if (data.dj_id) {
+        try {
+          const { data: dj } = await admin
+            .from('users').select('booking_settings, dj_type').eq('id', data.dj_id)
+            .maybeSingle<{ booking_settings: string | null; dj_type: string | null }>();
+          if (dj?.booking_settings) {
+            const bs = typeof dj.booking_settings === 'string'
+              ? JSON.parse(dj.booking_settings) : dj.booking_settings;
+            if (bs?.tax_enabled === true) taxPct = Number(bs.tax_pct) || 0;
+            const isClub = (data.booking_type || dj.dj_type) === 'club';
+            const dp = Number(isClub ? bs?.club_deposit_pct : bs?.mob_deposit_pct);
+            if (Number.isFinite(dp) && dp > 0) depPct = dp;
+          }
+        } catch { /* fall back to the frozen snapshot above */ }
+      }
+      const taxAmt = taxPct > 0 ? Number(((rate * taxPct) / 100).toFixed(2)) : 0;
+      const total = Number((rate + taxAmt).toFixed(2));
+      const depAmt = depPct > 0 ? Number(((total * depPct) / 100).toFixed(2)) : 0;
+      return billBreakdownBox({
+        quotedRate: rate,
+        taxPct, taxAmount: taxAmt, totalWithTax: total,
+        depositPct: depPct, depositAmount: depAmt,
+      }, currencySymbol(cur), cur);
+    }
     return billBreakdownBox({
       quotedRate: data.quoted_rate,
       cocktailPrice: data.cocktail_price,
@@ -1465,7 +1503,9 @@ export async function POST(req: Request) {
     const senderSubjectName = senderName
       ? (senderRoleLabel ? `${senderRoleLabel} ${senderName}` : senderName)
       : (senderRoleLabel ? `the ${senderRoleLabel.toLowerCase()}` : 'the other party');
-    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
+    // A counter is a NEW flat price → break it down from the counter amount,
+    // taxed/deposited at the booking's stored rates (not the stale snapshot).
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency, counterRate);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,

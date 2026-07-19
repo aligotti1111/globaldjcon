@@ -195,6 +195,7 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'booking_counter',
+            bookingId: booking.id,
             recipientUserId: isFromDj ? booking.requester_id : booking.dj_id,
             recipientName: isFromDj ? booking.requester_name : booking.dj_name,
             senderName: isFromDj ? booking.dj_name : booking.requester_name,
