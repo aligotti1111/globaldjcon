@@ -23,27 +23,10 @@
 //   · Guest of honour / Do NOT play / Notes are draggable here, but the server
 //     re-pins them (first / last) on save — so the DJ sees a lock, not a fight.
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, titleCaseLabel } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID } from '@/lib/planner';
 import styles from './plannerBuilder.module.css';
-
-// The booking facts that are never planner fields — they come straight off the
-// booking row. Same set the client's page shows in its "Your booking" strip.
-// The sample values are illustrative — there's no client while you arrange a
-// template — so the strip reads like a real filled page instead of eight
-// repeated "filled from the booking" lines.
-const BOOKING_FACTS: { label: string; sample: string }[] = [
-  { label: 'Event', sample: 'Birthday Party' },
-  { label: 'Date', sample: 'Sat, Aug 15, 2026' },
-  { label: 'Start time', sample: '6:00 PM' },
-  { label: 'End time', sample: '11:00 PM' },
-  { label: 'Venue', sample: 'The Grand Ballroom' },
-  { label: 'Guests', sample: '150' },
-  { label: 'Booked by', sample: 'Jordan Ellis' },
-  { label: 'Your number', sample: '(555) 012-3456' },
-];
 
 const ADDABLE: { type: PlannerFieldType; label: string }[] = [
   { type: 'text', label: 'Short text' },
@@ -61,14 +44,11 @@ const isPinned = (id: string) =>
   id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
 
 export default function PlannerBuilder({
-  fields, eventType, bookingId = null,
+  fields, eventType,
   onPatch, onReorder, onRemove, onAdd,
 }: {
   fields: PlannerField[];
   eventType: string | null;
-  // The booking this editor was opened from — lets "remove logo → only this
-  // planner" target that one client's planner.
-  bookingId?: string | null;
   onPatch: (id: string, p: Partial<PlannerField>) => void;
   // Takes the WHOLE reordered array — the builder rebuilds it so the modal
   // stays dumb about which fields are hidden from the editor.
@@ -82,117 +62,6 @@ export default function PlannerBuilder({
   const [editing, setEditing] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  // The DJ's business logo — the SAME one on the client's planner (top) and the
-  // contract (users.contract_logo_url). Shown here so the editor previews the
-  // real branded page. If they haven't set one, "Add your logo" uploads it right
-  // here — no trip to another page — and it lands on this field, so it shows on
-  // the planner and contracts too. (The same field is also managed on the DJ
-  // profile page.)
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [logoBusy, setLogoBusy] = useState(false);
-  // The remove-logo choice (delete everywhere vs hide on just this planner), and
-  // a small status line.
-  const [showRemove, setShowRemove] = useState(false);
-  const [logoMsg, setLogoMsg] = useState<string | null>(null);
-  const logoInput = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || !active) return;
-        setUserId(user.id);
-        const { data } = await supabase
-          .from('users')
-          .select('contract_logo_url')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (active) setLogoUrl((data as { contract_logo_url?: string | null } | null)?.contract_logo_url || null);
-      } catch { /* logo is optional — never block the editor */ }
-    })();
-    return () => { active = false; };
-  }, []);
-
-  // Upload + save the logo right from the editor. Same storage bucket + column
-  // the contract logo uses, so it's one shared logo everywhere.
-  async function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !userId) return;
-    if (!file.type.startsWith('image/') || file.size > 4 * 1024 * 1024) {
-      if (logoInput.current) logoInput.current.value = '';
-      return;
-    }
-    setLogoBusy(true);
-    try {
-      const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-      const path = `${userId}/contract_logo_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${data.publicUrl}?t=${Date.now()}`;
-      // Save via the API — 'set' also clears every per-booking hide, so the new
-      // logo shows everywhere again.
-      const res = await fetch('/api/dj/logo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'set', url }),
-      });
-      if (!res.ok) throw new Error('save failed');
-      setLogoUrl(url);
-      setLogoMsg(null);
-    } catch { /* leave the button; the DJ can retry */ } finally {
-      setLogoBusy(false);
-      if (logoInput.current) logoInput.current.value = '';
-    }
-  }
-
-  // Remove everywhere — deletes the logo from the profile, so it's gone from
-  // every planner and contract.
-  async function removeEverywhere() {
-    setLogoBusy(true);
-    setLogoMsg(null);
-    try {
-      const res = await fetch('/api/dj/logo', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'clear' }),
-      });
-      if (!res.ok) throw new Error('failed');
-      setLogoUrl(null);
-      setShowRemove(false);
-      setLogoMsg('Logo removed everywhere.');
-    } catch {
-      setLogoMsg('Could not remove — try again.');
-    } finally {
-      setLogoBusy(false);
-    }
-  }
-
-  // Hide on this planner only — leaves the logo on the profile and every other
-  // planner, just switches it off for this one booking. Needs a sent planner.
-  async function hideThisPlanner() {
-    if (!bookingId) { setLogoMsg("Send this planner first, then you can hide the logo on it."); return; }
-    setLogoBusy(true);
-    setLogoMsg(null);
-    try {
-      const res = await fetch('/api/dj/logo', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'hide', bookingId }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) { setLogoMsg(j?.error || 'Could not hide — try again.'); return; }
-      setShowRemove(false);
-      setLogoMsg('Logo hidden on this client’s planner. It still shows everywhere else.');
-    } catch {
-      setLogoMsg('Could not hide — try again.');
-    } finally {
-      setLogoBusy(false);
-    }
-  }
-
   // PREFILLED FIELDS ARE NOT QUESTIONS. Setup time, music start/end, cocktail
   // start — the client sees these as read-only facts in the "Your booking"
   // strip, filled from the booking. They are not things the DJ curates, so they
@@ -203,7 +72,6 @@ export default function PlannerBuilder({
   // their exact index — and the editable questions reorder around them.
   const anchored = (f: PlannerField) => !!f.prefill;
   const editable = fields.filter((f) => !anchored(f));
-  const shownAtTop = fields.filter(anchored);
 
   // Reorder the editable subsequence, leave anchored fields pinned to their
   // absolute slots, hand the whole thing back.
@@ -218,92 +86,12 @@ export default function PlannerBuilder({
 
   return (
     <div className={styles.wrap}>
-      {/* The DJ's logo at the very top — exactly where the client sees it. Add
-          or replace it right here: it uploads in place and saves to the shared
-          logo, so it shows on the planner and contracts too. */}
-      <input ref={logoInput} type="file" accept="image/*" hidden onChange={onPickLogo} />
-      {logoUrl ? (
-        <div className={styles.logoRow}>
-          <button
-            type="button"
-            className={styles.logoBtn}
-            onClick={() => logoInput.current?.click()}
-            disabled={logoBusy}
-            title="Click to replace your logo"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoUrl} alt="Your logo" className={styles.logo} />
-          </button>
-          <button
-            type="button"
-            className={styles.logoRemove}
-            onClick={() => { setShowRemove((v) => !v); setLogoMsg(null); }}
-            disabled={logoBusy}
-          >
-            Remove
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={styles.addLogo}
-          onClick={() => logoInput.current?.click()}
-          disabled={logoBusy}
-          title="Add your business logo — shows here, on the planner, and on contracts"
-        >
-          {logoBusy ? 'Uploading…' : '+ Add your logo'}
-        </button>
-      )}
-
-      {/* The remove CHOICE: delete the logo everywhere, or just hide it on this
-          one client's planner. Changing the logo later (here or in account
-          settings) brings it back everywhere. */}
-      {showRemove && logoUrl && (
-        <div className={styles.logoChoice}>
-          <span className={styles.logoChoiceQ}>Remove the logo…</span>
-          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={removeEverywhere}>
-            Everywhere (delete from profile)
-          </button>
-          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={hideThisPlanner}>
-            Only this client’s planner
-          </button>
-          <button type="button" className={styles.logoChoiceCancel} disabled={logoBusy} onClick={() => setShowRemove(false)}>
-            Cancel
-          </button>
-        </div>
-      )}
-      {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
-
       {/* The page's own header, faint — so the DJ is looking at the client's
           actual page, chrome and all, not a bare list floating in a modal. */}
       <div className={styles.pageHead}>
         <div className={styles.brand}>Global DJ Connect</div>
         <div className={styles.pageTitle}>Planner &amp; Playlist</div>
-        <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder, click a question to rename.</div>
-      </div>
-
-      {/* YOUR BOOKING — the read-only strip the client sees at the top, filled
-          from the booking. Not questions, not draggable. Shown here so the DJ
-          arranges the WHOLE page, not just the middle of it. The values are
-          illustrative (there's no client yet) — the point is the layout. */}
-      <div className={styles.known}>
-        <div className={styles.knownHead}>Your booking · example</div>
-        {BOOKING_FACTS.map((f) => (
-          <div key={f.label} className={styles.knownRow}>
-            <span className={styles.knownK}>{f.label}</span>
-            <span className={styles.knownV}>{f.sample}</span>
-          </div>
-        ))}
-        {shownAtTop.map((f) => (
-          <div key={f.id} className={styles.knownRow}>
-            <span className={styles.knownK}>{titleCaseLabel(f.label)}</span>
-            <span className={styles.knownV}>—</span>
-          </div>
-        ))}
-        <p className={styles.knownNote}>
-          Sample values shown. On a real planner these are filled from the booking and
-          contract — the client sees them read-only at the top, never asked.
-        </p>
+        <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder; tap the pencil (or the question) to rename it.</div>
       </div>
 
       <div className={styles.list}>
@@ -362,7 +150,7 @@ export default function PlannerBuilder({
                       onClick={() => setEditing(f.id)}
                       title="Click to rename"
                     >
-                      {f.label ? titleCaseLabel(f.label) : 'Untitled question'}
+                      {f.label || 'Untitled question'}
                       {f.required ? <span className={styles.req}>required</span> : null}
                       {f.is_custom ? <span className={styles.mine}>yours</span> : null}
                     </button>
@@ -372,12 +160,24 @@ export default function PlannerBuilder({
                     {pinned ? (
                       <span className={styles.lock} title="Stays in place — locked position">🔒</span>
                     ) : null}
+                    {/* Pencil — the visible way to rename a question's title.
+                        Clicking the label works too, but the pencil is the
+                        affordance a DJ looks for. */}
+                    {editing !== f.id ? (
+                      <button
+                        type="button"
+                        className={styles.act}
+                        title="Edit this question's title"
+                        aria-label={`Edit the title of "${f.label || 'this question'}"`}
+                        onClick={() => setEditing(f.id)}
+                      >✎</button>
+                    ) : null}
                     <button
                       type="button"
-                      className={styles.toggle}
+                      className={styles.act}
                       title={f.hidden ? 'Turn on — client will see this' : 'Turn off — hide from the client'}
                       onClick={() => onPatch(f.id, { hidden: !f.hidden })}
-                    >{f.hidden ? 'Enable' : 'Disable'}</button>
+                    >{f.hidden ? '🙈' : '👁'}</button>
                     {f.is_custom ? (
                       <button
                         type="button"
@@ -389,12 +189,10 @@ export default function PlannerBuilder({
                   </div>
                 </div>
 
-                {/* Disabled = collapsed. A turned-off question is just its name
-                    and the eye to switch it back on — no help, no preview box.
-                    The box only earns its space when the client will actually
-                    see the field. */}
-                {!f.hidden && f.help ? <div className={styles.help}>{f.help}</div> : null}
-                {!f.hidden ? <FieldPreview field={f} /> : null}
+                {f.help ? <div className={styles.help}>{f.help}</div> : null}
+
+                {/* The real control, empty and disabled — the whole point. */}
+                <FieldPreview field={f} />
               </div>
             </div>
           );
