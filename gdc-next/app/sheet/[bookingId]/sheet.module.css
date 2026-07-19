@@ -333,12 +333,17 @@
    makes html2canvas render it offset and clip the sides. Full width, like the
    @media print rule. */
 .export .sheet { max-width: none !important; margin: 0 !important; }
-.export .noPrint { display: none !important; }
+/* NOTE: buttons are hidden from the capture by the Download button itself
+   (visibility toggled just for the snapshot), NOT by a CSS rule here — so they
+   stay visible on the client's always-paper download page. */
 .export .head { border-bottom-color: #000 !important; }
 .export .title { color: #000 !important; }
 .export .meta { color: #000 !important; }
 .export .knownK { color: #444 !important; }
 .export .knownV { color: #000 !important; }
+/* Buttons visible on the white page (their dark-theme colours vanish on white). */
+.export .print { color: #1a1a1a !important; border-color: #999 !important; background: #f4f4f6 !important; }
+.export .printAlt { color: #555 !important; }
 .export .metaSub,
 .export .label,
 .export .trackNum,

@@ -69,6 +69,7 @@ export default async function PlannerPrintPage({
       status={planner.status}
       submittedAt={planner.submitted_at}
       plannerExists
+      paper
     />
   );
 }

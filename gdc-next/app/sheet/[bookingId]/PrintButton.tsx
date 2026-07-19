@@ -48,10 +48,15 @@ function safeFilename(): string {
 
 export default function PrintButton() {
   const [busy, setBusy] = useState(false);
-  // "Download Planner & Playlist" in the bookings list opens this page with
-  // ?download=1 — so the PDF downloads on open, no second click. Guarded so it
-  // only fires once even under React's dev double-mount.
+  // "Download Planner & Playlist" opens this page with ?download=1 — so the PDF
+  // downloads on open, no second click. Guarded so it only fires once even under
+  // React's dev double-mount.
   const autoFired = useRef(false);
+  // The button wrapper, so we can hide it FROM the capture only (not via a CSS
+  // rule that also hides it on the page). On the client's download page the
+  // page is already paper-white and stays that way — the buttons just blink out
+  // for the snapshot, then come back. No dark flash.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (autoFired.current) return;
@@ -73,12 +78,18 @@ export default function PrintButton() {
     // was on its ancestor, so html2canvas rendered it dark with buttons showing
     // and clipped, because the sheet is centred.)
     const page = document.getElementById('runSheet');
+    // If the page is already paper-white (the client's download page), leave it
+    // that way — only add/remove .export when we had to force it (the DJ's dark
+    // sheet). That's what removes the dark flash: light pages stay light.
+    const alreadyPaper = !!page?.classList.contains(styles.export);
     try {
       await ensureHtml2pdf();
       if (!page) throw new Error('Nothing to export');
 
-      // Force the paper (light) styling for the capture.
-      page.classList.add(styles.export);
+      // Hide the buttons from the snapshot only (not from the page).
+      if (wrapRef.current) wrapRef.current.style.visibility = 'hidden';
+      // Force the paper (light) styling for the capture, only if it isn't already.
+      if (!alreadyPaper) page.classList.add(styles.export);
       // Capture from the very top — html2canvas offsets by the scroll position,
       // so a DJ who scrolled down before clicking would otherwise get a blank or
       // clipped page.
@@ -117,13 +128,14 @@ export default function PrintButton() {
       // and its "Save as PDF" is the same result in two clicks instead of one.
       window.print();
     } finally {
-      page?.classList.remove(styles.export);
+      if (!alreadyPaper) page?.classList.remove(styles.export);
+      if (wrapRef.current) wrapRef.current.style.visibility = '';
       setBusy(false);
     }
   }
 
   return (
-    <div className={`${styles.dlWrap} ${styles.noPrint}`}>
+    <div ref={wrapRef} className={`${styles.dlWrap} ${styles.noPrint}`}>
       <button type="button" className={styles.print} onClick={download} disabled={busy}>
         {busy ? 'Preparing…' : 'Download PDF'}
       </button>

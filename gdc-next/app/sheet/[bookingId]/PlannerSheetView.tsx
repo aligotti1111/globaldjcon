@@ -63,7 +63,7 @@ function fmtDate(d: string | null): string {
 }
 
 export default function PlannerSheetView({
-  b, fields, responses, status, submittedAt, plannerExists,
+  b, fields, responses, status, submittedAt, plannerExists, paper = false,
 }: {
   b: SheetBooking | null;
   fields: PlannerField[];
@@ -71,6 +71,11 @@ export default function PlannerSheetView({
   status: string;
   submittedAt: string | null;
   plannerExists: boolean;
+  // `paper` = always render black-on-white (the client's download page), so it
+  // reads as a document and there's no dark flash when the PDF is captured. The
+  // DJ's /sheet leaves this off — dark on screen for the booth, white only in
+  // the capture/print.
+  paper?: boolean;
 }) {
   const honoree = fields.find((f) => f.id === HONOREE_FIELD_ID);
 
@@ -94,7 +99,7 @@ export default function PlannerSheetView({
   return (
     // id + data-sheet let the Download button find the page root (to force the
     // light/paper styling during capture) and the sheet itself. See PrintButton.
-    <div className={styles.page} id="runSheet">
+    <div className={paper ? `${styles.page} ${styles.export}` : styles.page} id="runSheet">
       <div className={styles.sheet} data-sheet>
 
         <header className={styles.head}>
