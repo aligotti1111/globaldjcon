@@ -60,36 +60,57 @@ function fmtDate(d: string | null): string {
 
 // New per-row controls use inline styles so this component doesn't depend on
 // new classes being added to plannerSend.module.css.
+//
+// One CLEAN LINE per planner: dot, name (truncates with an ellipsis), tag,
+// pencil, then Preview + Customize aligned to the right. nowrap so the buttons
+// never drop to a second line — that wrapping was the "mess".
 const rowStyle: CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '.5rem',
-  flexWrap: 'wrap', padding: '.4rem 0',
+  flexWrap: 'nowrap', padding: '.5rem 0',
+  borderTop: '1px solid rgba(140,140,170,.14)',
 };
 const nameStyle: CSSProperties = {
-  fontWeight: 600, fontSize: '.95rem', display: 'inline-flex',
-  alignItems: 'center', gap: '.4rem',
+  flex: '1 1 auto', minWidth: 0,
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  fontWeight: 600, fontSize: '.9rem', cursor: 'pointer',
 };
+const chipWrapStyle: CSSProperties = { flex: '0 0 auto', display: 'inline-flex' };
 const iconBtnStyle: CSSProperties = {
+  flex: '0 0 auto',
   background: 'none', border: 'none', cursor: 'pointer',
   fontSize: '.9rem', lineHeight: 1, padding: '.15rem .3rem',
   color: 'var(--muted, #8a8aa0)',
 };
 const miniBtnStyle: CSSProperties = {
+  flex: '0 0 auto',
   background: 'none', border: '1px solid rgba(140,140,170,.35)',
-  borderRadius: 8, cursor: 'pointer', fontSize: '.78rem',
-  padding: '.2rem .55rem', color: 'inherit', whiteSpace: 'nowrap',
+  borderRadius: 8, cursor: 'pointer', fontSize: '.75rem',
+  padding: '.2rem .5rem', color: 'inherit', whiteSpace: 'nowrap',
 };
 const inputStyle: CSSProperties = {
+  flex: '1 1 auto', minWidth: 0,
   fontSize: '.9rem', padding: '.25rem .45rem', borderRadius: 8,
-  border: '1px solid rgba(140,140,170,.5)', minWidth: 160,
+  border: '1px solid rgba(140,140,170,.5)',
   background: 'transparent', color: 'inherit',
 };
 const dotStyle = (on: boolean): CSSProperties => ({
-  width: 16, height: 16, borderRadius: '50%', flex: '0 0 auto',
+  width: 15, height: 15, borderRadius: '50%', flex: '0 0 auto',
   border: '2px solid rgba(140,140,170,.6)',
   boxShadow: on ? 'inset 0 0 0 3px var(--accent, #6a6aff)' : 'none',
   borderColor: on ? 'var(--accent, #6a6aff)' : 'rgba(140,140,170,.6)',
   cursor: 'pointer',
 });
+// Date · Event · Venue on ONE row at the top.
+const infoRowStyle: CSSProperties = {
+  display: 'flex', flexWrap: 'wrap', gap: '1.25rem',
+  alignItems: 'baseline', padding: '.1rem 0 .5rem',
+};
+const infoLabelStyle: CSSProperties = {
+  fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em',
+  textTransform: 'uppercase', color: 'var(--muted, #8a8aa0)',
+  marginRight: '.4rem',
+};
+const infoValStyle: CSSProperties = { fontSize: '.9rem', fontWeight: 600 };
 
 export default function PlannerSendModal({
   bookingId, onClose, onSent,
@@ -224,22 +245,22 @@ export default function PlannerSendModal({
 
         {data && (
           <>
-            <div className={styles.summary}>
-              {/* Event info at the TOP — date, kind of party, venue — so the DJ
-                  is sure they're on the right booking before anything else. */}
-              <div className={styles.sumRow}>
-                <span className={styles.k}>Date</span>
-                <span className={styles.v}>{fmtDate(data.event.date)}</span>
-              </div>
-              <div className={styles.sumRow}>
-                <span className={styles.k}>Event</span>
-                <span className={styles.v}>{data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '—') : '—'}</span>
-              </div>
+            {/* Event info at the TOP, all on one row — date, kind of party,
+                venue — so the DJ is sure they're on the right booking. */}
+            <div className={styles.summary} style={infoRowStyle}>
+              <span>
+                <span style={infoLabelStyle}>Date</span>
+                <span style={infoValStyle}>{fmtDate(data.event.date)}</span>
+              </span>
+              <span>
+                <span style={infoLabelStyle}>Event</span>
+                <span style={infoValStyle}>{data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '—') : '—'}</span>
+              </span>
               {data.event.venue && (
-                <div className={styles.sumRow}>
-                  <span className={styles.k}>Venue</span>
-                  <span className={styles.v}>{data.event.venue}</span>
-                </div>
+                <span>
+                  <span style={infoLabelStyle}>Venue</span>
+                  <span style={infoValStyle}>{data.event.venue}</span>
+                </span>
               )}
             </div>
 
@@ -295,13 +316,14 @@ export default function PlannerSendModal({
                     ) : (
                       <>
                         <span
-                          style={{ ...nameStyle, cursor: 'pointer' }}
+                          style={nameStyle}
+                          title={t.name}
                           onClick={() => setForcedId(isAuto ? null : t.id)}
                         >
                           {t.name}
-                          {isAuto && <span className={styles.tagAuto}>auto</span>}
-                          {!isAuto && t.isMine && <span className={styles.tag}>yours</span>}
                         </span>
+                        {isAuto && <span style={chipWrapStyle}><span className={styles.tagAuto}>auto</span></span>}
+                        {!isAuto && t.isMine && <span style={chipWrapStyle}><span className={styles.tag}>yours</span></span>}
                         <button
                           type="button"
                           onClick={() => startRename(t)}
@@ -311,7 +333,6 @@ export default function PlannerSendModal({
                         >
                           ✎
                         </button>
-                        <span style={{ flex: 1 }} />
                         <button type="button" onClick={() => openPreview(t.id)} style={miniBtnStyle}>
                           Preview
                         </button>
