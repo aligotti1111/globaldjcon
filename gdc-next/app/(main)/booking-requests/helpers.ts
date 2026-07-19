@@ -89,16 +89,9 @@ export function calcDurationLabel(b: {
       : `${cRem}m`;
     label += ` + ${cockLabel} cocktail`;
   }
+  // Ceremony is flagged but NOT counted in hours — just "+ ceremony".
   if (b.event_type === 'weddings' && b.ceremony_needed && b.ceremony_start_time) {
-    const [ceh, cem] = b.ceremony_start_time.split(':').map(Number);
-    let cerMins = sh * 60 + sm - (ceh * 60 + cem);
-    if (cerMins <= 0) cerMins += 1440;
-    const ceHrs = Math.floor(cerMins / 60);
-    const ceRem = cerMins % 60;
-    const cerLabel = ceHrs > 0
-      ? `${ceHrs} hr${ceHrs > 1 ? 's' : ''}${ceRem > 0 ? ' ' + ceRem + 'm' : ''}`
-      : `${ceRem}m`;
-    label += ` + ${cerLabel} ceremony`;
+    label += ' + ceremony';
   }
   return label;
 }

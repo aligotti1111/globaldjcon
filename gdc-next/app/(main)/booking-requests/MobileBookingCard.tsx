@@ -62,19 +62,7 @@ export default function MobileBookingCard(props: Props) {
     if (hrs === 0.5) return '30 mins';
     return `${hrs} ${hrs === 1 ? 'hr' : 'hrs'}`;
   })();
-  // Ceremony duration (half-hour granularity) from ceremony start to
-  // event start, for display on the card.
-  const ceremonyDurationLabel = (() => {
-    if (!b.ceremony_start_time || !b.start_time) return '';
-    const [csh, csm] = b.ceremony_start_time.split(':').map(Number);
-    const [esh, esm] = b.start_time.split(':').map(Number);
-    let mins = (esh * 60 + esm) - (csh * 60 + csm);
-    if (mins <= 0) mins += 1440;
-    const hrs = Math.round(mins / 30) / 2;
-    if (hrs <= 0) return '';
-    if (hrs === 0.5) return '30 mins';
-    return `${hrs} ${hrs === 1 ? 'hr' : 'hrs'}`;
-  })();
+  // Ceremony shows its start time only — no duration in hours.
   const cleanedAddr = cleanAddress(b.venue_address);
 
   // ── Distance + outside-range warning ─────────────────────────────
@@ -216,7 +204,6 @@ export default function MobileBookingCard(props: Props) {
             <div className={styles.tinyLabel}>Ceremony</div>
             <div className={styles.cocktailLine}>
               {b.ceremony_start_time ? formatTime(b.ceremony_start_time) : 'TBD'}
-              {ceremonyDurationLabel ? ` · ${ceremonyDurationLabel}` : ''}
               {b.ceremony_same_room ? ' · Same room' : ' · Separate room'}
             </div>
           </div>
