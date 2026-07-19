@@ -1054,7 +1054,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -1079,6 +1079,11 @@ export async function POST(req: Request) {
         ceremony_needed: boolean | null;
         ceremony_included: boolean | null;
         ceremony_price: number | null;
+        tax_pct: number | null;
+        tax_amount: number | null;
+        total_with_tax: number | null;
+        deposit_pct: number | null;
+        deposit_amount: number | null;
       }>();
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -1116,25 +1121,48 @@ export async function POST(req: Request) {
     const overtimeLine = overtimeVal != null
       ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeVal).toLocaleString()} ${currency}/hr</p>`
       : '';
-    // Cocktail-hour pricing line (wedding bookings with cocktail hour).
-    const cocktailLine = booking.cocktail_needed
-      ? (booking.cocktail_included
-          ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour:</strong> Included in price</p>`
-          : (booking.cocktail_price != null
-              ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour:</strong> ${sym}${Number(booking.cocktail_price).toLocaleString()} ${currency} add-on</p>`
-              : ''))
-      : '';
-    // Music For Ceremony pricing line (wedding bookings with ceremony music).
-    const ceremonyLine = booking.ceremony_needed
-      ? (booking.ceremony_included
-          ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Music For Ceremony:</strong> Included in price</p>`
-          : (booking.ceremony_price != null
-              ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Music For Ceremony:</strong> ${sym}${Number(booking.ceremony_price).toLocaleString()} ${currency} add-on</p>`
-              : ''))
-      : '';
     const messageLine = booking.counter_message
       ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(booking.counter_message)}</p>`
       : '';
+
+    // Full bill breakdown — base price + any wedding add-ons, sales tax, the
+    // total, the deposit to reserve, and the balance the client pays on the day
+    // of the event. Only when there's an offered price. quoted_rate already
+    // includes cocktail/ceremony add-ons and is post-discount, pre-tax;
+    // total_with_tax adds the tax; the deposit is taken on the taxed total.
+    const billMoney = (n: number) =>
+      `${sym}${Number(n).toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} ${currency}`;
+    let billBox = '';
+    if (booking.quoted_rate != null) {
+      const subtotal = Number(booking.quoted_rate);
+      const cocktailAdd = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
+      const ceremonyAdd = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
+      const basePrice = subtotal - cocktailAdd - ceremonyAdd;
+      const taxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+      const taxAmt = booking.tax_amount != null ? Number(booking.tax_amount) : 0;
+      const total = booking.total_with_tax != null ? Number(booking.total_with_tax) : subtotal + taxAmt;
+      const depPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
+      const depAmt = booking.deposit_amount != null ? Number(booking.deposit_amount) : 0;
+      const balance = total - depAmt;
+      const billRow = (label: string, val: string, o?: { bold?: boolean; muted?: boolean; top?: boolean }) =>
+        `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
+      const rows: string[] = [];
+      if (cocktailAdd > 0 || ceremonyAdd > 0) {
+        rows.push(billRow('Package price', billMoney(basePrice)));
+        if (cocktailAdd > 0) rows.push(billRow('Cocktail hour', `+${billMoney(cocktailAdd)}`, { muted: true }));
+        if (ceremonyAdd > 0) rows.push(billRow('Music for ceremony', `+${billMoney(ceremonyAdd)}`, { muted: true }));
+        rows.push(billRow('Subtotal', billMoney(subtotal), { top: true }));
+      } else {
+        rows.push(billRow('Event price', billMoney(subtotal)));
+      }
+      if (taxAmt > 0) rows.push(billRow(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, billMoney(taxAmt)));
+      rows.push(billRow('Total', billMoney(total), { bold: true, top: true }));
+      if (depAmt > 0) {
+        rows.push(billRow(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, billMoney(depAmt), { top: true }));
+        rows.push(billRow('Balance due day of event', billMoney(balance), { bold: true }));
+      }
+      billBox = `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
+    }
 
     const infoCard = mobileBookingRequestBox({
       eventTypeText: eventTypeLabel(booking.event_type),
@@ -1148,9 +1176,10 @@ export async function POST(req: Request) {
       rateLabel: 'Offer',
       rateValue,
     });
-    // Extra detail rows appended below the card (overtime, cocktail, message).
-    const extraRows = (overtimeLine || cocktailLine || ceremonyLine || messageLine)
-      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${cocktailLine}${ceremonyLine}${messageLine}</div>`
+    // Extra detail rows below the card — overtime rate + any message. (Cocktail
+    // and ceremony now live in the bill breakdown above.)
+    const extraRows = (overtimeLine || messageLine)
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${messageLine}</div>`
       : '';
 
     const subject = `Offer sent for your event – ${dateStr}`;
@@ -1169,6 +1198,7 @@ export async function POST(req: Request) {
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">DJ Offer Sent</h2>
       <p style="color:#666;margin-bottom:20px;">${intro}</p>
       ${infoCard}
+      ${billBox}
       ${extraRows}
       ${cta}
     `);
