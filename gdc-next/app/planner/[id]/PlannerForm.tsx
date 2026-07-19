@@ -242,8 +242,22 @@ export default function PlannerForm({
       <div className={styles.sheet}>
 
         <header className={styles.head}>
-          <div className={styles.brand}>Global DJ Connect</div>
-          <h1 className={styles.title}>Planner &amp; Playlist</h1>
+          <div className={styles.headBar}>
+            <div>
+              <div className={styles.brand}>Global DJ Connect</div>
+              <h1 className={styles.title}>Planner &amp; Playlist</h1>
+            </div>
+            {/* Download a PDF anytime — client or DJ. Opens the print view with
+                ?download=1 so it downloads on open. Blank, half-filled, or done. */}
+            <a
+              className={styles.download}
+              href={`/planner/${plannerId}/print?download=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ↓ Download PDF
+            </a>
+          </div>
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
             {venueName ? ` · ${venueName}` : ''}

@@ -29,6 +29,34 @@
   margin-bottom: 2rem;
 }
 
+/* Download PDF — top-right of the header, so client and DJ can grab a copy at
+   any time. Quiet outline; it's a utility, not the point of the page. */
+.headBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.download {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .2rem;
+  padding: .45rem .8rem;
+  border: 1px solid rgba(0, 224, 164, .4);
+  border-radius: 8px;
+  background: rgba(0, 224, 164, .06);
+  color: var(--neon, #00e0a4);
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.download:hover { background: rgba(0, 224, 164, .14); }
+
 .brand {
   font-family: var(--font-space-mono), monospace;
   font-size: .6rem;
