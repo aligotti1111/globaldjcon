@@ -27,6 +27,7 @@
 import { useEffect, useState } from 'react';
 import { titleCaseLabel } from '@/lib/planner';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
+import { MOB_EVENT_LABELS } from '@/lib/constants';
 import styles from './plannerSend.module.css';
 
 interface TemplateLite {
@@ -110,9 +111,6 @@ export default function PlannerSendModal({
   const visible = fields.filter((f) => !f.hidden);
   const asked = visible.filter((f) => !prefilled.has(f.id));
   const shown = visible.filter((f) => prefilled.has(f.id));
-  // The number the client actually faces. Counting the ones we fill in for them
-  // would overstate the form by four and understate the feature.
-  const visibleCount = asked.length;
 
   // Open the editor for a SPECIFIC planner — the "customise" link on each row.
   // Now opens in its OWN browser window (/customize-planner) so the DJ arranges
@@ -153,7 +151,7 @@ export default function PlannerSendModal({
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.head}>
           <h2 className={styles.title}>
-            {mode === 'preview' ? 'Preview / customize' : 'Send Planner & Playlist'}
+            {mode === 'preview' ? 'Preview · how the host sees it' : 'Send Planner & Playlist'}
           </h2>
           <button type="button" className={styles.x} onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -164,22 +162,35 @@ export default function PlannerSendModal({
         {data && mode === 'confirm' && (
           <>
             <div className={styles.summary}>
+              {/* Event info at the TOP — date, kind of party, venue — so the DJ
+                  is sure they're on the right booking before anything else. */}
+              <div className={styles.sumRow}>
+                <span className={styles.k}>Date</span>
+                <span className={styles.v}>{fmtDate(data.event.date) || <span className={styles.dim}>—</span>}</span>
+              </div>
+              <div className={styles.sumRow}>
+                <span className={styles.k}>Event</span>
+                <span className={styles.v}>{data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '—') : '—'}</span>
+              </div>
+              {data.event.venue && (
+                <div className={styles.sumRow}>
+                  <span className={styles.k}>Venue</span>
+                  <span className={styles.v}>{data.event.venue}</span>
+                </div>
+              )}
+
               <div className={styles.sumRow}>
                 <span className={styles.k}>Planner</span>
                 <span className={styles.v}>
                   {chosen ? chosen.name : data.resolved.name}
-                  {/* "yours" vs "standard" is the difference between "I set this
-                      up" and "this is what everyone gets" — and it's the only
-                      hint that customising is a thing that exists. */}
                   <span className={styles.tag}>
                     {(chosen ? chosen.isMine : data.resolved.isMine) ? 'yours' : 'standard'}
                   </span>
                 </span>
               </div>
 
-              {/* The alternatives, in the box. The auto pick is a row like any
-                  other so it can be chosen BACK after a wander down the list —
-                  a link that only goes one way is a trap. */}
+              {/* Pick a different planner (radios). No per-row links — Customize
+                  and Preview are single buttons below, acting on the selection. */}
               {data.templates.length > 1 && (
                 <div className={styles.altList}>
                   <div className={styles.altRow}>
@@ -192,13 +203,6 @@ export default function PlannerSendModal({
                       {data.resolved.name}
                       <span className={styles.tagAuto}>auto</span>
                     </button>
-                    {/* Customise THIS planner — opens the full-page editor bound
-                        to it, not to whatever's selected. */}
-                    <button
-                      type="button"
-                      className={styles.altEdit}
-                      onClick={() => openCustomize(data.editEventType, data.resolved.name)}
-                    >Preview / customize</button>
                   </div>
                   {data.templates
                     .filter((t) => t.id !== data.resolved.id)
@@ -213,55 +217,26 @@ export default function PlannerSendModal({
                           {t.name}
                           {t.isMine && <span className={styles.tag}>yours</span>}
                         </button>
-                        <button
-                          type="button"
-                          className={styles.altEdit}
-                          onClick={() => openCustomize(t.eventType, t.name)}
-                        >Preview / customize</button>
                       </div>
                     ))}
                 </div>
               )}
-
-              {/* Date · venue · who, on one line. The DJ is confirming they're
-                  on the right ROW as much as the right planner — "am I about to
-                  mail the Venetian wedding's planner to the birthday party?" —
-                  and a question count can't answer that. */}
-              <div className={styles.sumRow}>
-                <span className={styles.k}>Event</span>
-                <span className={styles.v}>
-                  {fmtDate(data.event.date)}
-                  {data.event.venue ? <span className={styles.sep}> · </span> : null}
-                  {data.event.venue}
-                  <span className={styles.sep}> · </span>
-                  {data.recipient.email
-                    ? data.recipient.email
-                    : data.recipient.hasAccount
-                      ? <span className={styles.dim}>their account email</span>
-                      : <em className={styles.warn}>no email</em>}
-                </span>
-              </div>
-
-              {data.prefillCount > 0 && (
-                <div className={styles.sumRow}>
-                  <span className={styles.k}>Prefilled</span>
-                  {/* Worth saying out loud: it's the reason the client doesn't
-                      abandon the form on question three retyping their venue. */}
-                  <span className={styles.v}>{data.prefillCount} answers from the booking</span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.links}>
-              <button type="button" className={styles.linkBtn} onClick={() => setMode('preview')}>
-                Preview / customize
-              </button>
-              <span className={styles.dot}>·</span>
-              <span className={styles.dim}>{visibleCount} questions</span>
             </div>
 
             <div className={styles.foot}>
               <button type="button" className={styles.ghost} onClick={onClose}>Cancel</button>
+              <button type="button" className={styles.ghost} onClick={() => setMode('preview')}>Preview</button>
+              {/* Customize the SELECTED planner — opens the editor in its own window. */}
+              <button
+                type="button"
+                className={styles.ghost}
+                onClick={() => openCustomize(
+                  chosen ? chosen.eventType : data.editEventType,
+                  chosen ? chosen.name : data.resolved.name,
+                )}
+              >
+                Customize
+              </button>
               <button type="button" className={styles.primary} onClick={send} disabled={busy}>
                 {busy ? 'Sending…' : 'Send'}
               </button>
@@ -272,21 +247,23 @@ export default function PlannerSendModal({
         {data && mode === 'preview' && (
           <>
             <p className={styles.note}>
-              What your client sees. Nothing is required — they fill in what they know
-              and come back for the rest.
+              This is the page your client fills in. The booking details up top are
+              filled in for them; everything below is what they’ll be asked.
             </p>
 
-            {/* Shown, not asked. Anything we already have off the booking is a
-                read-only line at the top of their form — asking a client to type
-                their own venue back to us is how they abandon it on question
-                three and never tell you the first dance. They're listed here so
-                the count below is the real one. */}
-            {shown.length > 0 && (
-              <div className={styles.shown}>
-                <span className={styles.shownHead}>Filled in for them</span>
-                {shown.map((f) => titleCaseLabel(f.label)).join(' · ')}
-              </div>
-            )}
+            {/* Your booking — the read-only strip the host sees at the top of
+                their page, populated with THIS event. */}
+            <div className={styles.shown}>
+              <span className={styles.shownHead}>Your booking</span>
+              {[
+                data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '') : '',
+                fmtDate(data.event.date),
+                data.event.venue || '',
+              ].filter(Boolean).join('  ·  ')}
+              {shown.length > 0 && (
+                <> · {shown.map((f) => titleCaseLabel(f.label)).join(' · ')}</>
+              )}
+            </div>
 
             <ol className={styles.preview}>
               {asked.map((f) => (
@@ -302,17 +279,23 @@ export default function PlannerSendModal({
             </ol>
             <div className={styles.foot}>
               <button type="button" className={styles.ghost} onClick={() => setMode('confirm')}>Back</button>
-              {/* Customize opens the full-page editor for the planner being
-                  sent — arrange it, then Save returns here. */}
-              <button type="button" className={styles.primary}
-                onClick={() => openCustomize(data.editEventType, data.resolved.name)}>
+              {/* Customize the SELECTED planner in its own window. */}
+              <button
+                type="button"
+                className={styles.ghost}
+                onClick={() => openCustomize(
+                  chosen ? chosen.eventType : data.editEventType,
+                  chosen ? chosen.name : data.resolved.name,
+                )}
+              >
                 Customize
+              </button>
+              <button type="button" className={styles.primary} onClick={send} disabled={busy}>
+                {busy ? 'Sending…' : 'Send'}
               </button>
             </div>
           </>
         )}
-
-        {/* edit mode is handled full-screen above, before this modal */}
       </div>
     </div>
   );
