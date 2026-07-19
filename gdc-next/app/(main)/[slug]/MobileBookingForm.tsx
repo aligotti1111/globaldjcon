@@ -481,6 +481,13 @@ export default function MobileBookingForm({
         discount_label: string | null;
         discount_amount: number | null;
         is_quote: boolean;
+        tax_pct: number | null;
+        tax_amount: number | null;
+        total_with_tax: number | null;
+        deposit_pct: number | null;
+        deposit_amount: number | null;
+        cocktail_price: number | null;
+        ceremony_price: number | null;
       } = json.booking;
 
       // Email the DJ that a new booking request came in. The send-email
@@ -579,6 +586,15 @@ export default function MobileBookingForm({
             originalRate: created.original_rate,
             discountLabel: created.discount_label,
             discountAmount: created.discount_amount,
+            // Frozen tax/deposit + add-on snapshot → the confirmation email's
+            // itemized bill (sales tax, deposit, balance due day of event).
+            taxPct: created.tax_pct,
+            taxAmount: created.tax_amount,
+            totalWithTax: created.total_with_tax,
+            depositPct: created.deposit_pct,
+            depositAmount: created.deposit_amount,
+            cocktailPrice: created.cocktail_price,
+            ceremonyPrice: created.ceremony_price,
           }),
         });
       } catch {

@@ -391,6 +391,61 @@ function mobileBookingRequestBox(opts: {
   return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
 }
 
+// Full itemized bill: base price + wedding add-ons, sales tax, total, the
+// deposit to reserve, and the balance due on the event day. Returns '' when
+// there is nothing to itemize — no add-ons, no tax, AND no deposit — or no
+// price yet, so a flat-price booking (which already shows its price on the
+// card) doesn't get a redundant one-line "breakdown".
+function billBreakdownBox(
+  b: {
+    quotedRate?: number | null;
+    cocktailPrice?: number | null;
+    ceremonyPrice?: number | null;
+    taxPct?: number | null;
+    taxAmount?: number | null;
+    totalWithTax?: number | null;
+    depositPct?: number | null;
+    depositAmount?: number | null;
+  },
+  sym: string,
+  currency: string,
+): string {
+  if (b.quotedRate == null) return '';
+  const subtotal = Number(b.quotedRate);
+  if (!Number.isFinite(subtotal) || subtotal <= 0) return '';
+  const cocktailAdd = b.cocktailPrice != null ? Number(b.cocktailPrice) : 0;
+  const ceremonyAdd = b.ceremonyPrice != null ? Number(b.ceremonyPrice) : 0;
+  const taxAmt = b.taxAmount != null ? Number(b.taxAmount) : 0;
+  const depAmt = b.depositAmount != null ? Number(b.depositAmount) : 0;
+  // Nothing to break down → no box.
+  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0) return '';
+  const basePrice = subtotal - cocktailAdd - ceremonyAdd;
+  const taxPct = b.taxPct != null ? Number(b.taxPct) : 0;
+  const total = b.totalWithTax != null ? Number(b.totalWithTax) : subtotal + taxAmt;
+  const depPct = b.depositPct != null ? Number(b.depositPct) : 0;
+  const balance = total - depAmt;
+  const money = (n: number) =>
+    `${sym}${Number(n).toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} ${currency}`;
+  const row = (label: string, val: string, o?: { bold?: boolean; muted?: boolean; top?: boolean }) =>
+    `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
+  const rows: string[] = [];
+  if (cocktailAdd > 0 || ceremonyAdd > 0) {
+    rows.push(row('Package price', money(basePrice)));
+    if (cocktailAdd > 0) rows.push(row('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
+    if (ceremonyAdd > 0) rows.push(row('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
+    rows.push(row('Subtotal', money(subtotal), { top: true }));
+  } else {
+    rows.push(row('Event price', money(subtotal)));
+  }
+  if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
+  rows.push(row('Total', money(total), { bold: true, top: true }));
+  if (depAmt > 0) {
+    rows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt), { top: true }));
+    rows.push(row('Balance due day of event', money(balance), { bold: true }));
+  }
+  return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
+}
+
 // ── POST handler ───────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -890,6 +945,20 @@ export async function POST(req: Request) {
            <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate — the DJ will <strong>respond with an offer</strong>.</p>
          </div>`
       : '';
+    // Full bill breakdown for a package-priced (auto-quoted) booking. Uses the
+    // frozen tax/deposit snapshot the client forwards from the create response.
+    // Renders nothing for a quote-mode request (no price yet) or a flat price
+    // with no tax/deposit — so it never shows an empty or one-line "breakdown".
+    const confBill = billBreakdownBox({
+      quotedRate: confRateNum != null && !isNaN(confRateNum) ? confRateNum : null,
+      cocktailPrice: body.cocktailPrice != null ? Number(body.cocktailPrice) : null,
+      ceremonyPrice: body.ceremonyPrice != null ? Number(body.ceremonyPrice) : null,
+      taxPct: body.taxPct != null ? Number(body.taxPct) : null,
+      taxAmount: body.taxAmount != null ? Number(body.taxAmount) : null,
+      totalWithTax: body.totalWithTax != null ? Number(body.totalWithTax) : null,
+      depositPct: body.depositPct != null ? Number(body.depositPct) : null,
+      depositAmount: body.depositAmount != null ? Number(body.depositAmount) : null,
+    }, currencySymbol(confCurrency), confCurrency);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -899,6 +968,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
         ${confCard}
+        ${confBill}
         ${confQuoteNote}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Your Request')}
       `),
@@ -1125,44 +1195,20 @@ export async function POST(req: Request) {
       ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(booking.counter_message)}</p>`
       : '';
 
-    // Full bill breakdown — base price + any wedding add-ons, sales tax, the
-    // total, the deposit to reserve, and the balance the client pays on the day
-    // of the event. Only when there's an offered price. quoted_rate already
-    // includes cocktail/ceremony add-ons and is post-discount, pre-tax;
-    // total_with_tax adds the tax; the deposit is taken on the taxed total.
-    const billMoney = (n: number) =>
-      `${sym}${Number(n).toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} ${currency}`;
-    let billBox = '';
-    if (booking.quoted_rate != null) {
-      const subtotal = Number(booking.quoted_rate);
-      const cocktailAdd = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
-      const ceremonyAdd = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
-      const basePrice = subtotal - cocktailAdd - ceremonyAdd;
-      const taxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
-      const taxAmt = booking.tax_amount != null ? Number(booking.tax_amount) : 0;
-      const total = booking.total_with_tax != null ? Number(booking.total_with_tax) : subtotal + taxAmt;
-      const depPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
-      const depAmt = booking.deposit_amount != null ? Number(booking.deposit_amount) : 0;
-      const balance = total - depAmt;
-      const billRow = (label: string, val: string, o?: { bold?: boolean; muted?: boolean; top?: boolean }) =>
-        `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
-      const rows: string[] = [];
-      if (cocktailAdd > 0 || ceremonyAdd > 0) {
-        rows.push(billRow('Package price', billMoney(basePrice)));
-        if (cocktailAdd > 0) rows.push(billRow('Cocktail hour', `+${billMoney(cocktailAdd)}`, { muted: true }));
-        if (ceremonyAdd > 0) rows.push(billRow('Music for ceremony', `+${billMoney(ceremonyAdd)}`, { muted: true }));
-        rows.push(billRow('Subtotal', billMoney(subtotal), { top: true }));
-      } else {
-        rows.push(billRow('Event price', billMoney(subtotal)));
-      }
-      if (taxAmt > 0) rows.push(billRow(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, billMoney(taxAmt)));
-      rows.push(billRow('Total', billMoney(total), { bold: true, top: true }));
-      if (depAmt > 0) {
-        rows.push(billRow(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, billMoney(depAmt), { top: true }));
-        rows.push(billRow('Balance due day of event', billMoney(balance), { bold: true }));
-      }
-      billBox = `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
-    }
+    // Full bill breakdown — base price + add-ons, sales tax, total, deposit,
+    // and the balance due on the event day. Renders nothing when there are no
+    // extras (no add-ons / tax / deposit), so a flat-price booking isn't given
+    // a redundant one-line "breakdown".
+    const billBox = billBreakdownBox({
+      quotedRate: booking.quoted_rate,
+      cocktailPrice: booking.cocktail_price,
+      ceremonyPrice: booking.ceremony_price,
+      taxPct: booking.tax_pct,
+      taxAmount: booking.tax_amount,
+      totalWithTax: booking.total_with_tax,
+      depositPct: booking.deposit_pct,
+      depositAmount: booking.deposit_amount,
+    }, sym, currency);
 
     const infoCard = mobileBookingRequestBox({
       eventTypeText: eventTypeLabel(booking.event_type),
