@@ -97,7 +97,7 @@ export default async function PlannerPreviewPage({
   // the WHOLE row (see the dj_name lesson), which would blank the preview.
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time')
+    .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as (Record<string, unknown> & {
@@ -112,6 +112,8 @@ export default async function PlannerPreviewPage({
     phone: string | null;
     requester_name: string | null;
     cocktail_start_time: string | null;
+    ceremony_needed: boolean | null;
+    ceremony_start_time: string | null;
   }) | null;
   if (!b) notFound();
   // Theirs, or nobody's. 404 not 403 — don't confirm a booking id exists.
@@ -167,6 +169,9 @@ export default async function PlannerPreviewPage({
   const known: { k: string; v: string }[] = [
     { k: 'Event', v: eventLabel },
     { k: 'Date', v: fmtDate(b.event_date) },
+    ...(isWedding && b.ceremony_needed && b.ceremony_start_time
+      ? [{ k: 'Ceremony', v: fmtTime(b.ceremony_start_time) }]
+      : []),
     ...(isWedding && b.cocktail_start_time
       ? [{ k: 'Cocktail hour', v: fmtTime(b.cocktail_start_time) }]
       : []),

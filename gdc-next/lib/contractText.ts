@@ -6,7 +6,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit', 'payment_terms',
-  'cocktail_hour', 'tax', 'grand_total', 'agreement_date',
+  'cocktail_hour', 'ceremony', 'tax', 'grand_total', 'agreement_date',
 ] as const;
 
 // The OVERTIME clause differs by DJ type. Mobile DJs set a per-hour overtime
@@ -98,6 +98,7 @@ WEDDING DETAILS
 Client/Host: {{client_name}}
 Date: {{event_date}}
 Cocktail hour: {{cocktail_hour}}
+Music For Ceremony: {{ceremony}}
 Reception time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}
 Address: {{event_address}}

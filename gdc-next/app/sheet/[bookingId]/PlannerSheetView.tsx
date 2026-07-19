@@ -41,6 +41,9 @@ export interface SheetBooking {
   phone: string | null;
   cocktail_needed: boolean | null;
   cocktail_start_time: string | null;
+  ceremony_needed: boolean | null;
+  ceremony_start_time: string | null;
+  ceremony_same_room: boolean | null;
   requester_name: string | null;
 }
 
@@ -85,9 +88,12 @@ export default function PlannerSheetView({
   const startLabel = isWedding ? 'Reception start' : 'Start time';
   const endLabel = isWedding ? 'Reception end' : 'End time';
   const showCocktail = isWedding && !!b?.cocktail_needed && !!b?.cocktail_start_time;
+  // Ceremony is a SEPARATE, independent option — same gate shape as cocktail.
+  const showCeremony = isWedding && !!b?.ceremony_needed && !!b?.ceremony_start_time;
   const known: { k: string; v: string }[] = [
     { k: 'Event', v: b?.event_type ? (MOB_EVENT_LABELS[b.event_type] || '') : '' },
     { k: 'Date', v: fmtDate(b?.event_date ?? null) },
+    ...(showCeremony ? [{ k: 'Ceremony', v: fmtTime(b?.ceremony_start_time ?? null) }] : []),
     ...(showCocktail ? [{ k: 'Cocktail hour', v: fmtTime(b?.cocktail_start_time ?? null) }] : []),
     { k: startLabel, v: fmtTime(b?.start_time ?? null) },
     { k: endLabel, v: fmtTime(b?.end_time ?? null) },

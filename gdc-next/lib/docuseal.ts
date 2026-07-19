@@ -29,7 +29,7 @@ export const CONTRACT_DATA_FIELDS = [
   'client_name', 'dj_name', 'event_date', 'event_type', 'venue_name',
   'event_address', 'start_time', 'end_time', 'package',
   'set_type', 'equipment', 'duration', 'overtime_rate', 'price', 'deposit',
-  'payment_terms', 'cocktail_hour', 'tax', 'grand_total', 'agreement_date',
+  'payment_terms', 'cocktail_hour', 'ceremony', 'tax', 'grand_total', 'agreement_date',
 ] as const;
 
 // The editable standard Mobile DJ contract. DJs start from this and tweak the
@@ -103,7 +103,7 @@ function translateTags(escaped: string): string {
     event_date: 116, overtime_rate: 104,
     client_name: 132, dj_name: 132, venue_name: 140, set_type: 140, event_type: 140,
     equipment: 200, package: 240, event_address: 280, payment_terms: 460,
-    cocktail_hour: 180, tax: 200, grand_total: 120, agreement_date: 140,
+    cocktail_hour: 180, ceremony: 180, tax: 200, grand_total: 120, agreement_date: 140,
   };
   for (const f of CONTRACT_DATA_FIELDS) {
     const re = new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi');

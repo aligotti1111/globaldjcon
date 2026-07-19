@@ -69,7 +69,7 @@ export default async function SheetPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('dj_id, event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, cocktail_needed, cocktail_start_time, requester_name')
+    .select('dj_id, event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, ceremony_same_room, requester_name')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as (SheetBooking & { dj_id: string | null }) | null;

@@ -100,7 +100,7 @@ export default async function PlannerPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, cocktail_needed, cocktail_start_time, requester_name')
+    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, ceremony_same_room, requester_name')
     .eq('id', planner.booking_id)
     .maybeSingle();
   const booking = bData as unknown as {
@@ -122,6 +122,11 @@ export default async function PlannerPage({
     // Weddings can carry a cocktail hour — its own start time, shown in the strip.
     cocktail_needed: boolean | null;
     cocktail_start_time: string | null;
+    // Weddings can also carry a ceremony — separate, independent option, its own
+    // start time, shown in the strip alongside the cocktail hour.
+    ceremony_needed: boolean | null;
+    ceremony_start_time: string | null;
+    ceremony_same_room: boolean | null;
     requester_name: string | null;
   } | null;
 
@@ -174,12 +179,17 @@ export default async function PlannerPage({
   const startLabel = isWedding ? 'Reception start' : 'Start time';
   const endLabel = isWedding ? 'Reception end' : 'End time';
   const showCocktail = isWedding && !!booking?.cocktail_needed && !!booking?.cocktail_start_time;
+  // Ceremony is a SEPARATE, independent option — same gate shape as cocktail.
+  const showCeremony = isWedding && !!booking?.ceremony_needed && !!booking?.ceremony_start_time;
 
   const known: { k: string; v: string }[] = [
     // Event type first — the client should see at a glance the planner was
     // written for their kind of party.
     { k: 'Event', v: booking?.event_type ? (MOB_EVENT_LABELS[booking.event_type] || '') : '' },
     { k: 'Date', v: fmtDate(booking?.event_date ?? null) },
+    ...(showCeremony
+      ? [{ k: 'Ceremony', v: fmtTime(booking?.ceremony_start_time ?? null) }]
+      : []),
     ...(showCocktail
       ? [{ k: 'Cocktail hour', v: fmtTime(booking?.cocktail_start_time ?? null) }]
       : []),

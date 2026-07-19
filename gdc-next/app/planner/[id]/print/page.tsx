@@ -67,7 +67,7 @@ export default async function PlannerPrintPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, cocktail_needed, cocktail_start_time, requester_name')
+    .select('event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, ceremony_same_room, requester_name')
     .eq('id', planner.booking_id)
     .maybeSingle();
   const b = bData as unknown as SheetBooking | null;

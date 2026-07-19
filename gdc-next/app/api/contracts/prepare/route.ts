@@ -319,10 +319,23 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     cocktailHour = [cStart, room].filter(Boolean).join(' · ') || 'Yes';
   }
 
+  // Music For Ceremony (wedding bookings only). Fills the field next to the
+  // "Music For Ceremony:" label; stays empty (blank) when the booking has none.
+  let ceremony = '';
+  if (b.ceremony_needed === true) {
+    const ceStart = fmtTime(b.ceremony_start_time as string);
+    const room = b.ceremony_same_room === true ? 'same room'
+      : (b.ceremony_same_room === false ? 'separate room' : '');
+    const addOn = (b.ceremony_price != null && Number(b.ceremony_price) > 0)
+      ? `${money(Number(b.ceremony_price), currency)} add-on` : '';
+    ceremony = [ceStart, room, addOn].filter(Boolean).join(' · ') || 'Yes';
+  }
+
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     agreement_date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     cocktail_hour: cocktailHour,
+    ceremony: ceremony,
     tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctEff}%)` : '',
     grand_total: (taxAmt > 0 && totalWithTax != null) ? money(totalWithTax, currency) : '',
     client_name: clientName,

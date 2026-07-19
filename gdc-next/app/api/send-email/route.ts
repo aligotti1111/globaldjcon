@@ -1054,7 +1054,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -1076,6 +1076,9 @@ export async function POST(req: Request) {
         cocktail_needed: boolean | null;
         cocktail_included: boolean | null;
         cocktail_price: number | null;
+        ceremony_needed: boolean | null;
+        ceremony_included: boolean | null;
+        ceremony_price: number | null;
       }>();
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -1121,6 +1124,14 @@ export async function POST(req: Request) {
               ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour:</strong> ${sym}${Number(booking.cocktail_price).toLocaleString()} ${currency} add-on</p>`
               : ''))
       : '';
+    // Music For Ceremony pricing line (wedding bookings with ceremony music).
+    const ceremonyLine = booking.ceremony_needed
+      ? (booking.ceremony_included
+          ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Music For Ceremony:</strong> Included in price</p>`
+          : (booking.ceremony_price != null
+              ? `<p style="margin:8px 0 0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Music For Ceremony:</strong> ${sym}${Number(booking.ceremony_price).toLocaleString()} ${currency} add-on</p>`
+              : ''))
+      : '';
     const messageLine = booking.counter_message
       ? `<p style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;"><strong style="color:#1a1a2e;">Message:</strong><br>${escHtml(booking.counter_message)}</p>`
       : '';
@@ -1138,8 +1149,8 @@ export async function POST(req: Request) {
       rateValue,
     });
     // Extra detail rows appended below the card (overtime, cocktail, message).
-    const extraRows = (overtimeLine || cocktailLine || messageLine)
-      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${cocktailLine}${messageLine}</div>`
+    const extraRows = (overtimeLine || cocktailLine || ceremonyLine || messageLine)
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">${overtimeLine}${cocktailLine}${ceremonyLine}${messageLine}</div>`
       : '';
 
     const subject = `Offer sent for your event – ${dateStr}`;

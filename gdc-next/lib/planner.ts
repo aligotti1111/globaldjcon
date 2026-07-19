@@ -44,6 +44,7 @@ export type PrefillKey =
   | 'host_name'
   | 'guest_count'
   | 'cocktail_start'
+  | 'ceremony_start'
   | 'package_title'
   | 'dj_name';
 
@@ -418,6 +419,12 @@ export function applyPrefill(
     // with cocktail_needed false is a stale value from an earlier edit.
     cocktail_start: (booking as { cocktail_needed?: boolean }).cocktail_needed
       ? trimTime((booking as { cocktail_start_time?: string | null }).cocktail_start_time)
+      : null,
+    // Ceremony mirrors cocktail exactly — separate, independent option. Only
+    // when the booking actually has one; a ceremony start with ceremony_needed
+    // false is a stale value from an earlier edit.
+    ceremony_start: (booking as { ceremony_needed?: boolean }).ceremony_needed
+      ? trimTime((booking as { ceremony_start_time?: string | null }).ceremony_start_time)
       : null,
     package_title:  booking.package_title ?? null,
     dj_name:        djName,

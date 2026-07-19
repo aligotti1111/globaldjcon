@@ -57,6 +57,8 @@ interface BookingRow {
   guest_count: number | null;
   cocktail_needed: boolean | null;
   cocktail_start_time: string | null;
+  ceremony_needed: boolean | null;
+  ceremony_start_time: string | null;
   package_title: string | null;
 }
 
@@ -70,7 +72,7 @@ interface PlannerRow {
 const BOOKING_COLS =
   'id, dj_id, requester_id, host_email, requester_name, is_manual, booking_type, ' +
   'event_type, event_date, start_time, end_time, venue_name, venue_address, ' +
-  'guest_count, cocktail_needed, cocktail_start_time, package_title';
+  'guest_count, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, package_title';
 
 async function clientEmailFor(b: BookingRow): Promise<string | null> {
   if (b.host_email) return b.host_email;
