@@ -334,6 +334,7 @@ export default function PlannerBuilder({
                     <button
                       type="button"
                       className={styles.label}
+                      style={{ flex: '0 1 auto' }}
                       onClick={() => setEditing(f.id)}
                       title="Click to rename"
                     >
@@ -343,21 +344,22 @@ export default function PlannerBuilder({
                     </button>
                   )}
 
-                  <div className={styles.acts}>
+                  {/* Pencil — right next to the title. Clicking the title works
+                      too, but the pencil is the affordance a DJ looks for. */}
+                  {editing !== f.id ? (
+                    <button
+                      type="button"
+                      className={styles.act}
+                      style={{ flexShrink: 0 }}
+                      title="Edit this question's title"
+                      aria-label={`Edit the title of "${f.label || 'this question'}"`}
+                      onClick={() => setEditing(f.id)}
+                    >✎</button>
+                  ) : null}
+
+                  <div className={styles.acts} style={{ marginLeft: 'auto' }}>
                     {pinned ? (
                       <span className={styles.lock} title="Stays in place — locked position">🔒</span>
-                    ) : null}
-                    {/* Pencil — the visible way to rename a question's title.
-                        Clicking the label works too, but the pencil is the
-                        affordance a DJ looks for. */}
-                    {editing !== f.id ? (
-                      <button
-                        type="button"
-                        className={styles.act}
-                        title="Edit this question's title"
-                        aria-label={`Edit the title of "${f.label || 'this question'}"`}
-                        onClick={() => setEditing(f.id)}
-                      >✎</button>
                     ) : null}
                     {/* Enable / Disable — a text button, not an eye. A disabled
                         question keeps its answers but collapses to just its
