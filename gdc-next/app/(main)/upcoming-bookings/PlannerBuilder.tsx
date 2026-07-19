@@ -34,8 +34,10 @@ import styles from './plannerBuilder.module.css';
 // template — so the strip reads like a real filled page instead of eight
 // repeated "filled from the booking" lines.
 const BOOKING_FACTS: { label: string; sample: string }[] = [
+  { label: 'Event', sample: 'Birthday Party' },
   { label: 'Date', sample: 'Sat, Aug 15, 2026' },
-  { label: 'Time', sample: '6:00 PM' },
+  { label: 'Start time', sample: '6:00 PM' },
+  { label: 'End time', sample: '11:00 PM' },
   { label: 'Venue', sample: 'The Grand Ballroom' },
   { label: 'Package', sample: 'Premium — 5 hours' },
   { label: 'Guests', sample: '150' },

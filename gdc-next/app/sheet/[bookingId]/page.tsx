@@ -44,8 +44,14 @@ import {
   type Person,
   type TimelineRow,
 } from '@/lib/planner';
+import { MOB_EVENT_LABELS } from '@/lib/constants';
 import PrintButton from './PrintButton';
 import styles from './sheet.module.css';
+
+// Prefilled time questions that only echoed the booking's own start/end (and
+// wedding cocktail) — now shown in the header, never asked. Filtered from any
+// planner's fields so they don't print twice.
+const LEGACY_TIME_FIELD_IDS = new Set(['music_start', 'music_end', 'w_cocktail_start']);
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -182,6 +188,12 @@ export default async function SheetPage({
     submitted_at = null;
   }
 
+  // Drop the legacy time questions (music start/end, wedding cocktail start).
+  // They only ever echoed the booking's own times, which are already in the
+  // header — so they're filtered here for old snapshots the same way the client
+  // page does it.
+  fields = fields.filter((f) => !LEGACY_TIME_FIELD_IDS.has(f.id));
+
   // ── The three things that get their own place on the page ──────────────
   //
   // Everything else prints in template order. These don't, because at 9pm you
@@ -212,6 +224,7 @@ export default async function SheetPage({
           </div>
           <div className={styles.meta}>
             {[
+              b?.event_type ? (MOB_EVENT_LABELS[b.event_type] || null) : null,
               fmtDate(b?.event_date ?? null),
               [fmtTime(b?.start_time), fmtTime(b?.end_time)].filter(Boolean).join(' – '),
               b?.venue_name,

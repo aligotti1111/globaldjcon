@@ -23,7 +23,13 @@ import { notFound } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { visibleFields, type PlannerField, type PlannerResponses } from '@/lib/planner';
+import { MOB_EVENT_LABELS } from '@/lib/constants';
 import PlannerForm from './PlannerForm';
+
+// Prefilled time questions that only ever echoed the booking's own start/end
+// (and wedding cocktail) — now shown once in the "Your booking" strip instead of
+// asked. Filtered from any planner's fields so they never double up.
+const LEGACY_TIME_FIELD_IDS = new Set(['music_start', 'music_end', 'w_cocktail_start']);
 
 export const runtime = 'nodejs';
 // Per-planner state, and the client's own answers. Never cached, never
@@ -55,12 +61,6 @@ function fmtTime(t: string | null): string {
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m || '00'} ${ampm}`;
-}
-
-function fmtRange(s: string | null, e: string | null): string {
-  const a = fmtTime(s), b = fmtTime(e);
-  if (a && b) return `${a} – ${b}`;
-  return a || b || '';
 }
 
 function fmtDate(d: string | null): string {
@@ -97,7 +97,7 @@ export default async function PlannerPage({
 
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, requester_name')
+    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, cocktail_needed, cocktail_start_time, requester_name')
     .eq('id', planner.booking_id)
     .maybeSingle();
   const booking = bData as unknown as {
@@ -109,10 +109,16 @@ export default async function PlannerPage({
     guest_count: number | null;
     phone: string | null;
     package_title: string | null;
+    // The friendly-labelled kind of party (weddings, birthday, …) — shown at the
+    // top so the client knows the planner was written for THEIR event.
+    event_type: string | null;
     // The event-type detail the client entered on the booking form — "25th
     // Anniversary", "College Graduation", "Guest of honor age: 30 · Surprise
     // party: Yes". Null for event types with no sub-question.
     event_details: string | null;
+    // Weddings can carry a cocktail hour — its own start time, shown in the strip.
+    cocktail_needed: boolean | null;
+    cocktail_start_time: string | null;
     requester_name: string | null;
   } | null;
 
@@ -131,7 +137,15 @@ export default async function PlannerPage({
   // Hidden fields never reach the browser. Filtering here rather than in the
   // form means a hidden question isn't sitting in the page source of a document
   // we hand to a stranger.
-  const fields = visibleFields(planner.fields ?? []);
+  //
+  // Also drop the legacy time fields. Music start/end were prefilled straight
+  // from the booking's start/end — i.e. the same times now shown in the strip
+  // above — and the wedding cocktail start likewise. They were duplicates, so
+  // they're filtered here so ALREADY-SENT planners (whose snapshot still carries
+  // them) dedupe too, not just planners sent after the template SQL.
+  const fields = visibleFields(planner.fields ?? []).filter(
+    (f) => !LEGACY_TIME_FIELD_IDS.has(f.id),
+  );
 
   /**
    * What we already know, from the booking itself — not from a question.
@@ -143,9 +157,26 @@ export default async function PlannerPage({
    * Empty values are dropped rather than rendered as "—": a blank row is a
    * question mark, and this block exists to remove question marks.
    */
+  // Times, labelled for the event. A general party has a start and an end; a
+  // wedding's start/end ARE the reception, and it may have a cocktail hour
+  // before it. These come straight off the booking — the same start_time /
+  // end_time it was booked with — so they're shown here, never asked, and never
+  // duplicated as separate "music starts / ends" questions.
+  const isWedding = booking?.event_type === 'weddings';
+  const startLabel = isWedding ? 'Reception start' : 'Start time';
+  const endLabel = isWedding ? 'Reception end' : 'End time';
+  const showCocktail = isWedding && !!booking?.cocktail_needed && !!booking?.cocktail_start_time;
+
   const known: { k: string; v: string }[] = [
+    // Event type first — the client should see at a glance the planner was
+    // written for their kind of party.
+    { k: 'Event', v: booking?.event_type ? (MOB_EVENT_LABELS[booking.event_type] || '') : '' },
     { k: 'Date', v: fmtDate(booking?.event_date ?? null) },
-    { k: 'Time', v: fmtRange(booking?.start_time ?? null, booking?.end_time ?? null) },
+    ...(showCocktail
+      ? [{ k: 'Cocktail hour', v: fmtTime(booking?.cocktail_start_time ?? null) }]
+      : []),
+    { k: startLabel, v: fmtTime(booking?.start_time ?? null) },
+    { k: endLabel, v: fmtTime(booking?.end_time ?? null) },
     { k: 'Venue', v: [booking?.venue_name, booking?.venue_address].filter(Boolean).join(' · ') },
     // The event-type detail from the booking form (surprise party, type of
     // anniversary/graduation/reunion, birthday age). Carries through as a known
