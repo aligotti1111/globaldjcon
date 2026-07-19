@@ -184,6 +184,14 @@
   padding-bottom: .2rem;
 }
 
+/* Do NOT play still stands out — a red label — but it now prints in its normal
+   place in the list, not pulled out into a box, so the printable matches the
+   form the client fills. */
+.blockNo .label {
+  color: #ff7676;
+  border-bottom-color: rgba(255, 86, 86, .4);
+}
+
 .val { font-size: .95rem; line-height: 1.5; }
 .na { font-size: .88rem; color: #75758d; font-style: italic; }
 .blank { font-size: .88rem; color: #4a4a60; }
@@ -348,6 +356,7 @@
 .export .say { color: #000 !important; font-weight: 700; }
 .export .trackLink { display: none !important; }
 .export .fillLine { border-bottom-color: #999 !important; }
+.export .blockNo .label { color: #b00020 !important; border-bottom-color: #b00020 !important; }
 
 @media print {
   /* The rules below are the whole point of this file. They come LAST because
@@ -393,6 +402,7 @@
   /* A url printed on paper is noise. The title and artist are the content. */
   .trackLink { display: none !important; }
   .fillLine { border-bottom-color: #999 !important; }
+  .blockNo .label { color: #b00020 !important; border-bottom-color: #b00020 !important; }
 
   .grid { gap: 1.15rem; }
 

@@ -34,7 +34,6 @@ import {
   composeFields,
   applyPrefill,
   DO_NOT_PLAY_FIELD_ID,
-  NOTES_FIELD_ID,
   HONOREE_FIELD_ID,
   titleCaseLabel,
   type PlannerField,
@@ -196,18 +195,16 @@ export default async function SheetPage({
   // page does it.
   fields = fields.filter((f) => !LEGACY_TIME_FIELD_IDS.has(f.id));
 
-  // ── The three things that get their own place on the page ──────────────
+  // The printable is the SAME form the client fills — every question, in the
+  // same order (honoree first, Do NOT Play + Notes last), each printed whether
+  // it's answered or blank. So it matches the on-screen planner exactly; nothing
+  // is hidden just because it hasn't been answered yet. (The old run sheet
+  // pulled honoree into the title and hid Do NOT Play / Notes until answered,
+  // which is why they went missing on a blank one.)
   //
-  // Everything else prints in template order. These don't, because at 9pm you
-  // are not reading this page — you are hunting one thing on it.
+  // honoree is still read, only to give the page a nicer title when it's filled
+  // — it still prints as its own question in the body like everything else.
   const honoree = fields.find((f) => f.id === HONOREE_FIELD_ID);
-  const doNotPlay = fields.find((f) => f.id === DO_NOT_PLAY_FIELD_ID);
-  const notes = fields.find((f) => f.id === NOTES_FIELD_ID);
-  const pinned = new Set([HONOREE_FIELD_ID, DO_NOT_PLAY_FIELD_ID, NOTES_FIELD_ID]);
-  const rest = fields.filter((f) => !pinned.has(f.id));
-
-  const dnp = doNotPlay ? (responseValue(responses[doNotPlay.id]) as string[] | undefined) : undefined;
-  const hasDnp = Array.isArray(dnp) && dnp.length > 0;
 
   // The "Your booking" strip — the SAME labelled rows the client sees at the top
   // of their form, so the printable matches the filled-out one: field, then
@@ -264,35 +261,21 @@ export default async function SheetPage({
           )}
         </header>
 
-        {/* DO NOT PLAY, FIRST AND LOUD.
-            It's last on the client's form (they need to have thought about the
-            night before they know what they hate) and first here (it's the only
-            answer with a cost, and the one you need BEFORE someone requests
-            it). Same data, opposite order, for the same reason. */}
-        {hasDnp && (
-          <section className={styles.dnp}>
-            <div className={styles.dnpHead}>Do NOT play</div>
-            <ul className={styles.dnpList}>
-              {dnp!.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          </section>
-        )}
-
+        {/* Every question, in template order — same as the client's form.
+            Answered ones show the answer; unanswered ones print a blank line to
+            write on. Do NOT Play and Notes are here too, in their normal place,
+            so nothing is missing on a blank or half-filled sheet. */}
         <div className={styles.grid}>
-          {rest.map((f) => (
-            <section key={f.id} className={styles.block}>
+          {fields.map((f) => (
+            <section
+              key={f.id}
+              className={f.id === DO_NOT_PLAY_FIELD_ID ? `${styles.block} ${styles.blockNo}` : styles.block}
+            >
               <div className={styles.label}>{titleCaseLabel(f.label)}</div>
               <Answer field={f} responses={responses} />
             </section>
           ))}
         </div>
-
-        {notes && hasAnswer(responses[notes.id]) && (
-          <section className={styles.notes}>
-            <div className={styles.label}>{titleCaseLabel(notes.label)}</div>
-            <div className={styles.notesBody}>{String(responseValue(responses[notes.id]) ?? '')}</div>
-          </section>
-        )}
 
         <footer className={styles.foot}>
           Global DJ Connect · {submitted_at
