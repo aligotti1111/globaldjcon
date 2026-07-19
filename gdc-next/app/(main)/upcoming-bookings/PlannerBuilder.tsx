@@ -40,6 +40,7 @@ const BOOKING_FACTS: { label: string; sample: string }[] = [
   { label: 'End time', sample: '11:00 PM' },
   { label: 'Venue', sample: 'The Grand Ballroom' },
   { label: 'Guests', sample: '150' },
+  { label: 'Booked by', sample: 'Jordan Ellis' },
   { label: 'Your number', sample: '(555) 012-3456' },
 ];
 
