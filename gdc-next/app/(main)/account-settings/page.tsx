@@ -40,7 +40,6 @@ interface ProfileRow {
   venue_name: string | null;
   blocked_users: string[] | null;
   phone: string | null;
-  contract_logo_url: string | null;
 }
 
 export default async function AccountSettingsPage() {
@@ -50,11 +49,18 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, contract_logo_url')
+    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
   if (!profile) redirect('/login?redirect=/account-settings');
+
+  // DJs don't have a separate account-settings page — everything (name, email,
+  // password, and their whole profile) lives on /update-dj-profile, which the
+  // DJ menu already calls "Account Settings". So send any DJ who lands here —
+  // via an old link, a bookmark, or an auth redirect — straight to it. Hosts
+  // and venues keep this page.
+  if (profile.role === 'dj') redirect('/update-dj-profile');
 
   // Resolve names of blocked users so the client can show them. This is the
   // same "blockedUsers" array of UUIDs that booking-requests reads from —
@@ -85,7 +91,6 @@ export default async function AccountSettingsPage() {
         zip: profile.zip || '',
         address: profile.address || '',
         venueName: profile.venue_name || '',
-        logoUrl: profile.contract_logo_url || null,
       }}
       currentEmail={authUser.email || ''}
       initialBlocked={blockedNames}
