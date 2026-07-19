@@ -118,6 +118,7 @@ export default function CustomizePlannerPage() {
           <PlannerBuilder
             fields={fields}
             eventType={eventType}
+            bookingId={bookingId}
             onPatch={patch}
             onReorder={reorder}
             onRemove={remove}

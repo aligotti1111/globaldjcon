@@ -50,6 +50,9 @@ interface PlannerRow {
   responses: PlannerResponses;
   status: 'sent' | 'partial' | 'submitted';
   submitted_at: string | null;
+  // Per-booking logo off-switch — set when the DJ hides the logo on just this
+  // client's planner.
+  logo_hidden: boolean | null;
 }
 
 /** "19:30:00" -> "7:30 PM". The DB stores seconds; nobody reads clocks in 24h. */
@@ -89,7 +92,7 @@ export default async function PlannerPage({
 
   const { data: pData } = await db
     .from('booking_planners')
-    .select('id, booking_id, dj_id, fields, responses, status, submitted_at')
+    .select('id, booking_id, dj_id, fields, responses, status, submitted_at, logo_hidden')
     .eq('id', id)
     .maybeSingle();
   const planner = pData as unknown as PlannerRow | null;
@@ -135,8 +138,9 @@ export default async function PlannerPage({
   const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
   const djName = dj?.name || 'your DJ';
   // The DJ's single business logo (users.contract_logo_url) — shown at the top
-  // of the planner so it's clearly THEIR page.
-  const djLogo = dj?.contract_logo_url || null;
+  // of the planner so it's clearly THEIR page. Suppressed if the DJ hid the logo
+  // on THIS client's planner (logo_hidden).
+  const djLogo = planner.logo_hidden ? null : (dj?.contract_logo_url || null);
 
   // Hidden fields never reach the browser. Filtering here rather than in the
   // form means a hidden question isn't sitting in the page source of a document

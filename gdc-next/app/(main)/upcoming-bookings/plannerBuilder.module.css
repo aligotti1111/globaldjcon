@@ -43,6 +43,35 @@
 }
 .addLogo:hover { background: rgba(0, 224, 164, .14); }
 
+/* Logo + a quiet Remove beside it. */
+.logoRow { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
+.logoRemove {
+  background: none; border: none; color: #6c6c86; font-family: inherit;
+  font-size: .78rem; text-decoration: underline; cursor: pointer; padding: .2rem;
+}
+.logoRemove:hover { color: #ff7676; }
+
+/* The remove choice: delete everywhere vs hide on this one planner. */
+.logoChoice {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  margin: -.4rem 0 1rem; padding: .6rem .7rem;
+  border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px;
+  background: rgba(255, 255, 255, .02);
+}
+.logoChoiceQ { font-size: .8rem; color: #9d9db5; }
+.logoChoiceBtn {
+  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 6px; color: #e8e8f0; font-family: inherit; font-size: .78rem;
+  padding: .35rem .6rem; cursor: pointer;
+}
+.logoChoiceBtn:hover { border-color: rgba(0, 224, 164, .4); color: #00e0a4; }
+.logoChoiceBtn:disabled { opacity: .5; cursor: wait; }
+.logoChoiceCancel {
+  background: none; border: none; color: #6c6c86; font-family: inherit;
+  font-size: .78rem; text-decoration: underline; cursor: pointer;
+}
+.logoMsg { font-size: .8rem; color: #8a8aa0; margin: -.4rem 0 1rem; }
+
 /* ── The page's own header, faint ─────────────────────────────────────── */
 
 .pageHead {

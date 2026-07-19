@@ -54,7 +54,7 @@ export default async function SheetPage({
 
   const { data: pData } = await db
     .from('booking_planners')
-    .select('id, dj_id, fields, responses, status, submitted_at')
+    .select('id, dj_id, fields, responses, status, submitted_at, logo_hidden')
     .eq('booking_id', bookingId)
     .maybeSingle();
   const planner = pData as unknown as {
@@ -64,6 +64,7 @@ export default async function SheetPage({
     responses: PlannerResponses | null;
     status: string;
     submitted_at: string | null;
+    logo_hidden: boolean | null;
   } | null;
 
   const { data: bData } = await admin
@@ -114,13 +115,16 @@ export default async function SheetPage({
 
   fields = fields.filter((f) => !LEGACY_TIME_FIELD_IDS.has(f.id));
 
-  // The DJ's business logo (users.contract_logo_url) — printed at the top.
+  // The DJ's business logo (users.contract_logo_url) — printed at the top, unless
+  // hidden on this booking's planner.
   const { data: logoData } = await admin
     .from('users')
     .select('contract_logo_url')
     .eq('id', ownerId)
     .maybeSingle();
-  const logoUrl = (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
+  const logoUrl = planner?.logo_hidden
+    ? null
+    : (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
 
   return (
     <PlannerSheetView

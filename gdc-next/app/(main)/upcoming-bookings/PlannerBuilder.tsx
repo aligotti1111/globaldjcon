@@ -61,11 +61,14 @@ const isPinned = (id: string) =>
   id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
 
 export default function PlannerBuilder({
-  fields, eventType,
+  fields, eventType, bookingId = null,
   onPatch, onReorder, onRemove, onAdd,
 }: {
   fields: PlannerField[];
   eventType: string | null;
+  // The booking this editor was opened from — lets "remove logo → only this
+  // planner" target that one client's planner.
+  bookingId?: string | null;
   onPatch: (id: string, p: Partial<PlannerField>) => void;
   // Takes the WHOLE reordered array — the builder rebuilds it so the modal
   // stays dumb about which fields are hidden from the editor.
@@ -88,6 +91,10 @@ export default function PlannerBuilder({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
+  // The remove-logo choice (delete everywhere vs hide on just this planner), and
+  // a small status line.
+  const [showRemove, setShowRemove] = useState(false);
+  const [logoMsg, setLogoMsg] = useState<string | null>(null);
   const logoInput = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -127,12 +134,62 @@ export default function PlannerBuilder({
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       const url = `${data.publicUrl}?t=${Date.now()}`;
-      const { error: dbErr } = await supabase.from('users').update({ contract_logo_url: url } as unknown as never).eq('id', userId);
-      if (dbErr) throw dbErr;
+      // Save via the API — 'set' also clears every per-booking hide, so the new
+      // logo shows everywhere again.
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'set', url }),
+      });
+      if (!res.ok) throw new Error('save failed');
       setLogoUrl(url);
+      setLogoMsg(null);
     } catch { /* leave the button; the DJ can retry */ } finally {
       setLogoBusy(false);
       if (logoInput.current) logoInput.current.value = '';
+    }
+  }
+
+  // Remove everywhere — deletes the logo from the profile, so it's gone from
+  // every planner and contract.
+  async function removeEverywhere() {
+    setLogoBusy(true);
+    setLogoMsg(null);
+    try {
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'clear' }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setLogoUrl(null);
+      setShowRemove(false);
+      setLogoMsg('Logo removed everywhere.');
+    } catch {
+      setLogoMsg('Could not remove — try again.');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  // Hide on this planner only — leaves the logo on the profile and every other
+  // planner, just switches it off for this one booking. Needs a sent planner.
+  async function hideThisPlanner() {
+    if (!bookingId) { setLogoMsg("Send this planner first, then you can hide the logo on it."); return; }
+    setLogoBusy(true);
+    setLogoMsg(null);
+    try {
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'hide', bookingId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setLogoMsg(j?.error || 'Could not hide — try again.'); return; }
+      setShowRemove(false);
+      setLogoMsg('Logo hidden on this client’s planner. It still shows everywhere else.');
+    } catch {
+      setLogoMsg('Could not hide — try again.');
+    } finally {
+      setLogoBusy(false);
     }
   }
 
@@ -166,16 +223,26 @@ export default function PlannerBuilder({
           logo, so it shows on the planner and contracts too. */}
       <input ref={logoInput} type="file" accept="image/*" hidden onChange={onPickLogo} />
       {logoUrl ? (
-        <button
-          type="button"
-          className={styles.logoBtn}
-          onClick={() => logoInput.current?.click()}
-          disabled={logoBusy}
-          title="Click to replace your logo"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoUrl} alt="Your logo" className={styles.logo} />
-        </button>
+        <div className={styles.logoRow}>
+          <button
+            type="button"
+            className={styles.logoBtn}
+            onClick={() => logoInput.current?.click()}
+            disabled={logoBusy}
+            title="Click to replace your logo"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Your logo" className={styles.logo} />
+          </button>
+          <button
+            type="button"
+            className={styles.logoRemove}
+            onClick={() => { setShowRemove((v) => !v); setLogoMsg(null); }}
+            disabled={logoBusy}
+          >
+            Remove
+          </button>
+        </div>
       ) : (
         <button
           type="button"
@@ -187,6 +254,25 @@ export default function PlannerBuilder({
           {logoBusy ? 'Uploading…' : '+ Add your logo'}
         </button>
       )}
+
+      {/* The remove CHOICE: delete the logo everywhere, or just hide it on this
+          one client's planner. Changing the logo later (here or in account
+          settings) brings it back everywhere. */}
+      {showRemove && logoUrl && (
+        <div className={styles.logoChoice}>
+          <span className={styles.logoChoiceQ}>Remove the logo…</span>
+          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={removeEverywhere}>
+            Everywhere (delete from profile)
+          </button>
+          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={hideThisPlanner}>
+            Only this client’s planner
+          </button>
+          <button type="button" className={styles.logoChoiceCancel} disabled={logoBusy} onClick={() => setShowRemove(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
 
       {/* The page's own header, faint — so the DJ is looking at the client's
           actual page, chrome and all, not a bare list floating in a modal. */}

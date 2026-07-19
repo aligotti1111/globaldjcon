@@ -39,7 +39,7 @@ export default async function PlannerPrintPage({
 
   const { data: pData } = await db
     .from('booking_planners')
-    .select('id, booking_id, dj_id, fields, responses, status, submitted_at')
+    .select('id, booking_id, dj_id, fields, responses, status, submitted_at, logo_hidden')
     .eq('id', id)
     .maybeSingle();
   const planner = pData as unknown as {
@@ -50,16 +50,20 @@ export default async function PlannerPrintPage({
     responses: PlannerResponses | null;
     status: string;
     submitted_at: string | null;
+    logo_hidden: boolean | null;
   } | null;
   if (!planner) notFound();
 
-  // The DJ's business logo (users.contract_logo_url) — printed at the top.
+  // The DJ's business logo (users.contract_logo_url) — printed at the top, unless
+  // the DJ hid it on THIS client's planner.
   const { data: logoData } = await admin
     .from('users')
     .select('contract_logo_url')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const logoUrl = (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
+  const logoUrl = planner.logo_hidden
+    ? null
+    : (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
 
   const { data: bData } = await admin
     .from('bookings')

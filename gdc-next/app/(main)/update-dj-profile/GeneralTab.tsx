@@ -28,6 +28,7 @@ import {
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
+import BusinessLogoSection from './BusinessLogoSection';
 import BlockedUsersSection from './BlockedUsersSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
@@ -221,6 +222,9 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         onClose={onCropClose}
         onSuccess={onCropSuccess}
       />
+
+      {/* Business logo — the shared brand logo (planner, contracts, everywhere). */}
+      <BusinessLogoSection />
 
       {/* Private profile toggle */}
       <div className={styles.privateRow}>
