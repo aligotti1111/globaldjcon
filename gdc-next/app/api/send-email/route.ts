@@ -446,6 +446,43 @@ function billBreakdownBox(
   return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
 }
 
+// Fetch a booking's frozen price snapshot and render the itemized bill. Used
+// by every priced email that has a bookingId, so the breakdown always matches
+// the stored row. Returns '' on any miss (no id, not found, nothing to itemize).
+async function billBreakdownForBooking(
+  bookingId: string | undefined | null,
+  currency: string,
+): Promise<string> {
+  if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return '';
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('bookings')
+      .select('quoted_rate, cocktail_price, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
+        tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
+        deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
+      }>();
+    if (!data) return '';
+    const cur = data.currency || currency || 'USD';
+    return billBreakdownBox({
+      quotedRate: data.quoted_rate,
+      cocktailPrice: data.cocktail_price,
+      ceremonyPrice: data.ceremony_price,
+      taxPct: data.tax_pct,
+      taxAmount: data.tax_amount,
+      totalWithTax: data.total_with_tax,
+      depositPct: data.deposit_pct,
+      depositAmount: data.deposit_amount,
+    }, currencySymbol(cur), cur);
+  } catch {
+    return '';
+  }
+}
+
 // ── POST handler ───────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -795,6 +832,8 @@ export async function POST(req: Request) {
         </div>
         ${djRateBox}`;
 
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, offerCurrency);
+
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -804,6 +843,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
         ${djBody}
+        ${billBox}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Request')}
       `),
     };
@@ -1303,6 +1343,7 @@ export async function POST(req: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1315,6 +1356,7 @@ export async function POST(req: Request) {
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
         </div>
+        ${billBox}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
@@ -1353,6 +1395,7 @@ export async function POST(req: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1365,6 +1408,7 @@ export async function POST(req: Request) {
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
         </div>
+        ${billBox}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
       `),
     };
@@ -1421,6 +1465,7 @@ export async function POST(req: Request) {
     const senderSubjectName = senderName
       ? (senderRoleLabel ? `${senderRoleLabel} ${senderName}` : senderName)
       : (senderRoleLabel ? `the ${senderRoleLabel.toLowerCase()}` : 'the other party');
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1441,6 +1486,7 @@ export async function POST(req: Request) {
           rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()} ${currency}` : '',
           message: counterMessage,
         })}
+        ${billBox}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
       `),
     };
@@ -1474,6 +1520,7 @@ export async function POST(req: Request) {
     const currency = (body.currency as string | undefined) || 'USD';
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1493,6 +1540,7 @@ export async function POST(req: Request) {
           rateValue: quotedRate ? `${sym}${Number(quotedRate).toLocaleString()} ${currency}` : '',
           message: quoteMessage,
         })}
+        ${billBox}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can accept this quote, propose a counter-offer, or decline.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Quote')}
       `),
@@ -1533,6 +1581,7 @@ export async function POST(req: Request) {
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
     const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1556,6 +1605,7 @@ export async function POST(req: Request) {
           rateLabel: 'Agreed Price',
           rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
         })}
+        ${billBox}
         ${overtimeRate != null
           ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
           : ''}

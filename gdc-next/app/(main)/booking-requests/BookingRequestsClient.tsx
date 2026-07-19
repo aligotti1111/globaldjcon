@@ -308,6 +308,7 @@ export default function BookingRequestsClient({
             ?? null;
           const sharedFields = {
             type: 'booking_approved',
+            bookingId: b.id,
             agreedPrice,
             overtimeRate: resolveBookingOvertime(b, currentUser.mobPackages),
             currency: (b as BookingRow & { currency?: string }).currency || 'USD',
@@ -369,6 +370,7 @@ export default function BookingRequestsClient({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: b.booking_type === 'club' ? 'booking_status' : 'mob_booking_status',
+                bookingId: b.id,
                 requesterUserId: b.requester_id,
                 requesterName: b.requester_name,
                 djName: currentUser.name,
@@ -582,6 +584,7 @@ export default function BookingRequestsClient({
           ?? null;
         const sharedFields = {
           type: 'booking_approved',
+          bookingId: b.id,
           agreedPrice,
           overtimeRate: resolveBookingOvertime(b, currentUser.mobPackages),
           currency: (b as BookingRow & { currency?: string }).currency || 'USD',
@@ -919,6 +922,7 @@ export default function BookingRequestsClient({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'quote_sent',
+            bookingId: b.id,
             recipientUserId: b.requester_id,
             recipientName: b.requester_name,
             djName: currentUser.name,

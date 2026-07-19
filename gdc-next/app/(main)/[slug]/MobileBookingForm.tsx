@@ -501,6 +501,7 @@ export default function MobileBookingForm({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'booking_request',
+            bookingId: json.id,
             djUserId: dj.id,
             djName: dj.name,
             requesterName: currentUser.name,
