@@ -307,6 +307,9 @@ function mobileBookingRequestBox(opts: {
   cocktailNeeded?: boolean | null;
   cocktailStart?: string | null;
   cocktailSameRoom?: boolean | null;
+  ceremonyNeeded?: boolean | null;
+  ceremonyStart?: string | null;
+  ceremonySameRoom?: boolean | null;
   setupHours?: string | null;
 }): string {
   const rows: string[] = [];
@@ -334,6 +337,21 @@ function mobileBookingRequestBox(opts: {
   } else {
     const range = fmtTimeRange(opts.startTime, opts.endTime);
     if (range !== '—') rows.push(row('Time', escHtml(range)));
+  }
+
+  // Ceremony rows (weddings only) — an independent add-on shown ABOVE cocktail
+  // hour, in event order. Yes/No always shows for weddings; start + room show
+  // only when ceremony music was requested.
+  if (opts.isWedding) {
+    rows.push(row('Music for Ceremony', opts.ceremonyNeeded ? 'Yes' : 'No'));
+  }
+  if (opts.ceremonyNeeded) {
+    const ceStart = fmtTime(opts.ceremonyStart);
+    if (ceStart) rows.push(row('Ceremony Start', escHtml(ceStart)));
+    rows.push(row(
+      'Ceremony Room',
+      opts.ceremonySameRoom ? 'Same room as reception' : 'Separate room from reception',
+    ));
   }
 
   // Cocktail-hour rows. Weddings always show the Yes/No (it's a standard
@@ -740,6 +758,9 @@ export async function POST(req: Request) {
     const cocktailNeeded = body.cocktailNeeded === true;
     const cocktailStart = body.cocktailStart as string | undefined;
     const cocktailSameRoom = body.cocktailSameRoom === true;
+    const ceremonyNeeded = body.ceremonyNeeded === true;
+    const ceremonyStart = body.ceremonyStart as string | undefined;
+    const ceremonySameRoom = body.ceremonySameRoom === true;
     const setupHours = (body.setupHours as string | null | undefined) ?? null;
     // Club-specific fields (kept for backward compat with that flow).
     const setType = body.setType as string | undefined;
@@ -846,6 +867,9 @@ export async function POST(req: Request) {
       cocktailNeeded,
       cocktailStart,
       cocktailSameRoom,
+      ceremonyNeeded,
+      ceremonyStart,
+      ceremonySameRoom,
       setupHours,
     });
 
@@ -934,6 +958,9 @@ export async function POST(req: Request) {
     const cocktailNeeded = body.cocktailNeeded === true;
     const cocktailStart = body.cocktailStart as string | undefined;
     const cocktailSameRoom = body.cocktailSameRoom === true;
+    const ceremonyNeeded = body.ceremonyNeeded === true;
+    const ceremonyStart = body.ceremonyStart as string | undefined;
+    const ceremonySameRoom = body.ceremonySameRoom === true;
     const setupHours = (body.setupHours as string | null | undefined) ?? null;
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
@@ -990,6 +1017,9 @@ export async function POST(req: Request) {
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
+          ceremonyNeeded,
+          ceremonyStart,
+          ceremonySameRoom,
           setupHours,
         })
       : bookingInfoBox({
