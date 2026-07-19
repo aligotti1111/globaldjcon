@@ -590,6 +590,20 @@ function EventRow({
                 </div>
               </div>
             )}
+            {isMobile && !isManual && isWedding && event.ceremony_needed != null && (
+              <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>Ceremony Music</div>
+                <div className={styles.detailValue}>
+                  {event.ceremony_needed
+                    ? `Yes${event.ceremony_start_time
+                        ? ` · starts ${formatTime12(event.ceremony_start_time)}` : ''}${
+                        event.ceremony_same_room != null
+                          ? ` · ${event.ceremony_same_room ? 'same room as reception' : 'separate room'}`
+                          : ''}`
+                    : 'No'}
+                </div>
+              </div>
+            )}
             {isMobile && rateText && (
               <div className={styles.detailItem}>
                 <div className={styles.detailLabel}>Rate</div>

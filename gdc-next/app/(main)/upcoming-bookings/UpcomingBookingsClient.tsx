@@ -1111,8 +1111,11 @@ function BookingRow({
   // Header time range. When the booker added a cocktail hour, the row's
   // start reflects the cocktail-hour start (the DJ is engaged from then),
   // running through the event end. Otherwise it's the plain event window.
+  // Ceremony music, when present, starts earlier still and takes precedence.
   const headerStart =
-    booking.cocktail_needed && booking.cocktail_start_time
+    booking.ceremony_needed && booking.ceremony_start_time
+      ? booking.ceremony_start_time
+      : booking.cocktail_needed && booking.cocktail_start_time
       ? booking.cocktail_start_time
       : booking.start_time;
   const timeRange = formatTimeRange(headerStart, booking.end_time);
@@ -1904,6 +1907,9 @@ function BookingRow({
         >
           {booking.cocktail_needed && (
             <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
+          )}
+          {booking.ceremony_needed && (
+            <div className={styles.rowCocktailNote}>Includes ceremony music</div>
           )}
           <div className={styles.rowTime}>{timeRange}</div>
         </button>
@@ -2738,11 +2744,16 @@ function BookingDetails({
     ? snapTotal
     : (agreedTotal != null ? round2(Number(agreedTotal) + cardTax) : null);
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
+  const ceremonyCharge = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
-  const agreedBase = hasSeparateCocktail ? (Number(agreedTotal) - cocktailCharge) : null;
-  const agreedRateValue = hasSeparateCocktail ? (
+  const hasSeparateCeremony = ceremonyCharge > 0 && agreedTotal != null;
+  const agreedBase = (hasSeparateCocktail || hasSeparateCeremony) ? (Number(agreedTotal) - cocktailCharge - ceremonyCharge) : null;
+  const agreedRateValue = (hasSeparateCocktail || hasSeparateCeremony) ? (
     <span>
-      {money(agreedBase)} + <span className={styles.cocktailHighlight}>{money(cocktailCharge)} cocktail</span> = {money(agreedTotal)}
+      {money(agreedBase)}
+      {hasSeparateCocktail && <> + <span className={styles.cocktailHighlight}>{money(cocktailCharge)} cocktail</span></>}
+      {hasSeparateCeremony && <> + <span className={styles.cocktailHighlight}>{money(ceremonyCharge)} ceremony</span></>}
+      {' = '}{money(agreedTotal)}
     </span>
   ) : money(agreedTotal);
 
@@ -2789,6 +2800,16 @@ function BookingDetails({
         label: 'Cocktail Hour Time',
         value: booking.cocktail_needed && booking.cocktail_start_time
           ? formatTime12(booking.cocktail_start_time)
+          : null,
+      },
+    ],
+    // Row 2b: Ceremony Music time (wedding bookings where the booker opted in),
+    // shown above the reception start/end times.
+    [
+      {
+        label: 'Ceremony Music Time',
+        value: booking.ceremony_needed && booking.ceremony_start_time
+          ? formatTime12(booking.ceremony_start_time)
           : null,
       },
     ],
