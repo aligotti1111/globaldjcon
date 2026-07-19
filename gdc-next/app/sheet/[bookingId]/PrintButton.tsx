@@ -52,16 +52,25 @@ export default function PrintButton() {
   async function download() {
     if (busy) return;
     setBusy(true);
+    // Capture the PAGE element itself — it's the node that carries the .export
+    // class, so the light styling AND the "hide the buttons" rule both apply to
+    // the captured root. (Capturing the inner .sheet failed: the .export class
+    // was on its ancestor, so html2canvas rendered it dark with buttons showing
+    // and clipped, because the sheet is centred.)
     const page = document.getElementById('runSheet');
-    const target = (page?.querySelector('[data-sheet]') as HTMLElement | null) || page;
     try {
       await ensureHtml2pdf();
-      if (!target) throw new Error('Nothing to export');
+      if (!page) throw new Error('Nothing to export');
 
-      // Force the paper (light) styling for the capture — html2canvas reads the
-      // live screen styles, which are dark, so without this the PDF is a page of
-      // grey mush.
-      page?.classList.add(styles.export);
+      // Force the paper (light) styling for the capture.
+      page.classList.add(styles.export);
+      // Capture from the very top — html2canvas offsets by the scroll position,
+      // so a DJ who scrolled down before clicking would otherwise get a blank or
+      // clipped page.
+      window.scrollTo(0, 0);
+      // Web fonts (Bebas, Inter) must be ready or the text renders wrong/blank.
+      const docFonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts;
+      if (docFonts?.ready) { try { await docFonts.ready; } catch { /* ignore */ } }
       // Let the class actually paint before we snapshot.
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
@@ -71,19 +80,22 @@ export default function PrintButton() {
         .set({
           margin: [10, 10, 12, 10],
           filename: safeFilename(),
-          image: { type: 'jpeg', quality: 0.98 },
+          // PNG, not JPEG — crisp text, no compression fuzz on a dense sheet.
+          image: { type: 'png' },
           html2canvas: {
             scale: 2,
             backgroundColor: '#ffffff',
             useCORS: true,
-            windowWidth: target.scrollWidth,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: document.documentElement.scrollWidth,
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
           // Respect break-inside:avoid so a do-not-play box or a question+answer
           // never splits across two pages.
           pagebreak: { mode: ['css', 'legacy'] },
         })
-        .from(target)
+        .from(page)
         .save();
     } catch {
       // CDN blocked, offline, or anything else — the print dialog always works,

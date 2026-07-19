@@ -282,7 +282,11 @@
  * dark→white inversion has to exist as a class the Download button toggles on
  * the page root just for the capture, then removes. Kept in lockstep with the
  * @media print block below: if you change a colour there, change it here. */
-.export { background: #fff !important; color: #000 !important; }
+.export { background: #fff !important; color: #000 !important; padding: 0 !important; }
+/* Un-center for capture: on screen the sheet is max-width:780 centred, which
+   makes html2canvas render it offset and clip the sides. Full width, like the
+   @media print rule. */
+.export .sheet { max-width: none !important; margin: 0 !important; }
 .export .noPrint { display: none !important; }
 .export .head { border-bottom-color: #000 !important; }
 .export .title { color: #000 !important; }
