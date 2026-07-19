@@ -24,6 +24,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AccountSettingsClient from './AccountSettingsClient';
+import UpdateDjProfileClient from '@/app/(main)/update-dj-profile/UpdateDjProfileClient';
+import type { UserProfile } from '@/types/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,12 +57,52 @@ export default async function AccountSettingsPage() {
 
   if (!profile) redirect('/login?redirect=/account-settings');
 
-  // DJs don't have a separate account-settings page — everything (name, email,
-  // password, and their whole profile) lives on /update-dj-profile, which the
-  // DJ menu already calls "Account Settings". So send any DJ who lands here —
-  // via an old link, a bookmark, or an auth redirect — straight to it. Hosts
-  // and venues keep this page.
-  if (profile.role === 'dj') redirect('/update-dj-profile');
+  // A DJ's "account settings" IS their profile — so we render the DJ profile
+  // editor right here, at the /account-settings URL. (The old /update-dj-profile
+  // route now just redirects here, so this is the one canonical URL.) It has
+  // their name, email, password, socials, logo — everything. Hosts and venues
+  // fall through to the account-settings form below.
+  if (profile.role === 'dj') {
+    const { data: djData } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
+    const djProfile = djData as UserProfile | null;
+    if (!djProfile) redirect('/login?error=profile_not_found');
+    return (
+      <UpdateDjProfileClient
+        initialProfile={djProfile as UserProfile & {
+          bio?: string | null;
+          phone?: string | null;
+          website?: string | null;
+          soundcloud?: string | null;
+          instagram?: string | null;
+          tiktok?: string | null;
+          facebook?: string | null;
+          twitch?: string | null;
+          avatar_url?: string | null;
+          travel_distance?: string | null;
+          dj_start_year?: string | null;
+          event_types?: string | null;
+          club_genres?: string[] | null;
+          profile_private?: boolean | null;
+          mix_url_1?: string | null;
+          mix_url_2?: string | null;
+          mix_url_3?: string | null;
+          gallery_img_1?: string | null;
+          gallery_img_2?: string | null;
+          gallery_img_3?: string | null;
+          gallery_img_4?: string | null;
+          video_url_1?: string | null;
+          video_url_2?: string | null;
+          video_url_3?: string | null;
+          testimonials?: string | null;
+        }}
+        authEmail={authUser.email || ''}
+      />
+    );
+  }
 
   // Resolve names of blocked users so the client can show them. This is the
   // same "blockedUsers" array of UUIDs that booking-requests reads from —

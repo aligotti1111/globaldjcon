@@ -216,7 +216,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Notifications
           </Link>
-          <Link href="/update-dj-profile" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
           <button
