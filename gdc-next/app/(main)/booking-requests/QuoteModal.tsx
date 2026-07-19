@@ -28,6 +28,11 @@ interface Props {
   // DJ's deposit_pct from booking_settings — used for the live deposit
   // preview. 0 or null means no deposit.
   depositPct: number;
+  // DJ's CURRENT sales-tax setting. A request-price offer is taxed at the
+  // moment the DJ makes it — that's the agreement point for quote bookings,
+  // which had no price to freeze at creation.
+  taxEnabled: boolean;
+  taxPct: number;
   onClose: () => void;
   onSaved: (updated: BookingRow) => void;
 }
@@ -51,7 +56,7 @@ function formatTime12(t: string | null): string {
   return `${h12}:${String(m).padStart(2, '0')} ${p}`;
 }
 
-export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Props) {
+export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, onClose, onSaved }: Props) {
   // Pre-fill from existing values when the DJ is editing a previously
   // sent quote. Empty strings on first quote, populated when re-opening.
   const [price, setPrice] = useState(
@@ -100,7 +105,11 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
   // total, matching the public booking form and /api/bookings/create.
   // Legacy rows with no snapshot keep the old pre-tax behavior (taxPct 0).
   const priceNum = parseFloat(price);
-  const quoteTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+  // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
+  // (the agreement point for a request-price booking). Otherwise fall back to
+  // the booking's frozen snapshot %, so a package-priced row keeps its stamped
+  // rate and legacy rows with no snapshot stay tax-free.
+  const quoteTaxPct = taxEnabled ? taxPct : (booking.tax_pct != null ? Number(booking.tax_pct) : 0);
   const quoteTaxAmount = (quoteTaxPct > 0 && priceNum > 0)
     ? Number(((priceNum * quoteTaxPct) / 100).toFixed(2))
     : 0;
@@ -182,8 +191,8 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         // price at creation, so their tax AMOUNTS were left null — fill them
         // now from the frozen % and the price the DJ just set. Never written
         // for legacy rows (no snapshot %), which keep their old behavior.
-        ...(booking.tax_pct != null
-          ? { tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
+        ...(quoteTaxPct > 0
+          ? { tax_pct: quoteTaxPct, tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
           : {}),
         // Overtime now has its own dedicated column (no longer overloaded onto
         // counter_rate, which is reserved for genuine counter offers). Always
@@ -210,8 +219,8 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
         ...booking,
         quoted_rate: priceNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
-        ...(booking.tax_pct != null
-          ? { tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
+        ...(quoteTaxPct > 0
+          ? { tax_pct: quoteTaxPct, tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
           : {}),
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
@@ -527,6 +536,16 @@ export default function QuoteModal({ booking, depositPct, onClose, onSaved }: Pr
               className={styles.counterAmountInput}
             />
           </div>
+          {quoteTaxPct > 0 && priceNum > 0 && (
+            <>
+              <div className={styles.depositPreview}>
+                Sales tax ({quoteTaxPct}%): ${quoteTaxAmount.toLocaleString()}
+              </div>
+              <div className={styles.depositPreview}>
+                Total with tax: {quoteTotalWithTax != null ? `$${quoteTotalWithTax.toLocaleString()}` : '—'}
+              </div>
+            </>
+          )}
           {depositPct > 0 && (
             <div className={styles.depositPreview}>
               Deposit ({depositPct}%): {depositAmount ? `$${Number(depositAmount).toLocaleString()}` : '—'}

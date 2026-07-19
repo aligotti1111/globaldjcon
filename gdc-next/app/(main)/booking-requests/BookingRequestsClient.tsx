@@ -42,6 +42,10 @@ interface CurrentUser {
   // Deposit percentage from DJ's booking_settings (0-100). Used for the
   // Quote modal's live deposit preview. 0 means DJ doesn't take a deposit.
   depositPct: number;
+  // DJ's CURRENT sales-tax setting — applied to a request-price offer at the
+  // moment the DJ makes it (that's the agreement point for quote bookings).
+  taxEnabled: boolean;
+  taxPct: number;
   // DJ's mobile packages keyed by category — used to resolve a booking's
   // overtime rate (by package_category + package_index) when it wasn't
   // snapshotted onto the booking row, so the approval email can include it.
@@ -1156,6 +1160,8 @@ export default function BookingRequestsClient({
         <QuoteModal
           booking={quoteModal.booking}
           depositPct={currentUser.depositPct}
+          taxEnabled={currentUser.taxEnabled}
+          taxPct={currentUser.taxPct}
           onClose={() => setQuoteModal(null)}
           onSaved={(updated) => applyBookingUpdate(updated)}
         />

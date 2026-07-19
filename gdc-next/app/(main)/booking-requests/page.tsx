@@ -256,6 +256,12 @@ export default async function BookingRequestsPage() {
   // Extract DJ's depositPct from booking_settings — used by the Quote
   // modal to show a live deposit preview as the DJ types.
   let depositPct = 0;
+  // The DJ's CURRENT sales-tax setting — used by the Quote modal so a
+  // request-price (quote) offer is taxed at the moment the DJ makes it (the
+  // real agreement point for these bookings — there was no price to freeze at
+  // creation). A package-priced booking still uses its frozen tax snapshot.
+  let taxEnabled = false;
+  let taxPct = 0;
   if (me.booking_settings) {
     try {
       const bs = typeof me.booking_settings === 'string'
@@ -268,6 +274,8 @@ export default async function BookingRequestsPage() {
       depositPct = Number(
         me.dj_type === 'club' ? bs?.club_deposit_pct : bs?.mob_deposit_pct
       ) || 0;
+      taxEnabled = bs?.tax_enabled === true;
+      taxPct = Number(bs?.tax_pct) || 0;
     } catch {
       // non-fatal — default to 0
     }
@@ -346,6 +354,8 @@ export default async function BookingRequestsPage() {
         state: me.state,
         travelDistance: me.travel_distance,
         depositPct,
+        taxEnabled,
+        taxPct,
       }}
       initialIncoming={incoming}
       initialOutgoing={outgoing}
