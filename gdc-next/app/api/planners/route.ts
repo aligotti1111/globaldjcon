@@ -281,6 +281,84 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
     }
 
+    // ── Rename ──────────────────────────────────────────────────────────────
+    //
+    // The pencil in the send modal renames a planner by id, without touching
+    // its questions. Server-authoritative on purpose: the stock rows' fields
+    // live here, so "rename the stock Wedding planner" can create the DJ's own
+    // copy carrying those same questions — the client never has to send the
+    // field list it doesn't hold.
+    //
+    //   · the DJ's own planner  → just update its name.
+    //   · a stock planner       → upsert the DJ's copy for that event type,
+    //                             seeded with the stock's questions, named X.
+    //                             (If they already have a copy, only the name
+    //                             changes — their customised questions stay.)
+    if (typeof body.renamePlannerId === 'string' && body.renamePlannerId) {
+      const renameId = body.renamePlannerId;
+      const newName = clamp(body.name, 80);
+      if (!newName) {
+        return NextResponse.json({ error: 'A name is required.' }, { status: 400 });
+      }
+
+      const templates = await loadTemplates(db, userId);
+      const target = templates.find((t) => t.id === renameId);
+      if (!target) {
+        // 404, not 403 — don't confirm another DJ's private template id exists.
+        return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+      }
+
+      // The DJ's own → rename in place, questions untouched.
+      if (!target.is_standard && target.dj_id === userId) {
+        const { error } = await db
+          .from('planners')
+          .update({ name: newName } as unknown as never)
+          .eq('id', target.id)
+          .eq('dj_id', userId);
+        if (error) return NextResponse.json({ error: 'Could not rename.' }, { status: 500 });
+        return NextResponse.json({ id: target.id, saved: true });
+      }
+
+      // A stock planner → make (or rename) the DJ's own copy for this event
+      // type, keeping the stock's questions. Same null-vs-value keying as below.
+      const et = target.event_type ?? null;
+      const mineQ = db
+        .from('planners')
+        .select('id')
+        .eq('dj_id', userId)
+        .eq('is_standard', false);
+      const { data: existingMine } = await (
+        et === null ? mineQ.is('event_type', null) : mineQ.eq('event_type', et)
+      ).maybeSingle();
+      const mineRow = existingMine as unknown as { id: string } | null;
+
+      if (mineRow) {
+        const { error } = await db
+          .from('planners')
+          .update({ name: newName } as unknown as never)
+          .eq('id', mineRow.id)
+          .eq('dj_id', userId);
+        if (error) return NextResponse.json({ error: 'Could not rename.' }, { status: 500 });
+        return NextResponse.json({ id: mineRow.id, saved: true });
+      }
+
+      const { data: made, error: makeErr } = await db
+        .from('planners')
+        .insert({
+          dj_id: userId,
+          name: newName,
+          event_type: et,
+          is_standard: false,
+          fields: target.fields || [],
+        } as unknown as never)
+        .select('id')
+        .single();
+      if (makeErr || !made) {
+        return NextResponse.json({ error: 'Could not rename.' }, { status: 500 });
+      }
+      return NextResponse.json({ id: (made as unknown as { id: string }).id, saved: true });
+    }
+
     // null event_type = the DJ's base planner, used for every event type they
     // haven't customised specifically. A real value scopes it to that type.
     const eventType = typeof body.eventType === 'string' && body.eventType.trim()

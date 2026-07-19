@@ -79,7 +79,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, known,
+  djName, hostName, eventDateLabel, venueName, logoUrl, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -93,6 +93,8 @@ export default function PlannerForm({
   logoUrl: string | null;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
+  /** DJ preview — the REAL page, read-only. No saving, no submit. */
+  preview?: boolean;
 }) {
   const [responses, setResponses] = useState<PlannerResponses>(initialResponses);
   const [status, setStatus] = useState(initialStatus);
@@ -131,11 +133,13 @@ export default function PlannerForm({
   // 800ms after they stop typing. Long enough not to fire per character, short
   // enough that putting the phone down mid-sentence still saves.
   const queue = useCallback((id: string, payload: unknown) => {
+    // Preview is read-only — there's no planner to save to. Never fetch.
+    if (preview) return;
     pending.current[id] = payload;
     setSave('saving');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => { void flush(); }, 800);
-  }, [flush]);
+  }, [flush, preview]);
 
   /**
    * The last 800ms.
@@ -154,6 +158,7 @@ export default function PlannerForm({
    * not at all, and a phone is where this form is actually filled in.
    */
   useEffect(() => {
+    if (preview) return;
     const onHide = () => {
       if (Object.keys(pending.current).length === 0) return;
       try {
@@ -177,7 +182,7 @@ export default function PlannerForm({
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pagehide', onHide);
     };
-  }, [plannerId]);
+  }, [plannerId, preview]);
 
   const setValue = useCallback((id: string, value: unknown) => {
     setResponses((r) => ({ ...r, [id]: { value } }));
@@ -243,6 +248,27 @@ export default function PlannerForm({
     <div className={styles.page}>
       <div className={styles.sheet}>
 
+        {/* DJ preview banner — only ever shown when the DJ opens this from the
+            send modal's Preview. Makes it unmistakable this is a look, not the
+            live client page: no saving happens and there's no Send button. */}
+        {preview && (
+          <div
+            style={{
+              margin: '0 0 1rem',
+              padding: '.6rem .9rem',
+              borderRadius: 10,
+              background: 'rgba(120, 120, 255, .12)',
+              border: '1px solid rgba(120, 120, 255, .35)',
+              fontSize: '.85rem',
+              fontWeight: 600,
+              color: 'var(--muted, #6a6a85)',
+              textAlign: 'center',
+            }}
+          >
+            Preview — this is exactly what your client sees. Nothing here saves.
+          </div>
+        )}
+
         <header className={styles.head}>
           {/* The DJ's own logo, if they've set one — so the client sees THEIR
               brand at the top, not just ours. */}
@@ -258,14 +284,17 @@ export default function PlannerForm({
             {/* Download a PDF anytime — client or DJ. Opens the print view with
                 ?download=1 so it downloads on open, then that tab closes itself.
                 window.open (not a plain link) so the opened tab is allowed to
-                self-close once the file is saved. */}
-            <button
-              type="button"
-              className={styles.download}
-              onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
-            >
-              ↓ Download PDF
-            </button>
+                self-close once the file is saved. Hidden in DJ preview — the
+                template has no real planner id to print. */}
+            {!preview && (
+              <button
+                type="button"
+                className={styles.download}
+                onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
+              >
+                ↓ Download PDF
+              </button>
+            )}
           </div>
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
@@ -332,22 +361,26 @@ export default function PlannerForm({
           ))}
         </div>
 
-        <footer className={styles.foot}>
-          <div className={styles.progress}>
-            {progress.answered} of {progress.total} answered
-          </div>
-          {status !== 'submitted' && (
-            <button
-              type="button"
-              className={styles.submit}
-              onClick={() => void submit()}
-              disabled={submitting}
-            >
-              {submitting ? 'Sending…' : `Send to ${djName}`}
-            </button>
-          )}
-        </footer>
+        {/* No footer/submit in DJ preview — a preview is a read, not a send. */}
+        {!preview && (
+          <footer className={styles.foot}>
+            <div className={styles.progress}>
+              {progress.answered} of {progress.total} answered
+            </div>
+            {status !== 'submitted' && (
+              <button
+                type="button"
+                className={styles.submit}
+                onClick={() => void submit()}
+                disabled={submitting}
+              >
+                {submitting ? 'Sending…' : `Send to ${djName}`}
+              </button>
+            )}
+          </footer>
+        )}
 
+        {!preview && (
         <p className={styles.note}>
           {/* Not "Saved ✓" as a permanent badge — a status that's always green
               stops being read. This only speaks when it has something to say. */}
@@ -359,6 +392,7 @@ export default function PlannerForm({
             </span>
           )}
         </p>
+        )}
       </div>
     </div>
   );
