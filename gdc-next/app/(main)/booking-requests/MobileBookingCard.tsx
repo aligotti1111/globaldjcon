@@ -211,16 +211,6 @@ export default function MobileBookingCard(props: Props) {
           </svg>
           <span className={styles.dateText}>{formatLongDate(b.event_date)}</span>
         </div>
-        {b.cocktail_needed && (
-          <div className={styles.timeBlock}>
-            <div className={styles.tinyLabel}>Cocktail Hour</div>
-            <div className={styles.cocktailLine}>
-              {b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}
-              {cocktailDurationLabel ? ` · ${cocktailDurationLabel}` : ''}
-              {b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
-            </div>
-          </div>
-        )}
         {b.ceremony_needed && (
           <div className={styles.timeBlock}>
             <div className={styles.tinyLabel}>Ceremony</div>
@@ -231,13 +221,17 @@ export default function MobileBookingCard(props: Props) {
             </div>
           </div>
         )}
+        {b.cocktail_needed && (
+          <div className={styles.timeBlock}>
+            <div className={styles.tinyLabel}>Cocktail Hour</div>
+            <div className={styles.cocktailLine}>
+              {b.cocktail_start_time ? formatTime(b.cocktail_start_time) : 'TBD'}
+              {cocktailDurationLabel ? ` · ${cocktailDurationLabel}` : ''}
+              {b.cocktail_same_room ? ' · Same room' : ' · Separate room'}
+            </div>
+          </div>
+        )}
         <div className={styles.timeBlock}>
-          {b.cocktail_needed && (
-            <div className={styles.cocktailIncludesNote}>Includes cocktail hour</div>
-          )}
-          {b.ceremony_needed && (
-            <div className={styles.cocktailIncludesNote}>Includes ceremony</div>
-          )}
           <div className={styles.tinyLabel}>
             {b.event_type === 'weddings' ? 'Reception Start' : 'Event Start'}
           </div>

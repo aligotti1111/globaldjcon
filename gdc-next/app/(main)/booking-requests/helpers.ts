@@ -55,13 +55,18 @@ export function bookingsOverlap(
 }
 
 // Compute event duration label e.g. "4 hrs 30m". Returns "" if either time
-// is missing. Adds "+ N cocktail" when wedding has a cocktail hour.
+// is missing. Adds "+ N cocktail" when a wedding has a cocktail hour, and
+// "+ N ceremony" when it has ceremony music (independent add-ons).
 export function calcDurationLabel(b: {
   start_time: string | null;
   end_time: string | null;
   event_type: string | null;
   cocktail_needed: boolean | null;
   cocktail_start_time: string | null;
+  // Optional — mirrors the cocktail pair. Optional so callers that don't
+  // carry ceremony fields keep type-checking.
+  ceremony_needed?: boolean | null;
+  ceremony_start_time?: string | null;
 }): string {
   if (!b.start_time || !b.end_time) return '';
   const [sh, sm] = b.start_time.split(':').map(Number);
@@ -83,6 +88,17 @@ export function calcDurationLabel(b: {
       ? `${cHrs} hr${cHrs > 1 ? 's' : ''}${cRem > 0 ? ' ' + cRem + 'm' : ''}`
       : `${cRem}m`;
     label += ` + ${cockLabel} cocktail`;
+  }
+  if (b.event_type === 'weddings' && b.ceremony_needed && b.ceremony_start_time) {
+    const [ceh, cem] = b.ceremony_start_time.split(':').map(Number);
+    let cerMins = sh * 60 + sm - (ceh * 60 + cem);
+    if (cerMins <= 0) cerMins += 1440;
+    const ceHrs = Math.floor(cerMins / 60);
+    const ceRem = cerMins % 60;
+    const cerLabel = ceHrs > 0
+      ? `${ceHrs} hr${ceHrs > 1 ? 's' : ''}${ceRem > 0 ? ' ' + ceRem + 'm' : ''}`
+      : `${ceRem}m`;
+    label += ` + ${cerLabel} ceremony`;
   }
   return label;
 }
