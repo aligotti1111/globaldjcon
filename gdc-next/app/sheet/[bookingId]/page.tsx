@@ -113,7 +113,7 @@ export default async function SheetPage({
   // been sent yet) for its dj_id and event_type so we can resolve a BLANK sheet.
   const { data: bData } = await admin
     .from('bookings')
-    .select('dj_id, event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, package_title')
+    .select('dj_id, event_type, event_details, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, cocktail_needed, cocktail_start_time, requester_name, package_title')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as {
@@ -130,6 +130,8 @@ export default async function SheetPage({
     venue_address: string | null;
     guest_count: number | null;
     phone: string | null;
+    cocktail_needed: boolean | null;
+    cocktail_start_time: string | null;
     requester_name: string | null;
     package_title: string | null;
   } | null;
@@ -207,6 +209,27 @@ export default async function SheetPage({
   const dnp = doNotPlay ? (responseValue(responses[doNotPlay.id]) as string[] | undefined) : undefined;
   const hasDnp = Array.isArray(dnp) && dnp.length > 0;
 
+  // The "Your booking" strip — the SAME labelled rows the client sees at the top
+  // of their form, so the printable matches the filled-out one: field, then
+  // info, one per line. Event-aware, like the client page.
+  const isWedding = b?.event_type === 'weddings';
+  const startLabel = isWedding ? 'Reception start' : 'Start time';
+  const endLabel = isWedding ? 'Reception end' : 'End time';
+  const showCocktail = isWedding && !!b?.cocktail_needed && !!b?.cocktail_start_time;
+  const known: { k: string; v: string }[] = [
+    { k: 'Event', v: b?.event_type ? (MOB_EVENT_LABELS[b.event_type] || '') : '' },
+    { k: 'Date', v: fmtDate(b?.event_date ?? null) },
+    ...(showCocktail ? [{ k: 'Cocktail hour', v: fmtTime(b?.cocktail_start_time ?? null) }] : []),
+    { k: startLabel, v: fmtTime(b?.start_time ?? null) },
+    { k: endLabel, v: fmtTime(b?.end_time ?? null) },
+    { k: 'Venue', v: [b?.venue_name, b?.venue_address].filter(Boolean).join(' · ') },
+    { k: 'Occasion', v: b?.event_details || '' },
+    { k: 'Package', v: b?.package_title || '' },
+    { k: 'Guests', v: b?.guest_count ? `${b.guest_count}` : '' },
+    { k: 'Booked by', v: b?.requester_name || '' },
+    { k: 'Your number', v: b?.phone || '' },
+  ].filter((r) => !!r.v);
+
   return (
     // id + data-sheet let the Download button find the page root (to force the
     // light/paper styling during capture) and the sheet itself (what actually
@@ -222,19 +245,13 @@ export default async function SheetPage({
             </h1>
             <PrintButton />
           </div>
-          <div className={styles.meta}>
-            {[
-              b?.event_type ? (MOB_EVENT_LABELS[b.event_type] || null) : null,
-              fmtDate(b?.event_date ?? null),
-              [fmtTime(b?.start_time), fmtTime(b?.end_time)].filter(Boolean).join(' – '),
-              b?.venue_name,
-              b?.guest_count ? `${b.guest_count} guests` : '',
-            ].filter(Boolean).join('  ·  ')}
-          </div>
-          {b?.venue_address ? <div className={styles.metaSub}>{b.venue_address}</div> : null}
-          {b?.event_details ? <div className={styles.metaSub}>{b.event_details}</div> : null}
-          <div className={styles.metaSub}>
-            {[b?.requester_name, b?.phone].filter(Boolean).join('  ·  ')}
+          <div className={styles.known}>
+            {known.map((row) => (
+              <div key={row.k} className={styles.knownRow}>
+                <span className={styles.knownK}>{row.k}</span>
+                <span className={styles.knownV}>{row.v}</span>
+              </div>
+            ))}
           </div>
           {status !== 'submitted' && (
             // The client hasn't finished. Printing a half-filled (or blank,

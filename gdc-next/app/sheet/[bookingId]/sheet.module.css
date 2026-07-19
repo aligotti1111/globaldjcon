@@ -92,6 +92,27 @@
   line-height: 1.5;
 }
 
+/* "Your booking" — the SAME labelled rows the client sees: field, then info,
+   one per line. Matches the filled-out form so the printable reads the same. */
+.known {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  margin-top: .25rem;
+}
+.knownRow {
+  display: flex;
+  gap: .8rem;
+  align-items: baseline;
+  font-size: .92rem;
+}
+.knownK {
+  flex: 0 0 140px;
+  color: #8a8aa0;
+  font-size: .82rem;
+}
+.knownV { color: #e8e8f0; min-width: 0; word-break: break-word; }
+
 /* The client is still typing. Not an error — most of the night is here — but a
    blank has to read as "not answered yet", never as "nothing planned". */
 .warn {
@@ -308,6 +329,8 @@
 .export .head { border-bottom-color: #000 !important; }
 .export .title { color: #000 !important; }
 .export .meta { color: #000 !important; }
+.export .knownK { color: #444 !important; }
+.export .knownV { color: #000 !important; }
 .export .metaSub,
 .export .label,
 .export .trackNum,
@@ -346,6 +369,8 @@
   .head { border-bottom-color: #000 !important; }
   .title { font-size: 1.6rem; }
   .meta { color: #000 !important; }
+  .knownK { color: #444 !important; }
+  .knownV { color: #000 !important; }
   .metaSub, .label, .trackNum, .tTime, .pRole, .artist { color: #444 !important; }
   .blank, .na { color: #888 !important; }
   .foot { color: #888 !important; border-top-color: #ccc !important; }
