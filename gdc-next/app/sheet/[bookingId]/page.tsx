@@ -295,13 +295,15 @@ function peopleText(r: PlannerResponses[string] | undefined): string {
 }
 
 // A blank answer prints as writable rule(s), not a dash — so a downloaded
-// planner (blank or half-filled) is a form you can fill by hand. List questions
-// get a few lines; a single-value question gets one.
-function BlankLines({ type }: { type: PlannerField['type'] }) {
+// planner (blank or half-filled) is a form you can fill by hand. Line counts are
+// sized to the question: a name gets one line, a must-play list gets five, a
+// free-text note gets two.
+function BlankLines({ field }: { field: PlannerField }) {
   const count =
-    type === 'songlist' ? 5 :
-    type === 'textlist' || type === 'people' || type === 'timeline' ? 4 :
-    type === 'longtext' ? 3 :
+    field.id === HONOREE_FIELD_ID ? 1 :          // guest of honour — one name, one line
+    field.type === 'songlist' ? 5 :              // must plays — at least five
+    field.type === 'longtext' ? 2 :              // "anything else…" — two lines max
+    field.type === 'textlist' || field.type === 'people' || field.type === 'timeline' ? 4 :
     1;
   return (
     <div className={styles.fillLines}>
@@ -313,7 +315,7 @@ function BlankLines({ type }: { type: PlannerField['type'] }) {
 function Answer({ field, responses }: { field: PlannerField; responses: PlannerResponses }) {
   const r = responses[field.id];
   if (isNa(r)) return <div className={styles.na}>N/A</div>;
-  if (!hasAnswer(r)) return <BlankLines type={field.type} />;
+  if (!hasAnswer(r)) return <BlankLines field={field} />;
   const v = responseValue(r);
 
   switch (field.type) {
