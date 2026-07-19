@@ -37,7 +37,8 @@
   max-width: 220px;
   width: auto;
   object-fit: contain;
-  margin-bottom: 1rem;
+  /* Centered at the top of the planner. */
+  margin: 0 auto 1rem;
 }
 
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
