@@ -23,7 +23,8 @@
 //   · Guest of honour / Do NOT play / Notes are draggable here, but the server
 //     re-pins them (first / last) on save — so the DJ sees a lock, not a fight.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, titleCaseLabel } from '@/lib/planner';
 import styles from './plannerBuilder.module.css';
@@ -78,6 +79,30 @@ export default function PlannerBuilder({
   const [editing, setEditing] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  // The DJ's business logo — the SAME one on the client's planner (top) and the
+  // contract, read straight from their profile (users.contract_logo_url). Shown
+  // here so the editor previews the real branded page. If they haven't set one,
+  // an "Add your logo" button sends them to Account settings, where setting it
+  // makes it appear here, on the planner, and on contracts at once.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('users')
+          .select('contract_logo_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (active) setLogoUrl((data as { contract_logo_url?: string | null } | null)?.contract_logo_url || null);
+      } catch { /* logo is optional — never block the editor */ }
+    })();
+    return () => { active = false; };
+  }, []);
+
   // PREFILLED FIELDS ARE NOT QUESTIONS. Setup time, music start/end, cocktail
   // start — the client sees these as read-only facts in the "Your booking"
   // strip, filled from the booking. They are not things the DJ curates, so they
@@ -103,6 +128,22 @@ export default function PlannerBuilder({
 
   return (
     <div className={styles.wrap}>
+      {/* The DJ's logo at the very top — exactly where the client sees it. If
+          they haven't set one, a prompt to add it (opens Account settings). */}
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="Your logo" className={styles.logo} />
+      ) : (
+        <button
+          type="button"
+          className={styles.addLogo}
+          onClick={() => window.open('/account-settings', '_blank')}
+          title="Add your business logo — shows here, on the planner, and on contracts"
+        >
+          + Add your logo
+        </button>
+      )}
+
       {/* The page's own header, faint — so the DJ is looking at the client's
           actual page, chrome and all, not a bare list floating in a modal. */}
       <div className={styles.pageHead}>

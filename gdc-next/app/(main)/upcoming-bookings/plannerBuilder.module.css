@@ -9,6 +9,31 @@
   flex-direction: column;
 }
 
+/* The DJ's logo at the top of the editor — where the client sees it. */
+.logo {
+  display: block;
+  max-height: 60px;
+  max-width: 200px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+/* Shown instead when no logo is set — a way to add one right from here. */
+.addLogo {
+  align-self: flex-start;
+  margin-bottom: 1rem;
+  padding: .5rem .8rem;
+  border: 1px dashed rgba(0, 224, 164, .45);
+  border-radius: 8px;
+  background: rgba(0, 224, 164, .06);
+  color: #00e0a4;
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.addLogo:hover { background: rgba(0, 224, 164, .14); }
+
 /* ── The page's own header, faint ─────────────────────────────────────── */
 
 .pageHead {
