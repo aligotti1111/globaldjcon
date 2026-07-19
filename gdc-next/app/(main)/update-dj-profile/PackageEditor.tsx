@@ -60,6 +60,10 @@ export function newMobPackage(): MobilePackage & {
       setupHours: '',
       cocktailIncluded: true,
       cocktailPrice: '',
+      // Music For Ceremony — a separate wedding add-on alongside cocktail hour.
+      // Included by default; when unchecked the DJ enters a flat ceremony fee.
+      ceremonyIncluded: true,
+      ceremonyPrice: '',
     } as object),
   };
 }
@@ -369,6 +373,41 @@ export default function PackageEditor({
                   placeholder="0"
                   value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
                   onChange={(e) => updateExtra('cocktailPrice', e.target.value)}
+                  className={styles.priceInput}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Music For Ceremony block — WEDDING ONLY, INDEPENDENT of cocktail hour.
+            Hidden when reqAll. Included by default; when unchecked the DJ enters
+            a flat ceremony fee that's added to the package price if the host
+            wants ceremony music. */}
+        {!reqAll && isWedding && (
+          <div className={styles.cocktailBlock}>
+            <div className={styles.cocktailBanner}>Music For Ceremony</div>
+            <label className={styles.cocktailRow}>
+              <input
+                type="checkbox"
+                className={styles.cocktailCheckbox}
+                checked={(pkg as { ceremonyIncluded?: boolean }).ceremonyIncluded !== false}
+                onChange={(e) => updateExtra('ceremonyIncluded', e.target.checked)}
+              />
+              <span className={styles.cocktailPrompt}>
+                Ceremony music included in reception price?
+              </span>
+            </label>
+            {(pkg as { ceremonyIncluded?: boolean }).ceremonyIncluded === false && (
+              <div className={styles.cocktailPriceWrap}>
+                <span className={styles.priceRowLabel}>Ceremony Price:</span>
+                <span className={styles.priceCurrency}>$</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={String((pkg as { ceremonyPrice?: string | number }).ceremonyPrice ?? '')}
+                  onChange={(e) => updateExtra('ceremonyPrice', e.target.value)}
                   className={styles.priceInput}
                 />
               </div>
