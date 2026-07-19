@@ -28,6 +28,7 @@ import {
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import AvatarCrop from './AvatarCrop';
+import BlockedUsersSection from './BlockedUsersSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
 import ProfileQrCode from './ProfileQrCode';
@@ -249,6 +250,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
 
       {/* Password — inline edit form. Same pattern as email. */}
       <PasswordChangeBlock />
+
+      {/* Blocked Users — moved here from the old account-settings page, which
+          DJs no longer see. */}
+      <BlockedUsersSection />
 
       {/* Name + Custom URL — grouped together since the URL derives from
           and lives under the name on signup. Label adapts to dj_type:
