@@ -137,10 +137,13 @@
 
 /* ── Body ─────────────────────────────────────────────────────────────── */
 
+/* ONE column, stacked full width — so the printable reads like the form the
+   client fills out, not a dense two-up grid that bunches everything at the top.
+   Each question gets a full row and room to breathe (and to write, when blank). */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
 }
 
 .block {
@@ -151,13 +154,13 @@
 }
 
 .label {
-  font-size: .66rem;
+  font-size: .72rem;
   letter-spacing: .07em;
   text-transform: uppercase;
   color: #75758d;
-  margin-bottom: .2rem;
+  margin-bottom: .45rem;
   border-bottom: 1px solid rgba(255, 255, 255, .1);
-  padding-bottom: .15rem;
+  padding-bottom: .2rem;
 }
 
 .val { font-size: .95rem; line-height: 1.5; }
@@ -366,7 +369,7 @@
   .trackLink { display: none !important; }
   .fillLine { border-bottom-color: #999 !important; }
 
-  .grid { gap: .8rem 1.4rem; }
+  .grid { gap: 1.15rem; }
 
   /* Every browser defaults to stripping backgrounds and colours when printing.
      Nothing above depends on a background — that's deliberate, not luck. */
