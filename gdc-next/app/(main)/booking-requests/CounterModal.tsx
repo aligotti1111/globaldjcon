@@ -293,6 +293,7 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
             <span className={styles.counterCurrencySym}>{sym}</span>
             <input
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               min="0"
               placeholder="0"
               value={amount}

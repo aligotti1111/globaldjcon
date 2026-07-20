@@ -711,6 +711,7 @@ export default function ClubBookingTab({
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   max={100}
                   step="0.001"
@@ -836,6 +837,7 @@ function RateInput({
         <span className={styles.rateSymbol}>{symbol}</span>
         <input
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           min={0}
           step="0.01"
           value={value}

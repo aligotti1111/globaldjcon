@@ -121,6 +121,7 @@ function CodeFields({
         ) : (
           <input
             type="number"
+            onWheel={(e) => e.currentTarget.blur()}
             min={1}
             className={styles.settingNumber}
             style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}

@@ -529,6 +529,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             <span className={styles.counterCurrencySym}>$</span>
             <input
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               min="0"
               placeholder="0"
               value={price}
@@ -571,6 +572,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 <span className={styles.counterCurrencySym}>$</span>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min="0"
                   placeholder="0"
                   value={cocktailPrice}
@@ -601,6 +603,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 <span className={styles.counterCurrencySym}>$</span>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min="0"
                   placeholder="0"
                   value={ceremonyPrice}
@@ -622,6 +625,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               <span className={styles.counterCurrencySym}>$</span>
               <input
                 type="number"
+                onWheel={(e) => e.currentTarget.blur()}
                 min="0"
                 placeholder="0"
                 value={overtime}

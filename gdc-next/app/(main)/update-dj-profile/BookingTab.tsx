@@ -467,6 +467,7 @@ export default function BookingTab({
                 </div>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={1}
                   max={99}
                   value={perDay}
@@ -533,6 +534,7 @@ export default function BookingTab({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       min={0}
                       max={100}
                       step="0.001"
