@@ -96,10 +96,12 @@ interface BookingRow {
   tax_amount: number | null;
   total_with_tax: number | null;
   // Cocktail pricing — only for mobile DJ wedding bookings
-  // Offer discount — % the DJ knocked off and its dollar value. quoted_rate is
-  // stored already discounted; these exist so the bill can show the saving.
-  discount_pct: number | null;
-  discount_amount: number | null;
+  // Offer discount — % the DJ knocked off when sending an offer, and its dollar
+  // value. Deliberately NOT the discount_code/discount_label/discount_amount
+  // trio above: those are the booker's promo code, tracked separately in the
+  // DJ's Discounts report. quoted_rate is stored already net of this.
+  offer_discount_pct: number | null;
+  offer_discount_amount: number | null;
   cocktail_price: number | null;
   cocktail_included: boolean | null;
   ceremony_price: number | null;

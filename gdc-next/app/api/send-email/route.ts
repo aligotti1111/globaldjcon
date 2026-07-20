@@ -520,12 +520,12 @@ async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, discount_pct, discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
+      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
         cocktail_needed: boolean | null; ceremony_needed: boolean | null;
-        discount_pct: number | null; discount_amount: number | null;
+        offer_discount_pct: number | null; offer_discount_amount: number | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
         dj_id: string | null; booking_type: string | null;
@@ -572,8 +572,8 @@ async function billBreakdownForBooking(
       ceremonyPrice: data.ceremony_price,
       bundledCocktail: !!data.cocktail_needed,
       bundledCeremony: !!data.ceremony_needed,
-      discountPct: data.discount_pct,
-      discountAmount: data.discount_amount,
+      discountPct: data.offer_discount_pct,
+      discountAmount: data.offer_discount_amount,
       taxPct: data.tax_pct,
       taxAmount: data.tax_amount,
       totalWithTax: data.total_with_tax,
@@ -1278,7 +1278,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, discount_pct, discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -1303,8 +1303,8 @@ export async function POST(req: Request) {
         ceremony_needed: boolean | null;
         ceremony_included: boolean | null;
         ceremony_price: number | null;
-        discount_pct: number | null;
-        discount_amount: number | null;
+        offer_discount_pct: number | null;
+        offer_discount_amount: number | null;
         tax_pct: number | null;
         tax_amount: number | null;
         total_with_tax: number | null;
@@ -1366,8 +1366,8 @@ export async function POST(req: Request) {
       depositAmount: booking.deposit_amount,
       bundledCocktail: !!booking.cocktail_needed,
       bundledCeremony: !!booking.ceremony_needed,
-      discountPct: booking.discount_pct,
-      discountAmount: booking.discount_amount,
+      discountPct: booking.offer_discount_pct,
+      discountAmount: booking.offer_discount_amount,
     }, sym, currency);
 
     const infoCard = mobileBookingRequestBox({

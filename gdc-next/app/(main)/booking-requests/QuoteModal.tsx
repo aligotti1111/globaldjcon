@@ -64,7 +64,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // otherwise the saved % would get applied a second time.
   const [price, setPrice] = useState(
     booking.quoted_rate != null
-      ? String(Number(booking.quoted_rate) + Number(booking.discount_amount || 0))
+      ? String(Number(booking.quoted_rate) + Number(booking.offer_discount_amount || 0))
       : ''
   );
   // Add Offer always starts with an empty overtime box — the DJ sets the
@@ -81,8 +81,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // Percentage off, as a string ('' = none). Re-opening a sent offer restores
   // the % that was applied.
   const [discountPct, setDiscountPct] = useState(
-    booking.discount_pct != null && Number(booking.discount_pct) > 0
-      ? String(Math.round(Number(booking.discount_pct)))
+    booking.offer_discount_pct != null && Number(booking.offer_discount_pct) > 0
+      ? String(Math.round(Number(booking.offer_discount_pct)))
       : ''
   );
   const [submitting, setSubmitting] = useState(false);
@@ -209,8 +209,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         // null for clubs — overtime is mobile-only per spec.
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
-        discount_pct: discountAmount > 0 ? discountPctNum : null,
-        discount_amount: discountAmount > 0 ? discountAmount : null,
+        offer_discount_pct: discountAmount > 0 ? discountPctNum : null,
+        offer_discount_amount: discountAmount > 0 ? discountAmount : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
@@ -236,8 +236,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           : {}),
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
-        discount_pct: discountAmount > 0 ? discountPctNum : null,
-        discount_amount: discountAmount > 0 ? discountAmount : null,
+        offer_discount_pct: discountAmount > 0 ? discountPctNum : null,
+        offer_discount_amount: discountAmount > 0 ? discountAmount : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
