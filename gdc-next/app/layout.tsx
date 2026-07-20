@@ -92,14 +92,22 @@ async function getInitialUser(): Promise<CurrentUser | null> {
     // load. getSession() reads the same answer from the cookie in memory.
     const { data: { session } } = await supabase.auth.getSession();
     const authUser = session?.user;
-    if (!authUser || !authUser.email) return null;
+    // NOT `!authUser.email`. A phone-signup host has a perfectly valid session
+    // and no email address on it — gating on email here threw that session
+    // away and rendered the whole site logged-out to somebody who had just
+    // typed a correct code. The email was only ever a display field.
+    if (!authUser) return null;
     const { data: profile } = await supabase
       .from('users')
       .select('*')
       .eq('id', authUser.id)
       .single<UserProfile>();
     if (!profile) return null;
-    return { ...profile, email: authUser.email };
+    // Prefer the auth email; fall back to the delivery address a phone-signup
+    // host gives at their first booking; otherwise empty, which is honest —
+    // we genuinely don't have one yet.
+    const contactEmail = (profile as { contact_email?: string | null }).contact_email;
+    return { ...profile, email: authUser.email || contactEmail || '' };
   } catch {
     return null;
   }

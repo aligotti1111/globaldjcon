@@ -9,6 +9,12 @@
 // here because TypeScript will refuse to compile if you try to read .email
 // off a UserProfile (which doesn't have it) — you must use CurrentUser.
 //
+// NOTE ON ACCOUNTS WITH NO EMAIL: hosts can sign up with a phone number, so
+// `authUser.email` is legitimately null for some real, fully-authenticated
+// users. This used to gate setUser() and silently logged those people out —
+// valid session, correct code typed, header showing "Sign In". Email is a
+// display and delivery field, never proof of who someone is.
+//
 // initialUser comes from the SERVER (root layout fetches it via the server
 // supabase client) so the very first paint already has the correct auth
 // state. No more logged-out → logged-in toolbar flicker. The client-side
@@ -29,6 +35,9 @@ import type { CurrentUser, UserProfile } from '@/types/db';
 // types/db.ts is regenerated from the live schema, we add it locally.
 type UserProfileWithVerified = UserProfile & {
   email_verified_at?: string | null;
+  // Delivery address for a host who signed up by phone — collected at their
+  // first booking. Not a credential.
+  contact_email?: string | null;
 };
 type CurrentUserWithVerified = CurrentUser & {
   email_verified_at?: string | null;
@@ -120,9 +129,16 @@ export function AuthProvider({
         .eq('id', authUser.id)
         .single<UserProfileWithVerified>();
       if (!mounted) return;
-      if (profile && authUser.email) {
-        // Merge: this is the SINGLE place we combine auth email + profile.
-        setUser({ ...profile, email: authUser.email });
+      // Merge: this is the SINGLE place we combine auth email + profile.
+      //
+      // Gated on `profile` ONLY. It used to also require authUser.email, which
+      // meant a phone-signup host — no email, valid session — was treated as
+      // logged out on every single page load.
+      if (profile) {
+        setUser({
+          ...profile,
+          email: authUser.email || profile.contact_email || '',
+        });
       } else {
         setUser(null);
       }
@@ -149,6 +165,10 @@ export function AuthProvider({
   // localStorage. Hit the server-side claim API to link the booking to
   // this user. Server validates host_email match before granting the
   // claim (avoids needing a permissive RLS policy on the client side).
+  //
+  // Still requires an email, and correctly so — the claim is matched against
+  // the booking's host_email. A phone-only account has nothing to match on
+  // yet, so this simply doesn't fire for them.
   useEffect(() => {
     if (!user || !user.email || !user.id) return;
     if (typeof window === 'undefined') return;
