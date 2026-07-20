@@ -381,14 +381,8 @@ function mobileBookingRequestBox(opts: {
     rows.push(row('Address', `<a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(opts.venueAddress)}</a>`));
   }
 
-  if (opts.packageTitle) {
-    rows.push(row('Package', escHtml(opts.packageTitle)));
-    // Package details are trusted HTML authored by the DJ. Render inline,
-    // indented under the Package row.
-    if (opts.packageDetails && opts.packageDetails.trim()) {
-      rows.push(`<div style="margin:0 0 8px 0;padding:8px 12px;background:#ffffff;border:1px solid #e6e6e6;border-radius:6px;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`);
-    }
-  }
+  // NOTE: package title + details are NOT pushed here — they render in their
+  // own box below the event card (see packageBox at the end).
 
   // Setup time sits under the package details — it's a property of the
   // selected package's setup requirement.
@@ -406,7 +400,21 @@ function mobileBookingRequestBox(opts: {
   if (rows.length > 0) {
     rows[rows.length - 1] = rows[rows.length - 1].replace('margin:0 0 8px', 'margin:0');
   }
-  return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
+  const eventBox = `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">${rows.join('')}</div>`;
+
+  // The package gets its OWN box under the event card — the title (and the
+  // DJ-authored details HTML, when there is any) read as a unit instead of
+  // being buried among the event rows.
+  const packageBox = opts.packageTitle
+    ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">
+         <p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>
+         ${opts.packageDetails && opts.packageDetails.trim()
+           ? `<div style="margin:10px 0 0;padding:10px 12px;background:#ffffff;border:1px solid #e6e6e6;border-radius:6px;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`
+           : ''}
+       </div>`
+    : '';
+
+  return `${eventBox}${packageBox}`;
 }
 
 // Full itemized bill: base price + wedding add-ons, sales tax, total, the

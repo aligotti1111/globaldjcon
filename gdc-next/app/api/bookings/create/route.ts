@@ -202,6 +202,13 @@ export async function POST(req: Request) {
     const cat = getPackageCategory(eventType);
     const packagesAll = settings.mob_packages || {};
     const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
+    // Wedding/Mitzvah packages INHERIT title, details and main photo from the
+    // General package at the SAME index when their own field is blank — that's
+    // exactly what the booking form displays. Without mirroring that here we
+    // stored package_title: null for a package the booker clearly saw named
+    // (package_index was set, title wasn't), and the emails/contract showed no
+    // package at all.
+    const generalPkgs: MobilePackage[] = packagesAll.general || [];
     const hasAnyPackages = Object.values(packagesAll).some((arr) =>
       Array.isArray(arr) && arr.some((p) => p && p.title && p.title.trim())
     );
@@ -231,6 +238,18 @@ export async function POST(req: Request) {
       selectedPkg = categoryPkgs[packageIndex] ?? null;
       if (!selectedPkg) return bad('Invalid package selected.');
     }
+
+    // Resolve the package's display fields the SAME way the booking form does:
+    // a Wedding/Mitzvah package with a blank title/details/photo inherits from
+    // the General package at the same index. Storing the raw (blank) value is
+    // what produced bookings with a package_index but no package_title.
+    const pkgFallback: MobilePackage =
+      (packageIndex != null && packageIndex >= 0 ? generalPkgs[packageIndex] : undefined) || {};
+    const pkgTitleResolved =
+      (selectedPkg?.title?.trim() || pkgFallback.title?.trim()) || null;
+    const pkgDetailsResolved =
+      (selectedPkg?.details || pkgFallback.details) || null;
+    const pkgMainPhoto = selectedPkg?.photo || pkgFallback.photo || null;
 
     // Recompute EVERYTHING money-related server-side — same helpers, same
     // order, same rounding as the client's submit handler.
@@ -325,13 +344,17 @@ export async function POST(req: Request) {
       setup_hours: selectedPkg?.setupHours
         ? String(selectedPkg.setupHours)
         : null,
-      package_title: selectedPkg?.title || null,
-      package_details: selectedPkg?.details || null,
+      // Resolved against the General package at the same index (see above), so
+      // an inheriting Wedding/Mitzvah package stores the name the booker saw.
+      package_title: pkgTitleResolved,
+      package_details: pkgDetailsResolved,
       // Snapshot the selected package's photos (main + extras) so the
       // booking's photo view doesn't change if the DJ edits the package later.
       package_photos: JSON.stringify(
         [
-          selectedPkg?.photo,
+          // Main photo inherits from General at the same index (like the form);
+          // extra photos are this package's own and never inherit.
+          pkgMainPhoto,
           ...(((selectedPkg as { photos?: string[] } | null)?.photos) ?? []),
         ].filter((u): u is string => !!u)
       ),

@@ -475,6 +475,15 @@ export default function MobileBookingForm({
       }
       // Server-computed money snapshot — used for the emails below so they
       // always match what was actually stored on the booking row.
+      // Wedding/Mitzvah packages inherit title/details from the General package
+      // at the same index when blank — mirror the card's display logic so the
+      // emails name the package the booker actually saw.
+      const pkgFallback = (selectedPkgIdx != null ? generalPkgs[selectedPkgIdx] : undefined) || {};
+      const pkgTitleForEmail =
+        (selectedPkg?.title?.trim() || pkgFallback.title?.trim()) || null;
+      const pkgDetailsForEmail =
+        (selectedPkg?.details || pkgFallback.details) || null;
+
       const created: {
         quoted_rate: number | null;
         original_rate: number | null;
@@ -521,11 +530,11 @@ export default function MobileBookingForm({
             // Package title — gives the DJ context on what tier was
             // selected without opening the booking. Null for is_quote
             // bookings where no package is involved.
-            packageTitle: selectedPkg?.title || null,
+            packageTitle: pkgTitleForEmail,
             // HTML-formatted package details (bullets / checklists from the
             // DJ's profile editor). Shown under the Package row in the email
             // so the DJ sees exactly what tier was requested.
-            packageDetails: selectedPkg?.details || null,
+            packageDetails: pkgDetailsForEmail,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
             // isWedding drives the "Reception Start/End Time" labelling in the
@@ -569,8 +578,8 @@ export default function MobileBookingForm({
               ? (eventTypeOther.trim() || 'other')
               : eventType,
             eventDetails,
-            packageTitle: selectedPkg?.title || null,
-            packageDetails: selectedPkg?.details || null,
+            packageTitle: pkgTitleForEmail,
+            packageDetails: pkgDetailsForEmail,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
             startTime,
