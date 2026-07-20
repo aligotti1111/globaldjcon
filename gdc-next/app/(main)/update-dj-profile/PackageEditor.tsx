@@ -292,6 +292,7 @@ export default function PackageEditor({
                   <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
                   <input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     min={0}
                     placeholder="0"
                     value={t.price}
@@ -335,6 +336,7 @@ export default function PackageEditor({
           <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
           <input
             type="number"
+            onWheel={(e) => e.currentTarget.blur()}
             min={0}
             placeholder="0"
             value={String(pkg.overtime ?? '')}
@@ -369,6 +371,7 @@ export default function PackageEditor({
                 <span className={styles.priceCurrency}>$</span>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   placeholder="0"
                   value={String((pkg as { cocktailPrice?: string | number }).cocktailPrice ?? '')}
@@ -404,6 +407,7 @@ export default function PackageEditor({
                 <span className={styles.priceCurrency}>$</span>
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   placeholder="0"
                   value={String((pkg as { ceremonyPrice?: string | number }).ceremonyPrice ?? '')}
