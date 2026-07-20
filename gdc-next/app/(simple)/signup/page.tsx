@@ -8,6 +8,11 @@
 //      - ZIP-code → city/state autofill via Nominatim (DJ + Venue)
 //   3. Success screen ("Check your email") with token-based verification email
 //
+// HOSTS CAN NOW SIGN UP WITH A PHONE NUMBER. The host form gets a
+// phone/email toggle; the phone half lives in HostPhoneSignup.tsx so this
+// file doesn't grow a second signup mechanism inside an existing component.
+// DJ and Venue signup are untouched — they still require email + password.
+//
 // QUERY PARAMS (booking-claim flow):
 //   ?email=<addr>            — prefill the email field
 //   ?claim_booking=<bookId>  — auto-route to Host signup, lock email, and stash
@@ -29,6 +34,7 @@ import {
 } from './helpers';
 import { SlugInput, type SlugStatus } from './SlugInput';
 import { ZipLookup } from './ZipLookup';
+import HostPhoneSignup from './HostPhoneSignup';
 import styles from './signup.module.css';
 
 // localStorage key used by AuthProvider to claim the booking after the
@@ -176,9 +182,7 @@ export default function SignupPage() {
       // Booking-flow signup: when the user arrived from BookingLoginGate
       // (?redirect=/<slug>?date=YYYY-MM-DD&book=1), the intent is obvious —
       // they're trying to book a DJ, so they're a host. Skip the choice
-      // screen and drop them straight on the host form. The TypeBadge
-      // dropdown inside the form is the escape hatch if they actually want
-      // a DJ or Venue account instead.
+      // screen and drop them straight on the host form.
       const intent = parseBookingIntent();
       if (intent.bookingDjSlug && intent.bookingDate) {
         setScreen('host');
@@ -519,6 +523,7 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
           travel_distance: travelVal,
           zip,
           email_verified: false,
+          signup_method: 'email',
           // Mobile DJs default to ALL 12 party types selected so they're
           // bookable for every event type out of the gate. Persisted to the
           // DB (not just a UI default) so the public booking form's event-type
@@ -679,6 +684,11 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
 
 // ──────────────────────────────────────────────────────────────────────────
 // HOST FORM
+//
+// The only form with two ways in. Name and Country are shared; below them the
+// host picks Phone (a texted code, no password) or Email (what already
+// existed). The phone half is HostPhoneSignup — kept separate so this
+// component doesn't end up with two unrelated submit paths tangled together.
 // ──────────────────────────────────────────────────────────────────────────
 
 function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }: {
@@ -698,6 +708,22 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
   const [country, setCountry] = useState('United States');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Email is the default: it's the path that already existed, and it's the
+  // only one a locked-email invite can use.
+  const [method, setMethod] = useState<'email' | 'phone'>('email');
+  // A claim_booking invite is pinned to one address. Offering phone there
+  // would let someone create an account the invitation can't attach to.
+  const canChooseMethod = !lockedEmail;
+
+  // Where a phone signup lands afterwards. Phone signups finish signed in, so
+  // unlike email there's no "check your inbox" screen in between.
+  const destination = (() => {
+    if (typeof window === 'undefined') return '/';
+    const r = new URLSearchParams(window.location.search).get('redirect');
+    if (!r || !r.startsWith('/') || r.startsWith('//')) return '/';
+    return r;
+  })();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -740,6 +766,7 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
           name,
           country,
           email_verified: false,
+          signup_method: 'email',
         } as unknown as never, { onConflict: 'id' });
 
         triggerSignupVerification(signUpData.user.id, emailLower, 'host', null);
@@ -753,13 +780,10 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <BackButton onClick={onBack} />
-      <TypeBadge current="host" onSwitch={onSwitchType} />
-
-      {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
-
+  // Asked once, used by both paths — so they sit above the method choice
+  // rather than being duplicated inside each branch.
+  const sharedFields = (
+    <>
       <div className={styles.formGroup}>
         <label htmlFor="host-name">Your Name</label>
         <input
@@ -771,6 +795,71 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
           required
         />
       </div>
+      <div className={styles.formGroup}>
+        <label htmlFor="host-country">Country</label>
+        <select
+          id="host-country"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          required
+        >
+          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+        </select>
+      </div>
+    </>
+  );
+
+  const methodToggle = canChooseMethod ? (
+    <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
+      {(['phone', 'email'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => { setMethod(m); setError(null); }}
+          style={{
+            flex: 1,
+            padding: '.6rem',
+            borderRadius: 6,
+            fontWeight: 700,
+            fontSize: '.8rem',
+            cursor: 'pointer',
+            border: method === m
+              ? '1px solid var(--neon)'
+              : '1px solid rgba(255,255,255,.18)',
+            background: method === m ? 'rgba(0,224,164,.10)' : 'transparent',
+            color: method === m ? 'var(--neon)' : 'var(--muted)',
+          }}
+        >
+          {m === 'phone' ? 'Use my phone' : 'Use my email'}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  // ── PHONE ────────────────────────────────────────────────────────
+  if (method === 'phone') {
+    return (
+      <div>
+        <BackButton onClick={onBack} />
+        <TypeBadge current="host" onSwitch={onSwitchType} />
+        {methodToggle}
+        {sharedFields}
+        <HostPhoneSignup name={name} country={country} destination={destination} />
+      </div>
+    );
+  }
+
+  // ── EMAIL — unchanged from before, plus signup_method on the row ──
+  return (
+    <form onSubmit={handleSubmit}>
+      <BackButton onClick={onBack} />
+      <TypeBadge current="host" onSwitch={onSwitchType} />
+      {methodToggle}
+
+      {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
+
+      {sharedFields}
+
       <div className={styles.formGroup}>
         <label htmlFor="host-email">Email Address</label>
         <input
@@ -802,17 +891,6 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
           required
           autoComplete="new-password"
         />
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="host-country">Country</label>
-        <select
-          id="host-country"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          required
-        >
-          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-        </select>
       </div>
 
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
@@ -927,6 +1005,7 @@ function VenueForm({ onBack, onSwitchType, onSuccess }: {
           state: stateRegion,
           zip,
           email_verified: false,
+          signup_method: 'email',
         } as unknown as never, { onConflict: 'id' });
 
         triggerSignupVerification(signUpData.user.id, emailLower, 'venue', slug);
