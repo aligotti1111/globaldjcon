@@ -497,41 +497,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           </div>
         )}
 
-        {/* Event price */}
-        <div className={styles.counterFormGroup}>
-          <label className={styles.counterFormLabel}>
-            {priceLabel}
-            {!isClubBooking && eventHours != null && (
-              <span
-                style={{
-                  textTransform: 'none',
-                  letterSpacing: 0,
-                  color: 'var(--muted)',
-                  fontWeight: 400,
-                  marginLeft: '.4rem',
-                }}
-              >
-                · for {eventHours} hr{eventHours !== 1 ? 's' : ''}
-              </span>
-            )}
-          </label>
-          <div className={styles.counterAmountRow}>
-            <span className={styles.counterCurrencySym}>$</span>
-            <input
-              type="number"
-              onWheel={(e) => e.currentTarget.blur()}
-              min="0"
-              placeholder="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className={styles.counterAmountInput}
-            />
-          </div>
-        </div>
-
         {/* What the price covers — read-only. Cocktail hour and ceremony are
-            listed so the DJ can see what they're pricing, but they have no
-            separate money box: the single Event Price above covers them. */}
+            listed FIRST so the DJ sees everything they're pricing before the
+            single Event Price box that follows. */}
         {!isClubBooking && (hasCocktail || hasCeremony) && (
           <div className={styles.cocktailBox}>
             <div className={styles.cocktailHeader}>Your price also covers</div>
@@ -589,11 +557,44 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 color: 'var(--muted)',
               }}
             >
-              Your Event Price is the all-in quote — it covers the reception plus
-              everything listed here. No separate add-on charges.
+              Your Event Price below is the all-in quote — it covers the reception
+              plus everything listed here. No separate add-on charges.
             </div>
           </div>
         )}
+
+        {/* Event price — the single all-in number, placed after the coverage
+            list so it reads as "…and here's the price for all of that". */}
+        <div className={styles.counterFormGroup}>
+          <label className={styles.counterFormLabel}>
+            {priceLabel}
+            {!isClubBooking && eventHours != null && (
+              <span
+                style={{
+                  textTransform: 'none',
+                  letterSpacing: 0,
+                  color: 'var(--muted)',
+                  fontWeight: 400,
+                  marginLeft: '.4rem',
+                }}
+              >
+                · for {eventHours} hr{eventHours !== 1 ? 's' : ''}
+              </span>
+            )}
+          </label>
+          <div className={styles.counterAmountRow}>
+            <span className={styles.counterCurrencySym}>$</span>
+            <input
+              type="number"
+              onWheel={(e) => e.currentTarget.blur()}
+              min="0"
+              placeholder="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className={styles.counterAmountInput}
+            />
+          </div>
+        </div>
 
         {/* Overtime — mobile DJ only. Club bar/club bookings don't use
             overtime rates per spec. */}
