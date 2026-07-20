@@ -105,16 +105,30 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // total, matching the public booking form and /api/bookings/create.
   // Legacy rows with no snapshot keep the old pre-tax behavior (taxPct 0).
   const priceNum = parseFloat(price);
+  // Wedding add-ons the DJ is charging extra for. These sit ON TOP of the
+  // Event Price, exactly like the public booking form: the taxable subtotal
+  // is base + cocktail + ceremony, and that combined figure is what gets
+  // stored as quoted_rate (the emailed bill itemizes back out of it).
+  const cocktailAddNum = (!isClubBooking && hasCocktail && !cocktailIncluded)
+    ? parseFloat(cocktailPrice)
+    : NaN;
+  const cocktailAdd = !isNaN(cocktailAddNum) && cocktailAddNum > 0 ? cocktailAddNum : 0;
+  const ceremonyAddNum = (!isClubBooking && hasCeremony && !ceremonyIncluded)
+    ? parseFloat(ceremonyPrice)
+    : NaN;
+  const ceremonyAdd = !isNaN(ceremonyAddNum) && ceremonyAddNum > 0 ? ceremonyAddNum : 0;
+  const basePriceNum = !isNaN(priceNum) && priceNum > 0 ? priceNum : 0;
+  const subtotalNum = Number((basePriceNum + cocktailAdd + ceremonyAdd).toFixed(2));
   // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
   // (the agreement point for a request-price booking). Otherwise fall back to
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
   // rate and legacy rows with no snapshot stay tax-free.
   const quoteTaxPct = taxEnabled ? taxPct : (booking.tax_pct != null ? Number(booking.tax_pct) : 0);
-  const quoteTaxAmount = (quoteTaxPct > 0 && priceNum > 0)
-    ? Number(((priceNum * quoteTaxPct) / 100).toFixed(2))
+  const quoteTaxAmount = (quoteTaxPct > 0 && subtotalNum > 0)
+    ? Number(((subtotalNum * quoteTaxPct) / 100).toFixed(2))
     : 0;
-  const quoteTotalWithTax = priceNum > 0
-    ? Number((priceNum + quoteTaxAmount).toFixed(2))
+  const quoteTotalWithTax = subtotalNum > 0
+    ? Number((subtotalNum + quoteTaxAmount).toFixed(2))
     : null;
   const depositAmount = (depositPct > 0 && quoteTotalWithTax != null)
     ? ((quoteTotalWithTax * depositPct) / 100).toFixed(2)
@@ -177,7 +191,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           ...negotiationLog,
           {
             from: 'dj' as const,
-            amount: priceNum,
+            amount: subtotalNum,
             message: message.trim(),
             created_at: new Date().toISOString(),
           },
@@ -185,7 +199,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
       }
 
       const updatePayload = {
-        quoted_rate: priceNum,
+        // Stored price is the all-in subtotal (base + add-ons), pre-tax —
+        // same convention the public booking form uses, so the emailed
+        // bill can itemize the add-ons back out of it.
+        quoted_rate: subtotalNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
         // Keep the frozen tax snapshot coherent: quote-mode bookings have no
         // price at creation, so their tax AMOUNTS were left null — fill them
@@ -217,7 +234,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
 
       onSaved({
         ...booking,
-        quoted_rate: priceNum,
+        quoted_rate: subtotalNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
         ...(quoteTaxPct > 0
           ? { tax_pct: quoteTaxPct, tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
@@ -537,21 +554,6 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               className={styles.counterAmountInput}
             />
           </div>
-          {quoteTaxPct > 0 && priceNum > 0 && (
-            <>
-              <div className={styles.depositPreview}>
-                Sales tax ({quoteTaxPct}%): ${quoteTaxAmount.toLocaleString()}
-              </div>
-              <div className={styles.depositPreview}>
-                Total with tax: {quoteTotalWithTax != null ? `$${quoteTotalWithTax.toLocaleString()}` : '—'}
-              </div>
-            </>
-          )}
-          {depositPct > 0 && (
-            <div className={styles.depositPreview}>
-              Deposit ({depositPct}%): {depositAmount ? `$${Number(depositAmount).toLocaleString()}` : '—'}
-            </div>
-          )}
         </div>
 
         {/* Cocktail pricing — mobile DJ weddings only. */}
@@ -650,6 +652,88 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             className={styles.counterMsgInput}
           />
         </div>
+
+        {/* Offer summary — the all-in bill, exactly as the booker will see it
+            in the offer email. Lives at the bottom so it reflects every field
+            above it (base price + add-ons + tax + deposit). */}
+        {subtotalNum > 0 && (
+          <div
+            style={{
+              margin: '.2rem 0 1rem',
+              padding: '.75rem .9rem',
+              background: 'rgba(255,255,255,.03)',
+              border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 6,
+            }}
+          >
+            {(() => {
+              const money = (n: number) =>
+                `$${Number(n).toLocaleString(undefined, {
+                  minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+                  maximumFractionDigits: 2,
+                })}`;
+              const line = (
+                label: string,
+                val: string,
+                o?: { bold?: boolean; muted?: boolean; top?: boolean },
+              ) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    padding: '.3rem 0',
+                    fontSize: '.78rem',
+                    fontWeight: o?.bold ? 700 : 400,
+                    color: o?.bold
+                      ? 'var(--neon)'
+                      : o?.muted
+                        ? 'var(--muted)'
+                        : 'rgba(255,255,255,.85)',
+                    borderTop: o?.top ? '1px solid rgba(255,255,255,.12)' : undefined,
+                    marginTop: o?.top ? '.25rem' : undefined,
+                    paddingTop: o?.top ? '.45rem' : undefined,
+                  }}
+                >
+                  <span>{label}</span>
+                  <span>{val}</span>
+                </div>
+              );
+              const hasAddOns = cocktailAdd > 0 || ceremonyAdd > 0;
+              const rows = [];
+              if (hasAddOns) {
+                rows.push(line(isClubBooking ? 'Rate' : 'Package price', money(basePriceNum)));
+                if (cocktailAdd > 0) rows.push(line('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
+                if (ceremonyAdd > 0) rows.push(line('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
+              } else {
+                rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(basePriceNum)));
+              }
+              if (quoteTaxAmount > 0) {
+                rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount), { top: hasAddOns }));
+              }
+              rows.push(
+                line('Total', quoteTotalWithTax != null ? money(quoteTotalWithTax) : '—', {
+                  bold: true,
+                  top: true,
+                }),
+              );
+              if (depositPct > 0 && depositAmount) {
+                rows.push(
+                  line(`Deposit (${depositPct}%) — to reserve`, money(Number(depositAmount)), { top: true }),
+                );
+                rows.push(
+                  line(
+                    'Balance due day of event',
+                    money(Number(((quoteTotalWithTax || 0) - Number(depositAmount)).toFixed(2))),
+                    { bold: true },
+                  ),
+                );
+              }
+              return rows;
+            })()}
+          </div>
+        )}
 
         {error && <div className={styles.counterErr}>{error}</div>}
 
