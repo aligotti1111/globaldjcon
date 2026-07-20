@@ -437,6 +437,10 @@ function billBreakdownBox(
     // the price line instead of as add-on rows.
     bundledCocktail?: boolean;
     bundledCeremony?: boolean;
+    // Offer discount. quotedRate is ALREADY net of this, so the pre-discount
+    // figure is reconstructed as quotedRate + discountAmount.
+    discountPct?: number | null;
+    discountAmount?: number | null;
   },
   sym: string,
   currency: string,
@@ -453,8 +457,11 @@ function billBreakdownBox(
     b.bundledCeremony && ceremonyAdd <= 0 ? 'music for the ceremony' : null,
     b.bundledCocktail && cocktailAdd <= 0 ? 'cocktail hour' : null,
   ].filter(Boolean) as string[];
+  const discAmt = b.discountAmount != null ? Number(b.discountAmount) : 0;
+  const discPct = b.discountPct != null ? Number(b.discountPct) : 0;
   // Nothing to break down → no box.
-  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0 && bundled.length === 0) return '';
+  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0
+      && discAmt <= 0 && bundled.length === 0) return '';
   const basePrice = subtotal - cocktailAdd - ceremonyAdd;
   const taxPct = b.taxPct != null ? Number(b.taxPct) : 0;
   const total = b.totalWithTax != null ? Number(b.totalWithTax) : subtotal + taxAmt;
@@ -469,6 +476,11 @@ function billBreakdownBox(
     rows.push(row('Package price', money(basePrice)));
     if (cocktailAdd > 0) rows.push(row('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
     if (ceremonyAdd > 0) rows.push(row('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
+  } else if (discAmt > 0) {
+    // subtotal is already net of the discount — show what it was before.
+    rows.push(row('Event price', money(subtotal + discAmt)));
+    rows.push(row(`Discount (${discPct}%)`, `−${money(discAmt)}`, { muted: true }));
+    rows.push(row('Discounted price', money(subtotal), { top: true }));
   } else {
     rows.push(row('Event price', money(subtotal)));
   }
@@ -508,11 +520,12 @@ async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
+      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, discount_pct, discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
         cocktail_needed: boolean | null; ceremony_needed: boolean | null;
+        discount_pct: number | null; discount_amount: number | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
         dj_id: string | null; booking_type: string | null;
@@ -559,6 +572,8 @@ async function billBreakdownForBooking(
       ceremonyPrice: data.ceremony_price,
       bundledCocktail: !!data.cocktail_needed,
       bundledCeremony: !!data.ceremony_needed,
+      discountPct: data.discount_pct,
+      discountAmount: data.discount_amount,
       taxPct: data.tax_pct,
       taxAmount: data.tax_amount,
       totalWithTax: data.total_with_tax,
@@ -1263,7 +1278,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, discount_pct, discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -1288,6 +1303,8 @@ export async function POST(req: Request) {
         ceremony_needed: boolean | null;
         ceremony_included: boolean | null;
         ceremony_price: number | null;
+        discount_pct: number | null;
+        discount_amount: number | null;
         tax_pct: number | null;
         tax_amount: number | null;
         total_with_tax: number | null;
@@ -1349,6 +1366,8 @@ export async function POST(req: Request) {
       depositAmount: booking.deposit_amount,
       bundledCocktail: !!booking.cocktail_needed,
       bundledCeremony: !!booking.ceremony_needed,
+      discountPct: booking.discount_pct,
+      discountAmount: booking.discount_amount,
     }, sym, currency);
 
     const infoCard = mobileBookingRequestBox({

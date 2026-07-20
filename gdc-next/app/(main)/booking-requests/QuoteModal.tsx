@@ -59,8 +59,13 @@ function formatTime12(t: string | null): string {
 export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, onClose, onSaved }: Props) {
   // Pre-fill from existing values when the DJ is editing a previously
   // sent quote. Empty strings on first quote, populated when re-opening.
+  // quoted_rate is stored ALREADY discounted, so re-opening an offer has to add
+  // the discount back to show the DJ the number they originally typed —
+  // otherwise the saved % would get applied a second time.
   const [price, setPrice] = useState(
-    booking.quoted_rate != null ? String(booking.quoted_rate) : ''
+    booking.quoted_rate != null
+      ? String(Number(booking.quoted_rate) + Number(booking.discount_amount || 0))
+      : ''
   );
   // Add Offer always starts with an empty overtime box — the DJ sets the
   // rate fresh per offer. We intentionally do NOT pre-fill from the
@@ -73,6 +78,13 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // itemize add-ons; that path is unchanged.)
   const hasCocktail = !!booking.cocktail_needed;
   const hasCeremony = !!booking.ceremony_needed;
+  // Percentage off, as a string ('' = none). Re-opening a sent offer restores
+  // the % that was applied.
+  const [discountPct, setDiscountPct] = useState(
+    booking.discount_pct != null && Number(booking.discount_pct) > 0
+      ? String(Math.round(Number(booking.discount_pct)))
+      : ''
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +111,15 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   const priceNum = parseFloat(price);
   // One number, no add-on math: whatever the DJ types is the all-in price
   // for everything listed in this modal.
-  const subtotalNum = !isNaN(priceNum) && priceNum > 0 ? Number(priceNum.toFixed(2)) : 0;
+  const grossPriceNum = !isNaN(priceNum) && priceNum > 0 ? Number(priceNum.toFixed(2)) : 0;
+  // Optional straight % off. Tax and deposit are both calculated on the
+  // DISCOUNTED price — the booker is only taxed on what they actually pay.
+  const discountPctNum = discountPct ? Number(discountPct) : 0;
+  const discountAmount = discountPctNum > 0 && grossPriceNum > 0
+    ? Number(((grossPriceNum * discountPctNum) / 100).toFixed(2))
+    : 0;
+  const netPriceNum = Number((grossPriceNum - discountAmount).toFixed(2));
+  const subtotalNum = netPriceNum;
   // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
   // (the agreement point for a request-price booking). Otherwise fall back to
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
@@ -189,6 +209,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         // null for clubs — overtime is mobile-only per spec.
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
+        discount_pct: discountAmount > 0 ? discountPctNum : null,
+        discount_amount: discountAmount > 0 ? discountAmount : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
@@ -214,6 +236,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           : {}),
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
+        discount_pct: discountAmount > 0 ? discountPctNum : null,
+        discount_amount: discountAmount > 0 ? discountAmount : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
@@ -566,22 +590,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         {/* Event price — the single all-in number, placed after the coverage
             list so it reads as "…and here's the price for all of that". */}
         <div className={styles.counterFormGroup}>
-          <label className={styles.counterFormLabel}>
-            {priceLabel}
-            {!isClubBooking && eventHours != null && (
-              <span
-                style={{
-                  textTransform: 'none',
-                  letterSpacing: 0,
-                  color: 'var(--muted)',
-                  fontWeight: 400,
-                  marginLeft: '.4rem',
-                }}
-              >
-                · for {eventHours} hr{eventHours !== 1 ? 's' : ''}
-              </span>
-            )}
-          </label>
+          <label className={styles.counterFormLabel}>{priceLabel}</label>
           <div className={styles.counterAmountRow}>
             <span className={styles.counterCurrencySym}>$</span>
             <input
@@ -594,6 +603,35 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               className={styles.counterAmountInput}
             />
           </div>
+        </div>
+
+        {/* Optional discount — a straight percentage off the Event Price. The
+            booker sees it as its own line on their bill, so it reads as a
+            deal rather than just a lower number. */}
+        <div className={styles.counterFormGroup}>
+          <label className={styles.counterFormLabel}>
+            Discount <span className={styles.counterFormOpt}>(optional)</span>
+          </label>
+          <select
+            value={discountPct}
+            // Same guard as the money inputs: a focused dropdown will change
+            // its own value when the mouse wheel passes over it. Blur on wheel
+            // so scrolling the modal can never silently alter the discount.
+            onWheel={(e) => e.currentTarget.blur()}
+            onChange={(e) => setDiscountPct(e.target.value)}
+            className={styles.counterAmountInput}
+            style={{ width: '100%', padding: '.55rem .6rem' }}
+          >
+            <option value="">No discount</option>
+            {Array.from({ length: 100 }, (_, i) => i + 1).map((p) => (
+              <option key={p} value={String(p)}>{p}% off</option>
+            ))}
+          </select>
+          {discountAmount > 0 && (
+            <div className={styles.depositPreview}>
+              Takes ${discountAmount.toLocaleString()} off — new price ${netPriceNum.toLocaleString()}
+            </div>
+          )}
         </div>
 
         {/* Overtime — mobile DJ only. Club bar/club bookings don't use
@@ -679,7 +717,11 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 </div>
               );
               const rows = [];
-              rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(subtotalNum)));
+              rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(grossPriceNum)));
+              if (discountAmount > 0) {
+                rows.push(line(`Discount (${discountPctNum}%)`, `−${money(discountAmount)}`, { muted: true }));
+                rows.push(line('Discounted price', money(netPriceNum), { top: true }));
+              }
               if (quoteTaxAmount > 0) {
                 rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount)));
               }
