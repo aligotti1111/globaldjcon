@@ -101,14 +101,38 @@ export default function HostPhoneSignup({ name, country, destination }: Props) {
       }
       if (!data?.user?.id) throw new Error('Sign up failed. Please try again.');
 
-      // The profile row. `email_verified` stays false — they haven't given us
-      // an email yet; they'll be asked at their first booking, and that address
-      // lands in contact_email.
+      // WAIT FOR THE SESSION TO ACTUALLY LAND BEFORE GOING ANYWHERE.
+      //
+      // verifyOtp resolving does not mean the session has finished being
+      // written to storage and cookies. window.location.href triggers a full
+      // page load, and if it fires first the server renders the next page with
+      // no session — you get bounced back out, freshly signed up and
+      // apparently logged out. The email path never hit this because it stops
+      // on a success screen instead of navigating.
+      //
+      // Poll rather than guess at a delay: it leaves as soon as the session is
+      // readable, and gives up after ~3s rather than hanging forever.
+      let ready = false;
+      for (let i = 0; i < 30; i++) {
+        const { data: s } = await supabase.auth.getSession();
+        if (s?.session) { ready = true; break; }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      if (!ready) {
+        throw new Error('Your account was created, but signing you in timed out. Please log in with your number.');
+      }
+
+      // The profile row, written AFTER the session exists — RLS policies check
+      // auth.uid(), so an upsert sent before the session is live is rejected
+      // and the account ends up with no users row at all.
+      //
+      // `email_verified` stays false: they haven't given us an email yet.
+      // They'll be asked at their first booking and it lands in contact_email.
       //
       // sms_phone is prefilled from the number they just proved they own, so
-      // notifications work without asking for it a second time. It's a
-      // preference, not the credential — the credential lives in auth.
-      await supabase.from('users').upsert({
+      // notifications work without asking twice. It's a preference, not the
+      // credential — the credential lives in auth.
+      const { error: rowErr } = await supabase.from('users').upsert({
         id: data.user.id,
         role: 'host',
         name,
@@ -118,6 +142,10 @@ export default function HostPhoneSignup({ name, country, destination }: Props) {
         signup_method: 'phone',
         sms_phone: e164,
       } as unknown as never, { onConflict: 'id' });
+      // Don't strand them on a blank error if only the profile write failed —
+      // they ARE signed in, and the row can be repaired later. But say so,
+      // rather than pretending everything worked.
+      if (rowErr) console.error('[signup] profile row failed:', rowErr);
 
       // Phone signup ends signed in — there's no "check your email" step to
       // wait on, so go straight where they were headed.

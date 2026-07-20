@@ -166,8 +166,21 @@ function LoginForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Where to go once we have a session. Unchanged behaviour. */
-  function finish(emailUsed: string | null) {
+  /**
+   * Where to go once we have a session.
+   *
+   * Waits for the session to actually be readable first. Sign-in resolving
+   * does not mean it has finished being written to storage and cookies, and
+   * window.location.href triggers a full page load — if that fires first, the
+   * server renders the next page with no session and bounces the user back
+   * out, apparently still logged out despite having just typed a correct code.
+   */
+  async function finish(emailUsed: string | null) {
+    for (let i = 0; i < 30; i++) {
+      const { data: s } = await supabase.auth.getSession();
+      if (s?.session) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
     const isAdminUser = (emailUsed || '').toLowerCase() === ADMIN_EMAIL;
     const explicitDest = (destination && destination !== '/') ? destination : null;
     window.location.href = explicitDest || (isAdminUser ? '/admin' : '/');
@@ -266,7 +279,7 @@ function LoginForm() {
         throw authError;
       }
       if (!data?.session) throw new Error('Login failed. Please try again.');
-      finish(trimmedEmail);
+      await finish(trimmedEmail);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setSubmitting(false);
@@ -290,7 +303,7 @@ function LoginForm() {
         throw new Error('That code doesn’t match. Check it and try again.');
       }
       if (!data?.session) throw new Error('Login failed. Please try again.');
-      finish(data.user?.email || null);
+      await finish(data.user?.email || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setSubmitting(false);
