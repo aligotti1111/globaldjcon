@@ -96,6 +96,13 @@ export interface UpcomingBooking {
   contract_status?: string | null;
   contract_sent_at?: string | null;
   contract_signed_at?: string | null;
+  // Cancellation request. Kept OUT of `status` on purpose: while a request is
+  // pending the booking is still fully live, so contracts, payments and
+  // planners all keep working until somebody actually accepts.
+  cancel_status?: string | null;          // 'requested' | 'accepted' | 'declined'
+  cancel_requested_by?: string | null;    // 'dj' | 'host'
+  cancel_reason?: string | null;
+  cancel_requested_at?: string | null;
   // Booking-readiness pipeline: manual step overrides + per-booking snapshot of
   // whether a contract was required at creation time (freezes the flow).
   status_overrides?: Record<string, boolean> | null;
@@ -182,7 +189,7 @@ export default async function UpcomingBookingsPage() {
   // the dedicated /past-bookings page.)
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, status_overrides, requires_contract, planner_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status')
     .eq('dj_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')

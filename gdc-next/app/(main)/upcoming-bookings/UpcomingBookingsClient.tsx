@@ -1004,6 +1004,47 @@ function BookingRow({
    */
   const menuBtnRef = useRef<HTMLElement | null>(null);
 
+  // ── Cancellation request ───────────────────────────────────────────
+  // A booked date belongs to two people. Either can ASK to cancel; only the
+  // other one can agree to it. Until they do, nothing about this booking
+  // changes — which is why this state is separate from booking.status.
+  const [cancelState, setCancelState] = useState<{
+    status: string | null;
+    requestedBy: string | null;
+    reason: string | null;
+  }>(() => ({
+    status: (booking as { cancel_status?: string | null }).cancel_status ?? null,
+    requestedBy: (booking as { cancel_requested_by?: string | null }).cancel_requested_by ?? null,
+    reason: (booking as { cancel_reason?: string | null }).cancel_reason ?? null,
+  }));
+  const [cancelFormOpen, setCancelFormOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelErr, setCancelErr] = useState<string | null>(null);
+  const [cancelConfirming, setCancelConfirming] = useState(false);
+  // Set after declining, so the DJ is pointed at the phone rather than the app.
+  const [declinedJustNow, setDeclinedJustNow] = useState(false);
+
+  async function postCancel(payload: Record<string, unknown>) {
+    setCancelBusy(true);
+    setCancelErr(null);
+    try {
+      const res = await fetch('/api/bookings/cancel-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, ...payload }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Something went wrong.');
+      return json as { cancel_status: string };
+    } catch (e) {
+      setCancelErr(e instanceof Error ? e.message : 'Something went wrong.');
+      return null;
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
   // Re-anchor the open menu to its button on scroll and resize.
   // Capture phase (the `true`) matters: a scroll inside any ancestor container
   // doesn't bubble, so a listener on window without it never fires and the menu
@@ -2419,6 +2460,179 @@ function BookingRow({
           hasHostContact={hasHostContact}
           onEdit={onAddHost || onEdit}
         />
+      )}
+
+      {/* ── Cancellation ────────────────────────────────────────────────
+          Only inside an expanded row, never in the archive (a night that
+          already happened can't be called off), never on a booking that's
+          already cancelled, and never on a manual add-in — there's no second
+          party to ask. Deliberately the last thing in the panel and styled
+          quietly: it should be findable, not tempting. */}
+      {expanded && !archive && !booking.is_manual && booking.status !== 'cancelled' && (
+        <div
+          style={{
+            padding: '.9rem 1.1rem',
+            borderTop: '1px solid rgba(255,255,255,.08)',
+            background: 'rgba(255,255,255,.015)',
+          }}
+        >
+          {cancelErr && (
+            <div style={{ color: '#ff7676', fontSize: '.75rem', fontWeight: 600, marginBottom: '.5rem' }}>
+              {cancelErr}
+            </div>
+          )}
+
+          {/* Someone asked, and it's still open. Who asked decides what the DJ
+              sees: their own request is a waiting room, the other side's is a
+              decision. */}
+          {cancelState.status === 'requested' ? (
+            cancelState.requestedBy === 'dj' ? (
+              <div style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
+                <strong style={{ color: '#ffb020' }}>Cancellation requested by you.</strong>{' '}
+                Waiting on {booking.requester_name || 'the host'} to accept or decline.
+                This booking is still on until they answer.
+                {cancelState.reason && (
+                  <div style={{ marginTop: '.4rem', whiteSpace: 'pre-wrap' }}>
+                    Your reason: {cancelState.reason}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: '.78rem', color: 'var(--white,#fff)', fontWeight: 700, marginBottom: '.3rem' }}>
+                  {booking.requester_name || 'The host'} has asked to cancel this booking.
+                </div>
+                <div style={{ fontSize: '.75rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5, marginBottom: '.6rem' }}>
+                  {cancelState.reason ? (
+                    <>Reason given: <span style={{ whiteSpace: 'pre-wrap' }}>{cancelState.reason}</span></>
+                  ) : (
+                    <>
+                      No reason was given.
+                      {/* Only offer the phone when we actually have one. */}
+                      {booking.phone
+                        ? <> If you&apos;re unsure why, call them on <a href={`tel:${String(booking.phone).replace(/[^\d+]/g, '')}`} style={{ color: NEON, fontWeight: 700 }}>{booking.phone}</a> before you answer.</>
+                        : <> If you&apos;re unsure why, reach out before you answer.</>}
+                    </>
+                  )}
+                </div>
+                {!cancelConfirming ? (
+                  <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      disabled={cancelBusy}
+                      onClick={() => setCancelConfirming(true)}
+                      style={{ background: 'transparent', border: '1px solid rgba(255,118,118,.5)', color: '#ff7676', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      Accept — cancel booking
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cancelBusy}
+                      onClick={async () => {
+                        const r = await postCancel({ action: 'decline' });
+                        if (r) {
+                          setCancelState((s) => ({ ...s, status: 'declined' }));
+                          setDeclinedJustNow(true);
+                        }
+                      }}
+                      style={{ background: 'transparent', border: `1px solid ${NEON}`, color: NEON, fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      {cancelBusy ? 'Saving…' : 'Decline — keep booking'}
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '.75rem', color: 'var(--white,#fff)', fontWeight: 700, marginBottom: '.5rem' }}>
+                      Are you sure? This cancels the booking.
+                    </div>
+                    <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={cancelBusy}
+                        onClick={async () => {
+                          const r = await postCancel({ action: 'accept' });
+                          if (r) setCancelState((s) => ({ ...s, status: 'accepted' }));
+                        }}
+                        style={{ background: '#c0392b', border: 'none', color: '#fff', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        {cancelBusy ? 'Cancelling…' : 'Yes, cancel it'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={cancelBusy}
+                        onClick={() => setCancelConfirming(false)}
+                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Go back
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : cancelState.status === 'accepted' ? (
+            <div style={{ fontSize: '.78rem', color: '#ff7676', fontWeight: 700 }}>
+              This booking has been cancelled.
+            </div>
+          ) : declinedJustNow || cancelState.status === 'declined' ? (
+            <div style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
+              <strong style={{ color: NEON }}>Cancellation declined — this booking still stands.</strong>
+              {booking.phone ? (
+                <> The next step is a conversation, not the app. Call {booking.requester_name || 'the host'} on{' '}
+                  <a href={`tel:${String(booking.phone).replace(/[^\d+]/g, '')}`} style={{ color: NEON, fontWeight: 700 }}>{booking.phone}</a>.
+                </>
+              ) : (
+                <> The next step is a conversation, not the app — reach out to {booking.requester_name || 'the host'} directly.</>
+              )}
+            </div>
+          ) : !cancelFormOpen ? (
+            <button
+              type="button"
+              onClick={() => setCancelFormOpen(true)}
+              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--muted,#8a8aa0)', fontSize: '.74rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Request cancellation
+            </button>
+          ) : (
+            <div>
+              <div style={{ fontSize: '.75rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5, marginBottom: '.5rem' }}>
+                {booking.requester_name || 'The host'} will be emailed and can accept or
+                decline. The booking stays on until they answer.
+              </div>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Reason (optional) — telling them why saves a phone call"
+                rows={2}
+                style={{ width: '100%', background: 'rgba(0,0,0,.25)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.78rem', padding: '.5rem .6rem', marginBottom: '.55rem', resize: 'vertical', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={cancelBusy}
+                  onClick={async () => {
+                    const r = await postCancel({ action: 'request', reason: cancelReason });
+                    if (r) {
+                      setCancelState({ status: 'requested', requestedBy: 'dj', reason: cancelReason.trim() || null });
+                      setCancelFormOpen(false);
+                    }
+                  }}
+                  style={{ background: 'transparent', border: '1px solid rgba(255,118,118,.5)', color: '#ff7676', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  {cancelBusy ? 'Sending…' : 'Send cancellation request'}
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelBusy}
+                  onClick={() => { setCancelFormOpen(false); setCancelReason(''); setCancelErr(null); }}
+                  style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  Never mind
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {sendOpen && (
         <PlannerSendModal
