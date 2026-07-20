@@ -110,7 +110,7 @@ export default async function InboxPage() {
     .eq('deleted_by_recipient', false)
     .neq('from_user_id', authUser.id)
     .not('parent_id', 'is', null);
-  const liveReplies = (liveReplyRows as { parent_id: string | null }[]) || [];
+  const liveReplies = (liveReplyRows as unknown as { parent_id: string | null }[]) || [];
   const resurrectParentIds = Array.from(new Set(
     liveReplies
       .map((r) => r.parent_id)
