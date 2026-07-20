@@ -20,7 +20,14 @@ export default function VerifyEmailBanner() {
   // nagged about verifying their seed account, even if email_verified is
   // somehow false on their public.users row.
   const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
-  if (loading || !user || user.email_verified || isAdmin) return null;
+  // AND hide when there is no email at all. A host who signed up with a phone
+  // number has email_verified = false — correctly, since there's nothing to
+  // verify — and this banner used to nag them forever about confirming a
+  // blank address, with a Resend button that could only ever fail. They're
+  // asked for an email at their first booking; until then there is genuinely
+  // nothing for them to do here.
+  const hasEmail = !!(user?.email && user.email.trim());
+  if (loading || !user || !hasEmail || user.email_verified || isAdmin) return null;
 
   async function handleResend() {
     if (!user) return;
