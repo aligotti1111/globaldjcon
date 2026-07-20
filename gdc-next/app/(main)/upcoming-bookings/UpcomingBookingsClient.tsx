@@ -1004,6 +1004,10 @@ function BookingRow({
    */
   const menuBtnRef = useRef<HTMLElement | null>(null);
 
+  // A cancelled booking still appears in the list — greyed, flagged, and inert.
+  // Everything downstream reads this rather than re-testing the string.
+  const isCancelled = booking.status === 'cancelled';
+
   // ── Cancellation request ───────────────────────────────────────────
   // A booked date belongs to two people. Either can ASK to cancel; only the
   // other one can agree to it. Until they do, nothing about this booking
@@ -1901,7 +1905,12 @@ function BookingRow({
   }
 
   return (
-    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
+    <div
+      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
+      // Cancelled rows are dimmed rather than removed: still readable, clearly
+      // not live work. Inline so no CSS-module change is needed.
+      style={isCancelled ? { opacity: 0.55 } : undefined}
+    >
       {/*
         THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
         There are exactly as many direct children here as there are tracks in
@@ -2289,7 +2298,27 @@ function BookingRow({
             stop their own, so this only ever blocked the empty part of the
             cell (and, on a non-manual booking, the entire 84px of it). */}
         <div className={styles.rowActionsCell}>
-          {booking.is_manual && (
+          {/* A cancelled date stays on the list — it's still a fact about this
+              night — but it says so, loudly, before anything else in the cell. */}
+          {isCancelled && (
+            <span
+              title="This booking was cancelled"
+              style={{
+                background: 'rgba(192,57,43,.18)',
+                border: '1px solid rgba(255,118,118,.55)',
+                color: '#ff7676',
+                fontWeight: 800,
+                fontSize: '.58rem',
+                letterSpacing: '.06em',
+                padding: '.15rem .4rem',
+                borderRadius: 4,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              CANCELLED
+            </span>
+          )}
+          {booking.is_manual && !isCancelled && (
             <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
           )}
           {onEdit && (
