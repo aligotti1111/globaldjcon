@@ -138,6 +138,25 @@ export function AuthProvider({
         setUser({
           ...profile,
           email: authUser.email || profile.contact_email || '',
+          /**
+           * `email_verified` gates real things — booking a DJ, mainly. It
+           * exists to stop somebody signing up with an address they don't own
+           * and then transacting.
+           *
+           * A phone-signup host has no auth email, so there is nothing to
+           * verify and no such risk: they proved they hold the number. Left
+           * as false, every one of those gates fires and they can't book at
+           * all, with a message telling them to click a link in an email that
+           * was never sent to an address they never gave.
+           *
+           * So it's true when there's no auth email to confirm. This is
+           * decided HERE, once, rather than in each gate — there are several,
+           * they're spread across the calendar and profile views, and the next
+           * one written would get it wrong again.
+           *
+           * The DB column stays honest; the admin panel reads that directly.
+           */
+          email_verified: authUser.email ? profile.email_verified : true,
         });
       } else {
         setUser(null);

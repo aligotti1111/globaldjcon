@@ -107,7 +107,15 @@ async function getInitialUser(): Promise<CurrentUser | null> {
     // host gives at their first booking; otherwise empty, which is honest —
     // we genuinely don't have one yet.
     const contactEmail = (profile as { contact_email?: string | null }).contact_email;
-    return { ...profile, email: authUser.email || contactEmail || '' };
+    return {
+      ...profile,
+      email: authUser.email || contactEmail || '',
+      // Matches AuthProvider — see the long note there. No auth email means
+      // there is nothing to verify, so the verification gates (which block
+      // booking) must not fire. Both places build this object, so both need
+      // the rule or the first paint disagrees with everything after it.
+      email_verified: authUser.email ? profile.email_verified : true,
+    };
   } catch {
     return null;
   }
