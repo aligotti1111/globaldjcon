@@ -39,7 +39,11 @@ type EmailType =
   | 'booking_approved'
   | 'manual_booking_invite'
   | 'event_invite_from_host'
-  | 'booking_activity';
+  | 'booking_activity'
+  // Cancellation request flow — one side asks, the other answers.
+  | 'cancel_requested'
+  | 'cancel_accepted'
+  | 'cancel_declined';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -1256,6 +1260,234 @@ export async function POST(req: Request) {
       }
     }
 
+    return NextResponse.json({ ok: true });
+
+  // ── CANCELLATION REQUEST FLOW ─────────────────────────────────────
+  // Three types, one shared body: requested / accepted / declined. A booking
+  // belongs to two people, so all three email BOTH of them — the person who
+  // acted gets a receipt, the other gets the news.
+  //
+  // Two rules the copy obeys:
+  //   1. The contract sentence appears ONLY when a contract actually exists.
+  //      Warning someone that a cancellation "doesn't void your contract" when
+  //      there is no contract is noise that reads like a threat.
+  //   2. The "call them" line appears ONLY when we hold a phone number. A
+  //      prompt to ring somebody with no number attached is worse than silence.
+  //
+  // Required fields: bookingId, plus requestedBy ('dj'|'host') on
+  // cancel_requested and respondedBy on the other two.
+  } else if (
+    type === 'cancel_requested' ||
+    type === 'cancel_accepted' ||
+    type === 'cancel_declined'
+  ) {
+    const bookingId = body.bookingId as string | undefined;
+    if (!bookingId) {
+      return NextResponse.json({ error: `${type} requires bookingId` }, { status: 400 });
+    }
+
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data: booking } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, requester_name, host_email, phone, event_date, start_time, end_time, venue_name, venue_address, booking_type, event_type, package_title, set_type, venue_type, contract_status, cancel_requested_by, cancel_reason, cancel_token')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        id: string;
+        dj_id: string | null;
+        requester_id: string | null;
+        requester_name: string | null;
+        host_email: string | null;
+        phone: string | null;
+        event_date: string | null;
+        start_time: string | null;
+        end_time: string | null;
+        venue_name: string | null;
+        venue_address: string | null;
+        booking_type: string | null;
+        event_type: string | null;
+        package_title: string | null;
+        set_type: string | null;
+        venue_type: string | null;
+        contract_status: string | null;
+        cancel_requested_by: string | null;
+        cancel_reason: string | null;
+        cancel_token: string | null;
+      }>();
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    // ── Both parties: name, email, phone ────────────────────────────
+    let djName = 'the DJ';
+    let djPhone: string | null = null;
+    if (booking.dj_id) {
+      const { data: p } = await admin
+        .from('users').select('name, phone').eq('id', booking.dj_id)
+        .maybeSingle<{ name: string | null; phone: string | null }>();
+      if (p?.name) djName = p.name;
+      if (p?.phone) djPhone = p.phone;
+    }
+    const djEmail = booking.dj_id ? await resolveUserEmail(booking.dj_id) : null;
+
+    let hostName = booking.requester_name || 'the host';
+    if (!booking.requester_name && booking.requester_id) {
+      const { data: p } = await admin
+        .from('users').select('name').eq('id', booking.requester_id)
+        .maybeSingle<{ name: string | null }>();
+      if (p?.name) hostName = p.name;
+    }
+    // A host may be a registered user OR just an email on the row (manual /
+    // guest bookings). Prefer the account, fall back to the address we have.
+    const hostEmail = (booking.requester_id ? await resolveUserEmail(booking.requester_id) : null)
+      || booking.host_email
+      || null;
+    const hostPhone = booking.phone || null;
+
+    // ── The two conditional lines ───────────────────────────────────
+    // A contract that was cancelled or voided is not a contract.
+    const cs = booking.contract_status;
+    const hasContract = !!cs && cs !== 'cancelled' && cs !== 'voided';
+    const contractLine = hasContract
+      ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
+           <p style="margin:0;color:#7a5a13;font-size:14px;">There is a contract on this booking. A cancellation request does <strong>not</strong> void it — the terms you agreed to still stand.</p>
+         </div>`
+      : '';
+    // Only offered when we actually have a number to offer.
+    const contactLine = (name: string, phone: string | null): string =>
+      phone
+        ? `<p style="color:#666;margin:0 0 20px;">If you're unsure why, speak to <strong>${escHtml(name)}</strong> directly: <a href="tel:${escHtml(phone.replace(/[^\d+]/g, ''))}" style="color:#0a7;font-weight:700;">${escHtml(phone)}</a></p>`
+        : '';
+
+    const isMobile = booking.booking_type !== 'club';
+    const infoCard = isMobile
+      ? mobileBookingRequestBox({
+          eventTypeText: eventTypeLabel(booking.event_type),
+          date: booking.event_date,
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+          venueName: booking.venue_name || undefined,
+          venueAddress: booking.venue_address || undefined,
+          packageTitle: booking.package_title || undefined,
+        })
+      : bookingInfoBox({
+          setTypeText: setTypeLabel(booking.set_type),
+          date: booking.event_date,
+          timeRange: fmtTimeRange(booking.start_time, booking.end_time),
+          venueTypeText: venueTypeLabel(booking.venue_type),
+          venueName: booking.venue_name || undefined,
+          venueAddress: booking.venue_address || undefined,
+        });
+
+    const dateStr = fmtDate(booking.event_date);
+    const reason = booking.cancel_reason;
+    const reasonBlock = reason
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
+           <p style="margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#888;">Reason given</p>
+           <p style="margin:0;color:#1a1a2e;font-size:14px;white-space:pre-wrap;">${escHtml(reason)}</p>
+         </div>`
+      : '';
+
+    const send = async (to: string | null, subject: string, inner: string) => {
+      if (!to) return;
+      try {
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [to],
+          subject,
+          html: emailTemplate(inner),
+        });
+      } catch (e) {
+        console.error(`${type} email failed:`, e);
+      }
+    };
+
+    const h2 = (text: string) =>
+      `<h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${text}</h2>`;
+
+    // ── REQUESTED ───────────────────────────────────────────────────
+    if (type === 'cancel_requested') {
+      const requestedBy = (body.requestedBy as string) || booking.cancel_requested_by || 'host';
+      const askerIsDj = requestedBy === 'dj';
+      const askerName = askerIsDj ? djName : hostName;
+      const subject = `Cancellation requested – ${dateStr}`;
+
+      // The responder is whoever did NOT ask. Only they get the action link.
+      const cancelUrl = booking.cancel_token ? `${SITE_URL}/cancel/${booking.cancel_token}` : null;
+
+      // To the responder — the one who has to decide.
+      const responderInner = `
+        ${h2('Cancellation Requested')}
+        <p style="color:#666;margin-bottom:8px;">
+          <strong>${escHtml(askerName)}</strong> has asked to cancel this booking.
+          It is still on until you answer.
+        </p>
+        ${infoCard}
+        ${reasonBlock}
+        ${reason ? '' : contactLine(askerName, askerIsDj ? djPhone : hostPhone)}
+        ${contractLine}
+        ${cancelUrl ? ctaButton(cancelUrl, 'Accept or Decline') : ''}
+      `;
+      // To the asker — a receipt.
+      const askerInner = `
+        ${h2('Cancellation Requested')}
+        <p style="color:#666;margin-bottom:8px;">
+          Your request to cancel this booking has been sent to
+          <strong>${escHtml(askerIsDj ? hostName : djName)}</strong>.
+          The booking stays on until they respond.
+        </p>
+        ${infoCard}
+        ${reasonBlock}
+        ${contractLine}
+      `;
+
+      if (askerIsDj) {
+        await send(hostEmail, subject, responderInner);
+        await send(djEmail, subject, askerInner);
+      } else {
+        await send(djEmail, subject, responderInner);
+        await send(hostEmail, subject, askerInner);
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── ACCEPTED ────────────────────────────────────────────────────
+    if (type === 'cancel_accepted') {
+      const subject = `Booking cancelled – ${dateStr}`;
+      const inner = (who: string) => `
+        ${h2('Booking Cancelled')}
+        <p style="color:#666;margin-bottom:8px;">
+          The cancellation request was accepted, and this booking is now cancelled.
+          ${escHtml(who)} has been notified.
+        </p>
+        ${infoCard}
+        ${contractLine}
+      `;
+      await send(djEmail, subject, inner(hostName));
+      await send(hostEmail, subject, inner(djName));
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── DECLINED ────────────────────────────────────────────────────
+    // The booking survives, and the two of them now need to talk. This is the
+    // one place the contact line matters most, so each side gets the OTHER
+    // side's number — when we have it.
+    const subject = `Cancellation declined – ${dateStr}`;
+    const declinedInner = (otherName: string, otherPhone: string | null) => `
+      ${h2('Cancellation Declined')}
+      <p style="color:#666;margin-bottom:8px;">
+        The cancellation request was declined, so this booking still stands.
+      </p>
+      ${infoCard}
+      <p style="color:#666;margin:0 0 8px;">
+        If this needs sorting out, the next step is a conversation — not the app.
+      </p>
+      ${contactLine(otherName, otherPhone)}
+      ${contractLine}
+    `;
+    await send(djEmail, subject, declinedInner(hostName, hostPhone));
+    await send(hostEmail, subject, declinedInner(djName, djPhone));
     return NextResponse.json({ ok: true });
 
   // ── OFFER SENT (DJ sent a price on a mobile quote-mode booking) ───
