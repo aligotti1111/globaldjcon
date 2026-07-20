@@ -944,7 +944,7 @@ function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -1004,10 +1004,6 @@ function BookingRow({
    */
   const menuBtnRef = useRef<HTMLElement | null>(null);
 
-  // A cancelled booking still appears in the list — greyed, flagged, and inert.
-  // Everything downstream reads this rather than re-testing the string.
-  const isCancelled = booking.status === 'cancelled';
-
   // ── Cancellation request ───────────────────────────────────────────
   // A booked date belongs to two people. Either can ASK to cancel; only the
   // other one can agree to it. Until they do, nothing about this booking
@@ -1028,6 +1024,26 @@ function BookingRow({
   const [cancelConfirming, setCancelConfirming] = useState(false);
   // Set after declining, so the DJ is pointed at the phone rather than the app.
   const [declinedJustNow, setDeclinedJustNow] = useState(false);
+
+  /**
+   * Cancelled per the server row, OR cancelled by the DJ a moment ago in this
+   * session. The second half matters: after accepting, `booking.status` is
+   * still 'approved' until the next page load, and a row that keeps offering
+   * "Send contract" on a booking you just cancelled is how you send one.
+   */
+  const isCancelled = booking.status === 'cancelled' || cancelState.status === 'accepted';
+
+  /**
+   * A cancelled booking is read-only, and "read-only" already exists in this
+   * component: it's what `archive` means. Rather than add a second flag and
+   * then chase every button that forgot to check it, a cancelled row simply IS
+   * archive here — every `actions: archive ? [] : [...]`, every hint, every
+   * override toggle goes quiet for free.
+   *
+   * There is nothing to do about a night that isn't happening. Sending a
+   * contract for it, or chasing a deposit on it, is worse than useless.
+   */
+  const archive = archiveProp || isCancelled;
 
   async function postCancel(payload: Record<string, unknown>) {
     setCancelBusy(true);
@@ -2321,7 +2337,9 @@ function BookingRow({
           {booking.is_manual && !isCancelled && (
             <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
           )}
-          {onEdit && (
+          {/* Edit + delete are handed down by the parent, which only knows about
+              the page-level archive — so they need the cancelled check here. */}
+          {onEdit && !isCancelled && (
             <span
               onClick={handleEdit}
               className={styles.editBtn}
@@ -2335,7 +2353,7 @@ function BookingRow({
               </svg>
             </span>
           )}
-          {onDelete && (
+          {onDelete && !isCancelled && (
             <span
               onClick={handleDelete}
               className={styles.deleteBtn}
