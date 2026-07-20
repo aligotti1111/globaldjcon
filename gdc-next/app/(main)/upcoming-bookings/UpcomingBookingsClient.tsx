@@ -1905,6 +1905,26 @@ function BookingRow({
     }
   }
 
+  /**
+   * Cancelled: strip every way to act on the row, in one place.
+   *
+   * Making a cancelled booking behave as `archive` emptied `actions`, but
+   * `overridable` is decided per-step from the step's OWN state (is it signed,
+   * is it settled) and never consulted archive at all — so "Mark complete"
+   * survived, and with it the chevron, on a booking that isn't happening.
+   *
+   * Rather than thread the check through four step builders and hope the fifth
+   * one remembers, the whole list is neutered here after it's built. `info` and
+   * `hint` deliberately survive: the DJ can still open a cancelled row and read
+   * what was paid or what stage it reached. Reading is not acting.
+   */
+  if (isCancelled) {
+    for (const st of steps) {
+      st.actions = [];
+      st.overridable = false;
+    }
+  }
+
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
   // header clean. The row no longer renders a CLUB/BAR pill.
