@@ -106,7 +106,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // Mobile: plain "Event Price" label — the hour count is shown as a soft
   // sub-hint next to it rather than crammed into the uppercase label,
   // which read awkwardly (e.g. "6 HOUR EVENT PRICE").
-  const priceLabel = isClubBooking ? 'Set Rate' : 'Event Price';
+  const priceLabel = isClubBooking ? 'Set Rate' : 'Total Event Price';
 
   // Live deposit preview — recomputes as user types. Tax comes from the
   // booking's FROZEN snapshot % (tax_pct, stamped at creation) — never the
@@ -543,7 +543,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   color: 'rgba(255,255,255,.85)',
                 }}
               >
-                <span>💍 Music for ceremony</span>
+                <span>💍 Music For Ceremony</span>
                 <span style={{ color: 'var(--muted)' }}>
                   {[
                     booking.ceremony_start_time ? formatTime12(booking.ceremony_start_time) : null,
@@ -565,7 +565,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   color: 'rgba(255,255,255,.85)',
                 }}
               >
-                <span>🍸 Cocktail hour</span>
+                <span>🍸 Cocktail Hour</span>
                 <span style={{ color: 'var(--muted)' }}>
                   {[
                     booking.cocktail_start_time ? formatTime12(booking.cocktail_start_time) : null,
@@ -748,7 +748,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 </div>
               );
               const rows = [];
-              rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(grossPriceNum)));
+              rows.push(line(isClubBooking ? 'Rate' : 'Total Event Price', money(grossPriceNum)));
               if (discountAmount > 0) {
                 rows.push(line(`Discount (${discountPctNum}%)`, `−${money(discountAmount)}`, { muted: true }));
                 rows.push(line('Discounted price', money(netPriceNum), { top: true }));
@@ -788,7 +788,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 >
                   This total quote covers everything listed above
                   {!isClubBooking && (hasCocktail || hasCeremony)
-                    ? `, including ${[hasCeremony ? 'music for the ceremony' : null, hasCocktail ? 'cocktail hour' : null].filter(Boolean).join(' and ')}`
+                    ? `, including ${[hasCeremony ? 'Music For Ceremony' : null, hasCocktail ? 'Cocktail Hour' : null].filter(Boolean).join(' and ')}`
                     : ''}
                   .
                 </div>,

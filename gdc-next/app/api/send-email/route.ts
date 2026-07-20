@@ -454,8 +454,8 @@ function billBreakdownBox(
   const depAmt = b.depositAmount != null ? Number(b.depositAmount) : 0;
   // Extras the price already covers (no separate charge) — noted, not itemized.
   const bundled = [
-    b.bundledCeremony && ceremonyAdd <= 0 ? 'music for the ceremony' : null,
-    b.bundledCocktail && cocktailAdd <= 0 ? 'cocktail hour' : null,
+    b.bundledCeremony && ceremonyAdd <= 0 ? 'Music For Ceremony' : null,
+    b.bundledCocktail && cocktailAdd <= 0 ? 'Cocktail Hour' : null,
   ].filter(Boolean) as string[];
   const discAmt = b.discountAmount != null ? Number(b.discountAmount) : 0;
   const discPct = b.discountPct != null ? Number(b.discountPct) : 0;
@@ -474,15 +474,15 @@ function billBreakdownBox(
   const rows: string[] = [];
   if (cocktailAdd > 0 || ceremonyAdd > 0) {
     rows.push(row('Package price', money(basePrice)));
-    if (cocktailAdd > 0) rows.push(row('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
-    if (ceremonyAdd > 0) rows.push(row('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
+    if (cocktailAdd > 0) rows.push(row('Cocktail Hour', `+${money(cocktailAdd)}`, { muted: true }));
+    if (ceremonyAdd > 0) rows.push(row('Music For Ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
   } else if (discAmt > 0) {
     // subtotal is already net of the discount — show what it was before.
-    rows.push(row('Event price', money(subtotal + discAmt)));
+    rows.push(row('Total Event Price', money(subtotal + discAmt)));
     rows.push(row(`Discount (${discPct}%)`, `−${money(discAmt)}`, { muted: true }));
     rows.push(row('Discounted price', money(subtotal), { top: true }));
   } else {
-    rows.push(row('Event price', money(subtotal)));
+    rows.push(row('Total Event Price', money(subtotal)));
   }
   if (bundled.length > 0) {
     const list = bundled.length === 2 ? `${bundled[0]} and ${bundled[1]}` : bundled[0];
