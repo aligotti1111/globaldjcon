@@ -119,6 +119,20 @@ export default function MobileBookingForm({
 }: Props) {
   // ── Form state ────────────────────────────────────────────────────
   const [phone, setPhone] = useState('');
+  /**
+   * Where this booking's paperwork gets sent.
+   *
+   * A host who signed up with a phone number has no email on their account,
+   * and everything that happens after this form — the offer, the confirmation
+   * with the bill, the contract to sign, the planner link, the cancellation
+   * link — is an email. Without one they'd book successfully and then never
+   * hear anything again, which is worse than not booking at all.
+   *
+   * So it's asked here, once, at the moment it actually buys them something.
+   * Hosts who already have an email never see this field.
+   */
+  const [contactEmail, setContactEmail] = useState('');
+  const needsEmail = !((currentUser.email || '').trim());
   const [eventType, setEventType] = useState('');
   // Promo code entry (client-typed). appliedCode is set only after a valid
   // code is confirmed via Apply; the actual discount is the better of an
@@ -369,6 +383,12 @@ export default function MobileBookingForm({
     };
 
     if (!phone.trim() && fail('Please enter your phone number.', 'mpf-phone')) return;
+    if (needsEmail) {
+      const e = contactEmail.trim();
+      if (!e && fail('Please enter an email address for your booking documents.', 'mpf-email')) return;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+        && fail('That email address doesn’t look right.', 'mpf-email')) return;
+    }
     if (!eventType && fail('Please select an event type.', 'mpf-event-type')) return;
     if (!venueName.trim() && fail('Please enter the venue name.', 'mpf-venue-name')) return;
     if (!venueAddress.trim() && fail('Please enter the venue address.', 'mpf-venue-address')) return;
@@ -453,6 +473,9 @@ export default function MobileBookingForm({
           startTime,
           endTime,
           phone: phone.trim(),
+          // Only sent when the account has none. The server writes it to
+          // users.contact_email so every later email has somewhere to go.
+          contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
@@ -677,6 +700,8 @@ export default function MobileBookingForm({
     const digits = phone.replace(/\D/g, '');
     return digits.length >= 10 && digits.length <= 15;
   })();
+  // Only meaningful when the field is shown at all.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const guestsValid = guests.trim() !== '' && Number(guests) > 0;
   const venueNameValid = venueName.trim() !== '';
   // Address is valid for the checkmark once it's a substantial entry —
@@ -725,6 +750,31 @@ export default function MobileBookingForm({
             />
           </FieldCheck>
         </div>
+
+        {/* Email — ONLY for accounts that don't have one (phone signups).
+            Everything after this booking is an email; without an address the
+            host would book and then never hear from anyone again. */}
+        {needsEmail && (
+          <div className={styles.formRow}>
+            <label htmlFor="mpf-email">Email Address</label>
+            <FieldCheck valid={emailValid}>
+              <input
+                id="mpf-email"
+                type="email"
+                inputMode="email"
+                placeholder="your@email.com"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className={`${fieldClass('mpf-email', styles.input)} ${styles.hasCheck}`}
+                autoComplete="email"
+              />
+            </FieldCheck>
+            <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+              We&apos;ll send your confirmation, contract and planner here. Asked once —
+              we&apos;ll remember it next time.
+            </small>
+          </div>
+        )}
 
         {/* Event Type */}
         <div className={styles.formRow}>

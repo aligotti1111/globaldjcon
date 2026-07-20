@@ -24,13 +24,29 @@ export function createAdminClient() {
 
 // Resolves a user's email from auth.users by user id.
 // This replaces the resolveUserEmail helper in the old send-email Netlify function.
+//
+// FALLS BACK TO users.contact_email. A host who signed up with a phone number
+// has no address in auth.users — they gave one at their first booking instead,
+// and it lives on their profile. Every email in the app funnels through here,
+// so without this fallback a phone-signup host books successfully and then
+// silently receives nothing: no offer, no confirmation, no contract, no
+// planner link, no cancellation link. The failure is invisible on both sides,
+// which is what makes it worth the extra query.
 export async function resolveUserEmail(userId: string): Promise<string | null> {
   if (!userId) return null;
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (error || !data?.user?.email) return null;
-    return data.user.email;
+    if (!error && data?.user?.email) return data.user.email;
+
+    // No auth email — try the delivery address on their profile.
+    const { data: profile } = await admin
+      .from('users')
+      .select('contact_email')
+      .eq('id', userId)
+      .maybeSingle<{ contact_email: string | null }>();
+    const fallback = profile?.contact_email?.trim();
+    return fallback || null;
   } catch (e) {
     console.error('[resolveUserEmail] error', e);
     return null;
@@ -45,6 +61,10 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
 // JS SDK doesn't expose a filter param on listUsers (as of v2.x), so we
 // fetch pages of 1000 and bail as soon as we find the match. For a typical
 // site this completes in 1-2 page fetches.
+//
+// Also checks users.contact_email, so an address a phone-signup host gave at
+// booking still resolves to their account — otherwise the same person could
+// be handed a "create an account" link for an account they already have.
 export async function resolveUserIdByEmail(email: string): Promise<string | null> {
   if (!email) return null;
   const target = email.toLowerCase().trim();
@@ -58,14 +78,22 @@ export async function resolveUserIdByEmail(email: string): Promise<string | null
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
       if (error) {
         console.error('[resolveUserIdByEmail] listUsers error', error);
-        return null;
+        break;
       }
       const users = data?.users || [];
       const match = users.find((u) => (u.email || '').toLowerCase() === target);
       if (match) return match.id;
-      if (users.length < perPage) return null; // last page
+      if (users.length < perPage) break; // last page
     }
-    return null;
+
+    // Not an auth email — check profile delivery addresses.
+    const { data: profile } = await admin
+      .from('users')
+      .select('id')
+      .ilike('contact_email', target)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    return profile?.id || null;
   } catch (e) {
     console.error('[resolveUserIdByEmail] error', e);
     return null;

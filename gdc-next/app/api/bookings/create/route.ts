@@ -121,6 +121,39 @@ export async function POST(req: Request) {
     return bad('Invalid bookingType');
   }
 
+  /**
+   * Remember where to send this host's paperwork.
+   *
+   * Only ever called with a value when the account had no email — a host who
+   * signed up by phone. Written once and then reused forever, which is why the
+   * booking form only asks the first time.
+   *
+   * Deliberately does NOT overwrite an existing contact_email: if they already
+   * gave us one, a later booking shouldn't silently redirect their contracts
+   * to a different address just because they typed something else.
+   *
+   * Best-effort. A failed profile write must never lose a booking that already
+   * inserted — they can still be reached on the number they signed up with.
+   */
+  async function saveContactEmail(userId: string, email: string): Promise<void> {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    try {
+      const adminDb = createAdminClient();
+      const { data: existing } = await adminDb
+        .from('users')
+        .select('contact_email')
+        .eq('id', userId)
+        .maybeSingle<{ contact_email: string | null }>();
+      if (existing?.contact_email) return; // already known — leave it alone
+      await adminDb
+        .from('users')
+        .update({ contact_email: email } as unknown as never)
+        .eq('id', userId);
+    } catch (e) {
+      console.warn('[bookings/create] contact_email save failed:', e);
+    }
+  }
+
   const djId = str(body.djId);
   const dateKey = str(body.dateKey);
   if (!djId) return bad('Missing djId');
@@ -149,6 +182,10 @@ export async function POST(req: Request) {
   const venueName = str(body.venueName).trim();
   const venueAddress = str(body.venueAddress).trim();
   const phone = str(body.phone).trim();
+  // Sent only by hosts whose account has no email (phone signups). Stored on
+  // their profile so every email after this — offer, confirmation, contract,
+  // planner, cancellation — has somewhere to go. See the write below.
+  const contactEmail = str(body.contactEmail).trim().toLowerCase();
   const startTime = str(body.startTime);
   const endTime = str(body.endTime);
   const venueLat = numOrNull(body.venueLat);
@@ -393,6 +430,8 @@ export async function POST(req: Request) {
       return bad(insertError?.message || 'Booking insert failed.', 500);
     }
 
+    await saveContactEmail(user.id, contactEmail);
+
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
     return NextResponse.json({
@@ -592,6 +631,8 @@ export async function POST(req: Request) {
   if (insertError || !createdRow) {
     return bad(insertError?.message || 'Booking insert failed.', 500);
   }
+
+  await saveContactEmail(user.id, contactEmail);
 
   return NextResponse.json({
     ok: true,
