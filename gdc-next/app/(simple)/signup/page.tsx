@@ -760,13 +760,15 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
     </div>
   );
 
+  // No error state here any more — errors live inside HostCodeSignup, which
+  // clears its own when the method changes.
   const methodToggle = canChooseMethod ? (
     <div className={styles.methodRow}>
       {(['phone', 'email'] as const).map((m) => (
         <button
           key={m}
           type="button"
-          onClick={() => { setMethod(m); setError(null); }}
+          onClick={() => setMethod(m)}
           className={`${styles.methodBtn} ${method === m ? styles.methodBtnActive : ''}`}
         >
           {m === 'phone' ? 'Use my phone' : 'Use my email'}
