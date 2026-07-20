@@ -269,9 +269,18 @@
   background: rgba(255, 255, 255, .06);
 }
 
-/* ── Form fields ─────────────────────────────────────── */
+/* ── Form fields ─────────────────────────────────────────────────────
+   Field height comes from three numbers: the input's vertical padding,
+   the gap under the label, and the gap between groups. Tightened from
+   12/8/20 — the form had grown enough rows that the old spacing pushed
+   the submit button below the fold on a laptop, and a signup you have
+   to scroll to finish reads as longer than it is.
+
+   Padding stays at 10px rather than going lower: these are full-width
+   targets, but much under ~38px total and they start to feel fiddly on
+   a phone. */
 .formGroup {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .formGroup label {
   display: block;
@@ -280,12 +289,12 @@
   letter-spacing: 0.15em;
   color: var(--white);
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .formGroup input,
 .formGroup select {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 13px;
   background: var(--deep);
   border: 1px solid rgba(255, 255, 255, .25);
   border-radius: 6px;
@@ -321,7 +330,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 10px 13px;
   background: var(--deep);
   border: 1px solid rgba(255, 255, 255, .25);
   border-radius: 6px;
@@ -389,7 +398,7 @@
 /* ── Submit button + alerts ──────────────────────────── */
 .submitBtn {
   width: 100%;
-  padding: 14px;
+  padding: 13px;
   background: var(--neon);
   color: var(--black);
   border: none;
@@ -401,6 +410,7 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: opacity .2s;
+  margin-top: 4px;
 }
 .submitBtn:hover:not(:disabled) {
   opacity: .85;
@@ -410,10 +420,10 @@
   cursor: not-allowed;
 }
 .alert {
-  padding: 12px 14px;
+  padding: 10px 13px;
   border-radius: 6px;
   font-size: 13px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .alertError {
   background: rgba(255, 95, 95, .1);
@@ -429,7 +439,7 @@
 /* ── Bottom links ────────────────────────────────────── */
 .divider {
   text-align: center;
-  margin: 25px 0 0 0;
+  margin: 20px 0 0 0;
   color: var(--muted);
   font-size: 13px;
 }
