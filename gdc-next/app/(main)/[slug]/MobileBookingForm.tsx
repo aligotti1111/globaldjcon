@@ -27,6 +27,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './mobileBookingForm.module.css';
 import {
   type BookingSettings,
@@ -117,6 +118,11 @@ export default function MobileBookingForm({
   onClose,
   onSubmitted,
 }: Props) {
+  // Full profile from auth context. The `currentUser` prop is a narrowed
+  // { id, email, name } from the calendar; anything outside those three fields
+  // has to come from here.
+  const { user: authUser } = useAuth();
+
   // ── Form state ────────────────────────────────────────────────────
   /**
    * Prefilled from the number on the account when there is one.
@@ -135,8 +141,15 @@ export default function MobileBookingForm({
    * an obviously broken one because nobody proofreads a prefilled field.
    */
   const accountPhone = (() => {
-    const digits = ((currentUser as { sms_phone?: string | null }).sms_phone || '')
-      .replace(/\D/g, '');
+    // NOT from the currentUser prop. The calendars that render this form pass
+    // a hand-picked { id, email, name } — sms_phone isn't in it and never was,
+    // so reading it from the prop silently produced an empty string. Widening
+    // that prop would mean editing both the mobile and desktop calendars;
+    // the auth context already has the full profile right here.
+    // sms_phone postdates the CurrentUser type, so it's cast rather than
+    // regenerating types for one field.
+    const stored = (authUser as { sms_phone?: string | null } | null)?.sms_phone || '';
+    const digits = stored.replace(/\D/g, '');
     const ten = digits.length === 11 && digits.startsWith('1')
       ? digits.slice(1)
       : digits;
@@ -163,7 +176,9 @@ export default function MobileBookingForm({
    * Hosts who already have an email never see this field.
    */
   const [contactEmail, setContactEmail] = useState('');
-  const needsEmail = !((currentUser.email || '').trim());
+  // Same reasoning as the phone: prefer the full profile, fall back to the
+  // narrowed prop so this still behaves if the context isn't there.
+  const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
   const [eventType, setEventType] = useState('');
   // Promo code entry (client-typed). appliedCode is set only after a valid
   // code is confirmed via Apply; the actual discount is the better of an
