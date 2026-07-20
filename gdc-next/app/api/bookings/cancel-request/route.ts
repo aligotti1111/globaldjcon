@@ -48,6 +48,8 @@ interface BookingRow {
   requester_id: string | null;
   status: string | null;
   event_date: string | null;
+  booking_type: string | null;
+  set_type: string | null;
   cancel_status: string | null;
   cancel_requested_by: string | null;
   cancel_token: string | null;
@@ -55,7 +57,91 @@ interface BookingRow {
 }
 
 const SELECT =
-  'id, dj_id, requester_id, status, event_date, cancel_status, cancel_requested_by, cancel_token, cancel_token_expires_at';
+  'id, dj_id, requester_id, status, event_date, booking_type, set_type, cancel_status, cancel_requested_by, cancel_token, cancel_token_expires_at';
+
+/**
+ * Give the DJ their slot back.
+ *
+ * Approving a booking spends capacity: a mobile DJ's day counter drops by one
+ * (users.booking_settings.mob_booking_days[date].bookings_available) and the
+ * day is flagged `booked` when it hits zero; a club DJ's date is simply flagged
+ * booked. See /api/booking-approve, which this is the exact inverse of.
+ *
+ * If cancelling didn't undo that, a DJ who takes two events a day and loses one
+ * would be stuck at one for that date forever — the calendar would keep telling
+ * the world they're full on a night they're free. The whole point of a
+ * cancellation is that the night is available again.
+ *
+ * Deliberately does NOT touch `unavailable`: that's the DJ blocking the day
+ * themselves, and it has nothing to do with this booking.
+ *
+ * Best-effort — a calendar write that fails must never leave the booking
+ * half-cancelled, so this throws nothing.
+ */
+async function releaseCalendarSlot(
+  admin: SupabaseClient,
+  booking: BookingRow,
+): Promise<void> {
+  if (!booking.dj_id || !booking.event_date) return;
+  try {
+    const { data: djRow } = await admin
+      .from('users')
+      .select('booking_settings')
+      .eq('id', booking.dj_id)
+      .single<{ booking_settings: string | null }>();
+
+    let bs: {
+      mob_bookings_per_day?: number;
+      mob_booking_days?: Record<string, {
+        bookings_available?: number;
+        booked?: boolean;
+        unavailable?: boolean;
+      }>;
+      booking_days?: Record<string, { booked?: boolean; unavailable?: boolean }>;
+    } = {};
+    if (djRow?.booking_settings) {
+      try {
+        bs = JSON.parse(djRow.booking_settings);
+      } catch {
+        return; // Unreadable settings — leave them alone rather than clobber.
+      }
+    }
+
+    // Same club test the approve route uses: club bookings always carry a
+    // set_type, and booking_type is authoritative when present.
+    const isClubBooking = booking.booking_type === 'club' || !!booking.set_type;
+
+    if (isClubBooking) {
+      if (!bs.booking_days) bs.booking_days = {};
+      const existing = bs.booking_days[booking.event_date] || {};
+      bs.booking_days[booking.event_date] = { ...existing, booked: false };
+    } else {
+      const defaultPerDay = bs.mob_bookings_per_day || 1;
+      if (!bs.mob_booking_days) bs.mob_booking_days = {};
+      const dayData = bs.mob_booking_days[booking.event_date] || {};
+      const current = dayData.bookings_available != null
+        ? dayData.bookings_available
+        : defaultPerDay;
+      // Hand back one slot, but never more than the DJ's own per-day setting —
+      // otherwise repeated cancels on a date could inflate capacity past what
+      // the DJ ever agreed to work.
+      const newCount = Math.min(defaultPerDay, current + 1);
+      bs.mob_booking_days[booking.event_date] = {
+        ...dayData,
+        bookings_available: newCount,
+        // There's room again by definition, so the day is not full.
+        booked: false,
+      };
+    }
+
+    await admin
+      .from('users')
+      .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
+      .eq('id', booking.dj_id);
+  } catch (e) {
+    console.warn('releaseCalendarSlot failed:', e);
+  }
+}
 
 /** Cloudflare swallows 502s, so every failure here is a 500. */
 function fail(message: string, status = 400) {
@@ -230,6 +316,12 @@ export async function POST(req: Request) {
   if (error) {
     console.error('cancel response update failed:', error);
     return fail('Could not save your answer. Please try again.', 500);
+  }
+
+  // The date is free again — put the slot back on the DJ's calendar so they can
+  // fill it. Only on accept: a declined request changed nothing.
+  if (accepted) {
+    await releaseCalendarSlot(admin, booking);
   }
 
   try {
