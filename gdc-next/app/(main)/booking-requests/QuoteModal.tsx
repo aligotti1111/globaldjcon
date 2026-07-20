@@ -85,6 +85,11 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
       ? String(Math.round(Number(booking.offer_discount_pct)))
       : ''
   );
+  // The discount box stays hidden behind a link until the DJ wants it —
+  // opens automatically when re-editing an offer that already has one.
+  const [showDiscount, setShowDiscount] = useState(
+    booking.offer_discount_pct != null && Number(booking.offer_discount_pct) > 0
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -587,46 +592,72 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           </div>
         )}
 
-        {/* Event price — the single all-in number, placed after the coverage
-            list so it reads as "…and here's the price for all of that". */}
+        {/* Event price — half-width, with the optional discount box opening
+            beside it rather than taking its own full row. */}
         <div className={styles.counterFormGroup}>
-          <label className={styles.counterFormLabel}>{priceLabel}</label>
-          <div className={styles.counterAmountRow}>
-            <span className={styles.counterCurrencySym}>$</span>
-            <input
-              type="number"
-              onWheel={(e) => e.currentTarget.blur()}
-              min="0"
-              placeholder="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className={styles.counterAmountInput}
-            />
-          </div>
-        </div>
+          <div style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-end' }}>
+            <div style={{ width: showDiscount ? '50%' : '50%' }}>
+              <label className={styles.counterFormLabel}>{priceLabel}</label>
+              <div className={styles.counterAmountRow}>
+                <span className={styles.counterCurrencySym}>$</span>
+                <input
+                  type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
+                  min="0"
+                  placeholder="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className={styles.counterAmountInput}
+                />
+              </div>
+            </div>
 
-        {/* Optional discount — a straight percentage off the Event Price. The
-            booker sees it as its own line on their bill, so it reads as a
-            deal rather than just a lower number. */}
-        <div className={styles.counterFormGroup}>
-          <label className={styles.counterFormLabel}>
-            Discount <span className={styles.counterFormOpt}>(optional)</span>
-          </label>
-          <select
-            value={discountPct}
-            // Same guard as the money inputs: a focused dropdown will change
-            // its own value when the mouse wheel passes over it. Blur on wheel
-            // so scrolling the modal can never silently alter the discount.
-            onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) => setDiscountPct(e.target.value)}
-            className={styles.counterAmountInput}
-            style={{ width: '100%', padding: '.55rem .6rem' }}
+            {showDiscount && (
+              <div style={{ width: '50%' }}>
+                <label className={styles.counterFormLabel}>Discount</label>
+                <div className={styles.counterAmountRow}>
+                  <select
+                    value={discountPct}
+                    // Same guard as the money inputs: a focused dropdown changes
+                    // its own value when the mouse wheel passes over it. Blur on
+                    // wheel so scrolling can never silently alter the discount.
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(e) => setDiscountPct(e.target.value)}
+                    className={styles.counterAmountInput}
+                    style={{ width: '100%', padding: '.5rem .4rem' }}
+                  >
+                    <option value="">—</option>
+                    {Array.from({ length: 100 }, (_, i) => i + 1).map((p) => (
+                      <option key={p} value={String(p)}>{p}%</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Neon link toggles the discount box open / closed. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (showDiscount) setDiscountPct('');
+              setShowDiscount(!showDiscount);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              marginTop: '.5rem',
+              color: 'var(--neon)',
+              fontSize: '.72rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
           >
-            <option value="">No discount</option>
-            {Array.from({ length: 100 }, (_, i) => i + 1).map((p) => (
-              <option key={p} value={String(p)}>{p}% off</option>
-            ))}
-          </select>
+            {showDiscount ? 'Remove discount' : '+ Add discount'}
+          </button>
+
           {discountAmount > 0 && (
             <div className={styles.depositPreview}>
               Takes ${discountAmount.toLocaleString()} off — new price ${netPriceNum.toLocaleString()}
@@ -635,9 +666,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         </div>
 
         {/* Overtime — mobile DJ only. Club bar/club bookings don't use
-            overtime rates per spec. */}
+            overtime rates per spec. Half width to match Event Price. */}
         {!isClubBooking && (
-          <div className={styles.counterFormGroup}>
+          <div className={styles.counterFormGroup} style={{ width: '50%' }}>
             <label className={styles.counterFormLabel}>Hourly Overtime Rate</label>
             <div className={styles.counterAmountRow}>
               <span className={styles.counterCurrencySym}>$</span>
