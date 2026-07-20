@@ -459,13 +459,15 @@ function billBreakdownBox(
     rows.push(row('Package price', money(basePrice)));
     if (cocktailAdd > 0) rows.push(row('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
     if (ceremonyAdd > 0) rows.push(row('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
-    rows.push(row('Subtotal', money(subtotal), { top: true }));
   } else {
     rows.push(row('Event price', money(subtotal)));
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
   rows.push(row('Total', money(total), { bold: true, top: true }));
   if (depAmt > 0) {
+    // Visual break so the payment schedule reads as its own section, not
+    // as more line items rolling into the Total above it.
+    rows.push('<tr><td colspan="2" style="height:14px;line-height:14px;font-size:0;">&nbsp;</td></tr>');
     rows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt), { top: true }));
     rows.push(row('Balance due day of event', money(balance), { bold: true }));
   }
