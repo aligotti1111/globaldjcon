@@ -1943,9 +1943,18 @@ function BookingRow({
   return (
     <div
       className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
-      // Cancelled rows are dimmed rather than removed: still readable, clearly
-      // not live work. Inline so no CSS-module change is needed.
-      style={isCancelled ? { opacity: 0.55 } : undefined}
+      // A cancelled row is LIT, not dimmed. Fading it treats the news as less
+      // important than the rows around it, when it's the one thing on this
+      // screen the DJ most needs to notice — a night they'd otherwise still be
+      // planning for. Red wash + a red edge, at full opacity.
+      style={
+        isCancelled
+          ? {
+              background: 'rgba(192,57,43,.10)',
+              boxShadow: 'inset 3px 0 0 #ff5f5f',
+            }
+          : undefined
+      }
     >
       {/*
         THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
@@ -2340,9 +2349,9 @@ function BookingRow({
             <span
               title="This booking was cancelled"
               style={{
-                background: 'rgba(192,57,43,.18)',
-                border: '1px solid rgba(255,118,118,.55)',
-                color: '#ff7676',
+                background: '#c0392b',
+                border: '1px solid #ff7676',
+                color: '#fff',
                 fontWeight: 800,
                 fontSize: '.58rem',
                 letterSpacing: '.06em',
