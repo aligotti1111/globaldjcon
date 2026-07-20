@@ -8,10 +8,10 @@
 //      - ZIP-code → city/state autofill via Nominatim (DJ + Venue)
 //   3. Success screen ("Check your email") with token-based verification email
 //
-// HOSTS CAN NOW SIGN UP WITH A PHONE NUMBER. The host form gets a
-// phone/email toggle; the phone half lives in HostPhoneSignup.tsx so this
-// file doesn't grow a second signup mechanism inside an existing component.
-// DJ and Venue signup are untouched — they still require email + password.
+// HOSTS HAVE NO PASSWORD. The host form offers phone or email, and either
+// way it's a 6-digit code — see HostCodeSignup.tsx. DJ and Venue signup are
+// untouched: they still use email + password, because they're in the app
+// daily and their browser remembers it.
 //
 // QUERY PARAMS (booking-claim flow):
 //   ?email=<addr>            — prefill the email field
@@ -34,7 +34,7 @@ import {
 } from './helpers';
 import { SlugInput, type SlugStatus } from './SlugInput';
 import { ZipLookup } from './ZipLookup';
-import HostPhoneSignup from './HostPhoneSignup';
+import HostCodeSignup from './HostCodeSignup';
 import styles from './signup.module.css';
 
 // localStorage key used by AuthProvider to claim the booking after the
@@ -215,11 +215,12 @@ export default function SignupPage() {
             onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
           />
         )}
+        {/* No onSuccess: a host signup ends signed in and navigates away,
+            rather than handing back to the "check your email" screen. */}
         {screen === 'host' && (
           <HostForm
             onBack={() => setScreen('type-select')}
             onSwitchType={(t) => setScreen(t)}
-            onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
             prefillEmail={prefillEmail}
             lockedEmail={lockedEmail}
           />
@@ -687,26 +688,20 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
 //
 // The only form with two ways in. Name and Country are shared; below them the
 // host picks Phone (a texted code, no password) or Email (what already
-// existed). The phone half is HostPhoneSignup — kept separate so this
-// component doesn't end up with two unrelated submit paths tangled together.
+// Both halves are HostCodeSignup — kept separate so this component doesn't
+// end up with two unrelated submit paths tangled together.
 // ──────────────────────────────────────────────────────────────────────────
 
-function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }: {
+function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
   onBack: () => void;
   onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
-  onSuccess: (info: SuccessInfo) => void;
   // Email prefilled from URL (booking-invite flow). When `lockedEmail` is
   // true the email field is readOnly — used when the user arrived via a
   // claim_booking link so we don't pair the booking with a different email.
   prefillEmail?: string;
   lockedEmail?: boolean;
 }) {
-  const supabase = createClient();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState(prefillEmail || '');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   // Not asked any more (see sharedFields). Written as null rather than
   // defaulted to 'United States' — a made-up country is worse than an absent
@@ -715,15 +710,15 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
   // at the point it needs it.
   const country: string | null = null;
 
-  // Email is the default: it's the path that already existed, and it's the
-  // only one a locked-email invite can use.
+  // Email is the default: it's the path most hosts will reach for, and it's
+  // the only one a locked-email invite can use.
   const [method, setMethod] = useState<'email' | 'phone'>('email');
   // A claim_booking invite is pinned to one address. Offering phone there
   // would let someone create an account the invitation can't attach to.
   const canChooseMethod = !lockedEmail;
 
-  // Where a phone signup lands afterwards. Phone signups finish signed in, so
-  // unlike email there's no "check your inbox" screen in between.
+  // Both paths finish signed in — there's no "check your inbox" screen in
+  // between any more — so the form needs somewhere to send them.
   const destination = (() => {
     if (typeof window === 'undefined') return '/';
     const r = new URLSearchParams(window.location.search).get('redirect');
@@ -731,60 +726,15 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
     return r;
   })();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!name.trim() || !email.trim() || !password) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const emailLower = email.toLowerCase().trim();
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: emailLower,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/account-settings?emailverified=1`,
-          data: { role: 'host', name, country },
-        },
-      });
-      if (signUpError) {
-        if (/already registered|already been registered|User already/i.test(signUpError.message)) {
-          throw new Error('An account with this email already exists. Please log in instead.');
-        }
-        throw signUpError;
-      }
-      if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
-        throw new Error('An account with this email already exists. Please log in instead.');
-      }
-
-      if (signUpData?.user?.id) {
-        await supabase.from('users').upsert({
-          id: signUpData.user.id,
-          role: 'host',
-          name,
-          country,
-          email_verified: false,
-          signup_method: 'email',
-        } as unknown as never, { onConflict: 'id' });
-
-        triggerSignupVerification(signUpData.user.id, emailLower, 'host', null);
-      }
-
-      onSuccess({ email: emailLower, role: 'host', slug: null, userId: signUpData?.user?.id ?? null });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Signup failed';
-      setError(msg);
-      setSubmitting(false);
-    }
-  }
+  // NO PASSWORD, EITHER WAY. Hosts sign in rarely — they book, then come back
+  // weeks later for the planner — and a password invented once and never used
+  // is a password they've forgotten. Both paths are now identifier → code,
+  // handled by HostCodeSignup. DJ and Venue signup below keep email+password:
+  // they're in the app daily and their browser remembers it.
+  //
+  // This also retires /api/signup-send-verification for hosts. Typing a code
+  // mailed to an address proves the same thing the link was proving, without
+  // leaving the page.
 
   // Asked once, used by both paths — so it sits above the method choice
   // rather than being duplicated inside each branch.
@@ -825,67 +775,24 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
     </div>
   ) : null;
 
-  // ── PHONE ────────────────────────────────────────────────────────
-  if (method === 'phone') {
-    return (
-      <div>
-        <BackButton onClick={onBack} />
-        <TypeBadge current="host" onSwitch={onSwitchType} />
-        {methodToggle}
-        {sharedFields}
-        <HostPhoneSignup name={name} country={country} destination={destination} />
-      </div>
-    );
-  }
-
-  // ── EMAIL — unchanged from before, plus signup_method on the row ──
+  // Both paths are the same shape now, so there's one return rather than a
+  // branch per method — the only thing that differs is which identifier
+  // HostCodeSignup asks for.
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
       {methodToggle}
-
-      {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
-
       {sharedFields}
-
-      <div className={styles.formGroup}>
-        <label htmlFor="host-email">Email Address</label>
-        <input
-          id="host-email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          readOnly={!!lockedEmail}
-          autoComplete="email"
-          style={lockedEmail ? { background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' } : undefined}
-        />
-        {lockedEmail && (
-          <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-            Email is locked to match your booking invitation.
-          </small>
-        )}
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="host-password">Password</label>
-        <input
-          id="host-password"
-          type="password"
-          placeholder="Minimum 8 characters"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="new-password"
-        />
-      </div>
-
-      <button type="submit" className={styles.submitBtn} disabled={submitting}>
-        {submitting ? 'Creating Account...' : 'Create Party / Event Host Account'}
-      </button>
-    </form>
+      <HostCodeSignup
+        method={method}
+        name={name}
+        country={country}
+        prefillEmail={prefillEmail}
+        lockedEmail={lockedEmail}
+        destination={destination}
+      />
+    </div>
   );
 }
 
