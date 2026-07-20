@@ -118,7 +118,38 @@ export default function MobileBookingForm({
   onSubmitted,
 }: Props) {
   // ── Form state ────────────────────────────────────────────────────
-  const [phone, setPhone] = useState('');
+  /**
+   * Prefilled from the number on the account when there is one.
+   *
+   * A host who signed up by phone already proved they hold that number three
+   * minutes ago — asking them to type it again is the app forgetting something
+   * it was just told. Still editable: the booking contact might legitimately
+   * be a different number than the one they log in with.
+   *
+   * Runs through the same formatter as typed input so a stored "+19175551234"
+   * shows as "(917) 555-1234" rather than raw E.164.
+   *
+   * The leading country code has to come off FIRST. formatUSPhone only strips
+   * non-digits, so handing it 11 digits shifts every group left and produces
+   * "(191) 755-5123" — a plausible-looking wrong number, which is worse than
+   * an obviously broken one because nobody proofreads a prefilled field.
+   */
+  const accountPhone = (() => {
+    const digits = ((currentUser as { sms_phone?: string | null }).sms_phone || '')
+      .replace(/\D/g, '');
+    const ten = digits.length === 11 && digits.startsWith('1')
+      ? digits.slice(1)
+      : digits;
+    return ten.length === 10 ? formatUSPhone(ten) : '';
+  })();
+  const [phone, setPhone] = useState(accountPhone);
+  /**
+   * Whether the number came from the ACCOUNT — not whether the field happens
+   * to have something in it. Deriving this from `phone` looked equivalent and
+   * wasn't: a host with no stored number would type one digit, this would flip
+   * true, and the input they were mid-way through typing into would disappear.
+   */
+  const knownPhone = accountPhone !== '';
   /**
    * Where this booking's paperwork gets sent.
    *
@@ -734,21 +765,37 @@ export default function MobileBookingForm({
 
         {errorMsg && <div className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
 
-        {/* Phone */}
+        {/* Phone — shown as plain text when we already have it from the
+            account. Nothing to fill in, so nothing that looks fillable: an
+            empty-looking input next to a number they just proved they own
+            reads as another thing to do. */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-phone">Phone Number</label>
-          <FieldCheck valid={phoneValid}>
-            <input
-              id="mpf-phone"
-              type="tel"
-              inputMode="tel"
-              placeholder="(555) 555-5555"
-              value={phone}
-              onChange={handlePhoneChange}
-              className={`${fieldClass('mpf-phone', styles.input)} ${styles.hasCheck}`}
-              autoComplete="tel"
-            />
-          </FieldCheck>
+          {knownPhone ? (
+            <div
+              style={{
+                padding: '.55rem 0',
+                color: 'var(--white,#fff)',
+                fontSize: '.95rem',
+                fontWeight: 600,
+              }}
+            >
+              {phone}
+            </div>
+          ) : (
+            <FieldCheck valid={phoneValid}>
+              <input
+                id="mpf-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(555) 555-5555"
+                value={phone}
+                onChange={handlePhoneChange}
+                className={`${fieldClass('mpf-phone', styles.input)} ${styles.hasCheck}`}
+                autoComplete="tel"
+              />
+            </FieldCheck>
+          )}
         </div>
 
         {/* Email — ONLY for accounts that don't have one (phone signups).
