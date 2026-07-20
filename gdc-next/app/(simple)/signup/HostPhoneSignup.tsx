@@ -29,7 +29,8 @@ export function toE164(raw: string): string | null {
 interface Props {
   /** Collected by the parent before this component is reached. */
   name: string;
-  country: string;
+  /** Null — host signup no longer asks. Kept so the column stays writable. */
+  country: string | null;
   /** Where to send them once they're in. */
   destination: string;
 }

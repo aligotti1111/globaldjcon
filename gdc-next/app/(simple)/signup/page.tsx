@@ -705,9 +705,15 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
   const [name, setName] = useState('');
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
-  const [country, setCountry] = useState('United States');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Not asked any more (see sharedFields). Written as null rather than
+  // defaulted to 'United States' — a made-up country is worse than an absent
+  // one, because later code can't tell the difference between a guess and a
+  // fact. If something ever genuinely needs a host's country, it should ask
+  // at the point it needs it.
+  const country: string | null = null;
 
   // Email is the default: it's the path that already existed, and it's the
   // only one a locked-email invite can use.
@@ -729,7 +735,7 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
     e.preventDefault();
     setError(null);
 
-    if (!name.trim() || !email.trim() || !password || !country) {
+    if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all fields.');
       return;
     }
@@ -780,33 +786,28 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
     }
   }
 
-  // Asked once, used by both paths — so they sit above the method choice
+  // Asked once, used by both paths — so it sits above the method choice
   // rather than being duplicated inside each branch.
+  //
+  // COUNTRY WAS HERE AND IS GONE. The reason given for asking was to scope the
+  // venue-address autocomplete on the booking form — but that form hardcodes
+  // its own country to 'us' and never reads this value, and it has its own
+  // country picker sitting next to the address field. So it was a required
+  // dropdown between a host and their account, collected for a job it wasn't
+  // doing. (Defaulting that picker from the DJ's country is the real fix; the
+  // DJ is who the event is for. That's a separate change.)
   const sharedFields = (
-    <>
-      <div className={styles.formGroup}>
-        <label htmlFor="host-name">Your Name</label>
-        <input
-          id="host-name"
-          type="text"
-          placeholder="Jane Smith"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="host-country">Country</label>
-        <select
-          id="host-country"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          required
-        >
-          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-        </select>
-      </div>
-    </>
+    <div className={styles.formGroup}>
+      <label htmlFor="host-name">Your Name</label>
+      <input
+        id="host-name"
+        type="text"
+        placeholder="Jane Smith"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+    </div>
   );
 
   const methodToggle = canChooseMethod ? (
