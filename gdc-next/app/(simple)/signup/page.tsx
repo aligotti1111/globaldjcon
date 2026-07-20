@@ -811,25 +811,13 @@ function HostForm({ onBack, onSwitchType, onSuccess, prefillEmail, lockedEmail }
   );
 
   const methodToggle = canChooseMethod ? (
-    <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
+    <div className={styles.methodRow}>
       {(['phone', 'email'] as const).map((m) => (
         <button
           key={m}
           type="button"
           onClick={() => { setMethod(m); setError(null); }}
-          style={{
-            flex: 1,
-            padding: '.6rem',
-            borderRadius: 6,
-            fontWeight: 700,
-            fontSize: '.8rem',
-            cursor: 'pointer',
-            border: method === m
-              ? '1px solid var(--neon)'
-              : '1px solid rgba(255,255,255,.18)',
-            background: method === m ? 'rgba(0,224,164,.10)' : 'transparent',
-            color: method === m ? 'var(--neon)' : 'var(--muted)',
-          }}
+          className={`${styles.methodBtn} ${method === m ? styles.methodBtnActive : ''}`}
         >
           {m === 'phone' ? 'Use my phone' : 'Use my email'}
         </button>

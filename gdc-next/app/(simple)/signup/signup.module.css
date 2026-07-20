@@ -276,9 +276,11 @@
    the submit button below the fold on a laptop, and a signup you have
    to scroll to finish reads as longer than it is.
 
-   Padding stays at 10px rather than going lower: these are full-width
-   targets, but much under ~38px total and they start to feel fiddly on
-   a phone. */
+   EVERY field row uses this same 8px/13px padding — inputs, selects, the
+   DJ-type buttons, and the host's phone/email toggle. They sit directly
+   above and below each other, so a few pixels of difference reads as
+   misalignment rather than hierarchy. .methodBtn below exists purely so the
+   toggle inherits the number instead of carrying its own. */
 .formGroup {
   margin-bottom: 14px;
 }
@@ -294,7 +296,7 @@
 .formGroup input,
 .formGroup select {
   width: 100%;
-  padding: 10px 13px;
+  padding: 8px 13px;
   background: var(--deep);
   border: 1px solid rgba(255, 255, 255, .25);
   border-radius: 6px;
@@ -318,6 +320,39 @@
   padding-right: 40px;
 }
 
+/* ── Host phone/email toggle ─────────────────────────────────────────
+   Same padding as every other field row so it lines up with the inputs
+   below it. Was inline-styled at .6rem, which was close enough to look
+   like a mistake rather than a choice. */
+.methodRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.methodBtn {
+  flex: 1;
+  padding: 8px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  background: var(--deep);
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.methodBtn:hover {
+  border-color: var(--neon);
+  color: var(--white);
+}
+.methodBtnActive {
+  border-color: var(--neon);
+  background: rgba(0, 245, 196, .08);
+  color: var(--neon);
+}
+
 /* ── DJ-type pill buttons (Mobile / Club) ────────────── */
 .typeBtnGroup {
   display: flex;
@@ -330,7 +365,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 13px;
+  padding: 8px 13px;
   background: var(--deep);
   border: 1px solid rgba(255, 255, 255, .25);
   border-radius: 6px;
@@ -420,7 +455,7 @@
   cursor: not-allowed;
 }
 .alert {
-  padding: 10px 13px;
+  padding: 8px 13px;
   border-radius: 6px;
   font-size: 13px;
   margin-bottom: 14px;
