@@ -67,20 +67,12 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // package's snapshotted overtime_rate (or counter_rate).
   const [overtime, setOvertime] = useState('');
   const [message, setMessage] = useState(booking.counter_message || '');
+  // Cocktail hour and ceremony are shown here for CONTEXT ONLY. An offer is a
+  // single all-in number — the DJ prices the whole night in one box and these
+  // extras are understood to be covered by it. (Package-priced bookings still
+  // itemize add-ons; that path is unchanged.)
   const hasCocktail = !!booking.cocktail_needed;
-  const [cocktailIncluded, setCocktailIncluded] = useState(
-    booking.cocktail_included == null ? true : booking.cocktail_included
-  );
-  const [cocktailPrice, setCocktailPrice] = useState(
-    booking.cocktail_price != null ? String(booking.cocktail_price) : ''
-  );
   const hasCeremony = !!booking.ceremony_needed;
-  const [ceremonyIncluded, setCeremonyIncluded] = useState(
-    booking.ceremony_included == null ? true : booking.ceremony_included
-  );
-  const [ceremonyPrice, setCeremonyPrice] = useState(
-    booking.ceremony_price != null ? String(booking.ceremony_price) : ''
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,20 +97,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // total, matching the public booking form and /api/bookings/create.
   // Legacy rows with no snapshot keep the old pre-tax behavior (taxPct 0).
   const priceNum = parseFloat(price);
-  // Wedding add-ons the DJ is charging extra for. These sit ON TOP of the
-  // Event Price, exactly like the public booking form: the taxable subtotal
-  // is base + cocktail + ceremony, and that combined figure is what gets
-  // stored as quoted_rate (the emailed bill itemizes back out of it).
-  const cocktailAddNum = (!isClubBooking && hasCocktail && !cocktailIncluded)
-    ? parseFloat(cocktailPrice)
-    : NaN;
-  const cocktailAdd = !isNaN(cocktailAddNum) && cocktailAddNum > 0 ? cocktailAddNum : 0;
-  const ceremonyAddNum = (!isClubBooking && hasCeremony && !ceremonyIncluded)
-    ? parseFloat(ceremonyPrice)
-    : NaN;
-  const ceremonyAdd = !isNaN(ceremonyAddNum) && ceremonyAddNum > 0 ? ceremonyAddNum : 0;
-  const basePriceNum = !isNaN(priceNum) && priceNum > 0 ? priceNum : 0;
-  const subtotalNum = Number((basePriceNum + cocktailAdd + ceremonyAdd).toFixed(2));
+  // One number, no add-on math: whatever the DJ types is the all-in price
+  // for everything listed in this modal.
+  const subtotalNum = !isNaN(priceNum) && priceNum > 0 ? Number(priceNum.toFixed(2)) : 0;
   // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
   // (the agreement point for a request-price booking). Otherwise fall back to
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
@@ -147,21 +128,13 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in.');
 
-      // Cocktail values — only relevant if booking includes cocktail hour
-      // (mobile DJ only). Forced null for club bookings.
-      let cocktailPriceFinal: number | null = null;
-      if (!isClubBooking && hasCocktail && !cocktailIncluded) {
-        const cp = parseFloat(cocktailPrice);
-        cocktailPriceFinal = !isNaN(cp) && cp > 0 ? cp : null;
-      }
+      // An offer is a single all-in price, so there are no separate add-on
+      // charges to store. Mark cocktail/ceremony as INCLUDED (price null) —
+      // that's what makes the emailed bill say "includes cocktail hour /
+      // music for ceremony" under one Event price instead of itemizing.
+      const cocktailPriceFinal: number | null = null;
+      const ceremonyPriceFinal: number | null = null;
 
-      // Ceremony values — only relevant if booking includes ceremony music
-      // (mobile DJ only). Forced null for club bookings.
-      let ceremonyPriceFinal: number | null = null;
-      if (!isClubBooking && hasCeremony && !ceremonyIncluded) {
-        const cp = parseFloat(ceremonyPrice);
-        ceremonyPriceFinal = !isNaN(cp) && cp > 0 ? cp : null;
-      }
 
       // Overtime — mobile DJ only; clubs don't use overtime per spec.
       const overtimeNum = parseFloat(overtime);
@@ -217,9 +190,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
-        cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
+        cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
-        ceremony_included: !isClubBooking && hasCeremony ? ceremonyIncluded : null,
+        ceremony_included: !isClubBooking && hasCeremony ? true : null,
         status: nextStatus,
         ...(nextStatus === 'counter' ? { negotiation_log: negotiationLog } : {}),
         updated_at: new Date().toISOString(),
@@ -242,9 +215,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
         cocktail_price: cocktailPriceFinal,
-        cocktail_included: !isClubBooking && hasCocktail ? cocktailIncluded : null,
+        cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
-        ceremony_included: !isClubBooking && hasCeremony ? ceremonyIncluded : null,
+        ceremony_included: !isClubBooking && hasCeremony ? true : null,
         status: nextStatus,
         negotiation_log: negotiationLog,
         updated_at: new Date().toISOString(),
@@ -556,65 +529,69 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           </div>
         </div>
 
-        {/* Cocktail pricing — mobile DJ weddings only. */}
-        {!isClubBooking && hasCocktail && (
+        {/* What the price covers — read-only. Cocktail hour and ceremony are
+            listed so the DJ can see what they're pricing, but they have no
+            separate money box: the single Event Price above covers them. */}
+        {!isClubBooking && (hasCocktail || hasCeremony) && (
           <div className={styles.cocktailBox}>
-            <div className={styles.cocktailHeader}>🍸 Cocktail Hour Pricing</div>
-            <label className={styles.cocktailCheckLabel}>
-              <input
-                type="checkbox"
-                checked={cocktailIncluded}
-                onChange={(e) => setCocktailIncluded(e.target.checked)}
-                style={{ accentColor: 'var(--neon)', width: 15, height: 15 }}
-              />
-              <span>Included in package price</span>
-            </label>
-            {!cocktailIncluded && (
-              <div className={styles.counterAmountRow} style={{ marginTop: '.6rem' }}>
-                <span className={styles.counterCurrencySym}>$</span>
-                <input
-                  type="number"
-                  onWheel={(e) => e.currentTarget.blur()}
-                  min="0"
-                  placeholder="0"
-                  value={cocktailPrice}
-                  onChange={(e) => setCocktailPrice(e.target.value)}
-                  className={styles.counterAmountInput}
-                />
-                <span className={styles.counterCurrencyCode}>Add-on</span>
+            <div className={styles.cocktailHeader}>Your price also covers</div>
+            {hasCeremony && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  padding: '.3rem 0',
+                  fontSize: '.78rem',
+                  color: 'rgba(255,255,255,.85)',
+                }}
+              >
+                <span>💍 Music for ceremony</span>
+                <span style={{ color: 'var(--muted)' }}>
+                  {[
+                    booking.ceremony_start_time ? formatTime12(booking.ceremony_start_time) : null,
+                    booking.ceremony_same_room == null
+                      ? null
+                      : booking.ceremony_same_room ? 'Same room' : 'Different room',
+                  ].filter(Boolean).join(' · ')}
+                </span>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Ceremony pricing — mobile DJ weddings only. */}
-        {!isClubBooking && hasCeremony && (
-          <div className={styles.cocktailBox}>
-            <div className={styles.cocktailHeader}>💍 Music For Ceremony Pricing</div>
-            <label className={styles.cocktailCheckLabel}>
-              <input
-                type="checkbox"
-                checked={ceremonyIncluded}
-                onChange={(e) => setCeremonyIncluded(e.target.checked)}
-                style={{ accentColor: 'var(--neon)', width: 15, height: 15 }}
-              />
-              <span>Included in package price</span>
-            </label>
-            {!ceremonyIncluded && (
-              <div className={styles.counterAmountRow} style={{ marginTop: '.6rem' }}>
-                <span className={styles.counterCurrencySym}>$</span>
-                <input
-                  type="number"
-                  onWheel={(e) => e.currentTarget.blur()}
-                  min="0"
-                  placeholder="0"
-                  value={ceremonyPrice}
-                  onChange={(e) => setCeremonyPrice(e.target.value)}
-                  className={styles.counterAmountInput}
-                />
-                <span className={styles.counterCurrencyCode}>Add-on</span>
+            {hasCocktail && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  padding: '.3rem 0',
+                  fontSize: '.78rem',
+                  color: 'rgba(255,255,255,.85)',
+                }}
+              >
+                <span>🍸 Cocktail hour</span>
+                <span style={{ color: 'var(--muted)' }}>
+                  {[
+                    booking.cocktail_start_time ? formatTime12(booking.cocktail_start_time) : null,
+                    booking.cocktail_same_room == null
+                      ? null
+                      : booking.cocktail_same_room ? 'Same room' : 'Different room',
+                  ].filter(Boolean).join(' · ')}
+                </span>
               </div>
             )}
+            <div
+              style={{
+                marginTop: '.5rem',
+                paddingTop: '.5rem',
+                borderTop: '1px solid rgba(255,255,255,.12)',
+                fontSize: '.7rem',
+                lineHeight: 1.45,
+                color: 'var(--muted)',
+              }}
+            >
+              Your Event Price is the all-in quote — it covers the reception plus
+              everything listed here. No separate add-on charges.
+            </div>
           </div>
         )}
 
@@ -700,17 +677,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   <span>{val}</span>
                 </div>
               );
-              const hasAddOns = cocktailAdd > 0 || ceremonyAdd > 0;
               const rows = [];
-              if (hasAddOns) {
-                rows.push(line(isClubBooking ? 'Rate' : 'Package price', money(basePriceNum)));
-                if (cocktailAdd > 0) rows.push(line('Cocktail hour', `+${money(cocktailAdd)}`, { muted: true }));
-                if (ceremonyAdd > 0) rows.push(line('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
-              } else {
-                rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(basePriceNum)));
-              }
+              rows.push(line(isClubBooking ? 'Rate' : 'Event price', money(subtotalNum)));
               if (quoteTaxAmount > 0) {
-                rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount), { top: hasAddOns }));
+                rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount)));
               }
               rows.push(
                 line('Total', quoteTotalWithTax != null ? money(quoteTotalWithTax) : '—', {
@@ -730,6 +700,25 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   ),
                 );
               }
+              rows.push(
+                <div
+                  key="__allin"
+                  style={{
+                    marginTop: '.55rem',
+                    paddingTop: '.5rem',
+                    borderTop: '1px solid rgba(255,255,255,.12)',
+                    fontSize: '.7rem',
+                    lineHeight: 1.45,
+                    color: 'var(--muted)',
+                  }}
+                >
+                  This total quote covers everything listed above
+                  {!isClubBooking && (hasCocktail || hasCeremony)
+                    ? `, including ${[hasCeremony ? 'music for the ceremony' : null, hasCocktail ? 'cocktail hour' : null].filter(Boolean).join(' and ')}`
+                    : ''}
+                  .
+                </div>,
+              );
               return rows;
             })()}
           </div>

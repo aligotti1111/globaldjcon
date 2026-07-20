@@ -432,6 +432,11 @@ function billBreakdownBox(
     totalWithTax?: number | null;
     depositPct?: number | null;
     depositAmount?: number | null;
+    // The booking has these extras but they carry NO separate charge — they're
+    // bundled into the one price. Rendered as a muted "Includes…" note under
+    // the price line instead of as add-on rows.
+    bundledCocktail?: boolean;
+    bundledCeremony?: boolean;
   },
   sym: string,
   currency: string,
@@ -443,8 +448,13 @@ function billBreakdownBox(
   const ceremonyAdd = b.ceremonyPrice != null ? Number(b.ceremonyPrice) : 0;
   const taxAmt = b.taxAmount != null ? Number(b.taxAmount) : 0;
   const depAmt = b.depositAmount != null ? Number(b.depositAmount) : 0;
+  // Extras the price already covers (no separate charge) — noted, not itemized.
+  const bundled = [
+    b.bundledCeremony && ceremonyAdd <= 0 ? 'music for the ceremony' : null,
+    b.bundledCocktail && cocktailAdd <= 0 ? 'cocktail hour' : null,
+  ].filter(Boolean) as string[];
   // Nothing to break down → no box.
-  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0) return '';
+  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0 && bundled.length === 0) return '';
   const basePrice = subtotal - cocktailAdd - ceremonyAdd;
   const taxPct = b.taxPct != null ? Number(b.taxPct) : 0;
   const total = b.totalWithTax != null ? Number(b.totalWithTax) : subtotal + taxAmt;
@@ -461,6 +471,12 @@ function billBreakdownBox(
     if (ceremonyAdd > 0) rows.push(row('Music for ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
   } else {
     rows.push(row('Event price', money(subtotal)));
+  }
+  if (bundled.length > 0) {
+    const list = bundled.length === 2 ? `${bundled[0]} and ${bundled[1]}` : bundled[0];
+    rows.push(
+      `<tr><td colspan="2" style="padding:2px 0 8px;color:#888;font-size:13px;font-style:italic;">Includes ${list} — no extra charge.</td></tr>`,
+    );
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
   rows.push(row('Total', money(total), { bold: true, top: true }));
@@ -492,10 +508,11 @@ async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
+      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
+        cocktail_needed: boolean | null; ceremony_needed: boolean | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
         dj_id: string | null; booking_type: string | null;
@@ -532,12 +549,16 @@ async function billBreakdownForBooking(
         quotedRate: rate,
         taxPct, taxAmount: taxAmt, totalWithTax: total,
         depositPct: depPct, depositAmount: depAmt,
+        bundledCocktail: !!data.cocktail_needed,
+        bundledCeremony: !!data.ceremony_needed,
       }, currencySymbol(cur), cur);
     }
     return billBreakdownBox({
       quotedRate: data.quoted_rate,
       cocktailPrice: data.cocktail_price,
       ceremonyPrice: data.ceremony_price,
+      bundledCocktail: !!data.cocktail_needed,
+      bundledCeremony: !!data.ceremony_needed,
       taxPct: data.tax_pct,
       taxAmount: data.tax_amount,
       totalWithTax: data.total_with_tax,
@@ -1326,6 +1347,8 @@ export async function POST(req: Request) {
       totalWithTax: booking.total_with_tax,
       depositPct: booking.deposit_pct,
       depositAmount: booking.deposit_amount,
+      bundledCocktail: !!booking.cocktail_needed,
+      bundledCeremony: !!booking.ceremony_needed,
     }, sym, currency);
 
     const infoCard = mobileBookingRequestBox({
