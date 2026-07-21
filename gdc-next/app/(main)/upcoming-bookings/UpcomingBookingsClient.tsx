@@ -135,6 +135,9 @@ export default function UpcomingBookingsClient({
   // booking cards show the deposit even when it wasn't stored per-booking —
   // matching what the contract applies.
   const [clubDepositPct, setClubDepositPct] = useState<number>(0);
+  // Mobile equivalent. Was never read: nothing on this page needed it until
+  // the manual-booking form started seeding its deposit toggle from settings.
+  const [mobDepositPct, setMobDepositPct] = useState<number>(0);
   // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
   // on cards for both DJ types.
   const [taxPct, setTaxPct] = useState<number>(0);
@@ -176,6 +179,9 @@ export default function UpcomingBookingsClient({
         if (djType === 'club') {
           const v = Number(bs?.club_deposit_pct);
           if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
+        } else {
+          const v = Number((bs as { mob_deposit_pct?: number })?.mob_deposit_pct);
+          if (Number.isFinite(v) && v > 0) setMobDepositPct(v);
         }
         if (bs?.tax_enabled) {
           const t = Number(bs?.tax_pct);
@@ -540,6 +546,9 @@ export default function UpcomingBookingsClient({
           existing={editing}
           focusHost={focusHost}
           prefillDate={prefillDate}
+          taxEnabledDefault={taxPct > 0}
+          taxPctDefault={taxPct}
+          depositPctDefault={djType === 'club' ? clubDepositPct : mobDepositPct}
           onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); setFocusHost(false); }}
           onAdded={handleAdded}
           onUpdated={handleUpdated}
@@ -3760,6 +3769,7 @@ function formatLongDate(d: string): string {
 function AddManualBookingModal({
   userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
   existing, focusHost, prefillDate, onClose, onAdded, onUpdated,
+  taxEnabledDefault = false, taxPctDefault = 0, depositPctDefault = 0,
 }: {
   userId: string;
   djType: 'club' | 'mobile';
@@ -3769,6 +3779,11 @@ function AddManualBookingModal({
   mobPackages: Record<string, MobilePackage[]> | null;
   existingBookings: UpcomingBooking[];
   existing: UpcomingBooking | null;
+  /** From the DJ's booking settings — the starting position of the two
+   *  toggles below, not a constraint. Either can be flipped per booking. */
+  taxEnabledDefault?: boolean;
+  taxPctDefault?: number;
+  depositPctDefault?: number;
   /**
    * Opened via "Add host details…" rather than the pencil. Scrolls to the Host
    * Details block, focuses Host Name, and calls the block out — the modal opens
@@ -3979,6 +3994,170 @@ function AddManualBookingModal({
     existing?.offer_amount != null ? String(existing.offer_amount) : '',
   );
   const [rateCurrency, setRateCurrency] = useState<string>(existing?.currency || 'USD');
+
+  // ── Sales tax + deposit ───────────────────────────────────────────
+  //
+  // A manual booking is still a booking: the DJ is owed the same tax and will
+  // ask for the same deposit as they would on one that came through the site.
+  // Leaving these off meant a manually-added event quietly under-quoted itself
+  // against every other row in the list.
+  //
+  // Defaults come from the DJ's settings, but BOTH directions are editable:
+  //   - Tax on by default, this one's out of state → switch it off
+  //   - No deposit normally, but this client is new → switch it on here
+  //
+  // When editing, the booking's own frozen values win. Manual bookings are
+  // often entered after the fact, and re-opening one shouldn't silently
+  // re-price it against whatever the settings happen to say today.
+  const [applyTax, setApplyTax] = useState<boolean>(
+    existing ? (existing.tax_pct != null && Number(existing.tax_pct) > 0) : taxEnabledDefault,
+  );
+  const [taxPctStr, setTaxPctStr] = useState<string>(
+    existing?.tax_pct != null ? String(existing.tax_pct) : (taxPctDefault ? String(taxPctDefault) : ''),
+  );
+  const [applyDeposit, setApplyDeposit] = useState<boolean>(
+    existing
+      ? (existing.deposit_pct != null && Number(existing.deposit_pct) > 0)
+      : depositPctDefault > 0,
+  );
+  const [depositPctStr, setDepositPctStr] = useState<string>(
+    existing?.deposit_pct != null ? String(existing.deposit_pct) : (depositPctDefault ? String(depositPctDefault) : ''),
+  );
+
+  /**
+   * The money, computed the same way the public booking form does it:
+   * tax on the rate, deposit on the tax-INCLUSIVE total. Getting that order
+   * wrong makes a manual booking's deposit disagree with an identical one
+   * booked through the site.
+   */
+  const moneyPreview = (() => {
+    const base = Number(rate.trim());
+    if (!Number.isFinite(base) || base <= 0) return null;
+    const tPct = applyTax ? Number(taxPctStr) || 0 : 0;
+    const taxAmount = tPct > 0 ? Number(((base * tPct) / 100).toFixed(2)) : 0;
+    const total = Number((base + taxAmount).toFixed(2));
+    const dPct = applyDeposit ? Number(depositPctStr) || 0 : 0;
+    const depositAmount = dPct > 0 ? Number(((total * dPct) / 100).toFixed(2)) : 0;
+    return { base, tPct, taxAmount, total, dPct, depositAmount, balance: Number((total - depositAmount).toFixed(2)) };
+  })();
+
+  const currencySym = rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : '$';
+  const money = (n: number) =>
+    `${currencySym}${n.toLocaleString(undefined, {
+      minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  /**
+   * Rendered under the rate field in both the club and mobile branches —
+   * defined once so the two can't drift apart, which is how the club form
+   * ends up quietly missing a feature the mobile one has.
+   *
+   * Hidden entirely until there's a rate. Tax and deposit on nothing is a
+   * pair of switches that do nothing.
+   */
+  const taxDepositBlock = (
+    <div
+      style={{
+        marginTop: '.75rem',
+        padding: '.75rem .85rem',
+        border: '1px solid rgba(255,255,255,.12)',
+        borderRadius: 8,
+        background: 'rgba(255,255,255,.02)',
+      }}
+    >
+      <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={applyTax}
+          onChange={(e) => setApplyTax(e.target.checked)}
+          style={{ accentColor: NEON, width: 15, height: 15 }}
+        />
+        <span style={{ fontSize: '.78rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
+          Apply sales tax
+        </span>
+        {applyTax && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', marginLeft: 'auto' }}>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.001"
+              value={taxPctStr}
+              onChange={(e) => setTaxPctStr(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              placeholder="0"
+              style={{
+                width: 74, padding: '.3rem .45rem', textAlign: 'right',
+                background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.18)',
+                borderRadius: 5, color: 'var(--white,#fff)', fontSize: '.78rem',
+              }}
+            />
+            <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>%</span>
+          </span>
+        )}
+      </label>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: 'pointer', marginTop: '.55rem' }}>
+        <input
+          type="checkbox"
+          checked={applyDeposit}
+          onChange={(e) => setApplyDeposit(e.target.checked)}
+          style={{ accentColor: NEON, width: 15, height: 15 }}
+        />
+        <span style={{ fontSize: '.78rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
+          Require a deposit
+        </span>
+        {applyDeposit && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', marginLeft: 'auto' }}>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="100"
+              value={depositPctStr}
+              onChange={(e) => setDepositPctStr(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              placeholder="0"
+              style={{
+                width: 74, padding: '.3rem .45rem', textAlign: 'right',
+                background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.18)',
+                borderRadius: 5, color: 'var(--white,#fff)', fontSize: '.78rem',
+              }}
+            />
+            <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>%</span>
+          </span>
+        )}
+      </label>
+
+      {moneyPreview && (moneyPreview.taxAmount > 0 || moneyPreview.depositAmount > 0) && (
+        <div style={{ marginTop: '.6rem', paddingTop: '.55rem', borderTop: '1px solid rgba(255,255,255,.1)', fontSize: '.75rem' }}>
+          {moneyPreview.taxAmount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
+              <span>Sales tax ({moneyPreview.tPct}%)</span>
+              <span>{money(moneyPreview.taxAmount)}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--white,#fff)', fontWeight: 700 }}>
+            <span>Total</span>
+            <span>{money(moneyPreview.total)}</span>
+          </div>
+          {moneyPreview.depositAmount > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
+                <span>Deposit ({moneyPreview.dPct}%)</span>
+                <span>{money(moneyPreview.depositAmount)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--white,#fff)', fontWeight: 700 }}>
+                <span>Balance day of event</span>
+                <span>{money(moneyPreview.balance)}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
@@ -4248,8 +4427,16 @@ function AddManualBookingModal({
         requester_name: hostName.trim() || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
+        // Frozen at save, exactly like a site booking — so a later settings
+        // change can't re-price an event that already happened. Nulls when
+        // switched off, which is what every display surface tests for.
+        tax_pct: moneyPreview && moneyPreview.tPct > 0 ? moneyPreview.tPct : null,
+        tax_amount: moneyPreview && moneyPreview.taxAmount > 0 ? moneyPreview.taxAmount : null,
+        total_with_tax: moneyPreview && moneyPreview.taxAmount > 0 ? moneyPreview.total : null,
+        deposit_pct: moneyPreview && moneyPreview.dPct > 0 ? moneyPreview.dPct : null,
+        deposit_amount: moneyPreview && moneyPreview.depositAmount > 0 ? moneyPreview.depositAmount : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
@@ -4560,6 +4747,7 @@ function AddManualBookingModal({
                     <option value="AUD">AUD</option>
                   </select>
                 </div>
+                {rate.trim() !== '' && taxDepositBlock}
               </label>
             )}
           </div>
@@ -4758,6 +4946,7 @@ function AddManualBookingModal({
                       </div>
                     </div>
                   )}
+                  {rate.trim() !== '' && taxDepositBlock}
                 </div>
               </div>
               {/* Package details — shown indented/smaller, editable for THIS
@@ -4854,7 +5043,7 @@ function AddManualBookingModal({
               padding: '.9rem',
             } : undefined}
           >
-            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: flagHost ? 1 : 0.55, marginBottom: '.55rem' }}>
+            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: flagHost ? 1 : 0.55, marginBottom: '.3rem' }}>
               Host Details{' '}
               {flagHost
                 ? <span style={{ color: '#ff5656', fontWeight: 700 }}>(required)</span>
@@ -4878,16 +5067,15 @@ function AddManualBookingModal({
               // The "tick Send booking details" half is gone and shouldn't come
               // back — the checkbox ticks itself now, so it was telling the DJ
               // to do something the form had already done.
-              <div style={{ color: '#ff8a8a', fontSize: '.76rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
-                Add the host&rsquo;s full name and email to send a contract or request a deposit.
+              <div style={{ color: '#ff8a8a', fontSize: '.74rem', lineHeight: 1.4, marginBottom: '.45rem' }}>
+                Email and Full Name needed to send booking details, contract, or request deposit.
               </div>
             ) : (
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.5, marginBottom: '.7rem' }}>
-                Needed to send a contract or request a deposit. Leave blank if you just want the
-                date held.
+              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.4, marginBottom: '.45rem' }}>
+                Email and Full Name needed to send booking details, contract, or request deposit.
               </div>
             )}
-            <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <label className={styles.field} style={{ flex: '1 1 130px', minWidth: 0 }}>
                 {/* "Full name", not "Name" — this goes on the contract. A DJ
                     typing "Jordan" here is putting "Jordan" on a signed
