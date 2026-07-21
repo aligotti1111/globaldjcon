@@ -361,6 +361,10 @@ function LoginForm() {
                 required
                 autoComplete="username"
               />
+              <small style={{ display: 'block', marginTop: '.45rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.45 }}>
+                Enter the email or phone you used when you created your account.
+                A 6-digit login code will be sent to you.
+              </small>
             </div>
 
             <button
@@ -507,13 +511,14 @@ function LoginForm() {
           </form>
         )}
 
-        <div className={styles.links}>
-          <Link href="/forgot-password">Forgot Password?</Link>
-        </div>
+        {/* Forgot Password removed: the code IS the recovery path. A host has
+            no password to forget; a DJ who forgot theirs taps "Send Me a Code",
+            gets in, and can reset it from account settings. The link only
+            duplicated that, less directly.
 
-        <div className={styles.divider}>
-          Don&apos;t have an account? <Link href="/signup">Sign up</Link>
-        </div>
+            "Sign up" link removed too — the Login / Sign Up tabs sit right at
+            the top of this same card, so a second sign-up prompt at the bottom
+            pointed at a control already on screen. */}
 
         <div className={styles.contactLink}>
           <Link href="/contact">Contact Us</Link>
