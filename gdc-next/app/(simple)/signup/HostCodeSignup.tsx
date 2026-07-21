@@ -301,6 +301,38 @@ export default function HostCodeSignup({
   }
 
   // ── Identifier entry ──────────────────────────────────────────────
+
+  // The alternative channel, sitting on the bottom lip of the identifier box
+  // rather than as a choice presented up front. Underline on hover is state
+  // rather than a CSS class: it's the only element on the page that needs it,
+  // and a one-off rule in a shared stylesheet is a thing nobody can later tell
+  // is a one-off. Focus is wired alongside hover so a keyboard sees the same
+  // feedback a mouse does.
+  const switchLink = canSwitchMethod && onSwitchMethod ? (
+    <button
+      type="button"
+      onClick={() => { onSwitchMethod(); setError(null); }}
+      onMouseEnter={() => setSwitchHover(true)}
+      onMouseLeave={() => setSwitchHover(false)}
+      onFocus={() => setSwitchHover(true)}
+      onBlur={() => setSwitchHover(false)}
+      style={{
+        display: 'block',
+        marginTop: '.4rem',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        color: 'var(--muted)',
+        fontSize: '.72rem',
+        fontWeight: 600,
+        cursor: 'pointer',
+        textDecoration: switchHover ? 'underline' : 'none',
+      }}
+    >
+      {isPhone ? 'Switch to email' : 'Switch to phone'}
+    </button>
+  ) : null;
+
   return (
     <>
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
@@ -318,6 +350,7 @@ export default function HostCodeSignup({
             required
             autoComplete="tel"
           />
+          {switchLink}
         </div>
       ) : (
         <div className={styles.formGroup}>
@@ -338,6 +371,7 @@ export default function HostCodeSignup({
               Email is locked to match your booking invitation.
             </small>
           )}
+          {switchLink}
         </div>
       )}
 
@@ -353,36 +387,6 @@ export default function HostCodeSignup({
       <p style={{ marginTop: '.6rem', color: 'var(--muted)', fontSize: '.7rem', textAlign: 'center' }}>
         No password needed.
       </p>
-
-      {/* The alternative channel, offered quietly at the bottom rather than as
-          a choice up front. Underline appears on hover — done with state
-          rather than a CSS class because this is the only element on the page
-          that needs it, and a one-off rule in a shared stylesheet is a thing
-          nobody can later tell is a one-off. */}
-      {canSwitchMethod && onSwitchMethod && (
-        <p style={{ marginTop: '.5rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => { onSwitchMethod(); setError(null); }}
-            onMouseEnter={() => setSwitchHover(true)}
-            onMouseLeave={() => setSwitchHover(false)}
-            onFocus={() => setSwitchHover(true)}
-            onBlur={() => setSwitchHover(false)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              color: 'var(--muted)',
-              fontSize: '.72rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              textDecoration: switchHover ? 'underline' : 'none',
-            }}
-          >
-            {isPhone ? 'Switch to email' : 'Switch to phone'}
-          </button>
-        </p>
-      )}
     </>
   );
 }
