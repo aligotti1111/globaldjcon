@@ -781,22 +781,12 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
     </div>
   );
 
-  // No error state here any more — errors live inside HostCodeSignup, which
-  // clears its own when the method changes.
-  const methodToggle = canChooseMethod ? (
-    <div className={styles.methodRow}>
-      {(['phone', 'email'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => setMethod(m)}
-          className={`${styles.methodBtn} ${method === m ? styles.methodBtnActive : ''}`}
-        >
-          {m === 'phone' ? 'Use my phone' : 'Use my email'}
-        </button>
-      ))}
-    </div>
-  ) : null;
+  // THE TWO-BUTTON TOGGLE IS GONE. It sat above the form asking people to
+  // pick a channel before they'd been told what the form wanted, which is a
+  // decision presented before the context needed to make it. Email is now
+  // simply the default — it's what every later step (offer, contract, planner,
+  // cancellation) actually runs on — and switching moved to a quiet link at
+  // the bottom, where an alternative belongs. See HostCodeSignup.
 
   // Both paths are the same shape now, so there's one return rather than a
   // branch per method — the only thing that differs is which identifier
@@ -805,7 +795,6 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
     <div>
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
-      {methodToggle}
       {sharedFields}
       <HostCodeSignup
         method={method}
@@ -815,6 +804,10 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
         lockedEmail={lockedEmail}
         destination={destination}
         onNameError={setNameError}
+        // Hidden on a claim_booking invite: that flow is pinned to one address,
+        // and a phone signup couldn't be attached to the invitation.
+        canSwitchMethod={canChooseMethod}
+        onSwitchMethod={() => setMethod((m) => (m === 'email' ? 'phone' : 'email'))}
       />
     </div>
   );

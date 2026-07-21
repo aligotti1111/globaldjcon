@@ -59,10 +59,18 @@ interface Props {
    * component still behaves standalone.
    */
   onNameError?: (msg: string | null) => void;
+  /**
+   * Whether the "switch to phone / email" link is offered at all. False on a
+   * claim_booking invite, which is pinned to one address.
+   */
+  canSwitchMethod?: boolean;
+  /** Flip the parent's method. The parent owns it; this just asks. */
+  onSwitchMethod?: () => void;
 }
 
 export default function HostCodeSignup({
   method, name, country, prefillEmail, lockedEmail, destination, onNameError,
+  canSwitchMethod, onSwitchMethod,
 }: Props) {
   const supabase = createClient();
   const isPhone = method === 'phone';
@@ -74,6 +82,9 @@ export default function HostCodeSignup({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  /** Hover/focus state for the switch link's underline. Focus is included so
+   *  it reacts to a keyboard the same way it reacts to a mouse. */
+  const [switchHover, setSwitchHover] = useState(false);
 
   /**
    * Whitespace collapsed once, here, so "Jane   Smith" doesn't reach the
@@ -342,6 +353,36 @@ export default function HostCodeSignup({
       <p style={{ marginTop: '.6rem', color: 'var(--muted)', fontSize: '.7rem', textAlign: 'center' }}>
         No password needed.
       </p>
+
+      {/* The alternative channel, offered quietly at the bottom rather than as
+          a choice up front. Underline appears on hover — done with state
+          rather than a CSS class because this is the only element on the page
+          that needs it, and a one-off rule in a shared stylesheet is a thing
+          nobody can later tell is a one-off. */}
+      {canSwitchMethod && onSwitchMethod && (
+        <p style={{ marginTop: '.5rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => { onSwitchMethod(); setError(null); }}
+            onMouseEnter={() => setSwitchHover(true)}
+            onMouseLeave={() => setSwitchHover(false)}
+            onFocus={() => setSwitchHover(true)}
+            onBlur={() => setSwitchHover(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'var(--muted)',
+              fontSize: '.72rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: switchHover ? 'underline' : 'none',
+            }}
+          >
+            {isPhone ? 'Switch to email' : 'Switch to phone'}
+          </button>
+        </p>
+      )}
     </>
   );
 }
