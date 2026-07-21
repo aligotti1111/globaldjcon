@@ -24,7 +24,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignupFlow } from '@/app/(simple)/signup/page';
+import { SignupFlow } from '@/app/(simple)/signup/SignupFlow';
 import InlineLoginForm from './InlineLoginForm';
 
 type Mode = 'signup' | 'login';
