@@ -46,10 +46,23 @@ interface Props {
   lockedEmail?: boolean;
   /** Where to send them once they're in. */
   destination: string;
+  /**
+   * Report a problem with the NAME back to whoever owns that field.
+   *
+   * The name input lives in the parent, above this component, so an error
+   * rendered down here appears below the box it's complaining about — the
+   * reader has to look past the field, read the message, then look back up.
+   * Handing it to the parent lets it sit directly above the input and turn
+   * the box red, which is where people already look for it.
+   *
+   * Optional: without it this falls back to its own error line, so the
+   * component still behaves standalone.
+   */
+  onNameError?: (msg: string | null) => void;
 }
 
 export default function HostCodeSignup({
-  method, name, country, prefillEmail, lockedEmail, destination,
+  method, name, country, prefillEmail, lockedEmail, destination, onNameError,
 }: Props) {
   const supabase = createClient();
   const isPhone = method === 'phone';
@@ -93,16 +106,26 @@ export default function HostCodeSignup({
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? { email: e } : null;
   }
 
+  /**
+   * Send a name problem to the field it belongs to, falling back to the local
+   * error line when nobody's listening.
+   */
+  function failName(msg: string) {
+    if (onNameError) onNameError(msg);
+    else setError(msg);
+  }
+
   async function sendCode() {
     setError(null);
-    if (!cleanName) { setError('Please enter your name first.'); return; }
+    onNameError?.(null);
     // Checked HERE, before the code goes out, rather than on the screen after
     // it. A host who's already read a text and typed six digits has moved on
     // from the name field; sending them back to it then reads as the form
     // moving the goalposts. The two messages are also different problems —
     // "you left it blank" and "we need your surname too" — so they're kept
     // apart rather than folded into one vague "check your name".
-    if (!isFullName(cleanName)) { setError(FULL_NAME_ERROR); return; }
+    if (!cleanName) { failName('Please enter your name.'); return; }
+    if (!isFullName(cleanName)) { failName(FULL_NAME_ERROR); return; }
     const to = target();
     if (!to) {
       setError(isPhone ? 'Enter a valid phone number.' : 'Enter a valid email address.');

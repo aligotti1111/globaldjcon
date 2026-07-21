@@ -702,6 +702,16 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
   lockedEmail?: boolean;
 }) {
   const [name, setName] = useState('');
+  /**
+   * A problem with the NAME specifically, raised by HostCodeSignup below.
+   *
+   * It lives up here rather than down there because the field does. An error
+   * rendered inside HostCodeSignup lands underneath the email box — below the
+   * input it's complaining about — so the reader has to scan past the field,
+   * read the message, then track back up to fix it. Here it sits directly
+   * above the box and turns the border red, which is where the eye already is.
+   */
+  const [nameError, setNameError] = useState<string | null>(null);
 
   // Not asked any more (see sharedFields). Written as null rather than
   // defaulted to 'United States' — a made-up country is worse than an absent
@@ -748,15 +758,26 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
   // DJ is who the event is for. That's a separate change.)
   const sharedFields = (
     <div className={styles.formGroup}>
+      {nameError && (
+        <div className={`${styles.alert} ${styles.alertError}`}>{nameError}</div>
+      )}
       <label htmlFor="host-name">Your Name</label>
       <input
         id="host-name"
         type="text"
         placeholder="Jane Smith"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        // Clear on the first keystroke. Leaving a red box under someone who is
+        // actively fixing the thing it's complaining about is just nagging.
+        onChange={(e) => { setName(e.target.value); setNameError(null); }}
         required
+        // Matches .urlPreviewInputTaken, the form's existing convention for a
+        // field that's wrong — same colour, so it reads as the same language.
+        style={nameError ? { borderColor: 'var(--error)' } : undefined}
       />
+      <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+        First and last name — this is the name that goes on your contracts.
+      </small>
     </div>
   );
 
@@ -793,6 +814,7 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
         destination={destination}
+        onNameError={setNameError}
       />
     </div>
   );
