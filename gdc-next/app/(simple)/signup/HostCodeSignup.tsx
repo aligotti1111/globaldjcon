@@ -23,6 +23,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
 import styles from './signup.module.css';
 
 /** Same E.164 shape the SMS helper and the lookup route use. */
@@ -61,6 +62,13 @@ export default function HostCodeSignup({
   const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
+  /**
+   * Whitespace collapsed once, here, so "Jane   Smith" doesn't reach the
+   * database with the extra spaces and then get printed onto a contract.
+   * Every write below uses this rather than the raw prop.
+   */
+  const cleanName = normalizeName(name);
+
   // Switching between phone and email mid-signup shouldn't strand the user on
   // a code screen for the channel they just abandoned.
   useEffect(() => {
@@ -87,7 +95,14 @@ export default function HostCodeSignup({
 
   async function sendCode() {
     setError(null);
-    if (!name.trim()) { setError('Please enter your name first.'); return; }
+    if (!cleanName) { setError('Please enter your name first.'); return; }
+    // Checked HERE, before the code goes out, rather than on the screen after
+    // it. A host who's already read a text and typed six digits has moved on
+    // from the name field; sending them back to it then reads as the form
+    // moving the goalposts. The two messages are also different problems —
+    // "you left it blank" and "we need your surname too" — so they're kept
+    // apart rather than folded into one vague "check your name".
+    if (!isFullName(cleanName)) { setError(FULL_NAME_ERROR); return; }
     const to = target();
     if (!to) {
       setError(isPhone ? 'Enter a valid phone number.' : 'Enter a valid email address.');
@@ -102,7 +117,7 @@ export default function HostCodeSignup({
         ...to,
         options: {
           shouldCreateUser: true,
-          data: { role: 'host', name, country },
+          data: { role: 'host', name: cleanName, country },
         },
       } as Parameters<typeof supabase.auth.signInWithOtp>[0]);
       if (otpErr) throw otpErr;
@@ -166,7 +181,7 @@ export default function HostCodeSignup({
       const { error: rowErr } = await supabase.from('users').upsert({
         id: data.user.id,
         role: 'host',
-        name,
+        name: cleanName,
         country,
         // Email path: they just typed a code sent to that address, which is
         // exactly what the old verification link was proving. Phone path: no
