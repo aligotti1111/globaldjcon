@@ -121,7 +121,13 @@ export default function BookingLoginGate({
           ✕
         </button>
 
-        <h2 className={styles.title}>Create your account</h2>
+        {/* Brand centered at top — same gradient wordmark as the header auth
+            modal, so the two account boxes match. Replaces the old "Create
+            your account" heading; the line below already says what this is. */}
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <span className="logo" style={{ fontSize: '2.3rem' }}>Global DJ Connect</span>
+        </div>
+
         {/* Names the DJ and the date so the box reads as a continuation of
             what they just clicked, not an interruption of it. */}
         <p className={styles.body}>

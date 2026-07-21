@@ -87,25 +87,12 @@ export default function AuthModal({
 
         {/* Brand, centered at the top. Uses the global "logo" class — the same
             gradient wordmark the site header renders — so it matches rather
-            than being a lookalike. */}
-        <div style={{ textAlign: 'center', marginBottom: '1.1rem' }}>
-          <span className="logo" style={{ fontSize: '1.35rem' }}>Global DJ Connect</span>
+            than being a lookalike. It's the box's heading now; the redundant
+            "Create your account / Sign in" line was removed because the two
+            tabs directly below already say which is which. */}
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+          <span className="logo" style={{ fontSize: '2.3rem' }}>Global DJ Connect</span>
         </div>
-
-        {/* Title, ABOVE the tabs — it frames the whole box, so it belongs over
-            the mode buttons rather than tucked between them and the form.
-            Tracks the mode so each tab gets its own heading. */}
-        <h2
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: '1.9rem',
-            letterSpacing: '.04em',
-            color: 'var(--white,#fff)',
-            margin: '0 0 1rem',
-          }}
-        >
-          {mode === 'login' ? 'Sign in' : 'Create your account'}
-        </h2>
 
         {/* Tab switch. Two buttons rather than a link so nobody leaves the
             page to get to the other mode. */}
