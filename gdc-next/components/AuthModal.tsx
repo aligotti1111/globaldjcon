@@ -85,6 +85,21 @@ export default function AuthModal({
           ✕
         </button>
 
+        {/* Title, ABOVE the tabs — it frames the whole box, so it belongs over
+            the mode buttons rather than tucked between them and the form.
+            Tracks the mode so each tab gets its own heading. */}
+        <h2
+          style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: '1.9rem',
+            letterSpacing: '.04em',
+            color: 'var(--white,#fff)',
+            margin: '0 0 1rem',
+          }}
+        >
+          {mode === 'login' ? 'Sign in' : 'Create your account'}
+        </h2>
+
         {/* Tab switch. Two buttons rather than a link so nobody leaves the
             page to get to the other mode. */}
         <div style={{ display: 'flex', gap: '.4rem', marginBottom: '1.25rem' }}>
@@ -109,22 +124,6 @@ export default function AuthModal({
             </button>
           ))}
         </div>
-
-        {/* Title. Without it the box opened straight onto "What kind of
-            account?" with no frame — it read as a fragment rather than a
-            deliberate window. Tracks the mode so the two tabs each get their
-            own heading. */}
-        <h2
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: '1.9rem',
-            letterSpacing: '.04em',
-            color: 'var(--white,#fff)',
-            margin: '0 0 1.1rem',
-          }}
-        >
-          {mode === 'login' ? 'Sign in' : 'Create your account'}
-        </h2>
 
         {mode === 'login' ? (
           <InlineLoginForm onDone={finish} />
