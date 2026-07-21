@@ -4149,12 +4149,15 @@ function AddManualBookingModal({
               <span>{money(moneyPreview.taxAmount)}</span>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--white,#fff)', fontWeight: 700 }}>
-            <span>Total</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: NEON, fontWeight: 700 }}>
+            <span>Total Cost</span>
             <span>{money(moneyPreview.total)}</span>
           </div>
+          {/* The payment schedule is its own thing — a gap and a rule so it
+              reads as "how it gets paid" rather than more line items rolling
+              into the total above. Mirrors the emailed bill. */}
           {moneyPreview.depositAmount > 0 && (
-            <>
+            <div style={{ marginTop: '.5rem', paddingTop: '.45rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
                 <span>Deposit ({moneyPreview.dPct}%)</span>
                 <span>{money(moneyPreview.depositAmount)}</span>
@@ -4163,7 +4166,7 @@ function AddManualBookingModal({
                 <span>Balance day of event</span>
                 <span>{money(moneyPreview.balance)}</span>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}
