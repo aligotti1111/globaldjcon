@@ -66,11 +66,18 @@ interface Props {
   canSwitchMethod?: boolean;
   /** Flip the parent's method. The parent owns it; this just asks. */
   onSwitchMethod?: () => void;
+  /**
+   * Called instead of navigating, once the account exists and the session is
+   * live. Supplied when this is embedded in a modal — a booking form sitting
+   * behind it would lose everything typed into it if we did a full page load.
+   * Without it, the standalone signup page behaviour is unchanged.
+   */
+  onDone?: () => void;
 }
 
 export default function HostCodeSignup({
   method, name, country, prefillEmail, lockedEmail, destination, onNameError,
-  canSwitchMethod, onSwitchMethod,
+  canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
   const isPhone = method === 'phone';
@@ -208,28 +215,57 @@ export default function HostCodeSignup({
         );
       }
 
-      // Written AFTER the session exists — RLS policies check auth.uid(), so
-      // an upsert sent before the session is live is rejected and the account
-      // ends up with no users row at all.
-      const e164 = isPhone ? (toE164(phone) as string) : null;
-      const { error: rowErr } = await supabase.from('users').upsert({
-        id: data.user.id,
-        role: 'host',
-        name: cleanName,
-        country,
-        // Email path: they just typed a code sent to that address, which is
-        // exactly what the old verification link was proving. Phone path: no
-        // email yet — they're asked at their first booking.
-        email_verified: !isPhone,
-        phone_verified: isPhone,
-        signup_method: method,
-        // Prefilled from the number they proved they own so notifications work
-        // without asking twice. A preference, not the credential.
-        ...(e164 ? { sms_phone: e164 } : {}),
-      } as unknown as never, { onConflict: 'id' });
-      if (rowErr) console.error('[signup] profile row failed:', rowErr);
+      // THIS USED TO BE AN UPSERT, AND THAT WAS DANGEROUS.
+      //
+      // signInWithOtp with shouldCreateUser does NOT fail when the identifier
+      // already belongs to somebody — it just signs that person in. So a DJ
+      // who wandered onto host signup and typed their own email got a code,
+      // got logged in, and then the upsert rewrote their row with
+      // role: 'host'. Their DJ account was demoted, silently, by a form that
+      // appeared to be creating a new account.
+      //
+      // Reachable before; much more reachable now that a signup box appears
+      // in front of every visitor trying to book. So: look first, and only
+      // write a profile for someone who genuinely doesn't have one. An
+      // existing account is left completely alone — they've simply logged in.
+      const { data: existingRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', data.user.id)
+        .maybeSingle<{ id: string }>();
+
+      if (!existingRow) {
+        // Written AFTER the session exists — RLS policies check auth.uid(), so
+        // an insert sent before the session is live is rejected and the
+        // account ends up with no users row at all.
+        const e164 = isPhone ? (toE164(phone) as string) : null;
+        const { error: rowErr } = await supabase.from('users').insert({
+          id: data.user.id,
+          role: 'host',
+          name: cleanName,
+          country,
+          // Email path: they just typed a code sent to that address, which is
+          // exactly what the old verification link was proving. Phone path: no
+          // email yet — they're asked at their first booking.
+          email_verified: !isPhone,
+          phone_verified: isPhone,
+          signup_method: method,
+          // Prefilled from the number they proved they own so notifications
+          // work without asking twice. A preference, not the credential.
+          ...(e164 ? { sms_phone: e164 } : {}),
+        } as unknown as never);
+        if (rowErr) console.error('[signup] profile row failed:', rowErr);
+      }
 
       // Ends signed in — no "check your email" step to wait on.
+      //
+      // Embedded in the booking modal, onDone closes it and lets the form
+      // open. A full page load there would throw away everything the visitor
+      // had already typed, which is the entire point of doing this inline.
+      if (onDone) {
+        onDone();
+        return;
+      }
       window.location.href = destination || '/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');

@@ -496,12 +496,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {saleActive && (
             <div
               style={{
-                position: 'absolute', top: 0, right: 0, zIndex: 6,
-                background: '#000000', color: 'var(--neon,#00e0a4)',
-                border: '1px solid var(--neon,#00e0a4)',
+                position: 'absolute', top: 62, right: 12, zIndex: 5,
+                background: 'var(--neon,#00e0a4)', color: '#06231b',
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
-                padding: '6px 14px', borderRadius: '0 0 0 12px',
+                padding: '5px 12px', borderRadius: 999,
                 boxShadow: '0 2px 10px rgba(0,0,0,.35)',
               }}
             >
@@ -546,9 +545,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   type="button"
                   onClick={() => setBannerModalOpen(true)}
                   className={styles.bannerEditBtn}
-                  // When the sale pill is pinned in the top-right corner, drop the
-                  // banner button down so the two never overlap.
-                  style={saleActive ? { top: 52, bottom: 'auto' } : undefined}
                   title="Edit banner"
                   aria-label="Edit banner"
                 >
@@ -847,7 +843,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 djId={data.id}
                 djSlug={effectiveSlug}
                 djName={data.name || ''}
-                isLoggedIn={isLoggedIn}
+                // isLoggedIn on its own is a SERVER value, fixed when the
+                // page was rendered. Someone who just made an account inside
+                // the booking gate is signed in, but that prop still says
+                // false — so the calendar would treat their next date tap as
+                // logged-out and put the signup box back in front of them,
+                // with no way through it. OR-ing in the live auth context
+                // fixes it here rather than in the calendar, which is only
+                // wrong because of what it's being told.
+                isLoggedIn={isLoggedIn || !!currentUser}
                 isOwnProfile={isOwnProfile}
                 selectedDate={clubSelectedDate}
                 onBookDate={(key) => {
@@ -890,6 +894,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   djSlug={effectiveSlug}
                   dateKey={clubLoginGateDate}
                   onClose={() => setClubLoginGateDate(null)}
+                  // Account is created inside the gate now, so we come out of
+                  // it signed in and still on this page. Close it and open the
+                  // booking form on the date they picked before signing up —
+                  // otherwise they're returned to the calendar to choose the
+                  // same date over again.
+                  onAuthed={(key) => {
+                    setClubLoginGateDate(null);
+                    setClubSelectedDate(key);
+                  }}
                 />
               )}
             </div>

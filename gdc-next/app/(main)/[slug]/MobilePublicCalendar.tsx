@@ -339,11 +339,17 @@ export default function MobilePublicCalendar({
       }
       setRollingActive(false);
     }
-    if (!isLoggedIn || !currentUser) {
-      // Logged-out: open the custom login gate modal. It explains who
-      // they're trying to book + what date, and gives Log In / Sign Up
-      // buttons that redirect back here with ?date=key&book=1 so the
-      // booking flow continues seamlessly after auth.
+    // DELIBERATELY NOT CHECKING isLoggedIn. That prop is rendered by the
+    // server and is fixed for the life of the page — it says what was true
+    // when the HTML was built. Someone who just created an account inside the
+    // gate is signed in, but isLoggedIn is still false, so testing it here
+    // would put the signup box in front of them a second time and there'd be
+    // no way past it. currentUser comes from the auth context, which updates
+    // the moment a session appears, so it's the one that can tell the truth
+    // about right now.
+    if (!currentUser) {
+      // Logged-out: open the booking gate. It names the DJ and the date, and
+      // creates the account inline — see BookingLoginGate.
       setLoginGateForDate(key);
       return;
     }
@@ -546,6 +552,19 @@ export default function MobilePublicCalendar({
           djSlug={djSlug}
           dateKey={loginGateForDate}
           onClose={() => setLoginGateForDate(null)}
+          // The account now gets made inside the gate, so when it finishes we
+          // are already signed in and still on this page. Close it and open
+          // the booking form for the date they picked before signing up —
+          // otherwise they'd land back on the calendar and have to tap the
+          // same date a second time, having just told us which one they want.
+          //
+          // No email_verified check here, unlike handleBookClick: a code was
+          // typed thirty seconds ago on whichever channel they chose, which is
+          // the proof that flag exists to represent.
+          onAuthed={(key) => {
+            setLoginGateForDate(null);
+            setSelectedDate(key);
+          }}
         />
       )}
 
