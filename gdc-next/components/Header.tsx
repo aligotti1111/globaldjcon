@@ -7,22 +7,13 @@
 //   DJ:      View My Profile + Update Profile + Bookings + Inbox + Log Out
 //   Others:  Bookings + Inbox + Settings (gear) + Log Out
 //   Admin:   Admin button (in addition to above based on role)
-//
-// Logged-OUT: Sign In / Create an Account now open a modal over the current
-// page (AuthModal) instead of navigating to /login and /signup. A visitor
-// browsing a DJ's profile who wants an account no longer loses the page they
-// were looking at. /login and /signup still exist as real pages for deep
-// links and redirects — this just stops the header from throwing people at
-// them.
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
-import AuthModal from './AuthModal';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
 
@@ -35,11 +26,6 @@ export default function Header() {
   // Pending bookings count — pending requests where I'm the DJ, plus
   // counters where I'm the booker. See useUnreadBookingCount.
   const bookingCount = useUnreadBookingCount();
-
-  // Which auth modal is open, if any. Null = closed. The header owns this
-  // because it owns the buttons that open it, and it's rendered once per
-  // page under (main)/layout, so one instance covers every page.
-  const [authModal, setAuthModal] = useState<null | 'login' | 'signup'>(null);
 
   const openMenu = () => {
     // Dispatch a custom event the MobileMenu component listens for.
@@ -191,24 +177,20 @@ export default function Header() {
             </>
           ) : (
             <>
-              {/* Open the modal over the current page rather than routing to
-                  /login — a logged-out visitor mid-browse keeps their place. */}
-              <button
-                type="button"
-                onClick={() => setAuthModal('login')}
+              <Link
+                href="/login"
                 className="btn btn-outline"
-                style={{ border: '1px solid' }}
+                style={{ textDecoration: 'none', border: '1px solid' }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" />
                 </svg>
                 <span className="btn-text">Sign In</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthModal('signup')}
+              </Link>
+              <Link
+                href="/signup"
                 className="btn btn-primary"
-                style={{ padding: '.7rem 1.3rem' }}
+                style={{ textDecoration: 'none', padding: '.7rem 1.3rem' }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -217,15 +199,11 @@ export default function Header() {
                   <line x1="23" y1="11" x2="17" y2="11" />
                 </svg>
                 <span className="btn-text">Create an Account</span>
-              </button>
+              </Link>
             </>
           )}
         </div>
       </div>
-
-      {authModal && (
-        <AuthModal initialMode={authModal} onClose={() => setAuthModal(null)} />
-      )}
     </header>
   );
 }
