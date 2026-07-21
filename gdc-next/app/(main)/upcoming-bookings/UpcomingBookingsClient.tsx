@@ -1937,7 +1937,16 @@ function BookingRow({
    */
   if (isCancelled) {
     for (const st of steps) {
-      st.actions = [];
+      // DOWNLOADS SURVIVE. Everything else on a cancelled booking is an action
+      // on a night that isn't happening — but a signed contract is a record,
+      // not a plan. Both cancellation emails tell the parties that cancelling
+      // does NOT void it, so the DJ has to be able to retrieve the thing we
+      // just told them still stands. Same for the audit log, which is the
+      // proof of who signed and when.
+      //
+      // My first version cleared actions wholesale and took Download with it,
+      // which meant the app said "this contract still applies" and then hid it.
+      st.actions = (st.actions ?? []).filter((a) => a.label.includes('Download'));
       st.overridable = false;
     }
   }
