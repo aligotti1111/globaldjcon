@@ -187,7 +187,12 @@ function emailTemplate(content: string): string {
 }
 
 function ctaButton(href: string, label: string): string {
-  return `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">${label}</a></td></tr></table>`;
+  // Wrapped in a padded div for the same reason offerButtons below does it:
+  // the button had `margin:0 auto` and nothing vertical, so it sat flush
+  // against whatever box preceded it — in the cancellation email it touched
+  // the Package panel with no gap at all. Padding on a wrapper, not margin on
+  // the table, because email clients collapse margins unreliably.
+  return `<div style="padding-top:20px;padding-bottom:4px;text-align:center;"><table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">${label}</a></td></tr></table></div>`;
 }
 
 // Three stacked action buttons for the booker's offer email: Approve
