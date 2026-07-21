@@ -28,6 +28,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/AuthProvider';
+import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
 import styles from './mobileBookingForm.module.css';
 import {
   type BookingSettings,
@@ -194,6 +195,32 @@ export default function MobileBookingForm({
   // Same reasoning as the phone: prefer the full profile, fall back to the
   // narrowed prop so this still behaves if the context isn't there.
   const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
+  /**
+   * The host's name, and whether we still need a usable one.
+   *
+   * A contract names two parties. Hosts were signing up with a first name
+   * only, and nothing noticed until a DJ went to generate the contract weeks
+   * later — by which point the host is long gone and the DJ is chasing them
+   * for a surname. Signup now requires both, but that does nothing for the
+   * accounts that already exist, and this form is the one place those hosts
+   * reliably come back to.
+   *
+   * Same shape as the phone above: when the account already has a full name we
+   * show it as plain text, because an empty-looking box next to something we
+   * already know reads as another chore. Only an incomplete name becomes a
+   * field.
+   */
+  const accountName = normalizeName(
+    (authUser as { name?: string | null } | null)?.name || currentUser.name || '',
+  );
+  const [fullName, setFullName] = useState(accountName);
+  /**
+   * Derived from the ACCOUNT, not from the input — the same trap `knownPhone`
+   * documents. Reading `isFullName(fullName)` here would make the field vanish
+   * the instant they typed the space before their surname, mid-word.
+   */
+  const needsFullName = !isFullName(accountName);
+  const fullNameValid = isFullName(fullName);
   const [eventType, setEventType] = useState('');
   // Promo code entry (client-typed). appliedCode is set only after a valid
   // code is confirmed via Apply; the actual discount is the better of an
@@ -398,12 +425,13 @@ export default function MobileBookingForm({
       // DIFFERENT address — not merely a valid-looking one. Comparing against
       // what was rejected means the ring stays on while they edit a character
       // and lifts the moment it's genuinely something else.
-      (errorFieldId === 'mpf-email' && emailValid && contactEmail.trim().toLowerCase() !== rejectedEmail);
+      (errorFieldId === 'mpf-email' && emailValid && contactEmail.trim().toLowerCase() !== rejectedEmail) ||
+      (errorFieldId === 'mpf-full-name' && fullNameValid);
     if (fixed) {
       setErrorFieldId(null);
       setErrorMsg(null);
     }
-  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
+  }, [errorFieldId, phone, fullNameValid, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
 
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -448,6 +476,11 @@ export default function MobileBookingForm({
       return true;
     };
 
+    if (needsFullName) {
+      const n = normalizeName(fullName);
+      if (!n && fail('Please enter your name.', 'mpf-full-name')) return;
+      if (!isFullName(n) && fail(FULL_NAME_ERROR, 'mpf-full-name')) return;
+    }
     if (!phone.trim() && fail('Please enter your phone number.', 'mpf-phone')) return;
     if (needsEmail) {
       const e = contactEmail.trim();
@@ -542,6 +575,10 @@ export default function MobileBookingForm({
           // Only sent when the account has none. The server writes it to
           // users.contact_email so every later email has somewhere to go.
           contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
+          // Only sent when the stored name was incomplete. The server writes
+          // it to users.name so the next booking — and the contract — has a
+          // surname to print without asking again.
+          fullName: needsFullName ? normalizeName(fullName) : null,
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
@@ -602,7 +639,7 @@ export default function MobileBookingForm({
             bookingId: json.id,
             djUserId: dj.id,
             djName: dj.name,
-            requesterName: currentUser.name,
+            requesterName: normalizeName(fullName) || currentUser.name,
             eventDate: dateKey,
             // Event type — already saved to the DB above. We pass either
             // the canonical type ('wedding', 'mitzvah', etc.) or the
@@ -660,7 +697,7 @@ export default function MobileBookingForm({
           body: JSON.stringify({
             type: 'booking_request_confirmation',
             requesterUserId: currentUser.id,
-            requesterName: currentUser.name,
+            requesterName: normalizeName(fullName) || currentUser.name,
             djName: dj.name,
             eventDate: dateKey,
             eventType: eventType === 'other'
@@ -823,6 +860,43 @@ export default function MobileBookingForm({
         {/* id is what the submit handler scrolls to when the server rejects
             something that doesn't map to a single field. */}
         {errorMsg && <div id="mpf-error" className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
+
+        {/* Your Name — the DJ's contract needs a first AND a last name, and
+            this is the last moment before one gets generated where the host is
+            actually here to supply it. Plain text when the account already has
+            a full one; a field only when it's short a surname. */}
+        <div className={styles.formRow}>
+          <label htmlFor="mpf-full-name">Your Name</label>
+          {!needsFullName ? (
+            <div
+              style={{
+                padding: '.55rem 0',
+                color: 'var(--white,#fff)',
+                fontSize: '.95rem',
+                fontWeight: 600,
+              }}
+            >
+              {accountName}
+            </div>
+          ) : (
+            <>
+              <FieldCheck valid={fullNameValid}>
+                <input
+                  id="mpf-full-name"
+                  type="text"
+                  placeholder="Jane Smith"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className={`${fieldClass('mpf-full-name', styles.input)} ${styles.hasCheck}`}
+                  autoComplete="name"
+                />
+              </FieldCheck>
+              <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+                First and last name — this is the name that goes on your contract.
+              </small>
+            </>
+          )}
+        </div>
 
         {/* Phone — shown as plain text when we already have it from the
             account. Nothing to fill in, so nothing that looks fillable: an

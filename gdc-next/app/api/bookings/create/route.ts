@@ -38,7 +38,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, resolveUserIdByEmail } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
   type BookingSettings,
   type MobilePackage,
@@ -53,6 +53,10 @@ import {
   buildEventDetails,
 } from '@/app/(main)/[slug]/mobileBookingForm';
 import { computeRate } from '@/app/(main)/[slug]/clubRate';
+import { isFullName, normalizeName } from '@/lib/fullName';
+// Shared with /api/account/contact-email — account settings had no check at
+// all, which let a host claim a DJ's address. One rule, two callers.
+import { contactEmailConflict } from '@/lib/contactEmail';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -121,41 +125,6 @@ export async function POST(req: Request) {
     return bad('Invalid bookingType');
   }
 
-  /**
-   * Is this email already spoken for by a DIFFERENT account?
-   *
-   * A host who signed up by phone is asked for an email at their first
-   * booking. Nothing stopped them typing an address that already belongs to
-   * somebody else — and it went through. The consequences are not cosmetic:
-   *
-   *   - Their contract, confirmation and planner link get mailed to a stranger
-   *   - resolveUserIdByEmail can resolve that address to either account
-   *   - At login, typing it is ambiguous
-   *
-   * So this runs BEFORE the booking inserts and refuses the whole request.
-   * Failing at submit is unpleasant; succeeding and then mailing someone
-   * else's contract is worse, and invisible to both of them.
-   *
-   * Checks auth emails and other profiles' contact_email. Returns the reason
-   * to refuse, or null to proceed.
-   */
-  async function contactEmailConflict(userId: string, email: string): Promise<string | null> {
-    if (!email) return null;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return 'That email address doesn’t look right.';
-    }
-    try {
-      const owner = await resolveUserIdByEmail(email);
-      if (owner && owner !== userId) {
-        return 'That email address is already used by another account. Use a different address, or log in with that email instead.';
-      }
-    } catch (e) {
-      // A lookup failure must not silently allow the thing it exists to stop.
-      console.error('[bookings/create] contact email conflict check failed:', e);
-      return 'We couldn’t verify that email address just now. Please try again.';
-    }
-    return null;
-  }
 
   /**
    * Remember where to send this host's paperwork.
@@ -187,6 +156,39 @@ export async function POST(req: Request) {
         .eq('id', userId);
     } catch (e) {
       console.warn('[bookings/create] contact_email save failed:', e);
+    }
+  }
+
+  /**
+   * Upgrade a stored first-name-only to the full name the host just gave.
+   *
+   * DELIBERATELY DIFFERENT FROM saveContactEmail, which refuses to overwrite.
+   * That one protects an address the host already chose; this one exists
+   * precisely BECAUSE the stored value is inadequate, so leaving it alone
+   * would defeat the point. It still won't clobber a name that's already
+   * complete — if they have a first and last on file, whatever arrived here
+   * is ignored, so a booking can never quietly rename an account.
+   *
+   * Best-effort: a failed profile write must not lose a booking that already
+   * inserted.
+   */
+  async function saveFullName(userId: string, name: string): Promise<void> {
+    const clean = normalizeName(name);
+    if (!isFullName(clean)) return;
+    try {
+      const adminDb = createAdminClient();
+      const { data: existing } = await adminDb
+        .from('users')
+        .select('name')
+        .eq('id', userId)
+        .maybeSingle<{ name: string | null }>();
+      if (isFullName(existing?.name)) return; // already complete — leave it
+      await adminDb
+        .from('users')
+        .update({ name: clean } as unknown as never)
+        .eq('id', userId);
+    } catch (e) {
+      console.warn('[bookings/create] name save failed:', e);
     }
   }
 
@@ -223,12 +225,24 @@ export async function POST(req: Request) {
   // their profile so every email after this — offer, confirmation, contract,
   // planner, cancellation — has somewhere to go. See the write below.
   const contactEmail = str(body.contactEmail).trim().toLowerCase();
+  // Sent only when the account's stored name was missing a surname. Validated
+  // here as well as in the browser — the form is a convenience, this is the
+  // boundary, and a contract with half a name on it is the thing being
+  // prevented.
+  const fullName = normalizeName(str(body.fullName));
 
   // Refuse the booking if the delivery address belongs to someone else.
   // Runs before either insert — a booking that exists but whose paperwork is
   // addressed to a stranger is exactly the failure this prevents.
   const emailConflict = await contactEmailConflict(user.id, contactEmail);
   if (emailConflict) return bad(emailConflict);
+  // Only enforced when the client sent one. An account that already has a
+  // complete name sends null, and this is skipped — the browser decided that,
+  // but the write below re-reads the stored name anyway, so a client lying
+  // either way can't do damage.
+  if (fullName && !isFullName(fullName)) {
+    return bad('Please enter your first and last name — contracts need both.');
+  }
   const startTime = str(body.startTime);
   const endTime = str(body.endTime);
   const venueLat = numOrNull(body.venueLat);
@@ -488,6 +502,7 @@ export async function POST(req: Request) {
     }
 
     await saveContactEmail(user.id, contactEmail);
+    await saveFullName(user.id, fullName);
 
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
@@ -690,6 +705,7 @@ export async function POST(req: Request) {
   }
 
   await saveContactEmail(user.id, contactEmail);
+  await saveFullName(user.id, fullName);
 
   return NextResponse.json({
     ok: true,

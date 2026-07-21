@@ -171,10 +171,21 @@ export default function AccountSettingsClient({
     setEmailAlert(null);
     const trimmed = newEmail.trim().toLowerCase();
 
-    // ── HOST: a delivery address, saved straight to the profile ──────
-    // No password (they don't have one) and no verification. It's where
+    // ── HOST: a delivery address, saved through the server ───────────
+    // No password (they don't have one) and no verification link. It's where
     // their paperwork gets sent, not how they log in — so getting it wrong
     // costs them a misdirected email, not access to the account.
+    //
+    // BUT IT STILL HAS TO BE UNIQUE, and that used to be missed. This block
+    // wrote straight to the users table from the browser, checking only the
+    // SHAPE of the address. A host could therefore set their delivery address
+    // to an email already registered to a DJ, and nothing objected — their
+    // contracts and planner links would have gone to that DJ's inbox.
+    //
+    // "Is this address already taken?" can only be answered against
+    // auth.users, which needs the service role, so it moved to
+    // /api/account/contact-email. A guard in the browser would be decoration:
+    // the browser is what it's guarding against.
     if (isHost) {
       if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
         setEmailAlert({ type: 'error', msg: 'Please enter a valid email address.' });
@@ -182,12 +193,13 @@ export default function AccountSettingsClient({
       }
       setEmailSaving(true);
       try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from('users')
-          .update({ contact_email: trimmed } as unknown as never)
-          .eq('id', initialProfile.id);
-        if (error) throw error;
+        const res = await fetch('/api/account/contact-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmed }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || 'Could not save that address.');
         setEmailAlert({ type: 'success', msg: `✓ Booking emails will go to ${trimmed}.` });
       } catch (err) {
         setEmailAlert({ type: 'error', msg: err instanceof Error ? err.message : 'Unknown error' });
