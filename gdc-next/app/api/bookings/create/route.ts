@@ -38,7 +38,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserIdByEmail } from '@/lib/supabase/admin';
 import {
   type BookingSettings,
   type MobilePackage,
@@ -122,6 +122,42 @@ export async function POST(req: Request) {
   }
 
   /**
+   * Is this email already spoken for by a DIFFERENT account?
+   *
+   * A host who signed up by phone is asked for an email at their first
+   * booking. Nothing stopped them typing an address that already belongs to
+   * somebody else — and it went through. The consequences are not cosmetic:
+   *
+   *   - Their contract, confirmation and planner link get mailed to a stranger
+   *   - resolveUserIdByEmail can resolve that address to either account
+   *   - At login, typing it is ambiguous
+   *
+   * So this runs BEFORE the booking inserts and refuses the whole request.
+   * Failing at submit is unpleasant; succeeding and then mailing someone
+   * else's contract is worse, and invisible to both of them.
+   *
+   * Checks auth emails and other profiles' contact_email. Returns the reason
+   * to refuse, or null to proceed.
+   */
+  async function contactEmailConflict(userId: string, email: string): Promise<string | null> {
+    if (!email) return null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return 'That email address doesn’t look right.';
+    }
+    try {
+      const owner = await resolveUserIdByEmail(email);
+      if (owner && owner !== userId) {
+        return 'That email address is already used by another account. Use a different address, or log in with that email instead.';
+      }
+    } catch (e) {
+      // A lookup failure must not silently allow the thing it exists to stop.
+      console.error('[bookings/create] contact email conflict check failed:', e);
+      return 'We couldn’t verify that email address just now. Please try again.';
+    }
+    return null;
+  }
+
+  /**
    * Remember where to send this host's paperwork.
    *
    * Only ever called with a value when the account had no email — a host who
@@ -159,6 +195,7 @@ export async function POST(req: Request) {
   if (!djId) return bad('Missing djId');
   if (!DATE_RE.test(dateKey)) return bad('Invalid event date');
 
+
   // Load the DJ server-side — booking_settings is the single source of
   // truth for every money field. It's a JSON *string* on users.
   const admin = createAdminClient();
@@ -186,6 +223,12 @@ export async function POST(req: Request) {
   // their profile so every email after this — offer, confirmation, contract,
   // planner, cancellation — has somewhere to go. See the write below.
   const contactEmail = str(body.contactEmail).trim().toLowerCase();
+
+  // Refuse the booking if the delivery address belongs to someone else.
+  // Runs before either insert — a booking that exists but whose paperwork is
+  // addressed to a stranger is exactly the failure this prevents.
+  const emailConflict = await contactEmailConflict(user.id, contactEmail);
+  if (emailConflict) return bad(emailConflict);
   const startTime = str(body.startTime);
   const endTime = str(body.endTime);
   const venueLat = numOrNull(body.venueLat);
