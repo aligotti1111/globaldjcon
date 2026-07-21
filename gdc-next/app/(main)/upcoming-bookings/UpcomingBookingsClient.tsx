@@ -4844,7 +4844,13 @@ function AddManualBookingModal({
           {djType === 'mobile' && (
             <>
               <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5 }}>
-                <label className={styles.field} style={{ flex: '1 1 160px', minWidth: 0 }}>
+                {/* Package gives up width once Overtime appears, so Rate and
+                    Overtime can sit side by side instead of Overtime dropping
+                    to its own line and pushing the form taller. */}
+                <label
+                  className={styles.field}
+                  style={{ flex: showOvertime ? '1 1 90px' : '1 1 160px', minWidth: 0 }}
+                >
                   <span className={styles.fieldLabel}>Package</span>
                   <select
                     value={selectedPkgIdx}
@@ -4920,8 +4926,10 @@ function AddManualBookingModal({
                       <option value="AUD">AUD</option>
                     </select>
                   </div>
-                  {/* Optional overtime rate (per hour), shown under the rate box. */}
-                  {!showOvertime ? (
+                  {/* The link stays under Rate; the FIELD it opens moves out of
+                      this column into its own (below), so the two money boxes
+                      end up on one line. */}
+                  {!showOvertime && (
                     <button
                       type="button"
                       disabled={!eventChosen}
@@ -4930,40 +4938,50 @@ function AddManualBookingModal({
                     >
                       + Add Overtime Rate
                     </button>
-                  ) : (
-                    <div style={{ marginTop: '.4rem' }}>
-                      <span className={styles.fieldLabel} style={{ display: 'block', marginBottom: '.2rem' }}>Overtime Rate (per hour)</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                        <div className={styles.rateInputWrap}>
-                          <span className={styles.rateSymbol}>
-                            {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
-                          </span>
-                          <input
-                            type="number"
-                            onWheel={(e) => e.currentTarget.blur()}
-                            inputMode="decimal"
-                            min="0"
-                            value={overtimeRate}
-                            onChange={(e) => setOvertimeRate(e.target.value)}
-                            placeholder="0"
-                            className={styles.rateInput}
-                            disabled={!eventChosen}
-                          />
-                        </div>
-                        <span style={{ fontSize: '.72rem', opacity: 0.7 }}>/hr</span>
-                        <button
-                          type="button"
-                          onClick={() => { setShowOvertime(false); setOvertimeRate(''); }}
-                          style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                        >
-                          Remove
-                        </button>
+                  )}
+                </div>
+
+                {/* Overtime — a sibling of Rate rather than a child, which is
+                    what puts it alongside instead of underneath. */}
+                {showOvertime && (
+                  <div className={styles.field} style={{ flex: '0 0 auto' }}>
+                    <span className={styles.fieldLabel}>
+                      Overtime <span className={styles.optional}>(per hr)</span>
+                    </span>
+                    <div className={styles.rateRow}>
+                      <div className={styles.rateInputWrap}>
+                        <span className={styles.rateSymbol}>
+                          {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                        </span>
+                        <input
+                          type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
+                          inputMode="decimal"
+                          min="0"
+                          value={overtimeRate}
+                          onChange={(e) => setOvertimeRate(e.target.value)}
+                          placeholder="0"
+                          className={styles.rateInput}
+                          disabled={!eventChosen}
+                        />
                       </div>
                     </div>
-                  )}
-                  {rate.trim() !== '' && taxDepositBlock}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowOvertime(false); setOvertimeRate(''); }}
+                      style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Tax + deposit — moved out of the Rate column so it spans the
+                  full width under the row. Left inside, it was squeezed into
+                  whatever Rate's column happened to be, which got narrow the
+                  moment Overtime appeared beside it. */}
+              {djType === 'mobile' && rate.trim() !== '' && taxDepositBlock}
               {/* Package details — shown indented/smaller, editable for THIS
                   booking only (never saved back to the package). When there are
                   no packages for this type, offer a free-text "Add Package
