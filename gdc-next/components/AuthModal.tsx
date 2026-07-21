@@ -85,6 +85,13 @@ export default function AuthModal({
           ✕
         </button>
 
+        {/* Brand, centered at the top. Uses the global "logo" class — the same
+            gradient wordmark the site header renders — so it matches rather
+            than being a lookalike. */}
+        <div style={{ textAlign: 'center', marginBottom: '1.1rem' }}>
+          <span className="logo" style={{ fontSize: '1.35rem' }}>Global DJ Connect</span>
+        </div>
+
         {/* Title, ABOVE the tabs — it frames the whole box, so it belongs over
             the mode buttons rather than tucked between them and the form.
             Tracks the mode so each tab gets its own heading. */}
