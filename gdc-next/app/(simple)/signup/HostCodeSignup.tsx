@@ -317,7 +317,12 @@ export default function HostCodeSignup({
       onFocus={() => setSwitchHover(true)}
       onBlur={() => setSwitchHover(false)}
       style={{
+        // Pushed to the right edge of the field. The left margin under an
+        // input is where descriptions sit — the locked-email note uses exactly
+        // that spot — so a link there reads as a remark about the field rather
+        // than something to click. Right is where escape hatches live.
         display: 'block',
+        marginLeft: 'auto',
         marginTop: '.4rem',
         background: 'none',
         border: 'none',
