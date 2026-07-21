@@ -98,6 +98,11 @@ export default function BookingLoginGate({
           textAlign: 'left',
           maxHeight: 'calc(100vh - 3rem)',
           overflowY: 'auto',
+          // The shared .box uses var(--card), a lifted grey meant to separate
+          // a panel from the page behind it. Here the page behind it is
+          // already dimmed by the backdrop, so the grey just read as a
+          // different shade of nothing. Black matches the site.
+          background: 'var(--black,#000)',
         }}
       >
         <button
@@ -114,8 +119,8 @@ export default function BookingLoginGate({
             what they just clicked, not an interruption of it. */}
         <p className={styles.body}>
           To book <strong>{djName}</strong> for{' '}
-          <strong>{formatNiceDate(dateKey)}</strong>. It takes a few seconds
-          and you&apos;ll come straight back to this booking.
+          <strong>{formatNiceDate(dateKey)}</strong> create a free account
+          below.
         </p>
 
         <div className={formStyles.formGroup}>
