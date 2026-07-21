@@ -110,6 +110,22 @@ export default function AuthModal({
           ))}
         </div>
 
+        {/* Title. Without it the box opened straight onto "What kind of
+            account?" with no frame — it read as a fragment rather than a
+            deliberate window. Tracks the mode so the two tabs each get their
+            own heading. */}
+        <h2
+          style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: '1.9rem',
+            letterSpacing: '.04em',
+            color: 'var(--white,#fff)',
+            margin: '0 0 1.1rem',
+          }}
+        >
+          {mode === 'login' ? 'Sign in' : 'Create your account'}
+        </h2>
+
         {mode === 'login' ? (
           <InlineLoginForm onDone={finish} />
         ) : (
