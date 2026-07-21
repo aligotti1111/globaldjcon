@@ -322,7 +322,7 @@ export default function HostCodeSignup({
         background: 'none',
         border: 'none',
         padding: 0,
-        color: 'var(--muted)',
+        color: 'var(--white,#fff)',
         fontSize: '.72rem',
         fontWeight: 600,
         cursor: 'pointer',
