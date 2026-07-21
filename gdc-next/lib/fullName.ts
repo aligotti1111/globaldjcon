@@ -39,4 +39,4 @@ export function normalizeName(raw: string | null | undefined): string {
 }
 
 /** The one message every caller shows, so the wording can't drift apart. */
-export const FULL_NAME_ERROR = 'Please enter your first and last name — contracts need both.';
+export const FULL_NAME_ERROR = 'Please enter your first and last name.';

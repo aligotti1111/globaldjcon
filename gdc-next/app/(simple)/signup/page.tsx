@@ -776,7 +776,7 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
         style={nameError ? { borderColor: 'var(--error)' } : undefined}
       />
       <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-        First and last name — this is the name that goes on your contracts.
+        First and last name.
       </small>
     </div>
   );

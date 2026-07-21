@@ -241,7 +241,7 @@ export async function POST(req: Request) {
   // but the write below re-reads the stored name anyway, so a client lying
   // either way can't do damage.
   if (fullName && !isFullName(fullName)) {
-    return bad('Please enter your first and last name — contracts need both.');
+    return bad('Please enter your first and last name.');
   }
   const startTime = str(body.startTime);
   const endTime = str(body.endTime);
