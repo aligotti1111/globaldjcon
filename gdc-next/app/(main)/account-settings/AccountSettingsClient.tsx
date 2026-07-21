@@ -58,6 +58,20 @@ export default function AccountSettingsClient({
   // /notifications. Hosts and venues get a link to it below; DJs reach it
   // from the header/menu.
   const isDj = initialProfile.role === 'dj';
+  /**
+   * Hosts have no password.
+   *
+   * They sign up with a phone number or an email and a 6-digit code, so this
+   * page's two password gates were describing a credential that doesn't
+   * exist: the Change Password card was unusable, and — worse — the email
+   * card demanded a "current password" to confirm, which meant a host who
+   * mistyped their address at booking could never fix it. Every contract and
+   * planner link would keep going to the wrong inbox with no way out.
+   *
+   * So for a host the email here is a DELIVERY ADDRESS, not a credential, and
+   * it saves like any other profile field.
+   */
+  const isHost = initialProfile.role === 'host';
 
   // ── Profile (name + country) ─────────────────────────────────────
   const [name, setName] = useState(initialProfile.name);
@@ -149,6 +163,33 @@ export default function AccountSettingsClient({
   async function saveEmail() {
     setEmailAlert(null);
     const trimmed = newEmail.trim().toLowerCase();
+
+    // ── HOST: a delivery address, saved straight to the profile ──────
+    // No password (they don't have one) and no verification. It's where
+    // their paperwork gets sent, not how they log in — so getting it wrong
+    // costs them a misdirected email, not access to the account.
+    if (isHost) {
+      if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        setEmailAlert({ type: 'error', msg: 'Please enter a valid email address.' });
+        return;
+      }
+      setEmailSaving(true);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('users')
+          .update({ contact_email: trimmed } as unknown as never)
+          .eq('id', initialProfile.id);
+        if (error) throw error;
+        setEmailAlert({ type: 'success', msg: `✓ Booking emails will go to ${trimmed}.` });
+      } catch (err) {
+        setEmailAlert({ type: 'error', msg: err instanceof Error ? err.message : 'Unknown error' });
+      } finally {
+        setEmailSaving(false);
+      }
+      return;
+    }
+
     if (!trimmed || !confirmPwForEmail) {
       setEmailAlert({ type: 'error', msg: 'Please fill in all fields.' });
       return;
@@ -514,18 +555,27 @@ export default function AccountSettingsClient({
             type="email"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
+            placeholder={isHost ? 'your@email.com' : undefined}
           />
+          {isHost && (
+            <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.4 }}>
+              Booking details, contracts and planner links are sent here.
+            </small>
+          )}
         </div>
 
-        <div className={styles.formGroup}>
-          <label>Current Password (to confirm)</label>
-          <input
-            type="password"
-            placeholder="Enter your current password"
-            value={confirmPwForEmail}
-            onChange={(e) => setConfirmPwForEmail(e.target.value)}
-          />
-        </div>
+        {/* Password confirmation — not for hosts, who don't have one. */}
+        {!isHost && (
+          <div className={styles.formGroup}>
+            <label>Current Password (to confirm)</label>
+            <input
+              type="password"
+              placeholder="Enter your current password"
+              value={confirmPwForEmail}
+              onChange={(e) => setConfirmPwForEmail(e.target.value)}
+            />
+          </div>
+        )}
 
         <button
           type="button"
@@ -537,7 +587,9 @@ export default function AccountSettingsClient({
         </button>
       </div>
 
-      {/* Password */}
+      {/* Password — hidden for hosts. They sign in with a code, so there is
+          no password to change and the card could only ever fail. */}
+      {!isHost && (
       <div className={styles.card}>
         <h2>Change Password</h2>
         {pwAlert && <AlertBlock alert={pwAlert} />}
@@ -581,6 +633,7 @@ export default function AccountSettingsClient({
           {pwSaving ? 'Updating…' : 'Update Password'}
         </button>
       </div>
+      )}
 
       {/* ── Notifications ──────────────────────────────────────────────
           Email + text preferences live on their own page now. Hosts and

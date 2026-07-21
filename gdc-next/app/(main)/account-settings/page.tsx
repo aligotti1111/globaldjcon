@@ -20,6 +20,9 @@
 //     link to the new address, doesn't change the email until clicked.
 //   - Password change uses Supabase Auth's updateUser — requires current
 //     password verified via signInWithPassword first.
+//   - EXCEPT for hosts, who have neither. They sign in with a 6-digit code,
+//     so their "email" here is the delivery address on users.contact_email
+//     and it saves like any other profile field. See AccountSettingsClient.
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -42,6 +45,9 @@ interface ProfileRow {
   venue_name: string | null;
   blocked_users: string[] | null;
   phone: string | null;
+  // Delivery address for a host who signed up by phone — collected at their
+  // first booking. Not a credential.
+  contact_email: string | null;
 }
 
 export default async function AccountSettingsPage() {
@@ -51,7 +57,7 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone')
+    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, contact_email')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -134,7 +140,11 @@ export default async function AccountSettingsPage() {
         address: profile.address || '',
         venueName: profile.venue_name || '',
       }}
-      currentEmail={authUser.email || ''}
+      // Auth email first; then the delivery address. A host who signed up by
+      // phone has no auth email, so without the fallback this page showed
+      // them an empty Email box while their bookings were being mailed to an
+      // address they couldn't see.
+      currentEmail={authUser.email || profile.contact_email || ''}
       initialBlocked={blockedNames}
     />
   );
