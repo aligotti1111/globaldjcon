@@ -4141,7 +4141,11 @@ function AddManualBookingModal({
         )}
       </label>
 
-      {moneyPreview && (moneyPreview.taxAmount > 0 || moneyPreview.depositAmount > 0) && (
+      {/* Shown as soon as there's a rate, not only when tax or deposit are on.
+          With both off the total simply equals the rate — and saying so is the
+          point: the DJ can see at a glance that nothing was added, rather than
+          having to infer it from an absent box. */}
+      {moneyPreview && (
         <div style={{ marginTop: '.6rem', paddingTop: '.55rem', borderTop: '1px solid rgba(255,255,255,.1)', fontSize: '.75rem' }}>
           {moneyPreview.taxAmount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
