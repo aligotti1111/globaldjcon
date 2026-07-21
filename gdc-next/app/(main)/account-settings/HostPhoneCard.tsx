@@ -82,7 +82,13 @@ export default function HostPhoneCard({
       const { error } = await supabase.auth.updateUser({ phone: e164 });
       if (error) throw error;
       setSent(true);
-      setResendIn(30);
+      // 60, NOT 30. Supabase refuses a second code inside 60 seconds of the
+      // first. At 30 the button lit up while the server was still saying no,
+      // so the eager tap got an error instead of a code — and the rate-limit
+      // branch below phrases it as "Too many attempts", which is a frightening
+      // thing to read when you have asked exactly twice. Matching the server
+      // turns a failure into a button that simply isn't ready yet.
+      setResendIn(60);
       setAlert(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not send the code.';
