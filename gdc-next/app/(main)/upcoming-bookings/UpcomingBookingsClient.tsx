@@ -138,6 +138,9 @@ export default function UpcomingBookingsClient({
   // Mobile equivalent. Was never read: nothing on this page needed it until
   // the manual-booking form started seeding its deposit toggle from settings.
   const [mobDepositPct, setMobDepositPct] = useState<number>(0);
+  // booking_settings.rate_currency. Club already had this; mobile never did,
+  // so mobile money has been printed with a hardcoded "$" everywhere.
+  const [settingsCurrency, setSettingsCurrency] = useState<string>('USD');
   // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
   // on cards for both DJ types.
   const [taxPct, setTaxPct] = useState<number>(0);
@@ -176,6 +179,10 @@ export default function UpcomingBookingsClient({
         // can't come to different conclusions about the same DJ.
         setCanPro(!!row && canUsePro(row));
         setRequireContract(!!bs?.require_contract);
+        {
+          const c = (bs as { rate_currency?: string })?.rate_currency;
+          if (c) setSettingsCurrency(c);
+        }
         if (djType === 'club') {
           const v = Number(bs?.club_deposit_pct);
           if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
@@ -549,6 +556,7 @@ export default function UpcomingBookingsClient({
           taxEnabledDefault={taxPct > 0}
           taxPctDefault={taxPct}
           depositPctDefault={djType === 'club' ? clubDepositPct : mobDepositPct}
+          settingsCurrency={settingsCurrency}
           onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); setFocusHost(false); }}
           onAdded={handleAdded}
           onUpdated={handleUpdated}
@@ -3775,6 +3783,7 @@ function AddManualBookingModal({
   userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
   existing, focusHost, prefillDate, onClose, onAdded, onUpdated,
   taxEnabledDefault = false, taxPctDefault = 0, depositPctDefault = 0,
+  settingsCurrency = 'USD',
 }: {
   userId: string;
   djType: 'club' | 'mobile';
@@ -3789,6 +3798,9 @@ function AddManualBookingModal({
   taxEnabledDefault?: boolean;
   taxPctDefault?: number;
   depositPctDefault?: number;
+  /** booking_settings.rate_currency — the DJ bills in one currency, so this
+   *  is read, not asked. Existing bookings still show their own. */
+  settingsCurrency?: string;
   /**
    * Opened via "Add host details…" rather than the pencil. Scrolls to the Host
    * Details block, focuses Host Name, and calls the block out — the modal opens
@@ -3998,7 +4010,18 @@ function AddManualBookingModal({
   const [rate, setRate] = useState<string>(
     existing?.offer_amount != null ? String(existing.offer_amount) : '',
   );
-  const [rateCurrency, setRateCurrency] = useState<string>(existing?.currency || 'USD');
+  /**
+   * Not a choice any more — it comes from the DJ's settings.
+   *
+   * Asking per booking meant one DJ could end up with July in USD and August
+   * in EUR, which is almost never what anyone means and quietly poisons any
+   * future "earned this year" total. A DJ bills in one currency; that belongs
+   * on their profile, not on each event.
+   *
+   * An EXISTING booking still shows what it was booked in — changing the
+   * setting must not re-label an agreement that's already out there.
+   */
+  const rateCurrency = existing?.currency || settingsCurrency || 'USD';
 
   // ── Sales tax + deposit ───────────────────────────────────────────
   //
@@ -4754,18 +4777,6 @@ function AddManualBookingModal({
                       className={styles.rateInput}
                     />
                   </div>
-                  <select
-                    value={rateCurrency}
-                    onChange={(e) => setRateCurrency(e.target.value)}
-                    className={styles.rateCurrencySelect}
-                    aria-label="Currency"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="CAD">CAD</option>
-                    <option value="AUD">AUD</option>
-                  </select>
                 </div>
                 {rate.trim() !== '' && taxDepositBlock}
               </label>
@@ -4919,19 +4930,6 @@ function AddManualBookingModal({
                         disabled={!eventChosen}
                       />
                     </div>
-                    <select
-                      value={rateCurrency}
-                      onChange={(e) => setRateCurrency(e.target.value)}
-                      className={styles.rateCurrencySelect}
-                      aria-label="Currency"
-                      disabled={!eventChosen}
-                    >
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="GBP">GBP</option>
-                      <option value="CAD">CAD</option>
-                      <option value="AUD">AUD</option>
-                    </select>
                   </div>
                   {/* The link stays under Rate; the FIELD it opens moves out of
                       this column into its own (below), so the two money boxes

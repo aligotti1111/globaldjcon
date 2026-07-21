@@ -460,6 +460,20 @@ export async function POST(req: Request) {
       is_quote: finalPrice.isQuote,
       notes: message.trim() || null,
       status: 'pending',
+      /**
+       * The DJ's currency, frozen onto the booking.
+       *
+       * The club path has always done this (`currency: rateInfo.currency`);
+       * the mobile payload had 45 fields and this wasn't one of them, so every
+       * mobile booking stored null. That's invisible today because the mobile
+       * screens print a hardcoded "$" — accidentally correct while every DJ is
+       * American, and wrong the day one isn't.
+       *
+       * Storing it now means the eventual display fix is cosmetic. Leaving it
+       * null would mean back-filling rows later and guessing what old bookings
+       * were denominated in.
+       */
+      currency: (settings as { rate_currency?: string }).rate_currency || 'USD',
     };
 
     // Insert with the SESSION client (not admin) so bookings RLS applies
