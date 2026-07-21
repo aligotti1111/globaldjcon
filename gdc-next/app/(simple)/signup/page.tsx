@@ -720,9 +720,16 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
   // at the point it needs it.
   const country: string | null = null;
 
-  // Email is the default: it's the path most hosts will reach for, and it's
-  // the only one a locked-email invite can use.
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
+  // PHONE is the default. Hosts reach signup overwhelmingly from a phone, and
+  // the OS autofills the SMS code — the easier tap. Email gets collected at
+  // the first booking regardless, so defaulting to phone costs nothing
+  // downstream, and the "Switch to email" link covers anyone on a desktop who
+  // would rather type an address.
+  //
+  // EXCEPT a locked-email (claim_booking) invite, which is pinned to one
+  // address — a phone signup there couldn't attach to the invitation. So that
+  // case still starts on email, and canChooseMethod below hides the switch.
+  const [method, setMethod] = useState<'email' | 'phone'>(lockedEmail ? 'email' : 'phone');
   // A claim_booking invite is pinned to one address. Offering phone there
   // would let someone create an account the invitation can't attach to.
   const canChooseMethod = !lockedEmail;
