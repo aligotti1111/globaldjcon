@@ -2684,10 +2684,24 @@ function BookingRow({
               )}
             </div>
           ) : !cancelFormOpen ? (
+            /* Bottom-right of the panel, in an outlined box rather than a bare
+               underlined link — findable, but sitting apart from the actions
+               a DJ actually wants to click. */
             <button
               type="button"
               onClick={() => setCancelFormOpen(true)}
-              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--muted,#8a8aa0)', fontSize: '.74rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              style={{
+                display: 'block',
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,.18)',
+                borderRadius: 6,
+                padding: '.4rem .7rem',
+                color: 'var(--muted,#8a8aa0)',
+                fontSize: '.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
             >
               Request cancellation
             </button>
