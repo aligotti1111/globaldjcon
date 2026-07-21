@@ -7,10 +7,12 @@
 // Now the header buttons open this instead, and on success it closes and
 // refreshes in place — they're back where they were, signed in.
 //
-// It reuses the same tested pieces as everywhere else: HostCodeSignup for the
-// create-account side (identifier → code → account), InlineLoginForm for the
-// sign-in side (which itself leans on the shared lookup route). This modal is
-// only the shell and the tab switch; it invents no auth logic of its own.
+// It reuses the same tested pieces as everywhere else: SignupFlow for the
+// create-account side — the SAME account-type chooser (DJ / Host / Venue) and
+// the same three forms the /signup page shows, so a DJ or venue can still pick
+// their type here — and InlineLoginForm for the sign-in side (which leans on
+// the shared lookup route). This modal is only the shell and the tab switch;
+// it invents no auth logic of its own.
 //
 // NOT the booking gate. BookingLoginGate stays separate because it has a DJ
 // and a date behind it ("To book X for [date]") and opens the booking form
@@ -22,9 +24,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import HostCodeSignup from '@/app/(simple)/signup/HostCodeSignup';
+import { SignupFlow } from '@/app/(simple)/signup/page';
 import InlineLoginForm from './InlineLoginForm';
-import formStyles from '@/app/(simple)/signup/signup.module.css';
 
 type Mode = 'signup' | 'login';
 
@@ -37,13 +38,6 @@ export default function AuthModal({
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
-
-  // Create-account state (mirrors the /signup host form).
-  const [name, setName] = useState('');
-  const [nameError, setNameError] = useState<string | null>(null);
-  // Phone-first, same reasoning as the rest of host signup — most arrive on a
-  // phone and the OS autofills the SMS code. The switch link covers email.
-  const [method, setMethod] = useState<'email' | 'phone'>('phone');
 
   // Success from either side. Close, then refresh so server-rendered parts of
   // the current page re-run with the new auth state WITHOUT a navigation —
@@ -98,7 +92,7 @@ export default function AuthModal({
             <button
               key={m}
               type="button"
-              onClick={() => { setMode(m); setNameError(null); }}
+              onClick={() => setMode(m)}
               style={{
                 flex: 1,
                 padding: '.6rem',
@@ -119,37 +113,11 @@ export default function AuthModal({
         {mode === 'login' ? (
           <InlineLoginForm onDone={finish} />
         ) : (
-          <>
-            <div className={formStyles.formGroup}>
-              {nameError && (
-                <div className={`${formStyles.alert} ${formStyles.alertError}`}>{nameError}</div>
-              )}
-              <label htmlFor="am-name">Your Name</label>
-              <input
-                id="am-name"
-                type="text"
-                placeholder="Jane Smith"
-                value={name}
-                onChange={(e) => { setName(e.target.value); setNameError(null); }}
-                required
-                style={nameError ? { borderColor: 'var(--error)' } : undefined}
-              />
-              <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-                First and last name.
-              </small>
-            </div>
-
-            <HostCodeSignup
-              method={method}
-              name={name}
-              country={null}
-              destination="/"
-              onNameError={setNameError}
-              canSwitchMethod
-              onSwitchMethod={() => setMethod((m) => (m === 'email' ? 'phone' : 'email'))}
-              onDone={finish}
-            />
-          </>
+          // The real signup flow — account-type chooser (DJ / Host / Venue)
+          // and the matching form, identical to /signup. A host finishes and
+          // onDone closes the popup; a DJ or venue lands on the inline "check
+          // your email" screen, same as the page.
+          <SignupFlow onDone={finish} />
         )}
       </div>
     </div>

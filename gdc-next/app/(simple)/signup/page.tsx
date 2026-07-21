@@ -151,12 +151,33 @@ function TypeBadge({
   );
 }
 
-export default function SignupPage() {
+// The signup flow WITHOUT the page's own chrome — just the account-type
+// chooser and the three role forms. Extracted so the header's AuthModal can
+// show the EXACT same signup, chooser and all, in a popup, rather than a
+// second copy that drifts. The /signup page renders this inside its logo /
+// tabs / links; the modal renders it bare.
+//
+// onDone — modal only. The host path ends signed in; with onDone set,
+// HostCodeSignup closes the popup instead of navigating. DJ and Venue still
+// finish on the inline "check your email" success screen, page or modal alike.
+//
+// onScreenChange — lets the page hide its tabs and divider on the success
+// screen, which it did back when it owned this state.
+export function SignupFlow({
+  onDone,
+  onScreenChange,
+}: {
+  onDone?: () => void;
+  onScreenChange?: (screen: Screen) => void;
+}) {
   const [screen, setScreen] = useState<Screen>('type-select');
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
   // URL-param state (read once on mount; SSR-safe because we're in 'use client').
   const [prefillEmail, setPrefillEmail] = useState<string>('');
   const [lockedEmail, setLockedEmail] = useState<boolean>(false);
+
+  // Mirror the screen up so the page can hide/show its chrome.
+  useEffect(() => { onScreenChange?.(screen); }, [screen, onScreenChange]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -191,6 +212,45 @@ export default function SignupPage() {
   }, []);
 
   return (
+    <>
+      {screen === 'type-select' && <TypeSelect onSelect={setScreen} />}
+      {screen === 'dj' && (
+        <DjForm
+          onBack={() => setScreen('type-select')}
+          onSwitchType={(t) => setScreen(t)}
+          onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
+        />
+      )}
+      {/* Host signup ends signed in. On the page it navigates; in the modal
+          onDone closes the popup instead (threaded down to HostCodeSignup). */}
+      {screen === 'host' && (
+        <HostForm
+          onBack={() => setScreen('type-select')}
+          onSwitchType={(t) => setScreen(t)}
+          prefillEmail={prefillEmail}
+          lockedEmail={lockedEmail}
+          onDone={onDone}
+        />
+      )}
+      {screen === 'venue' && (
+        <VenueForm
+          onBack={() => setScreen('type-select')}
+          onSwitchType={(t) => setScreen(t)}
+          onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
+        />
+      )}
+      {screen === 'success' && success && <SuccessScreen info={success} />}
+    </>
+  );
+}
+
+export default function SignupPage() {
+  // A mirror of SignupFlow's screen, used ONLY to hide the tabs and divider on
+  // the success screen — exactly what this component did when it owned the
+  // state. SignupFlow is authoritative; this just follows it.
+  const [screen, setScreen] = useState<Screen>('type-select');
+
+  return (
     <div className={styles.body}>
       <div className={styles.container}>
         <div className={styles.logo}>
@@ -207,32 +267,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {screen === 'type-select' && <TypeSelect onSelect={setScreen} />}
-        {screen === 'dj' && (
-          <DjForm
-            onBack={() => setScreen('type-select')}
-            onSwitchType={(t) => setScreen(t)}
-            onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
-          />
-        )}
-        {/* No onSuccess: a host signup ends signed in and navigates away,
-            rather than handing back to the "check your email" screen. */}
-        {screen === 'host' && (
-          <HostForm
-            onBack={() => setScreen('type-select')}
-            onSwitchType={(t) => setScreen(t)}
-            prefillEmail={prefillEmail}
-            lockedEmail={lockedEmail}
-          />
-        )}
-        {screen === 'venue' && (
-          <VenueForm
-            onBack={() => setScreen('type-select')}
-            onSwitchType={(t) => setScreen(t)}
-            onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
-          />
-        )}
-        {screen === 'success' && success && <SuccessScreen info={success} />}
+        <SignupFlow onScreenChange={setScreen} />
 
         {screen !== 'success' && (
           <>
@@ -692,7 +727,7 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
 // end up with two unrelated submit paths tangled together.
 // ──────────────────────────────────────────────────────────────────────────
 
-function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
+function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
   onBack: () => void;
   onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   // Email prefilled from URL (booking-invite flow). When `lockedEmail` is
@@ -700,6 +735,11 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
   // claim_booking link so we don't pair the booking with a different email.
   prefillEmail?: string;
   lockedEmail?: boolean;
+  // Modal use only. When set, HostCodeSignup calls this after the account
+  // exists and the session is live, instead of navigating — so the popup can
+  // close and leave the person on the page they were on. On the /signup page
+  // it's undefined and the host path navigates as before.
+  onDone?: () => void;
 }) {
   const [name, setName] = useState('');
   /**
@@ -815,6 +855,7 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail }: {
         // and a phone signup couldn't be attached to the invitation.
         canSwitchMethod={canChooseMethod}
         onSwitchMethod={() => setMethod((m) => (m === 'email' ? 'phone' : 'email'))}
+        onDone={onDone}
       />
     </div>
   );
