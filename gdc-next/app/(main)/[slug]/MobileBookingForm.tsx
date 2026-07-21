@@ -940,6 +940,7 @@ export default function MobileBookingForm({
                 <input
                   id="mpf-birthday-age"
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   inputMode="numeric"
                   placeholder="e.g. 30"
@@ -1108,6 +1109,7 @@ export default function MobileBookingForm({
             <input
               id="mpf-guests"
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               min={1}
               placeholder="150"
               value={guests}

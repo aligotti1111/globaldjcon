@@ -2457,6 +2457,11 @@ function BookingRow({
                 min="0"
                 step="0.01"
                 value={reqAmount}
+                // A focused number input changes its own value when the mouse
+                // wheel passes over it. This one becomes the amount a client is
+                // asked to pay, and the modal is short enough that a stray
+                // scroll lands right on it.
+                onWheel={(e) => e.currentTarget.blur()}
                 onChange={(e) => { setReqAmount(e.target.value); setReqErr(null); }}
                 style={{
                   flex: 1, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
@@ -4587,6 +4592,7 @@ function AddManualBookingModal({
                   <span className={styles.fieldLabel}>Guest of Honor Age?</span>
                   <input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     min={0}
                     inputMode="numeric"
                     value={birthdayAge}
@@ -4726,6 +4732,7 @@ function AddManualBookingModal({
                     </span>
                     <input
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       inputMode="decimal"
                       min="0"
                       value={rate}
@@ -4883,6 +4890,7 @@ function AddManualBookingModal({
                       </span>
                       <input
                         type="number"
+                        onWheel={(e) => e.currentTarget.blur()}
                         inputMode="decimal"
                         min="0"
                         value={rate}
@@ -4926,6 +4934,7 @@ function AddManualBookingModal({
                           </span>
                           <input
                             type="number"
+                            onWheel={(e) => e.currentTarget.blur()}
                             inputMode="decimal"
                             min="0"
                             value={overtimeRate}
