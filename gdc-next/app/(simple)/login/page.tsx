@@ -363,36 +363,6 @@ function LoginForm() {
               />
             </div>
 
-            {/* PASSWORD SITS ABOVE THE CODE BUTTON. A DJ arriving here has a
-                password and expects to be asked for it; leading with a code
-                made them think they'd landed on the wrong screen.
-                
-                It stays a link rather than becoming the primary button,
-                though, because canPassword comes back true for ANY email
-                account — including hosts, who have no password at all. Make
-                this the big button and every host who taps it lands on a
-                password box they can't fill. Hosts are most of the email
-                logins here, so promoting it would cure the DJ's confusion by
-                handing a worse one to everybody else.
-
-                Only shown for an email. A phone account has no password
-                unless the host deliberately added one. */}
-            {isEmail && (
-              <button
-                type="button"
-                onClick={() => handleContinue('password')}
-                disabled={submitting}
-                style={{
-                  display: 'block', width: '100%', marginBottom: '.75rem',
-                  background: 'none', border: 'none', padding: '.4rem',
-                  color: 'var(--neon, #00e0a4)', fontWeight: 700,
-                  fontSize: '.82rem', cursor: 'pointer', textDecoration: 'underline',
-                }}
-              >
-                Use my password
-              </button>
-            )}
-
             <button
               type="submit"
               className={styles.submitBtn}
@@ -400,6 +370,30 @@ function LoginForm() {
             >
               {submitting ? 'Sending…' : 'Send Me a Code'}
             </button>
+
+            {/* Stays a link under the button rather than becoming the primary
+                action. canPassword comes back true for ANY email account,
+                including hosts — who have no password at all. Promote this and
+                every host who taps it lands on a password box they can't fill,
+                and hosts are most of the email logins here.
+
+                Only shown for an email. A phone account has no password unless
+                the host deliberately added one. */}
+            {isEmail && (
+              <button
+                type="button"
+                onClick={() => handleContinue('password')}
+                disabled={submitting}
+                style={{
+                  display: 'block', width: '100%', marginTop: '.75rem',
+                  background: 'none', border: 'none', padding: '.4rem',
+                  color: 'var(--neon, #00e0a4)', fontWeight: 700,
+                  fontSize: '.82rem', cursor: 'pointer', textDecoration: 'underline',
+                }}
+              >
+                Use my password instead
+              </button>
+            )}
           </form>
         )}
 
