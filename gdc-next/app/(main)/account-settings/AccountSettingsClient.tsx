@@ -20,6 +20,7 @@ import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
+import HostPhoneCard from './HostPhoneCard';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
@@ -45,6 +46,11 @@ interface Props {
   initialProfile: ProfileInit;
   currentEmail: string;
   initialBlocked: BlockedUser[];
+  /** The auth phone — what a host signs in with. Empty when they signed up
+   *  by email. Distinct from users.sms_phone, which is only a notification
+   *  setting and is managed on /notifications. */
+  currentPhone?: string;
+  currentSmsPhone?: string;
 }
 
 // Status object that drives the alert text under each save button.
@@ -52,6 +58,7 @@ type Alert = { type: 'success' | 'error'; msg: string } | null;
 
 export default function AccountSettingsClient({
   initialProfile, currentEmail, initialBlocked,
+  currentPhone = '', currentSmsPhone = '',
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
   // Notification preferences (email + text) now live on their own page,
@@ -586,6 +593,17 @@ export default function AccountSettingsClient({
           {emailSaving ? 'Updating…' : 'Update Email'}
         </button>
       </div>
+
+      {/* Phone — hosts only. Sits where Change Password would be, because for
+          a host this IS the credential. Unlike the email card above it needs a
+          code, sent to the NEW number, so a typo can't lock them out. */}
+      {isHost && (
+        <HostPhoneCard
+          userId={initialProfile.id}
+          currentPhone={currentPhone}
+          currentSmsPhone={currentSmsPhone}
+        />
+      )}
 
       {/* Password — hidden for hosts. They sign in with a code, so there is
           no password to change and the card could only ever fail. */}

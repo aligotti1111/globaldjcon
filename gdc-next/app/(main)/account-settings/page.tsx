@@ -48,6 +48,8 @@ interface ProfileRow {
   // Delivery address for a host who signed up by phone — collected at their
   // first booking. Not a credential.
   contact_email: string | null;
+  // The notification number. NOT the credential — that lives on auth.users.
+  sms_phone: string | null;
 }
 
 export default async function AccountSettingsPage() {
@@ -57,7 +59,7 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, contact_email')
+    .select('id, name, slug, role, country, city, state, zip, address, venue_name, blocked_users, phone, contact_email, sms_phone')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -145,6 +147,11 @@ export default async function AccountSettingsPage() {
       // them an empty Email box while their bookings were being mailed to an
       // address they couldn't see.
       currentEmail={authUser.email || profile.contact_email || ''}
+      // Supabase stores auth.users.phone WITHOUT the leading +, so we add it
+      // back here — every other phone in the app is E.164 and the card's
+      // comparison against sms_phone depends on both sides matching.
+      currentPhone={authUser.phone ? `+${authUser.phone.replace(/\D/g, '')}` : ''}
+      currentSmsPhone={profile.sms_phone || ''}
       initialBlocked={blockedNames}
     />
   );
