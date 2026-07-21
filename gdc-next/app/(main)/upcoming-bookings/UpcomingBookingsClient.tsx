@@ -4113,24 +4113,30 @@ function AddManualBookingModal({
         <span style={{ fontSize: '.78rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
           Require a deposit
         </span>
+        {/* A dropdown, matching the deposit control in booking settings —
+            same 5-to-95 steps, so the two places can't offer different
+            choices for the same number. Also removes a free-text money field
+            from a modal, which is one fewer thing a stray scroll can alter. */}
         {applyDeposit && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', marginLeft: 'auto' }}>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="100"
+            <select
               value={depositPctStr}
               onChange={(e) => setDepositPctStr(e.target.value)}
               onWheel={(e) => e.currentTarget.blur()}
-              placeholder="0"
               style={{
-                width: 74, padding: '.3rem .45rem', textAlign: 'right',
+                padding: '.3rem .45rem',
                 background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.18)',
                 borderRadius: 5, color: 'var(--white,#fff)', fontSize: '.78rem',
               }}
-            />
-            <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>%</span>
+            >
+              <option value="">Select…</option>
+              {/* Every whole percent, 1–100. No gaps means no stored value can
+                  fail to appear, so the "keep an off-step value" special case
+                  this used to need is gone. */}
+              {Array.from({ length: 100 }, (_, i) => i + 1).map((p) => (
+                <option key={p} value={String(p)}>{p}%</option>
+              ))}
+            </select>
           </span>
         )}
       </label>
