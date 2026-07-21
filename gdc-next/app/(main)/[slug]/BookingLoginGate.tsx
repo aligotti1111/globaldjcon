@@ -71,7 +71,14 @@ export default function BookingLoginGate({
 
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
+  // Phone by default HERE, unlike /signup which defaults to email. This box
+  // is reached almost entirely from a phone, tapping a date on a DJ's profile,
+  // and the OS autofills the SMS code. The usual reason email leads — that
+  // every later message needs it — doesn't bite here, because the booking
+  // form on the very next screen collects the email regardless. So signing up
+  // by phone is the easier tap and costs nothing downstream. Standalone signup
+  // keeps email; the switch link covers anyone who wants the other channel.
+  const [method, setMethod] = useState<'email' | 'phone'>('phone');
 
   // Where an existing user lands after logging in — back here, with the date
   // pre-selected. Unchanged from before; the login path still works exactly
