@@ -176,6 +176,21 @@ export default function MobileBookingForm({
    * Hosts who already have an email never see this field.
    */
   const [contactEmail, setContactEmail] = useState('');
+  /**
+   * The address the server last refused, so the red ring can lift when they
+   * type a genuinely different one — not merely when what's in the box
+   * happens to look like a valid email. Without this the highlight clears on
+   * the first keystroke, while the address is still the rejected one.
+   */
+  const [rejectedEmail, setRejectedEmail] = useState('');
+  /**
+   * Declared up here, not down with the other *Valid flags, because the
+   * highlight-clearing effect lists it as a dependency — and dependency arrays
+   * are evaluated during render, at the effect's position in the file. Left
+   * below, it threw "Cannot access 'emailValid' before initialization" on
+   * every render of the form.
+   */
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   // Same reasoning as the phone: prefer the full profile, fall back to the
   // narrowed prop so this still behaves if the context isn't there.
   const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
@@ -378,12 +393,17 @@ export default function MobileBookingForm({
       (errorFieldId === 'mpf-cocktail-start' && !!cocktailStart && !cocktailWarn) ||
       (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null) ||
       (errorFieldId === 'mpf-ceremony-start' && !!ceremonyStart) ||
-      (errorFieldId === 'mpf-ceremony-room' && ceremonySameRoom != null);
+      (errorFieldId === 'mpf-ceremony-room' && ceremonySameRoom != null) ||
+      // "That address belongs to another account" is only cleared by typing a
+      // DIFFERENT address — not merely a valid-looking one. Comparing against
+      // what was rejected means the ring stays on while they edit a character
+      // and lifts the moment it's genuinely something else.
+      (errorFieldId === 'mpf-email' && emailValid && contactEmail.trim().toLowerCase() !== rejectedEmail);
     if (fixed) {
       setErrorFieldId(null);
       setErrorMsg(null);
     }
-  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom]);
+  }, [errorFieldId, phone, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
 
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -690,6 +710,30 @@ export default function MobileBookingForm({
       const msg = e instanceof Error ? e.message : 'Submission failed';
       setErrorMsg(`Error: ${msg}`);
       setSubmitting(false);
+
+      // BRING THE ERROR INTO VIEW.
+      //
+      // Client-side validation scrolls to the offending field (see fail()),
+      // but a SERVER rejection didn't scroll anywhere — and by submit time the
+      // booker is at the bottom of a long form, looking at a button that
+      // stopped spinning for no visible reason. The message was rendered at
+      // the top of the modal, off screen.
+      //
+      // Rejections that name a field are pointed at that field so it gets the
+      // red ring too; everything else scrolls to the banner.
+      const emailRejected = /email/i.test(msg) && needsEmail;
+      if (emailRejected) setRejectedEmail(contactEmail.trim().toLowerCase());
+      setTimeout(() => {
+        const target = emailRejected
+          ? document.getElementById('mpf-email')
+          : document.getElementById('mpf-error');
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (emailRejected) {
+          setErrorFieldId('mpf-email');
+          (target as HTMLElement).focus({ preventScroll: true });
+        }
+      }, 50);
     }
   }
 
@@ -746,8 +790,6 @@ export default function MobileBookingForm({
     const digits = phone.replace(/\D/g, '');
     return digits.length >= 10 && digits.length <= 15;
   })();
-  // Only meaningful when the field is shown at all.
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const guestsValid = guests.trim() !== '' && Number(guests) > 0;
   const venueNameValid = venueName.trim() !== '';
   // Address is valid for the checkmark once it's a substantial entry —
@@ -778,7 +820,9 @@ export default function MobileBookingForm({
           </button>
         </div>
 
-        {errorMsg && <div className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
+        {/* id is what the submit handler scrolls to when the server rejects
+            something that doesn't map to a single field. */}
+        {errorMsg && <div id="mpf-error" className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
 
         {/* Phone — shown as plain text when we already have it from the
             account. Nothing to fill in, so nothing that looks fillable: an
@@ -832,8 +876,7 @@ export default function MobileBookingForm({
               />
             </FieldCheck>
             <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-              We&apos;ll send your confirmation, contract and planner here. Asked once —
-              we&apos;ll remember it next time.
+              Booking details will be sent to this email address.
             </small>
           </div>
         )}
