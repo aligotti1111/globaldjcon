@@ -210,6 +210,13 @@ const DEFAULT_MARK_SIZE = 24;
 
 export default function PaymentMethodsSection({ userId }: { userId: string }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  // What's actually in the database, held separately from `methods` (the live
+  // edits). The two are equal right after a load or a save; the moment the DJ
+  // types, they diverge — and that divergence, per rail, is what tells Save
+  // whether it has anything to do. Without it, Save on an untouched-but-live
+  // rail runs a write that changes nothing and still says "✓ Saved", which
+  // trains the DJ that the button is meaningless.
+  const [savedMethods, setSavedMethods] = useState<PaymentMethod[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -357,21 +364,21 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         setAccountPhone(typeof row?.phone === 'string' && row.phone.trim() ? row.phone.trim() : null);
         const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
-        setMethods(
-          arr.map((r) => {
-            const o = (r || {}) as Partial<PaymentMethod>;
-            return {
-              id: o.id || newId(),
-              type: (TYPE_ORDER.includes(o.type as PaymentMethodType) ? o.type : 'zelle') as PaymentMethodType,
-              handle: typeof o.handle === 'string' ? o.handle : '',
-              note: typeof o.note === 'string' ? o.note : '',
-              enabled: o.enabled !== false,
-              contact: typeof o.contact === 'string' ? o.contact : undefined,
-              dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
-              dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
-            };
-          }),
-        );
+        const mapped = arr.map((r) => {
+          const o = (r || {}) as Partial<PaymentMethod>;
+          return {
+            id: o.id || newId(),
+            type: (TYPE_ORDER.includes(o.type as PaymentMethodType) ? o.type : 'zelle') as PaymentMethodType,
+            handle: typeof o.handle === 'string' ? o.handle : '',
+            note: typeof o.note === 'string' ? o.note : '',
+            enabled: o.enabled !== false,
+            contact: typeof o.contact === 'string' ? o.contact : undefined,
+            dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
+            dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
+          };
+        });
+        setMethods(mapped);
+        setSavedMethods(mapped);
       } catch {
         // Non-fatal — an empty list is a valid state (no methods yet).
       } finally {
@@ -388,6 +395,36 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     for (const x of methods) if (!m[x.type]) m[x.type] = x;
     return m;
   }, [methods]);
+
+  // The same, but over the SAVED snapshot — the mirror of byType against what's
+  // in the database.
+  const savedByType = useMemo(() => {
+    const m: Partial<Record<PaymentMethodType, PaymentMethod>> = {};
+    for (const x of savedMethods) if (!m[x.type]) m[x.type] = x;
+    return m;
+  }, [savedMethods]);
+
+  /**
+   * Has THIS rail changed from what's saved? Compares only the fields a save
+   * actually writes, trimmed the same way save() trims them — so trailing
+   * whitespace the DJ didn't mean to add doesn't count as an edit, and a rail
+   * that's byte-for-byte what's in the DB reports clean. Drives whether Save
+   * has anything to do; when it's clean and already live, Save is inert.
+   */
+  const isDirty = useCallback((t: PaymentMethodType): boolean => {
+    const cur = byType[t];
+    const saved = savedByType[t];
+    // Present now but not saved (or vice-versa) is a change by definition.
+    if (!cur || !saved) return !!cur !== !!saved;
+    const norm = (m: PaymentMethod) => [
+      cleanHandle(m),
+      (m.note || '').trim(),
+      (m.contact || '').trim(),
+      (m.dropoffAddress || '').trim(),
+      (m.dropoffHours || '').trim(),
+    ].join('\u0000');
+    return norm(cur) !== norm(saved);
+  }, [byType, savedByType]);
 
   /** Live = filled in and valid. This is exactly what the client will see. */
   const isLive = useCallback((t: PaymentMethodType): boolean => {
@@ -476,6 +513,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         .eq('id', userId);
       if (error) throw error;
       setMethods(clean);
+      setSavedMethods(clean);
       setFeedback({ msg: '✓ Saved.', ok: true });
       setTimeout(() => setFeedback(null), 2500);
     } catch (e) {
@@ -834,6 +872,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           // has no visible error and still isn't activatable.
           const complete = !cfg.validate(m.handle || '')
             && (!cfg.validateContact || !cfg.validateContact(m.contact || ''));
+          // Already live and unchanged since the last save: there is genuinely
+          // nothing to write. Save goes inert rather than running a no-op that
+          // reports success.
+          const nothingToSave = isLive(t) && !isDirty(t);
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -1009,11 +1051,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                 <button
                   type="button"
                   onClick={() => void save()}
-                  disabled={saving || !complete}
-                  title={complete ? undefined : 'Fill in the fields above first'}
-                  style={{ ...btn(!isLive(t), !saving && complete), marginLeft: 'auto' }}
+                  disabled={saving || !complete || nothingToSave}
+                  title={
+                    nothingToSave ? 'Already saved — nothing to update.'
+                      : complete ? undefined
+                      : 'Fill in the fields above first'
+                  }
+                  style={{ ...btn(!isLive(t), !saving && complete && !nothingToSave), marginLeft: 'auto' }}
                 >
-                  {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Activate'}
+                  {saving ? 'Saving…' : !isLive(t) ? 'Activate' : nothingToSave ? 'Saved' : 'Save'}
                 </button>
               </div>
             </div>
