@@ -1137,7 +1137,7 @@ function BookingRow({
     setReqOpen(true);
   }
 
-  async function submitRequest() {
+  async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } } async function submitRequest() {
     const amount = Number(reqAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setReqErr('Enter an amount greater than zero.');
@@ -1915,9 +1915,9 @@ function BookingRow({
         info: balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
-            ? 'Deposit settled — a receipt can go out.'
+            ? undefined
             : undefined,
-        actions: archive ? [] : [...(balanceRow ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), { label: 'Payment options', run: () => setMethodsOpen(true) }],
+        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }],
       });
     }
   }
