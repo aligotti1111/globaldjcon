@@ -1137,7 +1137,7 @@ function BookingRow({
     setReqOpen(true);
   }
 
-  async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } } async function submitRequest() {
+  async function cancelRequest(paymentId: string) { if (!confirm('Cancel this payment request?')) return; try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) }); if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; } onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId)); } catch { alert('Could not cancel the request.'); } } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } } async function submitRequest() {
     const amount = Number(reqAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setReqErr('Enter an amount greater than zero.');
@@ -1701,7 +1701,7 @@ function BookingRow({
             // Only until it's been asked for. A second deposit request on the
             // same booking is two rows for one payment, and the ledger would
             // start double-counting what's owed.
-            ...(!depositRow && canRequestDeposit
+            ...(!depositRow && canRequestDeposit && !payments.some((pp) => pp.kind === 'balance')
               ? [{ label: 'Request deposit', run: () => openRequest('deposit') }]
               : []),
             // The way out of the gate, next to the reason for it.
@@ -1721,7 +1721,7 @@ function BookingRow({
             // The rails the client will be offered. Reachable from the booking
             // because that's where a DJ realises the client can't pay the way
             // they've set up — not from Booking Settings three pages away.
-            { label: 'Payment options', run: () => setMethodsOpen(true) },
+            ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) },
           ],
     });
   }
@@ -1917,7 +1917,7 @@ function BookingRow({
           : depositSettled
             ? undefined
             : undefined,
-        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }],
+        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }],
       });
     }
   }
