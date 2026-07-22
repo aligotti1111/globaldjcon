@@ -610,6 +610,19 @@ export default function AddManualBookingModal({
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
+    // "Apply sales tax" ticked with the percentage left at 0 or blank is a
+    // contradiction, and a silent one: it stores exactly like tax-off, but the
+    // toggle's initial state reads `tax_pct > 0`, so reopening the booking
+    // shows the box UNTICKED. The DJ ticked something and it un-ticked itself.
+    //
+    // Refuse it here rather than guess which half they meant. Only checked
+    // when there's a rate — with no price the whole block is hidden and the
+    // toggle's state is moot.
+    if (applyTax && rate.trim() !== '' && !(Number(taxPctStr) > 0)) {
+      setError('Enter a tax percentage above 0, or switch \u201CApply sales tax\u201D off.');
+      return;
+    }
+
     // Daily-cap check — only fires when adding NEW or moving an existing
     // booking onto a fuller day. Editing an existing booking on its own
     // date is exempt (we'd be counting it against itself).
