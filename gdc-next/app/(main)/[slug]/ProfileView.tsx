@@ -496,7 +496,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {saleActive && (
             <div
               style={{
-                position: 'absolute', top: 62, right: 12, zIndex: 5,
+                position: 'absolute', top: 12, right: 12, zIndex: 5,
                 background: 'var(--neon,#00e0a4)', color: '#06231b',
                 fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
