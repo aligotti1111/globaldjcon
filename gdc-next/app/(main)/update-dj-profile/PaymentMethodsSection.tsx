@@ -965,7 +965,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                       out to, where to send it, and what to include. A third
                       free-text box invites a DJ to repeat one of those in
                       slightly different words, and then the two can disagree. */}
-                  {t !== 'check' && t !== 'cash' && (
+                  {t !== 'check' && t !== 'cash' && t !== 'cashapp' && t !== 'paypal' && (
                     <>
                       <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
                       <input
@@ -987,7 +987,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   eye lands last after reading the fields, and the way out is
                   where a way out belongs — not sharing an edge with the button
                   that commits. */}
-              <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
+              {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}<div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => setOpenTile(null)} style={btn(false)}>
                   Close
                 </button>
@@ -1007,7 +1007,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   onClick={() => void save()}
                   disabled={saving || !complete}
                   title={complete ? undefined : 'Fill in the fields above first'}
-                  style={{ ...btn(true, !saving && complete), marginLeft: 'auto' }}
+                  style={{ ...btn(!isLive(t), !saving && complete), marginLeft: 'auto' }}
                 >
                   {saving ? 'Saving…' : isLive(t) ? 'Save' : 'Activate'}
                 </button>
