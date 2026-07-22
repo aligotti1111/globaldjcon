@@ -152,7 +152,8 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Cash',
     handleLabel: 'Phone to call',
     placeholder: '(555) 123-4567',
-contactLabel: 'Ask for (optional)',    contactPlaceholder: 'Mike',
+    contactLabel: 'Ask for (optional)',
+    contactPlaceholder: 'Mike',
     hint: 'In person only. For deposits arranged meeting will be required. Include contact info and or office address below.',
     validate: (v) => {
       const t = v.trim();
@@ -160,7 +161,11 @@ contactLabel: 'Ask for (optional)',    contactPlaceholder: 'Mike',
       if (digitsOf(t).length >= 10) return null;
       return 'Must be a 10-digit phone number.';
     },
-// No validateContact — a name helps but isn't required. cashLine() already handles a number with no name.  },
+    // No validateContact. A name helps, but it isn't required: cashLine()
+    // already renders "Reach out on <phone> to arrange payment." when the
+    // DJ hasn't given one. Requiring it here blocked saving EVERY other
+    // rail, with a message that named none of them.
+  },
   check: {
     label: 'Check',
     handleLabel: 'Payable to',
@@ -266,9 +271,10 @@ export function isMobileOnly(m: PaymentMethod): boolean {
 /**
  * Cash, as one line for the client: who to call, and who to ask for.
  *
- * Both halves or nothing — a number with no name leaves someone standing in a
- * venue with $600 in an envelope asking strangers. Shared here so the booking
- * card and the email can't word it differently.
+ * The name is optional. With one, the client knows who to ask for instead of
+ * standing in a venue holding $600 and asking strangers; without one they still
+ * get a number and an instruction. Shared here so the booking card and the
+ * email can't word it differently.
  */
 export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
   const phone = (m.handle || '').trim();
