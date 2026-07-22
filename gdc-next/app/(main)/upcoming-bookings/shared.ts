@@ -141,3 +141,9 @@ export function formatSentDate(iso: string): string {
     return iso;
   }
 }
+
+// What the pipeline can ask BookingDetails to do about a contract. Named so
+// the two components can't drift on the strings — BookingRow raises these,
+// BookingDetails handles them, and they now live in different files.
+export type ContractAction =
+  | 'open' | 'download' | 'download-audit' | 'resend' | 'cancel' | 'copy-link';
