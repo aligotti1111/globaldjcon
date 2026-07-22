@@ -1167,7 +1167,23 @@ function BookingRow({
 
   function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
     setReqErr(null);
-    setReqKind(kind); setReqAmount(kind === 'balance' ? String(Math.max(0, Math.round((Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0) - payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0)) * 100) / 100)) : (suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : ''));
+    setReqKind(kind);
+    if (kind === 'balance') {
+      const total = Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0);
+      // Everything actually confirmed through the app (amount_paid on any row).
+      const paid = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+      // A deposit MARKED COMPLETE BY HAND (cash / off-app) records no payment
+      // row, so it isn't in `paid` — but it IS money collected. Deduct the
+      // deposit amount so the balance we ask for isn't the deposit all over
+      // again. Guarded on the deposit having no real payment, so a deposit paid
+      // through the app (already in `paid`) is never double-counted.
+      const depositRealPaid = payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+      const depositMarked = !!overrides.deposit && depositRealPaid <= 0 ? Number(booking.deposit_amount || 0) : 0;
+      const remaining = Math.max(0, Math.round((total - paid - depositMarked) * 100) / 100);
+      setReqAmount(remaining > 0 ? String(remaining) : '');
+    } else {
+      setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
+    }
     setReqOpen(true);
   }
 
