@@ -926,7 +926,7 @@ const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   contract: 'Contract',
   deposit: 'Deposit',
   song_list: 'Planner & Playlist',
-  invoice: 'Invoice',
+  invoice: 'Balance',
 };
 
 /**
@@ -1898,7 +1898,7 @@ function BookingRow({
       const currency = balanceRow ? (booking.currency || 'USD') : (booking.currency || 'USD');
       steps.push({
         key: 'invoice',
-        label: done ? 'Invoice' : balanceRow ? 'Invoice sent' : 'Send invoice',
+        label: done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
         state: done ? 'done' : 'todo',
         icon: 'receipt',
         overridable: !balanceSettled,
