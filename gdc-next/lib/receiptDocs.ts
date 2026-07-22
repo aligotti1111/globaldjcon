@@ -281,7 +281,20 @@ export async function buildBookingDocAttachment(
         acceptedMethods = badges;
         const parts: string[] = [];
         if (hasOnline) parts.push('Online methods: use the payment buttons in the email this invoice came with.');
-        if (hasInPerson) parts.push('Cash or check: paid in person.');
+        if (hasInPerson) {
+          // A balance can change hands on the night; a deposit is what reserves
+          // the date, so it has to be settled ahead of time in person — pointed
+          // at the DJ's actual office address + phone when account settings has
+          // them, so the client knows exactly where to go.
+          if (args.paymentKind === 'deposit') {
+            const office = [addressLine, dj.phone].filter((s) => s && String(s).trim()).join(' · ');
+            parts.push(office
+              ? `Cash or check: in person only. A deposit requires an arranged meeting — office: ${office}.`
+              : 'Cash or check: in person only. A deposit requires an arranged meeting.');
+          } else {
+            parts.push('Cash or check: the balance can be paid in cash the day of the event.');
+          }
+        }
         methodsNote = parts.join(' ');
       }
     }
