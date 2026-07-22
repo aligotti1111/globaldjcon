@@ -23,7 +23,8 @@ const METHOD_META: Record<string, { label: string; hex: string; inPerson?: boole
   cashapp: { label: 'Cash App', hex: '#00D632' },
   paypal: { label: 'PayPal', hex: '#003087' },
   zelle: { label: 'Zelle', hex: '#6D1ED4' },
-  cash: { label: 'Cash / Check', hex: '#4B5563', inPerson: true },
+  cash: { label: 'Cash', hex: '#4B5563', inPerson: true },
+  check: { label: 'Check', hex: '#4B5563', inPerson: true },
 };
 
 function prettyMethod(type?: string | null): string {
@@ -292,7 +293,7 @@ export async function buildBookingDocAttachment(
               ? `Cash or check: in person only. A deposit requires an arranged meeting — office: ${office}.`
               : 'Cash or check: in person only. A deposit requires an arranged meeting.');
           } else {
-            parts.push('Cash or check: the balance can be paid in cash the day of the event.');
+            parts.push('Cash or check: the balance can be paid in cash or by check the day of the event.');
           }
         }
         methodsNote = parts.join(' ');
