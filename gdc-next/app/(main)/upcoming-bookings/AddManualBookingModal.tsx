@@ -708,11 +708,28 @@ export default function AddManualBookingModal({
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
         // Frozen at save, exactly like a site booking — so a later settings
-        // change can't re-price an event that already happened. Nulls when
-        // switched off, which is what every display surface tests for.
-        tax_pct: moneyPreview && moneyPreview.tPct > 0 ? moneyPreview.tPct : null,
-        tax_amount: moneyPreview && moneyPreview.taxAmount > 0 ? moneyPreview.taxAmount : null,
-        total_with_tax: moneyPreview && moneyPreview.taxAmount > 0 ? moneyPreview.total : null,
+        // change can't re-price an event that already happened.
+        //
+        // ZERO, NOT NULL, WHEN TAX IS SWITCHED OFF. This used to write null,
+        // on the assumption that null read as "no tax". It doesn't. Every
+        // display surface does `snapTaxPct ?? liveTaxPct` — null means "this
+        // row predates tax, fall back to the DJ's CURRENT setting". So a
+        // manual booking saved with the tax toggle off was stored identically
+        // to a legacy row, and the row's Value and the card's Tax line both
+        // went and applied the DJ's live tax % to it anyway. Turning tax off
+        // did nothing.
+        //
+        // A zero snapshot says "we asked, the answer was none" — a fact the
+        // readers can't mistake for an absence. Writing all three together
+        // also keeps the snapshot internally complete (total − tax === base),
+        // which is what marks it fresh and stops the recompute path running
+        // at all.
+        //
+        // Still null when there's no rate: no price means nothing was agreed,
+        // and that genuinely is an absence.
+        tax_pct: moneyPreview ? moneyPreview.tPct : null,
+        tax_amount: moneyPreview ? moneyPreview.taxAmount : null,
+        total_with_tax: moneyPreview ? moneyPreview.total : null,
         deposit_pct: moneyPreview && moneyPreview.dPct > 0 ? moneyPreview.dPct : null,
         deposit_amount: moneyPreview && moneyPreview.depositAmount > 0 ? moneyPreview.depositAmount : null,
       };
