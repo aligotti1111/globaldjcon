@@ -515,10 +515,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     textTransform: 'uppercase',
     padding: '.6rem 1.2rem',
     borderRadius: 6,
-    border: primary ? 'none' : '1px solid var(--border)',
-    background: primary ? 'var(--neon)' : 'transparent',
-    color: primary ? 'var(--black)' : 'var(--muted)',
-    fontWeight: primary ? 700 : 400,
+    // Secondary (Close / Remove / an already-saved Save) used var(--muted) text
+    // on a var(--border) outline — both so close to the panel colour the button
+    // was nearly invisible. A brighter border, a faint fill, and white text make
+    // it read as a control without competing with the neon primary.
+    border: primary ? 'none' : '1px solid rgba(255,255,255,.4)',
+    background: primary ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+    color: primary ? 'var(--black)' : 'var(--white)',
+    fontWeight: primary ? 700 : 600,
     cursor: enabled ? 'pointer' : 'default',
     opacity: enabled ? 1 : 0.45,
   });
