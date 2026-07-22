@@ -368,7 +368,45 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </div>
       )}
 
-      {/* Country */}
+      {/* Business Address (street). Public — goes on the standard contract and
+          the planner header, and pre-fills a mailing address for check
+          payments. City + state come from the ZIP, country from its own field
+          below, so this is just the street line. */}
+      <div className={styles.formGroup}>
+        <label htmlFor="ud-address">Business Address</label>
+        <input
+          type="text"
+          id="ud-address"
+          placeholder="e.g. 123 Main St"
+          value={state.address}
+          onChange={(e) => onChange('address', e.target.value)}
+          className={styles.input}
+        />
+        <p className={styles.fieldHint}>
+          Shown on contracts and used to pre-fill your mailing address. City and
+          state fill in from your ZIP.
+        </p>
+      </div>
+
+      {/* Zip — the city/state hint reflects what was derived on the last save. */}
+      <div className={styles.formGroup}>
+        <label htmlFor="ud-zip">Zip / Postal Code</label>
+        <input
+          type="text"
+          id="ud-zip"
+          placeholder="e.g. 10001"
+          value={state.zip}
+          onChange={(e) => onChange('zip', e.target.value)}
+          className={styles.input}
+        />
+        <p className={styles.fieldHint}>
+          {state.city && state.state
+            ? `${state.city}, ${state.state}`
+            : 'City & state fill in automatically from your ZIP when you save.'}
+        </p>
+      </div>
+
+      {/* Country — last field of the address block, per request. */}
       <div className={styles.formGroup}>
         <label htmlFor="ud-country">Country</label>
         <select
@@ -381,22 +419,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             <option key={c.val || 'empty'} value={c.val}>{c.label}</option>
           ))}
         </select>
-      </div>
-
-      {/* Zip */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-zip">Zip / Postal Code</label>
-        <input
-          type="text"
-          id="ud-zip"
-          placeholder="e.g. 10001"
-          value={state.zip}
-          onChange={(e) => onChange('zip', e.target.value)}
-          className={styles.input}
-        />
-        <p className={styles.fieldHint}>
-          Zip-to-city/state lookup coming in a later session
-        </p>
       </div>
 
       {/* Travel distance */}
@@ -417,9 +439,11 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       {/* DJ start year field removed — years-of-experience is no longer
           shown on profiles, so the input is no longer needed. */}
 
-      {/* Phone */}
+      {/* Contact Phone — the public/business number for clients. Explicitly
+          labelled to keep it distinct from the number used to SIGN IN and the
+          number used for TEXT notifications, which live elsewhere. */}
       <div className={styles.formGroup}>
-        <label htmlFor="ud-phone">Phone</label>
+        <label htmlFor="ud-phone">Contact Phone</label>
         <input
           type="text"
           id="ud-phone"
@@ -428,6 +452,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           onChange={(e) => onChange('phone', e.target.value)}
           className={styles.input}
         />
+        <p className={styles.fieldHint}>
+          Shown to clients on your profile and contracts. Separate from your
+          login number and your text-notification number.
+        </p>
       </div>
 
       {/* Blocked Users — at the bottom of the tab. Moved here from the old

@@ -35,6 +35,15 @@ export interface GeneralFormState {
   slug: string;
   bio: string;
   phone: string;
+  // Public BUSINESS address — goes on the standard contract and (next phase)
+  // the planner header, and pre-fills a mailing address for check payments.
+  // Street line only; city + state are derived from the ZIP, country is its
+  // own field below.
+  address: string;
+  // Derived from the ZIP on save (Nominatim), not typed. Stored so contracts
+  // have a full mailing address without asking for them.
+  city: string;
+  state: string;
   zip: string;
   country: string;
   travelDistance: string;
@@ -80,6 +89,10 @@ interface InitialProfile {
   zip: string | null;
   city: string | null;
   state: string | null;
+  // Optional to match how phone/bio are declared — the page casts the users
+  // row in with select('*'), and an optional field can't trip a "missing
+  // property" type error if the cast doesn't happen to name it.
+  address?: string | null;
   country: string | null;
   dj_type: 'club' | 'mobile' | null;
   booking_settings: string | null;
@@ -159,6 +172,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       slug: initialProfile.slug || '',
       bio: initialProfile.bio || '',
       phone: initialProfile.phone || '',
+      address: initialProfile.address || '',
+      city: initialProfile.city || '',
+      state: initialProfile.state || '',
       zip: initialProfile.zip || '',
       country: initialProfile.country || '',
       travelDistance: initialProfile.travel_distance || '',
@@ -294,8 +310,15 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       let homeLat: number | null = null;
       let homeLon: number | null = null;
       let updateHomeCoords = false;
+      // City + state are DERIVED from the ZIP here rather than typed — the DJ
+      // gives us a ZIP and we fill the town/state for the contract's mailing
+      // address. Only recomputed when the ZIP changes.
+      let resolvedCity: string | null = null;
+      let resolvedState: string | null = null;
+      let updateCityState = false;
       if (zipChanged) {
         updateHomeCoords = true;
+        updateCityState = true;
         if (zipTrimmed) {
           // Country-code biased Nominatim postcode lookup. Falls back to
           // null when the lookup fails — we don't block save on this.
@@ -309,15 +332,22 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           };
           const cc = COUNTRY_CC[general.country || ''] || '';
           try {
-            const url = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zipTrimmed)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=1`;
+            // addressdetails=1 so the same call that gives us coords also
+            // returns the town + state for the mailing address.
+            const url = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zipTrimmed)}${cc ? '&countrycodes=' + cc : ''}&format=json&addressdetails=1&limit=1`;
             const res = await fetch(url);
             const data = await res.json();
             if (data && data[0]) {
               homeLat = parseFloat(data[0].lat);
               homeLon = parseFloat(data[0].lon);
+              // A ZIP's "city" comes back under different keys depending on the
+              // place — city, then town, village, etc. Take the first present.
+              const a = data[0].address || {};
+              resolvedCity = a.city || a.town || a.village || a.hamlet || a.municipality || a.suburb || null;
+              resolvedState = a.state || a.region || null;
             }
           } catch {
-            // Non-fatal — leave home_lat/home_lon null and save anyway.
+            // Non-fatal — leave coords + city/state null and save anyway.
           }
         }
       }
@@ -327,9 +357,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         slug: finalSlug,
         bio: general.bio.trim() || null,
         phone: general.phone.trim() || null,
+        address: general.address.trim() || null,
         zip: zipTrimmed || null,
         country: general.country || null,
         travel_distance: general.travelDistance || null,
+        // Only written when the ZIP changed — otherwise the stored city/state
+        // are left as they are, so an unrelated field edit doesn't wipe them.
+        ...(updateCityState ? { city: resolvedCity, state: resolvedState } : {}),
         dj_start_year: general.djStartYear || null,
         event_types: eventTypes,
         club_genres: clubGenres,
