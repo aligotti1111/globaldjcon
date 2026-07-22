@@ -12,7 +12,7 @@
 // country, zip, travel distance, dj start year, bio, phone. Avatar upload
 // + crop is also here (AvatarCrop modal mounts on file select).
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/components/ConfirmModal';
@@ -32,19 +32,32 @@ import BlockedUsersSection from './BlockedUsersSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
 import ProfileQrCode from './ProfileQrCode';
+// THE booking form's address search — not a reimplementation. It strips
+// county-level parts, maps NYC counties to their borough (Richmond County →
+// Staten Island), abbreviates the US state, and returns a clean "street, City,
+// ST zip" display plus lat/lon. Reusing it verbatim is the whole point: the
+// DJ's address behaves identically to the venue address on the booking form.
+import { searchAddresses, type AddressSuggestion } from '@/app/(main)/[slug]/mobileBookingForm';
 
 // ── Business-address autocomplete ────────────────────────────────────────
-// One line. As the DJ types (5+ chars, debounced) we query Nominatim and show
-// up to 10 real addresses; picking one fills street + city + state + zip in a
-// single tap — those three are never typed. The country sits as a compact
-// flag + code chip to the RIGHT of the box and biases the search.
+// One line, same as the booking venue field. As the DJ types (3+ chars,
+// debounced 350ms) we call the shared searchAddresses; picking a suggestion
+// drops the cleaned full address into the box. City/state/zip are read back
+// out of that clean string for the contract's structured fields. The country
+// chip to the RIGHT scopes the search.
 
-interface AddrSuggestion {
-  display: string;
-  street: string;
-  city: string;
-  state: string;
-  zip: string;
+// Split the helper's "street, City, ST zip" display into parts for the
+// structured columns. The display format is fixed by formatStructuredAddress
+// in mobileBookingForm, so this parse is reliable rather than guesswork.
+function parseDisplayAddress(display: string): { city: string; state: string; zip: string } {
+  const parts = display.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return { city: '', state: '', zip: '' };
+  const stateZip = parts[parts.length - 1];
+  const zipMatch = stateZip.match(/(\d[\w-]{2,})\s*$/);
+  const zip = zipMatch ? zipMatch[1] : '';
+  const state = (zip ? stateZip.replace(zip, '') : stateZip).trim();
+  const city = parts.length >= 2 ? parts[parts.length - 2] : '';
+  return { city, state, zip };
 }
 
 // Name → { 2-letter display code, flag emoji, Nominatim country code }. The
@@ -74,88 +87,90 @@ const COUNTRY_CHIPS: { name: string; code: string; flag: string; cc: string }[] 
   { name: 'Other', code: '🌐', flag: '', cc: '' },
 ];
 
-// limit=10 per request; addressdetails=1 to break out city/state/zip. Same
-// parse the booking form and account-settings use.
-async function searchAddresses10(query: string, country: string): Promise<AddrSuggestion[]> {
-  if (query.trim().length < 5) return [];
-  const cc = COUNTRY_CHIPS.find((c) => c.name === country)?.cc || '';
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=10&addressdetails=1`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map((r: { display_name?: string; address?: Record<string, string> }) => {
-      const a = r.address || {};
-      const street = (a.house_number ? a.house_number + ' ' : '') + (a.road || '');
-      return {
-        display: r.display_name || '',
-        street,
-        city: a.city || a.town || a.village || a.hamlet || a.municipality || a.suburb || '',
-        state: a.state || a.region || '',
-        zip: a.postcode || '',
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
 function AddressField({
-  address, country, city, state, zip, onChange,
+  address, country, onChange,
 }: {
   address: string;
   country: string;
-  city: string;
-  state: string;
-  zip: string;
   onChange: (patch: { address?: string; city?: string; state?: string; zip?: string; country?: string }) => void;
 }) {
-  const [suggestions, setSuggestions] = useState<AddrSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
+  // ISO code for the shared searchAddresses (it scopes results by country) —
+  // the same value the booking form passes as venueCountry.
+  const cc = COUNTRY_CHIPS.find((c) => c.name === country)?.cc || '';
 
   function handleType(v: string) {
     // Free text is saved even without a pick, so a manual address still works.
     onChange({ address: v });
     if (timer.current) clearTimeout(timer.current);
-    if (v.trim().length < 5) { setSuggestions([]); setOpen(false); return; }
+    if (v.trim().length < 3) { setSuggestions([]); setOpen(false); return; }
+    // 3-char minimum + 350ms debounce — identical to the booking venue field.
     timer.current = setTimeout(async () => {
-      const results = await searchAddresses10(v, country);
+      const results = await searchAddresses(v.trim(), cc);
       setSuggestions(results);
       setOpen(results.length > 0);
-    }, 300);
+    }, 350);
   }
 
-  function pick(s: AddrSuggestion) {
-    onChange({ address: s.street || s.display, city: s.city, state: s.state, zip: s.zip });
+  function pick(s: AddressSuggestion) {
+    // s.display is the booking form's cleaned "street, City, ST zip" — county
+    // stripped, NYC borough resolved, state abbreviated. Store it whole, and
+    // read the parts back out for the contract's structured fields.
+    const { city, state, zip } = parseDisplayAddress(s.display);
+    onChange({ address: s.display, city, state, zip });
     setOpen(false);
     setSuggestions([]);
   }
 
   return (
-    <div className={styles.formGroup} ref={wrapRef} style={{ position: 'relative' }}>
+    <div className={styles.formGroup} style={{ position: 'relative' }}>
       <label htmlFor="ud-address">Business Address</label>
       <div style={{ display: 'flex', gap: '.5rem', alignItems: 'stretch' }}>
-        <input
-          type="text"
-          id="ud-address"
-          autoComplete="off"
-          placeholder="Start typing your address…"
-          value={address}
-          onChange={(e) => handleType(e.target.value)}
-          className={styles.input}
-          style={{ flex: 1 }}
-        />
+        <div style={{ flex: 1, position: 'relative' }}>
+          <input
+            type="text"
+            id="ud-address"
+            autoComplete="off"
+            placeholder="123 Main St, City, State"
+            value={address}
+            onChange={(e) => handleType(e.target.value)}
+            // Delay the hide so a suggestion's onMouseDown fires before blur.
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+            className={styles.input}
+            style={{ width: '100%' }}
+          />
+          {open && suggestions.length > 0 && (
+            <div
+              style={{
+                position: 'absolute', zIndex: 50, left: 0, right: 0, top: '100%',
+                margin: '.25rem 0 0',
+                background: 'var(--card,#111)', border: '1px solid var(--border,#333)',
+                borderRadius: 8, maxHeight: 320, overflowY: 'auto',
+                boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+              }}
+            >
+              {suggestions.map((s, i) => (
+                <div
+                  key={i}
+                  // onMouseDown (not onClick) so it fires before the input blur —
+                  // the same trick the booking form uses.
+                  onMouseDown={(e) => { e.preventDefault(); pick(s); }}
+                  style={{
+                    padding: '.55rem .75rem', color: 'var(--white,#fff)',
+                    fontSize: '.82rem', cursor: 'pointer',
+                    borderBottom: '1px solid var(--border,#222)', lineHeight: 1.35,
+                  }}
+                >
+                  {s.display}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Country as a compact flag + code chip to the right of the box. */}
         <select
           aria-label="Country"
@@ -169,40 +184,9 @@ function AddressField({
           ))}
         </select>
       </div>
-
-      {open && suggestions.length > 0 && (
-        <ul
-          style={{
-            position: 'absolute', zIndex: 50, left: 0, right: 0, top: '100%',
-            margin: '.25rem 0 0', padding: 0, listStyle: 'none',
-            background: 'var(--card,#111)', border: '1px solid var(--border,#333)',
-            borderRadius: 8, maxHeight: 340, overflowY: 'auto',
-            boxShadow: '0 8px 24px rgba(0,0,0,.5)',
-          }}
-        >
-          {suggestions.map((s, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                onClick={() => pick(s)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '.55rem .75rem', background: 'none', border: 'none',
-                  color: 'var(--white,#fff)', fontSize: '.82rem', cursor: 'pointer',
-                  borderBottom: '1px solid var(--border,#222)', lineHeight: 1.35,
-                }}
-              >
-                {s.display}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       <p className={styles.fieldHint}>
-        {city && state
-          ? `${city}, ${state}${zip ? ' ' + zip : ''}`
-          : 'Pick from the list to fill your city, state and ZIP.'}
+        Shown on contracts and used to pre-fill your mailing address. Start
+        typing and pick from the list.
       </p>
     </div>
   );
@@ -549,9 +533,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       <AddressField
         address={state.address}
         country={state.country}
-        city={state.city}
-        state={state.state}
-        zip={state.zip}
         onChange={(patch) => {
           if (patch.address !== undefined) onChange('address', patch.address);
           if (patch.city !== undefined) onChange('city', patch.city);
