@@ -43,9 +43,17 @@ import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
+import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, CardNetworksMark } from '../update-dj-profile/BrandMarks';
+import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
 import MonthlyStory from './MonthlyStory';
 import PlannerSendModal from './PlannerSendModal';
 import { useConfirm } from '@/components/ConfirmModal';
+
+// The small brand glyph for each manual rail — the same marks the settings
+// grid and the invoice use, so a DJ sees the exact icons the client will.
+const REQ_METHOD_ICON: Partial<Record<PaymentMethodType, (p: { size?: number }) => React.ReactElement>> = {
+  venmo: VenmoMark, cashapp: CashAppMark, paypal: PaypalMark, zelle: ZelleMark, cash: CashMark, check: CheckMark,
+};
 
 interface Props {
   userId: string;
@@ -1126,6 +1134,29 @@ function BookingRow({
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
   const [methodsOpen, setMethodsOpen] = useState(false); const [reqKind, setReqKind] = useState<'deposit' | 'balance'>('deposit');
+  // The rails the client will actually be offered — shown as icons in the
+  // request box so the DJ sees what they're sending before they send it.
+  const [reqMethods, setReqMethods] = useState<PaymentMethod[]>([]);
+  const [reqCardReady, setReqCardReady] = useState(false);
+  useEffect(() => {
+    if (!reqOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('users')
+          .select('payment_methods, stripe_connect_ready')
+          .eq('id', userId)
+          .maybeSingle();
+        if (cancelled) return;
+        const row = (data || {}) as { payment_methods?: unknown; stripe_connect_ready?: boolean };
+        setReqMethods(Array.isArray(row.payment_methods) ? (row.payment_methods as PaymentMethod[]) : []);
+        setReqCardReady(!!row.stripe_connect_ready);
+      } catch { /* icons are a courtesy — a failed fetch just shows none */ }
+    })();
+    return () => { cancelled = true; };
+  }, [reqOpen, userId]);
 
   // The booking's OWN frozen deposit — never recomputed from today's settings.
   const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
@@ -2456,12 +2487,33 @@ function BookingRow({
             }}
           >
             <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.15rem' }}>
-              Request deposit
+              {reqKind === 'balance' ? 'Request balance' : 'Request deposit'}
             </div>
             <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5 }}>
               {booking.venue_name || booking.event_type || 'This booking'} — we&apos;ll email the
               client their payment options.
             </p>
+
+            {/* The rails the client will actually be offered, as small icons —
+                the DJ sees exactly what they're sending before they send it. */}
+            {(() => {
+              const ms = usableMethods(reqMethods);
+              if (ms.length === 0 && !reqCardReady) return null;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .85rem' }}>
+                  <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.6rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.07em', textTransform: 'uppercase' }}>Client can pay with</span>
+                  {ms.map((m) => {
+                    const Ico = REQ_METHOD_ICON[m.type];
+                    return Ico ? (
+                      <span key={m.id} title={m.type} style={{ display: 'inline-flex', lineHeight: 0 }}><Ico size={18} /></span>
+                    ) : null;
+                  })}
+                  {reqCardReady && (
+                    <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={11} /></span>
+                  )}
+                </div>
+              );
+            })()}
 
             <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
               Amount
@@ -2488,7 +2540,7 @@ function BookingRow({
               />
             </div>
 
-            {suggestedDeposit != null && suggestedDeposit > 0 && (
+            {reqKind === 'deposit' && suggestedDeposit != null && suggestedDeposit > 0 && (
               <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>
                 This booking&apos;s agreed deposit: {fmtMoney(suggestedDeposit, booking.currency || 'USD')}
                 {booking.deposit_pct != null ? ` (${booking.deposit_pct}%)` : ''}
