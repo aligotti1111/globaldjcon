@@ -152,8 +152,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Cash',
     handleLabel: 'Phone to call',
     placeholder: '(555) 123-4567',
-    contactLabel: 'Ask for',
-    contactPlaceholder: 'Mike',
+contactLabel: 'Ask for (optional)',    contactPlaceholder: 'Mike',
     hint: 'In person only. For deposits arranged meeting will be required. Include contact info and or office address below.',
     validate: (v) => {
       const t = v.trim();
@@ -161,8 +160,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
       if (digitsOf(t).length >= 10) return null;
       return 'Must be a 10-digit phone number.';
     },
-    validateContact: (v) => (v.trim() ? null : 'Who should they ask for?'),
-  },
+// No validateContact — a name helps but isn't required. cashLine() already handles a number with no name.  },
   check: {
     label: 'Check',
     handleLabel: 'Payable to',
