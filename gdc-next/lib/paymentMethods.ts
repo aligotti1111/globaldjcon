@@ -84,7 +84,7 @@ export interface TypeConfig {
   /** Second field's label. Undefined = this rail doesn't have one. */
   contactLabel?: string;
   contactPlaceholder?: string;
-  validateContact?: (v: string) => string | null;
+  validateContact?: (v: string) => string | null; footnote?: string;
 }
 
 export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
@@ -139,7 +139,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'PayPal',
     handleLabel: 'PayPal.me link or email',
     placeholder: 'paypal.me/djnova',
-    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand. Note: PayPal requires a Business account for commercial payments (even unincorporated) and may close a personal account used mainly for business. Business rates run about 2.99% + $0.49.',
+    hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand.', footnote: 'PayPal requires a Business account for commercial payments (even unincorporated) and may close a personal account used mainly for business. Business rates run about 2.99% + $0.49.',
     validate: (v) => {
       const t = v.trim();
       if (!t) return 'Enter your PayPal.me link or PayPal email.';
