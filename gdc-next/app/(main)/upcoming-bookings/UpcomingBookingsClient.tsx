@@ -1894,7 +1894,7 @@ function BookingRow({
     const anyMoneyIn =
       (!!depositRow && settledP(depositRow)) || balanceSettled || !!overrides.invoice;
     const done = balanceSettled || !!overrides.invoice;
-    if (anyMoneyIn || balanceRow) {
+    if (!isCancelled || balanceRow || anyMoneyIn) {
       const currency = balanceRow ? (booking.currency || 'USD') : (booking.currency || 'USD');
       steps.push({
         key: 'invoice',
