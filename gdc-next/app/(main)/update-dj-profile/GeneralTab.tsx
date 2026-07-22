@@ -23,7 +23,6 @@ import {
   MOB_CAT_WEDDING_TYPES,
   MOB_CAT_MITZVAH_TYPES,
   CLUB_GENRES,
-  COUNTRIES,
   TRAVEL_DISTANCES,
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
@@ -33,6 +32,181 @@ import BlockedUsersSection from './BlockedUsersSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateDjAlternatives } from '@/app/(simple)/signup/helpers';
 import ProfileQrCode from './ProfileQrCode';
+
+// ── Business-address autocomplete ────────────────────────────────────────
+// One line. As the DJ types (5+ chars, debounced) we query Nominatim and show
+// up to 10 real addresses; picking one fills street + city + state + zip in a
+// single tap — those three are never typed. The country sits as a compact
+// flag + code chip to the RIGHT of the box and biases the search.
+
+interface AddrSuggestion {
+  display: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+// Name → { 2-letter display code, flag emoji, Nominatim country code }. The
+// chip shows "🇺🇸 US"; the cc biases the address lookup.
+const COUNTRY_CHIPS: { name: string; code: string; flag: string; cc: string }[] = [
+  { name: 'United States', code: 'US', flag: '🇺🇸', cc: 'us' },
+  { name: 'United Kingdom', code: 'UK', flag: '🇬🇧', cc: 'gb' },
+  { name: 'Canada', code: 'CA', flag: '🇨🇦', cc: 'ca' },
+  { name: 'Australia', code: 'AU', flag: '🇦🇺', cc: 'au' },
+  { name: 'Germany', code: 'DE', flag: '🇩🇪', cc: 'de' },
+  { name: 'France', code: 'FR', flag: '🇫🇷', cc: 'fr' },
+  { name: 'Netherlands', code: 'NL', flag: '🇳🇱', cc: 'nl' },
+  { name: 'Spain', code: 'ES', flag: '🇪🇸', cc: 'es' },
+  { name: 'Italy', code: 'IT', flag: '🇮🇹', cc: 'it' },
+  { name: 'Brazil', code: 'BR', flag: '🇧🇷', cc: 'br' },
+  { name: 'Mexico', code: 'MX', flag: '🇲🇽', cc: 'mx' },
+  { name: 'Japan', code: 'JP', flag: '🇯🇵', cc: 'jp' },
+  { name: 'South Africa', code: 'ZA', flag: '🇿🇦', cc: 'za' },
+  { name: 'New Zealand', code: 'NZ', flag: '🇳🇿', cc: 'nz' },
+  { name: 'Ireland', code: 'IE', flag: '🇮🇪', cc: 'ie' },
+  { name: 'Sweden', code: 'SE', flag: '🇸🇪', cc: 'se' },
+  { name: 'Norway', code: 'NO', flag: '🇳🇴', cc: 'no' },
+  { name: 'Denmark', code: 'DK', flag: '🇩🇰', cc: 'dk' },
+  { name: 'Belgium', code: 'BE', flag: '🇧🇪', cc: 'be' },
+  { name: 'Switzerland', code: 'CH', flag: '🇨🇭', cc: 'ch' },
+  { name: 'Portugal', code: 'PT', flag: '🇵🇹', cc: 'pt' },
+  { name: 'Other', code: '🌐', flag: '', cc: '' },
+];
+
+// limit=10 per request; addressdetails=1 to break out city/state/zip. Same
+// parse the booking form and account-settings use.
+async function searchAddresses10(query: string, country: string): Promise<AddrSuggestion[]> {
+  if (query.trim().length < 5) return [];
+  const cc = COUNTRY_CHIPS.find((c) => c.name === country)?.cc || '';
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=10&addressdetails=1`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.map((r: { display_name?: string; address?: Record<string, string> }) => {
+      const a = r.address || {};
+      const street = (a.house_number ? a.house_number + ' ' : '') + (a.road || '');
+      return {
+        display: r.display_name || '',
+        street,
+        city: a.city || a.town || a.village || a.hamlet || a.municipality || a.suburb || '',
+        state: a.state || a.region || '',
+        zip: a.postcode || '',
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+function AddressField({
+  address, country, city, state, zip, onChange,
+}: {
+  address: string;
+  country: string;
+  city: string;
+  state: string;
+  zip: string;
+  onChange: (patch: { address?: string; city?: string; state?: string; zip?: string; country?: string }) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<AddrSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  function handleType(v: string) {
+    // Free text is saved even without a pick, so a manual address still works.
+    onChange({ address: v });
+    if (timer.current) clearTimeout(timer.current);
+    if (v.trim().length < 5) { setSuggestions([]); setOpen(false); return; }
+    timer.current = setTimeout(async () => {
+      const results = await searchAddresses10(v, country);
+      setSuggestions(results);
+      setOpen(results.length > 0);
+    }, 300);
+  }
+
+  function pick(s: AddrSuggestion) {
+    onChange({ address: s.street || s.display, city: s.city, state: s.state, zip: s.zip });
+    setOpen(false);
+    setSuggestions([]);
+  }
+
+  return (
+    <div className={styles.formGroup} ref={wrapRef} style={{ position: 'relative' }}>
+      <label htmlFor="ud-address">Business Address</label>
+      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'stretch' }}>
+        <input
+          type="text"
+          id="ud-address"
+          autoComplete="off"
+          placeholder="Start typing your address…"
+          value={address}
+          onChange={(e) => handleType(e.target.value)}
+          className={styles.input}
+          style={{ flex: 1 }}
+        />
+        {/* Country as a compact flag + code chip to the right of the box. */}
+        <select
+          aria-label="Country"
+          value={country}
+          onChange={(e) => onChange({ country: e.target.value })}
+          className={styles.select}
+          style={{ width: 'auto', flex: '0 0 auto' }}
+        >
+          {COUNTRY_CHIPS.map((c) => (
+            <option key={c.name} value={c.name}>{c.flag} {c.code}</option>
+          ))}
+        </select>
+      </div>
+
+      {open && suggestions.length > 0 && (
+        <ul
+          style={{
+            position: 'absolute', zIndex: 50, left: 0, right: 0, top: '100%',
+            margin: '.25rem 0 0', padding: 0, listStyle: 'none',
+            background: 'var(--card,#111)', border: '1px solid var(--border,#333)',
+            borderRadius: 8, maxHeight: 340, overflowY: 'auto',
+            boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+          }}
+        >
+          {suggestions.map((s, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => pick(s)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '.55rem .75rem', background: 'none', border: 'none',
+                  color: 'var(--white,#fff)', fontSize: '.82rem', cursor: 'pointer',
+                  borderBottom: '1px solid var(--border,#222)', lineHeight: 1.35,
+                }}
+              >
+                {s.display}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className={styles.fieldHint}>
+        {city && state
+          ? `${city}, ${state}${zip ? ' ' + zip : ''}`
+          : 'Pick from the list to fill your city, state and ZIP.'}
+      </p>
+    </div>
+  );
+}
 
 interface Props {
   state: GeneralFormState;
@@ -368,57 +542,42 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </div>
       )}
 
-      {/* Business Address (street). Public — goes on the standard contract and
-          the planner header, and pre-fills a mailing address for check
-          payments. City + state come from the ZIP, country from its own field
-          below, so this is just the street line. */}
+      {/* Business Address — one-line autocomplete with the country chip to its
+          right. Picking a suggestion fills city/state/zip. Public: goes on the
+          standard contract and the planner header, and pre-fills a mailing
+          address for check payments. */}
+      <AddressField
+        address={state.address}
+        country={state.country}
+        city={state.city}
+        state={state.state}
+        zip={state.zip}
+        onChange={(patch) => {
+          if (patch.address !== undefined) onChange('address', patch.address);
+          if (patch.city !== undefined) onChange('city', patch.city);
+          if (patch.state !== undefined) onChange('state', patch.state);
+          if (patch.zip !== undefined) onChange('zip', patch.zip);
+          if (patch.country !== undefined) onChange('country', patch.country);
+        }}
+      />
+
+      {/* Contact Phone — ABOVE Distance, per request. Public/business number,
+          kept distinct from the sign-in number and the text-notification
+          number, which live elsewhere. */}
       <div className={styles.formGroup}>
-        <label htmlFor="ud-address">Business Address</label>
+        <label htmlFor="ud-phone">Contact Phone</label>
         <input
           type="text"
-          id="ud-address"
-          placeholder="e.g. 123 Main St"
-          value={state.address}
-          onChange={(e) => onChange('address', e.target.value)}
+          id="ud-phone"
+          placeholder="e.g. +1 917-555-1234"
+          value={state.phone}
+          onChange={(e) => onChange('phone', e.target.value)}
           className={styles.input}
         />
         <p className={styles.fieldHint}>
-          Shown on contracts and used to pre-fill your mailing address. City and
-          state fill in from your ZIP.
+          Shown to clients on your profile and contracts. Separate from your
+          login number and your text-notification number.
         </p>
-      </div>
-
-      {/* Zip — the city/state hint reflects what was derived on the last save. */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-zip">Zip / Postal Code</label>
-        <input
-          type="text"
-          id="ud-zip"
-          placeholder="e.g. 10001"
-          value={state.zip}
-          onChange={(e) => onChange('zip', e.target.value)}
-          className={styles.input}
-        />
-        <p className={styles.fieldHint}>
-          {state.city && state.state
-            ? `${state.city}, ${state.state}`
-            : 'City & state fill in automatically from your ZIP when you save.'}
-        </p>
-      </div>
-
-      {/* Country — last field of the address block, per request. */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-country">Country</label>
-        <select
-          id="ud-country"
-          value={state.country}
-          onChange={(e) => onChange('country', e.target.value)}
-          className={styles.select}
-        >
-          {COUNTRIES.map((c) => (
-            <option key={c.val || 'empty'} value={c.val}>{c.label}</option>
-          ))}
-        </select>
       </div>
 
       {/* Travel distance */}
@@ -438,25 +597,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
 
       {/* DJ start year field removed — years-of-experience is no longer
           shown on profiles, so the input is no longer needed. */}
-
-      {/* Contact Phone — the public/business number for clients. Explicitly
-          labelled to keep it distinct from the number used to SIGN IN and the
-          number used for TEXT notifications, which live elsewhere. */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-phone">Contact Phone</label>
-        <input
-          type="text"
-          id="ud-phone"
-          placeholder="e.g. +1 917-555-1234"
-          value={state.phone}
-          onChange={(e) => onChange('phone', e.target.value)}
-          className={styles.input}
-        />
-        <p className={styles.fieldHint}>
-          Shown to clients on your profile and contracts. Separate from your
-          login number and your text-notification number.
-        </p>
-      </div>
 
       {/* Blocked Users — at the bottom of the tab. Moved here from the old
           account-settings page, which DJs no longer see. */}
