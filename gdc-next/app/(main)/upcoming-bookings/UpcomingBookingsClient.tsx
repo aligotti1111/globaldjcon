@@ -1125,15 +1125,15 @@ function BookingRow({
   const [reqAmount, setReqAmount] = useState('');
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
-  const [methodsOpen, setMethodsOpen] = useState(false);
+  const [methodsOpen, setMethodsOpen] = useState(false); const [reqKind, setReqKind] = useState<'deposit' | 'balance'>('deposit');
 
   // The booking's OWN frozen deposit — never recomputed from today's settings.
   const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
   const depositRow = payments.find((p) => p.kind === 'deposit') || null;
 
-  function openRequest() {
+  function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
     setReqErr(null);
-    setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
+    setReqKind(kind); setReqAmount(kind === 'balance' ? String(Math.max(0, Math.round((Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0) - payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0)) * 100) / 100)) : (suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : ''));
     setReqOpen(true);
   }
 
@@ -1152,7 +1152,7 @@ function BookingRow({
         body: JSON.stringify({
           action: 'request',
           bookingId: booking.id,
-          kind: 'deposit',
+          kind: reqKind,
           amount: Math.round(amount * 100) / 100,
         }),
       });
@@ -1702,7 +1702,7 @@ function BookingRow({
             // same booking is two rows for one payment, and the ledger would
             // start double-counting what's owed.
             ...(!depositRow && canRequestDeposit
-              ? [{ label: 'Request deposit', run: openRequest }]
+              ? [{ label: 'Request deposit', run: () => openRequest('deposit') }]
               : []),
             // The way out of the gate, next to the reason for it.
             //
@@ -1917,7 +1917,7 @@ function BookingRow({
           : depositSettled
             ? 'Deposit settled — a receipt can go out.'
             : undefined,
-        actions: archive ? [] : [],
+        actions: archive ? [] : [...(balanceRow ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), { label: 'Payment options', run: () => setMethodsOpen(true) }],
       });
     }
   }
