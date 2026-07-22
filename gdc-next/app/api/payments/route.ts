@@ -511,5 +511,84 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     return NextResponse.json({ ok: true, amount_paid: nextPaid, status });
   }
 
+  // ───────────────── send-receipt (DJ only) ─────────────────
+  // A RECEIPT with no new payment behind it — the manual counterpart to the
+  // auto-receipt that 'confirm' sends. When a DJ marks a deposit/balance
+  // "complete" by hand (cash on the night, a bank transfer, money that never
+  // touched the app), no receipt ever went out. This lets them send one.
+  //
+  // The amount is DERIVED, because a hand-marked stage records no figure:
+  //   deposit → the booking's deposit amount
+  //   balance → whatever's left after everything already paid (paid in full)
+  if (action === 'send-receipt') {
+    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
+    const kind = typeof body.kind === 'string' && KINDS.has(body.kind) ? body.kind : 'balance';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+
+    const cur = b.currency || 'USD';
+    const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
+    const { data: paidData } = await db
+      .from('booking_payments')
+      .select('amount_paid')
+      .eq('booking_id', bookingId);
+    const paidSoFar = ((paidData as { amount_paid?: number }[] | null) || [])
+      .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+
+    let received: number;
+    let paidToDate: number;
+    if (kind === 'deposit') {
+      received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
+      paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
+    } else {
+      received = round2(Math.max(0, agreed - paidSoFar));
+      paidToDate = round2(agreed);
+    }
+    if (!(received > 0)) {
+      return NextResponse.json({ error: 'Nothing to receipt on this booking.' }, { status: 400 });
+    }
+
+    const to = await clientEmailFor(b);
+    if (!to) return NextResponse.json({ error: 'No client email on this booking.' }, { status: 400 });
+    if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email is not configured.' }, { status: 500 });
+
+    const receiptAtt = await buildBookingDocAttachment(db, {
+      docKind: 'receipt',
+      bookingId,
+      djId: user.id,
+      currency: cur,
+      paymentKind: kind as 'deposit' | 'balance' | 'other',
+      receivedNow: received,
+      method: null,
+      paidToDate,
+      clientEmail: to,
+    });
+
+    const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — ${money(received, cur)}</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! A receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${b.event_date ? ` for ${b.event_date}` : ''}.</p>`;
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: FROM,
+        to,
+        subject: `Receipt — ${money(received, cur)}`,
+        html: shell(content),
+        attachments: receiptAtt ? [receiptAtt] : undefined,
+      });
+    } catch {
+      return NextResponse.json({ error: 'Could not send the receipt email.' }, { status: 502 });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }
