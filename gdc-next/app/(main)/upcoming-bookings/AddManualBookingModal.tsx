@@ -340,6 +340,23 @@ export default function AddManualBookingModal({
    */
   const taxDepositBlock = (
     <>
+    {/* ABOVE the box, not inside it and not under it. Inside, a red line sits
+        among the fields and reads as one more row of the form. Under it, it's
+        below the Total Cost panel — which is the last thing the DJ reads and
+        the thing that looks like the conclusion, so a correction arriving
+        after it reads as a footnote to a number that's already been accepted.
+        Above, it's the first thing seen on the way in. Live, not on-submit:
+        the DJ finds out while looking at the control they just set. */}
+    {taxIncomplete && (
+      <p style={{ margin: '.75rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
+        Enter a tax percentage above 0, or deselect the tax option.
+      </p>
+    )}
+    {depositIncomplete && (
+      <p style={{ margin: '.4rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
+        Choose a deposit percentage, or deselect the deposit option.
+      </p>
+    )}
     <div
       style={{
         marginTop: '.75rem',
@@ -454,21 +471,6 @@ export default function AddManualBookingModal({
       )}
       </div>
 
-      {/* Outside the box on purpose. Inside, a red line sits among the fields
-          and reads as one more row of the form; underneath it reads as a
-          verdict on the whole thing. Live, not on-submit: the DJ finds out
-          while looking at the control they just set, not after clicking Add
-          Booking and being sent back up the modal to hunt for the cause. */}
-      {taxIncomplete && (
-        <p style={{ margin: '.5rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
-          Enter a tax percentage above 0, or deselect the tax option.
-        </p>
-      )}
-      {depositIncomplete && (
-        <p style={{ margin: '.4rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
-          Choose a deposit percentage, or deselect the deposit option.
-        </p>
-      )}
     </>
   );
   const [saving, setSaving] = useState(false);
@@ -1489,6 +1491,7 @@ export default function AddManualBookingModal({
             onClick={handleSave}
             className={styles.saveBtn}
             disabled={saving || taxIncomplete || depositIncomplete}
+            style={taxIncomplete || depositIncomplete ? { opacity: 0.45, cursor: 'default' } : undefined}
             title={
               taxIncomplete ? 'Enter a tax percentage above 0, or deselect the tax option.'
                 : depositIncomplete ? 'Choose a deposit percentage, or deselect the deposit option.'
