@@ -1807,17 +1807,31 @@ export default function BookingRow({
             padding: '2rem 1rem', overflowY: 'auto',
           }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620, width: '100%' }}>
+          {/* position:relative so the close button can pin to the card's own
+              top-right corner. The old "Done" button lived UNDER the card, and
+              the card is taller than the viewport — so on most screens Done was
+              below the fold and the only apparent way out was the dark
+              backdrop, which isn't obviously clickable. An X in the corner is
+              where every modal keeps its exit, and it rides the top of the card
+              so it's on screen the moment the modal opens. */}
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', maxWidth: 620, width: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setMethodsOpen(false)}
+              aria-label="Close"
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 1,
+                width: 32, height: 32, borderRadius: '50%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.2)',
+                color: 'var(--white,#fff)', cursor: 'pointer', lineHeight: 1,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
             <PaymentMethodsSection userId={userId} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.7rem' }}>
-              <button
-                type="button"
-                onClick={() => setMethodsOpen(false)}
-                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, borderRadius: 6, padding: '.5rem 1.2rem', cursor: 'pointer', fontSize: '.8rem' }}
-              >
-                Done
-              </button>
-            </div>
           </div>
         </div>
       )}
