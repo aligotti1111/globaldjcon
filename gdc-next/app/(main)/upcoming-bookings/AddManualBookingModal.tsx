@@ -308,6 +308,21 @@ export default function AddManualBookingModal({
     return { base, tPct, taxAmount, total, dPct, depositAmount, balance: Number((total - depositAmount).toFixed(2)) };
   })();
 
+  /**
+   * Ticked, but set to nothing.
+   *
+   * Both of these store EXACTLY like their "off" state, so the booking saves
+   * looking as though the DJ never asked for tax or a deposit at all — and the
+   * toggles read their initial state back from those same stored values, so
+   * reopening the booking shows the box unticked. You tick something and it
+   * un-ticks itself.
+   *
+   * Only meaningful once there's a rate: with no price the whole block is
+   * hidden and the toggles are moot.
+   */
+  const taxIncomplete = applyTax && rate.trim() !== '' && !(Number(taxPctStr) > 0);
+  const depositIncomplete = applyDeposit && rate.trim() !== '' && !(Number(depositPctStr) > 0);
+
   const currencySym = rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : '$';
   const money = (n: number) =>
     `${currencySym}${n.toLocaleString(undefined, {
@@ -324,6 +339,7 @@ export default function AddManualBookingModal({
    * pair of switches that do nothing.
    */
   const taxDepositBlock = (
+    <>
     <div
       style={{
         marginTop: '.75rem',
@@ -436,7 +452,24 @@ export default function AddManualBookingModal({
           )}
         </div>
       )}
-    </div>
+      </div>
+
+      {/* Outside the box on purpose. Inside, a red line sits among the fields
+          and reads as one more row of the form; underneath it reads as a
+          verdict on the whole thing. Live, not on-submit: the DJ finds out
+          while looking at the control they just set, not after clicking Add
+          Booking and being sent back up the modal to hunt for the cause. */}
+      {taxIncomplete && (
+        <p style={{ margin: '.5rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
+          Enter a tax percentage above 0, or deselect the tax option.
+        </p>
+      )}
+      {depositIncomplete && (
+        <p style={{ margin: '.4rem 0 0', color: '#ff6b6b', fontSize: '.74rem', lineHeight: 1.5 }}>
+          Choose a deposit percentage, or deselect the deposit option.
+        </p>
+      )}
+    </>
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -610,27 +643,11 @@ export default function AddManualBookingModal({
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
-    // "Apply sales tax" ticked with the percentage left at 0 or blank is a
-    // contradiction, and a silent one: it stores exactly like tax-off, but the
-    // toggle's initial state reads `tax_pct > 0`, so reopening the booking
-    // shows the box UNTICKED. The DJ ticked something and it un-ticked itself.
-    //
-    // Refuse it here rather than guess which half they meant. Only checked
-    // when there's a rate — with no price the whole block is hidden and the
-    // toggle's state is moot.
-    if (applyTax && rate.trim() !== '' && !(Number(taxPctStr) > 0)) {
-      setError('Enter a tax percentage above 0, or switch \u201CApply sales tax\u201D off.');
-      return;
-    }
-
-    // Same trap on the deposit: ticked, with the dropdown still on
-    // "Select...", saves as no-deposit and reopens unticked. Worse than the
-    // tax version, because the Deposit column on the row then has nothing to
-    // request and the DJ believes they asked for one.
-    if (applyDeposit && rate.trim() !== '' && !(Number(depositPctStr) > 0)) {
-      setError('Choose a deposit percentage, or switch \u201CRequire a deposit\u201D off.');
-      return;
-    }
+    // Backstop. The Add Booking button is already disabled while either of
+    // these holds, and the reason is printed under the tax/deposit box, so in
+    // practice this never fires — but a disabled button is a UI fact, not a
+    // guarantee, and these two decide what the client gets billed.
+    if (taxIncomplete || depositIncomplete) return;
 
     // Daily-cap check — only fires when adding NEW or moving an existing
     // booking onto a fuller day. Editing an existing booking on its own
@@ -1467,7 +1484,17 @@ export default function AddManualBookingModal({
 
         <div className={styles.modalFooter}>
           <button type="button" onClick={onClose} className={styles.cancelBtn} disabled={saving}>Cancel</button>
-          <button type="button" onClick={handleSave} className={styles.saveBtn} disabled={saving}>
+          <button
+            type="button"
+            onClick={handleSave}
+            className={styles.saveBtn}
+            disabled={saving || taxIncomplete || depositIncomplete}
+            title={
+              taxIncomplete ? 'Enter a tax percentage above 0, or deselect the tax option.'
+                : depositIncomplete ? 'Choose a deposit percentage, or deselect the deposit option.'
+                : undefined
+            }
+          >
             {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Add Booking')}
           </button>
         </div>
