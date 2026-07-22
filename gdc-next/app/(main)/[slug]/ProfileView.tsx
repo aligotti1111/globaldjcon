@@ -496,11 +496,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {saleActive && (
             <div
               style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 5,
+                position: 'absolute', top: 0, right: 0, zIndex: 5,
                 background: 'var(--neon,#00e0a4)', color: '#06231b',
-                fontWeight: 800, fontSize: '.72rem', letterSpacing: '.04em',
+                fontWeight: 800, fontSize: '.95rem', letterSpacing: '.04em',
                 textTransform: 'uppercase',
-                padding: '5px 12px', borderRadius: 999,
+                padding: '9px 18px', borderRadius: '0 0 0 14px',
                 boxShadow: '0 2px 10px rgba(0,0,0,.35)',
               }}
             >
