@@ -623,6 +623,15 @@ export default function AddManualBookingModal({
       return;
     }
 
+    // Same trap on the deposit: ticked, with the dropdown still on
+    // "Select...", saves as no-deposit and reopens unticked. Worse than the
+    // tax version, because the Deposit column on the row then has nothing to
+    // request and the DJ believes they asked for one.
+    if (applyDeposit && rate.trim() !== '' && !(Number(depositPctStr) > 0)) {
+      setError('Choose a deposit percentage, or switch \u201CRequire a deposit\u201D off.');
+      return;
+    }
+
     // Daily-cap check — only fires when adding NEW or moving an existing
     // booking onto a fuller day. Editing an existing booking on its own
     // date is exempt (we'd be counting it against itself).
