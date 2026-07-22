@@ -35,6 +35,11 @@ import {
   METHOD_TYPES,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
+// The invoice ("amount due") and receipt ("payment received") PDFs. The helper
+// does its own fetching from the ids we pass and NEVER throws — a missing logo
+// or a flaky fetch returns null, so the email that carries the live pay buttons
+// always goes out regardless.
+import { buildBookingDocAttachment } from '@/lib/receiptDocs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -313,8 +318,23 @@ ${optionsHtml(methods, amount, b.currency || 'USD', reference, djName, payment.i
 <p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
 </div>
 <p style="margin:18px 0 0;color:#999;font-size:12px;line-height:1.6;">
-Payment goes directly to ${djName}. ${djName} will confirm once it lands.
+Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy of your invoice is attached.
 </p>`;
+
+      // A branded INVOICE PDF rides along — the paper trail. The buttons above
+      // stay the way to actually pay (a PDF can't hold a live card link); the
+      // attachment is the itemised record. null on any hiccup, and the email
+      // still sends.
+      const invoiceAtt = await buildBookingDocAttachment(db, {
+        docKind: 'invoice',
+        bookingId,
+        djId: user.id,
+        currency: b.currency || 'USD',
+        paymentKind: kind as 'deposit' | 'balance' | 'other',
+        amountDue: amount,
+        paidToDate: alreadyPaid,
+        clientEmail: to,
+      });
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
@@ -323,6 +343,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
           to,
           subject: `${noun === 'balance' ? 'Balance due' : 'Deposit required'} — ${money(amount, b.currency || 'USD')} · ${djName}`,
           html: shell(content),
+          attachments: invoiceAtt ? [invoiceAtt] : undefined,
         });
       } catch {
         // The row exists and the card shows the options — an email failure
@@ -455,14 +476,35 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands.
       const outstanding = round2(Math.max(0, Number(p.amount) - nextPaid));
       const content = status === 'paid'
         ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(nextPaid, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${p.kind === 'balance' ? 'balance' : 'deposit'} is settled${b.event_date ? ` for ${b.event_date}` : ''}.</p>`
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${p.kind === 'balance' ? 'balance' : 'deposit'} is settled${b.event_date ? ` for ${b.event_date}` : ''}. A receipt is attached.</p>`
         : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Partial payment received</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">
-${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>.
+${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>. A receipt is attached.
 </p>`;
+
+      // A branded RECEIPT PDF for what actually arrived. Amounts here come from
+      // the ledger (received now + paid-to-date), not the invoice. null-safe.
+      const receiptAtt = await buildBookingDocAttachment(db, {
+        docKind: 'receipt',
+        bookingId: p.booking_id,
+        djId: user.id,
+        currency: cur,
+        paymentKind: (KINDS.has(p.kind) ? p.kind : 'other') as 'deposit' | 'balance' | 'other',
+        receivedNow: received,
+        method: p.method,
+        paidToDate: nextPaid,
+        clientEmail: to,
+      });
+
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to, subject: status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`, html: shell(content) });
+        await resend.emails.send({
+          from: FROM,
+          to,
+          subject: status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`,
+          html: shell(content),
+          attachments: receiptAtt ? [receiptAtt] : undefined,
+        });
       } catch { /* non-fatal */ }
     }
 
