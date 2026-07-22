@@ -699,6 +699,7 @@ export default function ClubBookingTab({
           </div>
 
           {taxEnabled && (
+            <>
             <div className={styles.settingRow}>
               <div className={styles.settingLabelWrap}>
                 <div className={styles.settingLabel}>Tax rate (%)</div>
@@ -723,6 +724,16 @@ export default function ClubBookingTab({
                 <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
               </div>
             </div>
+            {/* Toggle on, rate at 0 — this charges nobody anything, and the input
+                renders 0 as a blank box, so on screen it is indistinguishable from a
+                rate that simply hasn't loaded yet. Settings autosave, so there is no
+                Save button to block; saying it plainly is the whole intervention. */}
+            {!(clubTaxPct > 0) && (
+              <p style={{ margin: '.4rem 0 0', color: '#f5a623', fontSize: '.72rem', lineHeight: 1.5 }}>
+                Sales tax is on but set to 0% — no tax will be added to your bookings. Enter a rate, or switch this off.
+              </p>
+            )}
+            </>
           )}
 
           <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
