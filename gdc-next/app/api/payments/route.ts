@@ -590,5 +590,46 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     return NextResponse.json({ ok: true });
   }
 
+  // ───────────────── cancel-request (DJ only) ─────────────────
+  // Withdraw a deposit/balance request that was never paid. Deletes the row so
+  // the column returns to "Not sent" and the DJ can request again cleanly.
+  //
+  // HARD GATE: refuses the moment any money is attached (amount_paid > 0, or a
+  // paid/waived status). You can't un-request money that arrived — that would
+  // erase a real payment from the ledger. Only an untouched ask can be pulled.
+  if (action === 'cancel-request') {
+    const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
+    if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
+
+    const { data: pData } = await db
+      .from('booking_payments')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
+      .eq('id', paymentId)
+      .maybeSingle();
+    const p = pData as PaymentRow | null;
+    if (!p) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id')
+      .eq('id', p.booking_id)
+      .maybeSingle();
+    const b = bData as { id: string; dj_id: string | null } | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+
+    if (Number(p.amount_paid || 0) > 0 || p.status === 'paid' || p.status === 'waived') {
+      return NextResponse.json({ error: 'This request already has a payment and can’t be cancelled.' }, { status: 400 });
+    }
+
+    const { error } = await db
+      .from('booking_payments')
+      .delete()
+      .eq('id', paymentId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+
+    return NextResponse.json({ ok: true });
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }
