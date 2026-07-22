@@ -80,10 +80,10 @@ export default async function VenmoPayPage({ params }: { params: Promise<{ id: s
 
   const { data: djData } = await admin
     .from('users')
-    .select('dj_name, payment_methods')
+    .select('name, payment_methods')
     .eq('id', booking.dj_id)
     .maybeSingle();
-  const dj = djData as unknown as { dj_name: string | null; payment_methods?: unknown } | null;
+  const dj = djData as unknown as { name: string | null; payment_methods?: unknown } | null;
 
   const methods = usableMethods(
     (Array.isArray(dj?.payment_methods) ? dj?.payment_methods : []) as PaymentMethod[],
@@ -111,7 +111,7 @@ export default async function VenmoPayPage({ params }: { params: Promise<{ id: s
       link={link}
       amount={outstanding}
       currency={pay.currency || 'USD'}
-      djName={dj?.dj_name || 'your DJ'}
+      djName={dj?.name || 'your DJ'}
       reference={reference}
       handle={`@${venmo.handle}`}
       settled={settled}
