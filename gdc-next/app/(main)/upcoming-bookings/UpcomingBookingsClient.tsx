@@ -1139,7 +1139,10 @@ function BookingRow({
   const [reqMethods, setReqMethods] = useState<PaymentMethod[]>([]);
   const [reqCardReady, setReqCardReady] = useState(false);
   useEffect(() => {
-    if (!reqOpen) return;
+    // Load when the box opens, and RELOAD whenever the payment-methods editor
+    // closes on top of it — so hitting Edit, changing rails, and coming back
+    // shows the updated icons without reopening the box.
+    if (!reqOpen || methodsOpen) return;
     let cancelled = false;
     (async () => {
       try {
@@ -1156,7 +1159,7 @@ function BookingRow({
       } catch { /* icons are a courtesy — a failed fetch just shows none */ }
     })();
     return () => { cancelled = true; };
-  }, [reqOpen, userId]);
+  }, [reqOpen, methodsOpen, userId]);
 
   // The booking's OWN frozen deposit — never recomputed from today's settings.
   const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
@@ -2486,34 +2489,9 @@ function BookingRow({
               boxShadow: '0 12px 40px rgba(0,0,0,.6)',
             }}
           >
-            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.15rem' }}>
+            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.7rem' }}>
               {reqKind === 'balance' ? 'Request balance' : 'Request deposit'}
             </div>
-            <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5 }}>
-              {booking.venue_name || booking.event_type || 'This booking'} — we&apos;ll email the
-              client their payment options.
-            </p>
-
-            {/* The rails the client will actually be offered, as small icons —
-                the DJ sees exactly what they're sending before they send it. */}
-            {(() => {
-              const ms = usableMethods(reqMethods);
-              if (ms.length === 0 && !reqCardReady) return null;
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .85rem' }}>
-                  <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.6rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.07em', textTransform: 'uppercase' }}>Client can pay with</span>
-                  {ms.map((m) => {
-                    const Ico = REQ_METHOD_ICON[m.type];
-                    return Ico ? (
-                      <span key={m.id} title={m.type} style={{ display: 'inline-flex', lineHeight: 0 }}><Ico size={18} /></span>
-                    ) : null;
-                  })}
-                  {reqCardReady && (
-                    <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={11} /></span>
-                  )}
-                </div>
-              );
-            })()}
 
             <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
               Amount
@@ -2546,6 +2524,35 @@ function BookingRow({
                 {booking.deposit_pct != null ? ` (${booking.deposit_pct}%)` : ''}
               </p>
             )}
+
+            {/* What the client will be offered, under the amount, with a quick
+                way to change them (opens the same payment-methods editor). */}
+            {(() => {
+              const ms = usableMethods(reqMethods);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .9rem' }}>
+                  {ms.map((m) => {
+                    const Ico = REQ_METHOD_ICON[m.type];
+                    return Ico ? (
+                      <span key={m.id} title={m.type} style={{ display: 'inline-flex', lineHeight: 0 }}><Ico size={18} /></span>
+                    ) : null;
+                  })}
+                  {reqCardReady && (
+                    <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={11} /></span>
+                  )}
+                  {ms.length === 0 && !reqCardReady && (
+                    <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>No payment methods set yet</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMethodsOpen(true)}
+                    style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: NEON, fontSize: '.68rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.04em', borderRadius: 6, padding: '.3rem .6rem', cursor: 'pointer' }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              );
+            })()}
 
             {reqErr && (
               <p style={{ margin: '0 0 .7rem', color: '#ff6b6b', fontSize: '.75rem', lineHeight: 1.5, wordBreak: 'break-word' }}>{reqErr}</p>
