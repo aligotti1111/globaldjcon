@@ -83,7 +83,14 @@
 .banner {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  /* No numeric z-index here, on purpose. A numeric z-index (was 0) made
+     .banner its own stacking context, which TRAPPED its interactive
+     children — the owner "Edit/Add Banner" button and the name badge —
+     below the hero content (.hero > * gets z-index:1). The hero info block
+     then overlapped the button and swallowed its clicks, leaving only the
+     sliver in the right padding clickable. With z-index:auto the banner
+     still paints behind the content (content is positioned at z-index:1,
+     this stays auto), but the button's own z-index can now rise above it. */
   background-color: transparent;
   background-size: cover;
   background-position: var(--banner-pos, 50% 50%);
@@ -257,7 +264,11 @@
   backdrop-filter: blur(4px);
   transition: background .15s, border-color .15s;
   pointer-events: auto;
-  z-index: 2;
+  /* Above the hero content (z-index:1) and the banner CTA row (z-index:100)
+     so the whole button is clickable, not just the sliver that used to poke
+     out past the hero-info block. Requires .banner to NOT be a stacking
+     context (see .banner above) for this to escape upward. */
+  z-index: 101;
 }
 .bannerEditBtn:hover {
   background: var(--neon);
