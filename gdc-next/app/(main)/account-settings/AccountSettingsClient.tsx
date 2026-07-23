@@ -209,9 +209,8 @@ export default function AccountSettingsClient({
         .select('payment_methods')
         .eq('id', initialProfile.id)
         .maybeSingle();
-      const arr: PmLike[] = Array.isArray((data as { payment_methods?: unknown } | null)?.payment_methods)
-        ? ((data as { payment_methods?: unknown }).payment_methods as PmLike[])
-        : [];
+      const pmRaw = (data as unknown as { payment_methods?: unknown } | null)?.payment_methods;
+      const arr: PmLike[] = Array.isArray(pmRaw) ? (pmRaw as PmLike[]) : [];
       const oldAddr = (initialProfile.address || '').trim();
       const cands: SyncCand[] = [];
       for (const m of arr) {
