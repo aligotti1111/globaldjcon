@@ -30,6 +30,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/AuthProvider';
 import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
 import styles from './mobileBookingForm.module.css';
+import { currencySymbol } from '@/lib/constants';
 import {
   type BookingSettings,
   type MobilePackage,
@@ -352,6 +353,9 @@ export default function MobileBookingForm({
   }, [basePrice, bookingSettings, appliedCode]);
   const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
   // Sales tax first (post-discount price), then the tax-inclusive total.
+  // The DJ's chosen currency symbol — shown on every price the booker sees,
+  // matching what gets frozen onto the booking (bookings.currency).
+  const cur = currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency);
   const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
   const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
   const taxAmount = (taxPct > 0 && discountedTotal != null)
@@ -1458,7 +1462,7 @@ export default function MobileBookingForm({
 
             {discount.amount > 0 && (
               <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, marginBottom: 4 }}>
-                {discount.label} — you save ${discount.amount.toLocaleString()}
+                {discount.label} — you save {cur}{discount.amount.toLocaleString()}
               </div>
             )}
 
@@ -1476,12 +1480,12 @@ export default function MobileBookingForm({
               ) : discount.amount > 0 && discountedTotal != null ? (
                 <>
                   <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
-                    ${priceResult.price.toLocaleString()}
+                    {cur}{priceResult.price.toLocaleString()}
                   </span>
-                  ${discountedTotal.toLocaleString()}
+                  {cur}{discountedTotal.toLocaleString()}
                 </>
               ) : (
-                `$${priceResult.price.toLocaleString()}`
+                `${cur}${priceResult.price.toLocaleString()}`
               )}
             </div>
 
@@ -1491,23 +1495,23 @@ export default function MobileBookingForm({
                 {taxPct > 0 && (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Subtotal</span><span>${discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Subtotal</span><span>{cur}{discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>${taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{cur}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
-                  <span>Total</span><span>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>Total</span><span>{cur}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 {depositPct > 0 && discountedDeposit != null && (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Deposit ({depositPct}%)</span><span>${discountedDeposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Deposit ({depositPct}%)</span><span>{cur}{discountedDeposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Balance due day of event</span><span>${(grandTotal - discountedDeposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Balance due day of event</span><span>{cur}{(grandTotal - discountedDeposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 )}
@@ -1518,15 +1522,15 @@ export default function MobileBookingForm({
             )}
             {priceResult.cocktailAddon > 0 && (
               <div className={styles.cocktailNote}>
-                Includes cocktail hour: +${priceResult.cocktailAddon.toLocaleString()}
+                Includes cocktail hour: +{cur}{priceResult.cocktailAddon.toLocaleString()}
               </div>
             )}
             {(priceResult.ceremonyAddon ?? 0) > 0 && (
-              <div className={styles.cocktailNote}>Includes ceremony music: +${(priceResult.ceremonyAddon ?? 0).toLocaleString()}</div>
+              <div className={styles.cocktailNote}>Includes ceremony music: +{cur}{(priceResult.ceremonyAddon ?? 0).toLocaleString()}</div>
             )}
             {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
-                Overtime rate: ${Number(selectedPkg?.overtime).toLocaleString()}/hr
+                Overtime rate: {cur}{Number(selectedPkg?.overtime).toLocaleString()}/hr
               </div>
             )}
 
@@ -1761,7 +1765,7 @@ function PackagesSection({
             } else {
               priceEl = (
                 <div className={styles.packagePrice}>
-                  ${cardPrice.price.toLocaleString()}
+                  {currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency)}{cardPrice.price.toLocaleString()}
                 </div>
               );
             }
