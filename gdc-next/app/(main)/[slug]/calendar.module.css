@@ -360,6 +360,20 @@
   box-sizing: border-box;
 }
 
+/* Equal-height rows — desktop only. Lead/trail empty cells are 90px while
+   day cells are 70px, and in OWNER view the per-cell controls pad every day
+   cell to a similar height so rows look even. In PUBLIC view (no controls)
+   rows holding an empty cell or a PENDING/BOOK badge came out taller than
+   plain rows — a ragged, "disfigured" grid. grid-auto-rows:1fr equalizes
+   every row to the tallest one in an auto-height grid (no clipping). The
+   mobile compact grid keeps its own square-tile sizing, so this is scoped
+   to desktop. */
+@media (min-width: 701px) {
+  .cellsGrid {
+    grid-auto-rows: 1fr;
+  }
+}
+
 /* Empty pre/post-month cells */
 .emptyCell {
   min-height: 90px;
