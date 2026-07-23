@@ -134,8 +134,10 @@ export default function ClubBookingForm({
   // confirmation, contract, planner, cancellation — is an email. A host who
   // signed up by phone has neither a surname nor an email on file, so, exactly
   // like the mobile form, we ask here, once, and ONLY when the account is
-  // actually missing it. The create route already accepts and persists both
-  // (saveContactEmail / saveFullName) — the club form just never sent them.
+  // actually missing it. The create route accepts both: the email is saved to
+  // the account (so future contracts/emails have somewhere to go); the name is
+  // stored on the BOOKING row (requester_name), NOT written back to the
+  // account, so filling it here never changes the host's profile.
   const accountName = normalizeName(
     (authUser as { name?: string | null } | null)?.name || currentUser.name || '',
   );
@@ -516,8 +518,9 @@ export default function ClubBookingForm({
           // users.contact_email so every later email (contract, planner,
           // cancellation) has somewhere to go.
           contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
-          // Only sent when the stored name was incomplete. The server writes
-          // it to users.name so the contract has a surname to print.
+          // Only sent when the stored name was incomplete. The server stores
+          // it on the booking (requester_name) — not your account — so the
+          // contract has a full name without changing your profile.
           fullName: needsFullName ? normalizeName(fullName) : null,
           // Coords from a Nominatim suggestion the booker picked. Null when
           // they typed freehand or the search returned nothing. The
