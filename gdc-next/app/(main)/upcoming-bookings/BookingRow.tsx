@@ -21,6 +21,7 @@ import ContractPortal from '../update-dj-profile/ContractPortal';
 import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
 import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, CardNetworksMark } from '../update-dj-profile/BrandMarks';
 import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
+import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
@@ -1712,7 +1713,7 @@ export default function BookingRow({
               Amount
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.5rem' }}>
-              <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>$</span>
+              <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>{currencySymbol(booking.currency || 'USD')}</span>
               <input
                 autoFocus
                 type="number"
