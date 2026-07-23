@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { guessStateTaxRate } from '@/lib/salesTax';
+import { CURRENCY_SYMBOLS } from '@/lib/constants';
 import { useConfirm } from '@/components/ConfirmModal';
 import {
   type BookingSettings,
@@ -382,6 +383,11 @@ export default function BookingTab({
     }
   }
   function setDeposit(v: number) { setLastChangedField('settings'); patch({ mob_deposit_pct: v }); }
+  // Currency the DJ prices in. Frozen onto each booking at creation
+  // (bookings.currency, already wired in api/bookings/create), so changing it
+  // later never re-prices an existing booking. Default USD.
+  const rateCurrency = (bookingSettings as { rate_currency?: string }).rate_currency || 'USD';
+  function setRateCurrency(v: string) { setLastChangedField('settings'); patch({ rate_currency: v } as unknown as Partial<BookingSettings>); }
   // Optional sales tax — OFF by default. When on, we suggest a rate from the
   // DJ's state (adjustable). They're responsible for charging + remitting;
   // the platform doesn't collect/remit. Stored as tax_enabled + tax_pct.
@@ -474,6 +480,26 @@ export default function BookingTab({
                   onChange={(e) => setPerDay(parseInt(e.target.value, 10) || 1)}
                   className={styles.settingNumber}
                 />
+              </div>
+
+              {/* Currency — applies to every price you set (packages, deposit,
+                  tax). Shown wherever money appears for your bookings. */}
+              <div className={styles.settingRow}>
+                <div className={styles.settingLabelWrap}>
+                  <div className={styles.settingLabel}>Currency</div>
+                  <div className={styles.settingHint}>
+                    The currency all your prices are shown in. Frozen onto each booking, so changing it won&apos;t re-price existing ones.
+                  </div>
+                </div>
+                <select
+                  value={rateCurrency}
+                  onChange={(e) => setRateCurrency(e.target.value)}
+                  className={styles.settingSelect}
+                >
+                  {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
+                    <option key={code} value={code}>{code} ({sym})</option>
+                  ))}
+                </select>
               </div>
 
               {/* Deposit */}
