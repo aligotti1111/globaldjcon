@@ -85,6 +85,18 @@ export default function AccountSettingsClient({
   const [country, setCountry] = useState(initialProfile.country);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileAlert, setProfileAlert] = useState<Alert>(null);
+  // ── Address propagation ("you changed your address — update these too?") ──
+  // When a DJ saves a new account address, any payment rail still carrying the
+  // OLD one (or a different one) is surfaced here so they can update it in one
+  // move — or keep it, if that rail genuinely uses a different address.
+  type SyncCand = { key: 'cash' | 'check'; label: string; current: string; inherited: boolean };
+  type PmLike = { type?: string; dropoffAddress?: string; contact?: string; [k: string]: unknown };
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncSaving, setSyncSaving] = useState(false);
+  const [syncPm, setSyncPm] = useState<PmLike[] | null>(null);
+  const [syncCandidates, setSyncCandidates] = useState<SyncCand[]>([]);
+  const [syncChecked, setSyncChecked] = useState<Record<string, boolean>>({});
+  const [syncNewAddr, setSyncNewAddr] = useState('');
 
   // ── Email ────────────────────────────────────────────────────────
   // Single editable field pre-populated with the current address. The
@@ -153,17 +165,101 @@ export default function AccountSettingsClient({
     setProfileSaving(true);
     try {
       const supabase = createClient();
+      const updates: Record<string, unknown> = { name: name.trim(), country };
+      // DJs get an address here (the master the invoice, cash and check all
+      // read). We store the FULL typed string in `address` — the invoice and
+      // the payment rails display `address` as-is — plus the parsed parts from
+      // the autocomplete pick, for older readers that compose from them.
+      let newAddr = '';
+      if (isDj) {
+        newAddr = addressInput.trim();
+        updates.address = newAddr;
+        updates.city = addrCity;
+        updates.state = addrState;
+        updates.zip = addrZip;
+      }
       const { error } = await supabase
         .from('users')
-        .update({ name: name.trim(), country } as unknown as never)
+        .update(updates as unknown as never)
         .eq('id', initialProfile.id);
       if (error) throw error;
       setProfileAlert({ type: 'success', msg: '✓ Profile updated.' });
+      // Offer to carry the new address to any rail still on a different one.
+      if (isDj && newAddr && newAddr !== (initialProfile.address || '').trim()) {
+        await maybeOfferAddressSync(newAddr);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setProfileAlert({ type: 'error', msg });
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  // After the master address changes, look for payment rails whose stored
+  // address differs from the new one, and open the "update these too?" dialog.
+  // Rails that matched the OLD account address are pre-checked (they were
+  // clearly inheriting); genuinely different ones are listed unchecked, so an
+  // independent address is never overwritten unless the DJ ticks it.
+  async function maybeOfferAddressSync(newAddr: string) {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('users')
+        .select('payment_methods')
+        .eq('id', initialProfile.id)
+        .maybeSingle();
+      const arr: PmLike[] = Array.isArray((data as { payment_methods?: unknown } | null)?.payment_methods)
+        ? ((data as { payment_methods?: unknown }).payment_methods as PmLike[])
+        : [];
+      const oldAddr = (initialProfile.address || '').trim();
+      const cands: SyncCand[] = [];
+      for (const m of arr) {
+        if (!m || typeof m !== 'object') continue;
+        if (m.type === 'cash') {
+          const v = (m.dropoffAddress || '').trim();
+          if (v && v !== newAddr) cands.push({ key: 'cash', label: 'Cash — office address', current: v, inherited: !!oldAddr && v === oldAddr });
+        } else if (m.type === 'check') {
+          const v = (m.contact || '').trim();
+          if (v && v !== newAddr) cands.push({ key: 'check', label: 'Check — mailing address', current: v, inherited: !!oldAddr && v === oldAddr });
+        }
+      }
+      if (cands.length === 0) return;
+      const initChecked: Record<string, boolean> = {};
+      for (const c of cands) initChecked[c.key] = c.inherited;
+      setSyncPm(arr);
+      setSyncCandidates(cands);
+      setSyncChecked(initChecked);
+      setSyncNewAddr(newAddr);
+      setSyncOpen(true);
+    } catch {
+      // Non-fatal: the master address already saved. Worst case the DJ updates
+      // the rail addresses by hand, exactly as before this feature existed.
+    }
+  }
+
+  async function applyAddressSync() {
+    if (!syncPm) { setSyncOpen(false); return; }
+    setSyncSaving(true);
+    try {
+      const supabase = createClient();
+      const next = syncPm.map((m) => {
+        if (!m || typeof m !== 'object') return m;
+        if (m.type === 'cash' && syncChecked.cash) return { ...m, dropoffAddress: syncNewAddr };
+        if (m.type === 'check' && syncChecked.check) return { ...m, contact: syncNewAddr };
+        return m;
+      });
+      const { error } = await supabase
+        .from('users')
+        .update({ payment_methods: next } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+      setSyncOpen(false);
+      setProfileAlert({ type: 'success', msg: '✓ Address updated everywhere you chose.' });
+    } catch (err) {
+      setProfileAlert({ type: 'error', msg: err instanceof Error ? err.message : 'Could not update the other addresses.' });
+    } finally {
+      setSyncSaving(false);
     }
   }
 
@@ -550,6 +646,42 @@ export default function AccountSettingsClient({
           </select>
         </div>
 
+        {/* The DJ's ONE address. Whatever's here flows to the invoice and to
+            the Cash office / Check mailing fields by default; change it and
+            we offer to update those too. Reuses the same autocomplete as the
+            venue card. DJ role only — venues set theirs in the Venue card,
+            hosts have a delivery address on the Email card. */}
+        {isDj && (
+          <div className={styles.formGroup} style={{ position: 'relative' }}>
+            <label>Business / mailing address</label>
+            <input
+              type="text"
+              placeholder="123 Main St, City, State ZIP"
+              value={addressInput}
+              onChange={(e) => onAddressChange(e.target.value)}
+              onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
+              onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
+              autoComplete="off"
+            />
+            {showAddrSuggestions && addrSuggestions.length > 0 && (
+              <div className={styles.addrSuggestions}>
+                {addrSuggestions.map((sg, i) => (
+                  <div
+                    key={i}
+                    className={styles.addrSuggestion}
+                    onMouseDown={(e) => { e.preventDefault(); onAddressPick(sg); }}
+                  >
+                    {sg.display.length > 60 ? sg.display.substring(0, 60) + '…' : sg.display}
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ margin: '.4rem 0 0', fontSize: '.72rem', color: 'var(--muted, #8a8aa0)', lineHeight: 1.5 }}>
+              Used on your invoices, and as the default for Cash and Check payment addresses.
+            </p>
+          </div>
+        )}
+
         <button
           type="button"
           className={styles.saveBtn}
@@ -702,6 +834,78 @@ export default function AccountSettingsClient({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      {syncOpen && (
+        <div
+          onClick={() => { if (!syncSaving) setSyncOpen(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 12, padding: '1.2rem 1.3rem', maxWidth: 520, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.6)',
+            }}
+          >
+            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '1rem', marginBottom: '.5rem' }}>
+              Update your other addresses?
+            </div>
+            <p style={{ margin: '0 0 .35rem', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
+              Your account address is now:
+            </p>
+            <p style={{ margin: '0 0 .9rem', fontSize: '.85rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
+              {syncNewAddr}
+            </p>
+            <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
+              These places have a different address set. Tick any you want moved to your new address; untick to keep as-is.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
+              {syncCandidates.map((c) => (
+                <label key={c.key} style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!syncChecked[c.key]}
+                    onChange={(e) => setSyncChecked((prev) => ({ ...prev, [c.key]: e.target.checked }))}
+                    style={{ marginTop: 3, accentColor: 'var(--neon,#00e0a4)', width: 15, height: 15 }}
+                  />
+                  <span style={{ fontSize: '.82rem', color: 'var(--white,#fff)', lineHeight: 1.45 }}>
+                    <strong>{c.label}</strong>
+                    <span style={{ display: 'block', color: 'var(--muted,#8a8aa0)', fontSize: '.76rem' }}>
+                      currently: {c.current}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setSyncOpen(false)}
+                disabled={syncSaving}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', color: 'var(--white,#fff)', fontWeight: 600, borderRadius: 6, padding: '.55rem 1.1rem', cursor: syncSaving ? 'default' : 'pointer', fontSize: '.8rem' }}
+              >
+                Keep them as they are
+              </button>
+              <button
+                type="button"
+                onClick={() => void applyAddressSync()}
+                disabled={syncSaving || !syncCandidates.some((c) => syncChecked[c.key])}
+                style={{
+                  background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 800,
+                  borderRadius: 6, padding: '.55rem 1.2rem', fontSize: '.8rem',
+                  cursor: (syncSaving || !syncCandidates.some((c) => syncChecked[c.key])) ? 'default' : 'pointer',
+                  opacity: (syncSaving || !syncCandidates.some((c) => syncChecked[c.key])) ? 0.5 : 1,
+                }}
+              >
+                {syncSaving ? 'Updating…' : 'Update checked'}
+              </button>
+            </div>
           </div>
         </div>
       )}
