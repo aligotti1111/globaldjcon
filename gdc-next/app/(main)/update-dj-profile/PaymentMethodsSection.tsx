@@ -749,11 +749,18 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           {TILE_ORDER.map((k) => {
             const live = tileLive(k);
             const open = openTile === k;
+            // Rails the provider locks to currencies the DJ isn't pricing in
+            // (Venmo/Zelle USD-only, Cash App US/UK) are disabled — a client
+            // couldn't actually pay in the DJ's currency through them.
+            const allowedCur = k !== 'card' ? RAIL_ALLOWED_CURRENCIES[k as PaymentMethodType] : undefined;
+            const blocked = !!allowedCur && !allowedCur.includes(rateCurrency);
             return (
               <button
                 key={k}
                 type="button"
-                onClick={() => setOpenTile(open ? null : k)}
+                onClick={() => { if (!blocked) setOpenTile(open ? null : k); }}
+                disabled={blocked}
+                title={blocked ? `${(allowedCur as string[]).join('/')} only — not available for ${rateCurrency}` : undefined}
                 style={{
                   position: 'relative',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
@@ -768,7 +775,8 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                     ? '1.5px solid var(--neon)'
                     : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
                   background: open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)',
-                  cursor: 'pointer',
+                  cursor: blocked ? 'not-allowed' : 'pointer',
+                  opacity: blocked ? 0.45 : 1,
                   textAlign: 'center',
                 }}
               >
@@ -787,6 +795,11 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   {TILE_MARK[k]?.({ size: TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE })}
                 </span>
                 <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
+                {blocked && (
+                  <span style={{ fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
+                    {(allowedCur as string[]).join('/')} only
+                  </span>
+                )}
                 {/* Only Card has one — don't leave an empty line reserving
                     space under every other tile. */}
                 {TILE_BLURB[k] && (
