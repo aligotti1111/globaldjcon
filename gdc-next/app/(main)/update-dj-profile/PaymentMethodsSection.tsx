@@ -725,7 +725,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
             client gets charged in the rail's currency instead. Warn, don't
             block — the DJ may still want to offer it. */}
         {rateCurrency !== 'USD' && currencyMismatches.length > 0 && (
-          <p style={{ margin: '0 0 .5rem', padding: '.6rem .7rem', borderRadius: 6, background: 'rgba(245,166,35,.1)', border: '1px solid rgba(245,166,35,.35)', color: '#f5a623', fontSize: '.75rem', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 .5rem', padding: '.6rem .7rem', borderRadius: 6, background: 'transparent', border: '1px solid rgba(245,166,35,.5)', color: '#f5a623', fontSize: '.75rem', lineHeight: 1.5 }}>
             You price in <strong>{rateCurrency}</strong>, but{' '}
             {currencyMismatches.map((m, i) => (
               <span key={m.label}>
@@ -771,10 +771,12 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   // the same fact, and it tinted the brand marks sitting on top
                   // of it — the one thing on the tile that has to stay true to
                   // itself. Frame and dot say the state; the body stays out of it.
-                  border: live
-                    ? '1.5px solid var(--neon)'
-                    : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
-                  background: open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)',
+                  border: blocked
+                    ? '1px dashed rgba(255,255,255,.16)'
+                    : live
+                      ? '1.5px solid var(--neon)'
+                      : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
+                  background: blocked ? 'rgba(255,255,255,.015)' : (open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)'),
                   cursor: blocked ? 'not-allowed' : 'pointer',
                   opacity: blocked ? 0.45 : 1,
                   textAlign: 'center',
@@ -784,6 +786,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     height: 30,
+                    filter: blocked ? 'grayscale(1)' : undefined,
                     // Always full colour, live or not. Greying the unset ones
                     // made the grid read as "these are broken" rather than
                     // "these are available" — and a DJ recognises Venmo by its
@@ -794,7 +797,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                 >
                   {TILE_MARK[k]?.({ size: TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE })}
                 </span>
-                <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--white)' }}>{TILE_LABEL[k]}</span>
+                <span style={{ fontSize: '.72rem', fontWeight: 700, color: blocked ? 'var(--muted)' : 'var(--white)' }}>{TILE_LABEL[k]}</span>
                 {blocked && (
                   <span style={{ fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
                     {(allowedCur as string[]).join('/')} only
@@ -806,8 +809,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
                 )}
                 {/* The dot is the whole point of the grid: what can a client
-                    actually use right now, without opening anything. */}
-                {live && (
+                    actually use right now, without opening anything. Hidden on a
+                    currency-blocked tile — a green "active" badge on a disabled
+                    rail is exactly the mixed signal that made it read clickable. */}
+                {live && !blocked && (
                   <span
                     aria-label="Active"
                     style={{
