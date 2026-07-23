@@ -771,12 +771,16 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   // the same fact, and it tinted the brand marks sitting on top
                   // of it — the one thing on the tile that has to stay true to
                   // itself. Frame and dot say the state; the body stays out of it.
+                  // Border reads the tile's state at a glance:
+                  //   neon solid  = live (offered to clients)
+                  //   white solid = available, click to set up
+                  //   dashed faint = disabled (currency can't use it)
                   border: blocked
-                    ? '1px dashed rgba(255,255,255,.16)'
+                    ? '1px dashed rgba(255,255,255,.14)'
                     : live
                       ? '1.5px solid var(--neon)'
-                      : `1px solid ${open ? 'rgba(255,255,255,.4)' : 'var(--border)'}`,
-                  background: blocked ? 'rgba(255,255,255,.015)' : (open ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)'),
+                      : `1px solid ${open ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.28)'}`,
+                  background: blocked ? 'rgba(255,255,255,.01)' : (open ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.03)'),
                   cursor: blocked ? 'not-allowed' : 'pointer',
                   opacity: blocked ? 0.45 : 1,
                   textAlign: 'center',
