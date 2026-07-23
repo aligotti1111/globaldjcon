@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './clubBookingForm.module.css';
 import {
   type BookingSettings,
@@ -86,6 +87,11 @@ export default function ClubBookingForm({
   currentUser,
   onClose,
 }: Props) {
+  // Full profile from auth context. The `currentUser` prop is a narrowed
+  // { id, email, name } from the calendar; the stored phone (sms_phone) isn't
+  // in it, so — same as MobileBookingForm — it has to come from here.
+  const { user: authUser } = useAuth();
+
   // ── Form state ────────────────────────────────────────────────────
   const [venueType, setVenueType] = useState<'' | 'bar' | 'club'>('');
   const [setType, setSetType] = useState<string>('');
@@ -95,7 +101,32 @@ export default function ClubBookingForm({
   const [promoError, setPromoError] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
-  const [phone, setPhone] = useState('');
+  /**
+   * Prefilled from the number on the account when there is one — mirrors
+   * MobileBookingForm. A host who signed up by phone already proved they
+   * hold that number; re-asking is the app forgetting what it was just told.
+   * Still editable in the no-number case (see knownPhone below).
+   *
+   * The stored value can be E.164 ("+19175551234"); the leading country code
+   * comes off FIRST, because formatUSPhone only strips non-digits and handing
+   * it 11 digits shifts every group left into a plausible-looking wrong number.
+   */
+  const accountPhone = (() => {
+    const stored = (authUser as { sms_phone?: string | null } | null)?.sms_phone || '';
+    const digits = stored.replace(/\D/g, '');
+    const ten = digits.length === 11 && digits.startsWith('1')
+      ? digits.slice(1)
+      : digits;
+    return ten.length === 10 ? formatUSPhone(ten) : '';
+  })();
+  const [phone, setPhone] = useState(accountPhone);
+  /**
+   * Whether the number came from the ACCOUNT — not whether the field happens
+   * to have something in it. Deriving this from `phone` would flip true the
+   * instant a host with no stored number typed one digit, yanking away the
+   * input they were mid-way through.
+   */
+  const knownPhone = accountPhone !== '';
   const [country, setCountry] = useState('US');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -1036,28 +1067,42 @@ export default function ClubBookingForm({
           })()}
         </FormSection>
 
-        {/* Phone — collected so the DJ can reach the booker about
-            day-of logistics. Same US-style auto-formatter mobile uses. */}
-        <FormSection
-          label="Phone Number"
-          fieldKey="phone"
-          hasError={hasError('phone')}
-          errorText="Please enter your phone number."
-        >
-          <FieldCheck valid={phoneValid}>
-            <input
-              id="cbf-phone"
-              type="tel"
-              inputMode="tel"
-              placeholder="(555) 555-5555"
-              value={phone}
-              onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
-              className={`${styles.input} ${styles.hasCheck}`}
-              style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
-              autoComplete="tel"
-            />
-          </FieldCheck>
-        </FormSection>
+        {/* Phone — shown as plain text (label + number on ONE line) when
+            we already have it from the account, matching MobileBookingForm:
+            an empty-looking input next to a number the host just proved they
+            own reads as another chore. Only a host with no stored number
+            gets the editable field. */}
+        {knownPhone ? (
+          <div className={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Phone Number</div>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+                {phone}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <FormSection
+            label="Phone Number"
+            fieldKey="phone"
+            hasError={hasError('phone')}
+            errorText="Please enter your phone number."
+          >
+            <FieldCheck valid={phoneValid}>
+              <input
+                id="cbf-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(555) 555-5555"
+                value={phone}
+                onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="tel"
+              />
+            </FieldCheck>
+          </FormSection>
+        )}
 
         {/* Notes */}
         <FormSection label="Notes (optional)">

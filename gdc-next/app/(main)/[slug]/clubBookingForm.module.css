@@ -131,7 +131,12 @@
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: .55rem .75rem;
+  /* Thickness matched to the DJ-side "Add Manual Booking" modal fields
+     (height 36px, vertical padding .42rem). Horizontal padding kept at
+     .75rem — the request was to match thickness only, not field length. */
+  padding: .42rem .75rem;
+  height: 36px;
+  box-sizing: border-box;
   color: var(--white);
   font-size: .88rem;
   font-family: 'DM Sans', sans-serif;
@@ -147,7 +152,9 @@ select.input {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  height: 2.45rem;
+  /* Matches the text .input height (36px) so selects and inputs line up
+     with the manual-booking modal thickness. */
+  height: 36px;
   line-height: 1.2;
   box-sizing: border-box;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
