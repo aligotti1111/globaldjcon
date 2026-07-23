@@ -14,6 +14,7 @@ import {
 } from '../[slug]/mobileBookingForm';
 import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
+import { currencySymbol } from '@/lib/constants';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 import { COUNTRY_FLAGS, MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
@@ -323,7 +324,7 @@ export default function AddManualBookingModal({
   const taxIncomplete = applyTax && rate.trim() !== '' && !(Number(taxPctStr) > 0);
   const depositIncomplete = applyDeposit && rate.trim() !== '' && !(Number(depositPctStr) > 0);
 
-  const currencySym = rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : '$';
+  const currencySym = currencySymbol(rateCurrency);
   const money = (n: number) =>
     `${currencySym}${n.toLocaleString(undefined, {
       minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
@@ -1061,7 +1062,7 @@ export default function AddManualBookingModal({
                 <div className={styles.rateRow}>
                   <div className={styles.rateInputWrap}>
                     <span className={styles.rateSymbol}>
-                      {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                      {currencySymbol(rateCurrency)}
                     </span>
                     <input
                       type="number"
@@ -1213,7 +1214,7 @@ export default function AddManualBookingModal({
                   <div className={styles.rateRow}>
                     <div className={styles.rateInputWrap}>
                       <span className={styles.rateSymbol}>
-                        {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                        {currencySymbol(rateCurrency)}
                       </span>
                       <input
                         type="number"
@@ -1253,7 +1254,7 @@ export default function AddManualBookingModal({
                     <div className={styles.rateRow}>
                       <div className={styles.rateInputWrap}>
                         <span className={styles.rateSymbol}>
-                          {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                          {currencySymbol(rateCurrency)}
                         </span>
                         <input
                           type="number"
