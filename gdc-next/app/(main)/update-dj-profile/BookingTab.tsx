@@ -677,6 +677,7 @@ export default function BookingTab({
                   packages={packages}
                   totalCount={renderedCount}
                   userId={userId}
+                  currency={rateCurrency}
                   onSavePackage={savePackage}
                   onRemove={removePackage}
                   onAdd={addPackage}
@@ -719,6 +720,7 @@ function PackageList({
   packages,
   totalCount,
   userId,
+  currency,
   onSavePackage,
   onRemove,
   onAdd,
@@ -730,6 +732,7 @@ function PackageList({
   packages: Record<string, MobilePackage[]>;
   totalCount: number;
   userId: string;
+  currency: string;
   onSavePackage: (idx: number, drafts: Record<PkgCategory, MobilePackage>) => void;
   onRemove: (idx: number) => void;
   onAdd: () => void;
@@ -748,6 +751,7 @@ function PackageList({
         packages={packages}
         totalCount={count}
         userId={userId}
+        currency={currency}
         onSave={(drafts) => onSavePackage(idx, drafts)}
         onRemove={() => onRemove(idx)}
         masterSaveTrigger={masterSaveTrigger}
@@ -791,6 +795,7 @@ function PackageCardWithCatTabs({
   packages,
   totalCount,
   userId,
+  currency,
   onSave,
   onRemove,
   masterSaveTrigger,
@@ -802,6 +807,7 @@ function PackageCardWithCatTabs({
   packages: Record<string, MobilePackage[]>;
   totalCount: number;
   userId: string;
+  currency: string;
   onSave: (drafts: Record<PkgCategory, MobilePackage>) => void;
   onRemove: () => void;
   masterSaveTrigger: number;
@@ -1164,6 +1170,7 @@ function PackageCardWithCatTabs({
         userId={userId}
         onChange={(p) => updateDraftField(selectedCat, p)}
         onRemove={onRemove}
+        currency={currency}
         hideOwnHeader
         generalPhotos={{
           photo: drafts.general?.photo || '',

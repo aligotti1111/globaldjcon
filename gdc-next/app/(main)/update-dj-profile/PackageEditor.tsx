@@ -16,6 +16,7 @@ import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/components/ConfirmModal';
 import type { MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
+import { currencySymbol } from '@/lib/constants';
 
 const PKG_SETUP_HOURS = ['1', '2', '3', '4', '5'];
 
@@ -27,6 +28,9 @@ interface Props {
   userId: string;
   onChange: (next: MobilePackage) => void;
   onRemove: () => void;
+  // The DJ's chosen currency (booking_settings.rate_currency), passed down
+  // from BookingTab so the price fields show the right symbol. Defaults USD.
+  currency?: string;
   // When true, PackageEditor renders the inner fields only — no card
   // wrapper, no "Package N" header, no remove button. The parent component
   // is expected to provide those instead. Used by the inner-tabs case in
@@ -69,11 +73,13 @@ export function newMobPackage(): MobilePackage & {
 }
 
 export default function PackageEditor({
-  cat, idx, pkg, totalCount, userId, onChange, onRemove, hideOwnHeader, generalPhotos, errorFields,
+  cat, idx, pkg, totalCount, userId, onChange, onRemove, currency, hideOwnHeader, generalPhotos, errorFields,
 }: Props) {
   const errSet = new Set(errorFields || []);
   const isWedding = cat === 'wedding';
   const reqAll = !!pkg.reqAll;
+  // The symbol the DJ prices in — shown before every price input here.
+  const cur = currencySymbol(currency || 'USD');
   const { confirm, confirmDialog } = useConfirm();
 
   // Rich-text editor — kept uncontrolled (set initial via dangerouslySetInnerHTML
@@ -289,7 +295,7 @@ export default function PackageEditor({
                   <span className={styles.priceRowLabel}>
                     {t.hours} Hour Event{isWedding ? ' (Reception)' : ''}:
                   </span>
-                  <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
+                  <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
                   <input
                     type="number"
                     onWheel={(e) => e.currentTarget.blur()}
@@ -333,7 +339,7 @@ export default function PackageEditor({
           <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
             Hourly Overtime:
           </span>
-          <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>$</span>
+          <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
           <input
             type="number"
             onWheel={(e) => e.currentTarget.blur()}
@@ -368,7 +374,7 @@ export default function PackageEditor({
             {(pkg as { cocktailIncluded?: boolean }).cocktailIncluded === false && (
               <div className={styles.cocktailPriceWrap}>
                 <span className={styles.priceRowLabel}>Cocktail Hour Price (per hour):</span>
-                <span className={styles.priceCurrency}>$</span>
+                <span className={styles.priceCurrency}>{cur}</span>
                 <input
                   type="number"
                   onWheel={(e) => e.currentTarget.blur()}
@@ -404,7 +410,7 @@ export default function PackageEditor({
             {(pkg as { ceremonyIncluded?: boolean }).ceremonyIncluded === false && (
               <div className={styles.cocktailPriceWrap}>
                 <span className={styles.priceRowLabel}>Ceremony Price:</span>
-                <span className={styles.priceCurrency}>$</span>
+                <span className={styles.priceCurrency}>{cur}</span>
                 <input
                   type="number"
                   onWheel={(e) => e.currentTarget.blur()}
