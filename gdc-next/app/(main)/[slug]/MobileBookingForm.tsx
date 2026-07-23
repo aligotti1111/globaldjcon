@@ -1440,6 +1440,7 @@ export default function MobileBookingForm({
               wantsCocktail={wantsCocktail}
               cocktailStart={cocktailStart}
               wantsCeremony={wantsCeremony}
+              cur={cur}
             />
           </div>
         ) : (
@@ -1683,6 +1684,7 @@ function PackagesSection({
   wantsCocktail,
   cocktailStart,
   wantsCeremony,
+  cur,
 }: {
   formReady: boolean;
   eventType: string;
@@ -1697,6 +1699,7 @@ function PackagesSection({
   wantsCocktail: boolean;
   cocktailStart: string;
   wantsCeremony: boolean;
+  cur: string;
 }) {
   if (!formReady) {
     return (
@@ -1765,7 +1768,7 @@ function PackagesSection({
             } else {
               priceEl = (
                 <div className={styles.packagePrice}>
-                  {currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency)}{cardPrice.price.toLocaleString()}
+                  {cur}{cardPrice.price.toLocaleString()}
                 </div>
               );
             }
