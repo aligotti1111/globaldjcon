@@ -159,39 +159,6 @@ export async function POST(req: Request) {
     }
   }
 
-  /**
-   * Upgrade a stored first-name-only to the full name the host just gave.
-   *
-   * DELIBERATELY DIFFERENT FROM saveContactEmail, which refuses to overwrite.
-   * That one protects an address the host already chose; this one exists
-   * precisely BECAUSE the stored value is inadequate, so leaving it alone
-   * would defeat the point. It still won't clobber a name that's already
-   * complete — if they have a first and last on file, whatever arrived here
-   * is ignored, so a booking can never quietly rename an account.
-   *
-   * Best-effort: a failed profile write must not lose a booking that already
-   * inserted.
-   */
-  async function saveFullName(userId: string, name: string): Promise<void> {
-    const clean = normalizeName(name);
-    if (!isFullName(clean)) return;
-    try {
-      const adminDb = createAdminClient();
-      const { data: existing } = await adminDb
-        .from('users')
-        .select('name')
-        .eq('id', userId)
-        .maybeSingle<{ name: string | null }>();
-      if (isFullName(existing?.name)) return; // already complete — leave it
-      await adminDb
-        .from('users')
-        .update({ name: clean } as unknown as never)
-        .eq('id', userId);
-    } catch (e) {
-      console.warn('[bookings/create] name save failed:', e);
-    }
-  }
-
   const djId = str(body.djId);
   const dateKey = str(body.dateKey);
   if (!djId) return bad('Missing djId');
@@ -405,6 +372,10 @@ export async function POST(req: Request) {
     const insertPayload = {
       dj_id: djRow.id,
       requester_id: user.id, // session-derived — NEVER from the body
+      // The booker's name for THIS booking. Stored on the row — NOT written
+      // back to their account — so editing it on the booking form never
+      // changes their profile. The contract + card read this first.
+      requester_name: fullName || null,
       dj_slug: djSlug,
       booking_type: 'mobile',
       event_date: dateKey,
@@ -502,7 +473,6 @@ export async function POST(req: Request) {
     }
 
     await saveContactEmail(user.id, contactEmail);
-    await saveFullName(user.id, fullName);
 
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
@@ -658,6 +628,10 @@ export async function POST(req: Request) {
   const insertPayload = {
     dj_id: djRow.id,
     requester_id: user.id, // session-derived — NEVER from the body
+    // The booker's name for THIS booking. Stored on the row — NOT written
+    // back to their account — so editing it on the booking form never
+    // changes their profile. The contract + card read this first.
+    requester_name: fullName || null,
     dj_slug: djSlug,
     booking_type: 'club',
     event_date: dateKey,
@@ -705,7 +679,6 @@ export async function POST(req: Request) {
   }
 
   await saveContactEmail(user.id, contactEmail);
-  await saveFullName(user.id, fullName);
 
   return NextResponse.json({
     ok: true,
