@@ -154,7 +154,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     placeholder: '(555) 123-4567',
     contactLabel: 'Ask for (optional)',
     contactPlaceholder: 'Mike',
-    hint: 'In person only. For deposits arranged meeting will be required. Include contact info and or office address below.',
+    hint: 'Paid in person; a deposit needs an arranged meeting. Your phone and office address come from Account Settings — tap to use them below, or enter different ones.',
     validate: (v) => {
       const t = v.trim();
       if (!t) return 'Enter a phone number the client can call.';
