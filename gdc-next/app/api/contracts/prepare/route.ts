@@ -307,7 +307,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     return NextResponse.json({ error: 'NO_CLIENT_EMAIL' }, { status: 400 });
   }
   const emailPrefix = clientEmail.includes('@') ? clientEmail.split('@')[0] : '';
-  const clientName = accountName || ((b.requester_name as string) || '').trim() || emailPrefix || 'Client';
+  // Prefer the name captured ON THIS BOOKING (requester_name) over the account
+  // name. The booking form no longer writes the booker's name back to their
+  // account, so requester_name is the authoritative party name for the
+  // contract; accountName is only a fallback for legacy rows that never stored
+  // one, then the email prefix, then a generic 'Client'.
+  const clientName = ((b.requester_name as string) || '').trim() || accountName || emailPrefix || 'Client';
 
   // Cocktail hour (wedding bookings only). Fills the field next to the
   // "Cocktail hour:" label; stays empty (blank) when the booking has none.
