@@ -57,7 +57,7 @@
 // own handle rendered exactly as the client will see it, before it can ever be
 // used. That readback is the cheapest defense that exists.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import {
@@ -71,6 +71,7 @@ import {
   type PaymentMethod,
   type PaymentMethodType,
 } from '@/lib/paymentMethods';
+import { searchAddresses, type AddressSuggestion } from '../account-settings/helpers';
 
 function newId(): string {
   try {
@@ -231,6 +232,18 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // already given us one — asking them to type it again is asking them to
   // maintain the same fact in two places, which is how one of them goes stale.
   const [accountPhone, setAccountPhone] = useState<string | null>(null);
+  // The DJ's ONE address, from account settings. Cash's drop-off and Check's
+  // mailing address both default to this — enter it once, it shows everywhere —
+  // and the invoice already reads the same users.address column, so the three
+  // can't disagree. accountCountry biases the address autocomplete.
+  const [accountAddress, setAccountAddress] = useState<string | null>(null);
+  const [accountCountry, setAccountCountry] = useState<string>('United States');
+  // Address autocomplete (shared — only one rail's address field is open at a
+  // time). Same Nominatim-backed searchAddresses the booking form and account
+  // settings use, so suggestions look identical wherever an address is typed.
+  const [addrSug, setAddrSug] = useState<AddressSuggestion[]>([]);
+  const [showAddrSug, setShowAddrSug] = useState(false);
+  const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   // Drop-off starts collapsed. Most DJs don't have an office, and two more
@@ -355,13 +368,26 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods, slug, phone')
+          .select('payment_methods, slug, phone, address, city, state, zip, country')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
-        const row = data as { payment_methods?: unknown; slug?: string | null; phone?: string | null } | null;
+        const row = data as {
+          payment_methods?: unknown; slug?: string | null; phone?: string | null;
+          address?: string | null; city?: string | null; state?: string | null;
+          zip?: string | null; country?: string | null;
+        } | null;
         setSlug(typeof row?.slug === 'string' ? row.slug : null);
         setAccountPhone(typeof row?.phone === 'string' && row.phone.trim() ? row.phone.trim() : null);
+        // Compose exactly the way lib/receiptDocs builds the invoice's business
+        // address: the full `address` string wins; older rows with only the
+        // parts fall back to "city, ST zip". Empty => there's nothing to inherit.
+        const composed = (typeof row?.address === 'string' && row.address.trim())
+          ? row.address.trim()
+          : [row?.city, [row?.state, row?.zip].filter(Boolean).join(' ')]
+              .filter((x) => x && String(x).trim()).join(', ');
+        setAccountAddress(composed.trim() || null);
+        if (typeof row?.country === 'string' && row.country.trim()) setAccountCountry(row.country.trim());
         const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
         const mapped = arr.map((r) => {
@@ -564,6 +590,59 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     cursor: enabled ? 'pointer' : 'default',
     opacity: enabled ? 1 : 0.45,
   });
+
+  // Debounced address lookup for the Cash/Check address fields. Under 5 chars
+  // searchAddresses returns nothing, so don't even fire.
+  function runAddrSearch(val: string) {
+    if (addrTimer.current) clearTimeout(addrTimer.current);
+    if (val.trim().length < 5) { setAddrSug([]); setShowAddrSug(false); return; }
+    addrTimer.current = setTimeout(async () => {
+      const results = await searchAddresses(val.trim(), accountCountry);
+      setAddrSug(results);
+      setShowAddrSug(results.length > 0);
+    }, 400);
+  }
+
+  // One address input with the type-ahead dropdown, reused by both the Cash
+  // office field and the Check mailing field so they behave identically.
+  const addressField = (opts: {
+    value: string; onChange: (v: string) => void; placeholder: string;
+    autoFocus?: boolean; invalid?: boolean;
+  }) => (
+    <div style={{ position: 'relative' }}>
+      <input
+        value={opts.value}
+        autoFocus={opts.autoFocus}
+        placeholder={opts.placeholder}
+        autoComplete="off"
+        onChange={(e) => { opts.onChange(e.target.value); runAddrSearch(e.target.value); }}
+        onFocus={() => { if (addrSug.length > 0) setShowAddrSug(true); }}
+        onBlur={() => setTimeout(() => setShowAddrSug(false), 150)}
+        style={{ ...field, borderColor: opts.invalid ? '#ff6b6b' : 'var(--border)' }}
+      />
+      {showAddrSug && addrSug.length > 0 && (
+        <div style={{
+          position: 'absolute', zIndex: 5, top: '100%', left: 0, right: 0,
+          background: 'var(--deep)', border: '1px solid var(--border)',
+          borderRadius: 6, marginTop: 2, maxHeight: 200, overflowY: 'auto',
+        }}>
+          {addrSug.map((sg, i) => (
+            <div
+              key={i}
+              onMouseDown={(e) => { e.preventDefault(); opts.onChange(sg.display); setAddrSug([]); setShowAddrSug(false); }}
+              style={{
+                padding: '.5rem .6rem', cursor: 'pointer', fontSize: '.8rem',
+                color: 'var(--white)',
+                borderBottom: i < addrSug.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              {sg.display}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   if (!loaded) {
     return (
@@ -942,13 +1021,41 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                   {cfg.contactLabel && (
                     <>
                       <label style={{ ...label, marginTop: '.7rem' }}>{cfg.contactLabel}</label>
-                      <input
-                        value={m.contact || ''}
-                        placeholder={cfg.contactPlaceholder}
-                        onChange={(e) => patchType(t, { contact: e.target.value })}
-                        style={{ ...field, borderColor: contactErr ? '#ff6b6b' : 'var(--border)' }}
-                      />
+                      {/* Check's mailing address gets the type-ahead and inherits
+                          the account address; Cash's "Ask for" is a name, so it
+                          stays a plain box. */}
+                      {t === 'check' ? (
+                        addressField({
+                          value: m.contact || '',
+                          onChange: (v) => patchType(t, { contact: v }),
+                          placeholder: accountAddress || cfg.contactPlaceholder,
+                          invalid: !!contactErr,
+                        })
+                      ) : (
+                        <input
+                          value={m.contact || ''}
+                          placeholder={cfg.contactPlaceholder}
+                          onChange={(e) => patchType(t, { contact: e.target.value })}
+                          style={{ ...field, borderColor: contactErr ? '#ff6b6b' : 'var(--border)' }}
+                        />
+                      )}
                       {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
+                      {/* One tap to pull in the account address. Offered, not
+                          forced — a DJ may take checks at a different address
+                          than the office. Hidden once it already matches. */}
+                      {t === 'check' && accountAddress && (m.contact || '').trim() !== accountAddress && (
+                        <button
+                          type="button"
+                          onClick={() => patchType(t, { contact: accountAddress })}
+                          style={{
+                            marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
+                            color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
+                            fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                          }}
+                        >
+                          {(m.contact || '').trim() ? 'Use my account address instead' : `Use my account address (${accountAddress})`}
+                        </button>
+                      )}
                     </>
                   )}
 
@@ -975,12 +1082,24 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                       ) : (
                         <>
                           <label style={label}>Office address (optional)</label>
-                          <input
-                            value={m.dropoffAddress || ''}
-                            placeholder="123 Main St, Staten Island, NY 10307"
-                            onChange={(e) => patchType(t, { dropoffAddress: e.target.value })}
-                            style={field}
-                          />
+                          {addressField({
+                            value: m.dropoffAddress || '',
+                            onChange: (v) => patchType(t, { dropoffAddress: v }),
+                            placeholder: accountAddress || '123 Main St, Staten Island, NY 10307',
+                          })}
+                          {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && (
+                            <button
+                              type="button"
+                              onClick={() => patchType(t, { dropoffAddress: accountAddress })}
+                              style={{
+                                marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
+                                color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
+                                fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                              }}
+                            >
+                              {(m.dropoffAddress || '').trim() ? 'Use my account address instead' : `Use my account address (${accountAddress})`}
+                            </button>
+                          )}
                           <label style={{ ...label, marginTop: '.7rem' }}>Open hours (optional)</label>
                           <input
                             value={m.dropoffHours || ''}
