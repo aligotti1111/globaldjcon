@@ -1028,7 +1028,7 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
                         addressField({
                           value: m.contact || '',
                           onChange: (v) => patchType(t, { contact: v }),
-                          placeholder: accountAddress || cfg.contactPlaceholder,
+                          placeholder: accountAddress || cfg.contactPlaceholder || '',
                           invalid: !!contactErr,
                         })
                       ) : (
