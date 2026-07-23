@@ -71,7 +71,9 @@ import {
   type PaymentMethod,
   type PaymentMethodType,
 } from '@/lib/paymentMethods';
-import { searchAddresses, type AddressSuggestion } from '../account-settings/helpers';
+import { searchAddresses } from '../[slug]/mobileBookingForm';
+import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
+import { COUNTRY_FLAGS } from '../upcoming-bookings/shared';
 
 function newId(): string {
   try {
@@ -241,7 +243,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // Address autocomplete (shared — only one rail's address field is open at a
   // time). Same Nominatim-backed searchAddresses the booking form and account
   // settings use, so suggestions look identical wherever an address is typed.
-  const [addrSug, setAddrSug] = useState<AddressSuggestion[]>([]);
+  // Booking-form shape: the SAME searchAddresses the public booking page uses,
+  // so the type-ahead here is byte-for-byte the one clients already know.
+  type AddrSug = { display: string; lat: number | null; lon: number | null };
+  const [addrSug, setAddrSug] = useState<AddrSug[]>([]);
   const [showAddrSug, setShowAddrSug] = useState(false);
   const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
@@ -595,12 +600,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // searchAddresses returns nothing, so don't even fire.
   function runAddrSearch(val: string) {
     if (addrTimer.current) clearTimeout(addrTimer.current);
-    if (val.trim().length < 5) { setAddrSug([]); setShowAddrSug(false); return; }
+    if (val.trim().length < 3) { setAddrSug([]); setShowAddrSug(false); return; }
     addrTimer.current = setTimeout(async () => {
-      const results = await searchAddresses(val.trim(), accountCountry);
+      // Country CODE, not name — exactly how the booking form calls it.
+      const cc = COUNTRY_CODES_ADDR[accountCountry] || null;
+      const results = await searchAddresses(val.trim(), cc);
       setAddrSug(results);
       setShowAddrSug(results.length > 0);
-    }, 400);
+    }, 350);
   }
 
   // One address input with the type-ahead dropdown, reused by both the Cash
@@ -609,38 +616,55 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     value: string; onChange: (v: string) => void; placeholder: string;
     autoFocus?: boolean; invalid?: boolean;
   }) => (
-    <div style={{ position: 'relative' }}>
-      <input
-        value={opts.value}
-        autoFocus={opts.autoFocus}
-        placeholder={opts.placeholder}
-        autoComplete="off"
-        onChange={(e) => { opts.onChange(e.target.value); runAddrSearch(e.target.value); }}
-        onFocus={() => { if (addrSug.length > 0) setShowAddrSug(true); }}
-        onBlur={() => setTimeout(() => setShowAddrSug(false), 150)}
-        style={{ ...field, borderColor: opts.invalid ? '#ff6b6b' : 'var(--border)' }}
-      />
-      {showAddrSug && addrSug.length > 0 && (
-        <div style={{
-          position: 'absolute', zIndex: 5, top: '100%', left: 0, right: 0,
-          background: 'var(--deep)', border: '1px solid var(--border)',
-          borderRadius: 6, marginTop: 2, maxHeight: 200, overflowY: 'auto',
-        }}>
-          {addrSug.map((sg, i) => (
-            <div
-              key={i}
-              onMouseDown={(e) => { e.preventDefault(); opts.onChange(sg.display); setAddrSug([]); setShowAddrSug(false); }}
-              style={{
-                padding: '.5rem .6rem', cursor: 'pointer', fontSize: '.8rem',
-                color: 'var(--white)',
-                borderBottom: i < addrSug.length - 1 ? '1px solid var(--border)' : 'none',
-              }}
-            >
-              {sg.display}
-            </div>
-          ))}
-        </div>
-      )}
+    // Input + country picker side by side — the same pairing the booking form
+    // uses. The country biases the address search (and is what the booking
+    // page shows), so it lives right next to the box it affects.
+    <div style={{ display: 'flex', gap: '.4rem', alignItems: 'flex-start' }}>
+      <div style={{ position: 'relative', flex: 1 }}>
+        <input
+          value={opts.value}
+          autoFocus={opts.autoFocus}
+          placeholder={opts.placeholder}
+          autoComplete="off"
+          onChange={(e) => { opts.onChange(e.target.value); runAddrSearch(e.target.value); }}
+          onFocus={() => { if (addrSug.length > 0) setShowAddrSug(true); }}
+          onBlur={() => setTimeout(() => setShowAddrSug(false), 150)}
+          style={{ ...field, borderColor: opts.invalid ? '#ff6b6b' : 'var(--border)' }}
+        />
+        {showAddrSug && addrSug.length > 0 && (
+          <div style={{
+            position: 'absolute', zIndex: 5, top: '100%', left: 0, right: 0,
+            background: 'var(--deep)', border: '1px solid var(--border)',
+            borderRadius: 6, marginTop: 2, maxHeight: 200, overflowY: 'auto',
+          }}>
+            {addrSug.map((sg, i) => (
+              <div
+                key={i}
+                onMouseDown={(e) => { e.preventDefault(); opts.onChange(sg.display); setAddrSug([]); setShowAddrSug(false); }}
+                style={{
+                  padding: '.5rem .6rem', cursor: 'pointer', fontSize: '.8rem',
+                  color: 'var(--white)',
+                  borderBottom: i < addrSug.length - 1 ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                {sg.display}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <select
+        value={accountCountry}
+        onChange={(e) => { setAccountCountry(e.target.value); setAddrSug([]); setShowAddrSug(false); }}
+        aria-label="Country for address search"
+        style={{ ...field, width: 'auto', flex: '0 0 auto', padding: '.55rem .4rem', cursor: 'pointer' }}
+      >
+        {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
+          <option key={c} value={c}>
+            {COUNTRY_FLAGS[c] || '🌍'} {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+          </option>
+        ))}
+      </select>
     </div>
   );
 
