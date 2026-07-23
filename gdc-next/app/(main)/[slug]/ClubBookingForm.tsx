@@ -25,6 +25,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/AuthProvider';
+import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
 import styles from './clubBookingForm.module.css';
 import {
   type BookingSettings,
@@ -127,6 +128,27 @@ export default function ClubBookingForm({
    * input they were mid-way through.
    */
   const knownPhone = accountPhone !== '';
+
+  // ── Name + email capture (mirrors MobileBookingForm) ──────────────
+  // A contract names two parties and every post-booking message — offer,
+  // confirmation, contract, planner, cancellation — is an email. A host who
+  // signed up by phone has neither a surname nor an email on file, so, exactly
+  // like the mobile form, we ask here, once, and ONLY when the account is
+  // actually missing it. The create route already accepts and persists both
+  // (saveContactEmail / saveFullName) — the club form just never sent them.
+  const accountName = normalizeName(
+    (authUser as { name?: string | null } | null)?.name || currentUser.name || '',
+  );
+  const [fullName, setFullName] = useState(accountName);
+  // Derived from the ACCOUNT, not the input — reading isFullName(fullName)
+  // would make the field vanish the instant they typed the space before their
+  // surname, mid-word.
+  const needsFullName = !isFullName(accountName);
+  const fullNameValid = isFullName(fullName);
+  // Prefer the full profile's email, fall back to the narrowed prop.
+  const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
+  const [contactEmail, setContactEmail] = useState('');
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const [country, setCountry] = useState('US');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -393,6 +415,13 @@ export default function ClubBookingForm({
     if (!setType) missing.add('setType');
     if (!venueName.trim()) missing.add('venueName');
     if (!venueAddress.trim()) missing.add('venueAddress');
+    // Name + email are only required when the account is missing them (phone
+    // signups). Name must be a real first + last; email must be well-formed.
+    if (needsFullName && !isFullName(normalizeName(fullName))) missing.add('fullName');
+    if (needsEmail) {
+      const em = contactEmail.trim();
+      if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) missing.add('contactEmail');
+    }
     if (!phone.trim()) missing.add('phone');
     if (!startTime) missing.add('startTime');
     if (!endTime) missing.add('endTime');
@@ -409,7 +438,7 @@ export default function ClubBookingForm({
       // confused about WHERE the highlights are.
       const firstFieldId = (() => {
         // Order matches the form layout top → bottom for natural scroll
-        const order = ['venueType','setType','venueName','venueAddress','phone','startTime','endTime','equipment','offerAmount'];
+        const order = ['venueType','setType','venueName','venueAddress','fullName','contactEmail','phone','startTime','endTime','equipment','offerAmount'];
         for (const f of order) {
           if (missing.has(f)) return f;
         }
@@ -483,6 +512,13 @@ export default function ClubBookingForm({
           venueName: venueName.trim(),
           venueAddress: venueAddress.trim(),
           phone: phone.trim(),
+          // Only sent when the account has none. The server writes it to
+          // users.contact_email so every later email (contract, planner,
+          // cancellation) has somewhere to go.
+          contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
+          // Only sent when the stored name was incomplete. The server writes
+          // it to users.name so the contract has a surname to print.
+          fullName: needsFullName ? normalizeName(fullName) : null,
           // Coords from a Nominatim suggestion the booker picked. Null when
           // they typed freehand or the search returned nothing. The
           // booking-requests card uses these for the venue distance check.
@@ -526,7 +562,7 @@ export default function ClubBookingForm({
             type: 'booking_request',
             djUserId: dj.id,
             djName: dj.name,
-            requesterName: currentUser.name,
+            requesterName: normalizeName(fullName) || currentUser.name,
             eventDate: dateKey,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
@@ -562,7 +598,7 @@ export default function ClubBookingForm({
           body: JSON.stringify({
             type: 'booking_request_confirmation',
             requesterUserId: currentUser.id,
-            requesterName: currentUser.name,
+            requesterName: normalizeName(fullName) || currentUser.name,
             djName: dj.name,
             eventDate: dateKey,
             venueName: venueName.trim(),
@@ -1066,6 +1102,55 @@ export default function ClubBookingForm({
             );
           })()}
         </FormSection>
+
+        {/* Your Name — the contract names two parties, and this is the last
+            moment the host is here to supply a surname. Plain field only when
+            the account's stored name is missing one; complete names skip it. */}
+        {needsFullName && (
+          <FormSection
+            label="Your Name"
+            fieldKey="fullName"
+            hasError={hasError('fullName')}
+            errorText={FULL_NAME_ERROR}
+          >
+            <FieldCheck valid={fullNameValid}>
+              <input
+                type="text"
+                placeholder="Jane Smith"
+                value={fullName}
+                onChange={(e) => { setFullName(e.target.value); clearMissing('fullName'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('fullName') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="name"
+              />
+            </FieldCheck>
+          </FormSection>
+        )}
+
+        {/* Email — ONLY for accounts that don't have one (phone signups).
+            Everything after this booking is an email; without an address the
+            host would book and then never hear from anyone again. */}
+        {needsEmail && (
+          <FormSection
+            label="Email Address"
+            fieldKey="contactEmail"
+            hasError={hasError('contactEmail')}
+            errorText="Please enter a valid email for your booking documents."
+          >
+            <FieldCheck valid={emailValid}>
+              <input
+                type="email"
+                inputMode="email"
+                placeholder="your@email.com"
+                value={contactEmail}
+                onChange={(e) => { setContactEmail(e.target.value); clearMissing('contactEmail'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('contactEmail') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="email"
+              />
+            </FieldCheck>
+          </FormSection>
+        )}
 
         {/* Phone — shown as plain text (label + number on ONE line) when
             we already have it from the account, matching MobileBookingForm:
