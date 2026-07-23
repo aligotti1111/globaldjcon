@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import { formatLongDate } from './helpers';
 import type { BookingRow } from './page';
+import { currencySymbol } from '@/lib/constants';
 
 interface Props {
   booking: BookingRow;
@@ -130,6 +131,8 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
   // rate and legacy rows with no snapshot stay tax-free.
   const quoteTaxPct = taxEnabled ? taxPct : (booking.tax_pct != null ? Number(booking.tax_pct) : 0);
+  // The booking's frozen currency symbol (legacy rows → USD).
+  const cur = currencySymbol((booking as BookingRow & { currency?: string }).currency || 'USD');
   const quoteTaxAmount = (quoteTaxPct > 0 && subtotalNum > 0)
     ? Number(((subtotalNum * quoteTaxPct) / 100).toFixed(2))
     : 0;
@@ -599,7 +602,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             <div style={{ width: showDiscount ? '50%' : '50%' }}>
               <label className={styles.counterFormLabel}>{priceLabel}</label>
               <div className={styles.counterAmountRow}>
-                <span className={styles.counterCurrencySym}>$</span>
+                <span className={styles.counterCurrencySym}>{cur}</span>
                 <input
                   type="number"
                   onWheel={(e) => e.currentTarget.blur()}
@@ -660,7 +663,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
 
           {discountAmount > 0 && (
             <div className={styles.depositPreview}>
-              Takes ${discountAmount.toLocaleString()} off — new price ${netPriceNum.toLocaleString()}
+              Takes {cur}{discountAmount.toLocaleString()} off — new price {cur}{netPriceNum.toLocaleString()}
             </div>
           )}
         </div>
@@ -671,7 +674,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           <div className={styles.counterFormGroup} style={{ width: '50%' }}>
             <label className={styles.counterFormLabel}>Hourly Overtime Rate</label>
             <div className={styles.counterAmountRow}>
-              <span className={styles.counterCurrencySym}>$</span>
+              <span className={styles.counterCurrencySym}>{cur}</span>
               <input
                 type="number"
                 onWheel={(e) => e.currentTarget.blur()}
@@ -715,7 +718,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           >
             {(() => {
               const money = (n: number) =>
-                `$${Number(n).toLocaleString(undefined, {
+                `${cur}${Number(n).toLocaleString(undefined, {
                   minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
                   maximumFractionDigits: 2,
                 })}`;

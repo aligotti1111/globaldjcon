@@ -20,6 +20,7 @@ import {
 } from './helpers';
 import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
 import type { BookingRow } from './page';
+import { currencySymbol } from '@/lib/constants';
 import { isPackageEdited } from './packageDiff';
 
 // Same prop shape as BookingCardShell except eventLabel/detailsSlot/
@@ -38,6 +39,8 @@ export default function MobileBookingCard(props: Props) {
   // Pull onViewHistory so the in-card "View History" link can open
   // the read-only HistoryModal. shellProps still passes it through.
   const { onViewHistory } = shellProps;
+  // The booking's frozen currency symbol (legacy rows → USD).
+  const cur = currencySymbol((b as BookingRow & { currency?: string }).currency || 'USD');
 
   // ── Computed values used by both detailsSlot and pricingSlot ──
   const isQuote = !!b.is_quote;
@@ -346,41 +349,41 @@ export default function MobileBookingCard(props: Props) {
               {labelText}
             </div>
             <div className={styles.bigPrice} style={{ color: hasCounter ? 'var(--amber)' : 'var(--white)' }}>
-              ${Number(bigPriceVal).toLocaleString()}
+              {cur}{Number(bigPriceVal).toLocaleString()}
             </div>
             {!hasCounter && b.discount_amount != null && b.discount_amount > 0 && (
               <div className={styles.priceSub}>
                 <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
-                  ${Number(b.original_rate ?? Number(bigPriceVal) + b.discount_amount).toLocaleString()}
+                  {cur}{Number(b.original_rate ?? Number(bigPriceVal) + b.discount_amount).toLocaleString()}
                 </span>{' '}
                 <span style={{ color: 'var(--neon)' }}>
-                  {b.discount_label || 'Discount'} (−${Number(b.discount_amount).toLocaleString()})
+                  {b.discount_label || 'Discount'} (−{cur}{Number(b.discount_amount).toLocaleString()})
                 </span>
               </div>
             )}
             {hasCounter && (
               <div className={styles.priceSub}>
-                Initial Offer: <span>${Number(b.quoted_rate).toLocaleString()}</span>
+                Initial Offer: <span>{cur}{Number(b.quoted_rate).toLocaleString()}</span>
               </div>
             )}
             {!hasCounter && b.deposit_amount != null && (
               <div className={styles.priceDeposit}>
-                Deposit ({b.deposit_pct}%): ${Number(b.deposit_amount).toLocaleString()}
+                Deposit ({b.deposit_pct}%): {cur}{Number(b.deposit_amount).toLocaleString()}
               </div>
             )}
             {b.cocktail_price != null && Number(b.cocktail_price) > 0 && bigPriceVal != null && (
               <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
-                ${(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + ${Number(b.cocktail_price).toLocaleString()} cocktail
+                {cur}{(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + {cur}{Number(b.cocktail_price).toLocaleString()} cocktail
               </div>
             )}
             {b.ceremony_price != null && Number(b.ceremony_price) > 0 && bigPriceVal != null && (
               <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
-                ${(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + ${Number(b.ceremony_price).toLocaleString()} ceremony
+                {cur}{(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + {cur}{Number(b.ceremony_price).toLocaleString()} ceremony
               </div>
             )}
             {overtimeRate != null && (
               <div className={styles.priceSub}>
-                Overtime: <span>${overtimeRate.toLocaleString()}/hr</span>
+                Overtime: <span>{cur}{overtimeRate.toLocaleString()}/hr</span>
               </div>
             )}
           </div>

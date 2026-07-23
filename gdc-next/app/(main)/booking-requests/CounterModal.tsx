@@ -84,9 +84,10 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
   // only want to counter the price.
   const [packageEditorOpen, setPackageEditorOpen] = useState(false);
 
-  // Currency — vanilla pulls from booking.currency; we don't have that
-  // field on the type yet so default to USD.
-  const currency = 'USD';
+  // The booking's frozen currency snapshot (legacy rows fall back to USD).
+  // Not on the generated row type yet, so read via a local cast — same as the
+  // email payload below already does.
+  const currency = (booking as BookingRow & { currency?: string }).currency || 'USD';
   const sym = currencySymbol(currency);
 
   // Show the most recent rate exchanged so the DJ/booker has context for
