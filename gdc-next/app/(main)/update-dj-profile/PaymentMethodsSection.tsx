@@ -239,6 +239,10 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // and the invoice already reads the same users.address column, so the three
   // can't disagree. accountCountry biases the address autocomplete.
   const [accountAddress, setAccountAddress] = useState<string | null>(null);
+  // The DJ's chosen currency (booking_settings.rate_currency) — used to warn
+  // when a live rail can't accept it (Venmo/Zelle are USD-only, Cash App
+  // US/UK). Default USD.
+  const [rateCurrency, setRateCurrency] = useState<string>('USD');
   const [accountCountry, setAccountCountry] = useState<string>('United States');
   // Address autocomplete (shared — only one rail's address field is open at a
   // time). Same Nominatim-backed searchAddresses the booking form and account
@@ -373,14 +377,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods, slug, phone, address, city, state, zip, country')
+          .select('payment_methods, slug, phone, address, city, state, zip, country, booking_settings')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
         const row = data as {
           payment_methods?: unknown; slug?: string | null; phone?: string | null;
           address?: string | null; city?: string | null; state?: string | null;
-          zip?: string | null; country?: string | null;
+          zip?: string | null; country?: string | null; booking_settings?: unknown;
         } | null;
         setSlug(typeof row?.slug === 'string' ? row.slug : null);
         setAccountPhone(typeof row?.phone === 'string' && row.phone.trim() ? row.phone.trim() : null);
@@ -393,6 +397,14 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
               .filter((x) => x && String(x).trim()).join(', ');
         setAccountAddress(composed.trim() || null);
         if (typeof row?.country === 'string' && row.country.trim()) setAccountCountry(row.country.trim());
+        // rate_currency lives inside the booking_settings JSON (string or object).
+        try {
+          const bs = typeof row?.booking_settings === 'string'
+            ? JSON.parse(row.booking_settings)
+            : (row?.booking_settings || {});
+          const rc = (bs as { rate_currency?: string })?.rate_currency;
+          if (typeof rc === 'string' && rc.trim()) setRateCurrency(rc.trim().toUpperCase());
+        } catch { /* leave USD */ }
         const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
         const mapped = arr.map((r) => {
@@ -681,6 +693,19 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
     );
   }
 
+  // Rails the provider locks to specific currencies. Anything not listed
+  // (PayPal is multi-currency; cash/check/card are the DJ's own) accepts any.
+  const RAIL_ALLOWED_CURRENCIES: Partial<Record<PaymentMethodType, string[]>> = {
+    venmo: ['USD'], zelle: ['USD'], cashapp: ['USD', 'GBP'],
+  };
+  // Live rails that can't represent the DJ's chosen currency — a client paying
+  // with them would be charged in the rail's own currency, not the DJ's.
+  const currencyMismatches = (TYPE_ORDER as PaymentMethodType[])
+    .filter((t) => isLive(t))
+    .map((t) => ({ t, allowed: RAIL_ALLOWED_CURRENCIES[t] }))
+    .filter((x) => x.allowed && !x.allowed.includes(rateCurrency))
+    .map((x) => ({ label: METHOD_TYPES[x.t].label, allowed: (x.allowed as string[]).join(' or ') }));
+
   const liveCount = TILE_ORDER.filter(tileLive).length;
 
   return (
@@ -694,6 +719,23 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
           them — you&apos;re never handcuffing them to one. Money goes straight
           to you; Global DJ Connect never touches it and takes no cut.
         </p>
+
+        {/* Currency mismatch — Venmo/Zelle are USD-only, Cash App US/UK. If the
+            DJ prices in a currency one of their live rails can't represent, the
+            client gets charged in the rail's currency instead. Warn, don't
+            block — the DJ may still want to offer it. */}
+        {rateCurrency !== 'USD' && currencyMismatches.length > 0 && (
+          <p style={{ margin: '0 0 .5rem', padding: '.6rem .7rem', borderRadius: 6, background: 'rgba(245,166,35,.1)', border: '1px solid rgba(245,166,35,.35)', color: '#f5a623', fontSize: '.75rem', lineHeight: 1.5 }}>
+            You price in <strong>{rateCurrency}</strong>, but{' '}
+            {currencyMismatches.map((m, i) => (
+              <span key={m.label}>
+                {i > 0 ? (i === currencyMismatches.length - 1 ? ' and ' : ', ') : ''}
+                <strong>{m.label}</strong> only accepts {m.allowed}
+              </span>
+            ))}
+            {' '}— a client paying that way is charged in that currency, not {rateCurrency}.
+          </p>
+        )}
 
         {/* ── The rails, all of them, from the first paint ──────────── */}
         <div
