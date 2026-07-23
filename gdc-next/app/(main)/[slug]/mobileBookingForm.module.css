@@ -118,7 +118,7 @@
   background: var(--deep);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: .6rem .85rem;
+  padding: .42rem .85rem;
   color: var(--white);
   font-size: .9rem;
   line-height: 1.3;
@@ -127,8 +127,9 @@
   transition: border-color .2s;
   box-sizing: border-box;
   /* Shared explicit height so text inputs and native <select> dropdowns
-     line up — native selects render shorter than inputs otherwise. */
-  height: 2.7rem;
+     line up — native selects render shorter than inputs otherwise.
+     Matched to the manual-booking modal's field height (36px). */
+  height: 36px;
 }
 .input:focus,
 .select:focus,

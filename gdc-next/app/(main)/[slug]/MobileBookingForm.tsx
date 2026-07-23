@@ -907,19 +907,18 @@ export default function MobileBookingForm({
             empty-looking input next to a number they just proved they own
             reads as another thing to do. */}
         <div className={styles.formRow}>
-          <label htmlFor="mpf-phone">Phone Number</label>
           {knownPhone ? (
-            <div
-              style={{
-                padding: '.55rem 0',
-                color: 'var(--white,#fff)',
-                fontSize: '.95rem',
-                fontWeight: 600,
-              }}
-            >
-              {phone}
+            // Label + number on ONE line — the value is read-only (from the
+            // account), so a stacked label just burns a row confirming a fact.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <label htmlFor="mpf-phone" style={{ marginBottom: 0 }}>Phone Number</label>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+                {phone}
+              </div>
             </div>
           ) : (
+            <>
+            <label htmlFor="mpf-phone">Phone Number</label>
             <FieldCheck valid={phoneValid}>
               <input
                 id="mpf-phone"
@@ -932,6 +931,7 @@ export default function MobileBookingForm({
                 autoComplete="tel"
               />
             </FieldCheck>
+            </>
           )}
         </div>
 
