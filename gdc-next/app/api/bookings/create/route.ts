@@ -502,13 +502,16 @@ export async function POST(req: Request) {
   // ────────────────────────────────────────────────────────────────────
   const country = str(body.country) || 'US';
   const venueType = str(body.venueType);
+  const venueTypeOther = str(body.venueTypeOther);
+  const venueTypeOtherDesc = str(body.venueTypeOtherDesc);
   const setType = str(body.setType);
   const equipment = str(body.equipment);
   const venueEquipDetail = str(body.venueEquipDetail);
   const offerAmountRaw = str(body.offerAmount);
   const notes = str(body.notes);
 
-  if (venueType !== 'bar' && venueType !== 'club') return bad('Please select Bar or Club.');
+  if (venueType !== 'bar' && venueType !== 'club' && venueType !== 'other') return bad('Please select an event type.');
+  if (venueType === 'other' && !venueTypeOther.trim()) return bad('Please name your event type.');
   if (!setType) return bad('Please select a set type.');
   if (!endTime) return bad('Please select an end time.');
   if (!['sound_system', 'decks_only', 'venue_provides'].includes(equipment)) {
@@ -636,7 +639,8 @@ export async function POST(req: Request) {
     booking_type: 'club',
     event_date: dateKey,
     country,
-    venue_type: venueType,
+    venue_type: venueType === 'other' ? `Other - ${venueTypeOther.trim()}` : venueType,
+    venue_type_desc: venueType === 'other' ? (venueTypeOtherDesc.trim() || null) : null,
     set_type: setType,
     venue_name: venueName,
     venue_address: venueAddress,
