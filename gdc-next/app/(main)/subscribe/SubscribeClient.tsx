@@ -57,18 +57,18 @@ function fmtPrice(n: number): string {
 
 // Itemized feature list built from the tier's flags — no hand-written copy to
 // drift from the table. `included` drives the check vs cross styling.
-function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: string; included: boolean }[] {
-  const feats: { text: string; included: boolean }[] = [
+function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: string; included: boolean; emphasis?: boolean }[] {
+  const feats: { text: string; included: boolean; emphasis?: boolean }[] = [
     { text: 'Take bookings', included: d.booking },
-    { text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0 },
+    { text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
     { text: 'Deposits', included: d.proFeatures },
     { text: 'Invoicing', included: d.proFeatures },
     { text: 'Receipts', included: d.proFeatures },
     { text: 'Inbox messaging', included: true },
     { text: 'QR code to your profile', included: d.qrCode },
-    { text: `${d.photos} profile photos`, included: d.photos > 0 },
-    { text: `${d.videos} videos`, included: d.videos > 0 },
-    { text: `${d.mixes} mixes`, included: d.mixes > 0 },
+    { text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
+    { text: `${d.videos} videos`, included: d.videos > 0, emphasis: true },
+    { text: `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
     { text: 'Embeddable calendar', included: d.embedCalendar },
   ];
   // Mobile-DJ-only extras (also shown to logged-out visitors: djType null).
@@ -301,6 +301,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         )}
       </div>
 
+      {isComp && !isPaid && accessUntilLabel && (
+        <div className={styles.compBanner}>
+          You&apos;re complimentary through {accessUntilLabel} &mdash; subscribe now and billing starts then, with no charge until.
+        </div>
+      )}
       {error && <div className={styles.error}>{error}</div>}
       {switchMsg && <div className={styles.success}>{switchMsg}</div>}
 
@@ -320,6 +325,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               key={tier}
               className={`${styles.card} ${featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
             >
+              {featured && <div className={styles.popularBadge}>Most Popular</div>}
               {isCurrent && <div className={styles.currentBadge}>Current plan</div>}
               <div className={styles.planName}>{def.label}</div>
               <div className={styles.price}>
@@ -328,11 +334,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               </div>
               <ul className={styles.blurb} style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                 {planFeatures(def, djType).map((feat) => (
-                  <li key={feat.text} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.5 }}>
+                  <li key={feat.text} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.45 }}>
                     <span aria-hidden style={{ color: feat.included ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontWeight: 700, lineHeight: 1.4 }}>
                       {feat.included ? '\u2713' : '\u2717'}
                     </span>
-                    <span>{feat.text}</span>
+                    <span style={feat.emphasis && feat.included ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
                   </li>
                 ))}
               </ul>
@@ -348,11 +354,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   >
                     {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting\u2026' : 'Subscribe'}
                   </button>
-                  {isComp && purchasable && accessUntilLabel && (
-                    <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: '.45rem', lineHeight: 1.4 }}>
-                      Subscribe now and you won&apos;t be charged until {accessUntilLabel} &mdash; when your complimentary access ends.
-                    </div>
-                  )}
+
                 </>
               )}
 

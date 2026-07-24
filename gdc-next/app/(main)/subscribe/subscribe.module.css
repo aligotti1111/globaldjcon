@@ -89,6 +89,9 @@
   .cards {
     grid-template-columns: repeat(2, 1fr);
   }
+  .cardFeatured {
+    transform: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -108,7 +111,33 @@
 
 .cardFeatured {
   border-color: var(--neon, #00e0a4);
-  box-shadow: 0 0 0 1px var(--neon, #00e0a4);
+  box-shadow: 0 0 0 1px var(--neon, #00e0a4), 0 14px 44px rgba(0, 224, 164, 0.22);
+  position: relative;
+  transform: translateY(-10px);
+}
+.popularBadge {
+  position: absolute;
+  top: -0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--neon, #00e0a4);
+  color: #06231b;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 224, 164, 0.4);
+}
+.compBanner {
+  text-align: center;
+  color: var(--white, rgba(255, 255, 255, 0.9));
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 1rem auto 0;
+  max-width: 560px;
 }
 
 .planName {
@@ -136,7 +165,7 @@
 .blurb {
   font-size: 0.9rem;
   line-height: 1.5;
-  color: var(--muted, rgba(255, 255, 255, 0.7));
+  color: rgba(255, 255, 255, 0.86);
   margin-bottom: 1.75rem;
   flex: 1;
 }
