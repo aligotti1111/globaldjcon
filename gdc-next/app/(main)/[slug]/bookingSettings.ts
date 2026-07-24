@@ -74,6 +74,9 @@ export interface BookingSettings {
   global_rate_type?: 'flat' | 'hourly' | 'offers' | string;
   allow_offers?: boolean;        // mirror of global_rate_type === 'offers'
   rate_currency?: string;        // ISO 4217 code (USD/EUR/GBP/...)
+  // Club/bar DJ Rider — default technical + hospitality requirements the DJ
+  // maintains once; seeds each booking's rider.
+  rider_default?: { id: string; section: string; text: string }[];
   base_rate?: number | string;
   // Flat-rate fields — used when global_rate_type === 'flat'.
   // These are the original fields (legacy code may still write/read them
