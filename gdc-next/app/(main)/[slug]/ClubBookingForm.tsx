@@ -150,6 +150,9 @@ export default function ClubBookingForm({
   // surname, mid-word.
   const needsFullName = !isFullName(accountName);
   const fullNameValid = isFullName(fullName);
+  // Known full name shows as static text with a pencil; clicking it turns the
+  // name back into an editable field (booking-only, doesn't touch the account).
+  const [editingName, setEditingName] = useState(false);
   // Prefer the full profile's email, fall back to the narrowed prop.
   const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
   const [contactEmail, setContactEmail] = useState('');
@@ -423,7 +426,7 @@ export default function ClubBookingForm({
     if (!venueAddress.trim()) missing.add('venueAddress');
     // Name + email are only required when the account is missing them (phone
     // signups). Name must be a real first + last; email must be well-formed.
-    if (needsFullName && !isFullName(normalizeName(fullName))) missing.add('fullName');
+    if ((needsFullName || editingName) && !isFullName(normalizeName(fullName))) missing.add('fullName');
     if (needsEmail) {
       const em = contactEmail.trim();
       if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) missing.add('contactEmail');
@@ -527,7 +530,7 @@ export default function ClubBookingForm({
           // Only sent when the stored name was incomplete. The server stores
           // it on the booking (requester_name) — not your account — so the
           // contract has a full name without changing your profile.
-          fullName: needsFullName ? normalizeName(fullName) : null,
+          fullName: (needsFullName || editingName) ? normalizeName(fullName) : null,
           // Coords from a Nominatim suggestion the booker picked. Null when
           // they typed freehand or the search returned nothing. The
           // booking-requests card uses these for the venue distance check.
@@ -702,6 +705,104 @@ export default function ClubBookingForm({
               ? 'Please complete the highlighted field below.'
               : `Please complete the ${missingFields.size} highlighted fields below.`}
           </div>
+        )}
+
+        {/* Your details — name + phone at the top of the card. A complete
+            stored name shows as static text with a pencil to edit; an incomplete
+            one (phone signups) is an editable field. */}
+        {(needsFullName || editingName) ? (
+          <FormSection
+            label="Your Name"
+            fieldKey="fullName"
+            hasError={hasError('fullName')}
+            errorText={FULL_NAME_ERROR}
+          >
+            <FieldCheck valid={fullNameValid}>
+              <input
+                type="text"
+                placeholder="Jane Smith"
+                value={fullName}
+                onChange={(e) => { setFullName(e.target.value); clearMissing('fullName'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('fullName') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="name"
+                autoFocus={editingName}
+              />
+            </FieldCheck>
+          </FormSection>
+        ) : (
+          <div className={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Your Name</div>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>{fullName}</div>
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                aria-label="Edit your name"
+                title="Edit"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2 }}
+              >
+                {'\u270E'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Phone — plain text when known (matches MobileBookingForm); editable
+            only when the account has no stored number. */}
+        {knownPhone ? (
+          <div className={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Phone Number</div>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+                {phone}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <FormSection
+            label="Phone Number"
+            fieldKey="phone"
+            hasError={hasError('phone')}
+            errorText="Please enter your phone number."
+          >
+            <FieldCheck valid={phoneValid}>
+              <input
+                id="cbf-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(555) 555-5555"
+                value={phone}
+                onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="tel"
+              />
+            </FieldCheck>
+          </FormSection>
+        )}
+
+        {/* Email — ONLY for accounts that don't have one (phone signups). */}
+        {needsEmail && (
+          <FormSection
+            label="Email Address"
+            fieldKey="contactEmail"
+            hasError={hasError('contactEmail')}
+            errorText="Please enter a valid email for your booking documents."
+          >
+            <FieldCheck valid={emailValid}>
+              <input
+                type="email"
+                inputMode="email"
+                placeholder="your@email.com"
+                value={contactEmail}
+                onChange={(e) => { setContactEmail(e.target.value); clearMissing('contactEmail'); }}
+                className={`${styles.input} ${styles.hasCheck}`}
+                style={hasError('contactEmail') ? { borderColor: '#ff5f5f' } : undefined}
+                autoComplete="email"
+              />
+            </FieldCheck>
+          </FormSection>
         )}
 
         {/* Event Type */}
@@ -1137,92 +1238,6 @@ export default function ClubBookingForm({
             );
           })()}
         </FormSection>
-
-        {/* Your Name — the contract names two parties, and this is the last
-            moment the host is here to supply a surname. Plain field only when
-            the account's stored name is missing one; complete names skip it. */}
-        {needsFullName && (
-          <FormSection
-            label="Your Name"
-            fieldKey="fullName"
-            hasError={hasError('fullName')}
-            errorText={FULL_NAME_ERROR}
-          >
-            <FieldCheck valid={fullNameValid}>
-              <input
-                type="text"
-                placeholder="Jane Smith"
-                value={fullName}
-                onChange={(e) => { setFullName(e.target.value); clearMissing('fullName'); }}
-                className={`${styles.input} ${styles.hasCheck}`}
-                style={hasError('fullName') ? { borderColor: '#ff5f5f' } : undefined}
-                autoComplete="name"
-              />
-            </FieldCheck>
-          </FormSection>
-        )}
-
-        {/* Email — ONLY for accounts that don't have one (phone signups).
-            Everything after this booking is an email; without an address the
-            host would book and then never hear from anyone again. */}
-        {needsEmail && (
-          <FormSection
-            label="Email Address"
-            fieldKey="contactEmail"
-            hasError={hasError('contactEmail')}
-            errorText="Please enter a valid email for your booking documents."
-          >
-            <FieldCheck valid={emailValid}>
-              <input
-                type="email"
-                inputMode="email"
-                placeholder="your@email.com"
-                value={contactEmail}
-                onChange={(e) => { setContactEmail(e.target.value); clearMissing('contactEmail'); }}
-                className={`${styles.input} ${styles.hasCheck}`}
-                style={hasError('contactEmail') ? { borderColor: '#ff5f5f' } : undefined}
-                autoComplete="email"
-              />
-            </FieldCheck>
-          </FormSection>
-        )}
-
-        {/* Phone — shown as plain text (label + number on ONE line) when
-            we already have it from the account, matching MobileBookingForm:
-            an empty-looking input next to a number the host just proved they
-            own reads as another chore. Only a host with no stored number
-            gets the editable field. */}
-        {knownPhone ? (
-          <div className={styles.section}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
-              <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Phone Number</div>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
-                {phone}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <FormSection
-            label="Phone Number"
-            fieldKey="phone"
-            hasError={hasError('phone')}
-            errorText="Please enter your phone number."
-          >
-            <FieldCheck valid={phoneValid}>
-              <input
-                id="cbf-phone"
-                type="tel"
-                inputMode="tel"
-                placeholder="(555) 555-5555"
-                value={phone}
-                onChange={(e) => { setPhone(formatUSPhone(e.target.value)); clearMissing('phone'); }}
-                className={`${styles.input} ${styles.hasCheck}`}
-                style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
-                autoComplete="tel"
-              />
-            </FieldCheck>
-          </FormSection>
-        )}
 
         {/* Notes */}
         <FormSection label="Notes (optional)">
