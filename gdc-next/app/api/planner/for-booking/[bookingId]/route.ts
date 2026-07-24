@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { visibleFields, type PlannerField, type PlannerResponses } from '@/lib/planner';
 
 export const runtime = 'nodejs';
@@ -39,6 +40,7 @@ export async function GET(
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    const acting = await getActingContext(user.id);
 
     const admin = createAdminClient();
     const db = admin as unknown as SupabaseClient;
@@ -65,7 +67,7 @@ export async function GET(
     // Ownership on the PLANNER's dj_id, not the booking's. They're written
     // together and can't diverge today, but this is the row being handed over,
     // so this is the row whose owner should have to match.
-    if (planner.dj_id !== user.id) {
+    if (planner.dj_id !== acting.djId) {
       // 404, not 403 — a DJ probing booking ids shouldn't learn which ones exist.
       return NextResponse.json({ error: 'Not found.' }, { status: 404 });
     }
