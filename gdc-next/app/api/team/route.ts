@@ -19,7 +19,7 @@ const SITE_URL = 'https://globaldjconnect.com';
 const ACCESS_COLS = 'sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source';
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-interface TeamRow { id: string; owner_id: string; member_id: string | null; invited_email: string; role: string; status: string; invited_at: string; accepted_at: string | null; }
+interface TeamRow { id: string; owner_id: string; member_id: string | null; invited_email: string; role: string; status: string; can_addons: boolean; invited_at: string; accepted_at: string | null; }
 
 async function seatLimit(admin: SupabaseClient, ownerId: string): Promise<number> {
   const { data } = await admin.from('users').select(ACCESS_COLS).eq('id', ownerId).maybeSingle();
@@ -32,7 +32,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const admin = createAdminClient() as unknown as SupabaseClient;
 
-  const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, role, status, invited_at, accepted_at').eq('owner_id', user.id).order('invited_at', { ascending: true });
+  const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, role, status, can_addons, invited_at, accepted_at').eq('owner_id', user.id).order('invited_at', { ascending: true });
   const members = ((data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
   const limit = await seatLimit(admin, user.id);
   return NextResponse.json({ ok: true, members, seatLimit: limit, seatsUsed: members.length });
@@ -86,13 +86,17 @@ export async function PATCH(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  let body: { id?: unknown; role?: unknown };
+  let body: { id?: unknown; role?: unknown; canAddons?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const id = String(body.id || '');
-  if (!id || !isTeamRole(body.role)) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+  const upd: Record<string, unknown> = {};
+  if (isTeamRole(body.role)) upd.role = body.role;
+  if (typeof body.canAddons === 'boolean') upd.can_addons = body.canAddons;
+  if (Object.keys(upd).length === 0) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const { error } = await admin.from('team_members').update({ role: body.role } as unknown as never).eq('id', id).eq('owner_id', user.id);
-  if (error) return NextResponse.json({ error: 'Could not update the role.' }, { status: 500 });
+  const { error } = await admin.from('team_members').update(upd as unknown as never).eq('id', id).eq('owner_id', user.id);
+  if (error) return NextResponse.json({ error: 'Could not update the member.' }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
