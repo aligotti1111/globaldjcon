@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getActingContext } from '@/lib/acting';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    const acting = await getActingContext(user.id);
 
     let body: { bookingId?: unknown; items?: unknown };
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -66,17 +68,17 @@ export async function POST(req: Request) {
       .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name')
       .eq('id', bookingId).maybeSingle();
     const b = bData as unknown as BookingRow | null;
-    if (!b || b.dj_id !== user.id) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
     // DJ name for the email.
-    const { data: djData } = await admin.from('users').select('name').eq('id', user.id).maybeSingle();
+    const { data: djData } = await admin.from('users').select('name').eq('id', acting.djId).maybeSingle();
     const djName = (djData as unknown as { name?: string | null } | null)?.name || 'Your DJ';
 
     // Persist + mark sent.
     const { data: up, error } = await admin
       .from('booking_riders')
       .upsert({
-        booking_id: bookingId, dj_id: user.id, items,
+        booking_id: bookingId, dj_id: acting.djId, items,
         status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       } as unknown as never, { onConflict: 'booking_id' })
       .select('id')
