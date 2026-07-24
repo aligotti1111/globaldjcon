@@ -60,8 +60,8 @@ export const TIERS: Record<Tier, TierDef> = {
   0: { tier: 0, label: 'Free',     monthlyPrice: 0,     yearlyPrice: 0,      contractQuota: 0,   booking: false, proFeatures: false, embedCalendar: false },
   1: { tier: 1, label: 'Starter',  monthlyPrice: 14.99, yearlyPrice: 149.90, contractQuota: 5,   booking: true,  proFeatures: true,  embedCalendar: false },
   2: { tier: 2, label: 'Pro',      monthlyPrice: 29.99, yearlyPrice: 299.90, contractQuota: 30,  booking: true,  proFeatures: true,  embedCalendar: true  },
-  3: { tier: 3, label: 'Business', monthlyPrice: 49.99, yearlyPrice: 499.90, contractQuota: 100, booking: true,  proFeatures: true,  embedCalendar: true  },
-  4: { tier: 4, label: 'Premium',  monthlyPrice: 99.99, yearlyPrice: 999.90, contractQuota: 250, booking: true,  proFeatures: true,  embedCalendar: true  },
+  3: { tier: 3, label: 'Premium Pro', monthlyPrice: 49.99, yearlyPrice: 499.90, contractQuota: 100, booking: true,  proFeatures: true,  embedCalendar: true  },
+  4: { tier: 4, label: 'Enterprise',  monthlyPrice: 99.99, yearlyPrice: 999.90, contractQuota: 250, booking: true,  proFeatures: true,  embedCalendar: true  },
 };
 
 export const MAX_TIER = 4 as const;
