@@ -702,7 +702,7 @@ export default function BookingTab({
 
           {/* Manual payment rails — deposits + invoices. Self-contained;
               saves users.payment_methods directly, not via the master save. */}
-          <PaymentMethodsSection userId={userId} />
+          <PaymentMethodsSection userId={userId} currency={rateCurrency} />
 
         </>
       )}

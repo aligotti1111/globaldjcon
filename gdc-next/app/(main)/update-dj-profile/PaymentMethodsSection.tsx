@@ -211,7 +211,7 @@ const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
 };
 const DEFAULT_MARK_SIZE = 24;
 
-export default function PaymentMethodsSection({ userId }: { userId: string }) {
+export default function PaymentMethodsSection({ userId, currency }: { userId: string; currency?: string }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -243,6 +243,15 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
   // when a live rail can't accept it (Venmo/Zelle are USD-only, Cash App
   // US/UK). Default USD.
   const [rateCurrency, setRateCurrency] = useState<string>('USD');
+  // When embedded in Booking Settings, the parent passes the live currency
+  // (it updates the moment the DJ changes the dropdown, before any save), so the
+  // mismatch warnings and blocked tiles react on the page. Wins over the value
+  // this section self-loads on mount.
+  useEffect(() => {
+    if (typeof currency === 'string' && currency.trim()) {
+      setRateCurrency(currency.trim().toUpperCase());
+    }
+  }, [currency]);
   const [accountCountry, setAccountCountry] = useState<string>('United States');
   // Address autocomplete (shared — only one rail's address field is open at a
   // time). Same Nominatim-backed searchAddresses the booking form and account
@@ -403,7 +412,8 @@ export default function PaymentMethodsSection({ userId }: { userId: string }) {
             ? JSON.parse(row.booking_settings)
             : (row?.booking_settings || {});
           const rc = (bs as { rate_currency?: string })?.rate_currency;
-          if (typeof rc === 'string' && rc.trim()) setRateCurrency(rc.trim().toUpperCase());
+          // Only seed from the DB when the parent isn't already driving currency.
+          if (!currency && typeof rc === 'string' && rc.trim()) setRateCurrency(rc.trim().toUpperCase());
         } catch { /* leave USD */ }
         const raw = row?.payment_methods;
         const arr = Array.isArray(raw) ? raw : [];
