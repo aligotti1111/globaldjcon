@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { normalizeRiderItems, groupRider } from '@/lib/rider';
 
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     const items = normalizeRiderItems(body.items);
     if (items.length === 0) return NextResponse.json({ error: 'Add at least one rider item before sending.' }, { status: 400 });
 
-    const admin = createAdminClient();
+    const admin = createAdminClient() as unknown as SupabaseClient;
     const { data: bData } = await admin
       .from('bookings')
       .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name')
