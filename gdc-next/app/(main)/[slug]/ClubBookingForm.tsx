@@ -94,7 +94,10 @@ export default function ClubBookingForm({
   const { user: authUser } = useAuth();
 
   // ── Form state ────────────────────────────────────────────────────
-  const [venueType, setVenueType] = useState<'' | 'bar' | 'club'>('');
+  const [venueType, setVenueType] = useState<'' | 'bar' | 'club' | 'other'>('');
+  // Custom event type + optional description, only used when venueType === 'other'.
+  const [venueTypeOther, setVenueTypeOther] = useState('');
+  const [venueTypeOtherDesc, setVenueTypeOtherDesc] = useState('');
   const [setType, setSetType] = useState<string>('');
   // Promo code entry (client-typed). appliedCode set only after a valid Apply.
   const [promoInput, setPromoInput] = useState('');
@@ -414,6 +417,7 @@ export default function ClubBookingForm({
     // per-field red-border / inline-error highlights.
     const missing = new Set<string>();
     if (!venueType) missing.add('venueType');
+    if (venueType === 'other' && !venueTypeOther.trim()) missing.add('venueTypeOther');
     if (!setType) missing.add('setType');
     if (!venueName.trim()) missing.add('venueName');
     if (!venueAddress.trim()) missing.add('venueAddress');
@@ -440,7 +444,7 @@ export default function ClubBookingForm({
       // confused about WHERE the highlights are.
       const firstFieldId = (() => {
         // Order matches the form layout top → bottom for natural scroll
-        const order = ['venueType','setType','venueName','venueAddress','fullName','contactEmail','phone','startTime','endTime','equipment','offerAmount'];
+        const order = ['venueType','venueTypeOther','setType','venueName','venueAddress','fullName','contactEmail','phone','startTime','endTime','equipment','offerAmount'];
         for (const f of order) {
           if (missing.has(f)) return f;
         }
@@ -510,6 +514,8 @@ export default function ClubBookingForm({
           dateKey,
           country,
           venueType,
+          venueTypeOther: venueType === 'other' ? venueTypeOther.trim() : null,
+          venueTypeOtherDesc: venueType === 'other' ? venueTypeOtherDesc.trim() : null,
           setType,
           venueName: venueName.trim(),
           venueAddress: venueAddress.trim(),
@@ -569,7 +575,7 @@ export default function ClubBookingForm({
             eventDate: dateKey,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
-            venueType,
+            venueType: venueType === 'other' ? `Other - ${venueTypeOther.trim()}` : venueType,
             setType,
             startTime,
             endTime,
@@ -606,7 +612,7 @@ export default function ClubBookingForm({
             eventDate: dateKey,
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
-            venueType,
+            venueType: venueType === 'other' ? `Other - ${venueTypeOther.trim()}` : venueType,
             setType,
             startTime,
             endTime,
@@ -707,17 +713,41 @@ export default function ClubBookingForm({
           showCheck={venueType !== ''}
         >
           <div className={styles.pillRow}>
-            {(['bar', 'club'] as const).map((v) => (
+            {(['bar', 'club', 'other'] as const).map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => { setVenueType(v); clearMissing('venueType'); }}
                 className={`${styles.pill} ${venueType === v ? styles.pillActive : ''}`}
               >
-                {CLUB_VENUE_TYPE_LABELS[v]}
+                {v === 'other' ? 'Other' : CLUB_VENUE_TYPE_LABELS[v]}
               </button>
             ))}
           </div>
+          {venueType === 'other' && (
+            <div style={{ marginTop: '.7rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+              <FieldCheck valid={venueTypeOther.trim() !== ''}>
+                <input
+                  type="text"
+                  value={venueTypeOther}
+                  onChange={(e) => { setVenueTypeOther(e.target.value); if (e.target.value.trim()) clearMissing('venueTypeOther'); }}
+                  placeholder="Name your event type (e.g. Silent Disco, Private Party)"
+                  className={`${styles.input} ${styles.hasCheck}`}
+                  style={hasError('venueTypeOther') ? { borderColor: '#ff5f5f' } : undefined}
+                  maxLength={60}
+                />
+              </FieldCheck>
+              <textarea
+                value={venueTypeOtherDesc}
+                onChange={(e) => setVenueTypeOtherDesc(e.target.value)}
+                placeholder="Add a short description (optional)"
+                className={styles.input}
+                rows={2}
+                maxLength={300}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+          )}
         </FormSection>
 
         {/* Set Type — only after venue type picked */}
