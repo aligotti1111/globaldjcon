@@ -10,10 +10,14 @@ import { RIDER_SECTIONS, type RiderItem, type RiderSection, newRiderId } from '@
 export default function RiderEditor({
   items,
   onChange,
+  sections,
 }: {
   items: RiderItem[];
   onChange: (next: RiderItem[]) => void;
+  /** Limit which sections are shown/editable (default: both). */
+  sections?: RiderSection[];
 }) {
+  const shownSections = RIDER_SECTIONS.filter((s) => !sections || sections.includes(s.key));
   function update(id: string, text: string) {
     onChange(items.map((i) => (i.id === id ? { ...i, text } : i)));
   }
@@ -40,7 +44,7 @@ export default function RiderEditor({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-      {RIDER_SECTIONS.map(({ key, label }) => {
+      {shownSections.map(({ key, label }) => {
         const rows = items.filter((i) => i.section === key);
         return (
           <div key={key}>
