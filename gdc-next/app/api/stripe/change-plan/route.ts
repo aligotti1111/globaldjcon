@@ -1,13 +1,16 @@
-// POST /api/stripe/change-plan   { tier, interval }
+// POST /api/stripe/change-plan   { tier, interval, preview? }
 //
 // In-app plan switching — no Stripe-hosted portal. Updates the DJ's EXISTING
 // active subscription to a different tier/interval by swapping the price on its
-// single line item, with proration. Stripe then fires
+// single line item, and charges the prorated difference IMMEDIATELY
+// (proration_behavior: 'always_invoice'). Stripe then fires
 // customer.subscription.updated, and the webhook writes the new sub_tier /
 // sub_period_* back onto the user, so the app stays in sync automatically.
 //
-// Used for BOTH upgrades and downgrades. A brand-new subscriber (no active
-// subscription) still goes through /api/stripe/checkout, not here.
+// preview:true returns the amount that WOULD be charged right now (the prorated
+// difference) WITHOUT making any change — used to warn the DJ before they
+// confirm. Used for BOTH upgrades and downgrades. A brand-new subscriber
+// (no active subscription) still goes through /api/stripe/checkout, not here.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -22,11 +25,12 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  let body: { tier?: unknown; interval?: unknown };
+  let body: { tier?: unknown; interval?: unknown; preview?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
 
   const tier = Number(body.tier);
   const interval = String(body.interval || '');
+  const preview = body.preview === true;
   const newPriceId = priceIdFor(tier, interval);
   if (!newPriceId) {
     return NextResponse.json({ error: 'That plan isn’t available yet.' }, { status: 400 });
@@ -63,14 +67,38 @@ export async function POST(req: Request) {
 
     // Already on this exact price — nothing to do.
     if (item.price?.id === newPriceId) {
-      return NextResponse.json({ ok: true, unchanged: true });
+      return NextResponse.json({ ok: true, unchanged: true, amountDue: 0, currency: item.price?.currency || 'usd' });
     }
 
+    // ── Preview only: what would be charged now, changing nothing. ──
+    if (preview) {
+      try {
+        const inv = await stripe.invoices.createPreview({
+          customer: sub.customer as string,
+          subscription: subId,
+          subscription_details: {
+            items: [{ id: item.id, price: newPriceId }],
+            proration_behavior: 'always_invoice',
+          },
+        });
+        return NextResponse.json({
+          ok: true,
+          amountDue: typeof inv.amount_due === 'number' ? inv.amount_due : null,
+          currency: inv.currency || item.price?.currency || 'usd',
+        });
+      } catch (e) {
+        // Preview is best-effort — the UI falls back to generic wording.
+        console.error('[stripe/change-plan] preview failed', e);
+        return NextResponse.json({ ok: true, amountDue: null, currency: item.price?.currency || 'usd' });
+      }
+    }
+
+    // ── Real switch: charge the prorated difference immediately. ──
     await stripe.subscriptions.update(subId, {
       items: [{ id: item.id, price: newPriceId }],
-      // Prorate the difference onto the next invoice (credit on downgrade,
-      // charge on upgrade) — the standard mid-cycle switch behavior.
-      proration_behavior: 'create_prorations',
+      // Invoice the prorated difference NOW (charge on upgrade, credit on
+      // downgrade) instead of parking it on the next invoice.
+      proration_behavior: 'always_invoice',
       // If they'd scheduled a cancel, switching plans keeps them subscribed.
       cancel_at_period_end: false,
       // Keep the mapping the webhook relies on.
