@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getActingContext } from '@/lib/acting';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGuests } from '@/lib/guestlist';
@@ -30,12 +31,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const b = await ownedBooking(admin, bookingId, user.id);
+  const b = await ownedBooking(admin, bookingId, acting.djId);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
-  const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', user.id).maybeSingle();
+  const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', acting.djId).maybeSingle();
   const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
   const meta = {
     djName: dj?.name || 'Your DJ',
@@ -57,17 +59,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ bookingI
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   let body: { guests?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const guests = normalizeGuests(body.guests);
 
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const b = await ownedBooking(admin, bookingId, user.id);
+  const b = await ownedBooking(admin, bookingId, acting.djId);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   const { data: up, error } = await admin.from('booking_guestlists')
-    .upsert({ booking_id: bookingId, dj_id: user.id, guests, updated_at: new Date().toISOString() } as unknown as never, { onConflict: 'booking_id' })
+    .upsert({ booking_id: bookingId, dj_id: acting.djId, guests, updated_at: new Date().toISOString() } as unknown as never, { onConflict: 'booking_id' })
     .select('id, status').single();
   if (error || !up) return NextResponse.json({ error: 'Could not save the guest list.' }, { status: 500 });
   const r = up as unknown as { id: string; status: string };
