@@ -725,26 +725,28 @@ export default function ClubBookingForm({
             ))}
           </div>
           {venueType === 'other' && (
-            <div style={{ marginTop: '.7rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-              <FieldCheck valid={venueTypeOther.trim() !== ''}>
-                <input
-                  type="text"
-                  value={venueTypeOther}
-                  onChange={(e) => { setVenueTypeOther(e.target.value); if (e.target.value.trim()) clearMissing('venueTypeOther'); }}
-                  placeholder="Name your event type (e.g. Silent Disco, Private Party)"
-                  className={`${styles.input} ${styles.hasCheck}`}
-                  style={hasError('venueTypeOther') ? { borderColor: '#ff5f5f' } : undefined}
-                  maxLength={60}
-                />
-              </FieldCheck>
-              <textarea
+            <div style={{ marginTop: '.7rem', display: 'flex', gap: '.6rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <FieldCheck valid={venueTypeOther.trim() !== ''}>
+                  <input
+                    type="text"
+                    value={venueTypeOther}
+                    onChange={(e) => { setVenueTypeOther(e.target.value); if (e.target.value.trim()) clearMissing('venueTypeOther'); }}
+                    placeholder="Event type name"
+                    className={`${styles.input} ${styles.hasCheck}`}
+                    style={hasError('venueTypeOther') ? { borderColor: '#ff5f5f' } : undefined}
+                    maxLength={60}
+                  />
+                </FieldCheck>
+              </div>
+              <input
+                type="text"
                 value={venueTypeOtherDesc}
                 onChange={(e) => setVenueTypeOtherDesc(e.target.value)}
-                placeholder="Add a short description (optional)"
+                placeholder="Description (optional)"
                 className={styles.input}
-                rows={2}
                 maxLength={300}
-                style={{ resize: 'vertical' }}
+                style={{ flex: 1, minWidth: 0 }}
               />
             </div>
           )}
