@@ -85,6 +85,11 @@ export async function POST(req: Request) {
     if (compTier > 0 && compExpMs > Date.now() + 48 * 60 * 60 * 1000) {
       trialEnd = Math.floor(compExpMs / 1000);
     }
+    // Clarifying line at checkout so the Stripe-labelled "trial" (the comp
+    // window) doesn't read as a free trial that might lapse.
+    const trialMsg = trialEnd
+      ? `No charge today — your plan begins ${new Date(compExpMs).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, when your complimentary access ends.`
+      : null;
 
     // 4. Create the Checkout Session.
     const origin =
@@ -107,6 +112,7 @@ export async function POST(req: Request) {
           metadata: { user_id: user.id, tier: String(tier) },
           ...(trialEnd ? { trial_end: trialEnd } : {}),
         },
+        ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
         allow_promotion_codes: true,
       });
       return NextResponse.json({ clientSecret: session.client_secret });
@@ -124,6 +130,7 @@ export async function POST(req: Request) {
         metadata: { user_id: user.id, tier: String(tier) },
         ...(trialEnd ? { trial_end: trialEnd } : {}),
       },
+      ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
       allow_promotion_codes: true,
     });
 
