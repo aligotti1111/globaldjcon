@@ -78,6 +78,7 @@ export interface BookingSettings {
   // maintains once; seeds each booking's rider.
   rider_default?: { id: string; section: string; text: string }[];
   rider_enabled?: boolean;       // club/bar: rider step turned on
+  guestlist_enabled?: boolean;   // club/bar: guest-list step turned on
   base_rate?: number | string;
   // Flat-rate fields — used when global_rate_type === 'flat'.
   // These are the original fields (legacy code may still write/read them
