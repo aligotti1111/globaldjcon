@@ -119,7 +119,7 @@ function bookingTotalWithTax(
  * server-side and rejects anything else. The key is what the server already
  * trusts; the column header is what the DJ reads. They don't have to match.
  */
-const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice'] as const;
+const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'] as const;
 
 /**
  * Column headings, in PIPE_SLOTS order. Rendered by ColumnHeaders.
@@ -135,14 +135,15 @@ const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   deposit: 'Deposit',
   song_list: 'Planner & Playlist',
   invoice: 'Balance',
+  guestlist: 'Guest List',
 };
 
 // Column order per DJ type. Club/bar puts the Rider (song_list slot) BEFORE
 // Deposit; mobile keeps Planner & Playlist in its original position.
 function pipeSlotsFor(djType: 'club' | 'mobile'): readonly (typeof PIPE_SLOTS)[number][] {
   return djType === 'club'
-    ? (['contract', 'song_list', 'deposit', 'invoice'] as const)
-    : PIPE_SLOTS;
+    ? (['contract', 'song_list', 'deposit', 'invoice', 'guestlist'] as const)
+    : (['contract', 'deposit', 'song_list', 'invoice'] as const);
 }
 
 /**
@@ -177,7 +178,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 export default function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -207,6 +208,8 @@ export default function BookingRow({
   onAddHost?: () => void;
   /** Club/bar: the DJ has enabled the rider — show its pipeline step. */
   riderEnabled?: boolean;
+  /** Club/bar: the DJ has enabled the guest list. */
+  guestlistEnabled?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   // Set true when the details panel's live DocuSeal check confirms the contract
@@ -999,6 +1002,21 @@ export default function BookingRow({
       color: AMBER,
       caption: 'Rider',
       actions: [{ label: 'Open rider builder', run: () => { window.location.href = `/rider-edit/${booking.id}`; } }],
+    });
+  }
+
+  // ── Guest List (club/bar) ─ the rightmost column, after Balance. ──
+  if (booking.booking_type === 'club' && guestlistEnabled && !archive) {
+    steps.push({
+      key: 'guestlist',
+      label: 'Guest List — add names & send to host',
+      state: 'todo',
+      icon: 'doc',
+      overridable: false,
+      done: false,
+      color: AMBER,
+      caption: 'Guests',
+      actions: [{ label: 'Open guest list', run: () => { window.location.href = `/guestlist-edit/${booking.id}`; } }],
     });
   }
 

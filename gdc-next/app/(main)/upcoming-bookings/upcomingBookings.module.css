@@ -155,7 +155,7 @@
   /* Value is 88 here too — .rowValue's padding-right applies to club rows just
      the same, and leaving this at 74 would have silently eaten 14px off the
      number for club DJs only. Two track lists is two places to forget. */
-  --row-cols: 86px 56px 122px minmax(0, 1fr) 88px 96px 96px 96px 96px 84px 26px;
+  --row-cols: 86px 56px 122px minmax(0, 1fr) 88px 96px 96px 96px 96px 96px 84px 26px;
 }
 .month { }
 .monthLabel {
