@@ -52,10 +52,10 @@ export async function POST(req: Request) {
     // result is cast (same pattern used across the codebase).
     const { data: rowData } = await admin
       .from('users')
-      .select('stripe_customer_id, name')
+      .select('stripe_customer_id, name, comp_tier, comp_expires_at')
       .eq('id', user.id)
       .maybeSingle();
-    const row = rowData as unknown as { stripe_customer_id: string | null; name: string | null } | null;
+    const row = rowData as unknown as { stripe_customer_id: string | null; name: string | null; comp_tier: number | null; comp_expires_at: string | null } | null;
 
     let customerId = row?.stripe_customer_id || null;
     if (!customerId) {
@@ -70,6 +70,20 @@ export async function POST(req: Request) {
         .from('users')
         .update({ stripe_customer_id: customerId } as unknown as never)
         .eq('id', user.id);
+    }
+
+    // If the DJ currently holds a COMPLIMENTARY grant with a future expiry,
+    // start BILLING at that expiry instead of now — they already have access
+    // through the comp, so charging today would double up. A Stripe trial that
+    // ends at the comp's expiry does exactly this: card captured now, no charge
+    // until the comp runs out, then the plan bills normally. (Guarded to ≥48h
+    // out, Stripe's minimum for a future trial_end; a comp ending sooner just
+    // starts billing immediately.)
+    let trialEnd: number | undefined;
+    const compTier = Number(row?.comp_tier ?? 0);
+    const compExpMs = row?.comp_expires_at ? new Date(row.comp_expires_at).getTime() : 0;
+    if (compTier > 0 && compExpMs > Date.now() + 48 * 60 * 60 * 1000) {
+      trialEnd = Math.floor(compExpMs / 1000);
     }
 
     // 4. Create the Checkout Session.
@@ -91,6 +105,7 @@ export async function POST(req: Request) {
         client_reference_id: user.id,
         subscription_data: {
           metadata: { user_id: user.id, tier: String(tier) },
+          ...(trialEnd ? { trial_end: trialEnd } : {}),
         },
         allow_promotion_codes: true,
       });
@@ -107,6 +122,7 @@ export async function POST(req: Request) {
       client_reference_id: user.id,
       subscription_data: {
         metadata: { user_id: user.id, tier: String(tier) },
+        ...(trialEnd ? { trial_end: trialEnd } : {}),
       },
       allow_promotion_codes: true,
     });
