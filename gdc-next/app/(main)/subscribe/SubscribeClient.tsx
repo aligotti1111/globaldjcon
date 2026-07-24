@@ -371,14 +371,17 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               )}
 
               {isSubscribed && isCurrent && isPaid && (
-                <button
-                  type="button"
-                  className={styles.manageCardBtn}
-                  onClick={openPortal}
-                  disabled={portalLoading}
+                <div
+                  style={{
+                    textAlign: 'center',
+                    fontWeight: 700,
+                    color: 'var(--neon,#00e0a4)',
+                    padding: '.6rem 0',
+                    fontSize: '.95rem',
+                  }}
                 >
-                  {portalLoading ? 'Opening…' : 'Manage plan'}
-                </button>
+                  {'✓'} Your current plan
+                </div>
               )}
 
               {isSubscribed && isCurrent && isComp && (
