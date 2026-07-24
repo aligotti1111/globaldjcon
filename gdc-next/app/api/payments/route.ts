@@ -20,6 +20,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { getActingContext, canMoney } from '@/lib/acting';
 import { getStripe } from '@/lib/stripe/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -201,6 +202,7 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -228,7 +230,8 @@ export async function POST(req: Request) {
       .maybeSingle();
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
 
     // Tier gate, server-side. Deposits/invoices are Pro. Hiding the button in
     // the UI is not a paywall — anyone can POST here directly.
@@ -238,7 +241,7 @@ export async function POST(req: Request) {
     const { data: djData } = await admin
       .from('users')
       .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods')
-      .eq('id', user.id)
+      .eq('id', acting.djId)
       .maybeSingle();
     const dj = djData as (AccessFields & { name?: string | null; payment_methods?: unknown }) | null;
     if (!dj || !canUsePro(dj)) {
@@ -332,7 +335,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
       const invoiceAtt = await buildBookingDocAttachment(db, {
         docKind: 'invoice',
         bookingId,
-        djId: user.id,
+        djId: acting.djId,
         currency: b.currency || 'USD',
         paymentKind: kind as 'deposit' | 'balance' | 'other',
         amountDue: amount,
@@ -442,7 +445,8 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
       .maybeSingle();
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
 
     if (action === 'waive') {
       const { error } = await db
@@ -491,7 +495,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       const receiptAtt = await buildBookingDocAttachment(db, {
         docKind: 'receipt',
         bookingId: p.booking_id,
-        djId: user.id,
+        djId: acting.djId,
         currency: cur,
         paymentKind: (KINDS.has(p.kind) ? p.kind : 'other') as 'deposit' | 'balance' | 'other',
         receivedNow: received,
@@ -536,7 +540,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       .maybeSingle();
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
 
     const cur = b.currency || 'USD';
     const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
@@ -567,7 +572,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     const receiptAtt = await buildBookingDocAttachment(db, {
       docKind: 'receipt',
       bookingId,
-      djId: user.id,
+      djId: acting.djId,
       currency: cur,
       paymentKind: kind as 'deposit' | 'balance' | 'other',
       receivedNow: received,
@@ -620,7 +625,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       .maybeSingle();
     const b = bData as { id: string; dj_id: string | null } | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
 
     if (Number(p.amount_paid || 0) > 0 || p.status === 'paid' || p.status === 'waived') {
       return NextResponse.json({ error: 'This request already has a payment and can’t be cancelled.' }, { status: 400 });
