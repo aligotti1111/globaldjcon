@@ -254,6 +254,11 @@ export default function ClubBookingTab({
     setLastChangedField('settings');
     patch({ rider_default: items } as unknown as Partial<BookingSettings>);
   }
+  const riderEnabled = !!(bookingSettings as { rider_enabled?: boolean }).rider_enabled;
+  function setRiderEnabled(v: boolean) {
+    setLastChangedField('settings');
+    patch({ rider_enabled: v } as unknown as Partial<BookingSettings>);
+  }
   function setClubDeposit(v: number) {
     setLastChangedField('settings');
     patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
@@ -787,20 +792,54 @@ export default function ClubBookingTab({
           <div className={styles.sectionTitle}>DJ Rider</div>
         </div>
         <div className={styles.sectionBody}>
-          <p className={styles.bodyHint}>
-            Your default technical &amp; hospitality requirements. This is the starting
-            point for every booking&rsquo;s rider &mdash; you can tweak it per booking on the
-            booking card before sending it to the host.
-          </p>
-          <RiderEditor items={riderDefault} onChange={setRiderDefault} />
-          {riderDefault.length === 0 && (
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Enable DJ Rider</div>
+              <div className={styles.settingHint}>
+                Adds a rider step to your club bookings. You customize it per booking on the
+                card, then send it to the host.
+              </div>
+            </div>
             <button
               type="button"
-              onClick={() => setRiderDefault(STARTER_RIDER.map((i) => ({ ...i })))}
-              style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
+              role="switch"
+              aria-checked={riderEnabled}
+              aria-label="Enable DJ Rider"
+              onClick={() => setRiderEnabled(!riderEnabled)}
+              style={{
+                position: 'relative', width: 46, height: 26, borderRadius: 999,
+                border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                background: riderEnabled ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                transition: 'background .15s ease',
+              }}
             >
-              Load starter template
+              <span style={{
+                position: 'absolute', top: 3, left: riderEnabled ? 23 : 3,
+                width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+              }} />
             </button>
+          </div>
+
+          {riderEnabled && (
+            <div style={{ marginTop: '1.1rem' }}>
+              <p className={styles.bodyHint}>
+                Your default <strong>hospitality</strong> requirements (drinks, meal, parking,
+                comps) &mdash; the starting point for every booking. The <strong>technical</strong>{' '}
+                section is filled in automatically from your Equipment choice above: what you
+                provide, or the gear the venue must supply. Everything stays editable per booking.
+              </p>
+              <RiderEditor items={riderDefault} onChange={setRiderDefault} sections={['hospitality']} />
+              {riderDefault.filter((i) => i.section === 'hospitality').length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setRiderDefault(STARTER_RIDER.filter((i) => i.section === 'hospitality').map((i) => ({ ...i })))}
+                  style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Load starter hospitality
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
