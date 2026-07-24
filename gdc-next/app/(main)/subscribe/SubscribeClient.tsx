@@ -189,11 +189,10 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   }
 
   // Which tiers to render: the current one when subscribed, else all paid tiers.
-  // New visitors and paying subscribers see every tier (subscribers so they can
-  // switch in-app); complimentary access shows only the current plan.
-  const visibleTiers = (isSubscribed && isComp)
-    ? PAID_TIERS.filter((t) => t === currentTier)
-    : PAID_TIERS;
+  // Everyone sees every tier: new visitors + comps to pick a plan, paid
+  // subscribers to switch. (A comp can subscribe mid-comp — billing starts when
+  // the comp ends; see the checkout route's trial_end.)
+  const visibleTiers = PAID_TIERS;
 
   return (
     <div className={styles.wrap}>
@@ -256,11 +255,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
 
       <div className={styles.header}>
         <h1 className={styles.title}>
-          {isSubscribed ? 'Your plan' : 'Choose your plan'}
+          {isPaid ? 'Your plan' : 'Choose your plan'}
         </h1>
 
-        {/* Interval toggle — for new subscriptions AND paid switchers. */}
-        {(!isSubscribed || isPaid) && (
+        {/* Interval toggle — buying (new/comp) and switching (paid). */}
+        {(!isPaid || isSubscribed) && (
           <div className={styles.toggle}>
             <button
               type="button"
@@ -289,7 +288,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           const def = TIERS[tier];
           const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
-          const isCurrent = isSubscribed && currentTier === tier;
+          const isCurrent = isPaid && currentTier === tier;
           const isLoading = loadingTier === tier;
           const featured = tier === FEATURED_TIER;
           // Buyable only when a Stripe price ID exists for this tier+interval.
@@ -308,16 +307,23 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               </div>
               <div className={styles.blurb}>{planBlurb(def)}</div>
 
-              {!isSubscribed && (
-                <button
-                  type="button"
-                  className={styles.subscribeBtn}
-                  onClick={() => subscribe(tier)}
-                  disabled={loadingTier !== null || !purchasable}
-                  title={!purchasable ? 'Not available yet' : undefined}
-                >
-                  {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Subscribe'}
-                </button>
+              {!isPaid && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.subscribeBtn}
+                    onClick={() => subscribe(tier)}
+                    disabled={loadingTier !== null || !purchasable}
+                    title={!purchasable ? 'Not available yet' : undefined}
+                  >
+                    {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting\u2026' : 'Subscribe'}
+                  </button>
+                  {isComp && purchasable && accessUntilLabel && (
+                    <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: '.45rem', lineHeight: 1.4 }}>
+                      No charge now — billing starts {accessUntilLabel}, when your complimentary access ends.
+                    </div>
+                  )}
+                </>
               )}
 
               {isSubscribed && isPaid && !isCurrent && (
