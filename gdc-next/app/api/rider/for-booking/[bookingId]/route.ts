@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getActingContext } from '@/lib/acting';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeRiderItems, seedRider, equipChoiceFromBooking, type RiderItem } from '@/lib/rider';
@@ -45,14 +46,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const b = await ownedBooking(admin, bookingId, user.id);
+  const b = await ownedBooking(admin, bookingId, acting.djId);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   // DJ branding + this booking's event details, so the builder preview and the
   // host page can both show the header.
-  const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', user.id).maybeSingle();
+  const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', acting.djId).maybeSingle();
   const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
   const meta = {
     djName: dj?.name || 'Your DJ',
@@ -76,7 +78,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
     });
   }
 
-  const ctx = await djSettings(admin, user.id);
+  const ctx = await djSettings(admin, acting.djId);
   const seeded = seedRider(ctx.hosp, {
     choice: equipChoiceFromBooking(b.equipment),
     systemDetail: ctx.systemDetail,
@@ -90,18 +92,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ bookingI
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   let body: { items?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const items = normalizeRiderItems(body.items);
 
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const b = await ownedBooking(admin, bookingId, user.id);
+  const b = await ownedBooking(admin, bookingId, acting.djId);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   const { data: up, error } = await admin
     .from('booking_riders')
-    .upsert({ booking_id: bookingId, dj_id: user.id, items, updated_at: new Date().toISOString() } as unknown as never, { onConflict: 'booking_id' })
+    .upsert({ booking_id: bookingId, dj_id: acting.djId, items, updated_at: new Date().toISOString() } as unknown as never, { onConflict: 'booking_id' })
     .select('id, status')
     .single();
   if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
