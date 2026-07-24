@@ -5,26 +5,37 @@
 // Behavior depends on the current subscription (passed from the server page):
 //   • Not subscribed (tier 0): show the monthly/yearly toggle + Subscribe
 //     buttons → Stripe Checkout.
-//   • Subscribed (tier 1/2): show which plan they're on, mark the current
-//     card, and route ALL changes (switch/cancel) through the Stripe portal
-//     — never a second checkout.
+//   • Subscribed: show which plan they're on, mark the current card, and route
+//     ALL changes (switch/cancel) through the Stripe portal — never a second
+//     checkout.
 //
-// Copy approved in chat; styling to be refined later.
+// The plan CARDS are generated from the TIERS table in lib/access.ts — the one
+// source of truth for label / price / contract quota / features. Adding a tier
+// or changing a price is a one-row edit there; this file never restates them.
+// A card is only PURCHASABLE when lib/stripe/config.ts has a price ID for that
+// tier+interval; tiers without an ID yet render as "Coming soon" and turn on
+// automatically once their IDs are added.
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
-import { STRIPE_PUBLISHABLE_KEY } from '@/lib/stripe/config';
+import { STRIPE_PUBLISHABLE_KEY, priceIdFor } from '@/lib/stripe/config';
 
 // Stripe.js loaded once, module-level (recommended).
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 import type { AccessState, AccessSource, Tier } from '@/lib/access';
+import { TIERS, TIER_LABELS, type TierDef } from '@/lib/access';
 import styles from './subscribe.module.css';
 
 type Interval = 'monthly' | 'yearly';
-type PaidTier = 1 | 2;
+// Every non-free tier is a potential plan card.
+type PaidTier = 1 | 2 | 3 | 4;
+
+const PAID_TIERS: PaidTier[] = [1, 2, 3, 4];
+// The card we visually highlight as the popular pick.
+const FEATURED_TIER: PaidTier = 2;
 
 interface Props {
   isLoggedIn: boolean;
@@ -37,33 +48,23 @@ interface Props {
   accessUntil: string | null;
 }
 
-const PLANS: {
-  tier: PaidTier;
-  name: string;
-  monthly: string;
-  yearly: string;
-  blurb: string;
-  featured?: boolean;
-}[] = [
-  {
-    tier: 1,
-    name: 'Booking',
-    monthly: '$19.99',
-    yearly: '$199.90',
-    blurb: 'Take bookings, expanded media, embeddable calendar',
-  },
-  {
-    tier: 2,
-    name: 'Pro',
-    monthly: '$29.99',
-    yearly: '$299.90',
-    blurb: 'Everything in Booking, plus contracts, deposits, and event info sheets',
-    featured: true,
-  },
-];
+function fmtPrice(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+// A short feature line built from the tier's flags — no hand-written copy to
+// drift from the table.
+function planBlurb(d: TierDef): string {
+  const parts: string[] = [];
+  if (d.booking) parts.push('Take bookings');
+  if (d.contractQuota > 0) parts.push(`${d.contractQuota} signed contracts/mo`);
+  if (d.proFeatures) parts.push('deposits & event info sheets');
+  parts.push(d.embedCalendar ? 'embeddable calendar' : 'no embed calendar');
+  return parts.join(' · ');
+}
 
 function planName(tier: Tier): string {
-  return tier === 2 ? 'Pro' : tier === 1 ? 'Booking' : 'Free';
+  return TIER_LABELS[tier] ?? 'Free';
 }
 
 function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil }: Props) {
@@ -130,6 +131,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       setPortalLoading(false);
     }
   }
+
+  // Which tiers to render: the current one when subscribed, else all paid tiers.
+  const visibleTiers = isSubscribed
+    ? PAID_TIERS.filter((t) => t === currentTier)
+    : PAID_TIERS;
 
   return (
     <div className={styles.wrap}>
@@ -220,33 +226,38 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.cards}>
-        {(isSubscribed ? PLANS.filter((p) => p.tier === currentTier) : PLANS).map((plan) => {
-          const price = interval === 'monthly' ? plan.monthly : plan.yearly;
+        {visibleTiers.map((tier) => {
+          const def = TIERS[tier];
+          const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
-          const isCurrent = isSubscribed && currentTier === plan.tier;
-          const isLoading = loadingTier === plan.tier;
+          const isCurrent = isSubscribed && currentTier === tier;
+          const isLoading = loadingTier === tier;
+          const featured = tier === FEATURED_TIER;
+          // Buyable only when a Stripe price ID exists for this tier+interval.
+          const purchasable = !!priceIdFor(tier, interval);
 
           return (
             <div
-              key={plan.tier}
-              className={`${styles.card} ${plan.featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
+              key={tier}
+              className={`${styles.card} ${featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
             >
               {isCurrent && <div className={styles.currentBadge}>Current plan</div>}
-              <div className={styles.planName}>{plan.name}</div>
+              <div className={styles.planName}>{def.label}</div>
               <div className={styles.price}>
                 {price}
                 <span className={styles.period}>{period}</span>
               </div>
-              <div className={styles.blurb}>{plan.blurb}</div>
+              <div className={styles.blurb}>{planBlurb(def)}</div>
 
               {!isSubscribed && (
                 <button
                   type="button"
                   className={styles.subscribeBtn}
-                  onClick={() => subscribe(plan.tier)}
-                  disabled={loadingTier !== null}
+                  onClick={() => subscribe(tier)}
+                  disabled={loadingTier !== null || !purchasable}
+                  title={!purchasable ? 'Not available yet' : undefined}
                 >
-                  {isLoading ? 'Redirecting\u2026' : 'Subscribe'}
+                  {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Subscribe'}
                 </button>
               )}
 
@@ -257,7 +268,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   onClick={openPortal}
                   disabled={portalLoading}
                 >
-                  {portalLoading ? 'Opening\u2026' : 'Manage plan'}
+                  {portalLoading ? 'Opening…' : 'Manage plan'}
                 </button>
               )}
 
@@ -291,7 +302,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
             onClick={openPortal}
             disabled={portalLoading}
           >
-            {portalLoading ? 'Opening\u2026' : 'Cancel or update payment method'}
+            {portalLoading ? 'Opening…' : 'Cancel or update payment method'}
           </button>
         </div>
       )}
