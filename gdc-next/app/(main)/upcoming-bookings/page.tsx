@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
+import { getActingContext } from '@/lib/acting';
 import {
   plannerProgress,
   type PlannerField,
@@ -162,10 +163,14 @@ export default async function UpcomingBookingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  // Team seats: a member acts on the owner's account; owners resolve to self.
+  const acting = await getActingContext(user.id);
+  const djId = acting.djId;
+
   const { data: profile } = await supabase
     .from('users')
     .select('role, dj_type, country, name, booking_settings')
-    .eq('id', user.id)
+    .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
   if (profile?.role !== 'dj') redirect('/booking-requests');
@@ -191,7 +196,7 @@ export default async function UpcomingBookingsPage() {
   const { data: rows } = await supabase
     .from('bookings')
     .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status')
-    .eq('dj_id', user.id)
+    .eq('dj_id', djId)
     .gte('event_date', today)
     // Cancelled bookings stay VISIBLE here until the date passes, marked in
     // red. A date that was called off is still a fact about your calendar —
