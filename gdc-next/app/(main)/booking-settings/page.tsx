@@ -12,6 +12,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActingContext } from '@/lib/acting';
 import { canBook, type AccessFields } from '@/lib/access';
 import BookingSettingsClient from './BookingSettingsClient';
 
@@ -35,6 +36,10 @@ export default async function BookingSettingsPage() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) redirect('/login?redirect=/booking-settings');
+  // Booking settings are Owner-only. A teammate (member of someone's account)
+  // never manages them — send them back to the bookings they can work.
+  const acting = await getActingContext(authUser.id);
+  if (acting.isMember) redirect('/upcoming-bookings');
 
   const { data: row } = await supabase
     .from('users')
