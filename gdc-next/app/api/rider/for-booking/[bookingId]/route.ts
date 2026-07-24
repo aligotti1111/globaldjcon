@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  const admin = createAdminClient();
+  const admin = createAdminClient() as unknown as SupabaseClient;
   const b = await ownedBooking(admin, bookingId, user.id);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
@@ -69,7 +69,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ bookingI
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const items = normalizeRiderItems(body.items);
 
-  const admin = createAdminClient();
+  const admin = createAdminClient() as unknown as SupabaseClient;
   const b = await ownedBooking(admin, bookingId, user.id);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
