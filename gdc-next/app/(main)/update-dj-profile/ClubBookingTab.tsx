@@ -414,36 +414,8 @@ export default function ClubBookingTab({
         {/* Header uses default centered title (same as Equipment) with the
             currency picker positioned absolutely on the right so it doesn't
             pull the title off-center. */}
-        <div className={styles.sectionHeader} style={{ position: 'relative' }}>
+        <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Rates</div>
-          {/* Currency picker — top-right of section header. Hidden for
-              the Offers rate type since offers don't have a fixed price.
-              Hidden until equipment is selected (rates are gated on it). */}
-          {hasEquipSelected && ratesDraft.global_rate_type !== 'offers' && (
-            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '.45rem' }}>
-              <label
-                style={{
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: '.6rem',
-                  letterSpacing: '.07em',
-                  textTransform: 'uppercase',
-                  color: 'var(--muted)',
-                }}
-              >
-                Currency
-              </label>
-              <select
-                value={ratesDraft.rate_currency}
-                onChange={(e) => setRateField('rate_currency', e.target.value)}
-                className={styles.rateSelect}
-                style={{ width: 'auto', minWidth: 110 }}
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         <div className={styles.sectionBody}>
           {!hasEquipSelected ? (
@@ -586,6 +558,25 @@ export default function ClubBookingTab({
           <div className={styles.sectionTitle}>Settings</div>
         </div>
         <div className={styles.sectionBody}>
+          {/* Currency — same placement as the mobile DJ booking tab. Applies to
+              every price you set (rates, deposit, tax) and to the payment rails below. */}
+          <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
+            <div className={styles.settingLabelWrap}>
+              <div className={styles.settingLabel}>Currency</div>
+              <div className={styles.settingHint}>
+                The currency all your prices are shown in. Frozen onto each booking, so changing it won&rsquo;t re-price existing ones.
+              </div>
+            </div>
+            <select
+              value={ratesDraft.rate_currency}
+              onChange={(e) => setRateField('rate_currency', e.target.value)}
+              className={styles.settingSelect}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
+          </div>
           <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
             <div className={styles.settingLabelWrap}>
               <div className={styles.settingLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
@@ -781,7 +772,7 @@ export default function ClubBookingTab({
 
       {/* Manual payment rails — deposits + invoices. Self-contained; saves
           users.payment_methods directly, not via the master save. */}
-      <PaymentMethodsSection userId={userId} />
+      <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} />
 
         </>
       )}
