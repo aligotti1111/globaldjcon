@@ -54,14 +54,18 @@ export interface TierDef {
   booking: boolean;       // can take NEW bookings
   proFeatures: boolean;   // contracts / deposits / event info sheet available at all
   embedCalendar: boolean; // the embeddable calendar shows live availability
+  qrCode: boolean;        // QR code to profile
+  photos: number;         // profile photo cap
+  videos: number;         // video cap
+  mixes: number;          // mix cap
 }
 
 export const TIERS: Record<Tier, TierDef> = {
-  0: { tier: 0, label: 'Free',     monthlyPrice: 0,     yearlyPrice: 0,      contractQuota: 0,   booking: false, proFeatures: false, embedCalendar: false },
-  1: { tier: 1, label: 'Starter',  monthlyPrice: 14.99, yearlyPrice: 149.90, contractQuota: 5,   booking: true,  proFeatures: true,  embedCalendar: false },
-  2: { tier: 2, label: 'Pro',      monthlyPrice: 29.99, yearlyPrice: 299.90, contractQuota: 30,  booking: true,  proFeatures: true,  embedCalendar: true  },
-  3: { tier: 3, label: 'Premium Pro', monthlyPrice: 49.99, yearlyPrice: 499.90, contractQuota: 100, booking: true,  proFeatures: true,  embedCalendar: true  },
-  4: { tier: 4, label: 'Enterprise',  monthlyPrice: 99.99, yearlyPrice: 999.90, contractQuota: 250, booking: true,  proFeatures: true,  embedCalendar: true  },
+  0: { tier: 0, label: 'Free',     monthlyPrice: 0,     yearlyPrice: 0,      contractQuota: 0,   booking: false, proFeatures: false, embedCalendar: false, qrCode: false, photos: 4,   videos: 1,  mixes: 1 },
+  1: { tier: 1, label: 'Starter',  monthlyPrice: 14.99, yearlyPrice: 149.90, contractQuota: 5,   booking: true,  proFeatures: true,  embedCalendar: false, qrCode: true,  photos: 10,  videos: 3,  mixes: 3 },
+  2: { tier: 2, label: 'Pro',      monthlyPrice: 29.99, yearlyPrice: 299.90, contractQuota: 30,  booking: true,  proFeatures: true,  embedCalendar: true, qrCode: true,  photos: 25,  videos: 6,  mixes: 6 },
+  3: { tier: 3, label: 'Premium Pro', monthlyPrice: 49.99, yearlyPrice: 499.90, contractQuota: 100, booking: true,  proFeatures: true,  embedCalendar: true, qrCode: true,  photos: 50,  videos: 10, mixes: 10 },
+  4: { tier: 4, label: 'Enterprise',  monthlyPrice: 99.99, yearlyPrice: 999.90, contractQuota: 250, booking: true,  proFeatures: true,  embedCalendar: true, qrCode: true,  photos: 100, videos: 20, mixes: 20 },
 };
 
 export const MAX_TIER = 4 as const;
