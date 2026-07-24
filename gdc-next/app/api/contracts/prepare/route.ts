@@ -10,6 +10,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
+import { getContractUsage } from '@/lib/contractQuota';
+import { canUsePro, type AccessFields } from '@/lib/access';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -164,7 +166,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
 
   const [{ data: djRow }, { data: cRow }, { data: bkRow }] = await Promise.all([
     withTimeout<{ data: unknown }>(
-      admin.from('users').select('name, company, dj_type, booking_settings').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      admin.from('users').select('name, company, dj_type, booking_settings, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
       5000, 'users-select',
     ),
     withTimeout<{ data: { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null }>(
@@ -177,7 +179,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     ),
   ]);
 
-  const dj = djRow as { name?: string | null; company?: string | null; dj_type?: string | null; booking_settings?: string | null } | null;
+  const dj = djRow as {
+    name?: string | null; company?: string | null; dj_type?: string | null; booking_settings?: string | null;
+    sub_tier?: number | null; sub_status?: string | null; sub_period_start?: string | null; sub_period_end?: string | null;
+    comp_tier?: number | null; comp_expires_at?: string | null; comp_source?: string | null;
+  } | null;
   const djEmail = user.email || '';
   const companyName = (dj?.company || dj?.name || '').trim();
   const isClub = dj?.dj_type === 'club';
@@ -213,6 +219,35 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const autoFit = !!cData?.is_standard && !!(cData?.body_text || '').trim();
   const b = bkRow as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+
+  // ── Monthly signed-contract quota ──────────────────────────────────────
+  // Meters ONLY DJs whose current tier includes contracts (canUsePro). Free /
+  // lapsed DJs are left to the existing pro/stamp gating — untouched here.
+  // excludeBookingId means re-sending THIS booking's own contract never burns
+  // a second slot; only a genuinely new contract is blocked once the plan's
+  // per-cycle allowance is full.
+  const djAccess: AccessFields = {
+    sub_tier: dj?.sub_tier ?? null,
+    sub_status: dj?.sub_status ?? null,
+    sub_period_start: dj?.sub_period_start ?? null,
+    sub_period_end: dj?.sub_period_end ?? null,
+    comp_tier: dj?.comp_tier ?? null,
+    comp_expires_at: dj?.comp_expires_at ?? null,
+    comp_source: dj?.comp_source ?? null,
+  };
+  if (canUsePro(djAccess)) {
+    const usage = await getContractUsage(admin, user.id, djAccess, { excludeBookingId: bookingId });
+    if (usage.atLimit) {
+      const resetOn = usage.cycleEnd
+        ? new Date(usage.cycleEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+        : 'your next renewal';
+      return NextResponse.json({
+        ok: false,
+        code: 'CONTRACT_QUOTA',
+        error: `You've used all ${usage.quota} contract${usage.quota === 1 ? '' : 's'} included in your plan this billing period. It resets ${resetOn} — upgrade to send more now.`,
+      }, { status: 200 });
+    }
+  }
 
   const currency = (b.currency as string) || 'USD';
   const price = (b.counter_rate ?? b.quoted_rate ?? b.offer_amount) as number | null;
