@@ -9,7 +9,7 @@ import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import { TEAM_ROLES, type TeamRole } from '@/lib/team';
 
-interface Member { id: string; invited_email: string; role: string; status: string; member_id: string | null; }
+interface Member { id: string; invited_email: string; role: string; status: string; member_id: string | null; can_addons: boolean; }
 
 export default function TeamSection() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -44,6 +44,10 @@ export default function TeamSection() {
     await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role: r }) });
     load();
   }
+  async function toggleAddons(id: string, val: boolean) {
+    await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, canAddons: val }) });
+    load();
+  }
   async function remove(id: string) {
     await fetch('/api/team', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     load();
@@ -76,6 +80,12 @@ export default function TeamSection() {
                   <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
                     {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
                   </select>
+                  {(m.role === 'admin' || m.role === 'manager') && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
+                      <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
+                      Rider/guest-list settings
+                    </label>
+                  )}
                   <button type="button" onClick={() => remove(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
                 </div>
               ))}
