@@ -16,6 +16,7 @@ import ContractSendModal from './ContractSendModal';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import PaymentsBlock from './PaymentsBlock';
+import RiderSendModal from './RiderSendModal';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -65,6 +66,7 @@ export default function BookingDetails({
   onContractActionHandled?: () => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
+  const [riderOpen, setRiderOpen] = useState(false);
   // Run the pipeline's request once, then clear it. Clearing FIRST matters:
   // otherwise the flag is still set on the next render and the portal reopens
   // the moment you close it. (downloadSigned/resendContract/cancelContract are
@@ -684,6 +686,23 @@ export default function BookingDetails({
           30-question panel out of the card keeps it short and money-first.
           To bring it back, re-mount <PlannerPanel bookingId={booking.id} />
           here, gated on `plannerStatus`. */}
+      {/* DJ Rider — club/bar only. Takes the slot mobile uses for Planner &
+          Playlist. The DJ customizes this booking's rider here and deploys it
+          to the host. */}
+      {bt === 'club' && (
+        <div style={{ margin: '0 0 1rem' }}>
+          <button
+            type="button"
+            onClick={() => setRiderOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}
+          >
+            DJ Rider &mdash; customize &amp; send to host
+          </button>
+        </div>
+      )}
+      {bt === 'club' && riderOpen && (
+        <RiderSendModal bookingId={booking.id} onClose={() => setRiderOpen(false)} />
+      )}
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap}>
           <NotesFeed bookingId={booking.id} currentUserId={userId} />
