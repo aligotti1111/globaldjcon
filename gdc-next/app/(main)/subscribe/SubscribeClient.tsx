@@ -46,28 +46,49 @@ interface Props {
   source: AccessSource;
   // End date of the current access (paid period end or comp expiry), ISO.
   accessUntil: string | null;
+  // The DJ's type — tailors club-only vs mobile-only feature bullets. null =
+  // logged-out / unknown, in which case both sets show.
+  djType?: 'mobile' | 'club' | null;
 }
 
 function fmtPrice(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-// A short feature line built from the tier's flags — no hand-written copy to
-// drift from the table.
-function planBlurb(d: TierDef): string {
-  const parts: string[] = [];
-  if (d.booking) parts.push('Take bookings');
-  if (d.contractQuota > 0) parts.push(`${d.contractQuota} signed contracts/mo`);
-  if (d.proFeatures) parts.push('deposits & event info sheets');
-  parts.push(d.embedCalendar ? 'embeddable calendar' : 'no embed calendar');
-  return parts.join(' · ');
+// Itemized feature list built from the tier's flags — no hand-written copy to
+// drift from the table. `included` drives the check vs cross styling.
+function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: string; included: boolean }[] {
+  const feats: { text: string; included: boolean }[] = [
+    { text: 'Take bookings', included: d.booking },
+    { text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0 },
+    { text: 'Deposits', included: d.proFeatures },
+    { text: 'Invoicing', included: d.proFeatures },
+    { text: 'Receipts', included: d.proFeatures },
+    { text: 'Inbox messaging', included: true },
+    { text: 'QR code to your profile', included: d.qrCode },
+    { text: `${d.photos} profile photos`, included: d.photos > 0 },
+    { text: `${d.videos} videos`, included: d.videos > 0 },
+    { text: `${d.mixes} mixes`, included: d.mixes > 0 },
+    { text: 'Embeddable calendar', included: d.embedCalendar },
+  ];
+  // Mobile-DJ-only extras (also shown to logged-out visitors: djType null).
+  if (djType !== 'club') {
+    feats.push({ text: 'Event planner', included: true });
+    feats.push({ text: 'Playlist & song requests', included: true });
+  }
+  // Club/Bar-DJ-only extras.
+  if (djType !== 'mobile') {
+    feats.push({ text: 'Send rider', included: true });
+    feats.push({ text: 'Guest list', included: true });
+  }
+  return feats;
 }
 
 function planName(tier: Tier): string {
   return TIER_LABELS[tier] ?? 'Free';
 }
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, djType }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
@@ -305,7 +326,16 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 {price}
                 <span className={styles.period}>{period}</span>
               </div>
-              <div className={styles.blurb}>{planBlurb(def)}</div>
+              <ul className={styles.blurb} style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                {planFeatures(def, djType).map((feat) => (
+                  <li key={feat.text} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.5 }}>
+                    <span aria-hidden style={{ color: feat.included ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontWeight: 700, lineHeight: 1.4 }}>
+                      {feat.included ? '\u2713' : '\u2717'}
+                    </span>
+                    <span>{feat.text}</span>
+                  </li>
+                ))}
+              </ul>
 
               {!isPaid && (
                 <>
@@ -320,7 +350,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   </button>
                   {isComp && purchasable && accessUntilLabel && (
                     <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: '.45rem', lineHeight: 1.4 }}>
-                      Subscribe now and you won\u2019t be charged until {accessUntilLabel} \u2014 when your complimentary access ends.
+                      Subscribe now and you won&apos;t be charged until {accessUntilLabel} &mdash; when your complimentary access ends.
                     </div>
                   )}
                 </>

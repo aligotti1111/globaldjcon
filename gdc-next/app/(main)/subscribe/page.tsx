@@ -22,17 +22,20 @@ export default async function SubscribePage() {
   let currentState: AccessState = 'none';
   let source: AccessSource = null;
   let accessUntil: string | null = null;
+  let djType: 'mobile' | 'club' | null = null;
 
   if (user) {
     const { data } = await supabase
       .from('users')
-      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, dj_type')
       .eq('id', user.id)
       .maybeSingle();
     const fields = data as unknown as (AccessFields & {
       sub_period_end?: string | null;
       comp_expires_at?: string | null;
+      dj_type?: string | null;
     }) | null;
+    if (fields?.dj_type === 'club' || fields?.dj_type === 'mobile') djType = fields.dj_type;
     if (fields) {
       const access = getAccess(fields);
       currentTier = access.tier;
@@ -55,6 +58,7 @@ export default async function SubscribePage() {
       currentState={currentState}
       source={source}
       accessUntil={accessUntil}
+      djType={djType}
     />
   );
 }
