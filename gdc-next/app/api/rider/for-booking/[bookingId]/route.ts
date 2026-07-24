@@ -13,10 +13,14 @@ import { normalizeRiderItems, seedRider, equipChoiceFromBooking, type RiderItem 
 
 export const runtime = 'nodejs';
 
-interface OwnedBooking { id: string; dj_id: string | null; equipment: string | null; }
+interface OwnedBooking {
+  id: string; dj_id: string | null; equipment: string | null;
+  event_date: string | null; start_time: string | null; end_time: string | null;
+  venue_name: string | null; venue_address: string | null; venue_type: string | null;
+}
 
 async function ownedBooking(admin: SupabaseClient, bookingId: string, userId: string): Promise<OwnedBooking | null> {
-  const { data } = await admin.from('bookings').select('id, dj_id, equipment').eq('id', bookingId).maybeSingle();
+  const { data } = await admin.from('bookings').select('id, dj_id, equipment, event_date, start_time, end_time, venue_name, venue_address, venue_type').eq('id', bookingId).maybeSingle();
   const b = data as unknown as OwnedBooking | null;
   if (!b || b.dj_id !== userId) return null;
   return b;
@@ -46,6 +50,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   const b = await ownedBooking(admin, bookingId, user.id);
   if (!b) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
+  // DJ branding + this booking's event details, so the builder preview and the
+  // host page can both show the header.
+  const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', user.id).maybeSingle();
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
+  const meta = {
+    djName: dj?.name || 'Your DJ',
+    logoUrl: dj?.contract_logo_url || null,
+    event: {
+      date: b.event_date, start: b.start_time, end: b.end_time,
+      venueName: b.venue_name, venueAddress: b.venue_address, eventType: b.venue_type,
+    },
+  };
+
   const { data: rRow } = await admin
     .from('booking_riders')
     .select('id, items, status, sent_at')
@@ -54,7 +71,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   const row = rRow as unknown as { id: string; items: unknown; status: string; sent_at: string | null } | null;
   if (row) {
     return NextResponse.json({
-      ok: true, id: row.id, items: normalizeRiderItems(row.items),
+      ok: true, ...meta, id: row.id, items: normalizeRiderItems(row.items),
       status: row.status, sentAt: row.sent_at, seeded: false,
     });
   }
@@ -65,7 +82,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
     systemDetail: ctx.systemDetail,
     decksDetail: ctx.decksDetail,
   });
-  return NextResponse.json({ ok: true, id: null, items: seeded, status: 'draft', sentAt: null, seeded: true });
+  return NextResponse.json({ ok: true, ...meta, id: null, items: seeded, status: 'draft', sentAt: null, seeded: true });
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ bookingId: string }> }) {
