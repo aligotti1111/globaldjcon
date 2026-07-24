@@ -42,9 +42,9 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
 
   const { data: bData } = await db
     .from('bookings')
-    .select('event_date, venue_name, venue_address')
+    .select('event_date, start_time, end_time, venue_name, venue_address, venue_type')
     .eq('id', rider.booking_id).maybeSingle();
-  const b = bData as unknown as { event_date: string | null; venue_name: string | null; venue_address: string | null } | null;
+  const b = bData as unknown as { event_date: string | null; start_time: string | null; end_time: string | null; venue_name: string | null; venue_address: string | null; venue_type: string | null } | null;
 
   const { data: djData } = await db
     .from('users').select('name, contract_logo_url').eq('id', rider.dj_id).maybeSingle();
@@ -58,6 +58,9 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
       djName={dj?.name || 'Your DJ'}
       logoUrl={logo}
       eventDate={b?.event_date || null}
+      startTime={b?.start_time || null}
+      endTime={b?.end_time || null}
+      eventType={b?.venue_type || null}
       venueName={b?.venue_name || null}
       venueAddress={b?.venue_address || null}
     />
