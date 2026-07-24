@@ -22,6 +22,8 @@ import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
+import RiderEditor from '@/components/RiderEditor';
+import { normalizeRiderItems, STARTER_RIDER, type RiderItem } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -245,6 +247,13 @@ export default function ClubBookingTab({
   // booking_settings JSON blob (club_deposit_pct); read via a cast since
   // the shared type doesn't declare it yet.
   const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
+
+  // ── DJ Rider default (autosave) ───────────────────────────────────
+  const riderDefault: RiderItem[] = normalizeRiderItems((bookingSettings as { rider_default?: unknown }).rider_default);
+  function setRiderDefault(items: RiderItem[]) {
+    setLastChangedField('settings');
+    patch({ rider_default: items } as unknown as Partial<BookingSettings>);
+  }
   function setClubDeposit(v: number) {
     setLastChangedField('settings');
     patch({ club_deposit_pct: v } as unknown as Partial<BookingSettings>);
@@ -772,6 +781,30 @@ export default function ClubBookingTab({
 
       {/* Manual payment rails — deposits + invoices. Self-contained; saves
           users.payment_methods directly, not via the master save. */}
+      {/* ── DJ Rider (autosave) ─────────────────────────────────────── */}
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>DJ Rider</div>
+        </div>
+        <div className={styles.sectionBody}>
+          <p className={styles.bodyHint}>
+            Your default technical &amp; hospitality requirements. This is the starting
+            point for every booking&rsquo;s rider &mdash; you can tweak it per booking on the
+            booking card before sending it to the host.
+          </p>
+          <RiderEditor items={riderDefault} onChange={setRiderDefault} />
+          {riderDefault.length === 0 && (
+            <button
+              type="button"
+              onClick={() => setRiderDefault(STARTER_RIDER.map((i) => ({ ...i })))}
+              style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Load starter template
+            </button>
+          )}
+        </div>
+      </div>
+
       <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} />
 
         </>
