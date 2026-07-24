@@ -86,6 +86,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [switchingTier, setSwitchingTier] = useState<PaidTier | null>(null);
+  const [switchMsg, setSwitchMsg] = useState<string | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
 
   async function subscribe(tier: PaidTier) {
     setError(null);
@@ -132,8 +137,61 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     }
   }
 
+  // In-app plan switch — updates the existing subscription (no Stripe portal).
+  async function changePlan(tier: PaidTier) {
+    setError(null);
+    setSwitchMsg(null);
+    setSwitchingTier(tier);
+    try {
+      const res = await fetch('/api/stripe/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, interval }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (res.status === 401) {
+        window.location.href = '/login?redirect=/subscribe';
+        return;
+      }
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Could not change your plan.');
+      }
+      // The webhook writes the new tier a moment later — reload to reflect it.
+      setSwitchMsg('Plan updated — refreshing\u2026');
+      setTimeout(() => window.location.reload(), 1600);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setSwitchingTier(null);
+    }
+  }
+
+  // On-site cancel / resume (no Stripe portal). Cancel is at period end.
+  async function cancelSub(action: 'cancel' | 'resume') {
+    setError(null);
+    setCancelBusy(true);
+    try {
+      const res = await fetch('/api/stripe/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; cancelAtPeriodEnd?: boolean; periodEnd?: string | null };
+      if (res.status === 401) { window.location.href = '/login?redirect=/subscribe'; return; }
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not update your subscription.');
+      setConfirmCancel(false);
+      setCancelInfo({ scheduled: !!data.cancelAtPeriodEnd, date: data.periodEnd || null });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
   // Which tiers to render: the current one when subscribed, else all paid tiers.
-  const visibleTiers = isSubscribed
+  // New visitors and paying subscribers see every tier (subscribers so they can
+  // switch in-app); complimentary access shows only the current plan.
+  const visibleTiers = (isSubscribed && isComp)
     ? PAID_TIERS.filter((t) => t === currentTier)
     : PAID_TIERS;
 
@@ -201,8 +259,8 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           {isSubscribed ? 'Your plan' : 'Choose your plan'}
         </h1>
 
-        {/* Interval toggle only matters for new subscriptions. */}
-        {!isSubscribed && (
+        {/* Interval toggle — for new subscriptions AND paid switchers. */}
+        {(!isSubscribed || isPaid) && (
           <div className={styles.toggle}>
             <button
               type="button"
@@ -224,6 +282,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
+      {switchMsg && <div className={styles.success}>{switchMsg}</div>}
 
       <div className={styles.cards}>
         {visibleTiers.map((tier) => {
@@ -261,6 +320,18 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 </button>
               )}
 
+              {isSubscribed && isPaid && !isCurrent && (
+                <button
+                  type="button"
+                  className={styles.subscribeBtn}
+                  onClick={() => changePlan(tier)}
+                  disabled={switchingTier !== null || !purchasable}
+                  title={!purchasable ? 'Not available yet' : undefined}
+                >
+                  {!purchasable ? 'Coming soon' : switchingTier === tier ? 'Switching\u2026' : `Switch to ${def.label}`}
+                </button>
+              )}
+
               {isSubscribed && isCurrent && isPaid && (
                 <button
                   type="button"
@@ -292,18 +363,43 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         </div>
       )}
 
-      {/* Bottom manage link — only for a PAID subscription (comps have no
-          Stripe billing to manage). */}
+      {/* Bottom manage — on-site cancel / resume; card update still via portal. */}
       {isSubscribed && isPaid && (
-        <div className={styles.manageRow}>
-          <button
-            type="button"
-            className={styles.manageBtn}
-            onClick={openPortal}
-            disabled={portalLoading}
-          >
-            {portalLoading ? 'Opening…' : 'Cancel or update payment method'}
-          </button>
+        <div className={styles.manageRow} style={{ flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
+          {cancelInfo?.scheduled ? (
+            <>
+              <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
+                Your subscription is set to cancel
+                {cancelInfo.date ? ` on ${new Date(cancelInfo.date).toLocaleDateString()}` : ''}. You keep access until then.
+              </span>
+              <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
+                {cancelBusy ? 'Working…' : 'Resume subscription'}
+              </button>
+            </>
+          ) : confirmCancel ? (
+            <>
+              <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
+                Cancel your subscription? You&apos;ll keep access until the end of the current billing period.
+              </span>
+              <div style={{ display: 'flex', gap: '.5rem' }}>
+                <button type="button" className={styles.manageBtn} onClick={() => setConfirmCancel(false)} disabled={cancelBusy}>
+                  Keep plan
+                </button>
+                <button type="button" className={styles.manageBtn} onClick={() => cancelSub('cancel')} disabled={cancelBusy}>
+                  {cancelBusy ? 'Cancelling…' : 'Yes, cancel'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button type="button" className={styles.manageBtn} onClick={openPortal} disabled={portalLoading}>
+                {portalLoading ? 'Opening…' : 'Update payment method'}
+              </button>
+              <button type="button" className={styles.manageBtn} onClick={() => setConfirmCancel(true)}>
+                Cancel subscription
+              </button>
+            </>
+          )}
         </div>
       )}
 
