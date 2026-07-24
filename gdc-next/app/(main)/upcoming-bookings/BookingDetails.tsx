@@ -398,7 +398,11 @@ export default function BookingDetails({
     // Row 3: Venue Type + Venue Address (linkified to Google Maps)
     [
       djType === 'club'
-        ? { label: 'Venue Type', value: booking.venue_type ? capitalize(booking.venue_type) : null }
+        ? { label: 'Venue Type', value: booking.venue_type ? (
+            booking.venue_type_desc ? (
+              <span>{capitalize(booking.venue_type)}<span style={{ display: 'block', fontSize: '.85em', color: 'var(--muted,#8a8aa0)', marginTop: 2, fontWeight: 400 }}>{booking.venue_type_desc}</span></span>
+            ) : capitalize(booking.venue_type)
+          ) : null }
         : { label: 'Venue Name', value: booking.venue_name },
       {
         label: 'Venue Address',
