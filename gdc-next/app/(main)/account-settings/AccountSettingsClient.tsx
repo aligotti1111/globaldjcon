@@ -21,6 +21,7 @@ import styles from './accountSettings.module.css';
 import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './helpers';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import HostPhoneCard from './HostPhoneCard';
+import TeamSection from './TeamSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
@@ -690,6 +691,8 @@ export default function AccountSettingsClient({
           {profileSaving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
+
+      {isDj && <TeamSection />}
 
       {/* Email */}
       <div className={styles.card}>

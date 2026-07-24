@@ -1,0 +1,103 @@
+'use client';
+
+// TeamSection — owner-facing team management (Account settings). Self-contained:
+// loads /api/team, shows seats used/limit, invites by email + role, changes
+// roles, removes members. Hidden behind Pro+ (seatLimit 0 → upgrade prompt).
+
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
+import styles from './accountSettings.module.css';
+import { TEAM_ROLES, type TeamRole } from '@/lib/team';
+
+interface Member { id: string; invited_email: string; role: string; status: string; member_id: string | null; }
+
+export default function TeamSection() {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [seatLimit, setSeatLimit] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<TeamRole>('assistant');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/team');
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; members?: Member[]; seatLimit?: number };
+      if (res.ok && data.ok) { setMembers(data.members || []); setSeatLimit(data.seatLimit || 0); }
+    } finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function invite() {
+    setBusy(true); setErr(null); setNote(null);
+    try {
+      const res = await fetch('/api/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role }) });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; warning?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not invite.');
+      setNote(data.warning || `Invite sent to ${email}.`); setEmail(''); load();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not invite.'); }
+    finally { setBusy(false); }
+  }
+  async function changeRole(id: string, r: string) {
+    await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role: r }) });
+    load();
+  }
+  async function remove(id: string) {
+    await fetch('/api/team', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    load();
+  }
+
+  if (loading) return null;
+  const muted = 'var(--muted,#8a8aa0)';
+
+  return (
+    <div className={styles.card}>
+      <h2>Team</h2>
+      {seatLimit <= 0 ? (
+        <p style={{ color: muted, fontSize: '.85rem', lineHeight: 1.6 }}>
+          Team seats let you give staff their own restricted logins.{' '}
+          <Link href="/subscribe" style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>Upgrade to Pro</Link> to add teammates.
+        </p>
+      ) : (
+        <>
+          <p style={{ color: muted, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
+            {members.length} of {seatLimit} seats used. Teammates log in with their own email and get the access you choose.
+          </p>
+
+          {members.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
+              {members.map((m) => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', padding: '.5rem .7rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: '.88rem' }}>
+                    {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
+                  </span>
+                  <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
+                    {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
+                  </select>
+                  <button type="button" onClick={() => remove(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {members.length < seatLimit ? (
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@email.com" style={{ flex: 1, minWidth: 180, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
+              <select value={role} onChange={(e) => setRole(e.target.value as TeamRole)} style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}>
+                {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
+              </select>
+              <button type="button" onClick={invite} disabled={busy || !email} style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, color: '#06231b', padding: '.5rem 1rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}>{busy ? 'Sending…' : 'Invite'}</button>
+            </div>
+          ) : (
+            <p style={{ color: muted, fontSize: '.8rem' }}>All seats used. Remove a member, or upgrade for more.</p>
+          )}
+          <p style={{ color: muted, fontSize: '.72rem', marginTop: '.7rem', lineHeight: 1.5 }}>{TEAM_ROLES.find((r) => r.value === role)?.blurb}</p>
+          {err && <div style={{ color: '#ff8f8f', fontSize: '.82rem', marginTop: '.6rem' }}>{err}</div>}
+          {note && !err && <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.82rem', marginTop: '.6rem' }}>{note}</div>}
+        </>
+      )}
+    </div>
+  );
+}
