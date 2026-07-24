@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
@@ -114,6 +115,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    const acting = await getActingContext(user.id);
 
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch {
@@ -135,7 +137,7 @@ export async function POST(req: Request) {
       .maybeSingle();
     const b = bData as unknown as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (b.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
     // Mobile only, on purpose. A club booking has no first dance, no bridal
     // party and no run of show — sending one a wedding planner is worse than
@@ -177,7 +179,7 @@ export async function POST(req: Request) {
     const { data: djData, error: djErr } = await admin
       .from('users')
       .select('name, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
-      .eq('id', user.id)
+      .eq('id', acting.djId)
       .maybeSingle();
     const djRow = djData as unknown as (AccessFields & { name?: string | null }) | null;
     // A failed QUERY and a genuinely un-subscribed DJ are different problems and
@@ -231,7 +233,7 @@ export async function POST(req: Request) {
       const { data: tData } = await db
         .from('planners')
         .select('id, dj_id, name, event_type, is_standard, fields')
-        .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
+        .or(`is_standard.eq.true,dj_id.eq.${acting.djId}`);
       const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
       // "Use a different planner" — the modal's escape hatch for when the
@@ -249,7 +251,7 @@ export async function POST(req: Request) {
         }
       }
 
-      const { base, override } = pickTemplate(templates, user.id, b.event_type);
+      const { base, override } = pickTemplate(templates, acting.djId, b.event_type);
       if (!base) {
         // The stock base is seeded. Missing means the seed never ran — a
         // deployment problem, not something the DJ did.
@@ -286,7 +288,7 @@ export async function POST(req: Request) {
         .from('booking_planners')
         .insert({
           booking_id: bookingId,
-          dj_id: user.id,
+          dj_id: acting.djId,
           planner_id: (forcedTpl?.id || override?.id || base.id) ?? null,
           fields,
           responses,
