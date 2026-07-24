@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 import { getContractUsage } from '@/lib/contractQuota';
 import { canUsePro, type AccessFields } from '@/lib/access';
@@ -99,19 +100,20 @@ async function tracePrepare(body: { bookingId?: unknown }) {
     const { data: { user } } = await supabase.auth.getUser();
     steps.push(`getUser:${user ? 'ok' : 'none'}`);
     if (!user) return NextResponse.json({ steps });
+    const acting = await getActingContext(user.id);
     const admin = createAdminClient();
     steps.push('adminClient');
-    const { data: djRow } = await admin.from('users').select('docuseal_template_id, name').eq('id', user.id).maybeSingle();
+    const { data: djRow } = await admin.from('users').select('docuseal_template_id, name').eq('id', acting.djId).maybeSingle();
     const dj = djRow as { docuseal_template_id?: string | null } | null;
     steps.push(`users:${dj?.docuseal_template_id ? 'has-template' : 'no-template'}`);
     const bookingId = String(body.bookingId || '');
     let b: Record<string, unknown> | null = null;
     if (bookingId) {
-      const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle();
+      const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', acting.djId).maybeSingle();
       b = bkRow as Record<string, unknown> | null;
     } else {
       // No id given — grab this DJ's most recent booking to trace against.
-      const { data: bkRow } = await admin.from('bookings').select('*').eq('dj_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const { data: bkRow } = await admin.from('bookings').select('*').eq('dj_id', acting.djId).order('created_at', { ascending: false }).limit(1).maybeSingle();
       b = bkRow as Record<string, unknown> | null;
     }
     steps.push(`booking:${b ? 'found' : 'missing'}`);
@@ -149,6 +151,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
 
   const bookingId = body.bookingId != null ? String(body.bookingId) : '';
   const manualClientEmail = typeof body.clientEmail === 'string' ? body.clientEmail.trim() : '';
@@ -161,12 +164,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   // PARALLEL. Running these sequentially was slow enough that bookings needing
   // extra client lookups (mobile) could exceed the platform time limit and
   // surface as a 502. They're independent, so fire them together.
-  let cq = admin.from('contracts').select('id, docuseal_template_id, body_text, logo_url, is_standard').eq('dj_id', user.id);
+  let cq = admin.from('contracts').select('id, docuseal_template_id, body_text, logo_url, is_standard').eq('dj_id', acting.djId);
   cq = contractId ? cq.eq('id', contractId) : cq.order('updated_at', { ascending: false });
 
   const [{ data: djRow }, { data: cRow }, { data: bkRow }] = await Promise.all([
     withTimeout<{ data: unknown }>(
-      admin.from('users').select('name, company, dj_type, booking_settings, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      admin.from('users').select('name, company, dj_type, booking_settings, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', acting.djId).maybeSingle() as unknown as Promise<{ data: unknown }>,
       5000, 'users-select',
     ),
     withTimeout<{ data: { id?: string; docuseal_template_id?: string | null; body_text?: string | null; logo_url?: string | null; is_standard?: boolean | null } | null }>(
@@ -174,7 +177,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       5000, 'contracts-select',
     ),
     withTimeout<{ data: unknown }>(
-      admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', user.id).maybeSingle() as unknown as Promise<{ data: unknown }>,
+      admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', acting.djId).maybeSingle() as unknown as Promise<{ data: unknown }>,
       5000, 'bookings-select',
     ),
   ]);
@@ -236,7 +239,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     comp_source: dj?.comp_source ?? null,
   };
   if (canUsePro(djAccess)) {
-    const usage = await getContractUsage(admin, user.id, djAccess, { excludeBookingId: bookingId });
+    const usage = await getContractUsage(admin, acting.djId, djAccess, { excludeBookingId: bookingId });
     if (usage.atLimit) {
       const resetOn = usage.cycleEnd
         ? new Date(usage.cycleEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
@@ -579,7 +582,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         ...(savedManualEmail ? { host_email: clientEmail } : {}),
       } as unknown as never)
       .eq('id', bookingId)
-      .eq('dj_id', user.id);
+      .eq('dj_id', acting.djId);
   } catch { /* non-fatal */ }
 
   return NextResponse.json({ ok: true, embedSrc, submissionId: submissionId != null ? String(submissionId) : null, hasClientSig, hasDjSig });
