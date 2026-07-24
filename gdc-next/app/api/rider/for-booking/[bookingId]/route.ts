@@ -9,27 +9,31 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeRiderItems, seedRider, type RiderItem } from '@/lib/rider';
+import { normalizeRiderItems, seedRider, equipChoiceFromBooking, type RiderItem } from '@/lib/rider';
 
 export const runtime = 'nodejs';
 
-interface OwnedBooking { id: string; dj_id: string | null; }
+interface OwnedBooking { id: string; dj_id: string | null; equipment: string | null; }
 
 async function ownedBooking(admin: SupabaseClient, bookingId: string, userId: string): Promise<OwnedBooking | null> {
-  const { data } = await admin.from('bookings').select('id, dj_id').eq('id', bookingId).maybeSingle();
+  const { data } = await admin.from('bookings').select('id, dj_id, equipment').eq('id', bookingId).maybeSingle();
   const b = data as unknown as OwnedBooking | null;
   if (!b || b.dj_id !== userId) return null;
   return b;
 }
 
-async function djDefault(admin: SupabaseClient, userId: string): Promise<RiderItem[] | null> {
+interface DjRiderCtx { hosp: RiderItem[]; systemDetail: string; decksDetail: string; }
+
+async function djSettings(admin: SupabaseClient, userId: string): Promise<DjRiderCtx> {
   const { data } = await admin.from('users').select('booking_settings').eq('id', userId).maybeSingle();
   const bs = (data as unknown as { booking_settings?: unknown } | null)?.booking_settings;
-  let parsed: unknown = bs;
+  let parsed: Record<string, unknown> = {};
   if (typeof bs === 'string') { try { parsed = JSON.parse(bs); } catch { parsed = {}; } }
-  const raw = (parsed as { rider_default?: unknown } | null)?.rider_default;
-  const items = normalizeRiderItems(raw);
-  return items.length ? items : null;
+  else if (bs && typeof bs === 'object') { parsed = bs as Record<string, unknown>; }
+  const hosp = normalizeRiderItems(parsed.rider_default).filter((i) => i.section === 'hospitality');
+  const systemDetail = typeof parsed.equip_full_detail === 'string' ? parsed.equip_full_detail : '';
+  const decksDetail = typeof parsed.equip_decks_detail === 'string' ? parsed.equip_decks_detail : '';
+  return { hosp, systemDetail, decksDetail };
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ bookingId: string }> }) {
@@ -55,7 +59,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
     });
   }
 
-  const seeded = seedRider(await djDefault(admin, user.id), null);
+  const ctx = await djSettings(admin, user.id);
+  const seeded = seedRider(ctx.hosp, {
+    choice: equipChoiceFromBooking(b.equipment),
+    systemDetail: ctx.systemDetail,
+    decksDetail: ctx.decksDetail,
+  });
   return NextResponse.json({ ok: true, id: null, items: seeded, status: 'draft', sentAt: null, seeded: true });
 }
 
