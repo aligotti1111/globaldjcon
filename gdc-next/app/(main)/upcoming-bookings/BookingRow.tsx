@@ -23,7 +23,6 @@ import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, Car
 import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
 import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
-import RiderSendModal from './RiderSendModal';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
 import {
@@ -138,6 +137,14 @@ const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   invoice: 'Balance',
 };
 
+// Column order per DJ type. Club/bar puts the Rider (song_list slot) BEFORE
+// Deposit; mobile keeps Planner & Playlist in its original position.
+function pipeSlotsFor(djType: 'club' | 'mobile'): readonly (typeof PIPE_SLOTS)[number][] {
+  return djType === 'club'
+    ? (['contract', 'song_list', 'deposit', 'invoice'] as const)
+    : PIPE_SLOTS;
+}
+
 /**
  * The column headers, repeated under every month heading.
  *
@@ -157,7 +164,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
       <span>Time</span>
       <span>Event</span>
       <span className={styles.headRight}>Value</span>
-      {PIPE_SLOTS.map((k) => <span key={k}>{k === 'song_list' && djType === 'club' ? 'Rider' : PIPE_HEADS[k]}</span>)}
+      {pipeSlotsFor(djType).map((k) => <span key={k}>{k === 'song_list' && djType === 'club' ? 'Rider' : PIPE_HEADS[k]}</span>)}
       {/* Two empty cells: the actions track and the chevron track. Unlabelled
           on purpose — "Actions" over a column that's blank on most rows is
           noise — but they MUST be here. The header shares .row's track list,
@@ -542,7 +549,6 @@ export default function BookingRow({
   // Request opens the modal; the modal does the sending. Resend still fires
   // directly — there's nothing to confirm about "send that same link again".
   const [sendOpen, setSendOpen] = useState(false);
-  const [riderOpen, setRiderOpen] = useState(false);
 
   async function requestPlanner() {
     if (plannerBusy) return;
@@ -992,7 +998,7 @@ export default function BookingRow({
       done: false,
       color: AMBER,
       caption: 'Rider',
-      actions: [{ label: 'Customize & send rider', run: () => setRiderOpen(true) }],
+      actions: [{ label: 'Open rider builder', run: () => { window.location.href = `/rider-edit/${booking.id}`; } }],
     });
   }
 
@@ -1362,7 +1368,7 @@ export default function BookingRow({
           row does.
         */}
         <div className={styles.statusStrip}>
-          {PIPE_SLOTS.map((slotKey) => {
+          {pipeSlotsFor(djType).map((slotKey) => {
             const st = steps.find((s) => s.key === slotKey);
             // Hold the column open. A dash, not a dimmed icon: dimmed implies a
             // stage that exists and hasn't been done, and there's a real
@@ -2063,9 +2069,6 @@ export default function BookingRow({
             </div>
           )}
         </div>
-      )}
-      {riderOpen && (
-        <RiderSendModal bookingId={booking.id} onClose={() => setRiderOpen(false)} />
       )}
       {sendOpen && (
         <PlannerSendModal
