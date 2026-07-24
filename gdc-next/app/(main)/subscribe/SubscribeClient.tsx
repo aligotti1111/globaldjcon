@@ -320,7 +320,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   </button>
                   {isComp && purchasable && accessUntilLabel && (
                     <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: '.45rem', lineHeight: 1.4 }}>
-                      No charge now — billing starts {accessUntilLabel}, when your complimentary access ends.
+                      Subscribe now and you won\u2019t be charged until {accessUntilLabel} \u2014 when your complimentary access ends.
                     </div>
                   )}
                 </>
