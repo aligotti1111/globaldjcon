@@ -108,15 +108,20 @@ async function applySubscription(admin: Admin, subscriptionId: string) {
   const tier = plan?.tier ?? 0;
   const status = mapStatus(sub.status);
 
-  // Period end lives on the subscription item in current Stripe API versions.
+  // Period bounds live on the subscription item in current Stripe API versions.
+  // Both are stored: the [start, end) window is what the monthly contract quota
+  // is counted against (see lib/contractQuota.ts).
   const periodEndUnix = sub.items?.data?.[0]?.current_period_end;
   const periodEnd = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null;
+  const periodStartUnix = sub.items?.data?.[0]?.current_period_start;
+  const periodStart = periodStartUnix ? new Date(periodStartUnix * 1000).toISOString() : null;
 
   await admin
     .from('users')
     .update({
       sub_tier: tier,
       sub_status: status,
+      sub_period_start: periodStart,
       sub_period_end: periodEnd,
       stripe_customer_id: cid,
       stripe_subscription_id: sub.id,
