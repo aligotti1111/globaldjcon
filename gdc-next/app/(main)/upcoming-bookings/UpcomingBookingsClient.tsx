@@ -84,6 +84,7 @@ export default function UpcomingBookingsClient({
   // booking cards show the deposit even when it wasn't stored per-booking —
   // matching what the contract applies.
   const [clubDepositPct, setClubDepositPct] = useState<number>(0);
+  const [riderEnabled, setRiderEnabled] = useState<boolean>(false);
   // Mobile equivalent. Was never read: nothing on this page needed it until
   // the manual-booking form started seeding its deposit toggle from settings.
   const [mobDepositPct, setMobDepositPct] = useState<number>(0);
@@ -120,7 +121,7 @@ export default function UpcomingBookingsClient({
         const { data } = await supabase.from('users').select('booking_settings, sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', userId).maybeSingle();
         const row = data as (AccessFields & { booking_settings?: string | null; sub_status?: string | null }) | null;
         const raw = row?.booking_settings;
-        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean };
+        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean; rider_enabled?: boolean };
         if (!active) return;
         const ss = row?.sub_status;
         setIsPaid(ss === 'active' || ss === 'grace');
@@ -128,6 +129,7 @@ export default function UpcomingBookingsClient({
         // can't come to different conclusions about the same DJ.
         setCanPro(!!row && canUsePro(row));
         setRequireContract(!!bs?.require_contract);
+        setRiderEnabled(!!bs?.rider_enabled);
         {
           const c = (bs as { rate_currency?: string })?.rate_currency;
           if (c) setSettingsCurrency(c);
@@ -427,7 +429,7 @@ export default function UpcomingBookingsClient({
                 booking={b}
                 djType={djType}
                 userId={userId}
-                clubDepositPct={clubDepositPct}
+                clubDepositPct={clubDepositPct} riderEnabled={riderEnabled}
                 taxPct={taxPct}
                 requireContract={requireContract}
                 archive={archive}
@@ -460,7 +462,7 @@ export default function UpcomingBookingsClient({
                     booking={b}
                     djType={djType}
                     userId={userId}
-                    clubDepositPct={clubDepositPct}
+                    clubDepositPct={clubDepositPct} riderEnabled={riderEnabled}
                     taxPct={taxPct}
                     requireContract={requireContract}
                     archive={archive}

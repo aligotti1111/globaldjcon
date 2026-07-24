@@ -23,6 +23,7 @@ import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, Car
 import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
 import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
+import RiderSendModal from './RiderSendModal';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
 import {
@@ -156,7 +157,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
       <span>Time</span>
       <span>Event</span>
       <span className={styles.headRight}>Value</span>
-      {PIPE_SLOTS.map((k) => <span key={k}>{PIPE_HEADS[k]}</span>)}
+      {PIPE_SLOTS.map((k) => <span key={k}>{k === 'song_list' && djType === 'club' ? 'Rider' : PIPE_HEADS[k]}</span>)}
       {/* Two empty cells: the actions track and the chevron track. Unlabelled
           on purpose — "Actions" over a column that's blank on most rows is
           noise — but they MUST be here. The header shares .row's track list,
@@ -169,7 +170,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 }
 
 export default function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost,
+  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -197,6 +198,8 @@ export default function BookingRow({
    * this means "the thing blocking me is in there somewhere".
    */
   onAddHost?: () => void;
+  /** Club/bar: the DJ has enabled the rider — show its pipeline step. */
+  riderEnabled?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   // Set true when the details panel's live DocuSeal check confirms the contract
@@ -539,6 +542,7 @@ export default function BookingRow({
   // Request opens the modal; the modal does the sending. Resend still fires
   // directly — there's nothing to confirm about "send that same link again".
   const [sendOpen, setSendOpen] = useState(false);
+  const [riderOpen, setRiderOpen] = useState(false);
 
   async function requestPlanner() {
     if (plannerBusy) return;
@@ -973,6 +977,22 @@ export default function BookingRow({
             // they've set up — not from Booking Settings three pages away.
             ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) },
           ],
+    });
+  }
+
+  // ── DJ Rider (club/bar) ─ takes the song_list column for club. Opens the
+  //   customize-and-send modal; only when the DJ turned the rider on.
+  if (booking.booking_type === 'club' && riderEnabled && !archive) {
+    steps.push({
+      key: 'song_list',
+      label: 'DJ Rider — customize & send to host',
+      state: 'todo',
+      icon: 'music',
+      overridable: false,
+      done: false,
+      color: AMBER,
+      caption: 'Rider',
+      actions: [{ label: 'Customize & send rider', run: () => setRiderOpen(true) }],
     });
   }
 
@@ -2043,6 +2063,9 @@ export default function BookingRow({
             </div>
           )}
         </div>
+      )}
+      {riderOpen && (
+        <RiderSendModal bookingId={booking.id} onClose={() => setRiderOpen(false)} />
       )}
       {sendOpen && (
         <PlannerSendModal
