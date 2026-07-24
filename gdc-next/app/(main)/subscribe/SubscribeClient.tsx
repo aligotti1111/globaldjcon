@@ -112,6 +112,13 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [cancelBusy, setCancelBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
+  const [previewingTier, setPreviewingTier] = useState<PaidTier | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<
+    { tier: PaidTier; label: string; forward: string; amountDue: number | null; currency: string } | null
+  >(null);
+
+  const money = (cents: number, cur: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: (cur || 'usd').toUpperCase() }).format(cents / 100);
 
   async function subscribe(tier: PaidTier) {
     setError(null);
@@ -158,7 +165,36 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     }
   }
 
-  // In-app plan switch — updates the existing subscription (no Stripe portal).
+  // Step 1 — ask Stripe what switching would cost right now, then open the
+  // confirmation dialog so the DJ sees the charge before committing.
+  async function requestSwitch(tier: PaidTier, label: string, forward: string) {
+    setError(null);
+    setSwitchMsg(null);
+    setPreviewingTier(tier);
+    try {
+      const res = await fetch('/api/stripe/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, interval, preview: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; amountDue?: number | null; currency?: string };
+      if (res.status === 401) { window.location.href = '/login?redirect=/subscribe'; return; }
+      if (!res.ok) throw new Error(data.error || 'Could not preview the change.');
+      setPendingSwitch({
+        tier,
+        label,
+        forward,
+        amountDue: typeof data.amountDue === 'number' ? data.amountDue : null,
+        currency: data.currency || 'usd',
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setPreviewingTier(null);
+    }
+  }
+
+  // Step 2 — confirmed: update the existing subscription (no Stripe portal).
   async function changePlan(tier: PaidTier) {
     setError(null);
     setSwitchMsg(null);
@@ -178,9 +214,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         throw new Error(data.error || 'Could not change your plan.');
       }
       // The webhook writes the new tier a moment later — reload to reflect it.
+      setPendingSwitch(null);
       setSwitchMsg('Plan updated — refreshing\u2026');
       setTimeout(() => window.location.reload(), 1600);
     } catch (e) {
+      setPendingSwitch(null);
       setError(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setSwitchingTier(null);
@@ -362,11 +400,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 <button
                   type="button"
                   className={styles.subscribeBtn}
-                  onClick={() => changePlan(tier)}
-                  disabled={switchingTier !== null || !purchasable}
+                  onClick={() => requestSwitch(tier, def.label, `${price}${period}`)}
+                  disabled={switchingTier !== null || previewingTier !== null || !purchasable}
                   title={!purchasable ? 'Not available yet' : undefined}
                 >
-                  {!purchasable ? 'Coming soon' : switchingTier === tier ? 'Switching\u2026' : `Switch to ${def.label}`}
+                  {!purchasable ? 'Coming soon' : previewingTier === tier ? 'Checking\u2026' : switchingTier === tier ? 'Switching\u2026' : `Switch to ${def.label}`}
                 </button>
               )}
 
@@ -394,6 +432,46 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           );
         })}
       </div>
+
+      {/* Confirm-switch dialog — shows the exact prorated charge before committing. */}
+      {pendingSwitch && (() => {
+        const p = pendingSwitch;
+        const willCharge = typeof p.amountDue === 'number' && p.amountDue > 0;
+        const willCredit = typeof p.amountDue === 'number' && p.amountDue === 0;
+        const busy = switchingTier === p.tier;
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+            onClick={(e) => { if (e.target === e.currentTarget && !busy) setPendingSwitch(null); }}
+          >
+            <div style={{ background: 'var(--panel,#14141c)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.6rem', maxWidth: 430, width: '100%', textAlign: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem', marginBottom: '.7rem' }}>Switch to {p.label}?</div>
+              <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.92rem', lineHeight: 1.55, margin: '0 0 1.2rem' }}>
+                {willCharge ? (
+                  <>You&apos;ll be charged{' '}
+                    <strong style={{ color: 'var(--white,#fff)' }}>{money(p.amountDue as number, p.currency)}</strong>{' '}
+                    now for the rest of this billing period, then{' '}
+                    <strong style={{ color: 'var(--white,#fff)' }}>{p.forward}</strong> going forward. Your plan changes immediately.</>
+                ) : willCredit ? (
+                  <>No charge now &mdash; you&apos;ll get account credit for the unused time, then pay{' '}
+                    <strong style={{ color: 'var(--white,#fff)' }}>{p.forward}</strong> going forward. Your plan changes immediately.</>
+                ) : (
+                  <>You&apos;ll be charged the prorated difference for the days left in this billing period, then{' '}
+                    <strong style={{ color: 'var(--white,#fff)' }}>{p.forward}</strong> going forward. Your plan changes immediately.</>
+                )}
+              </p>
+              <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
+                <button type="button" className={styles.manageBtn} onClick={() => setPendingSwitch(null)} disabled={busy}>
+                  Keep current plan
+                </button>
+                <button type="button" className={styles.subscribeBtn} onClick={() => changePlan(p.tier)} disabled={busy}>
+                  {busy ? 'Switching…' : willCharge ? `Pay ${money(p.amountDue as number, p.currency)} & switch` : 'Confirm switch'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Subscribed → send them to set up / activate booking. */}
       {isSubscribed && (
