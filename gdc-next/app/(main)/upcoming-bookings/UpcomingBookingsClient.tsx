@@ -86,6 +86,7 @@ export default function UpcomingBookingsClient({
   const [clubDepositPct, setClubDepositPct] = useState<number>(0);
   const [riderEnabled, setRiderEnabled] = useState<boolean>(false);
   const [guestlistEnabled, setGuestlistEnabled] = useState<boolean>(false);
+  const [canAddonSettings, setCanAddonSettings] = useState(false);
   // Mobile equivalent. Was never read: nothing on this page needed it until
   // the manual-booking form started seeding its deposit toggle from settings.
   const [mobDepositPct, setMobDepositPct] = useState<number>(0);
@@ -114,6 +115,19 @@ export default function UpcomingBookingsClient({
   // Whether the DJ requires a signed contract per booking — drives the Contract
   // segment in each row's status strip.
   const [requireContract, setRequireContract] = useState(false);
+  // Show the Rider & Guest List settings link only for Admin/Manager teammates.
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/me');
+        const d = (await res.json().catch(() => ({}))) as { isMember?: boolean; role?: string };
+        if (on && d.isMember && (d.role === 'admin' || d.role === 'manager')) setCanAddonSettings(true);
+      } catch { /* ignore */ }
+    })();
+    return () => { on = false; };
+  }, []);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -367,6 +381,11 @@ export default function UpcomingBookingsClient({
           </Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          {canAddonSettings && (
+            <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
+              Rider &amp; Guest List settings
+            </Link>
+          )}
           {!archive && (
             <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
               + Add Booking Manually
