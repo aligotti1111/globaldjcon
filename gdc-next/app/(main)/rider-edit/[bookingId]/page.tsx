@@ -11,7 +11,25 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import RiderEditor from '@/components/RiderEditor';
+import BusinessLogoSection from '../../update-dj-profile/BusinessLogoSection';
 import { normalizeRiderItems, groupRider, RIDER_SECTIONS, type RiderItem } from '@/lib/rider';
+
+interface RiderMeta {
+  djName: string; logoUrl: string | null;
+  event: { date: string | null; start: string | null; end: string | null; venueName: string | null; venueAddress: string | null; eventType: string | null };
+}
+
+function fmtDate(d: string | null): string {
+  if (!d) return '';
+  return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+function fmtTime(t: string | null): string {
+  if (!t) return '';
+  const [h, m] = t.split(':'); const hn = Number(h);
+  if (!Number.isFinite(hn)) return '';
+  const ap = hn >= 12 ? 'PM' : 'AM'; const h12 = hn % 12 === 0 ? 12 : hn % 12;
+  return `${h12}:${m || '00'} ${ap}`;
+}
 
 export default function RiderEditPage() {
   const params = useParams();
@@ -24,13 +42,18 @@ export default function RiderEditPage() {
   const [note, setNote] = useState<string | null>(null);
   const [sentUrl, setSentUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('draft');
+  const [meta, setMeta] = useState<RiderMeta | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/rider/for-booking/${bookingId}`);
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; status?: string; error?: string };
       if (res.status === 401) { window.location.href = '/login?redirect=/upcoming-bookings'; return; }
-      if (res.ok && data.ok) { setItems(normalizeRiderItems(data.items)); setStatus(data.status || 'draft'); }
+      if (res.ok && data.ok) {
+        setItems(normalizeRiderItems(data.items)); setStatus(data.status || 'draft');
+        const m = data as unknown as RiderMeta;
+        if (m.event) setMeta({ djName: m.djName, logoUrl: m.logoUrl, event: m.event });
+      }
       else setErr(data.error || 'Could not load the rider.');
     } catch { setErr('Could not load the rider.'); }
     finally { setLoading(false); }
@@ -94,7 +117,20 @@ export default function RiderEditPage() {
           <div>
             <div style={{ fontWeight: 700, marginBottom: '.8rem' }}>Preview</div>
             <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.4rem' }}>
-              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.25rem', marginBottom: '1.1rem' }}>DJ Rider</div>
+              {meta?.logoUrl && (
+                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={meta.logoUrl} alt="" style={{ maxHeight: 70, maxWidth: 200, objectFit: 'contain' }} />
+                </div>
+              )}
+              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.25rem', marginBottom: '.3rem' }}>DJ Rider</div>
+              {meta && (
+                <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.6)', fontSize: '.82rem', lineHeight: 1.55, marginBottom: '1.2rem' }}>
+                  {meta.event.eventType && <div style={{ color: 'rgba(255,255,255,.9)', fontWeight: 600 }}>{meta.event.eventType}</div>}
+                  {[fmtDate(meta.event.date), [fmtTime(meta.event.start), fmtTime(meta.event.end)].filter(Boolean).join(' \u2013 ')].filter(Boolean).join(' \u00b7 ')}
+                  {meta.event.venueName && <div>{meta.event.venueName}{meta.event.venueAddress ? ` \u2014 ${meta.event.venueAddress}` : ''}</div>}
+                </div>
+              )}
               {RIDER_SECTIONS.map(({ key, label }) => {
                 const rows = g[key];
                 if (!rows.length) return null;
@@ -117,6 +153,16 @@ export default function RiderEditPage() {
         </div>
       )}
 
+      {!loading && meta && !meta.logoUrl && (
+        <div style={{ marginTop: '1.6rem', padding: '1.1rem', border: '1px dashed rgba(255,255,255,.22)', borderRadius: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: '.25rem' }}>Add your logo</div>
+          <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
+            You don&rsquo;t have a logo yet. Add one and it appears at the top of this rider (and on your
+            contracts and planners).
+          </p>
+          <BusinessLogoSection />
+        </div>
+      )}
       {err && <div style={{ color: '#ff8f8f', fontSize: '.88rem', marginTop: '1rem' }}>{err}</div>}
       {note && !err && <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.88rem', marginTop: '1rem' }}>{note}</div>}
       {sentUrl && (
