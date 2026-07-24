@@ -10,6 +10,7 @@
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeRiderItems } from '@/lib/rider';
 import RiderView from './RiderView';
 
@@ -31,7 +32,7 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
 
-  const db = createAdminClient();
+  const db = createAdminClient() as unknown as SupabaseClient;
   const { data: rData } = await db
     .from('booking_riders')
     .select('id, booking_id, dj_id, items, logo_hidden')
