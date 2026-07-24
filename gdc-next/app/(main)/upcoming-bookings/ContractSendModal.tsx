@@ -112,6 +112,9 @@ export default function ContractSendModal({
   const [saving, setSaving] = useState(false);
   const [builderToken, setBuilderToken] = useState<string | null>(null);
   const [clientEmail, setClientEmail] = useState('');
+  // Live signed-contract usage for the DJ's current billing cycle (drives the
+  // strip under the modal title). Read-only; the hard block is server-side.
+  const [usage, setUsage] = useState<{ quota: number; used: number; remaining: number; atLimit: boolean; cycleEnd: string | null } | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
 
   async function prepare(afterSave = false, emailOverride?: string) {
@@ -150,6 +153,15 @@ export default function ContractSendModal({
   }
 
   useEffect(() => { prepare(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [bookingId]);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/contracts/usage')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (active && d && typeof d.quota === 'number') setUsage(d); })
+      .catch(() => { /* non-fatal — the strip just doesn't show */ });
+    return () => { active = false; };
+  }, []);
 
   async function handleSignComplete() {
     // The DJ has signed. Only NOW do we email the client their copy to sign
@@ -241,6 +253,27 @@ export default function ContractSendModal({
           <strong style={{ color: '#111' }}>{title}</strong>
           <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: '#666' }}>✕</button>
         </div>
+        {usage && usage.quota > 0 && (
+          <div style={{
+            padding: '.4rem 1rem',
+            borderBottom: '1px solid #eee',
+            background: usage.remaining === 0 ? '#fef2f2' : '#f0fdf4',
+            color: usage.remaining === 0 ? '#b91c1c' : '#166534',
+            fontSize: '.72rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem',
+          }}>
+            <span>
+              {usage.remaining === 0
+                ? `You've used all ${usage.quota} contract${usage.quota === 1 ? '' : 's'} in your plan this billing cycle.`
+                : `${usage.used} of ${usage.quota} contracts used this billing cycle · ${usage.remaining} left`}
+            </span>
+            {usage.cycleEnd && (
+              <span style={{ opacity: .8, whiteSpace: 'nowrap' }}>
+                Resets {new Date(usage.cycleEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+          </div>
+        )}
         <div style={{ flex: 1, overflow: 'auto' }}>{body}</div>
         <div style={{ padding: '.6rem 1rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{footer}</div>
       </div>
