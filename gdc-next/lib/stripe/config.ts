@@ -18,18 +18,26 @@ export const STRIPE_PUBLISHABLE_KEY =
 export type BillingInterval = 'monthly' | 'yearly';
 
 // A paid tier is one of 1 (Booking) or 2 (Pro). Tier 0 (Free) has no price.
-export type PaidTier = 1 | 2;
+export type PaidTier = 1 | 2 | 3 | 4;
 
 // Price IDs per (tier, interval). The source of truth for "which Stripe price
 // does this plan choice map to."
 export const STRIPE_PRICES: Record<PaidTier, Record<BillingInterval, string>> = {
   1: {
-    monthly: 'price_1TphMcPHp43e0bAtqbNk6nBn', // Booking – $19.99/mo
-    yearly: 'price_1TphKxPHp43e0bAtRXebJONK',  // Booking – $199.90/yr
+    monthly: 'price_1TwYTsPHp43e0bAtTWF7E3hi', // Starter – $14.99/mo
+    yearly: 'price_1TwYVSPHp43e0bAtHLmOBMmF',  // Starter – $149.90/yr
   },
   2: {
     monthly: 'price_1TphOTPHp43e0bAtTD8IsDxh', // Pro – $29.99/mo
     yearly: 'price_1TphO0PHp43e0bAtUfdZR11m',  // Pro – $299.90/yr
+  },
+  3: {
+    monthly: 'price_1TwYWfPHp43e0bAtjgZY0F2n', // Premium Pro – $49.99/mo
+    yearly: 'price_1TwYXNPHp43e0bAtbfUalRv5',  // Premium Pro – $499.90/yr
+  },
+  4: {
+    monthly: 'price_1TwYYjPHp43e0bAtwiskylP4', // Enterprise – $99.99/mo
+    yearly: 'price_1TwYZcPHp43e0bAtIOQASRDk',  // Enterprise – $999.90/yr
   },
 };
 
@@ -48,7 +56,7 @@ export const PRICE_TO_PLAN: Record<string, { tier: PaidTier; interval: BillingIn
 
 // The price ID for a given plan choice, or null if the inputs are invalid.
 export function priceIdFor(tier: number, interval: string): string | null {
-  if (tier !== 1 && tier !== 2) return null;
+  if (!Number.isInteger(tier) || tier < 1 || tier > 4) return null;
   if (interval !== 'monthly' && interval !== 'yearly') return null;
   return STRIPE_PRICES[tier as PaidTier][interval as BillingInterval];
 }
