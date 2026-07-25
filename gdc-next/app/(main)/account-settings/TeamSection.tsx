@@ -156,7 +156,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               </div>
               <h3 style={{ margin: '0 0 .5rem', fontSize: '1.15rem', color: '#fff' }}>Remove {pending ? 'invite' : 'teammate'}?</h3>
               <p style={{ margin: '0 0 1.3rem', fontSize: '.85rem', color: muted, lineHeight: 1.6 }}>
-                <strong style={{ color: '#fff' }}>{cm.invited_email}</strong> will {pending ? 'no longer be able to accept this invite' : 'immediately lose access to your account'}. This frees the seat — you can re-invite them anytime.
+                <strong style={{ color: '#fff' }}>{cm.invited_email}</strong> will {pending ? 'no longer be able to accept this invite' : 'immediately lose access, and their staff account is deleted (freeing their email)'}. This frees the seat — you can re-invite them anytime.
               </p>
               <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setConfirmId(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', borderRadius: 8, color: '#fff', padding: '.6rem 1.1rem', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Cancel</button>
