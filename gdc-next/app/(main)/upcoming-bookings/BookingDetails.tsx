@@ -688,12 +688,18 @@ export default function BookingDetails({
           Playlist. The DJ customizes this booking's rider here and deploys it
           to the host. */}
       {bt === 'club' && (
-        <div style={{ margin: '0 0 1rem' }}>
+        <div style={{ margin: '0 0 1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
           <a
-            href={`/rider-edit/${booking.id}`}
+            href={`/rider-edit/${booking.id}?mode=upload`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer', textDecoration: 'none' }}
           >
-            Open rider builder
+            Upload rider PDF
+          </a>
+          <a
+            href={`/rider-edit/${booking.id}?mode=custom`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer', textDecoration: 'none' }}
+          >
+            Create custom rider
           </a>
         </div>
       )}
