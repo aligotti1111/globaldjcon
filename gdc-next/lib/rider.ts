@@ -42,18 +42,22 @@ const VALID_SECTIONS: RiderSection[] = ['technical', 'hospitality', 'custom'];
 
 // Seeded from common club/bar DJ-rider items, now as labeled fields. Every
 // field is editable.
+// Starter fields are LABELS ONLY — empty values. The DJ fills in their own
+// requirements; we never fabricate specific gear, brands, or quantities. The
+// only pre-filled technical value comes from the DJ's own equipment settings
+// (see technicalFromEquipment / seedRider).
 export const STARTER_RIDER: RiderItem[] = [
-  { id: 'tech_players', section: 'technical', label: 'DJ Decks/Turntables/Controller', value: '2× Pioneer CDJ-3000 (or CDJ-2000NXS2)' },
-  { id: 'tech_mixer', section: 'technical', label: 'Mixer', value: '1× Pioneer DJM-900NXS2 (or DJM-A9)' },
-  { id: 'tech_monitor', section: 'technical', label: 'Booth monitor', value: '1× powered booth monitor (minimum 100W)' },
-  { id: 'tech_table', section: 'technical', label: 'DJ table / booth', value: 'Sturdy, minimum 6 ft wide, at standing height' },
-  { id: 'tech_power', section: 'technical', label: 'Power', value: 'Two grounded power outlets at the booth' },
-  { id: 'tech_sound', section: 'technical', label: 'Sound system', value: 'House PA suitable for the room, tested before doors' },
-  { id: 'hosp_water', section: 'hospitality', label: 'Water', value: '4× bottled water at the booth' },
-  { id: 'hosp_drinks', section: 'hospitality', label: 'Drinks', value: 'Drink tickets or beverages for the DJ' },
-  { id: 'hosp_meal', section: 'hospitality', label: 'Meal', value: 'A meal if the set runs longer than 4 hours' },
-  { id: 'hosp_parking', section: 'hospitality', label: 'Parking', value: 'Parking or loading access near the entrance' },
-  { id: 'hosp_comps', section: 'hospitality', label: 'Guest list', value: 'Estimated comps / guest-list spots needed: 2' },
+  { id: 'tech_players', section: 'technical', label: 'DJ Decks/Turntables/Controller', value: '' },
+  { id: 'tech_mixer', section: 'technical', label: 'Mixer', value: '' },
+  { id: 'tech_monitor', section: 'technical', label: 'Booth monitor', value: '' },
+  { id: 'tech_table', section: 'technical', label: 'DJ table / booth', value: '' },
+  { id: 'tech_power', section: 'technical', label: 'Power', value: '' },
+  { id: 'tech_sound', section: 'technical', label: 'Sound system', value: '' },
+  { id: 'hosp_water', section: 'hospitality', label: 'Water', value: '' },
+  { id: 'hosp_drinks', section: 'hospitality', label: 'Drinks', value: '' },
+  { id: 'hosp_meal', section: 'hospitality', label: 'Meal', value: '' },
+  { id: 'hosp_parking', section: 'hospitality', label: 'Parking', value: '' },
+  { id: 'hosp_comps', section: 'hospitality', label: 'Guest list', value: '' },
 ];
 
 export function newRiderId(): string {
@@ -133,16 +137,16 @@ export function technicalFromEquipment(eq: EquipmentContext): RiderItem[] {
     const d = (eq.systemDetail || '').trim();
     return [
       mk('DJ provides (sound system + decks)', d),
-      mk('Power', 'Two grounded power outlets at the booth'),
-      mk('DJ table / booth', 'Sturdy, minimum 6 ft wide, at standing height'),
+      mk('Power', ''),
+      mk('DJ table / booth', ''),
     ];
   }
   if (eq.choice === 'decks') {
     const d = (eq.decksDetail || '').trim();
     return [
       mk('DJ provides (decks / controller)', d),
-      mk('Sound system', 'Venue provides house sound system + booth monitor'),
-      mk('Power', 'Two grounded power outlets at the booth'),
+      mk('Sound system', ''),
+      mk('Power', ''),
     ];
   }
   return standard();
