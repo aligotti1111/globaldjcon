@@ -15,6 +15,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
@@ -166,8 +167,11 @@ export default async function UpcomingBookingsPage() {
   // Team seats: a member acts on the owner's account; owners resolve to self.
   const acting = await getActingContext(user.id);
   const djId = acting.djId;
+  // The owner's profile is read with the service role so a teammate never gets
+  // the owner's users row (payment handles / Stripe ids) via RLS.
+  const admin = createAdminClient() as unknown as SupabaseClient;
 
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('users')
     .select('role, dj_type, country, name, booking_settings')
     .eq('id', djId)
@@ -218,7 +222,7 @@ export default async function UpcomingBookingsPage() {
     ),
   ];
   if (missingRequesterIds.length > 0) {
-    const { data: rRows } = await supabase
+    const { data: rRows } = await admin
       .from('users')
       .select('id, name')
       .in('id', missingRequesterIds);
