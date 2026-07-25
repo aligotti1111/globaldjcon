@@ -177,7 +177,9 @@ export default async function UpcomingBookingsPage() {
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
-  if (profile?.role !== 'dj') redirect('/booking-requests');
+  // A teammate acts on a DJ owner (only DJs have teammates), so never bounce
+  // them even if their own profile load is odd. Only redirect genuine non-DJs.
+  if (!acting.isMember && profile?.role !== 'dj') redirect('/booking-requests');
 
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
   // booking_settings is stored as a JSON string (same as the public profile),
