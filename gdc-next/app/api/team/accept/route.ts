@@ -97,18 +97,21 @@ export async function POST(req: Request) {
   // seeds a name. Best-effort: the membership is what grants access.
   if (brandNew || !meRow) {
     const name = (myEmail.split('@')[0] || 'Teammate').replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    // Two SEPARATE writes on purpose. The email is already confirmed (OTP), so
-    // mark it verified + set a name FIRST — no 'role' in this write, so a role
-    // CHECK constraint can't block it and leave the confirm-email banner up.
-    await admin.from('users').upsert(
-      { id: user.id, name, email_verified: true } as unknown as never,
-      { onConflict: 'id' },
-    );
-    // THEN promote to the 'teammate' role. Best-effort: if the role CHECK
-    // doesn't allow 'teammate' yet, this no-ops and they stay whatever the
-    // signup trigger defaulted them to (harmless — access comes from the
-    // membership) until the constraint is widened.
-    await admin.from('users').update({ role: 'teammate' } as unknown as never).eq('id', user.id);
+    if (meRow) {
+      // The signup trigger already created this row, so UPDATE it. (Do NOT
+      // upsert without a role: users.role is NOT NULL, and an upsert evaluates
+      // its INSERT path first — that fails the not-null check before the
+      // on-conflict update runs, so email_verified would silently never save.)
+      await admin.from('users')
+        .update({ name, email_verified: true, role: 'teammate' } as unknown as never)
+        .eq('id', user.id);
+    } else {
+      // No trigger row (defensive) — insert a complete one.
+      await admin.from('users').upsert(
+        { id: user.id, name, email_verified: true, role: 'teammate' } as unknown as never,
+        { onConflict: 'id' },
+      );
+    }
   }
   return NextResponse.json({ ok: true });
 }
