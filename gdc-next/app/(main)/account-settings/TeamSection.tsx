@@ -76,7 +76,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
               {members.map((m) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', padding: '.5rem .7rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: '.88rem' }}>
+                  <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: '.88rem', wordBreak: 'break-all' }}>
                     {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
                   </span>
                   <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
