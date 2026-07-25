@@ -23,6 +23,8 @@ import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, Car
 import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
 import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
+import RiderSendModal from './RiderSendModal';
+import { normalizeRiderMode } from '@/lib/rider';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
 import {
@@ -552,6 +554,20 @@ export default function BookingRow({
   // Request opens the modal; the modal does the sending. Resend still fires
   // directly — there's nothing to confirm about "send that same link again".
   const [sendOpen, setSendOpen] = useState(false);
+  const [riderChooserOpen, setRiderChooserOpen] = useState(false);
+  async function resendRider() {
+    try {
+      const r = await fetch(`/api/rider/for-booking/${booking.id}`);
+      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null };
+      if (!r.ok || !d.ok) { setRiderChooserOpen(true); return; }
+      const m = normalizeRiderMode(d.mode);
+      const items = Array.isArray(d.items) ? d.items : [];
+      const pdfUrl = d.pdfUrl || null;
+      const has = m === 'upload' ? !!pdfUrl : items.length > 0;
+      if (!has) { setRiderChooserOpen(true); return; } // nothing saved yet → choose
+      await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl }) });
+    } catch { setRiderChooserOpen(true); }
+  }
 
   async function requestPlanner() {
     if (plannerBusy) return;
@@ -1002,8 +1018,8 @@ export default function BookingRow({
       color: AMBER,
       caption: 'Rider',
       actions: [
-        { label: 'Upload rider PDF', run: () => { window.location.href = `/rider-edit/${booking.id}?mode=upload`; } },
-        { label: 'Create custom rider', run: () => { window.location.href = `/rider-edit/${booking.id}?mode=custom`; } },
+        { label: 'Choose rider & send', run: () => setRiderChooserOpen(true) },
+        { label: 'Resend rider', run: () => resendRider() },
       ],
     });
   }
@@ -2090,6 +2106,9 @@ export default function BookingRow({
             </div>
           )}
         </div>
+      )}
+      {riderChooserOpen && (
+        <RiderSendModal bookingId={booking.id} onClose={() => setRiderChooserOpen(false)} />
       )}
       {sendOpen && (
         <PlannerSendModal
