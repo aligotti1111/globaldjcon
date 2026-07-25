@@ -19,13 +19,18 @@ export interface ActingContext {
 
 export async function getActingContext(authUserId: string): Promise<ActingContext> {
   const admin = createAdminClient() as unknown as SupabaseClient;
+  // limit(1) rather than maybeSingle: a user could (in theory) hold more than one
+  // active membership; maybeSingle would ERROR and silently fall back to owner.
+  // Accept blocks multi-membership, but read defensively regardless.
   const { data } = await admin
     .from('team_members')
     .select('owner_id, role, status')
     .eq('member_id', authUserId)
     .eq('status', 'active')
-    .maybeSingle();
-  const row = data as unknown as { owner_id: string; role: string } | null;
+    .order('accepted_at', { ascending: true })
+    .limit(1);
+  const rows = (data as unknown as { owner_id: string; role: string }[] | null) || [];
+  const row = rows[0] || null;
   if (row && (row.role === 'admin' || row.role === 'manager' || row.role === 'assistant')) {
     return { authUserId, djId: row.owner_id, role: row.role as ActingRole, isMember: true };
   }
