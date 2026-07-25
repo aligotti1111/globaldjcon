@@ -11,7 +11,7 @@
 //                    equipment choice, fully editable), full width.
 //   Save keeps a draft; Deploy sends it to the host (rider PDF attached).
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import RiderBuilder from '@/components/RiderBuilder';
@@ -41,6 +41,9 @@ const MUTED = 'var(--muted,#8a8aa0)';
 export default function RiderEditPage() {
   const params = useParams();
   const bookingId = String((params as Record<string, string | string[]>)?.bookingId || '');
+  // A ?mode=upload|custom in the URL means the choice was already made at the
+  // entry point, so open straight into that mode (skip the choose gate).
+  const forcedModeRef = useRef<RiderMode | null>(null);
 
   const [items, setItems] = useState<RiderItem[]>([]);
   const [mode, setMode] = useState<RiderMode>('custom');
@@ -61,7 +64,8 @@ export default function RiderEditPage() {
       if (res.status === 401) { window.location.href = '/login?redirect=/upcoming-bookings'; return; }
       if (res.ok && data.ok) {
         setItems(normalizeRiderItems(data.items)); setStatus(data.status || 'draft');
-        setMode(normalizeRiderMode(data.mode)); setPdfUrl(data.pdfUrl || null);
+        if (!forcedModeRef.current) setMode(normalizeRiderMode(data.mode));
+        setPdfUrl(data.pdfUrl || null);
         const m = data as unknown as RiderMeta;
         if (m.event) setMeta({ djName: m.djName, logoUrl: m.logoUrl, event: m.event });
       }
@@ -70,6 +74,11 @@ export default function RiderEditPage() {
     finally { setLoading(false); }
   }, [bookingId]);
 
+  // Read ?mode= once on mount (client-only — avoids useSearchParams Suspense).
+  useEffect(() => {
+    const qm = new URLSearchParams(window.location.search).get('mode');
+    if (qm === 'upload' || qm === 'custom') { forcedModeRef.current = qm; setMode(qm); setView('edit'); }
+  }, []);
   useEffect(() => { if (bookingId) load(); }, [bookingId, load]);
 
   const canDeploy = mode === 'upload' ? !!pdfUrl : items.length > 0;
