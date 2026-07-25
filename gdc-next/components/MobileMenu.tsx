@@ -183,7 +183,7 @@ export default function MobileMenu() {
   // A teammate (staff login) acts on the OWNER's DJ account, so they get the DJ
   // booking items — not the host "events" view. Their own subscription is empty,
   // so we do NOT gate on bookingEnabled (the owner's plan is what grants access).
-  const isStaff = user?.role === 'teammate';
+  const isStaff = (user?.role as string | undefined) === 'teammate';
   const showDjBookings = (isDj && bookingEnabled) || isStaff;
   // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
   // so the user can see at a glance how many events they have queued.
