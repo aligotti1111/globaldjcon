@@ -20,6 +20,7 @@ import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { useAuth } from '@/components/AuthProvider';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
+import TeamSection from '../account-settings/TeamSection';
 // Booking configuration moved to its own page (/booking-settings); the
 // BookingTab / ClubBookingTab components live in this folder still but are
 // mounted there now. Socials/Mixes/Photos/Video/Testimonials are managed
@@ -485,6 +486,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           </button>
         </form>
       </div>
+
+      {/* Team seats — DJs render THIS component (not AccountSettingsClient), so
+          the Team card lives here. Self-contained + Pro-gated. */}
+      <TeamSection />
     </div>
   );
 }
