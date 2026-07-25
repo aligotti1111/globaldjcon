@@ -92,14 +92,23 @@ export async function POST(req: Request) {
     // listUsers is the supported way to find an auth user by email without a
     // direct auth-schema query. Small page: we want one exact match, not a scan.
     let authUser: { id: string } | null = null;
+    // Exact, INDEXED lookup in auth.users — scales past 200 accounts. (The old
+    // page-1 listUsers scan silently missed anyone created after the first 200.)
     try {
-      const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const hit = (data?.users || []).find(
-        (u) => (u.email || '').toLowerCase() === email,
-      );
-      if (hit) authUser = { id: hit.id };
+      const { data: uid } = await admin.rpc('auth_user_id_by_email', { p_email: email });
+      if (uid) authUser = { id: uid as string };
     } catch (e) {
-      console.warn('[lookup] listUsers failed:', e);
+      console.warn('[lookup] auth_user_id_by_email rpc failed:', e);
+    }
+    // Fallback (small deployments where the function isn't present yet).
+    if (!authUser) {
+      try {
+        const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        const hit = (data?.users || []).find((u) => (u.email || '').toLowerCase() === email);
+        if (hit) authUser = { id: hit.id };
+      } catch (e) {
+        console.warn('[lookup] listUsers fallback failed:', e);
+      }
     }
 
     // Also check contact_email — a phone-signup host's delivery address. They
@@ -135,23 +144,27 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. An actual auth identity — they signed up by phone.
+  // 1. An actual auth identity — they signed up by phone. Indexed lookup so it
+  //    scales past the first 200 accounts.
+  let phoneAuthId: string | null = null;
   try {
-    const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    const hit = (data?.users || []).find((u) => u.phone === e164.replace('+', '') || u.phone === e164);
-    if (hit) {
-      const result: LookupResult = {
-        kind: 'phone',
-        found: true,
-        // Phone accounts have no password unless they chose to add one. The
-        // client greys the password button; Supabase is the real arbiter.
-        canPassword: false,
-        canCode: true,
-      };
-      return NextResponse.json(result);
-    }
+    const { data: uid } = await admin.rpc('auth_user_id_by_phone', { p_phone: e164 });
+    if (uid) phoneAuthId = uid as string;
   } catch (e) {
-    console.warn('[lookup] listUsers (phone) failed:', e);
+    console.warn('[lookup] auth_user_id_by_phone rpc failed:', e);
+  }
+  if (!phoneAuthId) {
+    try {
+      const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const hit = (data?.users || []).find((u) => u.phone === e164.replace('+', '') || u.phone === e164);
+      if (hit) phoneAuthId = hit.id;
+    } catch (e) {
+      console.warn('[lookup] listUsers (phone) fallback failed:', e);
+    }
+  }
+  if (phoneAuthId) {
+    const result: LookupResult = { kind: 'phone', found: true, canPassword: false, canCode: true };
+    return NextResponse.json(result);
   }
 
   // 2. Their notification number.
