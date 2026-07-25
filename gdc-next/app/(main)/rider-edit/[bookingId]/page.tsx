@@ -283,7 +283,6 @@ export default function RiderEditPage() {
                   items={items}
                   mode={mode}
                   pdfUrl={pdfUrl}
-                  riderName={name || null}
                   djName={meta?.djName || ''}
                   logoUrl={meta?.logoUrl || null}
                   eventDate={meta?.event.date || null}
