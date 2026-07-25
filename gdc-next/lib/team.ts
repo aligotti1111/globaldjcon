@@ -1,39 +1,30 @@
 // lib/team.ts — team seats (extra logins with restricted roles).
 export type TeamRole = 'admin' | 'manager' | 'assistant';
 
-export interface RolePerm { text: string; allowed: boolean; }
-export const TEAM_ROLES: { value: TeamRole; label: string; blurb: string; perms: RolePerm[] }[] = [
-  {
-    value: 'admin', label: 'Admin',
-    blurb: 'Top teammate role — bookings, payments, and all documents.',
-    perms: [
-      { text: 'View & manage bookings', allowed: true },
-      { text: 'Send contracts, planners, riders & guest lists', allowed: true },
-      { text: 'Take deposits & send invoices', allowed: true },
-      { text: 'Change billing or booking settings', allowed: false },
-    ],
-  },
-  {
-    value: 'manager', label: 'Manager',
-    blurb: 'Bookings, payments, and all documents.',
-    perms: [
-      { text: 'View & manage bookings', allowed: true },
-      { text: 'Send contracts, planners, riders & guest lists', allowed: true },
-      { text: 'Take deposits & send invoices', allowed: true },
-      { text: 'Change billing or booking settings', allowed: false },
-    ],
-  },
-  {
-    value: 'assistant', label: 'Assistant',
-    blurb: 'Bookings and documents only — no payments.',
-    perms: [
-      { text: 'View bookings', allowed: true },
-      { text: 'Send contracts, planners, riders & guest lists', allowed: true },
-      { text: 'Take deposits or send invoices', allowed: false },
-      { text: 'Change billing or booking settings', allowed: false },
-    ],
-  },
+export const TEAM_ROLES: { value: TeamRole; label: string }[] = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'assistant', label: 'Assistant' },
 ];
+
+// The "send documents" capability wording depends on the DJ type: mobile DJs
+// send planners & playlists; club/bar DJs send riders & guest lists.
+export function docCapabilityLabel(djType: string | null | undefined): string {
+  return djType === 'mobile'
+    ? 'Send contracts, planners & playlists'
+    : 'Send contracts, riders & guest lists';
+}
+
+export interface RoleCap { label: string; admin: boolean; manager: boolean; assistant: boolean; }
+
+export function roleMatrix(djType: string | null | undefined): RoleCap[] {
+  return [
+    { label: 'View bookings', admin: true, manager: true, assistant: true },
+    { label: docCapabilityLabel(djType), admin: true, manager: true, assistant: true },
+    { label: 'Take deposits & send invoices', admin: true, manager: true, assistant: false },
+    { label: 'Change billing or booking settings', admin: false, manager: false, assistant: false },
+  ];
+}
 
 export function roleLabel(r: string): string {
   return TEAM_ROLES.find((x) => x.value === r)?.label || r;
