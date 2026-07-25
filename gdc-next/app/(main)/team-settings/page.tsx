@@ -6,8 +6,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import RiderEditor from '@/components/RiderEditor';
-import { normalizeRiderItems, STARTER_RIDER, type RiderItem } from '@/lib/rider';
+import RiderBuilder from '@/components/RiderBuilder';
+import { normalizeRiderItems, normalizeRiderMode, STARTER_RIDER, type RiderItem, type RiderMode } from '@/lib/rider';
 
 export default function TeamSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,8 @@ export default function TeamSettingsPage() {
   const [riderEnabled, setRiderEnabled] = useState(false);
   const [guestlistEnabled, setGuestlistEnabled] = useState(false);
   const [riderDefault, setRiderDefault] = useState<RiderItem[]>([]);
+  const [riderMode, setRiderMode] = useState<RiderMode>('custom');
+  const [riderPdfUrl, setRiderPdfUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -23,11 +25,13 @@ export default function TeamSettingsPage() {
     try {
       const res = await fetch('/api/team/settings');
       if (res.status === 403) { setAllowed(false); return; }
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; riderEnabled?: boolean; guestlistEnabled?: boolean; riderDefault?: unknown };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; riderEnabled?: boolean; guestlistEnabled?: boolean; riderDefault?: unknown; riderMode?: unknown; riderPdfUrl?: string | null };
       if (res.ok && data.ok) {
         setRiderEnabled(!!data.riderEnabled);
         setGuestlistEnabled(!!data.guestlistEnabled);
         setRiderDefault(normalizeRiderItems(data.riderDefault));
+        setRiderMode(normalizeRiderMode(data.riderMode));
+        setRiderPdfUrl(data.riderPdfUrl || null);
       }
     } finally { setLoading(false); }
   }, []);
@@ -38,7 +42,7 @@ export default function TeamSettingsPage() {
     try {
       const res = await fetch('/api/team/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ riderEnabled, guestlistEnabled, riderDefault: riderDefault.filter((i) => i.section === 'hospitality') }),
+        body: JSON.stringify({ riderEnabled, guestlistEnabled, riderMode, riderPdfUrl, riderDefault: riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom') }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
@@ -82,9 +86,17 @@ export default function TeamSettingsPage() {
       <Toggle on={guestlistEnabled} set={setGuestlistEnabled} label="Enable Guest List" hint="Adds the Guest List step to club/bar bookings." />
 
       <div style={{ marginTop: '1.4rem' }}>
-        <div style={{ fontWeight: 700, marginBottom: '.6rem' }}>Default rider — hospitality</div>
-        <RiderEditor items={riderDefault} onChange={setRiderDefault} sections={['hospitality']} />
-        {riderDefault.filter((i) => i.section === 'hospitality').length === 0 && (
+        <div style={{ fontWeight: 700, marginBottom: '.6rem' }}>Default rider</div>
+        <RiderBuilder
+          mode={riderMode}
+          onModeChange={setRiderMode}
+          items={riderDefault}
+          onItemsChange={setRiderDefault}
+          pdfUrl={riderPdfUrl}
+          onPdfUrlChange={setRiderPdfUrl}
+          sections={['hospitality', 'custom']}
+        />
+        {riderMode === 'custom' && riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom').length === 0 && (
           <button type="button" onClick={() => setRiderDefault(STARTER_RIDER.filter((i) => i.section === 'hospitality').map((i) => ({ ...i })))}
             style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}>
             Load starter hospitality
