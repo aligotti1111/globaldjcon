@@ -167,14 +167,7 @@ export default function MobileMenu() {
     setPortalLoading(true);
     setOpen(false);
     try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = (await res.json().catch(() => ({}))) as { url?: string };
-      if (res.ok && data.url) {
-        window.open(data.url, '_blank', 'noopener');
-        return;
-      }
-      window.location.href = '/subscribe';
-    } catch {
+      // On-site subscription management (switch/cancel/resume).
       window.location.href = '/subscribe';
     } finally {
       setPortalLoading(false);

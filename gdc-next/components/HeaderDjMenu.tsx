@@ -73,14 +73,8 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
     if (portalLoading) return;
     setPortalLoading(true);
     try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (res.ok && data.url) {
-        window.open(data.url, '_blank', 'noopener');
-        return;
-      }
-      router.push('/subscribe');
-    } catch {
+      // Manage subscription happens ON-SITE now (switch/cancel/resume) rather
+      // than in the Stripe portal. Card updates still go to Stripe from there.
       router.push('/subscribe');
     } finally {
       setPortalLoading(false);
