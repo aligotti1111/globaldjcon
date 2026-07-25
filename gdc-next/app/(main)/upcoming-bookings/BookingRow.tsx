@@ -1001,7 +1001,10 @@ export default function BookingRow({
       done: false,
       color: AMBER,
       caption: 'Rider',
-      actions: [{ label: 'Open rider builder', run: () => { window.location.href = `/rider-edit/${booking.id}`; } }],
+      actions: [
+        { label: 'Upload rider PDF', run: () => { window.location.href = `/rider-edit/${booking.id}?mode=upload`; } },
+        { label: 'Create custom rider', run: () => { window.location.href = `/rider-edit/${booking.id}?mode=custom`; } },
+      ],
     });
   }
 
