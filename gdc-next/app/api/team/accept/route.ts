@@ -97,10 +97,18 @@ export async function POST(req: Request) {
   // seeds a name. Best-effort: the membership is what grants access.
   if (brandNew || !meRow) {
     const name = (myEmail.split('@')[0] || 'Teammate').replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    // Two SEPARATE writes on purpose. The email is already confirmed (OTP), so
+    // mark it verified + set a name FIRST — no 'role' in this write, so a role
+    // CHECK constraint can't block it and leave the confirm-email banner up.
     await admin.from('users').upsert(
-      { id: user.id, role: 'teammate', name, email_verified: true } as unknown as never,
+      { id: user.id, name, email_verified: true } as unknown as never,
       { onConflict: 'id' },
     );
+    // THEN promote to the 'teammate' role. Best-effort: if the role CHECK
+    // doesn't allow 'teammate' yet, this no-ops and they stay whatever the
+    // signup trigger defaulted them to (harmless — access comes from the
+    // membership) until the constraint is widened.
+    await admin.from('users').update({ role: 'teammate' } as unknown as never).eq('id', user.id);
   }
   return NextResponse.json({ ok: true });
 }
