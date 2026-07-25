@@ -61,6 +61,35 @@ export async function POST(req: Request) {
   if (already && already.status === 'active') return NextResponse.json({ error: 'That person is already on your team.' }, { status: 400 });
   if (!already && active.length >= limit) return NextResponse.json({ error: `You've used all ${limit} seats on your plan.` }, { status: 400 });
 
+  // Refuse to invite an email that already has a customer-facing account. A dj,
+  // host, or venue can't double as staff — they could book the very account they
+  // manage, or run two identities (their own bookings + acting-as-owner) at
+  // once. Only unregistered emails and existing teammate accounts may be
+  // invited. (The accept route enforces the same rule; this just stops a dead
+  // "pending" invite from being sent in the first place.)
+  {
+    let existingId: string | null = null;
+    try {
+      const { data: uid } = await admin.rpc('auth_user_id_by_email', { p_email: email });
+      if (uid) existingId = uid as string;
+    } catch { /* fall through to the listUsers fallback */ }
+    if (!existingId) {
+      try {
+        const { data: lu } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        const hit = (lu?.users || []).find((u) => (u.email || '').toLowerCase() === email);
+        if (hit) existingId = hit.id;
+      } catch { /* best-effort — accept-time check is the backstop */ }
+    }
+    if (existingId) {
+      const { data: u } = await admin.from('users').select('role').eq('id', existingId).maybeSingle();
+      const r = (u as unknown as { role?: string } | null)?.role;
+      if (r === 'dj' || r === 'host' || r === 'venue') {
+        const label = r === 'dj' ? 'a DJ' : `a ${r}`;
+        return NextResponse.json({ error: `That email already has ${label} account on Global DJ Connect. Teammates need an email that isn't already registered here — try a different address.` }, { status: 400 });
+      }
+    }
+  }
+
   const token = (globalThis.crypto?.randomUUID?.() || '').replace(/-/g, '');
   if (!token) return NextResponse.json({ error: 'Could not generate a secure invite. Please try again.' }, { status: 500 });
   const { error } = await admin.from('team_members').upsert({
