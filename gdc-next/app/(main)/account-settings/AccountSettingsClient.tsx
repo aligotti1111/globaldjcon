@@ -816,8 +816,10 @@ export default function AccountSettingsClient({
 
       {/* ── Notifications ──────────────────────────────────────────────
           Email + text preferences live on their own page now. Hosts and
-          venues get here from this link; DJs use the header/menu link. */}
-      {!isDj && (
+          venues get here from this link; DJs use the header/menu link.
+          Hidden for teammates: booking/inbox alerts belong to the account
+          owner, not a staff login. */}
+      {!isDj && !isTeammate && (
         <div className={styles.card}>
           <h2>Notifications</h2>
           <p className={styles.cardHint}>
