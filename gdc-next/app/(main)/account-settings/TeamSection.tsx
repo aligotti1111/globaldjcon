@@ -4,14 +4,14 @@
 // loads /api/team, shows seats used/limit, invites by email + role, changes
 // roles, removes members. Hidden behind Pro+ (seatLimit 0 → upgrade prompt).
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import styles from './accountSettings.module.css';
-import { TEAM_ROLES, type TeamRole } from '@/lib/team';
+import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
 
 interface Member { id: string; invited_email: string; role: string; status: string; member_id: string | null; can_addons: boolean; }
 
-export default function TeamSection() {
+export default function TeamSection({ djType }: { djType?: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [seatLimit, setSeatLimit] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -92,24 +92,30 @@ export default function TeamSection() {
             </div>
           )}
 
-          {/* Role breakdown — so the owner knows what each grants. */}
-          <div style={{ border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '.8rem .9rem', margin: '0 0 1rem' }}>
-            <div style={{ fontWeight: 700, fontSize: '.82rem', marginBottom: '.5rem' }}>What each role can do</div>
-            {TEAM_ROLES.map((r) => (
-              <div key={r.value} style={{ marginBottom: '.7rem' }}>
-                <div style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', marginBottom: '.25rem' }}>{r.label}</div>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                  {r.perms.map((p) => (
-                    <li key={p.text} style={{ display: 'flex', gap: '.4rem', fontSize: '.76rem', lineHeight: 1.5, color: p.allowed ? 'rgba(255,255,255,.82)' : muted }}>
-                      <span aria-hidden style={{ color: p.allowed ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700 }}>{p.allowed ? '\u2713' : '\u2717'}</span>
-                      <span>{p.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            <div style={{ fontSize: '.74rem', color: muted, marginTop: '.5rem', paddingTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              Only you (the Owner) control billing, the subscription, and booking settings — no teammate can change those.
+          {/* Role breakdown — a matrix so the owner can compare at a glance. */}
+          <div style={{ border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '.8rem .9rem', margin: '0 0 1rem', overflowX: 'auto' }}>
+            <div style={{ fontWeight: 700, fontSize: '.82rem', marginBottom: '.6rem' }}>What each role can do</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px,1.6fr) repeat(3, minmax(52px,1fr))', gap: '.35rem .4rem', alignItems: 'center', fontSize: '.74rem', minWidth: 320 }}>
+              <div />
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Admin</div>
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Manager</div>
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Assistant</div>
+              {roleMatrix(djType).map((cap) => {
+                const cell = (ok: boolean) => (
+                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700 }}>{ok ? '\u2713' : '\u2717'}</div>
+                );
+                return (
+                  <Fragment key={cap.label}>
+                    <div style={{ color: 'rgba(255,255,255,.82)' }}>{cap.label}</div>
+                    {cell(cap.admin)}
+                    {cell(cap.manager)}
+                    {cell(cap.assistant)}
+                  </Fragment>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: '.72rem', color: muted, marginTop: '.6rem', paddingTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              Only you (the Owner) control billing, the subscription, and booking settings.
             </div>
           </div>
 
@@ -124,7 +130,6 @@ export default function TeamSection() {
           ) : (
             <p style={{ color: muted, fontSize: '.8rem' }}>All seats used. Remove a member, or upgrade for more.</p>
           )}
-          <p style={{ color: muted, fontSize: '.72rem', marginTop: '.7rem', lineHeight: 1.5 }}>{TEAM_ROLES.find((r) => r.value === role)?.blurb}</p>
           {err && <div style={{ color: '#ff8f8f', fontSize: '.82rem', marginTop: '.6rem' }}>{err}</div>}
           {note && !err && <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.82rem', marginTop: '.6rem' }}>{note}</div>}
         </>
