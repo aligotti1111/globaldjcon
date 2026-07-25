@@ -60,17 +60,27 @@ export default function TeamAcceptPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Always produce a human string — never let a raw error object reach the DOM.
+  function errText(e: unknown, fallback: string): string {
+    if (typeof e === 'string' && e.trim()) return e;
+    if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' && (e as { message: string }).message.trim()) {
+      return (e as { message: string }).message;
+    }
+    return fallback;
+  }
+
   async function sendCode() {
     setErr(''); setStage('working'); setMsg('Sending your code…');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase(),
-      // Carry role metadata so the on_auth_user_created trigger stamps this new
-      // account as a 'teammate' instead of defaulting it to 'host'. The accept
-      // route normalizes it too, but this stops a misleading host row ever being
-      // created in the first place.
-      options: { shouldCreateUser: true, data: { role: 'teammate' } },
+      // NOTE: do NOT pass role metadata here. The on_auth_user_created trigger
+      // writes public.users from this metadata, and if role has a CHECK
+      // constraint that doesn't include 'teammate' the whole signup rolls back
+      // and no code is sent. Let the trigger use its default; the accept route
+      // normalizes the role afterward.
+      options: { shouldCreateUser: true },
     });
-    if (error) { setErr(error.message || 'Could not send the code.'); setStage('ready'); return; }
+    if (error) { setErr(errText(error, 'Could not send the code. You may be sending too many — wait a minute and try again.')); setStage('ready'); return; }
     setMsg(''); setStage('code');
   }
 
@@ -79,7 +89,7 @@ export default function TeamAcceptPage() {
     if (c.length < 4) { setErr('Enter the 6-digit code from your email.'); return; }
     setErr(''); setStage('working'); setMsg('Verifying…');
     const { error } = await supabase.auth.verifyOtp({ email: email.toLowerCase(), token: c, type: 'email' });
-    if (error) { setErr(error.message || 'That code didn\'t work. Try again.'); setStage('code'); return; }
+    if (error) { setErr(errText(error, 'That code didn\'t work. Try again.')); setStage('code'); return; }
     setMsg('Joining the team…');
     const r = await tryAccept(token);
     if (r === 'ok') { setStage('done'); return; }
@@ -101,7 +111,7 @@ export default function TeamAcceptPage() {
 
         {stage === 'loading' && <p style={{ color: 'rgba(255,255,255,.7)' }}>Loading your invite…</p>}
 
-        {stage === 'invalid' && <p style={{ color: '#ff8f8f', lineHeight: 1.6 }}>{err}</p>}
+        {stage === 'invalid' && <p style={{ color: '#ff8f8f', lineHeight: 1.6 }}>{errText(err, 'Something went wrong.')}</p>}
 
         {(stage === 'ready' || stage === 'working') && (
           <>
@@ -109,7 +119,7 @@ export default function TeamAcceptPage() {
               You've been invited to join <strong>{ownerName}</strong>'s account as <strong>{roleLabel}</strong>.
               We'll send a 6-digit code to <strong>{email}</strong> to set up your login — no password needed.
             </p>
-            {err && <p style={{ color: '#ff8f8f', marginTop: '.7rem' }}>{err}</p>}
+            {err && <p style={{ color: '#ff8f8f', marginTop: '.7rem' }}>{errText(err, 'Something went wrong.')}</p>}
             <button style={btn} disabled={stage === 'working'} onClick={sendCode}>
               {stage === 'working' ? (msg || 'Working…') : 'Send my code'}
             </button>
@@ -124,7 +134,7 @@ export default function TeamAcceptPage() {
             <input style={input} inputMode="numeric" autoComplete="one-time-code" placeholder="••••••"
               value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={(e) => { if (e.key === 'Enter') verify(); }} autoFocus />
-            {err && <p style={{ color: '#ff8f8f', marginTop: '.7rem' }}>{err}</p>}
+            {err && <p style={{ color: '#ff8f8f', marginTop: '.7rem' }}>{errText(err, 'Something went wrong.')}</p>}
             <button style={btn} onClick={verify}>Join the team</button>
             <button onClick={sendCode} style={{ marginTop: '.8rem', background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', cursor: 'pointer', textDecoration: 'underline', fontSize: '.85rem' }}>
               Resend code
