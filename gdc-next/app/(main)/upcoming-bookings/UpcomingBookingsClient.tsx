@@ -381,7 +381,7 @@ export default function UpcomingBookingsClient({
           </Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          {canAddonSettings && (
+          {canAddonSettings && djType === 'club' && (
             <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
               Rider &amp; Guest List settings
             </Link>
