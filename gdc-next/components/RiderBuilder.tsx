@@ -31,6 +31,7 @@ export default function RiderBuilder({
   sections,
   /** Passed to the upload API so the file is namespaced (optional). */
   bookingId,
+  hideChooser,
 }: {
   mode: RiderMode;
   onModeChange: (m: RiderMode) => void;
