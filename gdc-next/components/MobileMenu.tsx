@@ -180,6 +180,11 @@ export default function MobileMenu() {
   // Gated on booking access (subscription/comp) — replaces the removed
   // booking_enabled toggle. Auth user carries sub/comp via select('*').
   const bookingEnabled = user ? canBook(user as unknown as AccessFields) : false;
+  // A teammate (staff login) acts on the OWNER's DJ account, so they get the DJ
+  // booking items — not the host "events" view. Their own subscription is empty,
+  // so we do NOT gate on bookingEnabled (the owner's plan is what grants access).
+  const isStaff = user?.role === 'teammate';
+  const showDjBookings = (isDj && bookingEnabled) || isStaff;
   // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
   // so the user can see at a glance how many events they have queued.
   const upcomingCount = useUpcomingBookingCount(
@@ -264,22 +269,22 @@ export default function MobileMenu() {
             <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
               <IconCalendar />Booking Requests
             </Link>
-            {isDj && bookingEnabled && (
+            {showDjBookings && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Bookings{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
-            {isDj && bookingEnabled && (
+            {showDjBookings && (
               <Link href="/past-bookings" onClick={close} className="mobile-menu-item">
                 <IconArchive />Past Bookings
               </Link>
             )}
-            {!isDj && (
+            {!isDj && !isStaff && (
               <Link href="/upcoming-events" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
-            {isDj && bookingEnabled && (
+            {showDjBookings && (
               <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
                 <IconPlus />Add Booking Manually
               </Link>
