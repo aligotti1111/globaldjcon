@@ -24,6 +24,7 @@ import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib
 import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
 import RiderSendModal from './RiderSendModal';
+import type { NamedRider } from '@/lib/rider';
 import { normalizeRiderMode } from '@/lib/rider';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
@@ -555,18 +556,43 @@ export default function BookingRow({
   // directly — there's nothing to confirm about "send that same link again".
   const [sendOpen, setSendOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
+  // The DJ's saved NAMED riders → one quick-send action each in the Rider slot.
+  const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
+  const [riderSent, setRiderSent] = useState(false); // Resend only appears once a rider was sent
+  useEffect(() => {
+    if (booking.booking_type !== 'club' || !riderEnabled || archive) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/rider/library');
+        const d = (await r.json().catch(() => ({}))) as { ok?: boolean; riders?: NamedRider[] };
+        if (alive && d.ok && Array.isArray(d.riders)) setSavedRiders(d.riders);
+        const rb = await fetch(`/api/rider/for-booking/${booking.id}`);
+        const db = (await rb.json().catch(() => ({}))) as { ok?: boolean; status?: string };
+        if (alive && db.ok && db.status === 'sent') setRiderSent(true);
+      } catch { /* no saved riders — the Rider portal still opens */ }
+    })();
+    return () => { alive = false; };
+  }, [booking.booking_type, riderEnabled, archive]);
   async function resendRider() {
     try {
-      const r = await fetch(`/api/rider/for-booking/${booking.id}`);
-      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null };
-      if (!r.ok || !d.ok) { setRiderChooserOpen(true); return; }
-      const m = normalizeRiderMode(d.mode);
-      const items = Array.isArray(d.items) ? d.items : [];
-      const pdfUrl = d.pdfUrl || null;
-      const has = m === 'upload' ? !!pdfUrl : items.length > 0;
-      if (!has) { setRiderChooserOpen(true); return; } // nothing saved yet → choose
-      await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl }) });
-    } catch { setRiderChooserOpen(true); }
+      const rb = await fetch(`/api/rider/for-booking/${booking.id}`);
+      const db = (await rb.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null; name?: string | null };
+      if (!rb.ok || !db.ok) return;
+      const m = normalizeRiderMode(db.mode);
+      const items = Array.isArray(db.items) ? db.items : [];
+      const pdfUrl = db.pdfUrl || null;
+      if ((m === 'upload' ? !!pdfUrl : items.length > 0) === false) return;
+      await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl, name: db.name || undefined }) });
+    } catch { /* ignore */ }
+  }
+  async function sendNamedRider(r: NamedRider) {
+    try {
+      await fetch('/api/rider/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, items: r.items, mode: r.mode, pdfUrl: r.pdfUrl, name: r.name }),
+      });
+    } catch { /* best-effort quick send */ }
   }
 
   async function requestPlanner() {
@@ -1018,8 +1044,9 @@ export default function BookingRow({
       color: AMBER,
       caption: 'Rider',
       actions: [
-        { label: 'Choose rider & send', run: () => setRiderChooserOpen(true) },
-        { label: 'Resend rider', run: () => resendRider() },
+        ...savedRiders.map((r) => ({ label: `Send "${r.name}"`, run: () => sendNamedRider(r) })),
+        { label: 'Rider portal', run: () => setRiderChooserOpen(true) },
+        ...(riderSent ? [{ label: 'Resend rider', run: () => resendRider() }] : []),
       ],
     });
   }

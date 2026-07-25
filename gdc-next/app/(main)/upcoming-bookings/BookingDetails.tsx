@@ -14,7 +14,7 @@ import type { UpcomingBooking, BookingPayment } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import RiderSendModal from './RiderSendModal';
-import { normalizeRiderMode } from '@/lib/rider';
+import type { NamedRider } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import PaymentsBlock from './PaymentsBlock';
@@ -68,6 +68,28 @@ export default function BookingDetails({
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
+  // The DJ's saved NAMED riders → one quick-send button each for this booking.
+  const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
+  useEffect(() => {
+    if (booking.booking_type !== 'club' || archive) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/rider/library');
+        const d = (await r.json().catch(() => ({}))) as { ok?: boolean; riders?: NamedRider[] };
+        if (alive && d.ok && Array.isArray(d.riders)) setSavedRiders(d.riders);
+      } catch { /* no saved riders — the Rider portal still opens */ }
+    })();
+    return () => { alive = false; };
+  }, [booking.booking_type, archive]);
+  async function sendNamedRider(r: NamedRider) {
+    try {
+      await fetch('/api/rider/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, items: r.items, mode: r.mode, pdfUrl: r.pdfUrl, name: r.name }),
+      });
+    } catch { /* best-effort quick send */ }
+  }
   // Run the pipeline's request once, then clear it. Clearing FIRST matters:
   // otherwise the flag is still set on the next render and the portal reopens
   // the moment you close it. (downloadSigned/resendContract/cancelContract are
@@ -692,31 +714,23 @@ export default function BookingDetails({
           to the host. */}
       {bt === 'club' && (
         <div style={{ margin: '0 0 1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          {savedRiders.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => sendNamedRider(r)}
+              title={`Send your "${r.name}" rider to this host`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}
+            >
+              Send &ldquo;{r.name}&rdquo;
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => setRiderChooserOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}
-          >
-            Choose rider & send
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                const r = await fetch(`/api/rider/for-booking/${booking.id}`);
-                const d = (await r.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null };
-                if (!r.ok || !d.ok) { setRiderChooserOpen(true); return; }
-                const m = normalizeRiderMode(d.mode);
-                const items = Array.isArray(d.items) ? d.items : [];
-                const pdfUrl = d.pdfUrl || null;
-                const has = m === 'upload' ? !!pdfUrl : items.length > 0;
-                if (!has) { setRiderChooserOpen(true); return; }
-                await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl }) });
-              } catch { setRiderChooserOpen(true); }
-            }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.55rem .9rem', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer' }}
           >
-            Resend rider
+            Rider portal
           </button>
         </div>
       )}
