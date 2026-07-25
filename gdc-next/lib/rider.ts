@@ -183,3 +183,57 @@ export function riderLine(it: RiderItem): string {
   if (l && v) return `${l}: ${v}`;
   return l || v;
 }
+
+// ── Named, reusable riders (the DJ's library) ──────────────────────────────
+// The DJ's saved riders live on users.booking_settings JSON under `riders`: an
+// array the DJ can quick-send to any booking. Each entry is a FULL snapshot —
+// mode + items + pdf — so sending one never depends on other settings. No new
+// table; scoped to the acting djId by whoever reads/writes booking_settings.
+
+export interface NamedRider {
+  id: string;
+  name: string;
+  mode: RiderMode;
+  items: RiderItem[];
+  pdfUrl: string | null;
+  updatedAt: string;
+}
+
+/** Coerce one jsonb entry into a clean NamedRider, or null if it has no name. */
+export function normalizeNamedRider(raw: unknown): NamedRider | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const name = typeof o.name === 'string' ? o.name.trim() : '';
+  if (!name) return null;
+  const id = typeof o.id === 'string' && o.id ? o.id : newRiderId();
+  const mode = normalizeRiderMode(o.mode);
+  const items = normalizeRiderItems(o.items);
+  const pdfUrl = typeof o.pdfUrl === 'string' && o.pdfUrl ? o.pdfUrl : null;
+  const updatedAt = typeof o.updatedAt === 'string' && o.updatedAt ? o.updatedAt : new Date().toISOString();
+  return { id, name, mode, items, pdfUrl, updatedAt };
+}
+
+/** Coerce the whole `riders` array from booking_settings into NamedRider[]. */
+export function normalizeNamedRiders(raw: unknown): NamedRider[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NamedRider[] = [];
+  for (const r of raw) {
+    const n = normalizeNamedRider(r);
+    if (n) out.push(n);
+  }
+  return out;
+}
+
+/**
+ * Upsert a named rider into a library array. Matches by id when given, else by
+ * case-insensitive name (so re-sending "House rider" updates the same entry).
+ * Returns a NEW array; never mutates the input.
+ */
+export function upsertNamedRider(riders: NamedRider[], rider: NamedRider): NamedRider[] {
+  const next = riders.slice();
+  let idx = rider.id ? next.findIndex((r) => r.id === rider.id) : -1;
+  if (idx < 0) idx = next.findIndex((r) => r.name.trim().toLowerCase() === rider.name.trim().toLowerCase());
+  if (idx >= 0) next[idx] = { ...rider, id: next[idx].id };
+  else next.push(rider);
+  return next;
+}
