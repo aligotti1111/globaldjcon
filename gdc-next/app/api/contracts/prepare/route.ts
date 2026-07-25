@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 import { getContractUsage } from '@/lib/contractQuota';
@@ -72,79 +72,16 @@ function fmtTime(t: string | null | undefined): string {
 }
 
 export async function POST(req: Request) {
-  // TEMP DEBUG: prove the handler runs at all, before touching any service.
-  // Send { "debug": true } to get an immediate response.
   try {
     const rawBody = await req.text();
-    if (rawBody.includes('"debug"')) {
-      return NextResponse.json({ ok: false, debug: 'handler-reached', bodyLen: rawBody.length });
-    }
     const parsed = rawBody ? JSON.parse(rawBody) : {};
-    if (parsed && parsed.trace) return await tracePrepare(parsed);
     return await runPrepare(parsed);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error('[prepare] outer crash:', msg);
-    return NextResponse.json({ ok: false, error: `outer: ${msg}`.slice(0, 400) }, { status: 200 });
+    console.error('[prepare] error:', e instanceof Error ? e.message : String(e));
+    return NextResponse.json({ ok: false, error: 'Could not prepare the contract.' }, { status: 200 });
   }
 }
 
-// Step-by-step diagnostic: send { bookingId, trace: true } and it returns which
-// step it reached, so a hanging service call is pinpointed.
-async function tracePrepare(body: { bookingId?: unknown }) {
-  const steps: string[] = [];
-  try {
-    steps.push('start');
-    const supabase = await createClient();
-    steps.push('createClient');
-    const { data: { user } } = await supabase.auth.getUser();
-    steps.push(`getUser:${user ? 'ok' : 'none'}`);
-    if (!user) return NextResponse.json({ steps });
-    const acting = await getActingContext(user.id);
-    const admin = createAdminClient();
-    steps.push('adminClient');
-    const { data: djRow } = await admin.from('users').select('docuseal_template_id, name').eq('id', acting.djId).maybeSingle();
-    const dj = djRow as { docuseal_template_id?: string | null } | null;
-    steps.push(`users:${dj?.docuseal_template_id ? 'has-template' : 'no-template'}`);
-    const bookingId = String(body.bookingId || '');
-    let b: Record<string, unknown> | null = null;
-    if (bookingId) {
-      const { data: bkRow } = await admin.from('bookings').select('*').eq('id', bookingId).eq('dj_id', acting.djId).maybeSingle();
-      b = bkRow as Record<string, unknown> | null;
-    } else {
-      // No id given — grab this DJ's most recent booking to trace against.
-      const { data: bkRow } = await admin.from('bookings').select('*').eq('dj_id', acting.djId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      b = bkRow as Record<string, unknown> | null;
-    }
-    steps.push(`booking:${b ? 'found' : 'missing'}`);
-    if (b?.requester_id) {
-      const { data: reqUser } = await admin.auth.admin.getUserById(String(b.requester_id));
-      steps.push(`getUserById:${(reqUser as { user?: { email?: string } } | null)?.user?.email ? 'has-email' : 'no-email'}`);
-    } else {
-      steps.push('getUserById:skipped');
-    }
-    steps.push('before-createSubmission');
-    const docuseal = getDocuseal();
-    steps.push('getDocuseal');
-    const sub = await docuseal.createSubmission({
-      template_id: Number(dj?.docuseal_template_id) || (dj?.docuseal_template_id as unknown as number),
-      order: 'preserved',
-      submitters: [
-        { role: 'DJ', email: user.email || '', name: 'DJ', send_email: false },
-        { role: 'Client', email: (b?.host_email as string) || 'test@example.com', name: 'Client' },
-      ],
-    } as unknown as Parameters<typeof docuseal.createSubmission>[0]);
-    steps.push('createSubmission:ok');
-    const arr = sub as unknown as Array<Record<string, unknown>>;
-    const first = Array.isArray(arr) ? arr[0] : (sub as Record<string, unknown>);
-    const keys = first ? Object.keys(first) : [];
-    steps.push(`isArray:${Array.isArray(arr)}`);
-    steps.push(`keys:${keys.join(',')}`);
-    return NextResponse.json({ steps, firstSubmitter: first });
-  } catch (e) {
-    return NextResponse.json({ steps, error: e instanceof Error ? e.message : String(e) });
-  }
-}
 
 async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; contractId?: unknown }) {
   try {
@@ -187,7 +124,8 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     sub_tier?: number | null; sub_status?: string | null; sub_period_start?: string | null; sub_period_end?: string | null;
     comp_tier?: number | null; comp_expires_at?: string | null; comp_source?: string | null;
   } | null;
-  const djEmail = user.email || '';
+  // The contract's DJ signer is the account OWNER, not the teammate who sends it.
+  const djEmail = acting.isMember ? ((await resolveUserEmail(acting.djId)) || (user.email || '')) : (user.email || '');
   const companyName = (dj?.company || dj?.name || '').trim();
   const isClub = dj?.dj_type === 'club';
 
@@ -238,6 +176,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     comp_expires_at: dj?.comp_expires_at ?? null,
     comp_source: dj?.comp_source ?? null,
   };
+  if (!canUsePro(djAccess)) {
+    return NextResponse.json({ ok: false, error: 'Contracts are a Pro feature. Upgrade to send contracts.' }, { status: 200 });
+  }
   if (canUsePro(djAccess)) {
     const usage = await getContractUsage(admin, acting.djId, djAccess, { excludeBookingId: bookingId });
     if (usage.atLimit) {
