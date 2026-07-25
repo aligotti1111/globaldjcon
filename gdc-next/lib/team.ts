@@ -22,6 +22,7 @@ export function roleMatrix(djType: string | null | undefined): RoleCap[] {
     { label: 'View bookings', admin: true, manager: true, assistant: true },
     { label: docCapabilityLabel(djType), admin: true, manager: true, assistant: true },
     { label: 'Take deposits & send invoices', admin: true, manager: true, assistant: false },
+    { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false },
     { label: 'Change billing or booking settings', admin: false, manager: false, assistant: false },
   ];
 }
