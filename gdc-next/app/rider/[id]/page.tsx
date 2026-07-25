@@ -6,12 +6,13 @@
 // containing it already does. Read with the ADMIN client: there's no session.
 //
 // The host READS this; they don't edit it (it's the DJ's requirements). The DJ
-// logo sits on top so it's clearly the DJ's page — same as the planner.
+// logo sits on top so it's clearly the DJ's page — same as the planner. In
+// upload mode the DJ's PDF is shown inline; in custom mode, the labeled fields.
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeRiderItems } from '@/lib/rider';
+import { normalizeRiderItems, normalizeRiderMode } from '@/lib/rider';
 import RiderView from './RiderView';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 interface RiderRow {
   id: string; booking_id: string; dj_id: string; items: unknown; logo_hidden: boolean | null;
+  rider_mode: unknown; rider_pdf_url: string | null;
 }
 
 export default async function RiderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +37,7 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
   const db = createAdminClient() as unknown as SupabaseClient;
   const { data: rData } = await db
     .from('booking_riders')
-    .select('id, booking_id, dj_id, items, logo_hidden')
+    .select('id, booking_id, dj_id, items, logo_hidden, rider_mode, rider_pdf_url')
     .eq('id', id).maybeSingle();
   const rider = rData as unknown as RiderRow | null;
   if (!rider) notFound();
@@ -55,6 +57,8 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
   return (
     <RiderView
       items={normalizeRiderItems(rider.items)}
+      mode={normalizeRiderMode(rider.rider_mode)}
+      pdfUrl={rider.rider_pdf_url || null}
       djName={dj?.name || 'Your DJ'}
       logoUrl={logo}
       eventDate={b?.event_date || null}
