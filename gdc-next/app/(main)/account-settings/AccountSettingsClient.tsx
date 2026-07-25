@@ -84,6 +84,23 @@ export default function AccountSettingsClient({
   // no country to set, and their email IS their fixed team login — shown here
   // read-only, not something they manage.
   const isTeammate = initialProfile.role === 'teammate';
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
+  async function deleteMyAccount() {
+    setDeleting(true); setDeleteErr('');
+    try {
+      const res = await fetch('/api/team/leave', { method: 'POST' });
+      if (!res.ok) throw new Error();
+      // Account is gone — end the session and return to the homepage.
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch {
+      setDeleting(false);
+      setDeleteErr('Could not delete the account. Please try again.');
+    }
+  }
 
   // ── Profile (name + country) ─────────────────────────────────────
   const [name, setName] = useState(initialProfile.name);
@@ -924,6 +941,51 @@ export default function AccountSettingsClient({
               >
                 {syncSaving ? 'Updating…' : 'Update checked'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete account — teammates only. A staff login has no standalone value,
+          and deleting it frees the email for a real account later. */}
+      {isTeammate && (
+        <div className={styles.card}>
+          <h2>Delete Account</h2>
+          <p className={styles.cardHint}>
+            Removes your staff login from every team and deletes the account. Your
+            email is freed so you can create your own account later. This can&apos;t
+            be undone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowDelete(true)}
+            style={{ background: '#ff6b6b', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '.6rem 1.2rem', cursor: 'pointer', fontSize: '.85rem' }}
+          >
+            Delete My Account
+          </button>
+        </div>
+      )}
+
+      {showDelete && (
+        <div
+          onClick={() => { if (!deleting) setShowDelete(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(4,4,10,.65)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#14141c', border: '1px solid rgba(255,255,255,.14)', borderRadius: 16, padding: '1.5rem', maxWidth: 400, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,.55)' }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,107,107,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '.9rem' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+            </div>
+            <h3 style={{ margin: '0 0 .5rem', fontSize: '1.15rem', color: '#fff' }}>Delete your account?</h3>
+            <p style={{ margin: '0 0 1.2rem', fontSize: '.85rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.6 }}>
+              You&apos;ll be removed from every team and your login will be permanently deleted. This can&apos;t be undone.
+            </p>
+            {deleteErr && <p style={{ color: '#ff8f8f', fontSize: '.8rem', margin: '0 0 .8rem' }}>{deleteErr}</p>}
+            <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setShowDelete(false)} disabled={deleting} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', borderRadius: 8, color: '#fff', padding: '.6rem 1.1rem', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Cancel</button>
+              <button type="button" onClick={deleteMyAccount} disabled={deleting} style={{ background: '#ff6b6b', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '.6rem 1.2rem', cursor: 'pointer', fontSize: '.85rem' }}>{deleting ? 'Deleting…' : 'Delete Account'}</button>
             </div>
           </div>
         </div>
