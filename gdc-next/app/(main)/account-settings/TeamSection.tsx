@@ -21,12 +21,13 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null); // member pending remove-confirmation
+  const [viewerId, setViewerId] = useState<string | null>(null); // the logged-in user's id (an admin sees their own row)
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/team');
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; members?: Member[]; seatLimit?: number };
-      if (res.ok && data.ok) { setMembers(data.members || []); setSeatLimit(data.seatLimit || 0); }
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; members?: Member[]; seatLimit?: number; viewerId?: string };
+      if (res.ok && data.ok) { setMembers(data.members || []); setSeatLimit(data.seatLimit || 0); setViewerId(data.viewerId ?? null); }
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -79,16 +80,24 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                   <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: '.88rem', wordBreak: 'break-all' }}>
                     {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
                   </span>
-                  <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
-                    {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
-                  </select>
-                  {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
-                      <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
-                      Rider/guest-list settings
-                    </label>
+                  {m.member_id && m.member_id === viewerId ? (
+                    <span style={{ fontSize: '.78rem', color: muted, whiteSpace: 'nowrap' }}>
+                      {(TEAM_ROLES.find((r) => r.value === m.role)?.label) || m.role} · you
+                    </span>
+                  ) : (
+                    <>
+                      <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
+                        {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
+                      </select>
+                      {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
+                          <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
+                          Rider/guest-list settings
+                        </label>
+                      )}
+                      <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
+                    </>
                   )}
-                  <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
                 </div>
               ))}
             </div>
