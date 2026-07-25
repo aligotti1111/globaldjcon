@@ -8,6 +8,8 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from '../upcoming-bookings/UpcomingBookingsClient';
 import type { UpcomingBooking, BookingPayment } from '../upcoming-bookings/page';
@@ -34,13 +36,22 @@ export default async function PastBookingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
+  // Teammates act on the owner's account; owners resolve to self. Read the
+  // owner's profile + bookings via the admin client (bookings has no
+  // team-member RLS policy), scoped hard to djId.
+  const acting = await getActingContext(user.id);
+  const djId = acting.djId;
+  const admin = createAdminClient() as unknown as SupabaseClient;
+
+  const { data: profile } = await admin
     .from('users')
     .select('role, dj_type, country, name, booking_settings')
-    .eq('id', user.id)
+    .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
-  if (profile?.role !== 'dj') redirect('/booking-requests');
+  // A teammate acts on a DJ owner (only DJs have teammates), so never bounce
+  // them even if their own profile load is odd. Only redirect genuine non-DJs.
+  if (!acting.isMember && profile?.role !== 'dj') redirect('/booking-requests');
 
   const djType: 'club' | 'mobile' = profile?.dj_type === 'club' ? 'club' : 'mobile';
   const settings: BookingSettings | null = (() => {
@@ -60,10 +71,10 @@ export default async function PastBookingsPage() {
   // Cancelled dates are included on purpose. They're part of the record —
   // what was booked, and what came of it. Dropping them makes a night the DJ
   // definitely remembers vanish from the only place they'd look it up.
-  const { data: rows } = await supabase
+  const { data: rows } = await admin
     .from('bookings')
     .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract')
-    .eq('dj_id', user.id)
+    .eq('dj_id', djId)
     .lt('event_date', today)
     .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
     .order('event_date', { ascending: false })
@@ -78,7 +89,7 @@ export default async function PastBookingsPage() {
     ),
   ];
   if (missingRequesterIds.length > 0) {
-    const { data: rRows } = await supabase
+    const { data: rRows } = await admin
       .from('users')
       .select('id, name')
       .in('id', missingRequesterIds);
@@ -106,7 +117,7 @@ export default async function PastBookingsPage() {
   // The generated types/supabase.ts predates booking_payments, so
   // .from('booking_payments') on the typed client is a build error — cast to
   // an untyped client for this ONE table (same fix as /api/payments).
-  const db = supabase as unknown as SupabaseClient;
+  const db = admin;
   const paymentsByBooking: Record<string, BookingPayment[]> = {};
   const bookingIds = bookingRows.map((b) => b.id);
   if (bookingIds.length > 0) {
@@ -123,7 +134,7 @@ export default async function PastBookingsPage() {
 
   return (
     <UpcomingBookingsClient
-      userId={user.id}
+      userId={djId}
       djType={djType}
       djCountry={djCountry}
       djName={djName}
