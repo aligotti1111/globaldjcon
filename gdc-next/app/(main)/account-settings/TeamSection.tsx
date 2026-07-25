@@ -88,15 +88,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                       Rider/guest-list settings
                     </label>
                   )}
-                  {confirmId === m.id ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '.72rem', color: muted }}>Remove {m.status === 'invited' ? 'invite' : 'access'}?</span>
-                      <button type="button" onClick={() => remove(m.id)} style={{ background: '#ff6b6b', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: '.72rem', fontWeight: 700, padding: '.25rem .55rem' }}>Yes, remove</button>
-                      <button type="button" onClick={() => setConfirmId(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: '.72rem', padding: '.25rem .55rem' }}>Cancel</button>
-                    </span>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
-                  )}
+                  <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
                 </div>
               ))}
             </div>
@@ -144,6 +136,36 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
           {note && !err && <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.82rem', marginTop: '.6rem' }}>{note}</div>}
         </>
       )}
+
+      {/* Remove-teammate confirmation — styled modal popup. */}
+      {(() => {
+        const cm = members.find((m) => m.id === confirmId);
+        if (!cm) return null;
+        const pending = cm.status === 'invited';
+        return (
+          <div
+            onClick={() => setConfirmId(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(4,4,10,.65)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#14141c', border: '1px solid rgba(255,255,255,.14)', borderRadius: 16, padding: '1.5rem', maxWidth: 400, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,.55)' }}
+            >
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,107,107,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '.9rem' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+              </div>
+              <h3 style={{ margin: '0 0 .5rem', fontSize: '1.15rem', color: '#fff' }}>Remove {pending ? 'invite' : 'teammate'}?</h3>
+              <p style={{ margin: '0 0 1.3rem', fontSize: '.85rem', color: muted, lineHeight: 1.6 }}>
+                <strong style={{ color: '#fff' }}>{cm.invited_email}</strong> will {pending ? 'no longer be able to accept this invite' : 'immediately lose access to your account'}. This frees the seat — you can re-invite them anytime.
+              </p>
+              <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setConfirmId(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', borderRadius: 8, color: '#fff', padding: '.6rem 1.1rem', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Cancel</button>
+                <button type="button" onClick={() => remove(cm.id)} style={{ background: '#ff6b6b', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '.6rem 1.2rem', cursor: 'pointer', fontSize: '.85rem' }}>Remove</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
