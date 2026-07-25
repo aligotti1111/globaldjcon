@@ -48,6 +48,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Personalized, per-user pages must NEVER be cached by a CDN (Cloudflare) or
+  // the browser. `export const dynamic = 'force-dynamic'` stops Next's own
+  // cache but sends no Cache-Control header, so Cloudflare can still cache the
+  // rendered HTML and serve one user a stale or cross-account copy (e.g. a
+  // teammate seeing an empty/owner page, or a stale subscription tier). This
+  // header shuts that off at the edge.
+  const personalPaths = [
+    '/upcoming-bookings', '/booking-requests', '/account-settings',
+    '/update-dj-profile', '/inbox', '/subscribe', '/notifications',
+    '/past-bookings', '/admin',
+  ];
+  if (personalPaths.some((p) => path === p || path.startsWith(p + '/'))) {
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate');
+  }
+
   return response;
 }
 
