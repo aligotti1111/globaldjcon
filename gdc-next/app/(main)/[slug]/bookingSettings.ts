@@ -74,9 +74,12 @@ export interface BookingSettings {
   global_rate_type?: 'flat' | 'hourly' | 'offers' | string;
   allow_offers?: boolean;        // mirror of global_rate_type === 'offers'
   rate_currency?: string;        // ISO 4217 code (USD/EUR/GBP/...)
-  // Club/bar DJ Rider — default technical + hospitality requirements the DJ
-  // maintains once; seeds each booking's rider.
-  rider_default?: { id: string; section: string; text: string }[];
+  // Club/bar DJ Rider — default hospitality + custom fields the DJ maintains
+  // once; seeds each booking's rider. Fields are labeled ({ label, value });
+  // legacy rows may still carry { text } and are upgraded by normalizeRiderItems.
+  rider_default?: { id: string; section: string; label?: string; value?: string; text?: string }[];
+  rider_mode?: 'upload' | 'custom'; // club/bar: how the default rider is built
+  rider_pdf_url?: string | null;    // club/bar: default uploaded rider PDF (upload mode)
   rider_enabled?: boolean;       // club/bar: rider step turned on
   guestlist_enabled?: boolean;   // club/bar: guest-list step turned on
   base_rate?: number | string;
