@@ -20,6 +20,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null); // member pending remove-confirmation
 
   const load = useCallback(async () => {
     try {
@@ -49,6 +50,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
     load();
   }
   async function remove(id: string) {
+    setConfirmId(null);
     await fetch('/api/team', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     load();
   }
@@ -86,7 +88,15 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                       Rider/guest-list settings
                     </label>
                   )}
-                  <button type="button" onClick={() => remove(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
+                  {confirmId === m.id ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '.72rem', color: muted }}>Remove {m.status === 'invited' ? 'invite' : 'access'}?</span>
+                      <button type="button" onClick={() => remove(m.id)} style={{ background: '#ff6b6b', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: '.72rem', fontWeight: 700, padding: '.25rem .55rem' }}>Yes, remove</button>
+                      <button type="button" onClick={() => setConfirmId(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: '.72rem', padding: '.25rem .55rem' }}>Cancel</button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
+                  )}
                 </div>
               ))}
             </div>
