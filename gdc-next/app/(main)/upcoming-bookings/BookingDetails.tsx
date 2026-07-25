@@ -13,6 +13,8 @@ import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment } from './page';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
+import RiderSendModal from './RiderSendModal';
+import { normalizeRiderMode } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import PaymentsBlock from './PaymentsBlock';
@@ -65,6 +67,7 @@ export default function BookingDetails({
   onContractActionHandled?: () => void;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
+  const [riderChooserOpen, setRiderChooserOpen] = useState(false);
   // Run the pipeline's request once, then clear it. Clearing FIRST matters:
   // otherwise the flag is still set on the next render and the portal reopens
   // the moment you close it. (downloadSigned/resendContract/cancelContract are
@@ -689,19 +692,36 @@ export default function BookingDetails({
           to the host. */}
       {bt === 'club' && (
         <div style={{ margin: '0 0 1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          <a
-            href={`/rider-edit/${booking.id}?mode=upload`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer', textDecoration: 'none' }}
+          <button
+            type="button"
+            onClick={() => setRiderChooserOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}
           >
-            Upload rider PDF
-          </a>
-          <a
-            href={`/rider-edit/${booking.id}?mode=custom`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer', textDecoration: 'none' }}
+            Choose rider & send
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const r = await fetch(`/api/rider/for-booking/${booking.id}`);
+                const d = (await r.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null };
+                if (!r.ok || !d.ok) { setRiderChooserOpen(true); return; }
+                const m = normalizeRiderMode(d.mode);
+                const items = Array.isArray(d.items) ? d.items : [];
+                const pdfUrl = d.pdfUrl || null;
+                const has = m === 'upload' ? !!pdfUrl : items.length > 0;
+                if (!has) { setRiderChooserOpen(true); return; }
+                await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl }) });
+              } catch { setRiderChooserOpen(true); }
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.55rem .9rem', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer' }}
           >
-            Create custom rider
-          </a>
+            Resend rider
+          </button>
         </div>
+      )}
+      {riderChooserOpen && (
+        <RiderSendModal bookingId={booking.id} onClose={() => setRiderChooserOpen(false)} />
       )}
       {(bt === 'club' || bt === 'mobile') && (
         <div className={styles.notesFeedWrap}>
