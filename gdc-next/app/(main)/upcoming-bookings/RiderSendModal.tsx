@@ -1,16 +1,19 @@
 'use client';
 
 // RiderSendModal — the DJ customizes this booking's rider on the card and
-// deploys it to the host. Loads the booking's rider (seeded from the DJ's
-// default if none exists yet), edits with the shared RiderEditor, then Save
-// (keep as draft) or Deploy (send to host + email link).
+// deploys it to the host. The FIRST thing shown is the two-option entry step
+// (Upload Rider / Create Custom Rider) via RiderBuilder. Loads the booking's
+// rider (seeded from the DJ's default if none exists yet), then Save (keep as
+// draft) or Deploy (send to host + email with the rider PDF attached).
 
 import { useEffect, useState } from 'react';
-import RiderEditor from '@/components/RiderEditor';
-import { normalizeRiderItems, type RiderItem } from '@/lib/rider';
+import RiderBuilder from '@/components/RiderBuilder';
+import { normalizeRiderItems, normalizeRiderMode, type RiderItem, type RiderMode } from '@/lib/rider';
 
 export default function RiderSendModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const [items, setItems] = useState<RiderItem[]>([]);
+  const [mode, setMode] = useState<RiderMode>('custom');
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<'save' | 'deploy' | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -23,9 +26,14 @@ export default function RiderSendModal({ bookingId, onClose }: { bookingId: stri
     (async () => {
       try {
         const res = await fetch(`/api/rider/for-booking/${bookingId}`);
-        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; status?: string; error?: string };
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null; status?: string; error?: string };
         if (!alive) return;
-        if (res.ok && data.ok) { setItems(normalizeRiderItems(data.items)); setStatus(data.status || 'draft'); }
+        if (res.ok && data.ok) {
+          setItems(normalizeRiderItems(data.items));
+          setMode(normalizeRiderMode(data.mode));
+          setPdfUrl(data.pdfUrl || null);
+          setStatus(data.status || 'draft');
+        }
         else setErr(data.error || 'Could not load the rider.');
       } catch { if (alive) setErr('Could not load the rider.'); }
       finally { if (alive) setLoading(false); }
@@ -33,11 +41,13 @@ export default function RiderSendModal({ bookingId, onClose }: { bookingId: stri
     return () => { alive = false; };
   }, [bookingId]);
 
+  const canDeploy = mode === 'upload' ? !!pdfUrl : items.length > 0;
+
   async function save() {
     setBusy('save'); setErr(null); setSavedNote(false);
     try {
       const res = await fetch(`/api/rider/for-booking/${bookingId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }),
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, mode, pdfUrl }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save the rider.');
@@ -50,7 +60,7 @@ export default function RiderSendModal({ bookingId, onClose }: { bookingId: stri
     setBusy('deploy'); setErr(null); setSavedNote(false);
     try {
       const res = await fetch('/api/rider/request', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, items }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, items, mode, pdfUrl }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string; warning?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not send the rider.');
@@ -71,14 +81,22 @@ export default function RiderSendModal({ bookingId, onClose }: { bookingId: stri
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--muted,#888)', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
         <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
-          Customize what you need from the venue for this booking, then send it to the host.
+          Upload a pre-made rider PDF, or create a custom rider from fields, then send it to the host.
           {status === 'sent' ? ' This rider has already been sent — deploying again resends the latest version.' : ''}
         </p>
 
         {loading ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', padding: '1.5rem 0', textAlign: 'center' }}>Loading…</div>
         ) : (
-          <RiderEditor items={items} onChange={setItems} />
+          <RiderBuilder
+            mode={mode}
+            onModeChange={setMode}
+            items={items}
+            onItemsChange={setItems}
+            pdfUrl={pdfUrl}
+            onPdfUrlChange={setPdfUrl}
+            bookingId={bookingId}
+          />
         )}
 
         {err && <div style={{ color: '#ff8f8f', fontSize: '.85rem', marginTop: '.9rem' }}>{err}</div>}
@@ -95,8 +113,8 @@ export default function RiderSendModal({ bookingId, onClose }: { bookingId: stri
               style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.6rem 1rem', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer' }}>
               {busy === 'save' ? 'Saving…' : 'Save draft'}
             </button>
-            <button type="button" onClick={deploy} disabled={busy !== null || items.length === 0}
-              style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, color: '#06231b', padding: '.6rem 1.1rem', fontWeight: 700, fontSize: '.85rem', cursor: items.length === 0 ? 'not-allowed' : 'pointer', opacity: items.length === 0 ? 0.55 : 1 }}>
+            <button type="button" onClick={deploy} disabled={busy !== null || !canDeploy}
+              style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, color: '#06231b', padding: '.6rem 1.1rem', fontWeight: 700, fontSize: '.85rem', cursor: !canDeploy ? 'not-allowed' : 'pointer', opacity: !canDeploy ? 0.55 : 1 }}>
               {busy === 'deploy' ? 'Sending…' : status === 'sent' ? 'Resend to host' : 'Deploy to host'}
             </button>
           </div>
