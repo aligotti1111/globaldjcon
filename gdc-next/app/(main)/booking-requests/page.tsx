@@ -183,7 +183,7 @@ export default async function BookingRequestsPage() {
   const blockedUsers = me.blocked_users || [];
 
   // Outgoing: requests this user made (as requester). All roles see this.
-  const { data: outRows } = await supabase
+  const { data: outRows } = await admin
     .from('bookings')
     .select('*')
     .eq('requester_id', actingId)
@@ -196,7 +196,7 @@ export default async function BookingRequestsPage() {
   // club render; their bookings still load and outgoing still works.
   let incoming: BookingRow[] = [];
   if (me.role === 'dj') {
-    const { data: inRows } = await supabase
+    const { data: inRows } = await admin
       .from('bookings')
       .select('*')
       .eq('dj_id', actingId)
