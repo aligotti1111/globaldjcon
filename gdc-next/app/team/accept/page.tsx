@@ -54,6 +54,7 @@ export default function TeamAcceptPage() {
       // Maybe they're already signed in with the right email.
       const r = await tryAccept(tok);
       if (r === 'ok') { setStage('done'); return; }
+      if (r !== 'auth') { setErr(r); setStage('invalid'); return; } // e.g. already a host/DJ, or already on a team
       setStage('ready');
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,8 +79,10 @@ export default function TeamAcceptPage() {
     setMsg('Joining the team…');
     const r = await tryAccept(token);
     if (r === 'ok') { setStage('done'); return; }
-    setErr(typeof r === 'string' && r !== 'auth' ? r : 'Signed in, but could not join the team. Contact whoever invited you.');
-    setStage('code');
+    // A real rejection (already a host/DJ/venue, or already on a team) is
+    // terminal — retrying the code won't change it.
+    setErr(r !== 'auth' ? r : 'Signed in, but could not join the team. Contact whoever invited you.');
+    setStage('invalid');
   }
 
   const wrap: React.CSSProperties = { minHeight: '100vh', background: '#0d0d14', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' };
