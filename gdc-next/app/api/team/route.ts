@@ -141,7 +141,31 @@ export async function DELETE(req: Request) {
   const id = String(body.id || '');
   if (!id) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   const admin = createAdminClient() as unknown as SupabaseClient;
+
+  // Grab the row first so we know WHO we're removing before it's gone.
+  const { data: rowData } = await admin.from('team_members')
+    .select('member_id, status').eq('id', id).eq('owner_id', user.id).maybeSingle();
+  const memberId = (rowData as unknown as { member_id?: string | null } | null)?.member_id || null;
+
   const { error } = await admin.from('team_members').delete().eq('id', id).eq('owner_id', user.id);
   if (error) return NextResponse.json({ error: 'Could not remove the member.' }, { status: 500 });
+
+  // A teammate account is pointless once it's off every team — and worse, it
+  // would keep the person's email locked out of ever creating their own DJ or
+  // host account. So if this was an ACCEPTED teammate who now belongs to no
+  // active team, delete the account outright to free the email. Guarded hard:
+  // only ever deletes a row whose role is exactly 'teammate'.
+  if (memberId) {
+    const { data: others } = await admin.from('team_members')
+      .select('id').eq('member_id', memberId).eq('status', 'active').limit(1);
+    const stillOnATeam = ((others as unknown as unknown[] | null) || []).length > 0;
+    if (!stillOnATeam) {
+      const { data: prof } = await admin.from('users').select('role').eq('id', memberId).maybeSingle();
+      if ((prof as unknown as { role?: string } | null)?.role === 'teammate') {
+        await admin.from('users').delete().eq('id', memberId);
+        try { await admin.auth.admin.deleteUser(memberId); } catch { /* auth row may already be gone */ }
+      }
+    }
+  }
   return NextResponse.json({ ok: true });
 }
