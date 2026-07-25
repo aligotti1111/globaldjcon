@@ -22,8 +22,8 @@ import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
-import RiderEditor from '@/components/RiderEditor';
-import { normalizeRiderItems, STARTER_RIDER, type RiderItem } from '@/lib/rider';
+import RiderBuilder from '@/components/RiderBuilder';
+import { normalizeRiderItems, normalizeRiderMode, STARTER_RIDER, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -253,6 +253,16 @@ export default function ClubBookingTab({
   function setRiderDefault(items: RiderItem[]) {
     setLastChangedField('settings');
     patch({ rider_default: items } as unknown as Partial<BookingSettings>);
+  }
+  const riderMode: RiderMode = normalizeRiderMode((bookingSettings as { rider_mode?: unknown }).rider_mode);
+  function setRiderMode(m: RiderMode) {
+    setLastChangedField('settings');
+    patch({ rider_mode: m } as unknown as Partial<BookingSettings>);
+  }
+  const riderPdfUrl = ((bookingSettings as { rider_pdf_url?: string | null }).rider_pdf_url) || null;
+  function setRiderPdfUrl(url: string | null) {
+    setLastChangedField('settings');
+    patch({ rider_pdf_url: url } as unknown as Partial<BookingSettings>);
   }
   const riderEnabled = !!(bookingSettings as { rider_enabled?: boolean }).rider_enabled;
   function setRiderEnabled(v: boolean) {
@@ -829,13 +839,22 @@ export default function ClubBookingTab({
           {riderEnabled && (
             <div style={{ marginTop: '1.1rem' }}>
               <p className={styles.bodyHint}>
-                Your default <strong>hospitality</strong> requirements (drinks, meal, parking,
-                comps) &mdash; the starting point for every booking. The <strong>technical</strong>{' '}
-                section is filled in automatically from your Equipment choice above: what you
-                provide, or the gear the venue must supply. Everything stays editable per booking.
+                Choose how your rider is built by default: upload a pre-made PDF, or create a
+                custom rider from fields. In custom mode you set your default <strong>hospitality</strong>{' '}
+                and any additional fields &mdash; the starting point for every booking. The{' '}
+                <strong>technical</strong> section is filled in per booking from that booking&rsquo;s
+                Equipment choice. Everything stays editable per booking.
               </p>
-              <RiderEditor items={riderDefault} onChange={setRiderDefault} sections={['hospitality']} />
-              {riderDefault.filter((i) => i.section === 'hospitality').length === 0 && (
+              <RiderBuilder
+                mode={riderMode}
+                onModeChange={setRiderMode}
+                items={riderDefault}
+                onItemsChange={setRiderDefault}
+                pdfUrl={riderPdfUrl}
+                onPdfUrlChange={setRiderPdfUrl}
+                sections={['hospitality', 'custom']}
+              />
+              {riderMode === 'custom' && riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom').length === 0 && (
                 <button
                   type="button"
                   onClick={() => setRiderDefault(STARTER_RIDER.filter((i) => i.section === 'hospitality').map((i) => ({ ...i })))}
