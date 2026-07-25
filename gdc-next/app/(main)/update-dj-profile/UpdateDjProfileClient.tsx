@@ -489,7 +489,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
 
       {/* Team seats — DJs render THIS component (not AccountSettingsClient), so
           the Team card lives here. Self-contained + Pro-gated. */}
-      <TeamSection />
+      <TeamSection djType={initialProfile.dj_type} />
     </div>
   );
 }
