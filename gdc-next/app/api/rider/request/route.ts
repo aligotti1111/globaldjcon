@@ -12,7 +12,10 @@ import { getActingContext } from '@/lib/acting';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { normalizeRiderItems, normalizeRiderMode, groupRider, riderLine, RIDER_SECTIONS } from '@/lib/rider';
+import {
+  normalizeRiderItems, normalizeRiderMode, groupRider, riderLine, RIDER_SECTIONS,
+  normalizeNamedRiders, upsertNamedRider, newRiderId, type NamedRider,
+} from '@/lib/rider';
 import { buildRiderPdf } from '@/lib/riderPdf';
 
 export const runtime = 'nodejs';
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     const acting = await getActingContext(user.id);
 
-    let body: { bookingId?: unknown; items?: unknown; mode?: unknown; pdfUrl?: unknown };
+    let body: { bookingId?: unknown; items?: unknown; mode?: unknown; pdfUrl?: unknown; name?: unknown };
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     if (!bookingId) return NextResponse.json({ error: 'Missing booking.' }, { status: 400 });
@@ -112,6 +115,7 @@ export async function POST(req: Request) {
     const mode = normalizeRiderMode(body.mode);
     const items = normalizeRiderItems(body.items);
     const pdfUrl = typeof body.pdfUrl === 'string' && body.pdfUrl ? body.pdfUrl : null;
+    const riderName = typeof body.name === 'string' ? body.name.trim() : '';
 
     if (mode === 'upload') {
       if (!pdfUrl) return NextResponse.json({ error: 'Upload a rider PDF before sending.' }, { status: 400 });
@@ -137,7 +141,7 @@ export async function POST(req: Request) {
       .from('booking_riders')
       .upsert({
         booking_id: bookingId, dj_id: acting.djId, items,
-        rider_mode: mode, rider_pdf_url: pdfUrl,
+        rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
         status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       } as unknown as never, { onConflict: 'booking_id' })
       .select('id')
@@ -145,6 +149,21 @@ export async function POST(req: Request) {
     if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
     const id = (up as unknown as { id: string }).id;
     const url = `${SITE_URL}/rider/${id}`;
+
+    // Sending a NAMED rider also files it in the DJ's reusable library, so it's
+    // there for one-click quick-send on the next booking. Never blocks the send.
+    if (riderName) {
+      try {
+        const { data: uRow } = await admin.from('users').select('booking_settings').eq('id', acting.djId).maybeSingle();
+        const bsRaw = (uRow as unknown as { booking_settings?: unknown } | null)?.booking_settings;
+        let settings: Record<string, unknown> = {};
+        if (typeof bsRaw === 'string') { try { settings = JSON.parse(bsRaw) as Record<string, unknown>; } catch { settings = {}; } }
+        else if (bsRaw && typeof bsRaw === 'object') { settings = bsRaw as Record<string, unknown>; }
+        const named: NamedRider = { id: newRiderId(), name: riderName, mode, items, pdfUrl, updatedAt: new Date().toISOString() };
+        settings.riders = upsertNamedRider(normalizeNamedRiders(settings.riders), named);
+        await admin.from('users').update({ booking_settings: settings } as unknown as never).eq('id', acting.djId);
+      } catch { /* library is a convenience — the send already succeeded */ }
+    }
 
     // ── Build the attachment (never throws — the email still sends without it) ──
     let attachment: { filename: string; content: string } | null = null;
