@@ -64,7 +64,11 @@ export default function TeamAcceptPage() {
     setErr(''); setStage('working'); setMsg('Sending your code…');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase(),
-      options: { shouldCreateUser: true },
+      // Carry role metadata so the on_auth_user_created trigger stamps this new
+      // account as a 'teammate' instead of defaulting it to 'host'. The accept
+      // route normalizes it too, but this stops a misleading host row ever being
+      // created in the first place.
+      options: { shouldCreateUser: true, data: { role: 'teammate' } },
     });
     if (error) { setErr(error.message || 'Could not send the code.'); setStage('ready'); return; }
     setMsg(''); setStage('code');
