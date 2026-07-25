@@ -40,6 +40,8 @@ export default function RiderBuilder({
   onPdfUrlChange: (url: string | null) => void;
   sections?: RiderSection[];
   bookingId?: string | null;
+  /** When the parent page owns the mode chooser, hide the inline cards. */
+  hideChooser?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -108,22 +110,26 @@ export default function RiderBuilder({
 
   return (
     <div>
-      <div
-        style={{
-          fontFamily: "'Space Mono', monospace",
-          fontSize: '.7rem',
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          color: MUTED,
-          marginBottom: '.5rem',
-        }}
-      >
-        How do you want to build this rider?
-      </div>
-      <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', marginBottom: '1.3rem' }}>
-        <Card m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." />
-        <Card m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host." />
-      </div>
+      {!hideChooser && (
+        <>
+          <div
+            style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: '.7rem',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              color: MUTED,
+              marginBottom: '.5rem',
+            }}
+          >
+            How do you want to build this rider?
+          </div>
+          <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', marginBottom: '1.3rem' }}>
+            <Card m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." />
+            <Card m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host." />
+          </div>
+        </>
+      )}
 
       {mode === 'upload' ? (
         <div>
@@ -179,6 +185,13 @@ export default function RiderBuilder({
                 {busy ? 'Uploading…' : 'Choose PDF'}
               </button>
             </div>
+          )}
+          {pdfUrl && (
+            <iframe
+              title="Rider PDF preview"
+              src={pdfUrl}
+              style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, marginTop: '.9rem', background: '#fff' }}
+            />
           )}
           {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
         </div>
