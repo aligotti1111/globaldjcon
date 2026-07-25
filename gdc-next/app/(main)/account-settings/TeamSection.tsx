@@ -82,7 +82,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                   <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
                     {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
                   </select>
-                  {(m.role === 'admin' || m.role === 'manager') && (
+                  {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
                     <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
                       <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
                       Rider/guest-list settings
