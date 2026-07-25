@@ -48,6 +48,7 @@ export async function POST(req: Request) {
   const role = body.role;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
   if (!isTeamRole(role)) return NextResponse.json({ error: 'Pick a role.' }, { status: 400 });
+  if (email === (user.email || '').trim().toLowerCase()) return NextResponse.json({ error: "You can't invite yourself." }, { status: 400 });
 
   const admin = createAdminClient() as unknown as SupabaseClient;
   const limit = await seatLimit(admin, user.id);
@@ -57,9 +58,11 @@ export async function POST(req: Request) {
   const rows = (existing as unknown as { id: string; status: string; invited_email: string }[] | null) || [];
   const active = rows.filter((r) => r.status !== 'revoked');
   const already = active.find((r) => r.invited_email.toLowerCase() === email);
+  if (already && already.status === 'active') return NextResponse.json({ error: 'That person is already on your team.' }, { status: 400 });
   if (!already && active.length >= limit) return NextResponse.json({ error: `You've used all ${limit} seats on your plan.` }, { status: 400 });
 
-  const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}${Math.random().toString(36).slice(2)}`).replace(/-/g, '');
+  const token = (globalThis.crypto?.randomUUID?.() || '').replace(/-/g, '');
+  if (!token) return NextResponse.json({ error: 'Could not generate a secure invite. Please try again.' }, { status: 500 });
   const { error } = await admin.from('team_members').upsert({
     owner_id: user.id, invited_email: email, role, status: 'invited', invite_token: token, invited_at: new Date().toISOString(),
   } as unknown as never, { onConflict: 'owner_id,invited_email' });
