@@ -55,8 +55,13 @@ export async function POST(req: Request) {
   // escape today), and nobody can hold two active memberships.
   const { data: meRow } = await admin.from('users').select('role').eq('id', user.id).maybeSingle();
   const myRole = (meRow as unknown as { role?: string } | null)?.role;
-  if (myRole === 'dj') {
-    return NextResponse.json({ error: 'You already run your own DJ account. Team seats are for staff who don\'t have their own account.' }, { status: 400 });
+  // Only unregistered emails (or an existing teammate account) may join. A
+  // customer-facing account — dj, host, or venue — can't double as staff: it
+  // would let someone book the very account they manage, or run two identities
+  // (their own bookings + acting-as-owner) at once. Force a fresh email.
+  if (myRole === 'dj' || myRole === 'host' || myRole === 'venue') {
+    const label = myRole === 'dj' ? 'a DJ' : `a ${myRole}`;
+    return NextResponse.json({ error: `This email is already registered as ${label} account on Global DJ Connect. Team members need an email that isn't already used here — ask whoever invited you to send it to a different address.` }, { status: 400 });
   }
   const { data: existingMem } = await admin.from('team_members').select('id').eq('member_id', user.id).eq('status', 'active').limit(1);
   if (((existingMem as unknown as unknown[] | null) || []).length > 0) {
