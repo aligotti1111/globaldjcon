@@ -29,6 +29,7 @@ import { createClient } from '@/lib/supabase/server';
 import AccountSettingsClient from './AccountSettingsClient';
 import UpdateDjProfileClient from '@/app/(main)/update-dj-profile/UpdateDjProfileClient';
 import type { UserProfile } from '@/types/db';
+import { getActingContext, canManageTeam } from '@/lib/acting';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,8 +129,21 @@ export default async function AccountSettingsPage() {
     }));
   }
 
+  // An ADMIN teammate manages the OWNER's team from their own settings page.
+  // Resolve that here so we can mount the Team section (and label it with the
+  // owner's DJ type). Owners/DJs never reach this branch (they render above).
+  const acting = await getActingContext(authUser.id);
+  const canTeam = acting.isMember && canManageTeam(acting.role);
+  let teamDjType: string | null = null;
+  if (canTeam) {
+    const { data: ownerRow } = await supabase.from('users').select('dj_type').eq('id', acting.djId).maybeSingle();
+    teamDjType = (ownerRow as { dj_type?: string | null } | null)?.dj_type ?? null;
+  }
+
   return (
     <AccountSettingsClient
+      canManageTeam={canTeam}
+      teamDjType={teamDjType}
       initialProfile={{
         id: profile.id,
         name: profile.name || '',
