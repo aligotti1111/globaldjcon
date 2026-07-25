@@ -25,7 +25,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { resolveUserEmail } from '@/lib/supabase/admin';
+import { resolveUserEmail, createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import BookingRequestsClient from './BookingRequestsClient';
 
@@ -150,13 +151,20 @@ export default async function BookingRequestsPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) redirect('/login?redirect=/booking-requests');
 
+  // Resolve the account being acted on: an owner resolves to themselves; a
+  // teammate resolves to the owner's id, so this whole page renders the OWNER's
+  // requests. (Same acting pattern as Upcoming Bookings.)
+  const acting = await getActingContext(authUser.id);
+  const actingId = acting.djId;
+  const admin = createAdminClient() as unknown as SupabaseClient;
+
   // Fetch the current user's profile — we need role + dj_type + zip + travel +
   // blocked_users for filtering and distance / warning logic. Also pull
   // booking_settings so we can extract depositPct for the Quote modal.
-  const { data: me } = await supabase
+  const { data: me } = await admin
     .from('users')
     .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings')
-    .eq('id', authUser.id)
+    .eq('id', actingId)
     .single<{
       id: string;
       name: string | null;
@@ -178,7 +186,7 @@ export default async function BookingRequestsPage() {
   const { data: outRows } = await supabase
     .from('bookings')
     .select('*')
-    .eq('requester_id', authUser.id)
+    .eq('requester_id', actingId)
     .order('created_at', { ascending: false });
   let outgoing: BookingRow[] = (outRows as BookingRow[] | null) || [];
 
@@ -191,7 +199,7 @@ export default async function BookingRequestsPage() {
     const { data: inRows } = await supabase
       .from('bookings')
       .select('*')
-      .eq('dj_id', authUser.id)
+      .eq('dj_id', actingId)
       .order('created_at', { ascending: false });
     incoming = ((inRows as BookingRow[] | null) || []).filter(
       (b) => !blockedUsers.includes(b.requester_id)
