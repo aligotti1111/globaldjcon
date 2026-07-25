@@ -47,7 +47,7 @@ export async function GET() {
   const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true });
   const members = ((data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
   const limit = await seatLimit(admin, ownerId);
-  return NextResponse.json({ ok: true, members, seatLimit: limit, seatsUsed: members.length });
+  return NextResponse.json({ ok: true, members, seatLimit: limit, seatsUsed: members.length, viewerId: user.id });
 }
 
 export async function POST(req: Request) {
@@ -164,6 +164,12 @@ export async function DELETE(req: Request) {
   const { data: rowData } = await admin.from('team_members')
     .select('member_id, status').eq('id', id).eq('owner_id', ownerId).maybeSingle();
   const memberId = (rowData as unknown as { member_id?: string | null } | null)?.member_id || null;
+
+  // An admin managing the team can't delete their OWN membership from here
+  // (they'd nuke their own access). They can leave via their account settings.
+  if (memberId && memberId === user.id) {
+    return NextResponse.json({ error: "You can't remove your own account here." }, { status: 400 });
+  }
 
   const { error } = await admin.from('team_members').delete().eq('id', id).eq('owner_id', ownerId);
   if (error) return NextResponse.json({ error: 'Could not remove the member.' }, { status: 500 });
