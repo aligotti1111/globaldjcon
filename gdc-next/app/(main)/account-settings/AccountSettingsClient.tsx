@@ -80,6 +80,10 @@ export default function AccountSettingsClient({
    * it saves like any other profile field.
    */
   const isHost = initialProfile.role === 'host';
+  // Teammates (staff logins) are code-only like hosts: no password to change,
+  // no country to set, and their email IS their fixed team login — shown here
+  // read-only, not something they manage.
+  const isTeammate = initialProfile.role === 'teammate';
 
   // ── Profile (name + country) ─────────────────────────────────────
   const [name, setName] = useState(initialProfile.name);
@@ -159,14 +163,15 @@ export default function AccountSettingsClient({
       setProfileAlert({ type: 'error', msg: 'Please enter a name.' });
       return;
     }
-    if (!country) {
+    if (!country && !isTeammate) {
       setProfileAlert({ type: 'error', msg: 'Please select a country.' });
       return;
     }
     setProfileSaving(true);
     try {
       const supabase = createClient();
-      const updates: Record<string, unknown> = { name: name.trim(), country };
+      const updates: Record<string, unknown> = { name: name.trim() };
+      if (!isTeammate) updates.country = country;
       // DJs get an address here (the master the invoice, cash and check all
       // read). We store the FULL typed string in `address` — the invoice and
       // the payment rails display `address` as-is — plus the parsed parts from
@@ -636,6 +641,7 @@ export default function AccountSettingsClient({
           />
         </div>
 
+        {!isTeammate && (
         <div className={styles.formGroup}>
           <label>Country</label>
           <select value={country} onChange={(e) => setCountry(e.target.value)}>
@@ -645,6 +651,7 @@ export default function AccountSettingsClient({
             ))}
           </select>
         </div>
+        )}
 
         {/* The DJ's ONE address. Whatever's here flows to the invoice and to
             the Cash office / Check mailing fields by default; change it and
@@ -709,16 +716,22 @@ export default function AccountSettingsClient({
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             placeholder={isHost ? 'your@email.com' : undefined}
+            disabled={isTeammate}
           />
           {isHost && (
             <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.4 }}>
               Booking details, contracts and planner links are sent here.
             </small>
           )}
+          {isTeammate && (
+            <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.4 }}>
+              This is your team login email. To change it, ask the account owner to re-invite you.
+            </small>
+          )}
         </div>
 
-        {/* Password confirmation — not for hosts, who don't have one. */}
-        {!isHost && (
+        {/* Password confirmation — not for hosts or teammates (no password). */}
+        {!isHost && !isTeammate && (
           <div className={styles.formGroup}>
             <label>Current Password (to confirm)</label>
             <input
@@ -730,6 +743,7 @@ export default function AccountSettingsClient({
           </div>
         )}
 
+        {!isTeammate && (
         <button
           type="button"
           className={styles.saveBtn}
@@ -738,6 +752,7 @@ export default function AccountSettingsClient({
         >
           {emailSaving ? 'Updating…' : 'Update Email'}
         </button>
+        )}
       </div>
 
       {/* Phone — hosts only. Sits where Change Password would be, because for
@@ -751,9 +766,9 @@ export default function AccountSettingsClient({
         />
       )}
 
-      {/* Password — hidden for hosts. They sign in with a code, so there is
-          no password to change and the card could only ever fail. */}
-      {!isHost && (
+      {/* Password — hidden for hosts AND teammates. They sign in with a code,
+          so there is no password to change and the card could only ever fail. */}
+      {!isHost && !isTeammate && (
       <div className={styles.card}>
         <h2>Change Password</h2>
         {pwAlert && <AlertBlock alert={pwAlert} />}
