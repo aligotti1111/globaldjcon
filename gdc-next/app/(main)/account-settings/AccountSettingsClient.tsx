@@ -52,6 +52,10 @@ interface Props {
    *  setting and is managed on /notifications. */
   currentPhone?: string;
   currentSmsPhone?: string;
+  /** True when this login may manage a team (owner, or an admin teammate). */
+  canManageTeam?: boolean;
+  /** The owner's DJ type — labels the role matrix for an admin teammate. */
+  teamDjType?: string | null;
 }
 
 // Status object that drives the alert text under each save button.
@@ -60,6 +64,7 @@ type Alert = { type: 'success' | 'error'; msg: string } | null;
 export default function AccountSettingsClient({
   initialProfile, currentEmail, initialBlocked,
   currentPhone = '', currentSmsPhone = '',
+  canManageTeam = false, teamDjType = null,
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
   // Notification preferences (email + text) now live on their own page,
@@ -716,7 +721,7 @@ export default function AccountSettingsClient({
         </button>
       </div>
 
-      {isDj && <TeamSection />}
+      {(isDj || canManageTeam) && <TeamSection djType={teamDjType} />}
 
       {/* Email */}
       <div className={styles.card}>
