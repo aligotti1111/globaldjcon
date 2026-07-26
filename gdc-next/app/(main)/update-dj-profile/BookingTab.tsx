@@ -636,7 +636,7 @@ export default function BookingTab({
           </div>
 
           {/* ── Packages ──────────────────────────────────────── */}
-          <div className={styles.sectionCard} style={{ width: '95vw', maxWidth: 1200, marginLeft: 'calc(50% - 47.5vw)' }}>
+          <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitle}>Add Packages</div>
             </div>
