@@ -204,7 +204,7 @@ export default function RiderEditPage() {
           )}
 
           {/* RIDER NAME — required, applies to both modes; makes it reusable. */}
-          <div style={{ marginBottom: '1.4rem' }}>
+          <div style={{ marginBottom: mode === 'upload' ? '.55rem' : '1.4rem' }}>
             <label
               style={{
                 display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.7rem',
