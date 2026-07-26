@@ -261,7 +261,8 @@ export default function RiderEditPage() {
             </div>
           )}
 
-          {/* SHOW PREVIEW — exactly how the host/recipient sees this rider. */}
+          {/* SHOW PREVIEW — custom only; upload mode already previews the PDF inline. */}
+          {mode === 'custom' && (
           <div style={{ marginTop: '1.8rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '1.2rem' }}>
             <button
               type="button"
@@ -289,6 +290,7 @@ export default function RiderEditPage() {
               </div>
             )}
           </div>
+          )}
 
           <div style={{ display: 'flex', gap: '.7rem', marginTop: '1.6rem', flexWrap: 'wrap' }}>
             <button type="button" onClick={saveDraft} disabled={busy !== null}
