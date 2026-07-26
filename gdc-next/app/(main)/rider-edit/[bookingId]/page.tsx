@@ -56,11 +56,12 @@ export default function RiderEditPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<'save' | 'deploy' | 'lib' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'deploy' | 'lib' | 'test' | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [sentUrl, setSentUrl] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [savedDraft, setSavedDraft] = useState(false);
   const [status, setStatus] = useState<string>('draft');
   const [meta, setMeta] = useState<RiderMeta | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -127,6 +128,8 @@ export default function RiderEditPage() {
   }, [bookingId, forcedMode, forcedPdf, libId]);
 
   useEffect(() => { if (bookingId) load(); }, [bookingId, load]);
+  // Editing after a save re-enables Save draft.
+  useEffect(() => { setSavedDraft(false); }, [items, mode, pdfUrl, name]);
 
   const hasContent = mode === 'upload' ? !!pdfUrl : items.length > 0;
   const canDeploy = hasContent && !!name.trim();
@@ -139,7 +142,7 @@ export default function RiderEditPage() {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
-      setNote('Draft saved.');
+      setNote('Draft saved.'); setSavedDraft(true);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setBusy(null); }
   }
@@ -155,6 +158,21 @@ export default function RiderEditPage() {
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
       setNote(`Saved "${name.trim()}" to your riders.`);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.'); }
+    finally { setBusy(null); }
+  }
+
+  async function sendTest() {
+    if (!hasContent) { setErr('Add rider content before sending a test.'); return; }
+    setBusy('test'); setErr(null); setNote(null);
+    try {
+      const res = await fetch('/api/rider/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, items, mode, pdfUrl, name, test: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; warning?: string; emailedTo?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not send the test.');
+      setNote(data.warning || `Test rider emailed to ${data.emailedTo || 'your email'} — this is exactly what the host receives.`);
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not send the test.'); }
     finally { setBusy(null); }
   }
 
@@ -175,8 +193,8 @@ export default function RiderEditPage() {
   }
 
   const deployLabel = mode === 'upload'
-    ? (busy === 'deploy' ? 'Sending…' : status === 'sent' ? 'Resend to host' : 'Confirm & send')
-    : (busy === 'deploy' ? 'Sending…' : status === 'sent' ? 'Resend to host' : 'Deploy to host');
+    ? (busy === 'deploy' ? 'Sending…' : status === 'sent' ? 'Sent' : 'Confirm & send')
+    : (busy === 'deploy' ? 'Sending…' : status === 'sent' ? 'Sent' : 'Deploy to host');
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '1.5rem 1rem 3rem' }}>
@@ -298,9 +316,13 @@ export default function RiderEditPage() {
           )}
 
           <div style={{ display: 'flex', gap: '.7rem', marginTop: '1.6rem', flexWrap: 'wrap' }}>
-            <button type="button" onClick={saveDraft} disabled={busy !== null}
+            <button type="button" onClick={sendTest} disabled={busy !== null || !hasContent}
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: (busy !== null || !hasContent) ? 'not-allowed' : 'pointer', opacity: !hasContent ? 0.55 : 1 }}>
+              {busy === 'test' ? 'Sending…' : 'Send test to my email'}
+            </button>
+            <button type="button" onClick={saveDraft} disabled={busy !== null || savedDraft}
               style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: 'pointer' }}>
-              {busy === 'save' ? 'Saving…' : 'Save draft'}
+              {busy === 'save' ? 'Saving…' : savedDraft ? 'Saved' : 'Save draft'}
             </button>
             {mode === 'custom' && (
               <button type="button" onClick={saveToLibrary} disabled={busy !== null || !hasContent}
@@ -308,8 +330,8 @@ export default function RiderEditPage() {
                 {busy === 'lib' ? 'Saving…' : 'Save to my riders'}
               </button>
             )}
-            <button type="button" onClick={deploy} disabled={busy !== null || !canDeploy}
-              style={{ background: NEON, border: 'none', borderRadius: 8, color: '#06231b', padding: '.65rem 1.4rem', fontWeight: 700, fontSize: '.88rem', cursor: !canDeploy ? 'not-allowed' : 'pointer', opacity: !canDeploy ? 0.55 : 1 }}>
+            <button type="button" onClick={deploy} disabled={busy !== null || !canDeploy || status === 'sent'}
+              style={{ background: NEON, border: 'none', borderRadius: 8, color: '#06231b', padding: '.65rem 1.4rem', fontWeight: 700, fontSize: '.88rem', cursor: (!canDeploy || status === 'sent') ? 'not-allowed' : 'pointer', opacity: (!canDeploy || status === 'sent') ? 0.55 : 1 }}>
               {deployLabel}
             </button>
           </div>
