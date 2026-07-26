@@ -24,11 +24,12 @@ function fmtTime(t: string | null): string {
 }
 
 export default function RiderView({
-  items, mode, pdfUrl, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress,
+  items, mode, pdfUrl, riderName, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress,
 }: {
   items: RiderItem[];
   mode: RiderMode;
   pdfUrl: string | null;
+  riderName?: string | null;
   djName: string;
   logoUrl: string | null;
   eventDate: string | null;
@@ -58,9 +59,13 @@ export default function RiderView({
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.72)', fontSize: '.95rem', marginBottom: '.3rem' }}>
           {djName}
         </div>
+        {riderName && (
+          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600, marginBottom: '.3rem' }}>
+            {riderName}
+          </div>
+        )}
         {(eventType || when || venueName) && (
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.55)', fontSize: '.85rem', marginBottom: '1.6rem', lineHeight: 1.6 }}>
-            {eventType && <div style={{ color: 'rgba(255,255,255,.85)', fontWeight: 600 }}>{eventType}</div>}
             {[when, [fmtTime(startTime), fmtTime(endTime)].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')}
             {venueName && <div>{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</div>}
           </div>
