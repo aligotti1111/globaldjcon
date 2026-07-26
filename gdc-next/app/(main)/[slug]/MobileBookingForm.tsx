@@ -47,6 +47,7 @@ import {
   MOB_TIME_OPTIONS,
   formatUSPhone,
   getPackageCategory,
+  resolvePackage,
   calcPrice,
   hoursBetween,
   halfHoursBetween,
@@ -332,7 +333,9 @@ export default function MobileBookingForm({
 
   // Live price calculation when we have a package + times
   const selectedPkg =
-    selectedPkgIdx != null ? categoryPkgs[selectedPkgIdx] : null;
+    selectedPkgIdx != null
+      ? (resolvePackage(packagesAll, eventType, selectedPkgIdx) as unknown as MobilePackage | null)
+      : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
   const wantsCocktail = isWedding && cocktailNeeded === true;
   const wantsCeremony = isWedding && ceremonyNeeded === true;
