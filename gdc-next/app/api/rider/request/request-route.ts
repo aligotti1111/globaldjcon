@@ -184,7 +184,9 @@ export async function POST(req: Request) {
         else if (bsRaw && typeof bsRaw === 'object') { settings = bsRaw as Record<string, unknown>; }
         const named: NamedRider = { id: newRiderId(), name: riderName, mode, items, pdfUrl, updatedAt: new Date().toISOString() };
         settings.riders = upsertNamedRider(normalizeNamedRiders(settings.riders), named);
-        await admin.from('users').update({ booking_settings: settings } as unknown as never).eq('id', acting.djId);
+        // booking_settings is STRINGIFIED JSON everywhere else — stringify to
+        // avoid corrupting the blob (which wiped equipment/rates).
+        await admin.from('users').update({ booking_settings: JSON.stringify(settings) } as unknown as never).eq('id', acting.djId);
       } catch { /* library is a convenience — the send already succeeded */ }
     }
 
