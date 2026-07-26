@@ -45,6 +45,7 @@ export default function RiderBuilder({
   hideChooser?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const [pdfName, setPdfName] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -66,6 +67,7 @@ export default function RiderBuilder({
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || 'Upload failed.');
       onPdfUrlChange(data.url);
+      setPdfName(file.name);
       setMsg('✓ Rider PDF uploaded.');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Upload failed — try again.');
@@ -145,10 +147,9 @@ export default function RiderBuilder({
             >
               <span style={{ fontSize: '1.4rem' }} aria-hidden>📄</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '.9rem' }}>Rider PDF attached</div>
-                <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ color: NEON, fontSize: '.8rem', wordBreak: 'break-all' }}>
-                  View uploaded PDF
-                </a>
+                <div style={{ fontWeight: 700, fontSize: '.9rem', wordBreak: 'break-all' }}>
+                  {pdfName || decodeURIComponent((pdfUrl.split('?')[0].split('/').pop() || 'Uploaded PDF'))}
+                </div>
               </div>
               <button
                 type="button"
