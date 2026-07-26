@@ -279,22 +279,41 @@ export default function PackageEditor({
                   price: String((pkg as Record<string, unknown>)[`price${h}`] ?? ''),
                 }));
           const commit = (next: Array<{ hours: number; price: string }>) => {
-            const priceFor = (h: number) => next.find((t) => t.hours === h)?.price ?? '';
+            // Whole hours only, 1-9, no repeats, kept sorted low -> high.
+            const seen = new Set<number>();
+            const cleaned = next
+              .map((t) => ({ hours: Math.max(1, Math.min(9, Math.round(Number(t.hours) || 1))), price: t.price }))
+              .filter((t) => (seen.has(t.hours) ? false : (seen.add(t.hours), true)))
+              .sort((a, b) => a.hours - b.hours);
+            const priceFor = (h: number) => cleaned.find((t) => t.hours === h)?.price ?? '';
             onChange({
               ...pkg,
-              priceTiers: next.map((t) => ({ hours: t.hours, price: t.price })),
+              priceTiers: cleaned.map((t) => ({ hours: t.hours, price: t.price })),
               price4: priceFor(4),
               price5: priceFor(5),
               price6: priceFor(6),
             } as MobilePackage);
           };
+          const usedHours = tiers.map((t) => t.hours);
+          const firstFree = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((h) => !usedHours.includes(h));
           return (
             <>
               {tiers.map((t, i) => (
                 <div key={i} className={styles.priceRow}>
-                  <span className={styles.priceRowLabel}>
-                    {t.hours} Hour Event{isWedding ? ' (Reception)' : ''}:
-                  </span>
+                  <select
+                    value={t.hours}
+                    disabled={reqAll}
+                    aria-label="Event length in hours"
+                    onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, hours: Number(e.target.value) } : x)))}
+                    className={styles.priceRowLabel}
+                    style={{ padding: '.25rem .35rem', borderRadius: 6 }}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9]
+                      .filter((h) => h === t.hours || !usedHours.includes(h))
+                      .map((h) => (
+                        <option key={h} value={h}>{h} Hour Event{isWedding ? ' (Reception)' : ''}</option>
+                      ))}
+                  </select>
                   <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
                   <input
                     type="number"
@@ -318,13 +337,10 @@ export default function PackageEditor({
                   )}
                 </div>
               ))}
-              {!reqAll && (
+              {!reqAll && firstFree != null && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const nextHours = tiers.length ? Math.max(...tiers.map((t) => t.hours)) + 1 : 4;
-                    commit([...tiers, { hours: nextHours, price: '' }]);
-                  }}
+                  onClick={() => commit([...tiers, { hours: firstFree as number, price: '' }])}
                   style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.2rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
                 >
                   + Add Hour Option
