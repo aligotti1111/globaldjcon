@@ -61,3 +61,98 @@ export function normalizeMobPackages(
   }
   return { general, overrides };
 }
+
+// ── Editor mutation API ──────────────────────────────────────────────────
+// Pure helpers the new package editor calls. Each takes the canonical new
+// shape and returns a fresh new-shape object (never mutates). The editor holds
+// state in the new shape; only on Save does BookingTab write it to
+// booking_settings.mob_packages.
+
+function cloneNew(mob: MobPackagesNew): MobPackagesNew {
+  const overrides: Record<string, Pkg[]> = {};
+  for (const k of Object.keys(mob.overrides)) overrides[k] = mob.overrides[k].slice();
+  return { general: mob.general.slice(), overrides };
+}
+
+/** A brand-new blank package/override ( {} = inherits display, blank prices ). */
+export function blankPackage(): Pkg { return {}; }
+
+/** Number of package slots (indexes). Driven by the General array length. */
+export function packageCount(mob: MobPackagesNew): number { return mob.general.length; }
+
+/** The event types that currently have their own pricing (pulled-out / specialty). */
+export function pulledOutTypes(mob: MobPackagesNew): string[] { return Object.keys(mob.overrides); }
+
+/** Set the General (base) package at an index. */
+export function setGeneral(mob: MobPackagesNew, index: number, pkg: Pkg): MobPackagesNew {
+  const next = cloneNew(mob);
+  while (next.general.length <= index) next.general.push(blankPackage());
+  next.general[index] = pkg;
+  return next;
+}
+
+/** Set an event type's override package at an index. */
+export function setOverride(mob: MobPackagesNew, type: string, index: number, pkg: Pkg): MobPackagesNew {
+  const next = cloneNew(mob);
+  const arr = (next.overrides[type] || []).slice();
+  while (arr.length <= index) arr.push(blankPackage());
+  arr[index] = pkg;
+  next.overrides[type] = arr;
+  return next;
+}
+
+/** Add a package slot: push a blank onto General and every override array. */
+export function addPackageSlot(mob: MobPackagesNew): MobPackagesNew {
+  const next = cloneNew(mob);
+  next.general.push(blankPackage());
+  for (const k of Object.keys(next.overrides)) next.overrides[k].push(blankPackage());
+  return next;
+}
+
+/** Remove a package slot at an index from General and every override array. */
+export function removePackageSlot(mob: MobPackagesNew, index: number): MobPackagesNew {
+  const next = cloneNew(mob);
+  next.general.splice(index, 1);
+  for (const k of Object.keys(next.overrides)) next.overrides[k].splice(index, 1);
+  return next;
+}
+
+/**
+ * Pull an event type OUT of General pricing: give it its own override array,
+ * one blank per package slot. Blank overrides inherit display from General and
+ * carry blank prices (-> quote until the DJ enters numbers), per spec.
+ * No-op if the type is already pulled out.
+ */
+export function pullTypeOut(mob: MobPackagesNew, type: string): MobPackagesNew {
+  if (mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  next.overrides[type] = next.general.map(() => blankPackage());
+  return next;
+}
+
+/** Put an event type BACK under General pricing (remove its overrides). */
+export function putTypeBack(mob: MobPackagesNew, type: string): MobPackagesNew {
+  if (!mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  delete next.overrides[type];
+  return next;
+}
+
+/**
+ * Serialize for storage. Keeps EVERY pulled-out type's override array (its very
+ * presence is what marks the type as "priced on its own" — a blank override
+ * resolves to a quote, NOT to General's prices, so it must be preserved). Pads
+ * each override array to the General length so indexes never drift. To put a
+ * type back under General pricing, call putTypeBack() explicitly — serialize
+ * never second-guesses that.
+ */
+export function serializeMobPackages(mob: MobPackagesNew): MobPackagesNew {
+  const n = mob.general.length;
+  const overrides: Record<string, Pkg[]> = {};
+  for (const k of Object.keys(mob.overrides)) {
+    const arr = mob.overrides[k].slice(0, n);
+    while (arr.length < n) arr.push(blankPackage());
+    overrides[k] = arr;
+  }
+  return { general: mob.general.slice(), overrides };
+}
