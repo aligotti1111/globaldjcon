@@ -123,6 +123,9 @@ export async function POST(req: Request) {
     }
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+    // TEST: preview email goes to whoever is signed in (owner, or a teammate at
+    // THEIR own email). Never marks the planner sent, never emails the client.
+    const isTest = body.test === true;
 
     const admin = createAdminClient();
     // booking_planners / planners postdate the generated types/supabase.ts, so
@@ -156,17 +159,20 @@ export async function POST(req: Request) {
     // The UI shows the icon and explains this in the dropdown rather than
     // hiding the action; this check is what makes that explanation true, and
     // what stops a direct POST from bypassing it.
-    if (b.is_manual && (!b.host_email?.trim() || !b.requester_name?.trim())) {
+    if (!isTest && b.is_manual && (!b.host_email?.trim() || !b.requester_name?.trim())) {
       return NextResponse.json(
         { error: 'Add the host\'s full name and email to send a planner.' },
         { status: 400 },
       );
     }
 
-    const to = await clientEmailFor(b);
+    const to = isTest
+      ? (user.email ?? await resolveUserEmail(user.id))
+      : await clientEmailFor(b);
     if (!to) {
       return NextResponse.json(
-        { error: 'No client email on this booking.' }, { status: 400 },
+        { error: isTest ? 'No email on your account to send the test to.' : 'No client email on this booking.' },
+        { status: 400 },
       );
     }
 
@@ -284,29 +290,41 @@ export async function POST(req: Request) {
         {},
       );
 
-      const { data: created, error: insErr } = await db
-        .from('booking_planners')
-        .insert({
-          booking_id: bookingId,
-          dj_id: acting.djId,
-          planner_id: (forcedTpl?.id || override?.id || base.id) ?? null,
-          fields,
-          responses,
-          status: 'sent',
-        } as unknown as never)
-        .select('id, fields, responses, status')
-        .single();
-      // 500, never 502 — Cloudflare would eat the body. See the header.
-      if (insErr || !created) {
-        return NextResponse.json({ error: 'Could not create the planner.' }, { status: 500 });
+      if (isTest) {
+        // A TEST writes NOTHING — no row, no status flip. Keep the composed
+        // fields in memory only to count the questions for the email; the
+        // preview link points at the DJ-only preview page (the DJ is the
+        // recipient of a test).
+        planner = { id: '', fields, responses, status: 'sent' } as unknown as PlannerRow;
+      } else {
+        const { data: created, error: insErr } = await db
+          .from('booking_planners')
+          .insert({
+            booking_id: bookingId,
+            dj_id: acting.djId,
+            planner_id: (forcedTpl?.id || override?.id || base.id) ?? null,
+            fields,
+            responses,
+            status: 'sent',
+          } as unknown as never)
+          .select('id, fields, responses, status')
+          .single();
+        // 500, never 502 — Cloudflare would eat the body. See the header.
+        if (insErr || !created) {
+          return NextResponse.json({ error: 'Could not create the planner.' }, { status: 500 });
+        }
+        planner = created as unknown as PlannerRow;
       }
-      planner = created as unknown as PlannerRow;
     }
 
     // planner_status on the booking is NOT written here. trg_sync_planner_status
     // owns it — one writer, so the strip can't go stale (schema, §4).
 
-    const url = `${SITE_URL}/planner/${planner.id}`;
+    // A test with no saved planner has no /planner/[id] yet — link the DJ to the
+    // DJ-only preview (they are the recipient) instead of a dead URL.
+    const url = (isTest && !planner.id)
+      ? `${SITE_URL}/planner-preview${b.event_type ? `?eventType=${encodeURIComponent(b.event_type)}` : ''}`
+      : `${SITE_URL}/planner/${planner.id}`;
 
     // ── The email ─────────────────────────────────────────────────────────
     if (process.env.RESEND_API_KEY) {
@@ -319,7 +337,10 @@ export async function POST(req: Request) {
 <strong style="color:#111;">${esc(djName)}</strong><br/>${esc(when)}${b.venue_name ? ` · ${esc(b.venue_name)}` : ''}
 </p></div>`;
 
-      const content = `
+      const testNote = isTest
+        ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> \u2014 exactly what the client receives. It was <strong>not</strong> sent to the client.</p>`
+        : '';
+      const content = `${testNote}
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">${isResend ? 'Your planner is still open' : `Hi ${hi} — let's plan your music`}</h1>
 <p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
 ${isResend
@@ -346,14 +367,15 @@ This link is private to your booking — anyone with it can see and edit your pl
         await resend.emails.send({
           from: FROM,
           to,
-          subject: isResend
+          subject: `${isTest ? '[TEST] ' : ''}${isResend
             ? `Reminder: your planner for ${when}`
-            : `${djName} — plan the music for ${when}`,
+            : `${djName} — plan the music for ${when}`}`,
           html: shell(content),
         });
       } catch {
         // The row exists and the link works. A dead Resend key must not make
         // the DJ think the planner wasn't created — they can copy the link.
+        if (isTest) return NextResponse.json({ ok: true, test: true, warning: 'Could not send the test email — try again.' });
         return NextResponse.json({
           id: planner.id, url, status: planner.status, resent: isResend,
           warning: 'Planner created, but the email could not be sent. Copy the link instead.',
@@ -361,6 +383,7 @@ This link is private to your booking — anyone with it can see and edit your pl
       }
     }
 
+    if (isTest) return NextResponse.json({ ok: true, test: true, emailedTo: to });
     return NextResponse.json({ id: planner.id, url, status: planner.status, resent: isResend });
   } catch {
     // 500, never 502 — see the header.
