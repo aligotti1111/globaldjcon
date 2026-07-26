@@ -34,6 +34,7 @@ import {
   type PkgCategory,
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
+import MobilePackagesEditor from './MobilePackagesEditor';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import DiscountsSection from './DiscountsSection';
 
@@ -672,18 +673,12 @@ export default function BookingTab({
               )}
 
               {activeCats.length > 0 && (
-                <PackageList
-                  activeCats={activeCats}
-                  packages={packages}
-                  totalCount={renderedCount}
+                <MobilePackagesEditor
+                  mobPackages={packages}
+                  selectedEventTypes={selectedEventTypes}
                   userId={userId}
                   currency={rateCurrency}
-                  onSavePackage={savePackage}
-                  onRemove={removePackage}
-                  onAdd={addPackage}
-                  masterSaveTrigger={masterSaveTrigger}
-                  reportCardDirty={reportCardDirty}
-                  selectedEventTypes={selectedEventTypes}
+                  onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
                 />
               )}
               {/* The internal "Save All Packages" button was removed —
