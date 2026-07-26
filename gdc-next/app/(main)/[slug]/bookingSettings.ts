@@ -274,13 +274,24 @@ export function packageTiers(pkg: MobilePackage | null | undefined): Array<{ hou
 
 // Vanilla stores booking_settings as a JSON string. This helper parses it
 // safely — returns null on missing data or invalid JSON.
-export function parseBookingSettings(raw: string | null | undefined): BookingSettings | null {
+export function parseBookingSettings(raw: unknown): BookingSettings | null {
   if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') return parsed as BookingSettings;
-  } catch {
-    // Bad JSON — vanilla silently swallows errors here too
+  // A jsonb column — or a route that (incorrectly) stored a raw object — hands
+  // us an OBJECT, not a string. Accept it directly so equipment/rates aren't
+  // silently lost just because the value wasn't stringified. This RECOVERS any
+  // account whose booking_settings was written as an object.
+  if (typeof raw === 'object') return raw as BookingSettings;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      // Guard the double-encoded case: a JSON string stored inside the blob.
+      if (typeof parsed === 'string') {
+        try { const again = JSON.parse(parsed); if (again && typeof again === 'object') return again as BookingSettings; } catch { /* fall through */ }
+      }
+      if (parsed && typeof parsed === 'object') return parsed as BookingSettings;
+    } catch {
+      // Bad JSON — vanilla silently swallows errors here too
+    }
   }
   return null;
 }
