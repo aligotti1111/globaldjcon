@@ -423,7 +423,7 @@ export default function BookingRequestsClient({
           } = {};
           if (djRow?.booking_settings) {
             try {
-              bs = JSON.parse(djRow.booking_settings);
+              bs = typeof djRow.booking_settings === 'string' ? JSON.parse(djRow.booking_settings) : (djRow.booking_settings as unknown as typeof bs);
             } catch {
               bs = {};
             }
