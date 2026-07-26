@@ -8,7 +8,7 @@
 // type inherits its title/description/photos until changed. Reads any stored
 // shape via normalizeMobPackages, writes the new { general, overrides } shape.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
@@ -55,6 +55,8 @@ export default function MobilePackagesEditor({
   const [selType, setSelType] = useState<string>('general');
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
   const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const count = mob.general.length;
   const idx = Math.min(pkgIdx, Math.max(0, count - 1));
@@ -66,7 +68,7 @@ export default function MobilePackagesEditor({
   );
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
-  function update(next: MobPackagesNew) { setMob(next); setSaved(false); }
+  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
 
   const currentPkg: MobilePackage = (
     selType === 'general' ? (mob.general[idx] || {}) : (mob.overrides[selType]?.[idx] || {})
@@ -83,13 +85,35 @@ export default function MobilePackagesEditor({
   }
   function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelType(type); }
   function removeEventType(type: string) { update(putTypeBack(mob, type)); if (selType === type) setSelType('general'); }
-  function addPackage() { const n = addPackageSlot(mob); setMob(n); setSaved(false); setPkgIdx(n.general.length - 1); setSelType('general'); }
+  function addPackage() {
+    const n = addPackageSlot(mob);
+    setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  }
   function removePackage() {
     if (count <= 1) return;
     const n = removePackageSlot(mob, idx);
     setMob(n); setSaved(false); setPkgIdx(Math.max(0, idx - 1)); setSelType('general');
   }
-  function save() { const ser = serializeMobPackages(mob); onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true); }
+  // Details is rich-text HTML — strip tags to tell "real content" from an
+  // empty editor (<br>, <div></div>, whitespace).
+  function textEmpty(v: unknown): boolean {
+    if (v == null) return true;
+    return String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
+  }
+  function save() {
+    for (let i = 0; i < mob.general.length; i++) {
+      const g = (mob.general[i] || {}) as { title?: string; details?: string };
+      if (textEmpty(g.title) || textEmpty(g.details)) {
+        setErr(`Package ${i + 1} needs a title and description before you can save.`);
+        setPkgIdx(i); setSelType('general');
+        return;
+      }
+    }
+    setErr(null);
+    const ser = serializeMobPackages(mob);
+    onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
+  }
 
   if (count === 0) {
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
@@ -142,7 +166,7 @@ export default function MobilePackagesEditor({
         </div>
 
         {/* RIGHT — flipper + package card */}
-        <div style={{ flex: '1000 1 300px', minWidth: 0 }}>
+        <div ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.6rem' }}>
             <button type="button" aria-label="Previous package" onClick={() => { setPkgIdx(Math.max(0, idx - 1)); setSelType('general'); }} disabled={idx === 0} style={{ ...navBtn, opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>‹</button>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Package {idx + 1} of {count}</div>
@@ -172,7 +196,8 @@ export default function MobilePackagesEditor({
               {count > 1 && (
                 <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
               )}
-              <span style={{ flex: 1 }} />
+              {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
+              {!err && <span style={{ flex: 1 }} />}
               {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>✓ Saved</span>}
               <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
             </div>
