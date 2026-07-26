@@ -196,7 +196,6 @@ export default function RiderEditPage() {
                   <img src={meta.logoUrl} alt="" style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain' }} />
                 </div>
               )}
-              {meta.event.eventType && <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{meta.event.eventType}</div>}
               <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.9rem', lineHeight: 1.6, marginTop: '.2rem' }}>
                 {[fmtDate(meta.event.date), [fmtTime(meta.event.start), fmtTime(meta.event.end)].filter(Boolean).join(' – ')].filter(Boolean).join('  ·  ')}
                 {meta.event.venueName && <div>{meta.event.venueName}{meta.event.venueAddress ? ` — ${meta.event.venueAddress}` : ''}</div>}
