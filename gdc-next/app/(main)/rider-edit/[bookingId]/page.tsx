@@ -318,10 +318,6 @@ export default function RiderEditPage() {
           )}
 
           <div style={{ display: 'flex', gap: '.7rem', marginTop: '1.6rem', flexWrap: 'wrap' }}>
-            <button type="button" onClick={sendTest} disabled={busy !== null || !hasContent}
-              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: (busy !== null || !hasContent) ? 'not-allowed' : 'pointer', opacity: !hasContent ? 0.55 : 1 }}>
-              {busy === 'test' ? 'Sending…' : 'Send test to my email'}
-            </button>
             <button type="button" onClick={saveDraft} disabled={busy !== null || savedDraft}
               style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: (busy !== null || savedDraft) ? 'not-allowed' : 'pointer', opacity: savedDraft ? 0.55 : 1 }}>
               {busy === 'save' ? 'Saving…' : savedDraft ? 'Saved' : 'Save draft'}
@@ -335,6 +331,10 @@ export default function RiderEditPage() {
             <button type="button" onClick={deploy} disabled={busy !== null || !canDeploy || status === 'sent'}
               style={{ background: NEON, border: 'none', borderRadius: 8, color: '#06231b', padding: '.65rem 1.4rem', fontWeight: 700, fontSize: '.88rem', cursor: (!canDeploy || status === 'sent') ? 'not-allowed' : 'pointer', opacity: (!canDeploy || status === 'sent') ? 0.55 : 1 }}>
               {deployLabel}
+            </button>
+            <button type="button" onClick={sendTest} disabled={busy !== null || !hasContent}
+              style={{ background: 'none', border: 'none', color: NEON, padding: '.65rem 0', fontSize: '.85rem', fontWeight: 600, textDecoration: 'underline', cursor: (busy !== null || !hasContent) ? 'not-allowed' : 'pointer', opacity: !hasContent ? 0.55 : 1, alignSelf: 'center' }}>
+              {busy === 'test' ? 'Sending…' : 'Send test to my email'}
             </button>
           </div>
         </>
