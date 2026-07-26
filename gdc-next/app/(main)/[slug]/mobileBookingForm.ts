@@ -1,3 +1,4 @@
+export { resolvePackage } from './resolvePackage';
 // Utilities for the Mobile DJ booking form.
 // Faithful port of helpers from vanilla djp-mob-public.js.
 //
