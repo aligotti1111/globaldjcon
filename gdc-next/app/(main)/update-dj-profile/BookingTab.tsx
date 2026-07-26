@@ -636,28 +636,16 @@ export default function BookingTab({
           </div>
 
           {/* ── Packages ──────────────────────────────────────── */}
-          <div className={styles.sectionCard}>
+          <div className={styles.sectionCard} style={{ width: '95vw', maxWidth: 1200, marginLeft: 'calc(50% - 47.5vw)' }}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitle}>Add Packages</div>
             </div>
             <div className={styles.sectionBody}>
               {activeCats.length > 0 && (
                 <p className={styles.packageIntro}>
-                  {packageIntro.hasTabs ? (
-                    <>
-                      Each package has {packageIntro.count} tabs &mdash;{' '}
-                      <span className={styles.packageIntroHi}>{packageIntro.joined}</span>. This gives you the ability to
-                      customize the pricing and details for different types of
-                      events. The host booking the event will only see the
-                      packages based off the event type they selected.
-                    </>
-                  ) : (
-                    <>
-                      Customize the pricing and details for your packages. The
-                      host booking the event will only see the packages based off
-                      the event type they selected.
-                    </>
-                  )}
+                  Build each package once under{' '}
+                  <span className={styles.packageIntroHi}>General</span>, then give any event type its own
+                  price using the list on the left. A host only sees the package for the event type they picked.
                 </p>
               )}
 
