@@ -50,6 +50,7 @@ import {
 import {
   calcPrice,
   getPackageCategory,
+  resolvePackage,
   buildEventDetails,
 } from '@/app/(main)/[slug]/mobileBookingForm';
 import { computeRate } from '@/app/(main)/[slug]/clubRate';
@@ -262,7 +263,6 @@ export async function POST(req: Request) {
     const wantsCeremony = isWedding && ceremonyNeeded === true;
     const cat = getPackageCategory(eventType);
     const packagesAll = settings.mob_packages || {};
-    const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
     // Wedding/Mitzvah packages INHERIT title, details and main photo from the
     // General package at the SAME index when their own field is blank — that's
     // exactly what the booking form displays. Without mirroring that here we
@@ -296,7 +296,7 @@ export async function POST(req: Request) {
     let selectedPkg: MobilePackage | null = null;
     if (hasAnyPackages) {
       if (packageIndex == null || packageIndex < 0) return bad('Please select a package.');
-      selectedPkg = categoryPkgs[packageIndex] ?? null;
+      selectedPkg = (resolvePackage(packagesAll, eventType, packageIndex) as unknown as MobilePackage | null) ?? null;
       if (!selectedPkg) return bad('Invalid package selected.');
     }
 
