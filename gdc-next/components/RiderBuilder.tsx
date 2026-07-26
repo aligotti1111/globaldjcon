@@ -45,7 +45,6 @@ export default function RiderBuilder({
   hideChooser?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
-  const [pdfName, setPdfName] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -67,7 +66,6 @@ export default function RiderBuilder({
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || 'Upload failed.');
       onPdfUrlChange(data.url);
-      setPdfName(file.name);
       setMsg('✓ Rider PDF uploaded.');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Upload failed — try again.');
@@ -138,27 +136,7 @@ export default function RiderBuilder({
         <div>
           <input ref={fileRef} type="file" accept="application/pdf,.pdf" hidden onChange={onPickPdf} />
           {pdfUrl ? (
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap',
-                border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, padding: '.9rem 1rem',
-                background: 'rgba(255,255,255,.03)',
-              }}
-            >
-              <span style={{ fontSize: '1.4rem' }} aria-hidden>📄</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '.9rem', wordBreak: 'break-all' }}>
-                  {pdfName || decodeURIComponent((pdfUrl.split('?')[0].split('/').pop() || 'Uploaded PDF'))}
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-                style={{ background: 'rgba(0,224,164,.08)', border: `1px solid ${NEON}`, color: NEON, borderRadius: 8, padding: '.5rem .9rem', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer' }}
-              >
-                {busy ? 'Uploading…' : 'Replace'}
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 disabled={busy}
