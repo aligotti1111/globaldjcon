@@ -122,7 +122,6 @@ export default function PlannerSendModal({
   const [data, setData] = useState<Loaded | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
 
   // Which template to send. null = whatever the server resolves (the auto,
   // one-click path).
@@ -225,27 +224,6 @@ export default function PlannerSendModal({
     }
   }
 
-  async function sendTest() {
-    if (busy) return;
-    setBusy(true);
-    setErr(null);
-    setNote(null);
-    try {
-      const res = await fetch('/api/planner/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, test: true, ...(forcedId ? { plannerId: forcedId } : {}) }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.ok) { setErr(j?.error || 'Could not send the test.'); setBusy(false); return; }
-      setNote(j.warning || `Test planner emailed to ${j.emailedTo || 'your email'} — exactly what the client receives.`);
-      setBusy(false);
-    } catch {
-      setErr('Could not send the test.');
-      setBusy(false);
-    }
-  }
-
   // The planner rows, resolved-first. The resolved one is the "auto" pick;
   // selecting it means forcedId = null (the one-click path).
   const rows: TemplateLite[] = data
@@ -269,7 +247,6 @@ export default function PlannerSendModal({
 
         {!data && !err && <div className={styles.quiet}>Loading…</div>}
         {err && <div className={styles.err}>{err}</div>}
-        {note && !err && <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.85rem', padding: '.4rem 0' }}>{note}</div>}
 
         {data && (
           <>
@@ -384,14 +361,6 @@ export default function PlannerSendModal({
 
             <div className={styles.foot}>
               <button type="button" className={styles.ghost} onClick={onClose}>Cancel</button>
-              <button
-                type="button"
-                onClick={sendTest}
-                disabled={busy}
-                style={{ background: 'none', border: 'none', color: 'var(--neon,#00e0a4)', fontSize: '.85rem', fontWeight: 600, textDecoration: 'underline', cursor: busy ? 'not-allowed' : 'pointer' }}
-              >
-                Send test to my email
-              </button>
               <button type="button" className={styles.primary} onClick={send} disabled={busy}>
                 {busy ? 'Sending…' : 'Send'}
               </button>
