@@ -107,7 +107,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     const acting = await getActingContext(user.id);
 
-    let body: { bookingId?: unknown; items?: unknown; mode?: unknown; pdfUrl?: unknown; name?: unknown };
+    let body: { bookingId?: unknown; items?: unknown; mode?: unknown; pdfUrl?: unknown; name?: unknown; test?: unknown };
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     if (!bookingId) return NextResponse.json({ error: 'Missing booking.' }, { status: 400 });
@@ -135,24 +135,47 @@ export async function POST(req: Request) {
     const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', acting.djId).maybeSingle();
     const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
     const djName = dj?.name || 'Your DJ';
+    const isTest = body.test === true;
 
-    // Persist + mark sent.
-    const { data: up, error } = await admin
-      .from('booking_riders')
-      .upsert({
-        booking_id: bookingId, dj_id: acting.djId, items,
-        rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
-        status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      } as unknown as never, { onConflict: 'booking_id' })
-      .select('id')
-      .single();
-    if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
-    const id = (up as unknown as { id: string }).id;
+    // Persist. A real send marks the rider 'sent'; a test only needs a valid
+    // /rider/[id] link, so it reuses the existing row (or makes a draft) and
+    // never flips status or touches the library.
+    let id: string;
+    if (isTest) {
+      const { data: ex } = await admin.from('booking_riders').select('id').eq('booking_id', bookingId).maybeSingle();
+      if (ex) {
+        id = (ex as unknown as { id: string }).id;
+      } else {
+        const { data: ins, error: insErr } = await admin
+          .from('booking_riders')
+          .insert({
+            booking_id: bookingId, dj_id: acting.djId, items,
+            rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
+            status: 'draft', updated_at: new Date().toISOString(),
+          } as unknown as never)
+          .select('id')
+          .single();
+        if (insErr || !ins) return NextResponse.json({ error: 'Could not prepare the test.' }, { status: 500 });
+        id = (ins as unknown as { id: string }).id;
+      }
+    } else {
+      const { data: up, error } = await admin
+        .from('booking_riders')
+        .upsert({
+          booking_id: bookingId, dj_id: acting.djId, items,
+          rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
+          status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        } as unknown as never, { onConflict: 'booking_id' })
+        .select('id')
+        .single();
+      if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
+      id = (up as unknown as { id: string }).id;
+    }
     const url = `${SITE_URL}/rider/${id}`;
 
     // Sending a NAMED rider also files it in the DJ's reusable library, so it's
     // there for one-click quick-send on the next booking. Never blocks the send.
-    if (riderName) {
+    if (!isTest && riderName) {
       try {
         const { data: uRow } = await admin.from('users').select('booking_settings').eq('id', acting.djId).maybeSingle();
         const bsRaw = (uRow as unknown as { booking_settings?: unknown } | null)?.booking_settings;
@@ -161,7 +184,9 @@ export async function POST(req: Request) {
         else if (bsRaw && typeof bsRaw === 'object') { settings = bsRaw as Record<string, unknown>; }
         const named: NamedRider = { id: newRiderId(), name: riderName, mode, items, pdfUrl, updatedAt: new Date().toISOString() };
         settings.riders = upsertNamedRider(normalizeNamedRiders(settings.riders), named);
-        await admin.from('users').update({ booking_settings: settings } as unknown as never).eq('id', acting.djId);
+        // booking_settings is STRINGIFIED JSON everywhere else — stringify to
+        // avoid corrupting the blob (which wiped equipment/rates).
+        await admin.from('users').update({ booking_settings: JSON.stringify(settings) } as unknown as never).eq('id', acting.djId);
       } catch { /* library is a convenience — the send already succeeded */ }
     }
 
@@ -191,8 +216,12 @@ export async function POST(req: Request) {
       attachment = null;
     }
 
-    // ── Host email ──
-    const to = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
+    // ── Recipient ── a TEST goes to whoever is signed in (so a teammate gets it
+    // at THEIR own email), a real send goes to the host.
+    const to = isTest
+      ? (user.email ?? await resolveUserEmail(user.id))
+      : (b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null));
+    if (isTest && !to) return NextResponse.json({ error: 'No email on your account to send the test to.' }, { status: 400 });
     if (to && process.env.RESEND_API_KEY) {
       const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
       const when = fmtDate(b.event_date);
@@ -208,7 +237,10 @@ export async function POST(req: Request) {
         bodyBlocks = RIDER_SECTIONS.map(({ key, label }) => secBlock(label, g[key])).join('');
       }
 
-      const content = `
+      const testNote = isTest
+        ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> — exactly what the host receives. It was <strong>not</strong> sent to the host.</p>`
+        : '';
+      const content = `${testNote}
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${hi} — ${esc(djName)}'s rider</h1>
 <p style="margin:0 0 16px;color:#666;font-size:14px;line-height:1.7;">
 Here's what ${esc(djName)} needs from the venue for ${esc(when)}${b.venue_name ? ` at ${esc(b.venue_name)}` : ''}.${attachment ? ' The full rider is attached as a PDF.' : ''}
@@ -222,15 +254,17 @@ ${bodyBlocks}
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: FROM, to, subject: `${djName} — DJ rider for ${when}`, html: shell(content),
+          from: FROM, to, subject: `${isTest ? '[TEST] ' : ''}${djName} — DJ rider for ${when}`, html: shell(content),
           attachments: attachment ? [attachment] : undefined,
         });
       } catch {
-        return NextResponse.json({ ok: true, id, url, status: 'sent', warning: 'Rider saved, but the email could not be sent. Copy the link instead.' });
+        if (isTest) return NextResponse.json({ ok: true, test: true, warning: 'Could not send the test email — try again.' });
+        return NextResponse.json({ ok: true, id, url, status: 'sent', hostName: b.requester_name || null, warning: 'Rider saved, but the email could not be sent. Copy the link instead.' });
       }
     }
 
-    return NextResponse.json({ ok: true, id, url, status: 'sent', emailed: !!to });
+    if (isTest) return NextResponse.json({ ok: true, test: true, emailedTo: to });
+    return NextResponse.json({ ok: true, id, url, status: 'sent', hostName: b.requester_name || null, emailed: !!to });
   } catch {
     return NextResponse.json({ error: 'Could not send the rider.' }, { status: 500 });
   }
