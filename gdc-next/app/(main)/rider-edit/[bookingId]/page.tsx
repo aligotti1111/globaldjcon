@@ -60,6 +60,7 @@ export default function RiderEditPage() {
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [sentUrl, setSentUrl] = useState<string | null>(null);
+  const [hostName, setHostName] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('draft');
   const [meta, setMeta] = useState<RiderMeta | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -164,10 +165,11 @@ export default function RiderEditPage() {
       const res = await fetch('/api/rider/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, items, mode, pdfUrl, name }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string; warning?: string };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string; warning?: string; hostName?: string | null };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not send.');
-      setStatus('sent'); setSentUrl(data.url || null);
-      setNote(data.warning || 'Sent to the host — and saved to your riders.');
+      const who = (data.hostName || '').trim() || 'the host';
+      setStatus('sent'); setSentUrl(data.url || null); setHostName(who);
+      setNote(data.warning || `The rider has been sent to ${who}. The rider has also been saved to the rider portal and can be sent for future bookings without reuploading.`);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not send.'); }
     finally { setBusy(null); }
   }
@@ -257,7 +259,10 @@ export default function RiderEditPage() {
           {note && !err && <div style={{ color: NEON, fontSize: '.88rem', marginTop: '1rem' }}>{note}</div>}
           {sentUrl && (
             <div style={{ marginTop: '.6rem', fontSize: '.82rem', color: MUTED, wordBreak: 'break-all' }}>
-              Host link: <a href={sentUrl} target="_blank" rel="noreferrer" style={{ color: NEON }}>{sentUrl}</a>
+              <a href={sentUrl} target="_blank" rel="noreferrer" style={{ color: NEON }}>{sentUrl}</a>
+              <div style={{ marginTop: '.25rem' }}>
+                This is the link to the rider if you would like to personally send it to {hostName || 'the host'}.
+              </div>
             </div>
           )}
 
