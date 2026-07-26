@@ -174,6 +174,9 @@ export default function MobilePackagesEditor({
           </div>
 
           <div className={styles.pkgCard}>
+            <div style={{ display: 'inline-block', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.28rem .6rem', marginBottom: '.6rem' }}>
+              Package {idx + 1}
+            </div>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
               {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
             </div>
