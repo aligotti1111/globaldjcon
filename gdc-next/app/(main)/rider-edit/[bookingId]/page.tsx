@@ -230,11 +230,6 @@ export default function RiderEditPage() {
             </div>
           </div>
 
-          {mode === 'upload' && (
-            <div style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
-              Review your uploaded rider below. Name it, then <strong style={{ color: NEON }}>Confirm &amp; send</strong> — this exact PDF is emailed to the host. Use <strong>Replace</strong> to swap the file.
-            </div>
-          )}
 
           {/* FULL-WIDTH editor for the chosen mode — chooser is hidden. */}
           <RiderBuilder
