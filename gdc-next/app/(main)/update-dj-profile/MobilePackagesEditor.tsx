@@ -110,7 +110,7 @@ export default function MobilePackagesEditor({
     <div>
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* LEFT — event-type rail */}
-        <div style={{ flex: '0 0 190px', minWidth: 168 }}>
+        <div style={{ flex: '1 1 168px', maxWidth: 260 }}>
           <div style={railLabel}>Event types</div>
           {railTypes.map((t) => {
             const active = selType === t;
@@ -142,7 +142,7 @@ export default function MobilePackagesEditor({
         </div>
 
         {/* RIGHT — flipper + package card */}
-        <div style={{ flex: '1 1 340px', minWidth: 280 }}>
+        <div style={{ flex: '1000 1 300px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.6rem' }}>
             <button type="button" aria-label="Previous package" onClick={() => { setPkgIdx(Math.max(0, idx - 1)); setSelType('general'); }} disabled={idx === 0} style={{ ...navBtn, opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>‹</button>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Package {idx + 1} of {count}</div>
