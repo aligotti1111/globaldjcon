@@ -31,6 +31,7 @@ import {
 } from '@/lib/planner';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import PlannerForm from '../planner/[id]/PlannerForm';
+import PreviewTestButton from './PreviewTestButton';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -182,19 +183,26 @@ export default async function PlannerPreviewPage({
     { k: 'Your number', v: b.phone || '' },
   ].filter((r) => !!r.v);
 
+  // The template being previewed (the DJ's override for this type, else base) —
+  // passed to the test send so the emailed copy matches this preview exactly.
+  const previewPlannerId = override?.id || base.id;
+
   return (
-    <PlannerForm
-      plannerId="preview"
-      fields={fields}
-      initialResponses={responses}
-      initialStatus="sent"
-      djName={djName}
-      hostName={b.requester_name || null}
-      eventDateLabel={fmtDate(b.event_date)}
-      venueName={b.venue_name || null}
-      logoUrl={logoUrl}
-      known={known}
-      preview
-    />
+    <>
+      <PlannerForm
+        plannerId="preview"
+        fields={fields}
+        initialResponses={responses}
+        initialStatus="sent"
+        djName={djName}
+        hostName={b.requester_name || null}
+        eventDateLabel={fmtDate(b.event_date)}
+        venueName={b.venue_name || null}
+        logoUrl={logoUrl}
+        known={known}
+        preview
+      />
+      <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />
+    </>
   );
 }
