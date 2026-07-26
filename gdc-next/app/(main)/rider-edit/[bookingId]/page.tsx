@@ -61,7 +61,7 @@ export default function RiderEditPage() {
   const [note, setNote] = useState<string | null>(null);
   const [sentUrl, setSentUrl] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string | null>(null);
-  const [savedDraft, setSavedDraft] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('draft');
   const [meta, setMeta] = useState<RiderMeta | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -128,11 +128,13 @@ export default function RiderEditPage() {
   }, [bookingId, forcedMode, forcedPdf, libId]);
 
   useEffect(() => { if (bookingId) load(); }, [bookingId, load]);
-  // Editing after a save re-enables Save draft.
-  useEffect(() => { setSavedDraft(false); }, [items, mode, pdfUrl, name]);
 
   const hasContent = mode === 'upload' ? !!pdfUrl : items.length > 0;
   const canDeploy = hasContent && !!name.trim();
+  // Compare CONTENT, not array identity — the editor returns a fresh items
+  // array each render, which would otherwise re-enable the button instantly.
+  const snapshot = JSON.stringify({ items, mode, pdfUrl, name });
+  const savedDraft = savedSnapshot !== null && savedSnapshot === snapshot;
 
   async function saveDraft() {
     setBusy('save'); setErr(null); setNote(null);
@@ -142,7 +144,7 @@ export default function RiderEditPage() {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
-      setNote('Draft saved.'); setSavedDraft(true);
+      setNote('Draft saved.'); setSavedSnapshot(JSON.stringify({ items, mode, pdfUrl, name }));
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setBusy(null); }
   }
@@ -321,7 +323,7 @@ export default function RiderEditPage() {
               {busy === 'test' ? 'Sending…' : 'Send test to my email'}
             </button>
             <button type="button" onClick={saveDraft} disabled={busy !== null || savedDraft}
-              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: 'pointer' }}>
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.65rem 1.2rem', fontWeight: 600, fontSize: '.88rem', cursor: (busy !== null || savedDraft) ? 'not-allowed' : 'pointer', opacity: savedDraft ? 0.55 : 1 }}>
               {busy === 'save' ? 'Saving…' : savedDraft ? 'Saved' : 'Save draft'}
             </button>
             {mode === 'custom' && (
