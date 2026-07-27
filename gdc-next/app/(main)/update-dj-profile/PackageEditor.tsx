@@ -309,7 +309,7 @@ export default function PackageEditor({
                         onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
                         style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginBottom: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
                       >
-                        + Add {minH - 1} hour option
+                        + {minH - 1} hour option
                       </button>
                     )}
                     {tiers.map((t, i) => (
@@ -347,7 +347,7 @@ export default function PackageEditor({
                         onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
                         style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
                       >
-                        + Add {maxH + 1} hour option
+                        + {maxH + 1} hour option
                       </button>
                     )}
                   </>
