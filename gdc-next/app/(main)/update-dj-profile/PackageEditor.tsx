@@ -298,54 +298,61 @@ export default function PackageEditor({
           const firstFree = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((h) => !usedHours.includes(h));
           return (
             <>
-              {tiers.map((t, i) => (
-                <div key={i} className={styles.priceRow}>
-                  <select
-                    value={t.hours}
-                    disabled={reqAll}
-                    aria-label="Event length in hours"
-                    onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, hours: Number(e.target.value) } : x)))}
-                    className={styles.priceRowLabel}
-                    style={{ padding: '.4rem .5rem', borderRadius: 6, background: 'rgba(10,10,16,.9)', color: 'var(--neon, #00f5c4)', border: '1px solid var(--border)' }}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9]
-                      .filter((h) => h === t.hours || !usedHours.includes(h))
-                      .map((h) => (
-                        <option key={h} value={h} style={{ background: '#0c0c12', color: '#fff' }}>{h} Hour Event{isWedding ? ' (Reception)' : ''}</option>
-                      ))}
-                  </select>
-                  <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
-                  <input
-                    type="number"
-                    onWheel={(e) => e.currentTarget.blur()}
-                    min={0}
-                    placeholder="0"
-                    value={t.price}
-                    disabled={reqAll}
-                    onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))}
-                    className={`${styles.priceInput} ${errSet.has('priceTiers') || errSet.has(`price${t.hours}`) ? styles.pkgFieldError : ''}`}
-                  />
-                  {!reqAll && tiers.length > 1 && (
-                    <button
-                      type="button"
-                      aria-label={`Remove ${t.hours} hour option`}
-                      onClick={() => commit(tiers.filter((_, j) => j !== i))}
-                      style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .3rem', marginLeft: '.2rem' }}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!reqAll && firstFree != null && (
-                <button
-                  type="button"
-                  onClick={() => commit([...tiers, { hours: firstFree as number, price: '' }])}
-                  style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.2rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
-                >
-                  + Add Hour Option
-                </button>
-              )}
+              {(() => {
+                const minH = tiers.length ? tiers[0].hours : 0;
+                const maxH = tiers.length ? tiers[tiers.length - 1].hours : 0;
+                return (
+                  <>
+                    {!reqAll && minH > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginBottom: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                      >
+                        + Add {minH - 1} hour option
+                      </button>
+                    )}
+                    {tiers.map((t, i) => (
+                      <div key={i} className={styles.priceRow}>
+                        <span
+                          className={styles.priceRowLabel}
+                          style={{ display: 'inline-flex', alignItems: 'center', padding: '.4rem .5rem', borderRadius: 6, background: 'rgba(10,10,16,.9)', border: '1px solid var(--border)' }}
+                        >{t.hours} Hour Event{isWedding ? ' (Reception)' : ''}</span>
+                        <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
+                        <input
+                          type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
+                          min={0}
+                          placeholder="0"
+                          value={t.price}
+                          disabled={reqAll}
+                          onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))}
+                          className={`${styles.priceInput} ${errSet.has('priceTiers') || errSet.has(`price${t.hours}`) ? styles.pkgFieldError : ''}`}
+                        />
+                        {!reqAll && tiers.length > 1 && (
+                          <button
+                            type="button"
+                            aria-label={`Remove ${t.hours} hour option`}
+                            onClick={() => commit(tiers.filter((_, j) => j !== i))}
+                            style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .3rem', marginLeft: '.2rem' }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {!reqAll && maxH < 9 && (
+                      <button
+                        type="button"
+                        onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                      >
+                        + Add {maxH + 1} hour option
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </>
           );
         })()}
