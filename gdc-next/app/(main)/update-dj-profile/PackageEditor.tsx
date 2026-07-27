@@ -470,23 +470,6 @@ export default function PackageEditor({
         </div>
       </div>
 
-      {/* Setup hours */}
-      <div className={styles.setupRow}>
-        <label className={styles.pkgFieldLabel} style={{ margin: 0 }}>
-          The number of hours required to set up prior to event start time:
-        </label>
-        <select
-          value={(pkg as { setupHours?: string }).setupHours || ''}
-          onChange={(e) => updateExtra('setupHours', e.target.value)}
-          className={styles.setupSelect}
-        >
-          <option value="">—</option>
-          {PKG_SETUP_HOURS.map((h) => (
-            <option key={h} value={h}>{h} hr{h === '1' ? '' : 's'}</option>
-          ))}
-        </select>
-      </div>
-
       <div className={styles.pkgDivider} />
 
       {/* Photos — up to 4 slots. Slot 1 is the main photo shown on the
