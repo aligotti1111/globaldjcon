@@ -21,8 +21,9 @@ import {
   setOverride,
   addPackageSlot,
   removePackageSlot,
-  pullTypeOut,
-  putTypeBack,
+  pullTypeOutAt,
+  putTypeBackAt,
+  typesForIndex,
   type MobPackagesNew,
   type Pkg,
 } from '@/app/(main)/[slug]/packageModel';
@@ -61,11 +62,11 @@ export default function MobilePackagesEditor({
   const count = mob.general.length;
   const idx = Math.min(pkgIdx, Math.max(0, count - 1));
 
-  const railTypes = useMemo(() => ['general', ...Object.keys(mob.overrides)], [mob.overrides]);
-  const addableTypes = useMemo(
-    () => selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]),
-    [selectedEventTypes, mob.overrides],
-  );
+  // Event types are PER PACKAGE: which types a package prices on its own is
+  // independent of every other package.
+  const typesForPkg = (i: number) => typesForIndex(mob, i);
+  const addableForPkg = (i: number) =>
+    selectedEventTypes.filter((t) => t !== 'general' && !typesForPkg(i).includes(t));
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
   function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
@@ -83,8 +84,8 @@ export default function MobilePackagesEditor({
     if (selType === 'general') update(setGeneral(mob, idx, next as Pkg));
     else update(setOverride(mob, selType, idx, next as Pkg));
   }
-  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelType(type); }
-  function removeEventType(type: string) { update(putTypeBack(mob, type)); if (selType === type) setSelType('general'); }
+  function addEventType(type: string) { update(pullTypeOutAt(mob, type, idx)); setSelType(type); }
+  function removeEventType(type: string) { update(putTypeBackAt(mob, type, idx)); if (selType === type) setSelType('general'); }
   function addPackage() {
     const n = addPackageSlot(mob);
     setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
@@ -119,112 +120,111 @@ export default function MobilePackagesEditor({
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
   }
 
-  const navBtn: CSSProperties = { background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', width: 34, height: 34, cursor: 'pointer', fontSize: '1.15rem', lineHeight: 1 };
-  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .5rem .15rem' };
-  const sideItem = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-    padding: '.5rem .6rem', marginBottom: 5, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', letterSpacing: '.06em', textTransform: 'uppercase',
-    background: active ? 'var(--neon-dim)' : 'transparent',
-    color: active ? 'var(--neon)' : '#fff',
+  const pill = (active: boolean): CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', gap: '.4rem',
+    padding: '.4rem .7rem', borderRadius: 999, cursor: 'pointer',
+    fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase',
+    background: active ? 'var(--neon)' : 'rgba(10,10,16,.6)',
+    color: active ? '#04121a' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
+    fontWeight: active ? 700 : 400,
   });
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {/* LEFT — event-type rail */}
-        <div style={{ flex: '1 1 168px', maxWidth: 260 }}>
-          <div style={railLabel}>Event types</div>
-          {railTypes.map((t) => {
-            const active = selType === t;
-            return (
-              <button key={t} type="button" onClick={() => setSelType(t)} style={sideItem(active)}>
-                <span>
-                  {labelFor(t)}
-                  {t === 'general' && <span style={{ fontSize: '.65rem', color: 'var(--muted)', marginLeft: '.3rem' }}>· base</span>}
-                </span>
-                {t !== 'general' && (
-                  <span role="button" aria-label={`Put ${labelFor(t)} back under General`} title="Back under General"
-                    onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                    style={{ color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', padding: '0 .1rem' }}>×</span>
-                )}
-              </button>
-            );
-          })}
-          {addableTypes.length > 0 && (
-            <select
-              aria-label="Add an event type with its own price"
-              value=""
-              onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-              style={{ width: '100%', marginTop: 4, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+      {mob.general.map((_, i) => {
+        const open = i === idx;
+        const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
+        const myTypes = typesForPkg(i);
+        const addable = addableForPkg(i);
+        return (
+          <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 12, scrollMarginTop: 90 }}>
+            {/* FOLD HEADER — prominent package number */}
+            <button
+              type="button"
+              onClick={() => { setPkgIdx(i); setSelType('general'); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
+                background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
+                border: `1px solid ${open ? 'var(--neon)' : 'var(--border)'}`,
+                borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
+              }}
             >
-              <option value="">+ Add event type</option>
-              {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
-            </select>
-          )}
-        </div>
+              <span style={{
+                flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minWidth: 40, height: 40, padding: '0 .5rem', borderRadius: 9, background: 'var(--neon)', color: '#04121a',
+                fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.02em',
+              }}>{i + 1}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.56rem', letterSpacing: '.16em', textTransform: 'uppercase', color: open ? 'var(--neon)' : 'var(--muted)' }}>Package {i + 1}</span>
+                <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', letterSpacing: '.04em', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rawTitle || 'Untitled package'}</span>
+              </span>
+              <span style={{ color: open ? 'var(--neon)' : 'var(--muted)', fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+            </button>
 
-        {/* RIGHT — stacked, foldable packages */}
-        <div style={{ flex: '1000 1 300px', minWidth: 0 }}>
-          {mob.general.map((_, i) => {
-            const open = i === idx;
-            const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
-            return (
-              <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 10, scrollMarginTop: 90 }}>
-                <button
-                  type="button"
-                  onClick={() => { setPkgIdx(i); setSelType('general'); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                    background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                    border: `1px solid ${open ? 'var(--neon)' : 'var(--border)'}`,
-                    borderRadius: open ? '8px 8px 0 0' : 8, padding: '.7rem .9rem', cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '.6rem', minWidth: 0 }}>
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon)' }}>Package {i + 1}</span>
-                    {rawTitle && <span style={{ color: '#fff', fontSize: '.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rawTitle}</span>}
-                  </span>
-                  <span style={{ color: 'var(--muted)', fontSize: '.9rem', flexShrink: 0, marginLeft: '.6rem' }}>{open ? '▾' : '▸'}</span>
-                </button>
+            {open && (
+              <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
+                {/* PER-PACKAGE EVENT TYPES — collapse with the package */}
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.5rem' }}>Price this package for</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginBottom: '1rem' }}>
+                  <button type="button" onClick={() => setSelType('general')} style={pill(selType === 'general')}>General &middot; base</button>
+                  {myTypes.map((t) => (
+                    <span key={t} style={pill(selType === t)}>
+                      <span onClick={() => setSelType(t)} style={{ cursor: 'pointer' }}>{labelFor(t)}</span>
+                      <span
+                        role="button"
+                        aria-label={`Put ${labelFor(t)} back under General`}
+                        title="Back under General"
+                        onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
+                        style={{ cursor: 'pointer', opacity: 0.85 }}
+                      >&times;</span>
+                    </span>
+                  ))}
+                  {addable.length > 0 && (
+                    <select
+                      aria-label="Add an event type with its own price"
+                      value=""
+                      onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
+                      style={{ background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 999, padding: '.4rem .6rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}
+                    >
+                      <option value="">+ Add event type</option>
+                      {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
+                    </select>
+                  )}
+                </div>
 
-                {open && (
-                  <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                      {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
-                    </div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
+                  {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                </div>
 
-                    <PackageEditor
-                      key={`${selType}-${idx}`}
-                      cat={catFor(selType)}
-                      idx={idx}
-                      pkg={currentPkg}
-                      totalCount={count}
-                      userId={userId}
-                      currency={currency}
-                      onChange={onEditPkg}
-                      onRemove={() => {}}
-                      hideOwnHeader
-                      generalPhotos={generalPhotos}
-                    />
+                <PackageEditor
+                  key={`${i}-${selType}`}
+                  cat={catFor(selType)}
+                  idx={idx}
+                  pkg={currentPkg}
+                  totalCount={count}
+                  userId={userId}
+                  currency={currency}
+                  onChange={onEditPkg}
+                  onRemove={() => {}}
+                  hideOwnHeader
+                  generalPhotos={generalPhotos}
+                />
 
-                    <div className={styles.pkgSaveRow}>
-                      {count > 1 && (
-                        <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-                      )}
-                      {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
-                      {!err && <span style={{ flex: 1 }} />}
-                      {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>✓ Saved</span>}
-                      <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
-                    </div>
-                  </div>
-                )}
+                <div className={styles.pkgSaveRow}>
+                  {count > 1 && (
+                    <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+                  )}
+                  {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
+                  {!err && <span style={{ flex: 1 }} />}
+                  {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
+                  <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
+            )}
+          </div>
+        );
+      })}
 
       <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
     </div>
