@@ -174,7 +174,7 @@ export default function MobilePackagesEditor({
                   <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
                     <div style={railLabel}>Event type pricing</div>
                     <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
-                      <span>General <span style={{ fontSize: '.65rem', color: 'var(--muted)', marginLeft: '.3rem' }}>&middot; base</span></span>
+                      <span>General events</span>
                     </button>
                     {myTypes.map((t) => {
                       const active = selType === t;
@@ -207,7 +207,11 @@ export default function MobilePackagesEditor({
                   {/* RIGHT — the selected type's price card */}
                   <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
                     <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                      {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                      {selType === 'general'
+                        ? (addable.length
+                            ? `General events — covers ${addable.map(labelFor).join(', ')}. Set the title, description, photos & price here; these event types use it unless you give one its own pricing.`
+                            : 'General events — every selected event type has its own pricing, so nothing falls under General right now.')
+                        : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
                     </div>
 
                     <PackageEditor
