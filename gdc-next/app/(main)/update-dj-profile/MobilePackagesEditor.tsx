@@ -123,8 +123,8 @@ export default function MobilePackagesEditor({
   const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .5rem .15rem' };
   const sideItem = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-    padding: '.5rem .6rem', marginBottom: 5, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', letterSpacing: '.06em', textTransform: 'uppercase',
+    padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '.9rem', lineHeight: 1.15, letterSpacing: '.06em', textTransform: 'uppercase',
     background: active ? 'var(--neon-dim)' : 'transparent',
     color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
