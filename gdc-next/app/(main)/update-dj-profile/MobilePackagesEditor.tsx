@@ -150,7 +150,7 @@ export default function MobilePackagesEditor({
             {/* FOLD HEADER — prominent package number */}
             <button
               type="button"
-              onClick={() => { setPkgIdx(i); setSelType('general'); }}
+              onClick={() => { if (i === idx) { setPkgIdx(-1); } else { setPkgIdx(i); setSelType('general'); } }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
                 background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
