@@ -175,7 +175,7 @@ export default function MobilePackagesEditor({
                 <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   {/* LEFT — event-type rail, inside the fold, for THIS package */}
                   <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
-                    <div style={railLabel}>Price for</div>
+                    <div style={railLabel}>Event type pricing</div>
                     <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
                       <span>General <span style={{ fontSize: '.65rem', color: 'var(--muted)', marginLeft: '.3rem' }}>&middot; base</span></span>
                     </button>
