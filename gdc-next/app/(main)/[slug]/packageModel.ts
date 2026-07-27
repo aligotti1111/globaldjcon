@@ -1,243 +1,196 @@
-'use client';
-
-// MobilePackagesEditor — per-event-type package editor, desktop sidebar layout.
+// packageModel — the canonical NEW shape of booking_settings.mob_packages and a
+// pure reader that lifts EITHER stored shape into it, in memory, without ever
+// writing. This is what makes migration lazy: existing data is left untouched;
+// the editor reads through normalizeMobPackages() and only the editor's save
+// path writes the new shape.
 //
-// LEFT: event-type rail (General = base, then any types pulled out for their
-// own price, then "+ Add event type"). RIGHT: package flipper + the selected
-// type's package card (reuses PackageEditor). General is the base; every other
-// type inherits its title/description/photos until changed. Reads any stored
-// shape via normalizeMobPackages, writes the new { general, overrides } shape.
+//   OLD:  { general: Pkg[], wedding: Pkg[], mitzvah: Pkg[] }
+//   NEW:  { general: Pkg[], overrides: { [eventType: string]: Pkg[] } }
+//
+// A migrated wedding/mitzvah package is kept as a FULL override (a copy of the
+// old bucket package). resolvePackage()'s new-shape merge skips blank override
+// fields, so a full override resolves BYTE-IDENTICALLY to the old bucket
+// lookup — proven by the parity tests. That's the whole point: normalize is a
+// re-key, not a re-price.
 
-import { useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
-import styles from './updateDjProfile.module.css';
-import PackageEditor from './PackageEditor';
-import type { MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
-import { MOB_EVENT_LABELS } from '@/lib/constants';
-import {
-  normalizeMobPackages,
-  serializeMobPackages,
-  setGeneral,
-  setOverride,
-  addPackageSlot,
-  removePackageSlot,
-  pullTypeOutAt,
-  putTypeBackAt,
-  typesForIndex,
-  type MobPackagesNew,
-  type Pkg,
-} from '@/app/(main)/[slug]/packageModel';
+export type Pkg = Record<string, unknown>;
 
-function catFor(eventType: string): 'general' | 'wedding' | 'mitzvah' {
-  if (eventType === 'weddings') return 'wedding';
-  if (eventType === 'mitzvah') return 'mitzvah';
-  return 'general';
-}
-function labelFor(eventType: string): string {
-  return eventType === 'general' ? 'General' : (MOB_EVENT_LABELS[eventType] || eventType);
+export interface MobPackagesNew {
+  general: Pkg[];
+  overrides: Record<string, Pkg[]>;
 }
 
-export default function MobilePackagesEditor({
-  mobPackages,
-  selectedEventTypes,
-  userId,
-  currency,
-  onSave,
-}: {
-  mobPackages: Record<string, unknown> | null | undefined;
-  selectedEventTypes: string[];
-  userId: string;
-  currency: string;
-  onSave: (next: MobPackagesNew) => void;
-}) {
-  const initial = useMemo(() => normalizeMobPackages(mobPackages), [mobPackages]);
-  const [mob, setMob] = useState<MobPackagesNew>(initial);
-  const [pkgIdx, setPkgIdx] = useState(0);
-  const [selType, setSelType] = useState<string>('general');
-  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
-  const [saved, setSaved] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+// Old bucket key -> the event_type the new shape keys overrides by.
+// (Storage used 'wedding'/'mitzvah'; the app's event_type strings are
+// 'weddings'/'mitzvah'. New shape keys by the event_type.)
+const OLD_BUCKET_TO_EVENT: Record<string, string> = {
+  wedding: 'weddings',
+  mitzvah: 'mitzvah',
+};
 
-  const count = mob.general.length;
-  const idx = Math.min(pkgIdx, Math.max(0, count - 1));
+function isNewShape(mob: Record<string, unknown>): boolean {
+  return !!mob && typeof mob === 'object' && 'overrides' in mob;
+}
 
-  // Event types are PER PACKAGE: which types a package prices on its own is
-  // independent of every other package.
-  const typesForPkg = (i: number) => typesForIndex(mob, i);
-  const addableForPkg = (i: number) =>
-    selectedEventTypes.filter((t) => t !== 'general' && !typesForPkg(i).includes(t));
-  const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
+/**
+ * Lift any stored mob_packages into the canonical new shape, in memory.
+ * Never mutates the input; returns a fresh object.
+ */
+export function normalizeMobPackages(
+  stored: Record<string, unknown> | null | undefined,
+): MobPackagesNew {
+  const mob = (stored || {}) as Record<string, unknown>;
+  const general = Array.isArray(mob.general) ? (mob.general as Pkg[]).slice() : [];
 
-  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
-
-  const currentPkg: MobilePackage = (
-    selType === 'general' ? (mob.general[idx] || {}) : (mob.overrides[selType]?.[idx] || {})
-  ) as MobilePackage;
-
-  const generalPhotos = useMemo(() => {
-    const g = (mob.general[idx] || {}) as { photo?: string; photos?: string[] };
-    return { photo: g.photo || '', photos: Array.isArray(g.photos) ? g.photos : [] };
-  }, [mob.general, idx]);
-
-  function onEditPkg(next: MobilePackage) {
-    if (selType === 'general') update(setGeneral(mob, idx, next as Pkg));
-    else update(setOverride(mob, selType, idx, next as Pkg));
-  }
-  function addEventType(type: string) { update(pullTypeOutAt(mob, type, idx)); setSelType(type); }
-  function removeEventType(type: string) { update(putTypeBackAt(mob, type, idx)); if (selType === type) setSelType('general'); }
-  function addPackage() {
-    const n = addPackageSlot(mob);
-    setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
-    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  }
-  function removePackage() {
-    if (count <= 1) return;
-    const n = removePackageSlot(mob, idx);
-    setMob(n); setSaved(false); setPkgIdx(Math.max(0, idx - 1)); setSelType('general');
-  }
-  // Details is rich-text HTML — strip tags to tell "real content" from an
-  // empty editor (<br>, <div></div>, whitespace).
-  function textEmpty(v: unknown): boolean {
-    if (v == null) return true;
-    return String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
-  }
-  function save() {
-    for (let i = 0; i < mob.general.length; i++) {
-      const g = (mob.general[i] || {}) as { title?: string; details?: string };
-      if (textEmpty(g.title) || textEmpty(g.details)) {
-        setErr(`Package ${i + 1} needs a title and description before you can save.`);
-        setPkgIdx(i); setSelType('general');
-        return;
-      }
+  if (isNewShape(mob)) {
+    const rawOv = (mob.overrides as Record<string, unknown> | undefined) || {};
+    const overrides: Record<string, Pkg[]> = {};
+    for (const k of Object.keys(rawOv)) {
+      if (Array.isArray(rawOv[k])) overrides[k] = (rawOv[k] as Pkg[]).slice();
     }
-    setErr(null);
-    const ser = serializeMobPackages(mob);
-    onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
+    return { general, overrides };
   }
 
-  if (count === 0) {
-    return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
+  // OLD shape -> re-key wedding/mitzvah buckets as full overrides.
+  const overrides: Record<string, Pkg[]> = {};
+  for (const bucket of Object.keys(OLD_BUCKET_TO_EVENT)) {
+    const arr = mob[bucket];
+    if (Array.isArray(arr) && arr.length) {
+      overrides[OLD_BUCKET_TO_EVENT[bucket]] = (arr as Pkg[]).slice();
+    }
   }
+  return { general, overrides };
+}
 
-  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .5rem .15rem' };
-  const sideItem = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-    padding: '.5rem .6rem', marginBottom: 5, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', letterSpacing: '.06em', textTransform: 'uppercase',
-    background: active ? 'var(--neon-dim)' : 'transparent',
-    color: active ? 'var(--neon)' : '#fff',
-    border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
-  });
+// ── Editor mutation API ──────────────────────────────────────────────────
+// Pure helpers the new package editor calls. Each takes the canonical new
+// shape and returns a fresh new-shape object (never mutates). The editor holds
+// state in the new shape; only on Save does BookingTab write it to
+// booking_settings.mob_packages.
 
-  const myTypes = typesForPkg(idx);
-  const addable = addableForPkg(idx);
+function cloneNew(mob: MobPackagesNew): MobPackagesNew {
+  const overrides: Record<string, Pkg[]> = {};
+  for (const k of Object.keys(mob.overrides)) overrides[k] = mob.overrides[k].slice();
+  return { general: mob.general.slice(), overrides };
+}
 
-  return (
-    <div>
-      {mob.general.map((_, i) => {
-        const open = i === idx;
-        const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
-        return (
-          <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 12, scrollMarginTop: 90 }}>
-            {/* FOLD HEADER — prominent package number */}
-            <button
-              type="button"
-              onClick={() => { setPkgIdx(i); setSelType('general'); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
-                background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                border: `1px solid ${open ? 'var(--neon)' : 'var(--border)'}`,
-                borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <span style={{
-                flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: 40, height: 40, padding: '0 .5rem', borderRadius: 9, background: 'var(--neon)', color: '#04121a',
-                fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.02em',
-              }}>{i + 1}</span>
-              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.56rem', letterSpacing: '.16em', textTransform: 'uppercase', color: open ? 'var(--neon)' : 'var(--muted)' }}>Package {i + 1}</span>
-                <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', letterSpacing: '.04em', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rawTitle || 'Untitled package'}</span>
-              </span>
-              <span style={{ color: open ? 'var(--neon)' : 'var(--muted)', fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
-            </button>
+/** A brand-new blank package/override ( {} = inherits display, blank prices ). */
+export function blankPackage(): Pkg { return {}; }
 
-            {open && (
-              <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  {/* LEFT — event-type rail, inside the fold, for THIS package */}
-                  <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
-                    <div style={railLabel}>Price for</div>
-                    <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
-                      <span>General <span style={{ fontSize: '.65rem', color: 'var(--muted)', marginLeft: '.3rem' }}>&middot; base</span></span>
-                    </button>
-                    {myTypes.map((t) => {
-                      const active = selType === t;
-                      return (
-                        <button key={t} type="button" onClick={() => setSelType(t)} style={sideItem(active)}>
-                          <span>{labelFor(t)}</span>
-                          <span
-                            role="button"
-                            aria-label={`Put ${labelFor(t)} back under General`}
-                            title="Back under General"
-                            onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                            style={{ color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', padding: '0 .1rem' }}
-                          >&times;</span>
-                        </button>
-                      );
-                    })}
-                    {addable.length > 0 && (
-                      <select
-                        aria-label="Add an event type with its own price"
-                        value=""
-                        onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-                        style={{ width: '100%', marginTop: 4, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-                      >
-                        <option value="">+ Add event type</option>
-                        {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
-                      </select>
-                    )}
-                  </div>
+// A slot the resolver treats as "this package inherits General for this type"
+// (resolvePackage does `overrides[type]?.[index] || null` -> null = inherit).
+// Distinct from blankPackage() {} which means "priced on its own -> quote".
+const NULL_PKG = null as unknown as Pkg;
 
-                  {/* RIGHT — the selected type's price card */}
-                  <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                      {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
-                    </div>
+/** Number of package slots (indexes). Driven by the General array length. */
+export function packageCount(mob: MobPackagesNew): number { return mob.general.length; }
 
-                    <PackageEditor
-                      key={`${i}-${selType}`}
-                      cat={catFor(selType)}
-                      idx={idx}
-                      pkg={currentPkg}
-                      totalCount={count}
-                      userId={userId}
-                      currency={currency}
-                      onChange={onEditPkg}
-                      onRemove={() => {}}
-                      hideOwnHeader
-                      generalPhotos={generalPhotos}
-                    />
+/** The event types that currently have their own pricing (pulled-out / specialty). */
+export function pulledOutTypes(mob: MobPackagesNew): string[] { return Object.keys(mob.overrides); }
 
-                    <div className={styles.pkgSaveRow}>
-                      {count > 1 && (
-                        <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-                      )}
-                      {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
-                      {!err && <span style={{ flex: 1 }} />}
-                      {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
-                      <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+/** Set the General (base) package at an index. */
+export function setGeneral(mob: MobPackagesNew, index: number, pkg: Pkg): MobPackagesNew {
+  const next = cloneNew(mob);
+  while (next.general.length <= index) next.general.push(blankPackage());
+  next.general[index] = pkg;
+  return next;
+}
 
-      <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
-    </div>
-  );
+/** Set an event type's override package at an index. */
+export function setOverride(mob: MobPackagesNew, type: string, index: number, pkg: Pkg): MobPackagesNew {
+  const next = cloneNew(mob);
+  const arr = (next.overrides[type] || []).slice();
+  while (arr.length <= index) arr.push(NULL_PKG);
+  arr[index] = pkg;
+  next.overrides[type] = arr;
+  return next;
+}
+
+/** Add a package slot: push a blank onto General and every override array. */
+export function addPackageSlot(mob: MobPackagesNew): MobPackagesNew {
+  const next = cloneNew(mob);
+  next.general.push(blankPackage());
+  for (const k of Object.keys(next.overrides)) next.overrides[k].push(NULL_PKG);
+  return next;
+}
+
+/** Remove a package slot at an index from General and every override array. */
+export function removePackageSlot(mob: MobPackagesNew, index: number): MobPackagesNew {
+  const next = cloneNew(mob);
+  next.general.splice(index, 1);
+  for (const k of Object.keys(next.overrides)) next.overrides[k].splice(index, 1);
+  return next;
+}
+
+/**
+ * Pull an event type OUT of General pricing: give it its own override array,
+ * one blank per package slot. Blank overrides inherit display from General and
+ * carry blank prices (-> quote until the DJ enters numbers), per spec.
+ * No-op if the type is already pulled out.
+ */
+export function pullTypeOut(mob: MobPackagesNew, type: string): MobPackagesNew {
+  if (mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  next.overrides[type] = next.general.map(() => blankPackage());
+  return next;
+}
+
+/** Put an event type BACK under General pricing (remove its overrides). */
+export function putTypeBack(mob: MobPackagesNew, type: string): MobPackagesNew {
+  if (!mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  delete next.overrides[type];
+  return next;
+}
+
+/**
+ * Serialize for storage. Keeps EVERY pulled-out type's override array (its very
+ * presence is what marks the type as "priced on its own" — a blank override
+ * resolves to a quote, NOT to General's prices, so it must be preserved). Pads
+ * each override array to the General length so indexes never drift. To put a
+ * type back under General pricing, call putTypeBack() explicitly — serialize
+ * never second-guesses that.
+ */
+export function serializeMobPackages(mob: MobPackagesNew): MobPackagesNew {
+  const n = mob.general.length;
+  const overrides: Record<string, Pkg[]> = {};
+  for (const k of Object.keys(mob.overrides)) {
+    const arr = mob.overrides[k].slice(0, n);
+    while (arr.length < n) arr.push(NULL_PKG);
+    // Drop a type entirely if no package is priced on its own for it.
+    if (arr.every((x) => x == null)) continue;
+    overrides[k] = arr;
+  }
+  return { general: mob.general.slice(), overrides };
+}
+
+// ── Per-package (per-index) event-type pricing ──────────────────────────────
+// Each package independently decides which event types it prices on its own.
+// A type's override array is index-aligned with General: a non-null slot at i
+// means "package i is priced on its own for this type"; null means "inherit".
+
+/** Event types that package `index` prices on its own (has a non-null slot). */
+export function typesForIndex(mob: MobPackagesNew, index: number): string[] {
+  return Object.keys(mob.overrides).filter((t) => mob.overrides[t][index] != null);
+}
+
+/** Pull a type out of General FOR ONE package: blank price -> quote until set. */
+export function pullTypeOutAt(mob: MobPackagesNew, type: string, index: number): MobPackagesNew {
+  const next = cloneNew(mob);
+  const arr = (next.overrides[type] || next.general.map(() => NULL_PKG)).slice();
+  while (arr.length <= index) arr.push(NULL_PKG);
+  arr[index] = blankPackage();
+  next.overrides[type] = arr;
+  return next;
+}
+
+/** Put a type BACK under General FOR ONE package (that slot inherits again). */
+export function putTypeBackAt(mob: MobPackagesNew, type: string, index: number): MobPackagesNew {
+  if (!mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  const arr = next.overrides[type].slice();
+  if (index < arr.length) arr[index] = NULL_PKG;
+  if (arr.every((x) => x == null)) delete next.overrides[type];
+  else next.overrides[type] = arr;
+  return next;
 }
