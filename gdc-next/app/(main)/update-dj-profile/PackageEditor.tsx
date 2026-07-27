@@ -306,12 +306,12 @@ export default function PackageEditor({
                     aria-label="Event length in hours"
                     onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, hours: Number(e.target.value) } : x)))}
                     className={styles.priceRowLabel}
-                    style={{ padding: '.25rem .35rem', borderRadius: 6 }}
+                    style={{ padding: '.4rem .5rem', borderRadius: 6, background: 'rgba(10,10,16,.9)', color: 'var(--neon, #00f5c4)', border: '1px solid var(--border)' }}
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9]
                       .filter((h) => h === t.hours || !usedHours.includes(h))
                       .map((h) => (
-                        <option key={h} value={h}>{h} Hour Event{isWedding ? ' (Reception)' : ''}</option>
+                        <option key={h} value={h} style={{ background: '#0c0c12', color: '#fff' }}>{h} Hour Event{isWedding ? ' (Reception)' : ''}</option>
                       ))}
                   </select>
                   <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
