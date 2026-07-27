@@ -378,6 +378,15 @@ export default function PackageEditor({
           </span>
         </div>
 
+        {!reqAll && (
+          <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0', maxWidth: 560 }}>
+            <span style={{ color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.6rem' }}>How these prices apply</span><br />
+            If a host books fewer hours than your shortest option, they&rsquo;re quoted that shortest option&rsquo;s price (rounded up to your nearest rate). If they book more than your longest option, the extra time is charged at your hourly overtime rate.
+            <br /><br />
+            <span style={{ color: '#fff' }}>Example:</span> you list 4 hours at {cur}500 and 6 hours at {cur}800, with {cur}100/hr overtime. A 3-hour booking is quoted {cur}500 (your 4-hour rate). A 7-hour booking is quoted {cur}900 ({cur}800 plus one hour of overtime).
+          </p>
+        )}
+
         {/* Cocktail block — WEDDING ONLY. Hidden when reqAll. General and
             Mitzvah packages do not offer a cocktail-hour option. */}
         {!reqAll && isWedding && (
