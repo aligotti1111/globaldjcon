@@ -137,7 +137,14 @@ export default function MobilePackagesEditor({
     <div>
       {mob.general.map((_, i) => {
         const open = i === idx;
-        const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
+        // Header name: when open on an event type that gave itself its own title,
+        // show that; otherwise fall back to the General (base) title. Collapsed
+        // always shows General, since selType resets to 'general' on collapse.
+        const strip = (v: unknown) => String(v || '').replace(/<[^>]*>/g, '').trim();
+        const baseTitle = strip((mob.general[i] as { title?: string })?.title);
+        const ovForHeader = open && selType !== 'general'
+          ? (mob.overrides[selType]?.[i] as { title?: string } | null | undefined) : null;
+        const rawTitle = strip(ovForHeader?.title) || baseTitle;
         return (
           <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 12, scrollMarginTop: 90 }}>
             {/* FOLD HEADER — prominent package number */}
