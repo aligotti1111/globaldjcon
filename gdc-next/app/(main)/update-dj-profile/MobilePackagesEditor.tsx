@@ -60,7 +60,7 @@ export default function MobilePackagesEditor({
   const cardRef = useRef<HTMLDivElement>(null);
 
   const count = mob.general.length;
-  const idx = Math.min(pkgIdx, Math.max(0, count - 1));
+  const idx = pkgIdx < 0 ? -1 : Math.min(pkgIdx, Math.max(0, count - 1));
 
   // Event types are PER PACKAGE: which types a package prices on its own is
   // independent of every other package.
