@@ -120,23 +120,24 @@ export default function MobilePackagesEditor({
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
   }
 
-  const pill = (active: boolean): CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', gap: '.4rem',
-    padding: '.4rem .7rem', borderRadius: 999, cursor: 'pointer',
-    fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase',
-    background: active ? 'var(--neon)' : 'rgba(10,10,16,.6)',
-    color: active ? '#04121a' : '#fff',
+  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .5rem .15rem' };
+  const sideItem = (active: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+    padding: '.5rem .6rem', marginBottom: 5, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', letterSpacing: '.06em', textTransform: 'uppercase',
+    background: active ? 'var(--neon-dim)' : 'transparent',
+    color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
-    fontWeight: active ? 700 : 400,
   });
+
+  const myTypes = typesForPkg(idx);
+  const addable = addableForPkg(idx);
 
   return (
     <div>
       {mob.general.map((_, i) => {
         const open = i === idx;
         const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
-        const myTypes = typesForPkg(i);
-        const addable = addableForPkg(i);
         return (
           <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 12, scrollMarginTop: 90 }}>
             {/* FOLD HEADER — prominent package number */}
@@ -164,61 +165,71 @@ export default function MobilePackagesEditor({
 
             {open && (
               <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
-                {/* PER-PACKAGE EVENT TYPES — collapse with the package */}
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.5rem' }}>Price this package for</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginBottom: '1rem' }}>
-                  <button type="button" onClick={() => setSelType('general')} style={pill(selType === 'general')}>General &middot; base</button>
-                  {myTypes.map((t) => (
-                    <span key={t} style={pill(selType === t)}>
-                      <span onClick={() => setSelType(t)} style={{ cursor: 'pointer' }}>{labelFor(t)}</span>
-                      <span
-                        role="button"
-                        aria-label={`Put ${labelFor(t)} back under General`}
-                        title="Back under General"
-                        onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                        style={{ cursor: 'pointer', opacity: 0.85 }}
-                      >&times;</span>
-                    </span>
-                  ))}
-                  {addable.length > 0 && (
-                    <select
-                      aria-label="Add an event type with its own price"
-                      value=""
-                      onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-                      style={{ background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 999, padding: '.4rem .6rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}
-                    >
-                      <option value="">+ Add event type</option>
-                      {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
-                    </select>
-                  )}
-                </div>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  {/* LEFT — event-type rail, inside the fold, for THIS package */}
+                  <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
+                    <div style={railLabel}>Price for</div>
+                    <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
+                      <span>General <span style={{ fontSize: '.65rem', color: 'var(--muted)', marginLeft: '.3rem' }}>&middot; base</span></span>
+                    </button>
+                    {myTypes.map((t) => {
+                      const active = selType === t;
+                      return (
+                        <button key={t} type="button" onClick={() => setSelType(t)} style={sideItem(active)}>
+                          <span>{labelFor(t)}</span>
+                          <span
+                            role="button"
+                            aria-label={`Put ${labelFor(t)} back under General`}
+                            title="Back under General"
+                            onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
+                            style={{ color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', padding: '0 .1rem' }}
+                          >&times;</span>
+                        </button>
+                      );
+                    })}
+                    {addable.length > 0 && (
+                      <select
+                        aria-label="Add an event type with its own price"
+                        value=""
+                        onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
+                        style={{ width: '100%', marginTop: 4, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+                      >
+                        <option value="">+ Add event type</option>
+                        {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
+                      </select>
+                    )}
+                  </div>
 
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                  {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
-                </div>
+                  {/* RIGHT — the selected type's price card */}
+                  <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
+                      {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                    </div>
 
-                <PackageEditor
-                  key={`${i}-${selType}`}
-                  cat={catFor(selType)}
-                  idx={idx}
-                  pkg={currentPkg}
-                  totalCount={count}
-                  userId={userId}
-                  currency={currency}
-                  onChange={onEditPkg}
-                  onRemove={() => {}}
-                  hideOwnHeader
-                  generalPhotos={generalPhotos}
-                />
+                    <PackageEditor
+                      key={`${i}-${selType}`}
+                      cat={catFor(selType)}
+                      idx={idx}
+                      pkg={currentPkg}
+                      totalCount={count}
+                      userId={userId}
+                      currency={currency}
+                      onChange={onEditPkg}
+                      onRemove={() => {}}
+                      hideOwnHeader
+                      generalPhotos={generalPhotos}
+                    />
 
-                <div className={styles.pkgSaveRow}>
-                  {count > 1 && (
-                    <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-                  )}
-                  {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
-                  {!err && <span style={{ flex: 1 }} />}
-                  {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
-                  <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+                    <div className={styles.pkgSaveRow}>
+                      {count > 1 && (
+                        <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+                      )}
+                      {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
+                      {!err && <span style={{ flex: 1 }} />}
+                      {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
+                      <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
