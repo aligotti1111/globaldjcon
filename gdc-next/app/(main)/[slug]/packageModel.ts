@@ -77,6 +77,11 @@ function cloneNew(mob: MobPackagesNew): MobPackagesNew {
 /** A brand-new blank package/override ( {} = inherits display, blank prices ). */
 export function blankPackage(): Pkg { return {}; }
 
+// A slot the resolver treats as "this package inherits General for this type"
+// (resolvePackage does `overrides[type]?.[index] || null` -> null = inherit).
+// Distinct from blankPackage() {} which means "priced on its own -> quote".
+const NULL_PKG = null as unknown as Pkg;
+
 /** Number of package slots (indexes). Driven by the General array length. */
 export function packageCount(mob: MobPackagesNew): number { return mob.general.length; }
 
@@ -95,7 +100,7 @@ export function setGeneral(mob: MobPackagesNew, index: number, pkg: Pkg): MobPac
 export function setOverride(mob: MobPackagesNew, type: string, index: number, pkg: Pkg): MobPackagesNew {
   const next = cloneNew(mob);
   const arr = (next.overrides[type] || []).slice();
-  while (arr.length <= index) arr.push(blankPackage());
+  while (arr.length <= index) arr.push(NULL_PKG);
   arr[index] = pkg;
   next.overrides[type] = arr;
   return next;
@@ -105,7 +110,7 @@ export function setOverride(mob: MobPackagesNew, type: string, index: number, pk
 export function addPackageSlot(mob: MobPackagesNew): MobPackagesNew {
   const next = cloneNew(mob);
   next.general.push(blankPackage());
-  for (const k of Object.keys(next.overrides)) next.overrides[k].push(blankPackage());
+  for (const k of Object.keys(next.overrides)) next.overrides[k].push(NULL_PKG);
   return next;
 }
 
@@ -151,8 +156,41 @@ export function serializeMobPackages(mob: MobPackagesNew): MobPackagesNew {
   const overrides: Record<string, Pkg[]> = {};
   for (const k of Object.keys(mob.overrides)) {
     const arr = mob.overrides[k].slice(0, n);
-    while (arr.length < n) arr.push(blankPackage());
+    while (arr.length < n) arr.push(NULL_PKG);
+    // Drop a type entirely if no package is priced on its own for it.
+    if (arr.every((x) => x == null)) continue;
     overrides[k] = arr;
   }
   return { general: mob.general.slice(), overrides };
+}
+
+// ── Per-package (per-index) event-type pricing ──────────────────────────────
+// Each package independently decides which event types it prices on its own.
+// A type's override array is index-aligned with General: a non-null slot at i
+// means "package i is priced on its own for this type"; null means "inherit".
+
+/** Event types that package `index` prices on its own (has a non-null slot). */
+export function typesForIndex(mob: MobPackagesNew, index: number): string[] {
+  return Object.keys(mob.overrides).filter((t) => mob.overrides[t][index] != null);
+}
+
+/** Pull a type out of General FOR ONE package: blank price -> quote until set. */
+export function pullTypeOutAt(mob: MobPackagesNew, type: string, index: number): MobPackagesNew {
+  const next = cloneNew(mob);
+  const arr = (next.overrides[type] || next.general.map(() => NULL_PKG)).slice();
+  while (arr.length <= index) arr.push(NULL_PKG);
+  arr[index] = blankPackage();
+  next.overrides[type] = arr;
+  return next;
+}
+
+/** Put a type BACK under General FOR ONE package (that slot inherits again). */
+export function putTypeBackAt(mob: MobPackagesNew, type: string, index: number): MobPackagesNew {
+  if (!mob.overrides[type]) return mob;
+  const next = cloneNew(mob);
+  const arr = next.overrides[type].slice();
+  if (index < arr.length) arr[index] = NULL_PKG;
+  if (arr.every((x) => x == null)) delete next.overrides[type];
+  else next.overrides[type] = arr;
+  return next;
 }
