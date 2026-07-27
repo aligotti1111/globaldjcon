@@ -165,46 +165,64 @@ export default function MobilePackagesEditor({
           )}
         </div>
 
-        {/* RIGHT — flipper + package card */}
-        <div ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.6rem' }}>
-            <button type="button" aria-label="Previous package" onClick={() => { setPkgIdx(Math.max(0, idx - 1)); setSelType('general'); }} disabled={idx === 0} style={{ ...navBtn, opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>‹</button>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Package {idx + 1} of {count}</div>
-            <button type="button" aria-label="Next package" onClick={() => { setPkgIdx(Math.min(count - 1, idx + 1)); setSelType('general'); }} disabled={idx >= count - 1} style={{ ...navBtn, opacity: idx >= count - 1 ? 0.4 : 1, cursor: idx >= count - 1 ? 'not-allowed' : 'pointer' }}>›</button>
-          </div>
+        {/* RIGHT — stacked, foldable packages */}
+        <div style={{ flex: '1000 1 300px', minWidth: 0 }}>
+          {mob.general.map((_, i) => {
+            const open = i === idx;
+            const rawTitle = String((mob.general[i] as { title?: string })?.title || '').replace(/<[^>]*>/g, '').trim();
+            return (
+              <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 10, scrollMarginTop: 90 }}>
+                <button
+                  type="button"
+                  onClick={() => { setPkgIdx(i); setSelType('general'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                    background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
+                    border: `1px solid ${open ? 'var(--neon)' : 'var(--border)'}`,
+                    borderRadius: open ? '8px 8px 0 0' : 8, padding: '.7rem .9rem', cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '.6rem', minWidth: 0 }}>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon)' }}>Package {i + 1}</span>
+                    {rawTitle && <span style={{ color: '#fff', fontSize: '.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rawTitle}</span>}
+                  </span>
+                  <span style={{ color: 'var(--muted)', fontSize: '.9rem', flexShrink: 0, marginLeft: '.6rem' }}>{open ? '▾' : '▸'}</span>
+                </button>
 
-          <div className={styles.pkgCard}>
-            <div style={{ display: 'inline-block', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.28rem .6rem', marginBottom: '.6rem' }}>
-              Package {idx + 1}
-            </div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-              {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
-            </div>
+                {open && (
+                  <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
+                      {selType === 'general' ? 'General — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                    </div>
 
-            <PackageEditor
-              key={`${selType}-${idx}`}
-              cat={catFor(selType)}
-              idx={idx}
-              pkg={currentPkg}
-              totalCount={count}
-              userId={userId}
-              currency={currency}
-              onChange={onEditPkg}
-              onRemove={() => {}}
-              hideOwnHeader
-              generalPhotos={generalPhotos}
-            />
+                    <PackageEditor
+                      key={`${selType}-${idx}`}
+                      cat={catFor(selType)}
+                      idx={idx}
+                      pkg={currentPkg}
+                      totalCount={count}
+                      userId={userId}
+                      currency={currency}
+                      onChange={onEditPkg}
+                      onRemove={() => {}}
+                      hideOwnHeader
+                      generalPhotos={generalPhotos}
+                    />
 
-            <div className={styles.pkgSaveRow}>
-              {count > 1 && (
-                <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-              )}
-              {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
-              {!err && <span style={{ flex: 1 }} />}
-              {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>✓ Saved</span>}
-              <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
-            </div>
-          </div>
+                    <div className={styles.pkgSaveRow}>
+                      {count > 1 && (
+                        <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+                      )}
+                      {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
+                      {!err && <span style={{ flex: 1 }} />}
+                      {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>✓ Saved</span>}
+                      <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
