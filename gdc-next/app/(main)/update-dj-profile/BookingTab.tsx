@@ -684,6 +684,9 @@ export default function BookingTab({
                   onDirtyChange={onDirtyChange}
                   masterSaveTrigger={masterSaveTrigger}
                   onEventTypesSave={onEventTypesSave}
+                  depositPct={deposit}
+                  taxEnabled={taxEnabled}
+                  taxPct={taxPct}
                 />
               )}
               {/* The internal "Save All Packages" button was removed —
