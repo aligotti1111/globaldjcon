@@ -670,7 +670,7 @@ export default function MobileBookingForm({
             // booker actually picked.
             eventType: eventType === 'other'
               ? (eventTypeOther.trim() || 'other')
-              : eventType,
+              : mobEventLabel(eventType, customEventTypes),
             eventDetails,
             // Times — DJ wants to know start/end at a glance from the
             // email so they can decide quickly whether they're available.
@@ -725,7 +725,7 @@ export default function MobileBookingForm({
             eventDate: dateKey,
             eventType: eventType === 'other'
               ? (eventTypeOther.trim() || 'other')
-              : eventType,
+              : mobEventLabel(eventType, customEventTypes),
             eventDetails,
             packageTitle: pkgTitleForEmail,
             packageDetails: pkgDetailsForEmail,
