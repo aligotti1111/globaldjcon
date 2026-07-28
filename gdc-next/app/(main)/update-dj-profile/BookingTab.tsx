@@ -107,7 +107,7 @@ interface Props {
   selectedEventTypes: string[];   // from General tab — which event types are checked
   customEventTypes?: CustomEventType[]; // DJ-defined event types
   specialtyTypes?: string[];      // event types placed in the Specialty group
-  onEventTypesSave?: (selected: string[], custom: CustomEventType[]) => void | Promise<void>;
+  onEventTypesSave?: (selected: string[], custom: CustomEventType[], specialty: string[]) => void | Promise<void>;
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
   userId: string;
