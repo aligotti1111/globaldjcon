@@ -371,6 +371,13 @@ export async function POST(req: Request) {
 
     const parsedGuests = guests ? parseInt(guests, 10) : NaN;
 
+    const djCustomTypes = parseCustomEventTypes(djRow.mob_custom_event_types);
+    const eventTypeStored = eventType === 'other'
+      ? (eventTypeOther.trim() || 'other')
+      : (djCustomTypes.some((c) => c.key === eventType)
+          ? mobEventLabel(eventType, djCustomTypes)
+          : eventType);
+
     const insertPayload = {
       dj_id: djRow.id,
       requester_id: user.id, // session-derived — NEVER from the body
@@ -384,11 +391,7 @@ export async function POST(req: Request) {
       // Store a human label for the event type so every display surface
       // (cards, planner, emails) shows it. Custom types resolve to their
       // saved label; 'other' keeps its free text; built-ins store their key.
-      event_type: eventType === 'other'
-        ? (eventTypeOther.trim() || 'other')
-        : (parseCustomEventTypes(djRow.mob_custom_event_types).some((c) => c.key === eventType)
-            ? mobEventLabel(eventType, parseCustomEventTypes(djRow.mob_custom_event_types))
-            : eventType),
+      event_type: eventTypeStored,
       event_details: eventDetails,
       venue_name: venueName,
       venue_address: venueAddress,
