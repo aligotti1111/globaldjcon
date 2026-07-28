@@ -554,7 +554,7 @@ export default function MobilePackagesEditor({
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>{label}</div>
             <div style={{ background: 'rgba(20,20,28,.5)', border: '1px dashed var(--border)', borderRadius: 7, padding: '.5rem .6rem', color: 'var(--muted)', fontSize: '.82rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none', userSelect: 'none' }}>
               <span>{value}</span>
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', color: 'var(--muted)', opacity: 0.7 }}>SAMPLE</span>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', color: 'var(--neon)', fontWeight: 700 }}>SAMPLE</span>
             </div>
           </div>
         );
@@ -647,18 +647,39 @@ export default function MobilePackagesEditor({
                 )}
 
                 {summary && (
-                  <div style={{ marginTop: '1rem', border: '1px solid var(--neon)', borderRadius: 10, padding: '.85rem 1rem', background: 'var(--neon-dim, rgba(0,240,255,.06))' }}>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.5rem' }}>Estimated price</div>
-                    {summary.quote ? (
-                      <div style={{ color: '#fff', fontSize: '.9rem' }}>Price on request &mdash; the host sends a request and you reply with a quote.</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', fontSize: '.85rem', color: '#dcdce2' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Rate ({hrs} hr{hrs === 1 ? '' : 's'})</span><span>{fmt(summary.rate)}</span></div>
-                        {taxEnabled && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Sales tax ({taxPct}%)</span><span>{fmt(summary.tax)}</span></div>}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '.3rem', color: '#fff', fontWeight: 700 }}><span>Total</span><span>{fmt(summary.total)}</span></div>
-                        {depositPct > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neon)' }}><span>Deposit due ({depositPct}%)</span><span>{fmt(summary.deposit)}</span></div>}
+                  <div className={bookingStyles.priceDisplay}>
+                    <div className={bookingStyles.priceLabel}>Estimated Price</div>
+                    <div className={summary.quote ? `${bookingStyles.priceValue} ${bookingStyles.priceValueQuote}` : bookingStyles.priceValue}>
+                      {summary.quote ? 'Price on Request' : `${cur}${summary.rate.toLocaleString()}`}
+                    </div>
+                    {!summary.quote && (taxEnabled || depositPct > 0) && (
+                      <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                        {taxEnabled && (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                              <span>Subtotal</span><span>{cur}{summary.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                              <span>Tax ({taxPct}%)</span><span>{cur}{summary.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          </>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
+                          <span>Total</span><span>{cur}{summary.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {depositPct > 0 && (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                              <span>Deposit ({depositPct}%)</span><span>{cur}{summary.deposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                              <span>Balance due day of event</span><span>{cur}{(summary.total - summary.deposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
+                    {!summary.quote && depositPct === 0 && !taxEnabled && <div className={bookingStyles.depositText}>No deposit required</div>}
                   </div>
                 )}
 
