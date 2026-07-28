@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   searchAddresses, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory,
-  hoursBetween, durationLabel,
+  hoursBetween, durationLabel, resolvePackage,
 } from '../[slug]/mobileBookingForm';
 import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
@@ -123,8 +123,20 @@ export default function AddManualBookingModal({
   const eventChosen = eventType !== '';
   const isWedding = eventType === 'weddings';
   const pkgCategory = getPackageCategory(eventType);
-  const categoryPkgs: MobilePackage[] = eventChosen ? (mobPackages?.[pkgCategory] || []) : [];
   const generalPkgs: MobilePackage[] = mobPackages?.['general'] || [];
+  // Resolve packages for the chosen event type via resolvePackage so both the
+  // old {general,wedding,mitzvah} and new {general,overrides} shapes work.
+  const categoryPkgs: MobilePackage[] = (() => {
+    if (!eventChosen || !mobPackages) return [];
+    const all = mobPackages as Record<string, unknown>;
+    const ov = (all as { overrides?: Record<string, unknown[]> }).overrides;
+    const ovLen = ov && Array.isArray(ov[eventType]) ? ov[eventType].length : 0;
+    const oldLen = Array.isArray(all[pkgCategory]) ? (all[pkgCategory] as unknown[]).length : 0;
+    const n = Math.max(generalPkgs.length, ovLen, oldLen);
+    return Array.from({ length: n }, (_, i) =>
+      (resolvePackage(all, eventType, i) as unknown as MobilePackage | null) ?? ({} as MobilePackage),
+    );
+  })();
   // Only packages with a usable title are "ready" — matches the public booking
   // form, so empty packages (created but never filled in) are hidden until
   // they have content. Wedding/Mitzvah packages inherit the general-category
