@@ -42,13 +42,22 @@ export function normalizeMobPackages(
   const mob = (stored || {}) as Record<string, unknown>;
   const general = Array.isArray(mob.general) ? (mob.general as Pkg[]).slice() : [];
 
+  const padGeneral = (g: Pkg[], overrides: Record<string, Pkg[]>): Pkg[] => {
+    let n = g.length;
+    for (const k of Object.keys(overrides)) n = Math.max(n, overrides[k].length);
+    const out = g.slice();
+    while (out.length < n) out.push({});
+    return out;
+  };
+
   if (isNewShape(mob)) {
     const rawOv = (mob.overrides as Record<string, unknown> | undefined) || {};
     const overrides: Record<string, Pkg[]> = {};
     for (const k of Object.keys(rawOv)) {
       if (Array.isArray(rawOv[k])) overrides[k] = (rawOv[k] as Pkg[]).slice();
     }
-    return { general, overrides };
+    // Pad General so no override index is lost to serialize's slice(0, n).
+    return { general: padGeneral(general, overrides), overrides };
   }
 
   // OLD shape -> re-key wedding/mitzvah buckets as full overrides.
@@ -59,7 +68,9 @@ export function normalizeMobPackages(
       overrides[OLD_BUCKET_TO_EVENT[bucket]] = (arr as Pkg[]).slice();
     }
   }
-  return { general, overrides };
+  // A wedding/mitzvah-only DJ has an empty/short general array — pad it so the
+  // editor shows every slot and serialize never truncates their packages.
+  return { general: padGeneral(general, overrides), overrides };
 }
 
 // ── Editor mutation API ──────────────────────────────────────────────────
