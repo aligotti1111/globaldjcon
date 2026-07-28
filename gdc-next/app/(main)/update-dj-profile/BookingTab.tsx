@@ -272,12 +272,7 @@ export default function BookingTab({
     [cardDirtyMap]
   );
 
-  // Stable callback ref so useEffect dep is stable
-  const onDirtyChangeRef = useRef(onDirtyChange);
-  onDirtyChangeRef.current = onDirtyChange;
-  useEffect(() => {
-    onDirtyChangeRef.current?.(anyCardDirty);
-  }, [anyCardDirty]);
+  // (Dirty state now comes from MobilePackagesEditor directly via onDirtyChange.)
 
   // Per-card dirty reporter — passed down to each PackageCardWithCatTabs.
   // Cards call this whenever their isDirty boolean flips.
@@ -684,6 +679,8 @@ export default function BookingTab({
                   userId={userId}
                   currency={rateCurrency}
                   onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
+                  onDirtyChange={onDirtyChange}
+                  masterSaveTrigger={masterSaveTrigger}
                 />
               )}
               {/* The internal "Save All Packages" button was removed —
