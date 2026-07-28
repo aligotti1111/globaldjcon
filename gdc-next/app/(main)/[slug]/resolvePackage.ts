@@ -36,7 +36,7 @@ function isBlank(v: unknown): boolean {
 // Fields that inherit their DISPLAY value from the General package at the same
 // index when the event-specific package leaves them blank. (Prices are NOT in
 // this list — a bucket's price is used as-is, exactly as today.)
-const INHERITED_DISPLAY_FIELDS = ['title', 'details', 'photo', 'photos'] as const;
+const INHERITED_DISPLAY_FIELDS = ['title', 'details', 'photo'] as const;
 
 function isNewShape(mob: Record<string, unknown>): boolean {
   return !!mob && typeof mob === 'object' && 'overrides' in mob;
