@@ -13,6 +13,7 @@
 // + crop is also here (AvatarCrop modal mounts on file select).
 
 import { useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/components/ConfirmModal';
@@ -225,9 +226,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
   const specialtyEventTypes = MOBILE_EVENT_TYPES.filter(
     (t) => MOB_CAT_WEDDING_TYPES.includes(t.val) || MOB_CAT_MITZVAH_TYPES.includes(t.val)
   );
-  const [showCustomTypes, setShowCustomTypes] = useState(false);
   const [newTypeLabel, setNewTypeLabel] = useState('');
-  const customTypeOptions = state.customEventTypes.map((c) => ({ val: c.key, label: c.label }));
   function addCustomType() {
     const label = newTypeLabel.trim();
     if (!label) return;
@@ -245,6 +244,53 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     onChange('customEventTypes', state.customEventTypes.filter((c) => c.key !== key));
     onChange('mobileEvents', state.mobileEvents.filter((v) => v !== key));
   }
+
+  // ── Drag-to-group (General <-> Specialty) ────────────────────────
+  const isCustomKey = (k: string) => state.customEventTypes.some((c) => c.key === k);
+  const allEventOptions: { val: string; label: string }[] = [
+    ...MOBILE_EVENT_TYPES,
+    ...state.customEventTypes.map((c) => ({ val: c.key, label: c.label })),
+  ];
+  const generalGroup = allEventOptions.filter((o) => !state.specialtyTypes.includes(o.val));
+  const specialtyGroup = allEventOptions.filter((o) => state.specialtyTypes.includes(o.val));
+  function moveToGroup(key: string, group: 'general' | 'specialty') {
+    const inSpec = state.specialtyTypes.includes(key);
+    if (group === 'specialty' && !inSpec) onChange('specialtyTypes', [...state.specialtyTypes, key]);
+    if (group === 'general' && inSpec) onChange('specialtyTypes', state.specialtyTypes.filter((k) => k !== key));
+  }
+  function toggleSelected(key: string, checked: boolean) {
+    onChange('mobileEvents', checked ? [...state.mobileEvents, key] : state.mobileEvents.filter((v) => v !== key));
+  }
+  const tileBase: CSSProperties = {
+    display: 'flex', alignItems: 'center', padding: '.45rem .7rem', background: 'transparent',
+    border: '1px solid rgba(30, 30, 48, .5)', borderRadius: 6, cursor: 'grab', fontSize: '.8rem', color: 'var(--white)',
+  };
+  const renderDraggableTile = (o: { val: string; label: string }) => (
+    <label
+      key={o.val}
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', o.val); e.dataTransfer.effectAllowed = 'move'; }}
+      style={tileBase}
+    >
+      <span aria-hidden="true" title="Drag to move between groups" style={{ color: 'var(--muted)', marginRight: 8, fontSize: '.9rem', lineHeight: 1 }}>&#x2630;</span>
+      <input
+        type="checkbox"
+        style={{ width: 15, height: 15, marginRight: 10, flexShrink: 0, accentColor: 'var(--neon)', cursor: 'pointer' }}
+        checked={state.mobileEvents.includes(o.val)}
+        onChange={(e) => toggleSelected(o.val, e.target.checked)}
+      />
+      <span style={{ flex: 1 }}>{o.label}</span>
+      {isCustomKey(o.val) && (
+        <span
+          role="button"
+          aria-label={`Remove ${o.label}`}
+          title="Remove"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeCustomType(o.val); }}
+          style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 .2rem' }}
+        >&times;</span>
+      )}
+    </label>
+  );
 
   const renderEventType = (t: { val: string; label: string }) => (
     <label
@@ -485,84 +531,49 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       {/* Mobile event types — only for mobile DJs */}
       {djType === 'mobile' && (
         <div className={styles.formGroup}>
-          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
-            <span>Mobile Party Types (select all that apply)</span>
-            <button
-              type="button"
-              onClick={() => setShowCustomTypes(true)}
-              style={{ background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', textDecoration: 'underline', padding: 0, whiteSpace: 'nowrap' }}
-            >
-              + Add your own
-            </button>
-          </label>
+          <label>Mobile Party Types (select all that apply)</label>
+          <p style={{ margin: '.15rem 0 .5rem', color: 'var(--muted)', fontSize: '.68rem', lineHeight: 1.5 }}>
+            Drag an event between General and Specialty. Specialty events get their own price in your package builder.
+          </p>
           <div className={styles.specBox}>
             <div className={styles.partyGroupLabel}>General Events</div>
-            <div className={styles.checkboxGrid}>
-              {generalEventTypes.map(renderEventType)}
+            <div
+              className={styles.checkboxGrid}
+              style={{ minHeight: 44 }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); if (k) moveToGroup(k, 'general'); }}
+            >
+              {generalGroup.map(renderDraggableTile)}
+              {/* Inline "add your event" box */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '.45rem .7rem', background: 'rgba(0,240,255,.04)', border: '1px dashed var(--neon)', borderRadius: 6, fontSize: '.8rem' }}>
+                <span aria-hidden="true" style={{ color: 'var(--neon)', marginRight: 10, fontSize: '1rem', lineHeight: 1 }}>+</span>
+                <input
+                  value={newTypeLabel}
+                  onChange={(e) => setNewTypeLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
+                  onBlur={() => { if (newTypeLabel.trim()) addCustomType(); }}
+                  placeholder="Add your event type"
+                  aria-label="Add your event type"
+                  style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '.8rem', outline: 'none' }}
+                />
+              </div>
             </div>
             <div className={`${styles.partyGroupLabel} ${styles.partyGroupLabelLater}`}>
               Specialty Events
             </div>
-            <div className={styles.checkboxGrid}>
-              {specialtyEventTypes.map(renderEventType)}
-            </div>
-            {customTypeOptions.length > 0 && (
-              <>
-                <div className={`${styles.partyGroupLabel} ${styles.partyGroupLabelLater}`}>
-                  Your Custom Events
-                </div>
-                <div className={styles.checkboxGrid}>
-                  {customTypeOptions.map(renderEventType)}
-                </div>
-              </>
-            )}
-          </div>
-
-          {showCustomTypes && (
             <div
-              onClick={() => setShowCustomTypes(false)}
-              style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+              className={styles.checkboxGrid}
+              style={{ minHeight: 44 }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); if (k) moveToGroup(k, 'specialty'); }}
             >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{ width: '100%', maxWidth: 420, background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
-                  <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Custom event types</h3>
-                  <button type="button" onClick={() => setShowCustomTypes(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
-                </div>
-                <p style={{ margin: '0 0 .9rem', color: 'var(--muted)', fontSize: '.78rem', lineHeight: 1.5 }}>
-                  Add event types you offer that aren&rsquo;t in the list above. They&rsquo;ll appear as party types you can offer and price.
-                </p>
-                <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
-                  <input
-                    value={newTypeLabel}
-                    onChange={(e) => setNewTypeLabel(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
-                    placeholder="e.g. Foam Party"
-                    style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.55rem .6rem', fontSize: '.85rem' }}
-                  />
-                  <button type="button" onClick={addCustomType} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.55rem .9rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                  {state.customEventTypes.length === 0 ? (
-                    <p style={{ color: 'var(--muted)', fontSize: '.78rem', margin: 0 }}>No custom types yet.</p>
-                  ) : (
-                    state.customEventTypes.map((c) => (
-                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--border)', borderRadius: 6, padding: '.45rem .6rem' }}>
-                        <span style={{ color: '#fff', fontSize: '.85rem' }}>{c.label}</span>
-                        <button type="button" onClick={() => removeCustomType(c.key)} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', color: '#ff8f8f', borderRadius: 6, padding: '.25rem .55rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <button type="button" onClick={() => setShowCustomTypes(false)} style={{ marginTop: '1.1rem', width: '100%', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Done</button>
-              </div>
+              {specialtyGroup.length > 0
+                ? specialtyGroup.map(renderDraggableTile)
+                : <span style={{ color: 'var(--muted)', fontSize: '.72rem', padding: '.4rem .2rem' }}>Drag events here to price them on their own.</span>}
             </div>
-          )}
+          </div>
         </div>
       )}
-
       {/* Club genres — only for club DJs */}
       {djType === 'club' && (
         <div className={styles.formGroup}>
