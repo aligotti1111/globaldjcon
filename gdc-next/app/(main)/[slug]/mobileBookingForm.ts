@@ -116,6 +116,26 @@ export const MOB_END_TIME_OPTIONS: TimeOption[] = (() => {
   return [...day, ...next];
 })();
 
+// Same as MOB_END_TIME_OPTIONS, but when the event date is known the post-
+// midnight slots name the actual next day ("(Sun, Aug 16)") instead of the
+// generic "(next day)". `dateKey` is "YYYY-MM-DD".
+export function buildMobEndTimeOptions(dateKey?: string | null): TimeOption[] {
+  let nextLabel = 'next day';
+  if (dateKey && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + 1);
+    nextLabel = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  const day: TimeOption[] = [];
+  const next: TimeOption[] = [];
+  for (const o of MOB_TIME_OPTIONS) {
+    const h = Number(o.val.split(':')[0]);
+    if (h < 6) next.push({ val: o.val, label: `${o.label} (${nextLabel})` });
+    else day.push(o);
+  }
+  return [...day, ...next];
+}
+
 // US phone formatter — vanilla MPF_PHONE_FORMATS.US.
 // "1234567890" → "(123) 456-7890"
 // International formats are deferred — most users are US.
