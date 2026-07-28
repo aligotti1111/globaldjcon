@@ -641,7 +641,15 @@ export default function BookingTab({
               <div className={styles.sectionTitle}>Add Packages</div>
             </div>
             <div className={styles.sectionBody}>
-              {activeCats.length > 0 && (
+              {activeCats.length > 0 && selectedEventTypes.length <= 1 && (
+                <p className={styles.packageIntro}>
+                  Add each package&rsquo;s title, description, pricing, and photos below. A host booking your
+                  event sees the package exactly as you set it up here. Leave a price blank to have the host
+                  request a quote instead.
+                </p>
+              )}
+
+              {activeCats.length > 0 && selectedEventTypes.length > 1 && (
                 <p className={styles.packageIntro}>
                   Start building each package by adding the package title and description under{' '}
                   <span className={styles.packageIntroHi}>General events</span> first. The text you add will
