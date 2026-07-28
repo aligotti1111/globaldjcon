@@ -258,7 +258,7 @@ export default function MobilePackagesEditor({
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', minWidth: 0 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</span>
                             {generalComplete && typeNeedsPrice(t) && (
-                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#3a2c00', background: '#f5c451', borderRadius: 4, padding: '.12rem .32rem', whiteSpace: 'nowrap', flexShrink: 0 }}>Add price</span>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.06em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap', flexShrink: 0 }}>Add price</span>
                             )}
                           </span>
                           <span
