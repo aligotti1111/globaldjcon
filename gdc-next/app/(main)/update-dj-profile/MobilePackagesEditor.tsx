@@ -8,7 +8,7 @@
 // type inherits its title/description/photos until changed. Reads any stored
 // shape via normalizeMobPackages, writes the new { general, overrides } shape.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
@@ -59,6 +59,15 @@ export default function MobilePackagesEditor({
   const [err, setErr] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const genRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!genOpen) return;
+    function onDown(e: MouseEvent) {
+      if (genRef.current && !genRef.current.contains(e.target as Node)) setGenOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [genOpen]);
 
   const count = mob.general.length;
   const idx = pkgIdx < 0 ? -1 : Math.min(pkgIdx, Math.max(0, count - 1));
@@ -174,7 +183,7 @@ export default function MobilePackagesEditor({
                   {/* LEFT — event-type rail, inside the fold, for THIS package */}
                   <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
                     <div style={railLabel}>Event type pricing</div>
-                    <div style={{ position: 'relative' }}>
+                    <div ref={genRef} style={{ position: 'relative' }}>
                       <button type="button" onClick={() => { setSelType('general'); setGenOpen((o) => !o); }} style={sideItem(selType === 'general')}>
                         <span>General events</span>
                         <span style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.7rem' }}>{genOpen ? '▾' : '▸'}</span>
