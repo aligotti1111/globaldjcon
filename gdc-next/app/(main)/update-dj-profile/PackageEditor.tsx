@@ -153,6 +153,7 @@ export default function PackageEditor({
 
   // ── Photo upload ────────────────────────────────────────────────
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
+  const [showOutsideNote, setShowOutsideNote] = useState(false);
 
   // Photo slots: index 0 = main `photo` (shown on card); 1-3 = `photos[0..2]`
   // (extra sample photos shown as lightbox thumbnails on the booking side).
@@ -379,12 +380,23 @@ export default function PackageEditor({
         </div>
 
         {!reqAll && (
-          <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0', maxWidth: 560 }}>
-            <span style={{ color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.6rem' }}>Pricing for hours outside your listed options</span><br />
-            If a host books fewer hours than your shortest option, they&rsquo;re quoted that shortest option&rsquo;s price (rounded up to your nearest rate). If they book more than your longest option, the extra time is charged at your hourly overtime rate.
-            <br /><br />
-            <span style={{ color: '#fff' }}>Example:</span> you list 4 hours at {cur}500 and 6 hours at {cur}800, with {cur}100/hr overtime. A 3-hour booking is quoted {cur}500 (your 4-hour rate). A 7-hour booking is quoted {cur}900 ({cur}800 plus one hour of overtime).
-          </p>
+          <div style={{ margin: '.4rem 0 0', maxWidth: 560 }}>
+            <button
+              type="button"
+              onClick={() => setShowOutsideNote((v) => !v)}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '.35rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.6rem', fontFamily: "'Space Mono', monospace" }}
+            >
+              <span style={{ fontSize: '.7rem' }}>{showOutsideNote ? '▾' : '▸'}</span>
+              Pricing for hours outside your listed options
+            </button>
+            {showOutsideNote && (
+              <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0' }}>
+                If a host books fewer hours than your shortest option, they&rsquo;re quoted that shortest option&rsquo;s price (rounded up to your nearest rate). If they book more than your longest option, the extra time is charged at your hourly overtime rate.
+                <br /><br />
+                <span style={{ color: '#fff' }}>Example:</span> you list 4 hours at {cur}500 and 6 hours at {cur}800, with {cur}100/hr overtime. A 3-hour booking is quoted {cur}500 (your 4-hour rate). A 7-hour booking is quoted {cur}900 ({cur}800 plus one hour of overtime).
+              </p>
+            )}
+          </div>
         )}
 
         {/* Cocktail block — WEDDING ONLY. Hidden when reqAll. General and
