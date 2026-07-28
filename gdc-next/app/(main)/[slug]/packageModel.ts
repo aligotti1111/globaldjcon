@@ -110,7 +110,7 @@ export function setOverride(mob: MobPackagesNew, type: string, index: number, pk
 export function addPackageSlot(mob: MobPackagesNew): MobPackagesNew {
   const next = cloneNew(mob);
   next.general.push(blankPackage());
-  for (const k of Object.keys(next.overrides)) next.overrides[k].push(NULL_PKG);
+  for (const k of Object.keys(next.overrides)) next.overrides[k].push(blankPackage());
   return next;
 }
 
@@ -156,9 +156,7 @@ export function serializeMobPackages(mob: MobPackagesNew): MobPackagesNew {
   const overrides: Record<string, Pkg[]> = {};
   for (const k of Object.keys(mob.overrides)) {
     const arr = mob.overrides[k].slice(0, n);
-    while (arr.length < n) arr.push(NULL_PKG);
-    // Drop a type entirely if no package is priced on its own for it.
-    if (arr.every((x) => x == null)) continue;
+    while (arr.length < n) arr.push(blankPackage());
     overrides[k] = arr;
   }
   return { general: mob.general.slice(), overrides };
