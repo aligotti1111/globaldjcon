@@ -46,6 +46,7 @@ import {
   EVENT_SUBFIELDS,
   buildEventDetails,
   MOB_TIME_OPTIONS,
+  MOB_END_TIME_OPTIONS,
   formatUSPhone,
   getPackageCategory,
   resolvePackage,
@@ -1254,7 +1255,7 @@ export default function MobileBookingForm({
                 className={`${styles.select} ${styles.hasCheckSelect}`}
               >
                 <option value="">Select time...</option>
-                {MOB_TIME_OPTIONS.map(o => (
+                {MOB_END_TIME_OPTIONS.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
               </select>
