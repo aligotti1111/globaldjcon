@@ -36,7 +36,12 @@ function isBlank(v: unknown): boolean {
 // Fields that inherit their DISPLAY value from the General package at the same
 // index when the event-specific package leaves them blank. (Prices are NOT in
 // this list — a bucket's price is used as-is, exactly as today.)
-const INHERITED_DISPLAY_FIELDS = ['title', 'details', 'photo', 'photos'] as const;
+// Text fields inherit from General when the override leaves them blank.
+const INHERITED_TEXT_FIELDS = ['title', 'details'] as const;
+// Photo fields inherit ONLY when the override never set them. Once a DJ edits
+// a type's photos (even deleting down to none), that choice is explicit and is
+// NOT overwritten by General's photos.
+const PHOTO_FIELDS = ['photo', 'photos'] as const;
 
 function isNewShape(mob: Record<string, unknown>): boolean {
   return !!mob && typeof mob === 'object' && 'overrides' in mob;
@@ -67,8 +72,11 @@ export function resolvePackage(
     // price -> request a quote", exactly as the old bucket model behaved.
     const merged: Pkg = { ...ov };
     if (base && base !== ov) {
-      for (const fld of INHERITED_DISPLAY_FIELDS) {
+      for (const fld of INHERITED_TEXT_FIELDS) {
         if (isBlank(merged[fld]) && !isBlank(base[fld])) merged[fld] = base[fld];
+      }
+      for (const fld of PHOTO_FIELDS) {
+        if (!(fld in (ov as object))) merged[fld] = base[fld];
       }
     }
     return merged;
@@ -83,8 +91,11 @@ export function resolvePackage(
   // the blank DISPLAY fields from General at the same index.
   const merged: Pkg = { ...cur };
   if (base && base !== cur) {
-    for (const f of INHERITED_DISPLAY_FIELDS) {
+    for (const f of INHERITED_TEXT_FIELDS) {
       if (isBlank(merged[f]) && !isBlank(base[f])) merged[f] = base[f];
+    }
+    for (const f of PHOTO_FIELDS) {
+      if (!(f in (cur as object))) merged[f] = base[f];
     }
   }
   return merged;
