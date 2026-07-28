@@ -38,6 +38,7 @@ import {
 } from './bookingSettings';
 import {
   MOB_TIME_OPTIONS,
+  buildMobEndTimeOptions,
   formatLongDate,
   formatUSPhone,
   searchAddresses,
@@ -160,6 +161,7 @@ export default function ClubBookingForm({
   const [country, setCountry] = useState('US');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const endTimeOptions = useMemo(() => buildMobEndTimeOptions(dateKey), [dateKey]);
   const [equipment, setEquipment] = useState<string>('');
   const [venueEquipDetail, setVenueEquipDetail] = useState('');
   const [offerAmount, setOfferAmount] = useState('');
@@ -1016,7 +1018,7 @@ export default function ClubBookingForm({
                   style={hasError('endTime') ? { borderColor: '#ff5f5f' } : undefined}
                 >
                   <option value="">Select…</option>
-                  {MOB_TIME_OPTIONS.map((t) => (
+                  {endTimeOptions.map((t) => (
                     <option key={t.val} value={t.val}>{t.label}</option>
                   ))}
                 </select>
