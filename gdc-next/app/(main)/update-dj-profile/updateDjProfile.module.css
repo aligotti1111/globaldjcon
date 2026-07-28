@@ -829,10 +829,10 @@
   align-items: center;
   gap: .6rem;
   margin: .6rem 0;
-  padding: .55rem .75rem;
-  background: rgba(107, 107, 136, .08);
-  border: 1px solid rgba(107, 107, 136, .2);
-  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
 }
 .reqAllRow input {
