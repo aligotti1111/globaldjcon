@@ -52,6 +52,7 @@ export interface GeneralFormState {
   djStartYear: string;
   mobileEvents: string[];   // for mobile DJs
   customEventTypes: CustomEventType[]; // DJ-defined event types
+  specialtyTypes: string[]; // event-type keys placed in the Specialty group
   clubGenres: string[];     // for club DJs
   profilePrivate: boolean;
   avatarUrl: string;
@@ -105,6 +106,7 @@ interface InitialProfile {
   dj_start_year?: string | null;
   event_types?: string | null;
   mob_custom_event_types?: unknown;
+  mob_specialty_types?: unknown;
   club_genres?: string[] | null;
   profile_private?: boolean | null;
   avatar_url?: string | null;
@@ -185,6 +187,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       djStartYear: initialProfile.dj_start_year || '',
       mobileEvents: defaultMobileEvents,
       customEventTypes: parseCustomEventTypes((initialProfile as { mob_custom_event_types?: unknown }).mob_custom_event_types),
+      specialtyTypes: (() => {
+        const raw = (initialProfile as { mob_specialty_types?: unknown }).mob_specialty_types;
+        let arr: unknown = raw;
+        if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
+        if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
+        return ['weddings', 'mitzvah']; // built-in specialty default
+      })(),
       clubGenres: initialProfile.club_genres || [],
       profilePrivate: !!initialProfile.profile_private,
       avatarUrl: initialProfile.avatar_url || '',
@@ -361,6 +370,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         dj_start_year: general.djStartYear || null,
         event_types: eventTypes,
         mob_custom_event_types: general.customEventTypes.length > 0 ? general.customEventTypes : null,
+        mob_specialty_types: general.specialtyTypes,
         club_genres: clubGenres,
         profile_private: general.profilePrivate,
         avatar_url: general.avatarUrl || null,
