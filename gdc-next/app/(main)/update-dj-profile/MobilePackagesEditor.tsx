@@ -102,6 +102,25 @@ export default function MobilePackagesEditor({
     return { photo: g.photo || '', photos: Array.isArray(g.photos) ? g.photos : [] };
   }, [mob.general, idx]);
 
+  // Base is "complete" when General has a title + description for this package.
+  function txtEmpty(v: unknown): boolean {
+    return v == null || String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
+  }
+  const generalComplete = (() => {
+    const g0 = (mob.general[idx] || {}) as { title?: string; details?: string };
+    return !txtEmpty(g0.title) && !txtEmpty(g0.details);
+  })();
+  // An event type still needs a price when it has no tier/legacy price entered
+  // and isn't set to require-a-quote.
+  function typeNeedsPrice(t: string): boolean {
+    const ov = (mob.overrides[t]?.[idx] || {}) as Record<string, unknown>;
+    if (ov.reqAll) return false;
+    const tiers = Array.isArray(ov.priceTiers) ? (ov.priceTiers as Array<{ price?: unknown }>) : [];
+    const hasTier = tiers.some((x) => x && String(x.price ?? '').trim() !== '');
+    const hasLegacy = ['price4', 'price5', 'price6'].some((k) => String((ov)[k] ?? '').trim() !== '');
+    return !hasTier && !hasLegacy;
+  }
+
   function onEditPkg(next: MobilePackage) {
     if (selType === 'general') { update(setGeneral(mob, idx, next as Pkg)); return; }
     const base = (mob.general[idx] || {}) as Record<string, unknown>;
@@ -236,7 +255,12 @@ export default function MobilePackagesEditor({
                       const active = selType === t;
                       return (
                         <button key={t} type="button" onClick={() => { setSelType(t); setGenOpen(false); }} style={sideItem(active)}>
-                          <span>{labelFor(t)}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', minWidth: 0 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</span>
+                            {generalComplete && typeNeedsPrice(t) && (
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#3a2c00', background: '#f5c451', borderRadius: 4, padding: '.12rem .32rem', whiteSpace: 'nowrap', flexShrink: 0 }}>Add price</span>
+                            )}
+                          </span>
                           <span
                             role="button"
                             aria-label={`Put ${labelFor(t)} back under General`}
