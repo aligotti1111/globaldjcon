@@ -83,6 +83,7 @@ export default function MobilePackagesEditor({
   const [etSpec, setEtSpec] = useState<string[]>(specialtyTypes);
   const [etNewGen, setEtNewGen] = useState('');
   const [etNewSpec, setEtNewSpec] = useState('');
+  const [etErr, setEtErr] = useState<string | null>(null);
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
@@ -219,18 +220,26 @@ export default function MobilePackagesEditor({
   saveRef.current = save;
 
   // ── Event-types editor popup (edits the DJ's offered + custom types) ──
-  function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(specialtyTypes); setEtNewGen(''); setEtNewSpec(''); setEtOpen(true); }
+  function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(Array.from(new Set([...specialtyTypes, ...railTypes]))); setEtNewGen(''); setEtNewSpec(''); setEtErr(null); setEtOpen(true); }
   function etToggle(key: string, on: boolean) {
     setEtSel((prev) => (on ? Array.from(new Set([...prev, key])) : prev.filter((k) => k !== key)));
   }
   function etAddCustom(label: string, toSpecialty: boolean) {
     const trimmed = label.trim(); if (!trimmed) return;
-    const key = makeCustomEventKey(trimmed);
-    if (!etCustom.some((c) => c.key === key || c.label.toLowerCase() === trimmed.toLowerCase())) {
-      setEtCustom((prev) => [...prev, { key, label: trimmed }]);
-      setEtSel((prev) => Array.from(new Set([...prev, key])));
-      if (toSpecialty) setEtSpec((prev) => Array.from(new Set([...prev, key])));
+    const lc = trimmed.toLowerCase();
+    const existingNames = [
+      ...Object.values(MOB_EVENT_LABELS).map((v) => v.toLowerCase()),
+      ...etCustom.map((c) => c.label.toLowerCase()),
+    ];
+    if (existingNames.includes(lc)) {
+      setEtErr(`“${trimmed}” already exists.`);
+      return;
     }
+    const key = makeCustomEventKey(trimmed);
+    setEtCustom((prev) => [...prev, { key, label: trimmed }]);
+    setEtSel((prev) => Array.from(new Set([...prev, key])));
+    if (toSpecialty) setEtSpec((prev) => Array.from(new Set([...prev, key])));
+    setEtErr(null);
     if (toSpecialty) setEtNewSpec(''); else setEtNewGen('');
   }
   function etRemoveCustom(key: string) {
@@ -418,7 +427,7 @@ export default function MobilePackagesEditor({
         const groupLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem' };
         const addRow = (val: string, setVal: (v: string) => void, toSpec: boolean) => (
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '.6rem' }}>
-            <input value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); etAddCustom(val, toSpec); } }} placeholder="Add event type" aria-label="Add event type" style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.5rem .6rem', fontSize: '.82rem' }} />
+            <input value={val} onChange={(e) => { setVal(e.target.value); setEtErr(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); etAddCustom(val, toSpec); } }} placeholder="Add event type" aria-label="Add event type" style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.5rem .6rem', fontSize: '.82rem' }} />
             <button type="button" onClick={() => etAddCustom(val, toSpec)} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.5rem .85rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
           </div>
         );
@@ -441,7 +450,8 @@ export default function MobilePackagesEditor({
               </div>
               {addRow(etNewSpec, setEtNewSpec, true)}
 
-              <button type="button" onClick={etSaveClose} style={{ width: '100%', marginTop: '1.25rem', background: 'var(--neon)', border: '1px solid var(--neon)', color: '#04121a', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Save event types</button>
+              {etErr && <p style={{ color: '#ff8f8f', fontSize: '.75rem', margin: '1rem 0 0' }}>{etErr}</p>}
+              <button type="button" onClick={etSaveClose} style={{ width: '100%', marginTop: etErr ? '.5rem' : '1.25rem', background: 'var(--neon)', border: '1px solid var(--neon)', color: '#04121a', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Save event types</button>
             </div>
           </div>
         );
