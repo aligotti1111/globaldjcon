@@ -451,6 +451,13 @@ export default function MobilePackagesEditor({
                       {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
                       {!err && <span style={{ flex: 1 }} />}
                       {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
+                      <button
+                        type="button"
+                        onClick={openPreview}
+                        disabled={!hasAnyPrice}
+                        title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'}
+                        style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}
+                      >Preview how a host sees this</button>
                       <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
                     </div>
                   </div>
@@ -463,18 +470,6 @@ export default function MobilePackagesEditor({
 
       <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.35rem', marginTop: '1rem' }}>
-        <button
-          type="button"
-          onClick={openPreview}
-          disabled={!hasAnyPrice}
-          title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'}
-          style={{ background: hasAnyPrice ? 'var(--neon)' : 'transparent', border: '1px solid var(--neon)', color: hasAnyPrice ? '#04121a' : 'var(--muted)', borderRadius: 8, padding: '.7rem 1.2rem', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55 }}
-        >
-          Preview how a host sees this
-        </button>
-        {!hasAnyPrice && <span style={{ color: 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.04em' }}>Add a price option to enable the preview.</span>}
-      </div>
       {etOpen && (() => {
         const builtIns = Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, label]) => ({ key, label }));
         const allOpts = [...builtIns, ...etCustom.map((c) => ({ key: c.key, label: c.label }))];
