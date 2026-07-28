@@ -606,15 +606,23 @@ export default function MobilePackagesEditor({
                       {cards.map((c) => {
                         const isSel = previewSel === c.i;
                         const hasBody = !!(c.details || c.photo);
-                        const priceEl = (c.reqAll || c.tiers.length === 0)
-                          ? <div className={bookingStyles.packagePriceQuote}>Price on request</div>
-                          : <div className={bookingStyles.packagePrice}>{cur}{c.tiers[0].price.toLocaleString()}</div>;
+                        let priceEl: React.ReactNode = null;
+                        if (c.reqAll) {
+                          priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
+                        } else {
+                          const cp = calcPrice(c.pkg, previewStart, previewEnd, depositPct, false, '', false);
+                          if (cp.isQuote || cp.price == null) {
+                            if (c.tiers.length > 0) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
+                          } else {
+                            priceEl = <div className={bookingStyles.packagePrice}>{cur}{cp.price.toLocaleString()}</div>;
+                          }
+                        }
                         return (
                           <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
                             {isSel && <div className={bookingStyles.packageCheck}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg></div>}
                             <div className={`${bookingStyles.packageHead} ${hasBody ? bookingStyles.packageHeadHasBody : ''}`}>
                               <div className={bookingStyles.packageTitle}>{c.title}</div>
-                              <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>
+                              {priceEl && <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>}
                             </div>
                             {hasBody && (
                               <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
@@ -648,7 +656,7 @@ export default function MobilePackagesEditor({
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Rate ({hrs} hr{hrs === 1 ? '' : 's'})</span><span>{fmt(summary.rate)}</span></div>
                         {taxEnabled && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Sales tax ({taxPct}%)</span><span>{fmt(summary.tax)}</span></div>}
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '.3rem', color: '#fff', fontWeight: 700 }}><span>Total</span><span>{fmt(summary.total)}</span></div>
-                        {depositPct > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neon)' }}><span>Deposit due now ({depositPct}%)</span><span>{fmt(summary.deposit)}</span></div>}
+                        {depositPct > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neon)' }}><span>Deposit due ({depositPct}%)</span><span>{fmt(summary.deposit)}</span></div>}
                       </div>
                     )}
                   </div>
