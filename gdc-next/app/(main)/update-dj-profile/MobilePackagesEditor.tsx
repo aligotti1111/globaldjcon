@@ -176,8 +176,15 @@ export default function MobilePackagesEditor({
     setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
     requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   }
-  function removePackage() {
-    if (count <= 1) return;
+  async function removePackage() {
+    if (count <= 1 || idx <= 0) return;
+    const ok = await confirm({
+      title: `Remove Package ${idx + 1}?`,
+      message: 'This deletes the package and all of its pricing for every event type. This cannot be undone.',
+      confirmLabel: 'Remove package',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const n = removePackageSlot(mob, idx);
     setMob(n); setSaved(false); setPkgIdx(Math.max(0, idx - 1)); setSelType('general');
   }
@@ -341,7 +348,7 @@ export default function MobilePackagesEditor({
                     />
 
                     <div className={styles.pkgSaveRow}>
-                      {count > 1 && (
+                      {count > 1 && idx > 0 && (
                         <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
                       )}
                       {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
