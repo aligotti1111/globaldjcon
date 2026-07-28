@@ -921,6 +921,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 djName={data.name || ''}
                 djSlug={effectiveSlug}
                 djEventTypes={data.event_types}
+                djCustomEventTypes={(data as { mob_custom_event_types?: unknown }).mob_custom_event_types}
                 djZip={data.zip}
                 djTravelDistance={data.travel_distance}
                 bookingSettings={bookingSettings!}
