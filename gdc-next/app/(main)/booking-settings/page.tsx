@@ -43,7 +43,7 @@ export default async function BookingSettingsPage() {
 
   const { data: row } = await supabase
     .from('users')
-    .select('id, role, dj_type, slug, booking_settings, event_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at')
+    .select('id, role, dj_type, slug, booking_settings, event_types, mob_custom_event_types, mob_specialty_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at')
     .eq('id', authUser.id)
     .single<ProfileRow>();
 
@@ -65,6 +65,8 @@ export default async function BookingSettingsPage() {
         slug: row.slug,
         booking_settings: row.booking_settings,
         event_types: row.event_types,
+        mob_custom_event_types: (row as { mob_custom_event_types?: unknown }).mob_custom_event_types,
+        mob_specialty_types: (row as { mob_specialty_types?: unknown }).mob_specialty_types,
       }}
     />
   );
