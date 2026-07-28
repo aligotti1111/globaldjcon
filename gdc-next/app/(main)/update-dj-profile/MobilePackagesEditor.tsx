@@ -102,6 +102,7 @@ export default function MobilePackagesEditor({
     if (has(mob.general)) return true;
     return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
   })();
+  const [pvPhotos, setPvPhotos] = useState<string[] | null>(null);
   const [previewStart, setPreviewStart] = useState('18:00');
   const [previewEnd, setPreviewEnd] = useState('23:00');
   function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
@@ -522,14 +523,16 @@ export default function MobilePackagesEditor({
         const fmt = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
         const ser = serializeMobPackages(mob);
         const hrs = hoursBetween(previewStart, previewEnd);
-        type Card = { i: number; pkg: MobilePackage; title: string; details: string; photo: string; reqAll: boolean; tiers: { hours: number; price: number }[] };
+        type Card = { i: number; pkg: MobilePackage; title: string; details: string; photo: string; photos: string[]; reqAll: boolean; tiers: { hours: number; price: number }[] };
         const cards: Card[] = [];
         mob.general.forEach((_, i) => {
           const rp = resolvePackage(ser as unknown as Record<string, unknown>, previewEvent || 'general', i) as unknown as MobilePackage | null;
           if (!rp) return;
           const title = String((rp as { title?: string }).title || '').trim();
           if (!title) return;
-          cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: String((rp as { photo?: string }).photo || ''), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
+          const mainPhoto = String((rp as { photo?: string }).photo || '');
+          const extra = Array.isArray((rp as { photos?: string[] }).photos) ? ((rp as { photos?: string[] }).photos as string[]) : [];
+          cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: mainPhoto, photos: [mainPhoto, ...extra].filter(Boolean), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
         });
         const sel = cards.find((c) => c.i === previewSel) || cards[0];
         let summary: { quote: boolean; rate: number; tax: number; deposit: number; total: number } | null = null;
@@ -625,11 +628,11 @@ export default function MobilePackagesEditor({
                                   {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
                                 </div>
                                 {c.photo && (
-                                  <div className={bookingStyles.packageThumb}>
+                                  <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (c.photos.length) setPvPhotos(c.photos); }}>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={c.photo} alt="" />
                                     <div className={bookingStyles.packageThumbOverlay} />
-                                    <div className={bookingStyles.packageThumbLabel}>Sample</div>
+                                    <div className={bookingStyles.packageThumbLabel}>{c.photos.length > 1 ? `${c.photos.length} photos` : 'Sample'}</div>
                                   </div>
                                 )}
                               </div>
@@ -684,6 +687,15 @@ export default function MobilePackagesEditor({
           </div>
         );
       })()}
+      {pvPhotos && (
+        <div onClick={() => setPvPhotos(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '2.5rem 1rem' }}>
+          <button type="button" onClick={() => setPvPhotos(null)} aria-label="Close" style={{ position: 'fixed', top: 12, right: 16, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+          {pvPhotos.map((u, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={u} alt="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
+          ))}
+        </div>
+      )}
       {confirmDialog}
     </div>
   );
