@@ -283,8 +283,8 @@ export default function MobilePackagesEditor({
                       </select>
                     )}
                     {addable.length > 0 && (
-                      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted)', margin: '.4rem .1rem 0' }}>
-                        Gives that event type its own package — customize its name, description, pricing, and photos separately from General events.
+                      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', margin: '.4rem .1rem 0' }}>
+                        &ldquo;Add Event Type&rdquo; removes that event from General Events pricing and lets you customize its package name, description, pricing, and photos.
                       </p>
                     )}
                   </div>
