@@ -105,6 +105,21 @@ export default function MobilePackagesEditor({
   const typesForPkg = (_i: number) => railTypes;
   const addableForPkg = (_i: number) =>
     selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
+  // When specialty types change (e.g. added from the Edit Event Types popup),
+  // pull any newly-added ones into the live overrides so they show in the
+  // "Customize pricing and details" rail immediately — no page refresh needed.
+  useEffect(() => {
+    setMob((prev) => {
+      let m = prev;
+      for (const t of specialtyTypes) {
+        if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) {
+          m = pullTypeOut(m, t);
+        }
+      }
+      return m;
+    });
+  }, [specialtyTypes, selectedEventTypes]);
+
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
   // Report dirty upward + honor the page-level master Save.
