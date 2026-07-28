@@ -384,10 +384,10 @@ export default function PackageEditor({
             <button
               type="button"
               onClick={() => setShowOutsideNote((v) => !v)}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '.35rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.6rem', fontFamily: "'Space Mono', monospace" }}
+              style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.62rem', fontFamily: "'Space Mono', monospace" }}
             >
-              <span style={{ fontSize: '.7rem' }}>{showOutsideNote ? '▾' : '▸'}</span>
-              Pricing for hours outside your listed options
+              <span>Pricing for hours outside your listed options</span>
+              <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
             </button>
             {showOutsideNote && (
               <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0' }}>
