@@ -248,6 +248,23 @@ export default function MobilePackagesEditor({
     setEtSpec((prev) => prev.filter((k) => k !== key));
   }
   function etSaveClose() { onEventTypesSave?.(etSel, etCustom, etSpec); setEtOpen(false); }
+  async function closeEtEditor() {
+    const baseSpec = Array.from(new Set([...specialtyTypes, ...railTypes])).sort();
+    const dirty = JSON.stringify([[...etSel].sort(), etCustom, [...etSpec].sort()])
+      !== JSON.stringify([[...selectedEventTypes].sort(), customEventTypes, baseSpec]);
+    if (dirty) {
+      const ok = await confirm({
+        title: 'Discard event type changes?',
+        message: 'You changed your event types but didn\'t save. Discard these changes?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+        variant: 'danger',
+      });
+      if (!ok) return;
+    }
+    setEtErr(null);
+    setEtOpen(false);
+  }
 
   if (count === 0) {
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
@@ -432,11 +449,11 @@ export default function MobilePackagesEditor({
           </div>
         );
         return (
-          <div onClick={() => setEtOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div onClick={() => closeEtEditor()} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto', background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.3rem' }}>
                 <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Event types</h3>
-                <button type="button" onClick={() => setEtOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+                <button type="button" onClick={() => closeEtEditor()} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
               </div>
               <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.75rem', lineHeight: 1.5 }}>Check the event types you offer, or add your own. These appear on your public booking form and here for pricing.</p>
 
