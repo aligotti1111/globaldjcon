@@ -40,6 +40,7 @@ import {
   isPromoUsable,
   type DiscountResult,
 } from './bookingSettings';
+import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import {
   MOB_EVENT_TYPE_LABELS,
   EVENT_SUBFIELDS,
@@ -92,6 +93,7 @@ interface DjLite {
   name: string | null;
   slug: string | null;
   event_types: string | null;  // comma-separated
+  mob_custom_event_types?: unknown; // DJ-defined event types [{key,label}]
   zip: string | null;          // for distance check
   travel_distance: string | null; // 'worldwide' or numeric miles
 }
@@ -302,6 +304,7 @@ export default function MobileBookingForm({
   // once an event type is chosen. isWedding is still used only for the
   // "Reception" vs "Event" time labels.
   const cocktailEligible = !!eventType;
+  const customEventTypes = useMemo(() => parseCustomEventTypes(dj.mob_custom_event_types), [dj.mob_custom_event_types]);
   const eventTypesAllowed = useMemo(() => {
     return (dj.event_types || '')
       .split(',')
@@ -978,6 +981,11 @@ export default function MobileBookingForm({
                   <option key={val} value={val}>{lbl}</option>
                 ) : null
               )}
+              {eventTypesAllowed
+                .filter((v) => !MOB_EVENT_TYPE_LABELS[v])
+                .map((v) => (
+                  <option key={v} value={v}>{mobEventLabel(v, customEventTypes)}</option>
+                ))}
             </select>
           </FieldCheck>
           {eventType === 'other' && (
