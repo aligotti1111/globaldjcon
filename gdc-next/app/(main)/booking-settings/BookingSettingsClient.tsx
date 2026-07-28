@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 import BookingTab from '../update-dj-profile/BookingTab';
+import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
@@ -27,6 +28,8 @@ interface InitialProfile {
   slug: string | null;
   booking_settings: string | null;
   event_types: string | null;
+  mob_custom_event_types?: unknown;
+  mob_specialty_types?: unknown;
 }
 
 interface Props {
@@ -49,6 +52,18 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       ? ['weddings', 'corporate', 'birthday', 'anniversary', 'graduation', 'sweet16', 'quinceanera', 'mitzvah', 'reunion', 'holiday', 'school', 'community', 'other']
       : [];
   }, [initialProfile.event_types, djType]);
+
+  const customEventTypes = useMemo(
+    () => parseCustomEventTypes(initialProfile.mob_custom_event_types),
+    [initialProfile.mob_custom_event_types],
+  );
+  const specialtyTypes = useMemo(() => {
+    const raw = initialProfile.mob_specialty_types;
+    let arr: unknown = raw;
+    if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
+    if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
+    return ['weddings', 'mitzvah'];
+  }, [initialProfile.mob_specialty_types]);
 
   const [bookingSettings, setBookingSettings] = useState<BookingSettings>(
     parseBookingSettings(initialProfile.booking_settings) || {}
@@ -190,6 +205,8 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           <BookingTab
             djType={djType}
             selectedEventTypes={selectedEventTypes}
+            customEventTypes={customEventTypes}
+            specialtyTypes={specialtyTypes}
             bookingSettings={bookingSettings}
             onChange={setBookingSettings}
             userId={initialProfile.id}
