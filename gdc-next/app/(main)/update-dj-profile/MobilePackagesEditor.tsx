@@ -124,7 +124,7 @@ export default function MobilePackagesEditor({
   const sideItem = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
     padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '.9rem', lineHeight: 1.15, letterSpacing: '.06em', textTransform: 'uppercase',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', lineHeight: 1.15, letterSpacing: '.06em', textTransform: 'uppercase',
     background: active ? 'var(--neon-dim)' : 'transparent',
     color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
@@ -181,7 +181,7 @@ export default function MobilePackagesEditor({
                       <div style={{ margin: '0 0 6px 8px', paddingLeft: 8, borderLeft: '1px solid var(--border)' }}>
                         <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '.15rem 0 .25rem' }}>Covers</div>
                         {addable.length ? addable.map((t) => (
-                          <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '.85rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#cfd0d6', padding: '.12rem 0' }}>{labelFor(t)}</div>
+                          <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#cfd0d6', padding: '.18rem 0' }}>{labelFor(t)}</div>
                         )) : (
                           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.15rem 0' }}>No events under General</div>
                         )}
