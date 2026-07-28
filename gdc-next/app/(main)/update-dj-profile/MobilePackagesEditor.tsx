@@ -163,12 +163,13 @@ export default function MobilePackagesEditor({
     const base = (mob.general[idx] || {}) as Record<string, unknown>;
     const ov = (mob.overrides[selType]?.[idx] || {}) as Record<string, unknown>;
     const merged: Record<string, unknown> = { ...ov };
-    // Name + details carry over from General so each event type starts filled
-    // in and can be customized from there.
-    for (const fld of ['title', 'details'] as const) {
+    // Name, details, and photos carry over from General so each event type
+    // starts filled in and can be customized from there.
+    for (const fld of ['title', 'details', 'photo'] as const) {
       const v = merged[fld];
       if (v == null || (typeof v === 'string' && v.replace(/<[^>]*>/g, '').trim() === '')) merged[fld] = base[fld];
     }
+    if (!Array.isArray(merged.photos) || (merged.photos as unknown[]).length === 0) merged.photos = base.photos;
     return merged as MobilePackage;
   })();
 
@@ -200,7 +201,7 @@ export default function MobilePackagesEditor({
     if (selType === 'general') { update(setGeneral(mob, idx, next as Pkg)); return; }
     const base = (mob.general[idx] || {}) as Record<string, unknown>;
     const ov = { ...(next as unknown as Record<string, unknown>) };
-    for (const fld of ['title', 'details'] as const) {
+    for (const fld of ['title', 'details', 'photo', 'photos'] as const) {
       if (JSON.stringify(ov[fld] ?? '') === JSON.stringify(base[fld] ?? '')) delete ov[fld];
     }
     update(setOverride(mob, selType, idx, ov as Pkg));
