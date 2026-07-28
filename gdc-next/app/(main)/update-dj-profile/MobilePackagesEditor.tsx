@@ -14,7 +14,7 @@ import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
-import { resolvePackage, calcPrice, MOB_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
+import { resolvePackage, calcPrice, MOB_TIME_OPTIONS, MOB_END_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
 import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
 import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
 import {
@@ -588,7 +588,7 @@ export default function MobilePackagesEditor({
                   <div style={{ flex: 1 }}>
                     <div style={editLabel}>End time</div>
                     <select value={previewEnd} onChange={(e) => setPreviewEnd(e.target.value)} style={selStyle}>
-                      {MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
+                      {MOB_END_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
                     </select>
                   </div>
                 </div>
