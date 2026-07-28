@@ -655,9 +655,7 @@ export default function BookingTab({
                   <span className={styles.packageIntroHi}>General events</span> first. The text you add will
                   carry over to all the other event types listed under Customize pricing and details — it&rsquo;s
                   copied over to speed up the process. Each event within a package can still be completely
-                  customized: package name, details, pricing, and photos.{' '}
-                  <span className={styles.packageIntroHi}>&ldquo;Add Event Type&rdquo;</span> removes that event
-                  from General Events pricing and lets you customize its package name, description, pricing, and photos.
+                  customized: package name, details, pricing, and photos.
                 </p>
               )}
 
