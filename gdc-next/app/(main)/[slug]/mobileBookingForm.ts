@@ -100,6 +100,22 @@ export const MOB_TIME_OPTIONS: TimeOption[] = (() => {
   return opts;
 })();
 
+// End-time options that flow PAST MIDNIGHT. Many parties run into the early
+// morning, so end times before 6 AM are labelled "(next day)" and appended
+// after 11:30 PM. Values stay standard "HH:MM" (00:00–05:30) — the pricing/
+// duration helpers already treat end <= start as an overnight event, so a
+// "1:00 AM (next day)" end computes the correct number of hours.
+export const MOB_END_TIME_OPTIONS: TimeOption[] = (() => {
+  const day: TimeOption[] = [];
+  const next: TimeOption[] = [];
+  for (const o of MOB_TIME_OPTIONS) {
+    const h = Number(o.val.split(':')[0]);
+    if (h < 6) next.push({ val: o.val, label: `${o.label} (next day)` });
+    else day.push(o);
+  }
+  return [...day, ...next];
+})();
+
 // US phone formatter — vanilla MPF_PHONE_FORMATS.US.
 // "1234567890" → "(123) 456-7890"
 // International formats are deferred — most users are US.
