@@ -75,7 +75,9 @@ export default function MobilePackagesEditor({
   const [mob, setMob] = useState<MobPackagesNew>(initial);
   const [pkgIdx, setPkgIdx] = useState(0);
   const [selType, setSelType] = useState<string>('general');
-  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(normalizeMobPackages(mobPackages))));
+  // Baseline = the normalized+auto-pulled shape the editor actually starts in,
+  // so a clean load is NOT dirty (specialty types are pulled in by `initial`).
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
