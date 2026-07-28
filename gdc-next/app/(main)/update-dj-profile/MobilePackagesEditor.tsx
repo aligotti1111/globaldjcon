@@ -52,7 +52,7 @@ export default function MobilePackagesEditor({
   userId: string;
   currency: string;
   onSave: (next: MobPackagesNew) => void;
-  onEventTypesSave?: (selected: string[], custom: CustomEventType[]) => void | Promise<void>;
+  onEventTypesSave?: (selected: string[], custom: CustomEventType[], specialty: string[]) => void | Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
   masterSaveTrigger?: number;
 }) {
@@ -80,7 +80,9 @@ export default function MobilePackagesEditor({
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
   const [etCustom, setEtCustom] = useState<CustomEventType[]>(customEventTypes);
-  const [etNew, setEtNew] = useState('');
+  const [etSpec, setEtSpec] = useState<string[]>(specialtyTypes);
+  const [etNewGen, setEtNewGen] = useState('');
+  const [etNewSpec, setEtNewSpec] = useState('');
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
@@ -217,24 +219,26 @@ export default function MobilePackagesEditor({
   saveRef.current = save;
 
   // ── Event-types editor popup (edits the DJ's offered + custom types) ──
-  function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtNew(''); setEtOpen(true); }
+  function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(specialtyTypes); setEtNewGen(''); setEtNewSpec(''); setEtOpen(true); }
   function etToggle(key: string, on: boolean) {
     setEtSel((prev) => (on ? Array.from(new Set([...prev, key])) : prev.filter((k) => k !== key)));
   }
-  function etAddCustom() {
-    const label = etNew.trim(); if (!label) return;
-    const key = makeCustomEventKey(label);
-    if (!etCustom.some((c) => c.key === key || c.label.toLowerCase() === label.toLowerCase())) {
-      setEtCustom((prev) => [...prev, { key, label }]);
+  function etAddCustom(label: string, toSpecialty: boolean) {
+    const trimmed = label.trim(); if (!trimmed) return;
+    const key = makeCustomEventKey(trimmed);
+    if (!etCustom.some((c) => c.key === key || c.label.toLowerCase() === trimmed.toLowerCase())) {
+      setEtCustom((prev) => [...prev, { key, label: trimmed }]);
       setEtSel((prev) => Array.from(new Set([...prev, key])));
+      if (toSpecialty) setEtSpec((prev) => Array.from(new Set([...prev, key])));
     }
-    setEtNew('');
+    if (toSpecialty) setEtNewSpec(''); else setEtNewGen('');
   }
   function etRemoveCustom(key: string) {
     setEtCustom((prev) => prev.filter((c) => c.key !== key));
     setEtSel((prev) => prev.filter((k) => k !== key));
+    setEtSpec((prev) => prev.filter((k) => k !== key));
   }
-  function etSaveClose() { onEventTypesSave?.(etSel, etCustom); setEtOpen(false); }
+  function etSaveClose() { onEventTypesSave?.(etSel, etCustom, etSpec); setEtOpen(false); }
 
   if (count === 0) {
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
@@ -396,37 +400,52 @@ export default function MobilePackagesEditor({
       })}
 
       <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
-      {etOpen && (
-        <div onClick={() => setEtOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto', background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.3rem' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Event types</h3>
-              <button type="button" onClick={() => setEtOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
-            </div>
-            <p style={{ margin: '0 0 .9rem', color: 'var(--muted)', fontSize: '.75rem', lineHeight: 1.5 }}>Check the event types you offer, or add your own. These appear on your public booking form and here for pricing.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem', marginBottom: '.9rem' }}>
-              {Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, lbl]) => (
-                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', color: '#fff', fontSize: '.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={etSel.includes(key)} onChange={(e) => etToggle(key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
-                  {lbl}
-                </label>
-              ))}
-              {etCustom.map((c) => (
-                <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', color: '#fff', fontSize: '.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={etSel.includes(c.key)} onChange={(e) => etToggle(c.key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
-                  <span style={{ flex: 1 }}>{c.label}</span>
-                  <span role="button" aria-label={`Remove ${c.label}`} title="Remove" onClick={(e) => { e.preventDefault(); etRemoveCustom(c.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>
-                </label>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
-              <input value={etNew} onChange={(e) => setEtNew(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); etAddCustom(); } }} placeholder="Add event type" aria-label="Add event type" style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.55rem .6rem', fontSize: '.85rem' }} />
-              <button type="button" onClick={etAddCustom} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.55rem .9rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
-            </div>
-            <button type="button" onClick={etSaveClose} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.65rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Done</button>
+      {etOpen && (() => {
+        const builtIns = Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, label]) => ({ key, label }));
+        const allOpts = [...builtIns, ...etCustom.map((c) => ({ key: c.key, label: c.label }))];
+        const genOpts = allOpts.filter((o) => !etSpec.includes(o.key));
+        const specOpts = allOpts.filter((o) => etSpec.includes(o.key));
+        const isCustom = (k: string) => etCustom.some((c) => c.key === k);
+        const cbRow = (o: { key: string; label: string }) => (
+          <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', color: '#fff', fontSize: '.85rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={etSel.includes(o.key)} onChange={(e) => etToggle(o.key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
+            <span style={{ flex: 1 }}>{o.label}</span>
+            {isCustom(o.key) && (
+              <span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>
+            )}
+          </label>
+        );
+        const groupLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem' };
+        const addRow = (val: string, setVal: (v: string) => void, toSpec: boolean) => (
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.6rem' }}>
+            <input value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); etAddCustom(val, toSpec); } }} placeholder="Add event type" aria-label="Add event type" style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.5rem .6rem', fontSize: '.82rem' }} />
+            <button type="button" onClick={() => etAddCustom(val, toSpec)} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.5rem .85rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
           </div>
-        </div>
-      )}
+        );
+        return (
+          <div onClick={() => setEtOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto', background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.3rem' }}>
+                <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Event types</h3>
+                <button type="button" onClick={() => setEtOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+              </div>
+              <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.75rem', lineHeight: 1.5 }}>Check the event types you offer, or add your own. These appear on your public booking form and here for pricing.</p>
+
+              <div style={groupLabel}>General events</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>{genOpts.map(cbRow)}</div>
+              {addRow(etNewGen, setEtNewGen, false)}
+
+              <div style={{ ...groupLabel, marginTop: '1.25rem' }}>Specialty / Custom</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
+                {specOpts.length > 0 ? specOpts.map(cbRow) : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>None yet.</span>}
+              </div>
+              {addRow(etNewSpec, setEtNewSpec, true)}
+
+              <button type="button" onClick={etSaveClose} style={{ width: '100%', marginTop: '1.25rem', background: 'var(--neon)', border: '1px solid var(--neon)', color: '#04121a', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Save event types</button>
+            </div>
+          </div>
+        );
+      })()}
       {confirmDialog}
     </div>
   );
