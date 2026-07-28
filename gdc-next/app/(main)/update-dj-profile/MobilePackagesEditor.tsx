@@ -14,7 +14,7 @@ import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import type { MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
-import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 import {
   normalizeMobPackages,
   serializeMobPackages,
@@ -33,24 +33,37 @@ function catFor(eventType: string): 'general' | 'wedding' | 'mitzvah' {
   if (eventType === 'mitzvah') return 'mitzvah';
   return 'general';
 }
-function labelFor(eventType: string): string {
-  return eventType === 'general' ? 'General' : (MOB_EVENT_LABELS[eventType] || eventType);
-}
-
 export default function MobilePackagesEditor({
   mobPackages,
   selectedEventTypes,
+  customEventTypes = [],
+  specialtyTypes = [],
   userId,
   currency,
   onSave,
 }: {
   mobPackages: Record<string, unknown> | null | undefined;
   selectedEventTypes: string[];
+  customEventTypes?: CustomEventType[];
+  specialtyTypes?: string[];
   userId: string;
   currency: string;
   onSave: (next: MobPackagesNew) => void;
 }) {
-  const initial = useMemo(() => normalizeMobPackages(mobPackages), [mobPackages]);
+  // Prop-aware label resolver (built-in + custom event types).
+  const labelFor = (eventType: string): string =>
+    eventType === 'general' ? 'General' : mobEventLabel(eventType, customEventTypes);
+  const initial = useMemo(() => {
+    let m = normalizeMobPackages(mobPackages);
+    // Specialty types (set on the profile) auto-appear in "Customize pricing
+    // and details" so they get their own price by default.
+    for (const t of specialtyTypes) {
+      if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) {
+        m = pullTypeOut(m, t);
+      }
+    }
+    return m;
+  }, [mobPackages, specialtyTypes, selectedEventTypes]);
   const [mob, setMob] = useState<MobPackagesNew>(initial);
   const [pkgIdx, setPkgIdx] = useState(0);
   const [selType, setSelType] = useState<string>('general');
