@@ -175,7 +175,18 @@ export default function MobilePackagesEditor({
                     <div style={railLabel}>Event type pricing</div>
                     <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
                       <span>General events</span>
+                      <span style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.7rem' }}>{selType === 'general' ? '▾' : '▸'}</span>
                     </button>
+                    {selType === 'general' && (
+                      <div style={{ margin: '0 0 6px 8px', paddingLeft: 8, borderLeft: '1px solid var(--border)' }}>
+                        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '.15rem 0 .25rem' }}>Covers</div>
+                        {addable.length ? addable.map((t) => (
+                          <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '.85rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#cfd0d6', padding: '.12rem 0' }}>{labelFor(t)}</div>
+                        )) : (
+                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.15rem 0' }}>No events under General</div>
+                        )}
+                      </div>
+                    )}
                     {myTypes.map((t) => {
                       const active = selType === t;
                       return (
@@ -207,11 +218,7 @@ export default function MobilePackagesEditor({
                   {/* RIGHT — the selected type's price card */}
                   <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
                     <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                      {selType === 'general'
-                        ? (addable.length
-                            ? `General events — covers ${addable.map(labelFor).join(', ')}. Set the title, description, photos & price here; these event types use it unless you give one its own pricing.`
-                            : 'General events — every selected event type has its own pricing, so nothing falls under General right now.')
-                        : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                      {selType === 'general' ? 'General events — the base every event type inherits' : `${labelFor(selType)} — title, description & photos inherit from General unless changed`}
                     </div>
 
                     <PackageEditor
