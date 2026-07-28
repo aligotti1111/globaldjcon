@@ -15,6 +15,7 @@ import PackageEditor from './PackageEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
 import { resolvePackage } from '@/app/(main)/[slug]/mobileBookingForm';
+import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
 import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
 import {
   normalizeMobPackages,
@@ -87,7 +88,13 @@ export default function MobilePackagesEditor({
   const [etErr, setEtErr] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewEvent, setPreviewEvent] = useState('');
-  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewOpen(true); }
+  const [previewSel, setPreviewSel] = useState(0);
+  const hasAnyPrice = (() => {
+    const has = (arr?: Pkg[]) => Array.isArray(arr) && arr.some((pk) => packageTiers(pk as unknown as MobilePackage).length > 0);
+    if (has(mob.general)) return true;
+    return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
+  })();
+  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewOpen(true); }
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
@@ -304,15 +311,6 @@ export default function MobilePackagesEditor({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.6rem' }}>
-        <button
-          type="button"
-          onClick={openPreview}
-          style={{ background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.5rem .85rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}
-        >
-          Preview as a host
-        </button>
-      </div>
       {mob.general.map((_, i) => {
         const open = i === idx;
         // Header name: when open on an event type that gave itself its own title,
@@ -454,6 +452,19 @@ export default function MobilePackagesEditor({
       })}
 
       <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.35rem', marginTop: '1rem' }}>
+        <button
+          type="button"
+          onClick={openPreview}
+          disabled={!hasAnyPrice}
+          title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'}
+          style={{ background: hasAnyPrice ? 'var(--neon)' : 'transparent', border: '1px solid var(--neon)', color: hasAnyPrice ? '#04121a' : 'var(--muted)', borderRadius: 8, padding: '.7rem 1.2rem', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55 }}
+        >
+          Preview how a host sees this
+        </button>
+        {!hasAnyPrice && <span style={{ color: 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.04em' }}>Add a price option to enable the preview.</span>}
+      </div>
       {etOpen && (() => {
         const builtIns = Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, label]) => ({ key, label }));
         const allOpts = [...builtIns, ...etCustom.map((c) => ({ key: c.key, label: c.label }))];
@@ -504,7 +515,7 @@ export default function MobilePackagesEditor({
       {previewOpen && (() => {
         const cur = currencySymbol(currency);
         const ser = serializeMobPackages(mob);
-        type Card = { i: number; title: string; details: string; reqAll: boolean; tiers: { hours: number; price: number }[]; overtime: number };
+        type Card = { i: number; title: string; details: string; photo: string; reqAll: boolean; tiers: { hours: number; price: number }[] };
         const cards: Card[] = [];
         mob.general.forEach((_, i) => {
           const rp = resolvePackage(ser as unknown as Record<string, unknown>, previewEvent || 'general', i) as unknown as MobilePackage | null;
@@ -515,55 +526,74 @@ export default function MobilePackagesEditor({
             i,
             title,
             details: String((rp as { details?: string }).details || ''),
+            photo: String((rp as { photo?: string }).photo || ''),
             reqAll: !!(rp as { reqAll?: boolean }).reqAll,
             tiers: packageTiers(rp),
-            overtime: Number((rp as { overtime?: unknown }).overtime) || 0,
           });
         });
-        const priceLine = (c: Card) =>
-          c.reqAll || c.tiers.length === 0
-            ? 'Price on request'
-            : `From ${cur}${c.tiers[0].price.toLocaleString()}`;
         return (
-          <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: '#0b0b12', border: '1px solid var(--neon)', borderRadius: 14, padding: '1.25rem', boxShadow: '0 24px 70px rgba(0,0,0,.7)' }}>
+          <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: '#0b0b12', border: '1px solid var(--neon)', borderRadius: 14, padding: '1.25rem', boxShadow: '0 24px 70px rgba(0,0,0,.7)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.2rem' }}>
-                <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How hosts see your packages</h3>
+                <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How a host sees this</h3>
                 <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
               </div>
-              <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>Pick an event type — the prices update just like they would for a host booking you. Preview only; nothing is sent.</p>
+              <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>These are your real package cards. Change the event type and the prices update just like they would for a host. Preview only &mdash; nothing is sent.</p>
 
               <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.35rem' }}>Type of event</label>
               <select
                 value={previewEvent}
-                onChange={(e) => setPreviewEvent(e.target.value)}
+                onChange={(e) => { setPreviewEvent(e.target.value); setPreviewSel(0); }}
                 style={{ width: '100%', background: 'rgba(10,10,16,.9)', color: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem', fontSize: '.9rem', marginBottom: '1.1rem' }}
               >
                 {selectedEventTypes.map((k) => <option key={k} value={k} style={{ background: '#0c0c12' }}>{labelFor(k)}</option>)}
               </select>
 
               {cards.length === 0 ? (
-                <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>No packages with a title yet — add one to see it here.</p>
+                <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>No packages with a title yet.</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
-                  {cards.map((c) => (
-                    <div key={c.i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '.85rem .9rem', background: 'rgba(255,255,255,.02)' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '.5rem' }}>
-                        <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.25rem', color: '#fff', letterSpacing: '.03em' }}>{c.title}</span>
-                        <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', whiteSpace: 'nowrap' }}>{priceLine(c)}</span>
-                      </div>
-                      {c.details && <div style={{ color: '#cfd0d6', fontSize: '.8rem', lineHeight: 1.5, marginTop: '.4rem' }} dangerouslySetInnerHTML={{ __html: c.details }} />}
-                      {!c.reqAll && c.tiers.length > 0 && (
-                        <div style={{ marginTop: '.6rem', display: 'flex', flexWrap: 'wrap', gap: '.3rem .8rem' }}>
-                          {c.tiers.map((t) => (
-                            <span key={t.hours} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.68rem', color: 'var(--muted)' }}>{t.hours} hr &mdash; <span style={{ color: '#fff' }}>{cur}{t.price.toLocaleString()}</span></span>
-                          ))}
-                          {c.overtime > 0 && <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.68rem', color: 'var(--muted)' }}>+{cur}{c.overtime.toLocaleString()}/hr overtime</span>}
+                <>
+                  <div className={bookingStyles.packagesLabel}>Select a Package</div>
+                  <div className={bookingStyles.packagesGrid}>
+                    {cards.map((c) => {
+                      const isSel = previewSel === c.i;
+                      const hasBody = !!(c.details || c.photo);
+                      const priceEl = (c.reqAll || c.tiers.length === 0)
+                        ? <div className={bookingStyles.packagePriceQuote}>Price on request</div>
+                        : <div className={bookingStyles.packagePrice}>{cur}{c.tiers[0].price.toLocaleString()}</div>;
+                      return (
+                        <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
+                          {isSel && (
+                            <div className={bookingStyles.packageCheck}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>
+                            </div>
+                          )}
+                          <div className={`${bookingStyles.packageHead} ${hasBody ? bookingStyles.packageHeadHasBody : ''}`}>
+                            <div className={bookingStyles.packageTitle}>{c.title}</div>
+                            <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>
+                          </div>
+                          {hasBody && (
+                            <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
+                              <div className={bookingStyles.packageDetails}>
+                                {c.details
+                                  ? <div dangerouslySetInnerHTML={{ __html: c.details }} />
+                                  : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
+                              </div>
+                              {c.photo && (
+                                <div className={bookingStyles.packageThumb}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={c.photo} alt="" />
+                                  <div className={bookingStyles.packageThumbOverlay} />
+                                  <div className={bookingStyles.packageThumbLabel}>Sample</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
 
               <button type="button" onClick={() => setPreviewOpen(false)} style={{ width: '100%', marginTop: '1.25rem', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Close preview</button>
