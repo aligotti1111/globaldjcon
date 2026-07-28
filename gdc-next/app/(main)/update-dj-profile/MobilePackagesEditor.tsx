@@ -282,6 +282,11 @@ export default function MobilePackagesEditor({
                         {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
                       </select>
                     )}
+                    {addable.length > 0 && (
+                      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted)', margin: '.4rem .1rem 0' }}>
+                        Gives that event type its own package — customize its name, description, pricing, and photos separately from General events.
+                      </p>
+                    )}
                   </div>
 
                   {/* RIGHT — the selected type's price card */}
