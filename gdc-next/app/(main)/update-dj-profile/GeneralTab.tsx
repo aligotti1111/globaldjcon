@@ -552,14 +552,14 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                   onChange={(e) => setNewTypeLabel(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
                   onBlur={() => { if (newTypeLabel.trim()) addCustomType(); }}
-                  placeholder="Add your event type"
-                  aria-label="Add your event type"
+                  placeholder="Add event type"
+                  aria-label="Add event type"
                   style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '.8rem', outline: 'none' }}
                 />
               </div>
             </div>
             <div className={`${styles.partyGroupLabel} ${styles.partyGroupLabelLater}`}>
-              Specialty Events
+              Specialty Events / Custom Pricing
             </div>
             <div
               className={styles.checkboxGrid}
