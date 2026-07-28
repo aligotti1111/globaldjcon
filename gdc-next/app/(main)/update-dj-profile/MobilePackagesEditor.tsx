@@ -22,9 +22,8 @@ import {
   setOverride,
   addPackageSlot,
   removePackageSlot,
-  pullTypeOutAt,
-  putTypeBackAt,
-  typesForIndex,
+  pullTypeOut,
+  putTypeBack,
   type MobPackagesNew,
   type Pkg,
 } from '@/app/(main)/[slug]/packageModel';
@@ -74,11 +73,12 @@ export default function MobilePackagesEditor({
   const count = mob.general.length;
   const idx = pkgIdx < 0 ? -1 : Math.min(pkgIdx, Math.max(0, count - 1));
 
-  // Event types are PER PACKAGE: which types a package prices on its own is
-  // independent of every other package.
-  const typesForPkg = (i: number) => typesForIndex(mob, i);
-  const addableForPkg = (i: number) =>
-    selectedEventTypes.filter((t) => t !== 'general' && !typesForPkg(i).includes(t));
+  // The list of customized event types is SHARED across all packages; each
+  // package still holds its own prices for them (override array by index).
+  const railTypes = Object.keys(mob.overrides);
+  const typesForPkg = (_i: number) => railTypes;
+  const addableForPkg = (_i: number) =>
+    selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
   function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
@@ -96,16 +96,16 @@ export default function MobilePackagesEditor({
     if (selType === 'general') update(setGeneral(mob, idx, next as Pkg));
     else update(setOverride(mob, selType, idx, next as Pkg));
   }
-  function addEventType(type: string) { update(pullTypeOutAt(mob, type, idx)); setSelType(type); }
+  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelType(type); }
   async function removeEventType(type: string) {
     const ok = await confirm({
       title: `Put ${labelFor(type)} back under General events?`,
-      message: `${labelFor(type)} will lose its own pricing for this package and use your General events pricing instead.`,
+      message: `${labelFor(type)} will be removed from every package's list and use your General events pricing instead.`,
       confirmLabel: 'Put back under General',
       variant: 'danger',
     });
     if (!ok) return;
-    update(putTypeBackAt(mob, type, idx));
+    update(putTypeBack(mob, type));
     if (selType === type) setSelType('general');
   }
   function addPackage() {
