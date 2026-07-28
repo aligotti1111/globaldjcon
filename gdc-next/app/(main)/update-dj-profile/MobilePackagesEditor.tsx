@@ -57,6 +57,7 @@ export default function MobilePackagesEditor({
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const count = mob.general.length;
@@ -173,24 +174,26 @@ export default function MobilePackagesEditor({
                   {/* LEFT — event-type rail, inside the fold, for THIS package */}
                   <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
                     <div style={railLabel}>Event type pricing</div>
-                    <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
-                      <span>General events</span>
-                      <span style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.7rem' }}>{selType === 'general' ? '▾' : '▸'}</span>
-                    </button>
-                    {selType === 'general' && (
-                      <div style={{ margin: '0 0 6px 8px', paddingLeft: 8, borderLeft: '1px solid var(--border)' }}>
-                        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '.15rem 0 .25rem' }}>Covers</div>
-                        {addable.length ? addable.map((t) => (
-                          <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#cfd0d6', padding: '.18rem 0' }}>{labelFor(t)}</div>
-                        )) : (
-                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.15rem 0' }}>No events under General</div>
-                        )}
-                      </div>
-                    )}
+                    <div style={{ position: 'relative' }}>
+                      <button type="button" onClick={() => { setSelType('general'); setGenOpen((o) => !o); }} style={sideItem(selType === 'general')}>
+                        <span>General events</span>
+                        <span style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.7rem' }}>{genOpen ? '▾' : '▸'}</span>
+                      </button>
+                      {genOpen && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 2, background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 8, padding: '.5rem .65rem', boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .3rem' }}>Covers</div>
+                          {addable.length ? addable.map((t) => (
+                            <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', padding: '.18rem 0' }}>{labelFor(t)}</div>
+                          )) : (
+                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.15rem 0' }}>No events under General</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {myTypes.map((t) => {
                       const active = selType === t;
                       return (
-                        <button key={t} type="button" onClick={() => setSelType(t)} style={sideItem(active)}>
+                        <button key={t} type="button" onClick={() => { setSelType(t); setGenOpen(false); }} style={sideItem(active)}>
                           <span>{labelFor(t)}</span>
                           <span
                             role="button"
