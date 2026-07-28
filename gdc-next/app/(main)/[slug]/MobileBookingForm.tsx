@@ -315,8 +315,21 @@ export default function MobileBookingForm({
   // Packages — picked by category, fall back to general[idx] for shared fields
   const cat = getPackageCategory(eventType);
   const packagesAll = bookingSettings.mob_packages || {};
-  const categoryPkgs: MobilePackage[] = packagesAll[cat] || [];
   const generalPkgs: MobilePackage[] = packagesAll.general || [];
+  // Resolve the package list for THIS event type through resolvePackage so it
+  // works for both the old {general,wedding,mitzvah} shape and the new
+  // {general,overrides} shape (and for pulled-out custom/specialty types).
+  // Indexed by original package index; {} at an index the type has none.
+  const categoryPkgs: MobilePackage[] = useMemo(() => {
+    const ov = (packagesAll as { overrides?: Record<string, unknown[]> }).overrides;
+    const ovLen = ov && Array.isArray(ov[eventType]) ? ov[eventType].length : 0;
+    const oldLen = Array.isArray((packagesAll as Record<string, unknown>)[cat])
+      ? ((packagesAll as Record<string, unknown[]>)[cat] as unknown[]).length : 0;
+    const n = Math.max(generalPkgs.length, ovLen, oldLen);
+    return Array.from({ length: n }, (_, i) =>
+      (resolvePackage(packagesAll, eventType, i) as unknown as MobilePackage | null) ?? ({} as MobilePackage),
+    );
+  }, [packagesAll, eventType, cat, generalPkgs.length]);
 
   // Has the DJ defined ANY usable package across ANY category? When false,
   // we treat the whole booking as a "request a quote" — no package selection,
