@@ -643,9 +643,13 @@ export default function BookingTab({
             <div className={styles.sectionBody}>
               {activeCats.length > 0 && (
                 <p className={styles.packageIntro}>
-                  Build each package once under{' '}
-                  <span className={styles.packageIntroHi}>General</span>, then give any event type its own
-                  price using the list on the left. A host only sees the package for the event type they picked.
+                  Start building each package by adding the package title and description under{' '}
+                  <span className={styles.packageIntroHi}>General events</span> first. The text you add will
+                  carry over to all the other event types listed under Customize pricing and details — it&rsquo;s
+                  copied over to speed up the process. Each event within a package can still be completely
+                  customized: package name, details, pricing, and photos.{' '}
+                  <span className={styles.packageIntroHi}>&ldquo;Add Event Type&rdquo;</span> removes that event
+                  from General Events pricing and lets you customize its package name, description, pricing, and photos.
                 </p>
               )}
 
