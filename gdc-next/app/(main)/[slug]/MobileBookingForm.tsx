@@ -46,7 +46,7 @@ import {
   EVENT_SUBFIELDS,
   buildEventDetails,
   MOB_TIME_OPTIONS,
-  MOB_END_TIME_OPTIONS,
+  buildMobEndTimeOptions,
   formatUSPhone,
   getPackageCategory,
   resolvePackage,
@@ -306,6 +306,7 @@ export default function MobileBookingForm({
   // "Reception" vs "Event" time labels.
   const cocktailEligible = !!eventType;
   const customEventTypes = useMemo(() => parseCustomEventTypes(dj.mob_custom_event_types), [dj.mob_custom_event_types]);
+  const endTimeOptions = useMemo(() => buildMobEndTimeOptions(dateKey), [dateKey]);
   const eventTypesAllowed = useMemo(() => {
     return (dj.event_types || '')
       .split(',')
@@ -1255,7 +1256,7 @@ export default function MobileBookingForm({
                 className={`${styles.select} ${styles.hasCheckSelect}`}
               >
                 <option value="">Select time...</option>
-                {MOB_END_TIME_OPTIONS.map(o => (
+                {endTimeOptions.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
               </select>
