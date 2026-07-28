@@ -59,28 +59,34 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
   // Persist event-type edits made from the package builder popup straight to
   // the DJ's profile row (same columns the profile editor writes).
-  async function saveEventTypes(nextSelected: string[], nextCustom: { key: string; label: string }[]) {
+  async function saveEventTypes(
+    nextSelected: string[],
+    nextCustom: { key: string; label: string }[],
+    nextSpecialty: string[],
+  ) {
     setSelectedEventTypes(nextSelected);
     setCustomEventTypes(nextCustom);
+    setSpecialtyTypes(nextSpecialty);
     try {
       await supabaseRef.current
         .from('users')
         .update({
           event_types: nextSelected.length > 0 ? nextSelected.join(',') : null,
           mob_custom_event_types: nextCustom.length > 0 ? nextCustom : null,
+          mob_specialty_types: nextSpecialty,
         } as unknown as never)
         .eq('id', initialProfile.id);
     } catch {
       // Non-fatal; local state already updated so the rail reflects the change.
     }
   }
-  const specialtyTypes = useMemo(() => {
+  const [specialtyTypes, setSpecialtyTypes] = useState<string[]>(() => {
     const raw = initialProfile.mob_specialty_types;
     let arr: unknown = raw;
     if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
     if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
     return ['weddings', 'mitzvah'];
-  }, [initialProfile.mob_specialty_types]);
+  });
 
   const [bookingSettings, setBookingSettings] = useState<BookingSettings>(
     parseBookingSettings(initialProfile.booking_settings) || {}
