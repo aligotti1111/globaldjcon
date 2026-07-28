@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
+import { useConfirm } from '@/components/ConfirmModal';
 import type { MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import {
@@ -58,6 +59,7 @@ export default function MobilePackagesEditor({
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
+  const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -95,7 +97,17 @@ export default function MobilePackagesEditor({
     else update(setOverride(mob, selType, idx, next as Pkg));
   }
   function addEventType(type: string) { update(pullTypeOutAt(mob, type, idx)); setSelType(type); }
-  function removeEventType(type: string) { update(putTypeBackAt(mob, type, idx)); if (selType === type) setSelType('general'); }
+  async function removeEventType(type: string) {
+    const ok = await confirm({
+      title: `Put ${labelFor(type)} back under General events?`,
+      message: `${labelFor(type)} will lose its own pricing for this package and use your General events pricing instead.`,
+      confirmLabel: 'Put back under General',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    update(putTypeBackAt(mob, type, idx));
+    if (selType === type) setSelType('general');
+  }
   function addPackage() {
     const n = addPackageSlot(mob);
     setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
@@ -266,6 +278,7 @@ export default function MobilePackagesEditor({
       })}
 
       <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
+      {confirmDialog}
     </div>
   );
 }
