@@ -44,19 +44,36 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
   // as the profile editor: a brand-new mobile DJ with nothing saved gets all
   // 12 pre-selected; club DJs default to none.
-  const selectedEventTypes = useMemo(() => {
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(() => {
     const saved = (initialProfile.event_types || '')
       .split(',').map((s) => s.trim()).filter(Boolean);
     if (saved.length > 0) return saved;
     return djType === 'mobile'
       ? ['weddings', 'corporate', 'birthday', 'anniversary', 'graduation', 'sweet16', 'quinceanera', 'mitzvah', 'reunion', 'holiday', 'school', 'community', 'other']
       : [];
-  }, [initialProfile.event_types, djType]);
+  });
 
-  const customEventTypes = useMemo(
+  const [customEventTypes, setCustomEventTypes] = useState(
     () => parseCustomEventTypes(initialProfile.mob_custom_event_types),
-    [initialProfile.mob_custom_event_types],
   );
+
+  // Persist event-type edits made from the package builder popup straight to
+  // the DJ's profile row (same columns the profile editor writes).
+  async function saveEventTypes(nextSelected: string[], nextCustom: { key: string; label: string }[]) {
+    setSelectedEventTypes(nextSelected);
+    setCustomEventTypes(nextCustom);
+    try {
+      await supabaseRef.current
+        .from('users')
+        .update({
+          event_types: nextSelected.length > 0 ? nextSelected.join(',') : null,
+          mob_custom_event_types: nextCustom.length > 0 ? nextCustom : null,
+        } as unknown as never)
+        .eq('id', initialProfile.id);
+    } catch {
+      // Non-fatal; local state already updated so the rail reflects the change.
+    }
+  }
   const specialtyTypes = useMemo(() => {
     const raw = initialProfile.mob_specialty_types;
     let arr: unknown = raw;
@@ -207,6 +224,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             selectedEventTypes={selectedEventTypes}
             customEventTypes={customEventTypes}
             specialtyTypes={specialtyTypes}
+            onEventTypesSave={saveEventTypes}
             bookingSettings={bookingSettings}
             onChange={setBookingSettings}
             userId={initialProfile.id}
