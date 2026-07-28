@@ -15,6 +15,7 @@ import { buildMixEmbed, buildVideoEmbed } from './embeds';
 import { parseBookingSettings, packageTiers, isSaleActive } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
+import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingForm from './ClubBookingForm';
 import BookingLoginGate from './BookingLoginGate';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
@@ -531,7 +532,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   see event types). Shown always, banner or not. */}
               {data.dj_type && (
                 isMobileDJ ? (
-                  <BannerTypeEventsDropdown events={eventTypes} />
+                  <BannerTypeEventsDropdown events={eventTypes} customTypes={parseCustomEventTypes((data as { mob_custom_event_types?: unknown }).mob_custom_event_types)} />
                 ) : (
                   <div
                     className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
