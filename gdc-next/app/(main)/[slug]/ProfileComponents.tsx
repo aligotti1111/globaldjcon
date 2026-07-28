@@ -16,8 +16,9 @@ import {
 } from './icons';
 import type { DjProfileData, Testimonial } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
+import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
-export function BannerTypeEventsDropdown({ events }: { events: string[] }) {
+export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events: string[]; customTypes?: CustomEventType[] }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const badgeRef = useRef<HTMLDivElement | null>(null);
@@ -86,7 +87,7 @@ export function BannerTypeEventsDropdown({ events }: { events: string[] }) {
         >
           {events.map(ev => (
             <div key={ev} className={styles.bannerTypeDropdownItem}>
-              {EVENT_TYPE_LABELS[ev] || ev}
+              {EVENT_TYPE_LABELS[ev] || mobEventLabel(ev, customTypes)}
             </div>
           ))}
         </div>,
