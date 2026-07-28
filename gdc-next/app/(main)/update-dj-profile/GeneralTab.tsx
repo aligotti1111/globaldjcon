@@ -243,6 +243,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
   function removeCustomType(key: string) {
     onChange('customEventTypes', state.customEventTypes.filter((c) => c.key !== key));
     onChange('mobileEvents', state.mobileEvents.filter((v) => v !== key));
+    onChange('specialtyTypes', state.specialtyTypes.filter((k) => k !== key));
   }
 
   // ── Drag-to-group (General <-> Specialty) ────────────────────────
