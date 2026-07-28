@@ -211,9 +211,14 @@ export default function MobilePackagesEditor({
                   <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
                     <div style={railLabel}>Event type pricing</div>
                     <div ref={genRef} style={{ position: 'relative' }}>
-                      <button type="button" onClick={() => { setSelType('general'); setGenOpen((o) => !o); }} style={sideItem(selType === 'general')}>
+                      <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
                         <span>General events</span>
-                        <span style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.7rem' }}>{genOpen ? '▾' : '▸'}</span>
+                        <span
+                          role="button"
+                          aria-label="Show the events General covers"
+                          onClick={(e) => { e.stopPropagation(); setGenOpen((o) => !o); }}
+                          style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.85rem', cursor: 'pointer', padding: '0 .15rem' }}
+                        >{genOpen ? '▾' : '▸'}</span>
                       </button>
                       {genOpen && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 2, background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 8, padding: '.5rem .65rem', boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
