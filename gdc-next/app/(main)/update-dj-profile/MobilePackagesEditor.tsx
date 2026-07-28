@@ -562,7 +562,7 @@ export default function MobilePackagesEditor({
         const editLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.2rem' };
         return (
           <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--card, #0b0b12)', border: '1px solid var(--neon)', borderRadius: 14, boxShadow: '0 24px 70px rgba(0,0,0,.7)', overflow: 'hidden' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: '#000', border: '1px solid rgba(255,255,255,.6)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.7)', overflow: 'hidden' }}>
               <div style={{ background: 'var(--neon)', color: '#04121a', padding: '.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>Sample preview &middot; nothing is sent</span>
                 <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#04121a', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
