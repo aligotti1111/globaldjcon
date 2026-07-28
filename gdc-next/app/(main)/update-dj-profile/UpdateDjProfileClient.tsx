@@ -20,6 +20,7 @@ import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { useAuth } from '@/components/AuthProvider';
 import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
+import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 // Booking configuration moved to its own page (/booking-settings); the
 // BookingTab / ClubBookingTab components live in this folder still but are
@@ -50,6 +51,7 @@ export interface GeneralFormState {
   travelDistance: string;
   djStartYear: string;
   mobileEvents: string[];   // for mobile DJs
+  customEventTypes: CustomEventType[]; // DJ-defined event types
   clubGenres: string[];     // for club DJs
   profilePrivate: boolean;
   avatarUrl: string;
@@ -102,6 +104,7 @@ interface InitialProfile {
   travel_distance?: string | null;
   dj_start_year?: string | null;
   event_types?: string | null;
+  mob_custom_event_types?: unknown;
   club_genres?: string[] | null;
   profile_private?: boolean | null;
   avatar_url?: string | null;
@@ -181,6 +184,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       travelDistance: initialProfile.travel_distance || '',
       djStartYear: initialProfile.dj_start_year || '',
       mobileEvents: defaultMobileEvents,
+      customEventTypes: parseCustomEventTypes((initialProfile as { mob_custom_event_types?: unknown }).mob_custom_event_types),
       clubGenres: initialProfile.club_genres || [],
       profilePrivate: !!initialProfile.profile_private,
       avatarUrl: initialProfile.avatar_url || '',
@@ -356,6 +360,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         travel_distance: general.travelDistance || null,
         dj_start_year: general.djStartYear || null,
         event_types: eventTypes,
+        mob_custom_event_types: general.customEventTypes.length > 0 ? general.customEventTypes : null,
         club_genres: clubGenres,
         profile_private: general.profilePrivate,
         avatar_url: general.avatarUrl || null,
