@@ -199,6 +199,7 @@ export default function MobilePackagesEditor({
                         </div>
                       )}
                     </div>
+                    <div style={{ ...railLabel, marginTop: 12 }}>Customize pricing and details</div>
                     {myTypes.map((t) => {
                       const active = selType === t;
                       return (
