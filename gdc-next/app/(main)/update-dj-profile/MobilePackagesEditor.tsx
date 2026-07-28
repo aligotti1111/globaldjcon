@@ -83,9 +83,19 @@ export default function MobilePackagesEditor({
 
   function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
 
-  const currentPkg: MobilePackage = (
-    selType === 'general' ? (mob.general[idx] || {}) : (mob.overrides[selType]?.[idx] || {})
-  ) as MobilePackage;
+  const currentPkg: MobilePackage = (() => {
+    if (selType === 'general') return (mob.general[idx] || {}) as MobilePackage;
+    const base = (mob.general[idx] || {}) as Record<string, unknown>;
+    const ov = (mob.overrides[selType]?.[idx] || {}) as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...ov };
+    // Name + details carry over from General so each event type starts filled
+    // in and can be customized from there.
+    for (const fld of ['title', 'details'] as const) {
+      const v = merged[fld];
+      if (v == null || (typeof v === 'string' && v.replace(/<[^>]*>/g, '').trim() === '')) merged[fld] = base[fld];
+    }
+    return merged as MobilePackage;
+  })();
 
   const generalPhotos = useMemo(() => {
     const g = (mob.general[idx] || {}) as { photo?: string; photos?: string[] };
@@ -93,8 +103,13 @@ export default function MobilePackagesEditor({
   }, [mob.general, idx]);
 
   function onEditPkg(next: MobilePackage) {
-    if (selType === 'general') update(setGeneral(mob, idx, next as Pkg));
-    else update(setOverride(mob, selType, idx, next as Pkg));
+    if (selType === 'general') { update(setGeneral(mob, idx, next as Pkg)); return; }
+    const base = (mob.general[idx] || {}) as Record<string, unknown>;
+    const ov = { ...(next as unknown as Record<string, unknown>) };
+    for (const fld of ['title', 'details'] as const) {
+      if (JSON.stringify(ov[fld] ?? '') === JSON.stringify(base[fld] ?? '')) delete ov[fld];
+    }
+    update(setOverride(mob, selType, idx, ov as Pkg));
   }
   function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelType(type); }
   async function removeEventType(type: string) {
