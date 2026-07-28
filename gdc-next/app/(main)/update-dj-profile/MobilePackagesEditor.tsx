@@ -14,7 +14,7 @@ import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
-import { resolvePackage, calcPrice } from '@/app/(main)/[slug]/mobileBookingForm';
+import { resolvePackage, calcPrice, MOB_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
 import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
 import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
 import {
@@ -102,7 +102,9 @@ export default function MobilePackagesEditor({
     if (has(mob.general)) return true;
     return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
   })();
-  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewOpen(true); }
+  const [previewStart, setPreviewStart] = useState('18:00');
+  const [previewEnd, setPreviewEnd] = useState('23:00');
+  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
@@ -524,6 +526,7 @@ export default function MobilePackagesEditor({
         const cur = currencySymbol(currency);
         const fmt = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
         const ser = serializeMobPackages(mob);
+        const hrs = hoursBetween(previewStart, previewEnd);
         type Card = { i: number; pkg: MobilePackage; title: string; details: string; photo: string; reqAll: boolean; tiers: { hours: number; price: number }[] };
         const cards: Card[] = [];
         mob.general.forEach((_, i) => {
@@ -534,10 +537,9 @@ export default function MobilePackagesEditor({
           cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: String((rp as { photo?: string }).photo || ''), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
         });
         const sel = cards.find((c) => c.i === previewSel) || cards[0];
-        // Fake 5-hour evening booking so the price math has something to chew on.
         let summary: { quote: boolean; rate: number; tax: number; deposit: number; total: number } | null = null;
         if (sel) {
-          const res = calcPrice(sel.pkg, '18:00', '23:00', depositPct, false, '', false);
+          const res = calcPrice(sel.pkg, previewStart, previewEnd, depositPct, false, '', false);
           if (res.isQuote || res.price == null) summary = { quote: true, rate: 0, tax: 0, deposit: 0, total: 0 };
           else {
             const rate = res.price;
@@ -547,90 +549,113 @@ export default function MobilePackagesEditor({
             summary = { quote: false, rate, tax, deposit, total };
           }
         }
-        const field = (label: string, value: string) => (
+        const lockField = (label: string, value: string) => (
           <div style={{ marginBottom: '.55rem' }}>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>{label}</div>
-            <div style={{ background: 'rgba(10,10,16,.7)', border: '1px solid var(--border)', borderRadius: 7, padding: '.5rem .6rem', color: '#dcdce2', fontSize: '.82rem' }}>{value}</div>
+            <div style={{ background: 'rgba(20,20,28,.5)', border: '1px dashed var(--border)', borderRadius: 7, padding: '.5rem .6rem', color: 'var(--muted)', fontSize: '.82rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none', userSelect: 'none' }}>
+              <span>{value}</span>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', color: 'var(--muted)', opacity: 0.7 }}>SAMPLE</span>
+            </div>
           </div>
         );
+        const selStyle: CSSProperties = { width: '100%', background: 'rgba(10,10,16,.9)', color: '#fff', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .6rem', fontSize: '.85rem', cursor: 'pointer' };
+        const editLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.2rem' };
         return (
-          <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: '#0b0b12', border: '1px solid var(--neon)', borderRadius: 14, padding: '1.25rem', boxShadow: '0 24px 70px rgba(0,0,0,.7)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.2rem' }}>
-                <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How a host books you</h3>
-                <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+          <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--card, #0b0b12)', border: '1px solid var(--neon)', borderRadius: 14, boxShadow: '0 24px 70px rgba(0,0,0,.7)', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--neon)', color: '#04121a', padding: '.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>Sample preview &middot; nothing is sent</span>
+                <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#04121a', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
               </div>
-              <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>Sample booking with fake details. Change the event type and the price re-calculates just like it would for a real host. Preview only &mdash; nothing is sent.</p>
+              <div style={{ padding: '1.1rem 1.25rem 1.25rem' }}>
+                <h3 style={{ margin: '0 0 .2rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How a host books you</h3>
+                <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>Change the <span style={{ color: 'var(--neon)' }}>event type</span> and <span style={{ color: 'var(--neon)' }}>times</span> below to see how your price moves. The greyed-out fields are just sample data.</p>
 
-              <div style={{ marginBottom: '.55rem' }}>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.2rem' }}>Type of event</div>
-                <select value={previewEvent} onChange={(e) => { setPreviewEvent(e.target.value); setPreviewSel(0); }} style={{ width: '100%', background: 'rgba(10,10,16,.9)', color: '#fff', border: '1px solid var(--border)', borderRadius: 7, padding: '.55rem .6rem', fontSize: '.85rem' }}>
-                  {selectedEventTypes.map((k) => <option key={k} value={k} style={{ background: '#0c0c12' }}>{labelFor(k)}</option>)}
-                </select>
-              </div>
-              {field('Date', 'Saturday, August 15, 2026')}
-              {field('Time', '6:00 PM \u2013 11:00 PM (5 hours)')}
-              {field('Venue', '123 Celebration Ave, Your City')}
-              {field('Your name', 'Jane Doe')}
-              {field('Email', 'jane@example.com')}
-              {field('Phone', '(555) 123-4567')}
+                <div style={{ marginBottom: '.55rem' }}>
+                  <div style={editLabel}>Type of event</div>
+                  <select value={previewEvent} onChange={(e) => { setPreviewEvent(e.target.value); setPreviewSel(0); }} style={selStyle}>
+                    {selectedEventTypes.map((k) => <option key={k} value={k} style={{ background: '#0c0c12' }}>{labelFor(k)}</option>)}
+                  </select>
+                </div>
 
-              {cards.length > 0 && (
-                <div style={{ marginTop: '.8rem' }}>
-                  <div className={bookingStyles.packagesLabel}>Select a Package</div>
-                  <div className={bookingStyles.packagesGrid}>
-                    {cards.map((c) => {
-                      const isSel = previewSel === c.i;
-                      const hasBody = !!(c.details || c.photo);
-                      const priceEl = (c.reqAll || c.tiers.length === 0)
-                        ? <div className={bookingStyles.packagePriceQuote}>Price on request</div>
-                        : <div className={bookingStyles.packagePrice}>{cur}{c.tiers[0].price.toLocaleString()}</div>;
-                      return (
-                        <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
-                          {isSel && <div className={bookingStyles.packageCheck}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg></div>}
-                          <div className={`${bookingStyles.packageHead} ${hasBody ? bookingStyles.packageHeadHasBody : ''}`}>
-                            <div className={bookingStyles.packageTitle}>{c.title}</div>
-                            <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>
-                          </div>
-                          {hasBody && (
-                            <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
-                              <div className={bookingStyles.packageDetails}>
-                                {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
-                              </div>
-                              {c.photo && (
-                                <div className={bookingStyles.packageThumb}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={c.photo} alt="" />
-                                  <div className={bookingStyles.packageThumbOverlay} />
-                                  <div className={bookingStyles.packageThumbLabel}>Sample</div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.55rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={editLabel}>Start time</div>
+                    <select value={previewStart} onChange={(e) => setPreviewStart(e.target.value)} style={selStyle}>
+                      {MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={editLabel}>End time</div>
+                    <select value={previewEnd} onChange={(e) => setPreviewEnd(e.target.value)} style={selStyle}>
+                      {MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
+                    </select>
                   </div>
                 </div>
-              )}
 
-              {summary && (
-                <div style={{ marginTop: '1rem', border: '1px solid var(--neon)', borderRadius: 10, padding: '.85rem 1rem', background: 'rgba(0,240,255,.04)' }}>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.5rem' }}>Estimated price</div>
-                  {summary.quote ? (
-                    <div style={{ color: '#fff', fontSize: '.9rem' }}>Price on request &mdash; the host sends a request and you reply with a quote.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', fontSize: '.85rem', color: '#dcdce2' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Rate (5 hrs)</span><span>{fmt(summary.rate)}</span></div>
-                      {taxEnabled && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Sales tax ({taxPct}%)</span><span>{fmt(summary.tax)}</span></div>}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '.3rem', color: '#fff', fontWeight: 700 }}><span>Total</span><span>{fmt(summary.total)}</span></div>
-                      {depositPct > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neon)' }}><span>Deposit due now ({depositPct}%)</span><span>{fmt(summary.deposit)}</span></div>}
+                {lockField('Date', 'Saturday, August 15, 2026')}
+                {lockField('Venue', '123 Celebration Ave, Your City')}
+                {lockField('Your name', 'Jane Doe')}
+                {lockField('Email', 'jane@example.com')}
+                {lockField('Phone', '(555) 123-4567')}
+
+                {cards.length > 0 && (
+                  <div style={{ marginTop: '.8rem' }}>
+                    <div className={bookingStyles.packagesLabel}>Select a Package</div>
+                    <div className={bookingStyles.packagesGrid}>
+                      {cards.map((c) => {
+                        const isSel = previewSel === c.i;
+                        const hasBody = !!(c.details || c.photo);
+                        const priceEl = (c.reqAll || c.tiers.length === 0)
+                          ? <div className={bookingStyles.packagePriceQuote}>Price on request</div>
+                          : <div className={bookingStyles.packagePrice}>{cur}{c.tiers[0].price.toLocaleString()}</div>;
+                        return (
+                          <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
+                            {isSel && <div className={bookingStyles.packageCheck}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg></div>}
+                            <div className={`${bookingStyles.packageHead} ${hasBody ? bookingStyles.packageHeadHasBody : ''}`}>
+                              <div className={bookingStyles.packageTitle}>{c.title}</div>
+                              <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>
+                            </div>
+                            {hasBody && (
+                              <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
+                                <div className={bookingStyles.packageDetails}>
+                                  {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
+                                </div>
+                                {c.photo && (
+                                  <div className={bookingStyles.packageThumb}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={c.photo} alt="" />
+                                    <div className={bookingStyles.packageThumbOverlay} />
+                                    <div className={bookingStyles.packageThumbLabel}>Sample</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              <button type="button" onClick={() => setPreviewOpen(false)} style={{ width: '100%', marginTop: '1.25rem', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Close preview</button>
+                {summary && (
+                  <div style={{ marginTop: '1rem', border: '1px solid var(--neon)', borderRadius: 10, padding: '.85rem 1rem', background: 'var(--neon-dim, rgba(0,240,255,.06))' }}>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.5rem' }}>Estimated price</div>
+                    {summary.quote ? (
+                      <div style={{ color: '#fff', fontSize: '.9rem' }}>Price on request &mdash; the host sends a request and you reply with a quote.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', fontSize: '.85rem', color: '#dcdce2' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Rate ({hrs} hr{hrs === 1 ? '' : 's'})</span><span>{fmt(summary.rate)}</span></div>
+                        {taxEnabled && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Sales tax ({taxPct}%)</span><span>{fmt(summary.tax)}</span></div>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '.3rem', color: '#fff', fontWeight: 700 }}><span>Total</span><span>{fmt(summary.total)}</span></div>
+                        {depositPct > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neon)' }}><span>Deposit due now ({depositPct}%)</span><span>{fmt(summary.deposit)}</span></div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button type="button" onClick={() => setPreviewOpen(false)} style={{ width: '100%', marginTop: '1.25rem', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Close preview</button>
+              </div>
             </div>
           </div>
         );
