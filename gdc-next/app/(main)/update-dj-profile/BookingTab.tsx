@@ -35,6 +35,7 @@ import {
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import MobilePackagesEditor from './MobilePackagesEditor';
+import type { CustomEventType } from '@/lib/constants';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import DiscountsSection from './DiscountsSection';
 
@@ -104,6 +105,8 @@ function validatePkg(p: MobilePackage | undefined): PkgValidationResult {
 interface Props {
   djType: 'club' | 'mobile' | null;
   selectedEventTypes: string[];   // from General tab — which event types are checked
+  customEventTypes?: CustomEventType[]; // DJ-defined event types
+  specialtyTypes?: string[];      // event types placed in the Specialty group
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
   userId: string;
@@ -128,6 +131,8 @@ interface Props {
 export default function BookingTab({
   djType,
   selectedEventTypes,
+  customEventTypes = [],
+  specialtyTypes = [],
   bookingSettings,
   onChange,
   userId,
@@ -674,6 +679,8 @@ export default function BookingTab({
                 <MobilePackagesEditor
                   mobPackages={packages}
                   selectedEventTypes={selectedEventTypes}
+                  customEventTypes={customEventTypes}
+                  specialtyTypes={specialtyTypes}
                   userId={userId}
                   currency={rateCurrency}
                   onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
