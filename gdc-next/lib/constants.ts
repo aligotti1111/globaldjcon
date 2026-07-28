@@ -84,6 +84,57 @@ export const MOB_EVENT_LABELS: Record<string, string> = {
 export type MobEventType = keyof typeof MOB_EVENT_LABELS;
 
 // ───────────────────────────────────────────────────────────────────
+// CUSTOM (DJ-defined) mobile event types.
+// A mobile DJ can add their own event types beyond MOB_EVENT_LABELS
+// (e.g. "Foam Party"). Stored per-DJ in users.mob_custom_event_types as an
+// array of { key, label }. The `key` goes into the profile's comma-separated
+// event_types just like a built-in key; the label is resolved via
+// mobEventLabel(). Custom keys are prefixed `cust_` so they never collide.
+// ───────────────────────────────────────────────────────────────────
+
+export interface CustomEventType {
+  key: string;
+  label: string;
+}
+
+/** Parse users.mob_custom_event_types (JSON string OR array) into a clean list. */
+export function parseCustomEventTypes(raw: unknown): CustomEventType[] {
+  if (!raw) return [];
+  let arr: unknown = raw;
+  if (typeof raw === 'string') {
+    try { arr = JSON.parse(raw); } catch { return []; }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(
+      (x): x is CustomEventType =>
+        !!x && typeof x === 'object' &&
+        typeof (x as { key?: unknown }).key === 'string' &&
+        typeof (x as { label?: unknown }).label === 'string' &&
+        (x as { key: string }).key.trim() !== '' &&
+        (x as { label: string }).label.trim() !== '',
+    )
+    .map((x) => ({ key: x.key, label: x.label }));
+}
+
+/** Resolve a mobile event-type key to its label (built-in or custom). */
+export function mobEventLabel(key: string, custom?: CustomEventType[] | null): string {
+  if (MOB_EVENT_LABELS[key]) return MOB_EVENT_LABELS[key];
+  const hit = (custom || []).find((t) => t.key === key);
+  return hit ? hit.label : key;
+}
+
+/** Turn a free-text label into a stable, collision-proof custom key. */
+export function makeCustomEventKey(label: string): string {
+  const slug = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+  return `cust_${slug || Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ───────────────────────────────────────────────────────────────────
 // CLUB DJ — set types
 // Used by club DJ booking forms + cards (set_type column on
 // public.bookings).
