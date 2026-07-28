@@ -107,6 +107,7 @@ interface Props {
   selectedEventTypes: string[];   // from General tab — which event types are checked
   customEventTypes?: CustomEventType[]; // DJ-defined event types
   specialtyTypes?: string[];      // event types placed in the Specialty group
+  onEventTypesSave?: (selected: string[], custom: CustomEventType[]) => void | Promise<void>;
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
   userId: string;
@@ -133,6 +134,7 @@ export default function BookingTab({
   selectedEventTypes,
   customEventTypes = [],
   specialtyTypes = [],
+  onEventTypesSave,
   bookingSettings,
   onChange,
   userId,
@@ -681,6 +683,7 @@ export default function BookingTab({
                   onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
                   onDirtyChange={onDirtyChange}
                   masterSaveTrigger={masterSaveTrigger}
+                  onEventTypesSave={onEventTypesSave}
                 />
               )}
               {/* The internal "Save All Packages" button was removed —
