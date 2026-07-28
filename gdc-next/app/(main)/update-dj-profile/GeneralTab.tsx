@@ -26,6 +26,7 @@ import {
   TRAVEL_DISTANCES,
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
+import { makeCustomEventKey } from '@/lib/constants';
 import AvatarCrop from './AvatarCrop';
 import BusinessLogoSection from './BusinessLogoSection';
 import BlockedUsersSection from './BlockedUsersSection';
@@ -224,6 +225,27 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
   const specialtyEventTypes = MOBILE_EVENT_TYPES.filter(
     (t) => MOB_CAT_WEDDING_TYPES.includes(t.val) || MOB_CAT_MITZVAH_TYPES.includes(t.val)
   );
+  const [showCustomTypes, setShowCustomTypes] = useState(false);
+  const [newTypeLabel, setNewTypeLabel] = useState('');
+  const customTypeOptions = state.customEventTypes.map((c) => ({ val: c.key, label: c.label }));
+  function addCustomType() {
+    const label = newTypeLabel.trim();
+    if (!label) return;
+    const key = makeCustomEventKey(label);
+    const dup = state.customEventTypes.some(
+      (c) => c.key === key || c.label.toLowerCase() === label.toLowerCase(),
+    );
+    if (!dup) {
+      onChange('customEventTypes', [...state.customEventTypes, { key, label }]);
+      onChange('mobileEvents', [...state.mobileEvents, key]); // auto-select the new type
+    }
+    setNewTypeLabel('');
+  }
+  function removeCustomType(key: string) {
+    onChange('customEventTypes', state.customEventTypes.filter((c) => c.key !== key));
+    onChange('mobileEvents', state.mobileEvents.filter((v) => v !== key));
+  }
+
   const renderEventType = (t: { val: string; label: string }) => (
     <label
       key={t.val}
@@ -463,7 +485,16 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       {/* Mobile event types — only for mobile DJs */}
       {djType === 'mobile' && (
         <div className={styles.formGroup}>
-          <label>Mobile Party Types (select all that apply)</label>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
+            <span>Mobile Party Types (select all that apply)</span>
+            <button
+              type="button"
+              onClick={() => setShowCustomTypes(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', textDecoration: 'underline', padding: 0, whiteSpace: 'nowrap' }}
+            >
+              + Add your own
+            </button>
+          </label>
           <div className={styles.specBox}>
             <div className={styles.partyGroupLabel}>General Events</div>
             <div className={styles.checkboxGrid}>
@@ -475,7 +506,60 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             <div className={styles.checkboxGrid}>
               {specialtyEventTypes.map(renderEventType)}
             </div>
+            {customTypeOptions.length > 0 && (
+              <>
+                <div className={`${styles.partyGroupLabel} ${styles.partyGroupLabelLater}`}>
+                  Your Custom Events
+                </div>
+                <div className={styles.checkboxGrid}>
+                  {customTypeOptions.map(renderEventType)}
+                </div>
+              </>
+            )}
           </div>
+
+          {showCustomTypes && (
+            <div
+              onClick={() => setShowCustomTypes(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ width: '100%', maxWidth: 420, background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
+                  <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Custom event types</h3>
+                  <button type="button" onClick={() => setShowCustomTypes(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+                </div>
+                <p style={{ margin: '0 0 .9rem', color: 'var(--muted)', fontSize: '.78rem', lineHeight: 1.5 }}>
+                  Add event types you offer that aren&rsquo;t in the list above. They&rsquo;ll appear as party types you can offer and price.
+                </p>
+                <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
+                  <input
+                    value={newTypeLabel}
+                    onChange={(e) => setNewTypeLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
+                    placeholder="e.g. Foam Party"
+                    style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.55rem .6rem', fontSize: '.85rem' }}
+                  />
+                  <button type="button" onClick={addCustomType} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.55rem .9rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  {state.customEventTypes.length === 0 ? (
+                    <p style={{ color: 'var(--muted)', fontSize: '.78rem', margin: 0 }}>No custom types yet.</p>
+                  ) : (
+                    state.customEventTypes.map((c) => (
+                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--border)', borderRadius: 6, padding: '.45rem .6rem' }}>
+                        <span style={{ color: '#fff', fontSize: '.85rem' }}>{c.label}</span>
+                        <button type="button" onClick={() => removeCustomType(c.key)} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', color: '#ff8f8f', borderRadius: 6, padding: '.25rem .55rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <button type="button" onClick={() => setShowCustomTypes(false)} style={{ marginTop: '1.1rem', width: '100%', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Done</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
