@@ -41,6 +41,8 @@ export default function MobilePackagesEditor({
   userId,
   currency,
   onSave,
+  onDirtyChange,
+  masterSaveTrigger = 0,
 }: {
   mobPackages: Record<string, unknown> | null | undefined;
   selectedEventTypes: string[];
@@ -49,6 +51,8 @@ export default function MobilePackagesEditor({
   userId: string;
   currency: string;
   onSave: (next: MobPackagesNew) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  masterSaveTrigger?: number;
 }) {
   // Prop-aware label resolver (built-in + custom event types).
   const labelFor = (eventType: string): string =>
@@ -67,7 +71,7 @@ export default function MobilePackagesEditor({
   const [mob, setMob] = useState<MobPackagesNew>(initial);
   const [pkgIdx, setPkgIdx] = useState(0);
   const [selType, setSelType] = useState<string>('general');
-  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(normalizeMobPackages(mobPackages))));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
@@ -88,11 +92,23 @@ export default function MobilePackagesEditor({
 
   // The list of customized event types is SHARED across all packages; each
   // package still holds its own prices for them (override array by index).
-  const railTypes = Object.keys(mob.overrides);
+  const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
   const typesForPkg = (_i: number) => railTypes;
   const addableForPkg = (_i: number) =>
     selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
+
+  // Report dirty upward + honor the page-level master Save.
+  const onDirtyRef = useRef(onDirtyChange);
+  onDirtyRef.current = onDirtyChange;
+  useEffect(() => { onDirtyRef.current?.(dirty); }, [dirty]);
+  const saveRef = useRef<() => void>(() => {});
+  const lastMasterRef = useRef(masterSaveTrigger);
+  useEffect(() => {
+    if (masterSaveTrigger === lastMasterRef.current) return;
+    lastMasterRef.current = masterSaveTrigger;
+    if (masterSaveTrigger > 0) saveRef.current();
+  }, [masterSaveTrigger]);
 
   function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
 
@@ -184,6 +200,8 @@ export default function MobilePackagesEditor({
     const ser = serializeMobPackages(mob);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
   }
+
+  saveRef.current = save;
 
   if (count === 0) {
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
