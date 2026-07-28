@@ -39,6 +39,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import {
   type BookingSettings,
   type MobilePackage,
@@ -171,13 +172,14 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: djRow, error: djErr } = await admin
     .from('users')
-    .select('id, name, slug, booking_settings')
+    .select('id, name, slug, booking_settings, mob_custom_event_types')
     .eq('id', djId)
     .maybeSingle<{
       id: string;
       name: string | null;
       slug: string | null;
       booking_settings: string | null;
+      mob_custom_event_types: unknown;
     }>();
   if (djErr) return bad('DJ lookup failed: ' + djErr.message, 500);
   if (!djRow) return bad('DJ not found.', 404);
@@ -379,7 +381,14 @@ export async function POST(req: Request) {
       dj_slug: djSlug,
       booking_type: 'mobile',
       event_date: dateKey,
-      event_type: eventType === 'other' ? (eventTypeOther.trim() || 'other') : eventType,
+      // Store a human label for the event type so every display surface
+      // (cards, planner, emails) shows it. Custom types resolve to their
+      // saved label; 'other' keeps its free text; built-ins store their key.
+      event_type: eventType === 'other'
+        ? (eventTypeOther.trim() || 'other')
+        : (parseCustomEventTypes(djRow.mob_custom_event_types).some((c) => c.key === eventType)
+            ? mobEventLabel(eventType, parseCustomEventTypes(djRow.mob_custom_event_types))
+            : eventType),
       event_details: eventDetails,
       venue_name: venueName,
       venue_address: venueAddress,
