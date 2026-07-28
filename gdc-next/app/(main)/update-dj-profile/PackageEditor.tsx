@@ -140,7 +140,13 @@ export default function PackageEditor({
     };
     const existingUL = getContainingUL();
     if (existingUL) {
-      existingUL.classList.toggle('gdj-check-list');
+      if (existingUL.classList.contains('gdj-check-list')) {
+        // Already a check-list -> turn the list OFF (back to plain text).
+        document.execCommand('insertUnorderedList', false, undefined);
+      } else {
+        // A plain bullet list -> convert it into a check-list.
+        existingUL.classList.add('gdj-check-list');
+      }
     } else {
       document.execCommand('insertUnorderedList', false, undefined);
       const newUL = getContainingUL();
