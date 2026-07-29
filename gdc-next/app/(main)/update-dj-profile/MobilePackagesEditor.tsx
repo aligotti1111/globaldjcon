@@ -146,26 +146,34 @@ export default function MobilePackagesEditor({
 
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
-  // Per-package unsaved detection: compare each package index (General slot +
-  // every override slot at that index) against the last saved snapshot, so a
-  // folded package can flag its own unsaved edits.
+  // Per-package / per-event-type unsaved detection: compare against the last
+  // saved snapshot so a folded package (and each event type inside it) can flag
+  // its own unsaved edits.
+  const curSer = useMemo(() => serializeMobPackages(mob), [mob]);
+  const savedParsed = useMemo(() => {
+    try { return JSON.parse(savedSnapshot) as MobPackagesNew; } catch { return null; }
+  }, [savedSnapshot]);
+  // General slot at index i changed?
+  const genDirtyAt = (i: number) =>
+    JSON.stringify(curSer.general[i]) !== JSON.stringify(savedParsed?.general?.[i]);
+  // A specific event type's override slot at index i changed?
+  const typeDirtyAt = (t: string, i: number) =>
+    JSON.stringify(curSer.overrides[t]?.[i]) !== JSON.stringify(savedParsed?.overrides?.[t]?.[i]);
   const dirtyIdxSet = useMemo(() => {
     const set = new Set<number>();
-    let saved: MobPackagesNew | null = null;
-    try { saved = JSON.parse(savedSnapshot) as MobPackagesNew; } catch { saved = null; }
-    const cur = serializeMobPackages(mob);
-    for (let i = 0; i < cur.general.length; i++) {
-      let d = JSON.stringify(cur.general[i]) !== JSON.stringify(saved?.general?.[i]);
+    const saved = savedParsed;
+    for (let i = 0; i < curSer.general.length; i++) {
+      let d = JSON.stringify(curSer.general[i]) !== JSON.stringify(saved?.general?.[i]);
       if (!d) {
-        const keys = new Set([...Object.keys(cur.overrides), ...Object.keys(saved?.overrides || {})]);
+        const keys = new Set([...Object.keys(curSer.overrides), ...Object.keys(saved?.overrides || {})]);
         for (const k of keys) {
-          if (JSON.stringify(cur.overrides[k]?.[i]) !== JSON.stringify(saved?.overrides?.[k]?.[i])) { d = true; break; }
+          if (JSON.stringify(curSer.overrides[k]?.[i]) !== JSON.stringify(saved?.overrides?.[k]?.[i])) { d = true; break; }
         }
       }
       if (d) set.add(i);
     }
     return set;
-  }, [mob, savedSnapshot]);
+  }, [curSer, savedParsed]);
   const pkgDirty = (i: number) => dirtyIdxSet.has(i);
 
   // Report dirty upward + honor the page-level master Save.
@@ -387,7 +395,7 @@ export default function MobilePackagesEditor({
               style={{
                 display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
                 background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                border: `1px solid ${open ? 'var(--neon)' : (pkgDirty(i) ? 'rgba(255,95,95,.75)' : 'rgba(0,245,196,.35)')}`,
+                border: `1px solid ${open ? 'var(--neon)' : (pkgDirty(i) ? 'rgba(255,214,10,.75)' : 'rgba(0,245,196,.35)')}`,
                 borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
               }}
             >
@@ -397,10 +405,10 @@ export default function MobilePackagesEditor({
                 fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.02em',
               }}>{i + 1}</span>
               <span style={{ flex: 1, minWidth: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.7rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Package {i + 1}</span>
-              {!open && pkgDirty(i) && (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.56rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#ff8f8f', border: '1px solid rgba(255,95,95,.6)', borderRadius: 5, padding: '.2rem .4rem', background: 'rgba(255,95,95,.12)' }}>Unsaved</span>
+              {pkgDirty(i) && (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.56rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#ffd60a', border: '1px solid rgba(255,214,10,.6)', borderRadius: 5, padding: '.2rem .4rem', background: 'rgba(255,214,10,.12)' }}>Unsaved</span>
               )}
-              <span style={{ color: open ? 'var(--neon)' : (pkgDirty(i) ? '#ff8f8f' : 'var(--muted)'), fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+              <span style={{ color: open ? 'var(--neon)' : (pkgDirty(i) ? '#ffd60a' : 'var(--muted)'), fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
             </button>
 
             {open && (
@@ -421,8 +429,8 @@ export default function MobilePackagesEditor({
                       )}
                     </div>
                     <div ref={genRef} style={{ position: 'relative' }}>
-                      <button type="button" onClick={() => setSelType('general')} style={sideItem(selType === 'general')}>
-                        <span>General events</span>
+                      <button type="button" onClick={() => setSelType('general')} style={{ ...sideItem(selType === 'general'), ...(genDirtyAt(i) ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}>
+                        <span style={{ color: genDirtyAt(i) && selType !== 'general' ? '#ffd60a' : undefined }}>General events{genDirtyAt(i) ? ' •' : ''}</span>
                         <span
                           role="button"
                           aria-label="Show the events General covers"
@@ -444,14 +452,15 @@ export default function MobilePackagesEditor({
                     <div style={{ ...railLabel, marginTop: 12 }}>Customize pricing and details</div>
                     {myTypes.map((t) => {
                       const active = selType === t;
+                      const tDirty = typeDirtyAt(t, i);
                       return (
                         <button
                           key={t}
                           type="button"
                           onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem' }}
+                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem', ...(tDirty ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}
                         >
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05 }}>{labelFor(t)}</span>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05, color: tDirty && !active ? '#ffd60a' : undefined }}>{labelFor(t)}{tDirty ? ' •' : ''}</span>
                           <span
                             role="button"
                             aria-label={`Put ${labelFor(t)} back under General`}
