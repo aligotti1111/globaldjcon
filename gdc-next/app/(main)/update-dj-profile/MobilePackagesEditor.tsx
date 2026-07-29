@@ -312,7 +312,7 @@ export default function MobilePackagesEditor({
   const sideItem = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
     padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', lineHeight: 1.0, letterSpacing: '.05em', textTransform: 'uppercase',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', lineHeight: 1.0, letterSpacing: '.05em', textTransform: 'uppercase',
     background: active ? 'var(--neon-dim)' : 'transparent',
     color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
@@ -395,7 +395,7 @@ export default function MobilePackagesEditor({
                           key={t}
                           type="button"
                           onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 42, paddingTop: '.3rem', paddingBottom: 0, paddingRight: '1.2rem' }}
+                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem' }}
                         >
                           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05 }}>{labelFor(t)}</span>
                           <span
