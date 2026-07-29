@@ -643,7 +643,7 @@ export default function MobilePackagesEditor({
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={c.photos[0]} alt="" />
                                     <div className={bookingStyles.packageThumbOverlay} />
-                                    <div className={bookingStyles.packageThumbLabel}>{c.photos.length > 1 ? `${c.photos.length} photos` : 'Sample'}</div>
+                                    <div className={bookingStyles.packageThumbLabel}>{c.photos.length > 1 ? `${c.photos.length} photos` : 'Setup'}</div>
                                   </div>
                                 )}
                               </div>
