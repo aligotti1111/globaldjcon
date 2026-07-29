@@ -387,7 +387,7 @@ export default function ClubBookingTab({
 
           {/* ── Equipment section ─────────────────────────────────────── */}
       {(!activeSection || activeSection === 'rates') && (
-      <div className={styles.sectionCard}>
+      <div className={styles.sectionCard} style={{ marginBottom: 0, borderBottom: 'none', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Equipment</div>
         </div>
@@ -470,7 +470,7 @@ export default function ClubBookingTab({
 
       {/* ── Rates section (MANUAL save) ───────────────────────────── */}
       {(!activeSection || activeSection === 'rates') && (
-      <div className={styles.sectionCard}>
+      <div className={styles.sectionCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
         {/* Header uses default centered title (same as Equipment) with the
             currency picker positioned absolutely on the right so it doesn't
             pull the title off-center. */}
