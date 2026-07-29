@@ -9,7 +9,7 @@ import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
 
-interface Member { id: string; invited_email: string; invited_name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
+interface Member { id: string; invited_email: string; name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
 
 export default function TeamSection({ djType }: { djType?: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -79,10 +79,10 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               {members.map((m) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap', padding: '.6rem .8rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
                   <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                    {m.invited_name && (
-                      <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.invited_name}</div>
+                    {m.name && (
+                      <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                     )}
-                    <div style={{ fontSize: m.invited_name ? '.76rem' : '.88rem', color: m.invited_name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: m.name ? '.76rem' : '.88rem', color: m.name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>
                       {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
                     </div>
                   </div>
@@ -138,7 +138,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
 
           {members.length < seatLimit ? (
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (optional)" style={{ flex: '1 1 140px', minWidth: 120, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Their name" style={{ flex: '1 1 140px', minWidth: 120, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@email.com" style={{ flex: '2 1 180px', minWidth: 180, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
               <select value={role} onChange={(e) => setRole(e.target.value as TeamRole)} style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}>
                 {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
