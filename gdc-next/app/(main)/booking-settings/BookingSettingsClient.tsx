@@ -41,7 +41,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const router = useRouter();
   const djType = initialProfile.dj_type;
   const isMobile = djType === 'mobile';
-  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts';
+  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
 
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
@@ -108,7 +108,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (bookingSettings === initialBookingRef.current) return;
     // Booking Settings tab saves manually via its own button — don't autosave
     // those edits. Every other tab keeps auto-saving.
-    if (isMobile && secTab === 'settings') return;
+    if (secTab === 'settings') return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('saving');
@@ -171,13 +171,25 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => setGlobalDirty(false);
   }, [needsLeaveWarn, setGlobalDirty]);
 
-  const mobileTabs: { id: SecTab; label: string }[] = [
-    { id: 'settings', label: 'Booking Settings' },
-    { id: 'packages', label: 'Packages' },
-    { id: 'discounts', label: 'Discounts' },
-    { id: 'payments', label: 'Payments' },
-    ...(hasBookingAccess ? [{ id: 'contracts' as SecTab, label: 'Contracts' }] : []),
-  ];
+  const tabs: { id: SecTab; label: string }[] = (isMobile
+    ? [
+        { id: 'settings', label: 'Booking Settings' },
+        { id: 'packages', label: 'Packages' },
+        { id: 'discounts', label: 'Discounts' },
+        { id: 'payments', label: 'Payments' },
+      ]
+    : [
+        { id: 'settings', label: 'Settings' },
+        { id: 'rates', label: 'Equipment & Rates' },
+        { id: 'discounts', label: 'Discounts' },
+        { id: 'rider', label: 'DJ Rider' },
+        { id: 'guests', label: 'Guest List' },
+        { id: 'payments', label: 'Payments' },
+      ]
+  ) as { id: SecTab; label: string }[];
+  const mobileTabs = hasBookingAccess
+    ? [...tabs, { id: 'contracts' as SecTab, label: 'Contracts' }]
+    : tabs;
 
   return (
     <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -249,7 +261,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         </div>
       )}
 
-      {isMobile && (
+      {(
         <>
           <nav className={styles.secTabNav} role="tablist">
             {mobileTabs.map((t) => (
@@ -278,7 +290,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         </>
       )}
 
-      {(!isMobile || secTab !== 'contracts') && (
+      {secTab !== 'contracts' && (
       <div className={styles.card}>
         {djType === 'club' ? (
           <ClubBookingTab
@@ -289,6 +301,9 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             onDirtyChange={setHasDirtyClubRates}
             masterSaveTrigger={masterSaveTrigger}
             onActivationIncompleteChange={setClubBookingActivationIncomplete}
+            activeSection={secTab as ('rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments')}
+            onSaveSettings={saveBookingSettingsNow}
+            settingsDirty={settingsDirty}
           />
         ) : (
           <BookingTab
@@ -310,7 +325,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           />
         )}
 
-        {!isMobile && (
+        {!isMobile && secTab === 'rates' && (
           <button
             type="button"
             disabled={!isPageDirty}
@@ -327,7 +342,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       </div>
       )}
 
-      {hasBookingAccess && (!isMobile || secTab === 'contracts') && (
+      {hasBookingAccess && secTab === 'contracts' && (
         <div className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Your Contracts</div>
