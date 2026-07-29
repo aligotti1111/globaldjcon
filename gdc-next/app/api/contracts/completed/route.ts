@@ -129,14 +129,17 @@ export async function POST(req: Request) {
     // bails before emailing.
     let claimed = false;
     try {
-      const { data: rows } = await admin
+      const { data: rows, error: claimErr } = await admin
         .from('bookings')
         .update({ contract_status: 'signed' } as unknown as never)
         .eq('id', booking.id)
-        .or('contract_status.is.null,contract_status.neq.signed')
+        .neq('contract_status' as never, 'signed' as never)
         .select('id');
-      claimed = Array.isArray(rows) && rows.length > 0;
-    } catch { claimed = false; }
+      // 0 rows = another concurrent event already claimed it -> skip (dedupe).
+      // A DB error, though, should NOT silently drop the email — send anyway.
+      if (claimErr) claimed = true;
+      else claimed = Array.isArray(rows) && rows.length > 0;
+    } catch { claimed = true; }
     if (!claimed) return NextResponse.json({ ok: true, already: true });
 
     // Email the DJ their signed copy + audit log.
