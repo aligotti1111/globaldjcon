@@ -87,6 +87,7 @@ export default function MobilePackagesEditor({
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [errIdx, setErrIdx] = useState<number | null>(null);
+  const [errFields, setErrFields] = useState<string[]>([]);
   const [genOpen, setGenOpen] = useState(false);
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -145,6 +146,28 @@ export default function MobilePackagesEditor({
 
   const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
 
+  // Per-package unsaved detection: compare each package index (General slot +
+  // every override slot at that index) against the last saved snapshot, so a
+  // folded package can flag its own unsaved edits.
+  const dirtyIdxSet = useMemo(() => {
+    const set = new Set<number>();
+    let saved: MobPackagesNew | null = null;
+    try { saved = JSON.parse(savedSnapshot) as MobPackagesNew; } catch { saved = null; }
+    const cur = serializeMobPackages(mob);
+    for (let i = 0; i < cur.general.length; i++) {
+      let d = JSON.stringify(cur.general[i]) !== JSON.stringify(saved?.general?.[i]);
+      if (!d) {
+        const keys = new Set([...Object.keys(cur.overrides), ...Object.keys(saved?.overrides || {})]);
+        for (const k of keys) {
+          if (JSON.stringify(cur.overrides[k]?.[i]) !== JSON.stringify(saved?.overrides?.[k]?.[i])) { d = true; break; }
+        }
+      }
+      if (d) set.add(i);
+    }
+    return set;
+  }, [mob, savedSnapshot]);
+  const pkgDirty = (i: number) => dirtyIdxSet.has(i);
+
   // Report dirty upward + honor the page-level master Save.
   const onDirtyRef = useRef(onDirtyChange);
   onDirtyRef.current = onDirtyChange;
@@ -157,7 +180,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); setErrIdx(null); }
+  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); setErrIdx(null); setErrFields([]); }
 
   const currentPkg: MobilePackage = (() => {
     if (selType === 'general') return (mob.general[idx] || {}) as MobilePackage;
@@ -250,14 +273,19 @@ export default function MobilePackagesEditor({
   function save() {
     for (let i = 0; i < mob.general.length; i++) {
       const g = (mob.general[i] || {}) as { title?: string; details?: string };
-      if (textEmpty(g.title) || textEmpty(g.details)) {
-        setErr(`Package ${i + 1} needs a title and description before you can save.`);
-        setErrIdx(i); setPkgIdx(i); setSelType('general');
+      const missing: string[] = [];
+      if (textEmpty(g.title)) missing.push('title');
+      if (textEmpty(g.details)) missing.push('details');
+      if (missing.length) {
+        const labelMap: Record<string, string> = { title: 'a title', details: 'a description' };
+        const phrase = missing.map((m) => labelMap[m]).join(' and ');
+        setErr(`Package ${i + 1} needs ${phrase} before you can save.`);
+        setErrFields(missing); setErrIdx(i); setPkgIdx(i); setSelType('general');
         setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
         return;
       }
     }
-    setErr(null); setErrIdx(null);
+    setErr(null); setErrIdx(null); setErrFields([]);
     const ser = serializeMobPackages(mob);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
   }
@@ -349,7 +377,7 @@ export default function MobilePackagesEditor({
               style={{
                 display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
                 background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                border: `1px solid ${open ? 'var(--neon)' : 'rgba(0,245,196,.35)'}`,
+                border: `1px solid ${open ? 'var(--neon)' : (pkgDirty(i) ? 'rgba(255,95,95,.75)' : 'rgba(0,245,196,.35)')}`,
                 borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
               }}
             >
@@ -359,7 +387,10 @@ export default function MobilePackagesEditor({
                 fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.02em',
               }}>{i + 1}</span>
               <span style={{ flex: 1, minWidth: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.7rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Package {i + 1}</span>
-              <span style={{ color: open ? 'var(--neon)' : 'var(--muted)', fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+              {!open && pkgDirty(i) && (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.56rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#ff8f8f', border: '1px solid rgba(255,95,95,.6)', borderRadius: 5, padding: '.2rem .4rem', background: 'rgba(255,95,95,.12)' }}>Unsaved</span>
+              )}
+              <span style={{ color: open ? 'var(--neon)' : (pkgDirty(i) ? '#ff8f8f' : 'var(--muted)'), fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
             </button>
 
             {open && (
@@ -462,7 +493,7 @@ export default function MobilePackagesEditor({
                       onRemove={() => {}}
                       hideOwnHeader
                       generalPhotos={generalPhotos}
-                      errorFields={errIdx === i && selType === 'general' ? ['title', 'details'] : undefined}
+                      errorFields={errIdx === i && selType === 'general' ? errFields : undefined}
                     />
 
                     <div className={styles.pkgSaveRow}>
