@@ -144,7 +144,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   }, [needsLeaveWarn, setGlobalDirty]);
 
   return (
-    <div className={styles.container} style={{ maxWidth: 1100 }}>
+    <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
       <div className={styles.headerRow}>
         <Link href="/" className={styles.backLink}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
