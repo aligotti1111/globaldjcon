@@ -325,20 +325,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           />
         )}
 
-        {!isMobile && secTab === 'rates' && (
-          <button
-            type="button"
-            disabled={!isPageDirty}
-            onClick={triggerMasterSave}
-            className={styles.submitBtn}
-            style={{
-              opacity: !isPageDirty ? 0.55 : 1,
-              cursor: !isPageDirty ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
-          </button>
-        )}
       </div>
       )}
 
