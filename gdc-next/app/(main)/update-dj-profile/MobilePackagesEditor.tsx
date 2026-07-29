@@ -313,7 +313,7 @@ export default function MobilePackagesEditor({
     return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
   }
 
-  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .5rem .15rem' };
+  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .15rem' };
   const sideItem = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
     padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
