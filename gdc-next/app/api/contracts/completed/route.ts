@@ -121,10 +121,23 @@ export async function POST(req: Request) {
     // Idempotency: if we've already marked it signed, we already emailed — stop.
     if (booking.contract_status === 'signed') return NextResponse.json({ ok: true, already: true });
 
-    // Mark signed (powers the "✓ Contract signed" state + in-app download).
+    // Atomically CLAIM this completion. DocuSeal fires form.completed AND
+    // submission.completed almost simultaneously; both would otherwise pass the
+    // read-check above and each send a set of emails (duplicates). This
+    // conditional update only affects the row while it's NOT yet 'signed', so
+    // exactly one concurrent invocation wins — the loser gets 0 rows back and
+    // bails before emailing.
+    let claimed = false;
     try {
-      await admin.from('bookings').update({ contract_status: 'signed' } as unknown as never).eq('id', booking.id);
-    } catch { /* non-fatal */ }
+      const { data: rows } = await admin
+        .from('bookings')
+        .update({ contract_status: 'signed' } as unknown as never)
+        .eq('id', booking.id)
+        .or('contract_status.is.null,contract_status.neq.signed')
+        .select('id');
+      claimed = Array.isArray(rows) && rows.length > 0;
+    } catch { claimed = false; }
+    if (!claimed) return NextResponse.json({ ok: true, already: true });
 
     // Email the DJ their signed copy + audit log.
     const djEmail = booking.dj_id ? await resolveUserEmail(booking.dj_id) : null;
