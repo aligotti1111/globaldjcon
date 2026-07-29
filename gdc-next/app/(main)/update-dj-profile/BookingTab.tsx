@@ -130,6 +130,10 @@ interface Props {
   // Which section pane to show when the page uses top tabs. Undefined = show
   // every section stacked (legacy behavior).
   activeSection?: 'settings' | 'packages' | 'discounts' | 'payments';
+  // Manual save for the Booking Settings section (parent suspends autosave on
+  // that tab). When provided, the settings box shows its own Save button.
+  onSaveSettings?: () => void;
+  settingsDirty?: boolean;
 }
 
 export default function BookingTab({
@@ -146,6 +150,8 @@ export default function BookingTab({
   onDirtyChange,
   externalMasterSaveTrigger = 0,
   activeSection,
+  onSaveSettings,
+  settingsDirty,
 }: Props) {
   // Booking availability is subscription-gated (no manual toggle). The config
   // always renders so the DJ can set it up; whether it goes LIVE publicly is
@@ -633,11 +639,34 @@ export default function BookingTab({
                   borderTop: '1px solid var(--border)',
                 }}
               >
-                <SavedHint
-                  fieldKey="settings"
-                  lastChangedField={lastChangedField}
-                  autosaveStatus={autosaveStatus}
-                />
+                {onSaveSettings ? (
+                  <button
+                    type="button"
+                    disabled={!settingsDirty}
+                    onClick={onSaveSettings}
+                    style={{
+                      background: settingsDirty ? 'var(--neon)' : 'transparent',
+                      color: settingsDirty ? '#04121a' : 'var(--muted)',
+                      border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
+                      borderRadius: 7,
+                      padding: '.55rem 1.2rem',
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.62rem',
+                      fontWeight: 700,
+                      letterSpacing: '.06em',
+                      textTransform: 'uppercase',
+                      cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {settingsDirty ? 'Save' : '\u2713 Saved'}
+                  </button>
+                ) : (
+                  <SavedHint
+                    fieldKey="settings"
+                    lastChangedField={lastChangedField}
+                    autosaveStatus={autosaveStatus}
+                  />
+                )}
               </div>
             </div>
           </div>
