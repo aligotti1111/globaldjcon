@@ -102,7 +102,7 @@ export default function MobilePackagesEditor({
     if (has(mob.general)) return true;
     return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
   })();
-  const [pvPhotos, setPvPhotos] = useState<string[] | null>(null);
+  const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
   const [previewStart, setPreviewStart] = useState('18:00');
   const [previewEnd, setPreviewEnd] = useState('23:00');
   function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
@@ -637,7 +637,7 @@ export default function MobilePackagesEditor({
                                   {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
                                 </div>
                                 {c.photos.length > 0 && (
-                                  <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setPvPhotos(c.photos); }}>
+                                  <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setPvLb({ photos: c.photos, details: c.details || '', active: 0 }); }}>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={c.photos[0]} alt="" />
                                     <div className={bookingStyles.packageThumbOverlay} />
@@ -696,13 +696,31 @@ export default function MobilePackagesEditor({
           </div>
         );
       })()}
-      {pvPhotos && (
-        <div onClick={() => setPvPhotos(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '2.5rem 1rem' }}>
-          <button type="button" onClick={() => setPvPhotos(null)} aria-label="Close" style={{ position: 'fixed', top: 12, right: 16, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
-          {pvPhotos.map((u, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={u} alt="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
-          ))}
+      {pvLb && (
+        <div className={bookingStyles.photoLightbox} onClick={() => setPvLb(null)}>
+          <div className={bookingStyles.photoLightboxInner} onClick={(e) => e.stopPropagation()}>
+            <div className={bookingStyles.photoLightboxStage}>
+              <div className={bookingStyles.photoLightboxMain}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pvLb.photos[pvLb.active]} alt="Package preview" className={bookingStyles.photoLightboxImg} />
+              </div>
+              {pvLb.photos.length > 1 && (
+                <div className={bookingStyles.photoLightboxThumbs}>
+                  {pvLb.photos.map((u, i) => (
+                    <button key={i} type="button" className={`${bookingStyles.photoLightboxThumb} ${i === pvLb.active ? bookingStyles.photoLightboxThumbActive : ''}`} onClick={() => setPvLb((cur) => cur ? { ...cur, active: i } : cur)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={u} alt={`Photo ${i + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {pvLb.details && (
+              // eslint-disable-next-line react/no-danger
+              <div className={bookingStyles.photoLightboxDetails} dangerouslySetInnerHTML={{ __html: pvLb.details }} />
+            )}
+            <button type="button" onClick={() => setPvLb(null)} className={bookingStyles.photoLightboxClose} aria-label="Close">&times;</button>
+          </div>
         </div>
       )}
       {confirmDialog}
