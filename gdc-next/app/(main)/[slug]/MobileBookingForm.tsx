@@ -1854,7 +1854,7 @@ function PackagesSection({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={photos[0]} alt="" />
                       <div className={styles.packageThumbOverlay} />
-                      <div className={styles.packageThumbLabel}>Sample</div>
+                      <div className={styles.packageThumbLabel}>Setup</div>
                     </div>
                   )}
                 </div>
