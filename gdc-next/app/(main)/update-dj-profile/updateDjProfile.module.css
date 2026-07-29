@@ -1,4 +1,4 @@
-=/* update-dj-profile styles — port of update-dj-profile.css plus the
+/* update-dj-profile styles — port of update-dj-profile.css plus the
    inline styles from update-dj-profile.html. Class names hashed by
    CSS modules — the public-facing class names don't need to match
    vanilla. */
@@ -2676,4 +2676,50 @@
   margin-top: .65rem;
   width: 100%;
   text-align: right;
+}
+
+/* ── Booking-settings section tabs (Option A underline on desktop,
+      dropdown on mobile) ─────────────────────────────────────────── */
+.secTabNav {
+  display: flex;
+  gap: 1.6rem;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 1.5rem;
+  overflow-x: auto;
+}
+.secTabBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0 0 12px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+.secTabBtn:hover { color: var(--white); }
+.secTabBtnActive { color: var(--neon); border-bottom-color: var(--neon); }
+.secTabSelect {
+  display: none;
+  width: 100%;
+  margin: 0 0 1.5rem;
+  background: var(--card);
+  color: var(--white);
+  border: 1px solid var(--neon);
+  border-radius: 8px;
+  padding: .7rem .8rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .secTabNav { display: none; }
+  .secTabSelect { display: block; }
 }
