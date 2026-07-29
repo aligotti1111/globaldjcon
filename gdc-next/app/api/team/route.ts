@@ -20,7 +20,7 @@ const SITE_URL = 'https://globaldjconnect.com';
 const ACCESS_COLS = 'sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source';
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-interface TeamRow { id: string; owner_id: string; member_id: string | null; invited_email: string; role: string; status: string; can_addons: boolean; invited_at: string; accepted_at: string | null; }
+interface TeamRow { id: string; owner_id: string; member_id: string | null; invited_email: string; invited_name: string | null; role: string; status: string; can_addons: boolean; invited_at: string; accepted_at: string | null; }
 
 async function seatLimit(admin: SupabaseClient, ownerId: string): Promise<number> {
   const { data } = await admin.from('users').select(ACCESS_COLS).eq('id', ownerId).maybeSingle();
@@ -44,7 +44,7 @@ export async function GET() {
   if (!ownerId) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
   const admin = createAdminClient() as unknown as SupabaseClient;
 
-  const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true });
+  const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, invited_name, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true });
   const members = ((data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
   const limit = await seatLimit(admin, ownerId);
   return NextResponse.json({ ok: true, members, seatLimit: limit, seatsUsed: members.length, viewerId: user.id });
@@ -54,9 +54,10 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  let body: { email?: unknown; role?: unknown };
+  let body: { name?: unknown; email?: unknown; role?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const email = String(body.email || '').trim().toLowerCase();
+  const invitedName = String(body.name || '').trim().slice(0, 120) || null;
   const role = body.role;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
   if (!isTeamRole(role)) return NextResponse.json({ error: 'Pick a role.' }, { status: 400 });
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
   const token = (globalThis.crypto?.randomUUID?.() || '').replace(/-/g, '');
   if (!token) return NextResponse.json({ error: 'Could not generate a secure invite. Please try again.' }, { status: 500 });
   const { error } = await admin.from('team_members').upsert({
-    owner_id: ownerId, invited_email: email, role, status: 'invited', invite_token: token, invited_at: new Date().toISOString(),
+    owner_id: ownerId, invited_email: email, invited_name: invitedName, role, status: 'invited', invite_token: token, invited_at: new Date().toISOString(),
   } as unknown as never, { onConflict: 'owner_id,invited_email' });
   if (error) return NextResponse.json({ error: 'Could not send the invite.' }, { status: 500 });
 
