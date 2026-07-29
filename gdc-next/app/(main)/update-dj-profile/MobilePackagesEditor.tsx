@@ -395,7 +395,7 @@ export default function MobilePackagesEditor({
                           key={t}
                           type="button"
                           onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', minHeight: 0, paddingTop: '.3rem', paddingBottom: generalComplete && typeNeedsPrice(t) ? '.85rem' : '.3rem', paddingRight: '1.2rem' }}
+                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', minHeight: 0, paddingTop: '.3rem', paddingBottom: '.85rem', paddingRight: '1.2rem' }}
                         >
                           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(t)}</span>
                           <span
