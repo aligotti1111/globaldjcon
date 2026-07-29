@@ -312,7 +312,7 @@ export default function MobilePackagesEditor({
   const sideItem = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
     padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', lineHeight: 1.15, letterSpacing: '.06em', textTransform: 'uppercase',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.02rem', lineHeight: 1.1, letterSpacing: '.05em', textTransform: 'uppercase',
     background: active ? 'var(--neon-dim)' : 'transparent',
     color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
@@ -395,7 +395,7 @@ export default function MobilePackagesEditor({
                           key={t}
                           type="button"
                           onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', minHeight: 48, paddingTop: '.35rem', paddingBottom: generalComplete && typeNeedsPrice(t) ? '1.1rem' : '.35rem', paddingRight: '1.4rem' }}
+                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', minHeight: 0, paddingTop: '.3rem', paddingBottom: generalComplete && typeNeedsPrice(t) ? '.85rem' : '.3rem', paddingRight: '1.2rem' }}
                         >
                           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(t)}</span>
                           <span
@@ -403,10 +403,10 @@ export default function MobilePackagesEditor({
                             aria-label={`Put ${labelFor(t)} back under General`}
                             title="Back under General"
                             onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                            style={{ position: 'absolute', top: 3, right: 5, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.95rem', lineHeight: 1, padding: '0 .15rem' }}
+                            style={{ position: 'absolute', top: 2, right: 4, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 .1rem' }}
                           >&times;</span>
                           {generalComplete && typeNeedsPrice(t) && (
-                            <span style={{ position: 'absolute', bottom: 4, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.06em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
+                            <span style={{ position: 'absolute', bottom: 2, right: 5, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
                           )}
                         </button>
                       );
