@@ -581,6 +581,7 @@
   object-fit: contain;
   display: block;
   background: #000;
+  border-radius: 6px;
 }
 .photoLightboxDetails {
   padding: 1rem 1.1rem;
@@ -783,6 +784,7 @@
   display: flex;
   gap: .6rem;
   align-items: flex-start;
+  padding: .9rem .9rem 0;
 }
 .photoLightboxMain {
   flex: 1;
