@@ -1,4 +1,4 @@
-='use client';
+'use client';
 
 // MobilePackagesEditor — per-event-type package editor, desktop sidebar layout.
 //
