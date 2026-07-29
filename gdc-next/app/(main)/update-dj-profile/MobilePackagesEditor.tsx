@@ -86,6 +86,7 @@ export default function MobilePackagesEditor({
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [errIdx, setErrIdx] = useState<number | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -156,7 +157,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); }
+  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); setErrIdx(null); }
 
   const currentPkg: MobilePackage = (() => {
     if (selType === 'general') return (mob.general[idx] || {}) as MobilePackage;
@@ -251,11 +252,12 @@ export default function MobilePackagesEditor({
       const g = (mob.general[i] || {}) as { title?: string; details?: string };
       if (textEmpty(g.title) || textEmpty(g.details)) {
         setErr(`Package ${i + 1} needs a title and description before you can save.`);
-        setPkgIdx(i); setSelType('general');
+        setErrIdx(i); setPkgIdx(i); setSelType('general');
+        setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
         return;
       }
     }
-    setErr(null);
+    setErr(null); setErrIdx(null);
     const ser = serializeMobPackages(mob);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
   }
@@ -362,6 +364,12 @@ export default function MobilePackagesEditor({
 
             {open && (
               <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
+                {err && errIdx === i && (
+                  <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    <span>{err}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   {/* LEFT — event-type rail, inside the fold, for THIS package */}
                   <div style={{ flex: '1 1 210px', maxWidth: 300 }}>
@@ -454,14 +462,14 @@ export default function MobilePackagesEditor({
                       onRemove={() => {}}
                       hideOwnHeader
                       generalPhotos={generalPhotos}
+                      errorFields={errIdx === i && selType === 'general' ? ['title', 'details'] : undefined}
                     />
 
                     <div className={styles.pkgSaveRow}>
                       {count > 1 && idx > 0 && (
                         <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
                       )}
-                      {err && <span style={{ color: '#ff8f8f', fontSize: '.78rem', flex: '1 1 auto' }}>{err}</span>}
-                      {!err && <span style={{ flex: 1 }} />}
+                      <span style={{ flex: 1 }} />
                       {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
                       <button
                         type="button"
