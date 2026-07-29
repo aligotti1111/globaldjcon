@@ -28,6 +28,9 @@ interface HeaderDjMenuProps {
   avatarUrl: string | null;
   /** Whether the DJ has bookings activated — gates the booking-only items. */
   bookingEnabled: boolean;
+  /** Restricted teammate view: hides owner-only items (Booking Settings,
+   *  Manage Subscription) and always shows the Bookings nav. */
+  isTeammate?: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -55,7 +58,7 @@ const sectionLabelStyle: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
 };
 
-export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: HeaderDjMenuProps) {
+export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false }: HeaderDjMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -174,7 +177,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           {/* Booking Settings lives here, not under Settings. A DJ looking for
               it is thinking about bookings, not about their account — grouping
               by what you're doing beats grouping by what kind of page it is. */}
-          {bookingEnabled && (
+          {(bookingEnabled || isTeammate) && (
             <>
               <div className="hdr-dj-menu-sep" />
               <div style={sectionLabelStyle}>Bookings</div>
@@ -187,15 +190,18 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
               <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
                 Add Booking Manually
               </Link>
-              <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Booking Settings
-              </Link>
+              {/* Booking Settings is owner-only — hidden from teammates. */}
+              {!isTeammate && (
+                <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                  Booking Settings
+                </Link>
+              )}
             </>
           )}
 
           {/* Booking Settings still reachable when bookings aren't switched on
-              — that page is where you'd go to set them up. */}
-          {!bookingEnabled && (
+              — that page is where you'd go to set them up. Owner-only. */}
+          {!bookingEnabled && !isTeammate && (
             <>
               <div className="hdr-dj-menu-sep" />
               <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
@@ -213,16 +219,18 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled }: 
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
-          <button
-            type="button"
-            className="hdr-dj-menu-item"
-            role="menuitem"
-            onClick={openBilling}
-            disabled={portalLoading}
-            style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-          >
-            {portalLoading ? 'Opening…' : 'Manage Subscription'}
-          </button>
+          {!isTeammate && (
+            <button
+              type="button"
+              className="hdr-dj-menu-item"
+              role="menuitem"
+              onClick={openBilling}
+              disabled={portalLoading}
+              style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+            >
+              {portalLoading ? 'Opening…' : 'Manage Subscription'}
+            </button>
+          )}
 
           {/* ── Sign out ── */}
           <div className="hdr-dj-menu-sep" />
