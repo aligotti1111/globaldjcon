@@ -108,7 +108,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (bookingSettings === initialBookingRef.current) return;
     // Booking Settings tab saves manually via its own button — don't autosave
     // those edits. Every other tab keeps auto-saving.
-    if (secTab === 'settings') return;
+    if (secTab === 'settings' || secTab === 'rider' || secTab === 'guests') return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('saving');
