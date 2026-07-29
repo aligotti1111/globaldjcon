@@ -429,7 +429,7 @@ export default function MobilePackagesEditor({
                       )}
                     </div>
                     <div ref={genRef} style={{ position: 'relative' }}>
-                      <button type="button" onClick={() => setSelType('general')} style={{ ...sideItem(selType === 'general'), ...(genDirtyAt(i) ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}>
+                      <button type="button" onClick={() => setSelType('general')} style={{ ...sideItem(selType === 'general'), ...(genDirtyAt(i) ? { border: '1px solid #ffd60a' } : {}) }}>
                         <span>General events</span>
                         <span
                           role="button"
@@ -458,7 +458,7 @@ export default function MobilePackagesEditor({
                           key={t}
                           type="button"
                           onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem', ...(tDirty ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}
+                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem', ...(tDirty ? { border: '1px solid #ffd60a' } : {}) }}
                         >
                           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05 }}>{labelFor(t)}</span>
                           <span
@@ -469,7 +469,7 @@ export default function MobilePackagesEditor({
                             style={{ position: 'absolute', top: 2, right: 4, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 .1rem' }}
                           >&times;</span>
                           {generalComplete && typeNeedsPrice(t) && (
-                            <span style={{ position: 'absolute', bottom: 3, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#ff9f43', whiteSpace: 'nowrap' }}>Add price</span>
+                            <span style={{ position: 'absolute', bottom: 3, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
                           )}
                         </button>
                       );
