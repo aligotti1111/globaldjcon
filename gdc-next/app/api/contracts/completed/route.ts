@@ -191,6 +191,7 @@ export async function POST(req: Request) {
       if (clientEmail && process.env.RESEND_API_KEY) {
         const cAtt: { filename: string; content: string }[] = [];
         if (contractUrl) { const b = await fetchB64(contractUrl); if (b) cAtt.push({ filename: 'Signed Contract.pdf', content: b }); }
+        if (auditUrl) { const b = await fetchB64(auditUrl); if (b) cAtt.push({ filename: 'Audit Log.pdf', content: b }); }
         const clientName = (booking.requester_name || '').trim() || 'there';
         const dateStr = fmtDate(booking.event_date);
         const where = [booking.venue_name, dateStr].filter(Boolean).join(' — ');
@@ -202,7 +203,7 @@ export async function POST(req: Request) {
           subject: `Your signed contract${where ? ` — ${where}` : ''}`,
           html: emailTemplate(`
             <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Signed ✅</h2>
-            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy is attached to this email for your records.</p>
+            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email for your records.</p>
             <p style="color:#666;margin-bottom:24px;">Thanks for booking through Global DJ Connect.</p>
             ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
           `),
