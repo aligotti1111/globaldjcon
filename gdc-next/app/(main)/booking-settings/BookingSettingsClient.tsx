@@ -40,6 +40,9 @@ interface Props {
 export default function BookingSettingsClient({ initialProfile, hasBookingAccess }: Props) {
   const router = useRouter();
   const djType = initialProfile.dj_type;
+  const isMobile = djType === 'mobile';
+  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts';
+  const [secTab, setSecTab] = useState<SecTab>('settings');
 
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
   // as the profile editor: a brand-new mobile DJ with nothing saved gets all
@@ -143,6 +146,14 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => setGlobalDirty(false);
   }, [needsLeaveWarn, setGlobalDirty]);
 
+  const mobileTabs: { id: SecTab; label: string }[] = [
+    { id: 'settings', label: 'Booking Settings' },
+    { id: 'packages', label: 'Packages' },
+    { id: 'discounts', label: 'Discounts' },
+    { id: 'payments', label: 'Payments' },
+    ...(hasBookingAccess ? [{ id: 'contracts' as SecTab, label: 'Contracts' }] : []),
+  ];
+
   return (
     <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
       <div className={styles.headerRow}>
@@ -213,6 +224,36 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         </div>
       )}
 
+      {isMobile && (
+        <>
+          <nav className={styles.secTabNav} role="tablist">
+            {mobileTabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={secTab === t.id}
+                className={`${styles.secTabBtn} ${secTab === t.id ? styles.secTabBtnActive : ''}`}
+                onClick={() => setSecTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <select
+            className={styles.secTabSelect}
+            value={secTab}
+            onChange={(e) => setSecTab(e.target.value as SecTab)}
+            aria-label="Booking settings section"
+          >
+            {mobileTabs.map((t) => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        </>
+      )}
+
+      {(!isMobile || secTab !== 'contracts') && (
       <div className={styles.card}>
         {djType === 'club' ? (
           <ClubBookingTab
@@ -238,24 +279,28 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             autosaveStatus={autosaveStatus}
             onDirtyChange={setHasDirtyPackages}
             externalMasterSaveTrigger={masterSaveTrigger}
+            activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
           />
         )}
 
-        <button
-          type="button"
-          disabled={!isPageDirty}
-          onClick={triggerMasterSave}
-          className={styles.submitBtn}
-          style={{
-            opacity: !isPageDirty ? 0.55 : 1,
-            cursor: !isPageDirty ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
-        </button>
+        {(!isMobile || secTab === 'settings' || secTab === 'packages') && (
+          <button
+            type="button"
+            disabled={!isPageDirty}
+            onClick={triggerMasterSave}
+            className={styles.submitBtn}
+            style={{
+              opacity: !isPageDirty ? 0.55 : 1,
+              cursor: !isPageDirty ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
+          </button>
+        )}
       </div>
+      )}
 
-      {hasBookingAccess && (
+      {hasBookingAccess && (!isMobile || secTab === 'contracts') && (
         <div className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Your Contracts</div>
