@@ -226,6 +226,16 @@ export default function MobilePackagesEditor({
     return !hasTier && !hasLegacy;
   }
 
+  // A package needs at least one real price (> 0) unless the DJ set it to
+  // "require the host to request a price" (reqAll = quote).
+  function priceMissing(pkg: Record<string, unknown>): boolean {
+    if (pkg.reqAll) return false;
+    const tiers = Array.isArray(pkg.priceTiers) ? (pkg.priceTiers as Array<{ price?: unknown }>) : [];
+    const hasTier = tiers.some((x) => x && Number(String(x.price ?? '').trim()) > 0);
+    const hasLegacy = ['price4', 'price5', 'price6'].some((k) => Number(String((pkg)[k] ?? '').trim()) > 0);
+    return !hasTier && !hasLegacy;
+  }
+
   function onEditPkg(next: MobilePackage) {
     if (selType === 'general') { update(setGeneral(mob, idx, next as Pkg)); return; }
     const base = (mob.general[idx] || {}) as Record<string, unknown>;
@@ -274,12 +284,12 @@ export default function MobilePackagesEditor({
     for (let i = 0; i < mob.general.length; i++) {
       const g = (mob.general[i] || {}) as { title?: string; details?: string };
       const missing: string[] = [];
-      if (textEmpty(g.title)) missing.push('title');
-      if (textEmpty(g.details)) missing.push('details');
+      const labels: string[] = [];
+      if (textEmpty(g.title)) { missing.push('title'); labels.push('a title'); }
+      if (textEmpty(g.details)) { missing.push('details'); labels.push('a description'); }
+      if (priceMissing(g as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('at least one price'); }
       if (missing.length) {
-        const labelMap: Record<string, string> = { title: 'a title', details: 'a description' };
-        const phrase = missing.map((m) => labelMap[m]).join(' and ');
-        setErr(`Package ${i + 1} needs ${phrase} before you can save.`);
+        setErr(`Package ${i + 1} needs ${labels.join(' and ')} before you can save.`);
         setErrFields(missing); setErrIdx(i); setPkgIdx(i); setSelType('general');
         setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
         return;
