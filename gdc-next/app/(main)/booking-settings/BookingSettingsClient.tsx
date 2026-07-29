@@ -305,10 +305,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             onDirtyChange={setHasDirtyPackages}
             externalMasterSaveTrigger={masterSaveTrigger}
             activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
+            onSaveSettings={saveBookingSettingsNow}
+            settingsDirty={settingsDirty}
           />
         )}
 
-        {(!isMobile || secTab === 'packages') && (
+        {!isMobile && (
           <button
             type="button"
             disabled={!isPageDirty}
@@ -320,20 +322,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             }}
           >
             {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
-          </button>
-        )}
-        {isMobile && secTab === 'settings' && (
-          <button
-            type="button"
-            disabled={!settingsDirty}
-            onClick={saveBookingSettingsNow}
-            className={styles.submitBtn}
-            style={{
-              opacity: !settingsDirty ? 0.55 : 1,
-              cursor: !settingsDirty ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {settingsDirty ? 'Save Booking Settings' : '✓ Booking Settings Saved'}
           </button>
         )}
       </div>
