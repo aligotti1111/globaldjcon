@@ -512,25 +512,6 @@ export default function PackageEditor({
       <div className={styles.pkgFieldGroup}>
         <div className={styles.photoHeaderRow}>
           <label className={styles.pkgFieldLabel}>Package Setup Photos</label>
-          {(cat === 'wedding' || cat === 'mitzvah') && generalPhotos && (generalPhotos.photo || generalPhotos.photos.length > 0) && (
-            <button
-              type="button"
-              className={styles.useGeneralPhotosBtn}
-              onClick={() =>
-                onChange({
-                  ...pkg,
-                  photo: generalPhotos.photo || '',
-                  photos: [...generalPhotos.photos],
-                } as MobilePackage)
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-              Copy setup photos to this package
-            </button>
-          )}
         </div>
         <div className={styles.photoSlotGrid}>
           {/* Filled photos first, as thumbnails. */}
