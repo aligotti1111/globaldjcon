@@ -1755,10 +1755,10 @@ function PackagesSection({
         // from the general-category package at the same index (doing so made
         // slots 2-4 appear shared across packages in a group). Main photo can
         // still inherit; extras come only from this package's own `photos`.
-        photos: [
+        photos: Array.from(new Set([
           (pkg.photo ?? fallback.photo),
           ...(((pkg as { photos?: string[] }).photos) ?? []),
-        ].filter((u): u is string => !!u),
+        ].filter((u): u is string => !!u))),
       };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
@@ -1775,7 +1775,7 @@ function PackagesSection({
     <>
       <div className={styles.packagesLabel}>Select a Package</div>
       <div className={styles.packagesGrid}>
-        {usablePackages.map(({ idx, pkg, title, details, photo, photos }) => {
+        {usablePackages.map(({ idx, pkg, title, details, photos }) => {
           const isSelected = selectedPkgIdx === idx;
 
           // Price preview on the card head. Dynamic: reflects the actual
@@ -1800,7 +1800,7 @@ function PackagesSection({
             }
           }
 
-          const hasBody = !!(details || photo);
+          const hasBody = !!(details || (photos && photos.length));
 
           return (
             <div
@@ -1843,16 +1843,16 @@ function PackagesSection({
                       </div>
                     )}
                   </div>
-                  {photo && (
+                  {photos && photos.length > 0 && (
                     <div
                       className={styles.packageThumb}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPhotoClick(photos && photos.length ? photos : [photo], details || '');
+                        onPhotoClick(photos, details || '');
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo} alt="" />
+                      <img src={photos[0]} alt="" />
                       <div className={styles.packageThumbOverlay} />
                       <div className={styles.packageThumbLabel}>Sample</div>
                     </div>
