@@ -163,13 +163,18 @@ export default function MobilePackagesEditor({
     const base = (mob.general[idx] || {}) as Record<string, unknown>;
     const ov = (mob.overrides[selType]?.[idx] || {}) as Record<string, unknown>;
     const merged: Record<string, unknown> = { ...ov };
-    // Name, details, and photos carry over from General so each event type
-    // starts filled in and can be customized from there.
-    for (const fld of ['title', 'details', 'photo'] as const) {
+    // Title & details carry over from General while the override leaves them
+    // blank — so each event type starts filled in and can be customized.
+    for (const fld of ['title', 'details'] as const) {
       const v = merged[fld];
       if (v == null || (typeof v === 'string' && v.replace(/<[^>]*>/g, '').trim() === '')) merged[fld] = base[fld];
     }
-    if (!Array.isArray(merged.photos) || (merged.photos as unknown[]).length === 0) merged.photos = base.photos;
+    // Photos inherit from General ONLY when the override has never touched them
+    // (key absent). Once the DJ edits or DELETES photos on this event type, the
+    // override owns them — an empty value means "no photo", not "inherit".
+    for (const fld of ['photo', 'photos'] as const) {
+      if (!(fld in ov)) merged[fld] = base[fld];
+    }
     return merged as MobilePackage;
   })();
 
