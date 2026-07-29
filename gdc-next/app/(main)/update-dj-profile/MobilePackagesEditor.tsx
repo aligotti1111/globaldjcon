@@ -359,7 +359,7 @@ export default function MobilePackagesEditor({
               <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   {/* LEFT — event-type rail, inside the fold, for THIS package */}
-                  <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
+                  <div style={{ flex: '1 1 210px', maxWidth: 300 }}>
                     <div style={{ ...railLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
                       <span>Event types</span>
                       {onEventTypesSave && (
@@ -391,23 +391,20 @@ export default function MobilePackagesEditor({
                     {myTypes.map((t) => {
                       const active = selType === t;
                       return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', minHeight: 0, paddingTop: '.3rem', paddingBottom: '.85rem', paddingRight: '1.2rem' }}
-                        >
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(t)}</span>
+                        <button key={t} type="button" onClick={() => { setSelType(t); setGenOpen(false); }} style={sideItem(active)}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', minWidth: 0, overflow: 'hidden' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</span>
+                            {generalComplete && typeNeedsPrice(t) && (
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap', flexShrink: 0 }}>Add price</span>
+                            )}
+                          </span>
                           <span
                             role="button"
                             aria-label={`Put ${labelFor(t)} back under General`}
                             title="Back under General"
                             onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                            style={{ position: 'absolute', top: 2, right: 4, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 .1rem' }}
+                            style={{ color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', padding: '0 .1rem', flexShrink: 0, marginLeft: '.3rem' }}
                           >&times;</span>
-                          {generalComplete && typeNeedsPrice(t) && (
-                            <span style={{ position: 'absolute', bottom: 2, right: 5, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
-                          )}
                         </button>
                       );
                     })}
