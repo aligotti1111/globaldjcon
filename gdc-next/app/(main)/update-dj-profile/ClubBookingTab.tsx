@@ -927,6 +927,30 @@ export default function ClubBookingTab({
               )}
             </div>
           )}
+          {onSaveSettings && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.9rem' }}>
+              <button
+                type="button"
+                disabled={!settingsDirty}
+                onClick={onSaveSettings}
+                style={{
+                  background: settingsDirty ? 'var(--neon)' : 'transparent',
+                  color: settingsDirty ? '#04121a' : 'var(--muted)',
+                  border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
+                  borderRadius: 7,
+                  padding: '.55rem 1.2rem',
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.62rem',
+                  fontWeight: 700,
+                  letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {settingsDirty ? 'Save' : '\u2713 Saved'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       )}
@@ -966,6 +990,30 @@ export default function ClubBookingTab({
               }} />
             </button>
           </div>
+          {onSaveSettings && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.9rem' }}>
+              <button
+                type="button"
+                disabled={!settingsDirty}
+                onClick={onSaveSettings}
+                style={{
+                  background: settingsDirty ? 'var(--neon)' : 'transparent',
+                  color: settingsDirty ? '#04121a' : 'var(--muted)',
+                  border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
+                  borderRadius: 7,
+                  padding: '.55rem 1.2rem',
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.62rem',
+                  fontWeight: 700,
+                  letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {settingsDirty ? 'Save' : '\u2713 Saved'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       )}
