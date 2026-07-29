@@ -97,7 +97,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
   // ── Autosave booking_settings (debounced) — identical to the editor ──
   const supabaseRef = useRef(createClient());
-  const initialBookingRef = useRef(bookingSettings);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   // Snapshot of the last-persisted booking_settings. Drives the Booking
@@ -105,9 +104,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(bookingSettings));
 
   useEffect(() => {
-    if (bookingSettings === initialBookingRef.current) return;
-    // Booking Settings tab saves manually via its own button — don't autosave
-    // those edits. Every other tab keeps auto-saving.
+    // Only act when there are genuinely unsaved changes vs the last write.
+    // (Comparing to a fixed initial ref re-fired a save on every tab switch
+    // once anything had changed, which flashed the badge like a glitch.)
+    if (JSON.stringify(bookingSettings) === savedSnapshot) return;
+    // Settings / DJ Rider / Guest List save manually via their own buttons —
+    // don't autosave those. Every other tab keeps auto-saving.
     if (secTab === 'settings' || secTab === 'rider' || secTab === 'guests') return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
@@ -128,7 +130,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [bookingSettings, initialProfile.id, isMobile, secTab]);
+  }, [bookingSettings, savedSnapshot, initialProfile.id, secTab]);
 
   // ── Dirty tracking + master save (drives the Save All button) ────────
   // Mobile: packages save manually. Club: rates save manually. Both report
