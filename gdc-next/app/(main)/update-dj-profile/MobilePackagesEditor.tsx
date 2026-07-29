@@ -367,7 +367,7 @@ export default function MobilePackagesEditor({
                   <div style={{ flex: '1 1 210px', maxWidth: 300 }}>
                     <div style={{ ...railLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
                       <span>Event types</span>
-                      {onEventTypesSave && (
+                      {onEventTypesSave && i === 0 && (
                         <button type="button" onClick={openEtEditor} style={{ background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.06em', textTransform: 'uppercase', textDecoration: 'underline', padding: 0 }}>Edit</button>
                       )}
                     </div>
