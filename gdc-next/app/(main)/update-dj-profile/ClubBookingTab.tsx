@@ -96,33 +96,48 @@ export default function ClubBookingTab({
   // by the DJ's subscription + equipment completeness on the profile side.
   const enabled = true;
 
-  // ── Equipment section (autosave) ──────────────────────────────────
-  const equipFull = !!bookingSettings.equip_full;
-  const equipFullDetail = bookingSettings.equip_full_detail || '';
-  const equipDecks = !!bookingSettings.equip_decks;
-  const equipDecksDetail = bookingSettings.equip_decks_detail || '';
-  const equipNone = !!bookingSettings.equip_none;
+  // ── Equipment section (MANUAL — committed together with Rates) ──────
+  // Buffer edits locally; they persist only when the Rates "Save" button is
+  // clicked (equipment and rates work off each other, so they save together).
+  const [equipDraft, setEquipDraft] = useState(() => ({
+    equip_full: !!bookingSettings.equip_full,
+    equip_decks: !!bookingSettings.equip_decks,
+    equip_none: !!bookingSettings.equip_none,
+    equip_full_detail: bookingSettings.equip_full_detail || '',
+    equip_decks_detail: bookingSettings.equip_decks_detail || '',
+  }));
+  const equipFull = equipDraft.equip_full;
+  const equipFullDetail = equipDraft.equip_full_detail;
+  const equipDecks = equipDraft.equip_decks;
+  const equipDecksDetail = equipDraft.equip_decks_detail;
+  const equipNone = equipDraft.equip_none;
   const hasEquipSelected = equipFull || equipDecks || equipNone;
+  const equipDirty =
+    equipDraft.equip_full !== !!bookingSettings.equip_full ||
+    equipDraft.equip_decks !== !!bookingSettings.equip_decks ||
+    equipDraft.equip_none !== !!bookingSettings.equip_none ||
+    equipDraft.equip_full_detail !== (bookingSettings.equip_full_detail || '') ||
+    equipDraft.equip_decks_detail !== (bookingSettings.equip_decks_detail || '');
 
-  // Mutually-exclusive selection — pick one, clear the others.
+  // Mutually-exclusive selection — pick one, clear the others (draft only).
   function selectEquip(which: 'full' | 'decks' | 'none') {
     setLastChangedField('equipment');
-    patch({
+    setEquipDraft((d) => ({
+      ...d,
       equip_full: which === 'full',
       equip_decks: which === 'decks',
       equip_none: which === 'none',
-      // Clear stale detail when switching away
-      equip_full_detail: which === 'full' ? equipFullDetail : '',
-      equip_decks_detail: which === 'decks' ? equipDecksDetail : '',
-    });
+      equip_full_detail: which === 'full' ? d.equip_full_detail : '',
+      equip_decks_detail: which === 'decks' ? d.equip_decks_detail : '',
+    }));
   }
   function setEquipFullDetail(v: string) {
     setLastChangedField('equipment');
-    patch({ equip_full_detail: v });
+    setEquipDraft((d) => ({ ...d, equip_full_detail: v }));
   }
   function setEquipDecksDetail(v: string) {
     setLastChangedField('equipment');
-    patch({ equip_decks_detail: v });
+    setEquipDraft((d) => ({ ...d, equip_decks_detail: v }));
   }
 
   // ── Rates section (MANUAL save) ────────────────────────────────────
@@ -190,13 +205,14 @@ export default function ClubBookingTab({
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
   useEffect(() => {
-    onDirtyChangeRef.current?.(ratesDirty);
-  }, [ratesDirty]);
+    onDirtyChangeRef.current?.(ratesDirty || equipDirty);
+  }, [ratesDirty, equipDirty]);
 
   // Bubble activation-incomplete state up. True when the booking toggle
   // is on but no equipment option has been picked — booking won't actually
   // be live on the public profile until equipment is set.
-  const activationIncomplete = enabled && !hasEquipSelected;
+  const savedHasEquip = !!bookingSettings.equip_full || !!bookingSettings.equip_decks || !!bookingSettings.equip_none;
+  const activationIncomplete = enabled && !savedHasEquip;
   const onActivationIncompleteRef = useRef(onActivationIncompleteChange);
   onActivationIncompleteRef.current = onActivationIncompleteChange;
   useEffect(() => {
@@ -206,6 +222,11 @@ export default function ClubBookingTab({
   function commitRates() {
     setLastChangedField('rates');
     patch({
+      equip_full: equipDraft.equip_full,
+      equip_decks: equipDraft.equip_decks,
+      equip_none: equipDraft.equip_none,
+      equip_full_detail: equipDraft.equip_full_detail,
+      equip_decks_detail: equipDraft.equip_decks_detail,
       global_rate_type: ratesDraft.global_rate_type,
       allow_offers: ratesDraft.global_rate_type === 'offers',
       rate_currency: ratesDraft.rate_currency,
@@ -232,7 +253,7 @@ export default function ClubBookingTab({
     if (masterSaveTrigger === 0) return;
     if (masterSaveTrigger === lastTriggerRef.current) return;
     lastTriggerRef.current = masterSaveTrigger;
-    if (ratesDirty) commitRates();
+    if (ratesDirty || equipDirty) commitRates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterSaveTrigger]);
 
@@ -571,7 +592,7 @@ export default function ClubBookingTab({
                 <div className={styles.rateSaveStatus}>
                   {ratesSaveStatus === 'saved' ? (
                     <span style={{ color: 'var(--neon)' }}>✓ Saved</span>
-                  ) : ratesDirty ? (
+                  ) : (ratesDirty || equipDirty) ? (
                     <span style={{ color: 'var(--amber)' }}>● Unsaved changes</span>
                   ) : (
                     <span style={{ color: 'var(--muted)' }}>✓ All saved</span>
@@ -580,10 +601,10 @@ export default function ClubBookingTab({
                 <button
                   type="button"
                   onClick={commitRates}
-                  disabled={!ratesDirty}
-                  className={`${styles.rateSaveBtn} ${ratesDirty ? styles.rateSaveBtnEnabled : ''}`}
+                  disabled={!(ratesDirty || equipDirty)}
+                  className={`${styles.rateSaveBtn} ${(ratesDirty || equipDirty) ? styles.rateSaveBtnEnabled : ''}`}
                 >
-                  Save Rates
+                  Save Equipment & Rates
                 </button>
               </div>
             </>
