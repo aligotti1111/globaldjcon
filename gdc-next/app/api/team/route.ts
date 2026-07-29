@@ -46,8 +46,19 @@ export async function GET() {
 
   const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, invited_name, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true });
   const members = ((data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
+
+  // Pull each accepted teammate's own profile name (the "Full name" they set in
+  // their account) so the list shows a real name, not just the email.
+  const memberIds = members.map((m) => m.member_id).filter((x): x is string => !!x);
+  const nameById: Record<string, string | null> = {};
+  if (memberIds.length) {
+    const { data: us } = await admin.from('users').select('id, name').in('id', memberIds);
+    for (const u of (us as unknown as { id: string; name: string | null }[] | null) || []) nameById[u.id] = u.name;
+  }
+  const enriched = members.map((m) => ({ ...m, name: (m.member_id ? nameById[m.member_id] : null) || m.invited_name || null }));
+
   const limit = await seatLimit(admin, ownerId);
-  return NextResponse.json({ ok: true, members, seatLimit: limit, seatsUsed: members.length, viewerId: user.id });
+  return NextResponse.json({ ok: true, members: enriched, seatLimit: limit, seatsUsed: enriched.length, viewerId: user.id });
 }
 
 export async function POST(req: Request) {
