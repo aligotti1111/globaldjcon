@@ -53,6 +53,7 @@ export default function Header() {
   };
 
   const isDj = user?.role === 'dj';
+  const isTeammate = (user?.role as string | undefined) === 'teammate';
   // Whether this DJ has bookings activated — gates the booking-only items in
   // the dropdown (Upcoming Bookings, Add Booking Manually).
   // Booking nav items (Upcoming Bookings, Add Booking Manually) are gated on
@@ -121,12 +122,13 @@ export default function Header() {
                       Profile / Log Out buttons. The dropdown handles all
                       three actions plus Upcoming Bookings + Add Booking
                       Manually. Sits to the left of the booking icon. */}
-                  {isDj && (
+                  {(isDj || isTeammate) && (
                     <HeaderDjMenu
                       name={user.name}
-                      slug={user.slug}
+                      slug={isTeammate ? null : user.slug}
                       avatarUrl={user.avatar_url}
                       bookingEnabled={bookingEnabled}
+                      isTeammate={isTeammate}
                     />
                   )}
 
@@ -166,7 +168,7 @@ export default function Header() {
               {/* Log Out — shown for everyone EXCEPT non-admin DJ accounts,
                   who reach Sign Out via the avatar dropdown above. Admins
                   keep the standalone button regardless of their stored role. */}
-              {(!isDj || isAdmin) && (
+              {((!isDj && !isTeammate) || isAdmin) && (
                 <button onClick={handleSignOut} className="btn btn-outline" type="button">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
