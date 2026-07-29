@@ -127,6 +127,9 @@ interface Props {
   // same flow as the internal "Save All Packages" button at the bottom
   // of the packages section.
   externalMasterSaveTrigger?: number;
+  // Which section pane to show when the page uses top tabs. Undefined = show
+  // every section stacked (legacy behavior).
+  activeSection?: 'settings' | 'packages' | 'discounts' | 'payments';
 }
 
 export default function BookingTab({
@@ -142,6 +145,7 @@ export default function BookingTab({
   autosaveStatus,
   onDirtyChange,
   externalMasterSaveTrigger = 0,
+  activeSection,
 }: Props) {
   // Booking availability is subscription-gated (no manual toggle). The config
   // always renders so the DJ can set it up; whether it goes LIVE publicly is
@@ -439,6 +443,7 @@ export default function BookingTab({
       {enabled && (
         <>
           {/* ── Booking Settings ────────────────────────────────── */}
+          {(!activeSection || activeSection === 'settings') && (
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitle}>Booking Settings</div>
@@ -636,8 +641,10 @@ export default function BookingTab({
               </div>
             </div>
           </div>
+          )}
 
           {/* ── Packages ──────────────────────────────────────── */}
+          {(!activeSection || activeSection === 'packages') && (
           <div className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitle}>Add Packages</div>
@@ -695,17 +702,22 @@ export default function BookingTab({
                   save via externalMasterSaveTrigger. */}
             </div>
           </div>
+          )}
 
           {/* ── Discounts & Promo Codes ─────────────────────────── */}
+          {(!activeSection || activeSection === 'discounts') && (
           <DiscountsSection
             promoCodes={bookingSettings.promo_codes || []}
             sale={bookingSettings.sale || {}}
             onChange={(p) => patch(p)}
           />
+          )}
 
           {/* Manual payment rails — deposits + invoices. Self-contained;
               saves users.payment_methods directly, not via the master save. */}
-          <PaymentMethodsSection userId={userId} currency={rateCurrency} />
+          {(!activeSection || activeSection === 'payments') && (
+            <PaymentMethodsSection userId={userId} currency={rateCurrency} />
+          )}
 
         </>
       )}
