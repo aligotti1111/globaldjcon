@@ -100,9 +100,15 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const initialBookingRef = useRef(bookingSettings);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Snapshot of the last-persisted booking_settings. Drives the Booking
+  // Settings tab's manual Save button (dirty = current !== snapshot).
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(bookingSettings));
 
   useEffect(() => {
     if (bookingSettings === initialBookingRef.current) return;
+    // Booking Settings tab saves manually via its own button — don't autosave
+    // those edits. Every other tab keeps auto-saving.
+    if (isMobile && secTab === 'settings') return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('saving');
@@ -112,6 +118,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           .update({ booking_settings: JSON.stringify(bookingSettings) } as unknown as never)
           .eq('id', initialProfile.id);
         if (error) throw error;
+        setSavedSnapshot(JSON.stringify(bookingSettings));
         setAutosaveStatus('saved');
         setTimeout(() => setAutosaveStatus('idle'), 5000);
       } catch {
@@ -121,7 +128,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [bookingSettings, initialProfile.id]);
+  }, [bookingSettings, initialProfile.id, isMobile, secTab]);
 
   // ── Dirty tracking + master save (drives the Save All button) ────────
   // Mobile: packages save manually. Club: rates save manually. Both report
@@ -135,10 +142,28 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     setMasterSaveTrigger((n) => n + 1);
   }
 
+  const settingsDirty = JSON.stringify(bookingSettings) !== savedSnapshot;
+  async function saveBookingSettingsNow() {
+    setAutosaveStatus('saving');
+    try {
+      const snap = JSON.stringify(bookingSettings);
+      const { error } = await supabaseRef.current
+        .from('users')
+        .update({ booking_settings: snap } as unknown as never)
+        .eq('id', initialProfile.id);
+      if (error) throw error;
+      setSavedSnapshot(snap);
+      setAutosaveStatus('saved');
+      setTimeout(() => setAutosaveStatus('idle'), 4000);
+    } catch {
+      setAutosaveStatus('error');
+    }
+  }
+
   const isPageDirty = hasDirtyPackages || hasDirtyClubRates;
   // Warn on leave when there are draft edits OR when club booking is on but
   // no equipment is picked (booking won't be publicly live in that state).
-  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete;
+  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty;
 
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
   useEffect(() => {
@@ -283,7 +308,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           />
         )}
 
-        {(!isMobile || secTab === 'settings' || secTab === 'packages') && (
+        {(!isMobile || secTab === 'packages') && (
           <button
             type="button"
             disabled={!isPageDirty}
@@ -295,6 +320,20 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             }}
           >
             {isPageDirty ? 'Save All Changes' : '✓ All Changes Saved'}
+          </button>
+        )}
+        {isMobile && secTab === 'settings' && (
+          <button
+            type="button"
+            disabled={!settingsDirty}
+            onClick={saveBookingSettingsNow}
+            className={styles.submitBtn}
+            style={{
+              opacity: !settingsDirty ? 0.55 : 1,
+              cursor: !settingsDirty ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {settingsDirty ? 'Save Booking Settings' : '✓ Booking Settings Saved'}
           </button>
         )}
       </div>
