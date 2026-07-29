@@ -108,12 +108,13 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: bookingRow } = await admin
       .from('bookings')
-      .select('id, dj_id, contract_status, event_date, venue_name')
+      .select('id, dj_id, contract_status, event_date, venue_name, host_email, requester_id, requester_name')
       .eq('contract_submission_id' as never, String(submissionId) as never)
       .maybeSingle();
     const booking = bookingRow as {
       id: string; dj_id: string | null; contract_status: string | null;
       event_date: string | null; venue_name: string | null;
+      host_email: string | null; requester_id: string | null; requester_name: string | null;
     } | null;
     if (!booking) return NextResponse.json({ ok: true, noBooking: true });
 
@@ -159,6 +160,41 @@ export async function POST(req: Request) {
       } catch (e) {
         console.error('[contracts/completed] DJ email failed:', e);
       }
+    }
+
+    // Email the CLIENT their signed copy from Global DJ Connect — so the final
+    // copy comes from our address, not DocuSeal's. Turn OFF DocuSeal's own
+    // "email a signed document copy to parties" setting so this is the only
+    // completion email they receive.
+    try {
+      let clientEmail = (booking.host_email || '').trim();
+      if (!clientEmail && booking.requester_id) {
+        const { data: au } = await admin.auth.admin.getUserById(String(booking.requester_id));
+        clientEmail = au?.user?.email || '';
+      }
+      if (clientEmail && process.env.RESEND_API_KEY) {
+        const cAtt: { filename: string; content: string }[] = [];
+        if (contractUrl) { const b = await fetchB64(contractUrl); if (b) cAtt.push({ filename: 'Signed Contract.pdf', content: b }); }
+        const clientName = (booking.requester_name || '').trim() || 'there';
+        const dateStr = fmtDate(booking.event_date);
+        const where = [booking.venue_name, dateStr].filter(Boolean).join(' — ');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: FROM,
+          replyTo: REPLY_TO,
+          to: [clientEmail],
+          subject: `Your signed contract${where ? ` — ${where}` : ''}`,
+          html: emailTemplate(`
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Signed ✅</h2>
+            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy is attached to this email for your records.</p>
+            <p style="color:#666;margin-bottom:24px;">Thanks for booking through Global DJ Connect.</p>
+            ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
+          `),
+          attachments: cAtt.length ? cAtt : undefined,
+        } as unknown as Parameters<typeof resend.emails.send>[0]);
+      }
+    } catch (e) {
+      console.error('[contracts/completed] client email failed:', e);
     }
 
     return NextResponse.json({ ok: true, signed: true });
