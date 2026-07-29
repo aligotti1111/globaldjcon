@@ -430,7 +430,7 @@ export default function MobilePackagesEditor({
                     </div>
                     <div ref={genRef} style={{ position: 'relative' }}>
                       <button type="button" onClick={() => setSelType('general')} style={{ ...sideItem(selType === 'general'), ...(genDirtyAt(i) ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}>
-                        <span style={{ color: genDirtyAt(i) && selType !== 'general' ? '#ffd60a' : undefined }}>General events{genDirtyAt(i) ? ' •' : ''}</span>
+                        <span>General events</span>
                         <span
                           role="button"
                           aria-label="Show the events General covers"
@@ -460,7 +460,7 @@ export default function MobilePackagesEditor({
                           onClick={() => { setSelType(t); setGenOpen(false); }}
                           style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem', ...(tDirty ? { borderColor: 'rgba(255,214,10,.75)' } : {}) }}
                         >
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05, color: tDirty && !active ? '#ffd60a' : undefined }}>{labelFor(t)}{tDirty ? ' •' : ''}</span>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05 }}>{labelFor(t)}</span>
                           <span
                             role="button"
                             aria-label={`Put ${labelFor(t)} back under General`}
