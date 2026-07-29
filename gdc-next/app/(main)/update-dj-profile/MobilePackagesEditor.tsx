@@ -541,7 +541,7 @@ export default function MobilePackagesEditor({
           if (!title) return;
           const mainPhoto = String((rp as { photo?: string }).photo || '');
           const extra = Array.isArray((rp as { photos?: string[] }).photos) ? ((rp as { photos?: string[] }).photos as string[]) : [];
-          cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: mainPhoto, photos: [mainPhoto, ...extra].filter(Boolean), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
+          cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: mainPhoto, photos: Array.from(new Set([mainPhoto, ...extra].filter(Boolean))), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
         });
         const sel = cards.find((c) => c.i === previewSel) || cards[0];
         let summary: { quote: boolean; rate: number; tax: number; deposit: number; total: number } | null = null;
@@ -612,7 +612,7 @@ export default function MobilePackagesEditor({
                     <div className={bookingStyles.packagesGrid}>
                       {cards.map((c) => {
                         const isSel = previewSel === c.i;
-                        const hasBody = !!(c.details || c.photo);
+                        const hasBody = !!(c.details || c.photos.length);
                         let priceEl: React.ReactNode = null;
                         if (c.reqAll) {
                           priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
@@ -636,10 +636,10 @@ export default function MobilePackagesEditor({
                                 <div className={bookingStyles.packageDetails}>
                                   {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
                                 </div>
-                                {c.photo && (
-                                  <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (c.photos.length) setPvPhotos(c.photos); }}>
+                                {c.photos.length > 0 && (
+                                  <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setPvPhotos(c.photos); }}>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={c.photo} alt="" />
+                                    <img src={c.photos[0]} alt="" />
                                     <div className={bookingStyles.packageThumbOverlay} />
                                     <div className={bookingStyles.packageThumbLabel}>{c.photos.length > 1 ? `${c.photos.length} photos` : 'Sample'}</div>
                                   </div>
