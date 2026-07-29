@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-type Row = { id: string; invited_email: string; status: string; owner_id: string; role: string; invited_at: string };
+type Row = { id: string; invited_email: string; invited_name: string | null; status: string; owner_id: string; role: string; invited_at: string };
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get('token') || '';
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ error: 'Missing invite.' }, { status: 400 });
 
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const { data } = await admin.from('team_members').select('id, invited_email, status, owner_id, role, invited_at').eq('invite_token', token).maybeSingle();
+  const { data } = await admin.from('team_members').select('id, invited_email, invited_name, status, owner_id, role, invited_at').eq('invite_token', token).maybeSingle();
   const row = data as unknown as Row | null;
   if (!row) return NextResponse.json({ error: 'This invite is no longer valid.' }, { status: 404 });
   if (row.status !== 'invited') return NextResponse.json({ error: 'This invite has already been used or was revoked.' }, { status: 400 });
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
   // this OVERWRITES any default role a signup trigger applied (e.g. 'host') and
   // seeds a name. Best-effort: the membership is what grants access.
   if (brandNew || !meRow) {
-    const name = (myEmail.split('@')[0] || 'Teammate').replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const name = (row.invited_name || '').trim() || (myEmail.split('@')[0] || 'Teammate').replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     if (meRow) {
       // The signup trigger already created this row, so UPDATE it. (Do NOT
       // upsert without a role: users.role is NOT NULL, and an upsert evaluates
