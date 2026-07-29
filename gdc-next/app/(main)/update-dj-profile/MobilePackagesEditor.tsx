@@ -469,7 +469,7 @@ export default function MobilePackagesEditor({
                             style={{ position: 'absolute', top: 2, right: 4, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 .1rem' }}
                           >&times;</span>
                           {generalComplete && typeNeedsPrice(t) && (
-                            <span style={{ position: 'absolute', bottom: 3, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
+                            <span style={{ position: 'absolute', bottom: 3, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#ff9f43', whiteSpace: 'nowrap' }}>Add price</span>
                           )}
                         </button>
                       );
