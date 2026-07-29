@@ -213,7 +213,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             }}
           >
             {autosaveStatus === 'saving' ? 'Saving…'
-              : autosaveStatus === 'saved' ? '✓ Auto-saved'
+              : autosaveStatus === 'saved' ? '✓ Saved'
               : '✗ Save failed'}
           </span>
         )}
