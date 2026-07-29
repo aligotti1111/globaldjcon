@@ -347,7 +347,7 @@ export default function MobilePackagesEditor({
               style={{
                 display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
                 background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                border: `1px solid ${open ? 'var(--neon)' : 'var(--border)'}`,
+                border: `1px solid ${open ? 'var(--neon)' : 'rgba(0,245,196,.35)'}`,
                 borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
               }}
             >
