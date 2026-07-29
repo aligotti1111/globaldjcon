@@ -486,8 +486,8 @@ export default function MobilePackagesEditor({
                   {/* RIGHT — the selected type's price card */}
                   <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
                     {selType !== 'general' && (
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', lineHeight: 1.5, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.7rem' }}>
-                        {`${labelFor(selType)} — title, description & photos inherit from General unless changed`}
+                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.75rem', lineHeight: 1.55, color: '#c7c7d6', marginBottom: '.85rem' }}>
+                        Title, description &amp; photos are inherited from <span style={{ color: 'var(--neon)', fontWeight: 600 }}>General Events</span>. Once you begin customizing the details here, your changes act independently and only apply to this event.
                       </div>
                     )}
 
