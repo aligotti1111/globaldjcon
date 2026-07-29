@@ -19,6 +19,25 @@ export const maxDuration = 26;
 
 // Wrap any promise so a hang becomes a readable error naming the step, instead
 // of the whole function silently timing out to a 502.
+// Package details are stored as rich-text HTML. Convert to clean plain text
+// before dropping into the contract so tags like <div> don't render literally.
+function htmlToText(html: string | null | undefined): string {
+  return String(html || '')
+    .replace(/<(div|p|li|h[1-6])[^>]*>/gi, '\n')
+    .replace(/<\/(div|p|li|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, step: string): Promise<T> {
   return Promise.race([
     p,
@@ -330,7 +349,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     event_address: (b.venue_address as string) || '',
     start_time: fmtTime(b.start_time as string),
     end_time: fmtTime(b.end_time as string),
-    package: [(b.package_title as string) || '', (b.package_details as string) || ''].filter(Boolean).join(' — '),
+    package: [(b.package_title as string) || '', htmlToText(b.package_details as string)].filter(Boolean).join(' — '),
     set_type: (b.set_type as string) || '',
     equipment: (b.equipment as string) || '',
     duration: fmtDuration(b.start_time as string, b.end_time as string),
