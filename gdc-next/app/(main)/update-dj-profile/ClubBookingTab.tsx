@@ -64,11 +64,18 @@ interface Props {
   // When this is true, the toggle is on but booking won't actually go
   // live publicly until the DJ picks an equipment option.
   onActivationIncompleteChange?: (incomplete: boolean) => void;
+  // Which section pane to show when the page uses top tabs. Undefined = show
+  // every section stacked (legacy behavior).
+  activeSection?: 'rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments';
+  // Manual save for the Settings section (parent suspends autosave on that
+  // tab). When provided, the Settings box shows its own Save button.
+  onSaveSettings?: () => void;
+  settingsDirty?: boolean;
 }
 
 export default function ClubBookingTab({
   bookingSettings, onChange, autosaveStatus, userId, onDirtyChange, masterSaveTrigger,
-  onActivationIncompleteChange,
+  onActivationIncompleteChange, activeSection, onSaveSettings, settingsDirty,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
   function patch(p: Partial<BookingSettings>) {
@@ -358,6 +365,7 @@ export default function ClubBookingTab({
           )}
 
           {/* ── Equipment section ─────────────────────────────────────── */}
+      {(!activeSection || activeSection === 'rates') && (
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Equipment</div>
@@ -437,8 +445,10 @@ export default function ClubBookingTab({
           />
         </div>
       </div>
+      )}
 
       {/* ── Rates section (MANUAL save) ───────────────────────────── */}
+      {(!activeSection || activeSection === 'rates') && (
       <div className={styles.sectionCard}>
         {/* Header uses default centered title (same as Equipment) with the
             currency picker positioned absolutely on the right so it doesn't
@@ -580,8 +590,10 @@ export default function ClubBookingTab({
           )}
         </div>
       </div>
+      )}
 
       {/* ── Settings (autosave) ─────────────────────────────── */}
+      {(!activeSection || activeSection === 'settings') && (
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Settings</div>
@@ -784,24 +796,53 @@ export default function ClubBookingTab({
             </button>
           </div>
 
-          <SectionHint
-            fieldKey="settings"
-            lastChangedField={lastChangedField}
-            autosaveStatus={autosaveStatus}
-          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.6rem' }}>
+            {onSaveSettings ? (
+              <button
+                type="button"
+                disabled={!settingsDirty}
+                onClick={onSaveSettings}
+                style={{
+                  background: settingsDirty ? 'var(--neon)' : 'transparent',
+                  color: settingsDirty ? '#04121a' : 'var(--muted)',
+                  border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
+                  borderRadius: 7,
+                  padding: '.55rem 1.2rem',
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.62rem',
+                  fontWeight: 700,
+                  letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {settingsDirty ? 'Save' : '\u2713 Saved'}
+              </button>
+            ) : (
+              <SectionHint
+                fieldKey="settings"
+                lastChangedField={lastChangedField}
+                autosaveStatus={autosaveStatus}
+              />
+            )}
+          </div>
         </div>
       </div>
+      )}
 
       {/* ── Discounts & Promo Codes ─────────────────────────── */}
+      {(!activeSection || activeSection === 'discounts') && (
       <DiscountsSection
         promoCodes={bookingSettings.promo_codes || []}
         sale={bookingSettings.sale || {}}
         onChange={(p) => patch(p)}
       />
+      )}
 
       {/* Manual payment rails — deposits + invoices. Self-contained; saves
           users.payment_methods directly, not via the master save. */}
       {/* ── DJ Rider (autosave) ─────────────────────────────────────── */}
+      {(!activeSection || activeSection === 'rider') && (
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>DJ Rider</div>
@@ -867,8 +908,10 @@ export default function ClubBookingTab({
           )}
         </div>
       </div>
+      )}
 
       {/* ── Guest List (autosave) ─────────────────────────────────── */}
+      {(!activeSection || activeSection === 'guests') && (
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>Guest List</div>
@@ -904,8 +947,11 @@ export default function ClubBookingTab({
           </div>
         </div>
       </div>
+      )}
 
-      <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} />
+      {(!activeSection || activeSection === 'payments') && (
+        <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} />
+      )}
 
         </>
       )}
