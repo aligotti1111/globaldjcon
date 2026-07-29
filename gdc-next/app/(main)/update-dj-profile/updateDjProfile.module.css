@@ -1,4 +1,4 @@
-/* update-dj-profile styles — port of update-dj-profile.css plus the
+=/* update-dj-profile styles — port of update-dj-profile.css plus the
    inline styles from update-dj-profile.html. Class names hashed by
    CSS modules — the public-facing class names don't need to match
    vanilla. */
@@ -808,6 +808,13 @@
   font-size: .85rem;
   font-family: 'DM Sans', sans-serif;
   outline: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.priceInput::-webkit-outer-spin-button,
+.priceInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .priceInput:disabled {
   opacity: 0.35;
