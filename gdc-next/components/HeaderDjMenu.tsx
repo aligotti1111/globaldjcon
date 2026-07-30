@@ -182,7 +182,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               <div className="hdr-dj-menu-sep" />
               <div style={sectionLabelStyle}>Bookings</div>
               <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Upcoming Bookings
+                Dashboard
               </Link>
               <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
                 Past Bookings
