@@ -271,7 +271,7 @@ export default function MobileMenu() {
             </Link>
             {showDjBookings && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
-                <IconClock />Upcoming Bookings{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
+                <IconClock />Dashboard{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
             {showDjBookings && (
