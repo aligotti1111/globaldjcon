@@ -59,6 +59,7 @@ function digitsOf(s: string): number {
 
 export default function NotificationsClient({ userId, init }: Props) {
   const isDj = init.role === 'dj';
+  const isTeammate = init.role === 'teammate';
 
   // ── Text setup (master gate) ──────────────────────────────────────
   const [smsPhone, setSmsPhone] = useState(init.sms_phone);
@@ -83,7 +84,9 @@ export default function NotificationsClient({ userId, init }: Props) {
   // Text column is only usable when there's a valid phone AND consent is on.
   const smsReady = smsEnabled && digitsOf(smsPhone) >= 10;
 
-  const rows = isDj ? ROWS : ROWS.filter((r) => !r.djOnly);
+  const rows = isTeammate
+    ? ROWS.filter((r) => r.key === 'inbox_message')
+    : (isDj ? ROWS : ROWS.filter((r) => !r.djOnly));
 
   // "Effective" text coverage for the booking-request row: a stored text
   // toggle only counts if the channel is actually usable.
@@ -175,6 +178,8 @@ export default function NotificationsClient({ userId, init }: Props) {
       </div>
 
       {/* ── Text setup (master gate for the Text column) ─────────────── */}
+      {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
+      {!isTeammate && (
       <div className={styles.card}>
         <h2>Text Setup</h2>
         <p className={styles.cardHint}>
@@ -216,15 +221,16 @@ export default function NotificationsClient({ userId, init }: Props) {
           <strong>HELP</strong> for help.
         </p>
       </div>
+      )}
 
       {/* ── The matrix: Email / Text per notification type ───────────── */}
       <div className={styles.card}>
         <h2>What to notify me about</h2>
 
-        <div className={styles.matrix}>
+        <div className={styles.matrix} style={isTeammate ? { gridTemplateColumns: '1fr 62px' } : undefined}>
           <div className={`${styles.matrixCorner} ${styles.matrixHeadRow}`} />
           <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Email</div>
-          <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>
+          {!isTeammate && <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>}
 
           {rows.map((r) => {
             const required = isDj && r.djOnly;
@@ -243,22 +249,24 @@ export default function NotificationsClient({ userId, init }: Props) {
                     aria-label={`Email — ${r.label}`}
                   />
                 </div>
-                <div className={styles.matrixCell}>
-                  <input
-                    type="checkbox"
-                    className={styles.cb}
-                    checked={text[r.key]}
-                    disabled={!smsReady}
-                    onChange={(e) => toggleText(r.key, e.target.checked)}
-                    aria-label={`Text — ${r.label}`}
-                  />
-                </div>
+                {!isTeammate && (
+                  <div className={styles.matrixCell}>
+                    <input
+                      type="checkbox"
+                      className={styles.cb}
+                      checked={text[r.key]}
+                      disabled={!smsReady}
+                      onChange={(e) => toggleText(r.key, e.target.checked)}
+                      aria-label={`Text — ${r.label}`}
+                    />
+                  </div>
+                )}
               </Fragment>
             );
           })}
         </div>
 
-        {!smsReady && (
+        {!smsReady && !isTeammate && (
           <p className={styles.matrixHelp}>
             Turn on text notifications and add a mobile number above to enable the
             Text column.
