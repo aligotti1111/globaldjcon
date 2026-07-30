@@ -877,7 +877,15 @@ export default function AddManualBookingModal({
         onAdded(inserted);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save.');
+      // Supabase/PostgREST errors are plain objects ({ message, details, hint,
+      // code }), NOT Error instances — so surface those fields instead of the
+      // generic fallback, which hid the real reason a save was rejected.
+      const err = e as { message?: string; details?: string; hint?: string; code?: string };
+      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
+      const msg = parts.length ? parts.join(' — ') : (e instanceof Error ? e.message : 'Failed to save.');
+      setError(err?.code ? `${msg} [${err.code}]` : msg);
+      // Also log the full error for debugging in the browser console.
+      console.error('[AddManualBooking] save failed:', e);
     } finally {
       setSaving(false);
     }
