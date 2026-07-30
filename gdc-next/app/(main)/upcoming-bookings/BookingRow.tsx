@@ -722,7 +722,7 @@ export default function BookingRow({
       state: cState,
       icon: 'doc',
       // Overridable only when it isn't genuinely signed (can't un-sign a real one).
-      overridable: !trulySigned,
+      overridable: !trulySigned && roleCanContract,
       done: isDone,
       color: isDone ? NEON : AMBER,
       // ONE vocabulary across all four columns — see PIPE_SLOTS:
@@ -747,8 +747,9 @@ export default function BookingRow({
       //                    the first is how a client signs the wrong one.
       //   not sent yet  -> Review & send.
       //
-      // Archive is read-only apart from downloading what was signed.
-      actions: archive
+      // Archive is read-only apart from downloading what was signed. Roles that
+      // can't send contracts (assistants) get the same read-only treatment.
+      actions: (archive || !roleCanContract)
         ? (trulySigned
             ? [
                 { label: '\u2b07 Download contract', run: () => runContract('download') },
@@ -1467,7 +1468,8 @@ export default function BookingRow({
             // do the thing" still needs a chevron and a menu to say it in —
             // otherwise the explanation exists in the code and nowhere a DJ can
             // reach it, which is the same as not existing.
-            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
+            const contractLocked = st.key === 'contract' && !roleCanContract;
+  const hasMenu = (st.actions?.length ?? 0) > 0 || ((st.overridable || !!st.info || !!st.hint) && !contractLocked);
             // In flight: it exists and it's out there, but it isn't done. This
             // is the state the dot is for — and the reason the caption exists,
             // because a dot alone can't tell "sent, waiting" from "signed".
