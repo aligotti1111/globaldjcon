@@ -38,7 +38,23 @@ export async function getActingContext(authUserId: string): Promise<ActingContex
 }
 
 // Role → permission helpers (used by UI + server gates in the next phase).
-export const canMoney = (r: ActingRole | string): boolean => r === 'owner' || r === 'admin' || r === 'manager';
-export const canSettings = (r: ActingRole | string): boolean => r === 'owner' || r === 'admin' || r === 'manager';
+// ── Capability helpers (owner always allowed) ──────────────────────────────
+// Manager+ actions: accept/deny bookings, send contracts, request deposits,
+// add manual bookings, edit saved default templates + settings, take money.
+const isManagerPlus = (r: ActingRole | string): boolean => r === 'owner' || r === 'admin' || r === 'manager';
+// Assistant+ actions: everyone with a seat. Send documents (planner/playlist,
+// rider/guest list, flyer) and send invoices.
+const isAssistantPlus = (r: ActingRole | string): boolean => isManagerPlus(r) || r === 'assistant';
+
+export const canMoney = isManagerPlus;          // legacy alias (money-state changes)
+export const canSettings = isManagerPlus;
 export const canBilling = (r: ActingRole | string): boolean => r === 'owner';
 export const canManageTeam = (r: ActingRole | string): boolean => r === 'owner' || r === 'admin';
+
+// Manager+ only
+export const canAcceptBookings = isManagerPlus; // accept/deny/counter, add manual bookings
+export const canSendContracts = isManagerPlus;
+export const canRequestDeposit = isManagerPlus;
+// Assistant+ (all seats)
+export const canInvoice = isAssistantPlus;      // send an invoice / receipt
+export const canSendDocs = isAssistantPlus;     // planner, playlist, rider, guest list, flyer
