@@ -231,10 +231,10 @@ export async function POST(req: Request) {
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
-    // Requesting a DEPOSIT is manager+; sending an INVOICE (balance/other) is
-    // assistant+.
-    if (kind === 'deposit' ? !canRequestDeposit(acting.role) : !canInvoice(acting.role)) {
-      return NextResponse.json({ error: kind === 'deposit' ? 'Your role cannot request deposits.' : 'Your role cannot send invoices.' }, { status: 403 });
+    // Requesting a payment (deposit OR balance) is a money action — manager+.
+    // Assistants can only RESEND the invoice/receipt (the send-receipt action).
+    if (!canRequestDeposit(acting.role)) {
+      return NextResponse.json({ error: 'Your role cannot request payments.' }, { status: 403 });
     }
 
     // Tier gate, server-side. Deposits/invoices are Pro. Hiding the button in
