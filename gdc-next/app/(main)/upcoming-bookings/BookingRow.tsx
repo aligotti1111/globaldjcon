@@ -340,6 +340,7 @@ export default function BookingRow({
   // straight back open.
   const [contractAction, setContractAction] = useState<ContractAction | null>(null);
   const roleCanContract = canSendContracts(actingRole);
+  const roleCanMoney = roleCanRequestDeposit(actingRole); // cancel request + payment options
   function runContract(a: ContractAction) {
     if (!roleCanContract) return;
     setExpanded(true);
@@ -1032,7 +1033,7 @@ export default function BookingRow({
             // The rails the client will be offered. Reachable from the booking
             // because that's where a DJ realises the client can't pay the way
             // they've set up — not from Booking Settings three pages away.
-            ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) },
+            ...(roleCanMoney ? [...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : []),
           ],
     });
   }
@@ -1263,7 +1264,7 @@ export default function BookingRow({
           : depositSettled
             ? undefined
             : undefined,
-        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }],
+        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(roleCanMoney ? [...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
       });
     }
   }
