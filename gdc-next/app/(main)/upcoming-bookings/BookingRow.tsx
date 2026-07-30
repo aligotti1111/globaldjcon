@@ -1264,7 +1264,7 @@ export default function BookingRow({
           : depositSettled
             ? undefined
             : undefined,
-        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(roleCanMoney ? [...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+        actions: archive ? [] : [...(roleCanMoney && !(balanceRow || done) ? [{ label: 'Request balance', run: () => openRequest('balance') }] : []), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(roleCanMoney ? [...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
       });
     }
   }
