@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal } from '@/lib/docuseal';
 
 export const runtime = 'nodejs';
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) return NextResponse.json({ error: 'Your role cannot send contracts.' }, { status: 403 });
 
   let body: { bookingId?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
       .from('bookings')
       .select('contract_submission_id, dj_id, host_email, requester_name, venue_name, event_date')
       .eq('id', bookingId)
-      .eq('dj_id', user.id)
+      .eq('dj_id', acting.djId)
       .maybeSingle();
     const row = data as {
       contract_submission_id?: string | null;
@@ -149,7 +152,7 @@ export async function POST(req: Request) {
       .from('bookings')
       .update({ contract_status: 'awaiting_client' } as unknown as never)
       .eq('id', bookingId)
-      .eq('dj_id', user.id);
+      .eq('dj_id', acting.djId);
   } catch { /* non-fatal */ }
 
   return NextResponse.json({ ok: true });
