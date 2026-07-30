@@ -31,8 +31,11 @@ import AddManualBookingModal from './AddManualBookingModal';
 import BookingRow, { ColumnHeaders } from './BookingRow';
 import { useConfirm } from '@/components/ConfirmModal';
 
+import { canAcceptBookings, canSendContracts, canRequestDeposit, type ActingRole } from '@/lib/acting';
+
 interface Props {
   userId: string;
+  actingRole?: ActingRole;
   djType: 'club' | 'mobile';
   djCountry: string;
   djName: string;
@@ -55,7 +58,7 @@ interface Props {
 
 
 export default function UpcomingBookingsClient({
-  userId, djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
+  userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
   initialPayments, initialPlanners,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
@@ -168,6 +171,11 @@ export default function UpcomingBookingsClient({
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
   // month) or 'recent' (most recently booked first, flat list).
   const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
+  const canBookings = canAcceptBookings(actingRole);
+  const canContract = canSendContracts(actingRole);
+  const canDeposit = canRequestDeposit(actingRole);
+  const roleBlockedTitle = 'Your role doesn\u2019t have access to this. Ask an owner or manager.';
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStory, setShowStory] = useState(false);
   // Site-uniform confirm dialog — replaces window.confirm() for delete.
@@ -387,7 +395,7 @@ export default function UpcomingBookingsClient({
             </Link>
           )}
           {!archive && (
-            <button type="button" onClick={() => setShowAddModal(true)} className={styles.addBtn}>
+            <button type="button" onClick={() => canBookings && setShowAddModal(true)} disabled={!canBookings} title={!canBookings ? roleBlockedTitle : undefined} className={styles.addBtn} style={!canBookings ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}>
               + Add Booking Manually
             </button>
           )}
@@ -450,6 +458,7 @@ export default function UpcomingBookingsClient({
                 booking={b}
                 djType={djType}
                 userId={userId}
+                actingRole={actingRole}
                 clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
                 taxPct={taxPct}
                 requireContract={requireContract}
@@ -483,6 +492,7 @@ export default function UpcomingBookingsClient({
                     booking={b}
                     djType={djType}
                     userId={userId}
+                actingRole={actingRole}
                     clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
                     taxPct={taxPct}
                     requireContract={requireContract}
