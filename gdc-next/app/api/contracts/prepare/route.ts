@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
-import { getActingContext } from '@/lib/acting';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 import { getContractUsage } from '@/lib/contractQuota';
 import { canUsePro, type AccessFields } from '@/lib/access';
@@ -108,6 +108,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) return NextResponse.json({ ok: false, error: 'Your role cannot send contracts.' }, { status: 403 });
 
   const bookingId = body.bookingId != null ? String(body.bookingId) : '';
   const manualClientEmail = typeof body.clientEmail === 'string' ? body.clientEmail.trim() : '';
