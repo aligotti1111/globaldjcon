@@ -925,7 +925,7 @@ export default function BookingRow({
       // rows genuinely settled, the dropdown is gone — otherwise a DJ could
       // "mark not complete" on money that actually arrived and the strip would
       // contradict the ledger sitting right beneath it.
-      overridable: !reallySettled,
+      overridable: !reallySettled && roleCanMoney,
       done: allDone,
       // Amber until settled. It was grey on the theory that an unpaid deposit
       // isn't the DJ's problem — but "Request deposit" plainly is their move,
@@ -1248,7 +1248,7 @@ export default function BookingRow({
         label: done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
         state: done ? 'done' : 'todo',
         icon: 'receipt',
-        overridable: !balanceSettled,
+        overridable: !balanceSettled && roleCanMoney,
         done,
         color: done ? NEON : AMBER,
         // Same vocabulary as the rest: Not sent / Pending / check.
