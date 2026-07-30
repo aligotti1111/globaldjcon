@@ -20,7 +20,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
-import { getActingContext, canMoney } from '@/lib/acting';
+import { getActingContext, canMoney, canRequestDeposit, canInvoice } from '@/lib/acting';
 import { getStripe } from '@/lib/stripe/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -231,7 +231,11 @@ export async function POST(req: Request) {
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
-    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
+    // Requesting a DEPOSIT is manager+; sending an INVOICE (balance/other) is
+    // assistant+.
+    if (kind === 'deposit' ? !canRequestDeposit(acting.role) : !canInvoice(acting.role)) {
+      return NextResponse.json({ error: kind === 'deposit' ? 'Your role cannot request deposits.' : 'Your role cannot send invoices.' }, { status: 403 });
+    }
 
     // Tier gate, server-side. Deposits/invoices are Pro. Hiding the button in
     // the UI is not a paywall — anyone can POST here directly.
@@ -541,7 +545,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
-    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
+    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
 
     const cur = b.currency || 'USD';
     const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
