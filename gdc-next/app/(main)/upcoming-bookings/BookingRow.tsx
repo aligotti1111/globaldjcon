@@ -180,12 +180,15 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
   );
 }
 
+import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
+
 export default function BookingRow({
-  booking, djType, userId, clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
   userId: string;
+  actingRole?: ActingRole;
   clubDepositPct: number;
   taxPct: number;
   requireContract: boolean;
@@ -336,7 +339,9 @@ export default function BookingRow({
   // and clears the flag immediately, so closing the portal doesn't bounce it
   // straight back open.
   const [contractAction, setContractAction] = useState<ContractAction | null>(null);
+  const roleCanContract = canSendContracts(actingRole);
   function runContract(a: ContractAction) {
+    if (!roleCanContract) return;
     setExpanded(true);
     setContractAction(a);
   }
@@ -532,9 +537,9 @@ export default function BookingRow({
   // Manual bookings now need host contact instead of the contract gate (they
   // have no contract requirement to satisfy). The other two clauses are
   // untouched, so a real booking's path through here is exactly what it was.
-  const canRequestDeposit = booking.is_manual
+  const canRequestDeposit = roleCanRequestDeposit(actingRole) && (booking.is_manual
     ? hasHostContact
-    : (!needsContract || contractStepComplete);
+    : (!needsContract || contractStepComplete));
   // `color` is per-step, not derived from state alone: Contract goes YELLOW
   // when it's waiting on someone (an action the DJ can take), while Deposit
   // stays grey until it lands. Same state, different urgency — one shared
