@@ -300,6 +300,7 @@ export default async function UpcomingBookingsPage() {
   return (
     <UpcomingBookingsClient
       userId={djId}
+      actingRole={acting.role}
       djType={djType}
       djCountry={djCountry}
       djName={djName}
