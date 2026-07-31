@@ -28,7 +28,6 @@ import {
 } from './constants';
 import type { GeneralFormState } from './UpdateDjProfileClient';
 import { makeCustomEventKey } from '@/lib/constants';
-import AvatarCrop from './AvatarCrop';
 import BusinessLogoSection from './BusinessLogoSection';
 import BlockedUsersSection from './BlockedUsersSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
@@ -330,126 +329,9 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     </label>
   );
 
-  // ── Avatar state ─────────────────────────────────────────────────
-  // `pickedFile` is non-null while the AvatarCrop modal is open.
-  // After successful upload, parent's onChange persists the new URL into
-  // state.avatarUrl which feeds the circle preview.
-  // Errors are shown inside the AvatarCrop modal — no parent state needed.
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pickedFile, setPickedFile] = useState<File | null>(null);
-  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'updated'>('idle');
-
-  // First letter of the DJ name — used for the placeholder circle when
-  // no avatar exists yet. Vanilla shows '?'; we go with the first
-  // initial which is friendlier for new accounts.
-  const initials = (state.name || '').trim().charAt(0).toUpperCase() || '?';
-
-  function onAvatarClick() {
-    fileInputRef.current?.click();
-  }
-
-  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPickedFile(file);
-    setAvatarStatus('idle');
-  }
-
-  function onCropClose() {
-    setPickedFile(null);
-    // Reset the file input so the same file can be reselected later
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  function onCropSuccess(publicUrl: string) {
-    onChange('avatarUrl', publicUrl);
-    setPickedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    setAvatarStatus('updated');
-    // Clear status after 3s
-    setTimeout(() => setAvatarStatus('idle'), 3000);
-  }
-
-  async function onAvatarDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    const ok = await confirm({
-      title: 'Remove profile photo?',
-      confirmLabel: 'Remove',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    // Vanilla parity: clear the form field. The image stays in storage
-    // but the users.avatar_url column will be set to null on next save.
-    onChange('avatarUrl', '');
-  }
-
   return (
     <div>
       {confirmDialog}
-      {/* Avatar — click to upload, opens AvatarCrop modal */}
-      <div
-        className={styles.avatarTop}
-        onClick={onAvatarClick}
-        title="Click to change photo"
-      >
-        {/* Wrapper is relatively positioned so the delete button can be
-            absolutely positioned over the avatar without being clipped
-            by .avatarCircle's overflow:hidden (which would chop the X). */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div className={styles.avatarCircle}>
-            {state.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={state.avatarUrl}
-                alt="Profile"
-                className={styles.avatarCircleImg}
-              />
-            ) : (
-              <span>{initials}</span>
-            )}
-          </div>
-          {state.avatarUrl && (
-            <button
-              type="button"
-              onClick={onAvatarDelete}
-              className={styles.avatarDeleteBtn}
-              title="Remove photo"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        <div
-          className={`${styles.avatarTopInfo}${
-            avatarStatus === 'updated' ? ' ' + styles.avatarTopInfoUpdated : ''
-          }`}
-        >
-          <strong>Profile Photo</strong>
-          <span>
-            {avatarStatus === 'updated'
-              ? '✓ Photo updated'
-              : state.avatarUrl
-              ? 'Click to change'
-              : 'Click to upload & crop'}
-          </span>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={onFilePicked}
-          style={{ display: 'none' }}
-        />
-      </div>
-
-      {/* Crop modal — mounts only when a file is picked */}
-      <AvatarCrop
-        file={pickedFile}
-        userId={userId}
-        onClose={onCropClose}
-        onSuccess={onCropSuccess}
-      />
-
       {/* Business logo — the shared brand logo (planner, contracts, everywhere). */}
       <BusinessLogoSection />
 
