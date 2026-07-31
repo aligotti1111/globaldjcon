@@ -80,53 +80,63 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
           {members.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
               {members.map((m) => (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap', padding: '.6rem .8rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
-                  <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                    {m.name && (
-                      <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                    )}
-                    <div style={{ fontSize: m.name ? '.76rem' : '.88rem', color: m.name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>
-                      {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
+                <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', padding: '.6rem .8rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                      {m.name && (
+                        <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+                      )}
+                      <div style={{ fontSize: m.name ? '.76rem' : '.88rem', color: m.name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                        {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
+                      </div>
                     </div>
-                  </div>
-                  {m.member_id && m.member_id === viewerId ? (
-                    <span style={{ fontSize: '.78rem', color: muted, whiteSpace: 'nowrap' }}>
-                      {(TEAM_ROLES.find((r) => r.value === m.role)?.label) || m.role} · you
-                    </span>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <select
-                        value={pendingRoles[m.id] ?? m.role}
-                        onFocus={() => setHighlightRole((pendingRoles[m.id] ?? m.role) as TeamRole)}
-                        onChange={(e) => { setPendingRoles((prev) => ({ ...prev, [m.id]: e.target.value })); setHighlightRole(e.target.value as TeamRole); }}
-                        style={{ background: 'transparent', color: '#fff', border: `1px solid ${(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.2)'}`, borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}
-                      >
-                        {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
-                      </select>
-                      {(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) && (
-                        <button
-                          type="button"
-                          disabled={savingRole === m.id}
-                          onClick={async () => {
-                            setSavingRole(m.id);
-                            await changeRole(m.id, pendingRoles[m.id]);
-                            setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
-                            setSavingRole(null);
-                          }}
-                          style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 6, color: '#06231b', padding: '.25rem .7rem', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer' }}
+                    {m.member_id && m.member_id === viewerId ? (
+                      <span style={{ fontSize: '.78rem', color: muted, whiteSpace: 'nowrap' }}>
+                        {(TEAM_ROLES.find((r) => r.value === m.role)?.label) || m.role} · you
+                      </span>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <select
+                          value={pendingRoles[m.id] ?? m.role}
+                          onFocus={() => setHighlightRole((pendingRoles[m.id] ?? m.role) as TeamRole)}
+                          onChange={(e) => { setPendingRoles((prev) => ({ ...prev, [m.id]: e.target.value })); setHighlightRole(e.target.value as TeamRole); }}
+                          style={{ background: 'transparent', color: '#fff', border: `1px solid ${(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.2)'}`, borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}
                         >
-                          {savingRole === m.id ? 'Saving…' : 'Save'}
-                        </button>
-                      )}
-                      {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
-                          <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
-                          Rider/guest-list settings
-                        </label>
-                      )}
-                      <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
-                    </div>
-                  )}
+                          {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
+                        </select>
+                        {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
+                            <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
+                            Rider/guest-list settings
+                          </label>
+                        )}
+                        <button type="button" onClick={() => setConfirmId(m.id)} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>Remove</button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Save the role change — its own line under the email, before the
+                      role chart. Always shown for editable members; only clickable
+                      when there's an unsaved change. */}
+                  {!(m.member_id && m.member_id === viewerId) && (() => {
+                    const dirty = !!(pendingRoles[m.id] && pendingRoles[m.id] !== m.role);
+                    const saving = savingRole === m.id;
+                    return (
+                      <button
+                        type="button"
+                        disabled={!dirty || saving}
+                        title={dirty ? undefined : 'No role change to save'}
+                        onClick={async () => {
+                          setSavingRole(m.id);
+                          await changeRole(m.id, pendingRoles[m.id]);
+                          setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+                          setSavingRole(null);
+                        }}
+                        style={{ alignSelf: 'flex-start', background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.35rem 1rem', fontWeight: 700, fontSize: '.78rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
+                      >
+                        {saving ? 'Saving…' : 'Save role'}
+                      </button>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
