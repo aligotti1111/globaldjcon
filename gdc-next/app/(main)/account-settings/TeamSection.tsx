@@ -89,6 +89,12 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                       <div style={{ fontSize: m.name ? '.76rem' : '.88rem', color: m.name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>
                         {m.invited_email}{m.status === 'invited' && <span style={{ color: muted }}> · pending</span>}
                       </div>
+                      {/* The teammate's CURRENT (saved) role, at a glance. */}
+                      <div style={{ marginTop: 5 }}>
+                        <span style={{ display: 'inline-block', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.12)', border: '1px solid rgba(0,224,164,.35)', borderRadius: 999, padding: '.12rem .55rem' }}>
+                          {(TEAM_ROLES.find((r) => r.value === m.role)?.label) || m.role}
+                        </span>
+                      </div>
                     </div>
                     {m.member_id && m.member_id === viewerId ? (
                       <span style={{ fontSize: '.78rem', color: muted, whiteSpace: 'nowrap' }}>
