@@ -30,7 +30,7 @@ import type { BookingPayment } from './page';
 // ───────────────────────────────────────────────────────────────────────
 
 export default function PaymentsBlock({
-  bookingId, currency, payments, onChange, archive, canRequestDeposit,
+  bookingId, currency, payments, onChange, archive, canRequestDeposit, canManageMoney = true,
   suggestedDeposit, agreedTotal,
 }: {
   bookingId: string;
@@ -39,6 +39,8 @@ export default function PaymentsBlock({
   onChange: (rows: BookingPayment[]) => void;
   archive?: boolean;
   canRequestDeposit: boolean;
+  /** Manager+ money actions (request/confirm/waive). Assistants: false. */
+  canManageMoney?: boolean;
   /** What the booking already says the deposit is — a SUGGESTION, not a rule.
    *  Null when the DJ had no deposit policy when this booking was made, or on
    *  manual bookings. */
@@ -217,7 +219,7 @@ export default function PaymentsBlock({
                 The client plans to hand you this in person — expect an envelope, then confirm what you receive.
               </div>
             )}
-            {!archive && !settled && (
+            {!archive && !settled && canManageMoney && (
               <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => confirmReceived(p)} disabled={rowBusy} style={neonBtn(rowBusy)}>
                   {rowBusy ? 'Saving…' : 'Confirm received'}
@@ -233,7 +235,7 @@ export default function PaymentsBlock({
       {!archive && (
         <div style={{ marginTop: payments.length > 0 ? 4 : 10 }}>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-            {!depositRow && (
+            {!depositRow && canManageMoney && (
               <button
                 type="button"
                 onClick={() => requestPayment('deposit')}
@@ -251,7 +253,7 @@ export default function PaymentsBlock({
                 canSendInvoice gate are all still here and still used by the
                 Invoice column's state; only this button is gone. */}
           </div>
-          {!depositRow && !canRequestDeposit && (
+          {!depositRow && canManageMoney && !canRequestDeposit && (
             <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', marginTop: 6 }}>
               Request Deposit unlocks once the contract step is complete — signed, or marked complete in the
               status strip if you handled the contract outside the app.
