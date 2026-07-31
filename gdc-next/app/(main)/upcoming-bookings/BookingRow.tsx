@@ -1974,7 +1974,9 @@ export default function BookingRow({
           onContractActionHandled={() => setContractAction(null)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
-          canRequestDeposit={canRequestDeposit}
+          canRequestDeposit={canRequestDeposit && roleCanMoney}
+          canManageMoney={roleCanMoney}
+          canManageContract={roleCanContract}
           hasHostContact={hasHostContact}
           onEdit={onAddHost || onEdit}
         />
