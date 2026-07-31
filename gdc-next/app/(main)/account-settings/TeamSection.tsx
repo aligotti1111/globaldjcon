@@ -23,6 +23,9 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
   const [note, setNote] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null); // member pending remove-confirmation
   const [viewerId, setViewerId] = useState<string | null>(null); // the logged-in user's id (an admin sees their own row)
+  const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({}); // draft role per member (not yet saved)
+  const [highlightRole, setHighlightRole] = useState<TeamRole | null>(null); // column to highlight in the chart
+  const [savingRole, setSavingRole] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -71,7 +74,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
       ) : (
         <>
           <p style={{ color: muted, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
-            {members.length} of {seatLimit} seats used. Teammates log in with their own email and get the access you choose.
+            {members.length} of {seatLimit} seats used. Teammates log in with their own email and get the access you choose. Change a role, then <strong style={{ color: '#fff' }}>Save</strong> — the new access applies to their account right away.
           </p>
 
           {members.length > 0 && (
@@ -92,9 +95,29 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                     </span>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value)} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}>
+                      <select
+                        value={pendingRoles[m.id] ?? m.role}
+                        onFocus={() => setHighlightRole((pendingRoles[m.id] ?? m.role) as TeamRole)}
+                        onChange={(e) => { setPendingRoles((prev) => ({ ...prev, [m.id]: e.target.value })); setHighlightRole(e.target.value as TeamRole); }}
+                        style={{ background: 'transparent', color: '#fff', border: `1px solid ${(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.2)'}`, borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}
+                      >
                         {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
                       </select>
+                      {(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) && (
+                        <button
+                          type="button"
+                          disabled={savingRole === m.id}
+                          onClick={async () => {
+                            setSavingRole(m.id);
+                            await changeRole(m.id, pendingRoles[m.id]);
+                            setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+                            setSavingRole(null);
+                          }}
+                          style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 6, color: '#06231b', padding: '.25rem .7rem', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer' }}
+                        >
+                          {savingRole === m.id ? 'Saving…' : 'Save'}
+                        </button>
+                      )}
                       {djType !== 'mobile' && (m.role === 'admin' || m.role === 'manager') && (
                         <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: muted, whiteSpace: 'nowrap' }} title="Let this teammate turn the Rider & Guest List on/off and edit the default rider">
                           <input type="checkbox" checked={m.can_addons !== false} onChange={(e) => toggleAddons(m.id, e.target.checked)} />
@@ -114,19 +137,19 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             <div style={{ fontWeight: 700, fontSize: '.82rem', marginBottom: '.6rem' }}>What each role can do</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px,1.6fr) repeat(3, minmax(52px,1fr))', gap: '.35rem .4rem', alignItems: 'center', fontSize: '.74rem', minWidth: 320 }}>
               <div />
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Admin</div>
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Manager</div>
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)' }}>Assistant</div>
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'admin' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'admin' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Admin</div>
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'manager' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'manager' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Manager</div>
+              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'assistant' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'assistant' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Assistant</div>
               {roleMatrix(djType).map((cap) => {
-                const cell = (ok: boolean) => (
-                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700 }}>{ok ? '\u2713' : '\u2717'}</div>
+                const cell = (ok: boolean, role: TeamRole) => (
+                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700, borderRadius: 4, background: highlightRole === role ? 'rgba(0,224,164,.10)' : undefined }}>{ok ? '\u2713' : '\u2717'}</div>
                 );
                 return (
                   <Fragment key={cap.label}>
                     <div style={{ color: 'rgba(255,255,255,.82)' }}>{cap.label}</div>
-                    {cell(cap.admin)}
-                    {cell(cap.manager)}
-                    {cell(cap.assistant)}
+                    {cell(cap.admin, 'admin')}
+                    {cell(cap.manager, 'manager')}
+                    {cell(cap.assistant, 'assistant')}
                   </Fragment>
                 );
               })}
