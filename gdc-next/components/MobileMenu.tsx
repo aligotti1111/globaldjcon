@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
+import { canAcceptBookings } from '@/lib/acting';
 import { useUpcomingBookingCount } from './useUpcomingBookingCount';
 import { canBook, type AccessFields } from '@/lib/access';
 
@@ -144,6 +145,8 @@ function IconAdmin() {
 
 export default function MobileMenu() {
   const { user, signOut } = useAuth();
+  // Assistants can't accept/deny bookings or add manual ones — hide those nav.
+  const canBookings = canAcceptBookings(((user as unknown as { actingRole?: string })?.actingRole) || 'owner');
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -266,9 +269,11 @@ export default function MobileMenu() {
             >
               Manage
             </div>
-            <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
-              <IconCalendar />Booking Requests
-            </Link>
+            {canBookings && (
+              <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
+                <IconCalendar />Booking Requests
+              </Link>
+            )}
             {showDjBookings && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Dashboard{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
@@ -284,7 +289,7 @@ export default function MobileMenu() {
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
-            {showDjBookings && (
+            {showDjBookings && canBookings && (
               <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
                 <IconPlus />Add Booking Manually
               </Link>
