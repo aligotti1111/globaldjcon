@@ -129,6 +129,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             const dirty = dirtyIds.length > 0;
             const saving = savingRole === 'ALL';
             return (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 1rem' }}>
               <button
                 type="button"
                 disabled={!dirty || saving}
@@ -142,10 +143,11 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                   setSavingRole(null);
                   load();
                 }}
-                style={{ alignSelf: 'flex-start', display: 'inline-block', margin: '0 0 1rem', background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.4rem 1.1rem', fontWeight: 700, fontSize: '.8rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
+                style={{ background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.4rem 1.1rem', fontWeight: 700, fontSize: '.8rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
               >
                 {saving ? 'Saving\u2026' : dirty ? `Save role change${dirtyIds.length > 1 ? 's' : ''}` : 'Save role changes'}
               </button>
+              </div>
             );
           })()}
 
