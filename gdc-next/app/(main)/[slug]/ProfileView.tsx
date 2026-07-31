@@ -98,8 +98,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const clubBookingLive = hasBookingAccess && clubEquipPicked;
   const mobileBookingLive = hasBookingAccess && mobileSetupComplete;
   const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
-  const showClubAvailabilityTab = isClubDJ && bookingEnabled;
-  const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
+  const { user: currentUser } = useAuth();
+  // A staff login (active team member) may NOT book a DJ — booking is for
+  // owners and hosts only. Hiding the tab also hides Book Now and stops the
+  // form from defaulting open.
+  const viewerIsStaff = !!currentUser?.isMember;
+  const showClubAvailabilityTab = isClubDJ && bookingEnabled && !viewerIsStaff;
+  const showMobileBookingTab = isMobileDJBooking && bookingEnabled && !viewerIsStaff;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
 
   // If the URL has ?date=YYYY-MM-DD (visitor came from the embed
@@ -122,7 +127,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Club-booking flow — selectedDate drives the form, loginGateForDate
   // shows the login gate for unauthenticated visitors. Mirror of the
   // pattern in MobilePublicCalendar (which holds these internally).
-  const { user: currentUser } = useAuth();
   // Gate for actions that require a verified email (booking, messaging).
   // Returns true if the action may proceed. Logged-out users are sent to
   // login; logged-in-but-unverified users are blocked with a prompt that
