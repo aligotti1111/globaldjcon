@@ -1,347 +1,560 @@
 'use client';
 
-// BookingSettingsClient — standalone host for the booking configuration that
-// used to be a tab in the profile editor. It carries ONLY the booking
-// plumbing (booking_settings state + debounced autosave + master-save + dirty
-// tracking) and mounts the existing BookingTab / ClubBookingTab components
-// unchanged. All the booking UI — including the activate toggle and the
-// "settings appear once activated" behavior — lives inside those components.
+// UpcomingBookingsClient — DJ's own future schedule view.
 //
-// This deliberately mirrors the autosave / master-save logic from
-// UpdateDjProfileClient so behavior is identical, just relocated.
+// Renders the list grouped by month (most recent month first), shows each
+// upcoming approved/manual booking as a single row, and provides an
+// "+ Add Manual Booking" CTA that opens a modal with the right fields for
+// the DJ's type.
+//
+// Form fields per role:
+//   - Club/Bar DJ: date · start · end · venue name · address (Nominatim) ·
+//     venue type (bar/club) · set type (opening/headliner/closing/opening+closing)
+//   - Mobile DJ:   date · start · end · venue name (optional) · address ·
+//     event type
+//
+// Daily-cap rule applied at form save:
+//   - Club: max 1 booking per date (real + manual combined). Soft block.
+//   - Mobile: max users.booking_settings.mob_bookings_per_day per date. Soft block.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
-import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
-import BookingTab from '../update-dj-profile/BookingTab';
-import { parseCustomEventTypes } from '@/lib/constants';
-import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
-import ContractPortal from '../update-dj-profile/ContractPortal';
-import styles from '../update-dj-profile/updateDjProfile.module.css';
+import { type MobilePackage } from '../[slug]/bookingSettings';
 
-interface InitialProfile {
-  id: string;
-  dj_type: 'club' | 'mobile' | null;
-  slug: string | null;
-  booking_settings: string | null;
-  event_types: string | null;
-  mob_custom_event_types?: unknown;
-  mob_specialty_types?: unknown;
-}
+import styles from './upcomingBookings.module.css';
+import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
+import { canUsePro, type AccessFields } from '@/lib/access';
+import MonthlyStory from './MonthlyStory';
+import AddManualBookingModal from './AddManualBookingModal';
+import BookingRow, { ColumnHeaders } from './BookingRow';
+import { useConfirm } from '@/components/ConfirmModal';
+
+import { canAcceptBookings, canSendContracts, canRequestDeposit, type ActingRole } from '@/lib/acting';
 
 interface Props {
-  initialProfile: InitialProfile;
-  hasBookingAccess: boolean;
+  userId: string;
+  actingRole?: ActingRole;
+  djType: 'club' | 'mobile';
+  djCountry: string;
+  djName: string;
+  bookingsPerDay: number;
+  initialBookings: UpcomingBooking[];
+  // The DJ's saved mobile packages by category ('general' | 'wedding' |
+  // 'mitzvah'), used to populate the manual-booking package dropdown.
+  mobPackages: Record<string, MobilePackage[]> | null;
+  // Archive mode — used by the dedicated /past-bookings page. Renders the same
+  // rows read-only-ish (no add / schedule tools), newest-first, "Past Bookings".
+  archive?: boolean;
+  // booking_payments rows keyed by booking_id, loaded server-side by the page
+  // (the generated Supabase types predate the table, so the page casts to an
+  // untyped client for that one query). Purely informational — never gates.
+  initialPayments?: Record<string, BookingPayment[]>;
+  // booking_planners, reduced to a fraction server-side (the answers never come
+  // to the browser). Keyed by booking_id; absent = never requested.
+  initialPlanners?: Record<string, BookingPlannerSummary>;
 }
 
-export default function BookingSettingsClient({ initialProfile, hasBookingAccess }: Props) {
-  const router = useRouter();
-  const djType = initialProfile.dj_type;
-  const isMobile = djType === 'mobile';
-  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'rates' | 'rider' | 'guests';
-  const [secTab, setSecTab] = useState<SecTab>('settings');
 
-  // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
-  // as the profile editor: a brand-new mobile DJ with nothing saved gets all
-  // 12 pre-selected; club DJs default to none.
-  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(() => {
-    const saved = (initialProfile.event_types || '')
-      .split(',').map((s) => s.trim()).filter(Boolean);
-    if (saved.length > 0) return saved;
-    return djType === 'mobile'
-      ? ['weddings', 'corporate', 'birthday', 'anniversary', 'graduation', 'sweet16', 'quinceanera', 'mitzvah', 'reunion', 'holiday', 'school', 'community', 'other']
-      : [];
-  });
-
-  const [customEventTypes, setCustomEventTypes] = useState(
-    () => parseCustomEventTypes(initialProfile.mob_custom_event_types),
-  );
-
-  // Persist event-type edits made from the package builder popup straight to
-  // the DJ's profile row (same columns the profile editor writes).
-  async function saveEventTypes(
-    nextSelected: string[],
-    nextCustom: { key: string; label: string }[],
-    nextSpecialty: string[],
-  ) {
-    setSelectedEventTypes(nextSelected);
-    setCustomEventTypes(nextCustom);
-    setSpecialtyTypes(nextSpecialty);
-    try {
-      await supabaseRef.current
-        .from('users')
-        .update({
-          event_types: nextSelected.length > 0 ? nextSelected.join(',') : null,
-          mob_custom_event_types: nextCustom.length > 0 ? nextCustom : null,
-          mob_specialty_types: nextSpecialty,
-        } as unknown as never)
-        .eq('id', initialProfile.id);
-    } catch {
-      // Non-fatal; local state already updated so the rail reflects the change.
-    }
+export default function UpcomingBookingsClient({
+  userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
+  initialPayments, initialPlanners,
+}: Props) {
+  const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
+  // Payment ledger rows per booking (booking_payments). Owned at the top so a
+  // row's expanded panel can update after request/confirm/waive without a
+  // refetch, and so collapse/expand doesn't lose the fresh state.
+  const [paymentsMap, setPaymentsMap] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
+  function handlePaymentsChange(bookingId: string, rows: BookingPayment[]) {
+    setPaymentsMap((prev) => ({ ...prev, [bookingId]: rows }));
   }
-  const [specialtyTypes, setSpecialtyTypes] = useState<string[]>(() => {
-    const raw = initialProfile.mob_specialty_types;
-    let arr: unknown = raw;
-    if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
-    if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
-    return ['weddings', 'mitzvah'];
-  });
-
-  const [bookingSettings, setBookingSettings] = useState<BookingSettings>(
-    parseBookingSettings(initialProfile.booking_settings) || {}
-  );
-
-  // ── Autosave booking_settings (debounced) — identical to the editor ──
-  const supabaseRef = useRef(createClient());
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  // Snapshot of the last-persisted booking_settings. Drives the Booking
-  // Settings tab's manual Save button (dirty = current !== snapshot).
-  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(bookingSettings));
-
+  // Planner summaries per booking. Owned at the top for the same reason as the
+  // payments: after a Request the row must go amber immediately, and collapsing
+  // it must not throw that away.
+  //
+  // Also mirrored onto booking.planner_status below — the row reads BOTH (the
+  // column via this map, and `planner_status` elsewhere), and one updating
+  // without the other is how a strip starts contradicting itself.
+  const [plannerMap, setPlannerMap] = useState<Record<string, BookingPlannerSummary>>(initialPlanners || {});
+  function handlePlannerChange(bookingId: string, row: BookingPlannerSummary) {
+    setPlannerMap((prev) => ({ ...prev, [bookingId]: row }));
+    setBookings((prev) => prev.map((b) => (
+      b.id === bookingId ? { ...b, planner_status: row.status } : b
+    )));
+  }
+  // The DJ's standing club deposit % (from booking_settings). Lets club
+  // booking cards show the deposit even when it wasn't stored per-booking —
+  // matching what the contract applies.
+  const [clubDepositPct, setClubDepositPct] = useState<number>(0);
+  const [riderEnabled, setRiderEnabled] = useState<boolean>(false);
+  const [guestlistEnabled, setGuestlistEnabled] = useState<boolean>(false);
+  const [canAddonSettings, setCanAddonSettings] = useState(false);
+  // Mobile equivalent. Was never read: nothing on this page needed it until
+  // the manual-booking form started seeding its deposit toggle from settings.
+  const [mobDepositPct, setMobDepositPct] = useState<number>(0);
+  // booking_settings.rate_currency. Club already had this; mobile never did,
+  // so mobile money has been printed with a hardcoded "$" everywhere.
+  const [settingsCurrency, setSettingsCurrency] = useState<string>('USD');
+  // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
+  // on cards for both DJ types.
+  const [taxPct, setTaxPct] = useState<number>(0);
+  // Paid-subscriber flag — the Schedule Graphic tool is premium-only. Uses the
+  // app's standard access check: sub_status 'active' or 'grace'.
+  const [isPaid, setIsPaid] = useState(false);
+  /**
+   * Pro (tier 2) — the suite lib/access calls "contracts / deposits / event
+   * info sheet". The Planner & Playlist IS the event info sheet.
+   *
+   * Deliberately NOT `isPaid`. isPaid is sub_status active|grace, which a
+   * tier-1 DJ satisfies — they're paying, just not for this. Gating the
+   * planner on isPaid would offer Request to someone the server is about to
+   * refuse, so the button would work exactly until it didn't.
+   *
+   * This is a courtesy, not the paywall. The paywall is in
+   * /api/planner/request, because anyone can POST there directly.
+   */
+  const [canPro, setCanPro] = useState(false);
+  // Whether the DJ requires a signed contract per booking — drives the Contract
+  // segment in each row's status strip.
+  const [requireContract, setRequireContract] = useState(false);
+  // Show the Rider & Guest List settings link only for Admin/Manager teammates.
   useEffect(() => {
-    // Only act when there are genuinely unsaved changes vs the last write.
-    // (Comparing to a fixed initial ref re-fired a save on every tab switch
-    // once anything had changed, which flashed the badge like a glitch.)
-    if (JSON.stringify(bookingSettings) === savedSnapshot) return;
-    // Settings / DJ Rider / Guest List save manually via their own buttons —
-    // don't autosave those. Every other tab keeps auto-saving.
-    if (secTab === 'settings' || secTab === 'rider' || secTab === 'guests') return;
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(async () => {
-      setAutosaveStatus('saving');
+    let on = true;
+    (async () => {
       try {
-        const { error } = await supabaseRef.current
-          .from('users')
-          .update({ booking_settings: JSON.stringify(bookingSettings) } as unknown as never)
-          .eq('id', initialProfile.id);
-        if (error) throw error;
-        setSavedSnapshot(JSON.stringify(bookingSettings));
-        setAutosaveStatus('saved');
-        setTimeout(() => setAutosaveStatus('idle'), 5000);
-      } catch {
-        setAutosaveStatus('error');
-      }
-    }, 600);
-    return () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    };
-  }, [bookingSettings, savedSnapshot, initialProfile.id, secTab]);
+        const res = await fetch('/api/me');
+        const d = (await res.json().catch(() => ({}))) as { isMember?: boolean; role?: string };
+        if (on && d.isMember && (d.role === 'admin' || d.role === 'manager')) setCanAddonSettings(true);
+      } catch { /* ignore */ }
+    })();
+    return () => { on = false; };
+  }, []);
 
-  // ── Dirty tracking + master save (drives the Save All button) ────────
-  // Mobile: packages save manually. Club: rates save manually. Both report
-  // dirtiness up so the bottom button enables; the toggle/calendar/equipment
-  // autosave on their own.
-  const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
-  const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
-  const [clubBookingActivationIncomplete, setClubBookingActivationIncomplete] = useState(false);
-  const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
-  function triggerMasterSave() {
-    setMasterSaveTrigger((n) => n + 1);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from('users').select('booking_settings, sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', userId).maybeSingle();
+        const row = data as (AccessFields & { booking_settings?: string | null; sub_status?: string | null }) | null;
+        const raw = row?.booking_settings;
+        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean; rider_enabled?: boolean; guestlist_enabled?: boolean };
+        if (!active) return;
+        const ss = row?.sub_status;
+        setIsPaid(ss === 'active' || ss === 'grace');
+        // Same helper the server gate uses, so the row and /api/planner/request
+        // can't come to different conclusions about the same DJ.
+        setCanPro(!!row && canUsePro(row));
+        setRequireContract(!!bs?.require_contract);
+        setRiderEnabled(!!bs?.rider_enabled);
+        setGuestlistEnabled(!!bs?.guestlist_enabled);
+        {
+          const c = (bs as { rate_currency?: string })?.rate_currency;
+          if (c) setSettingsCurrency(c);
+        }
+        if (djType === 'club') {
+          const v = Number(bs?.club_deposit_pct);
+          if (Number.isFinite(v) && v > 0) setClubDepositPct(v);
+        } else {
+          const v = Number((bs as { mob_deposit_pct?: number })?.mob_deposit_pct);
+          if (Number.isFinite(v) && v > 0) setMobDepositPct(v);
+        }
+        if (bs?.tax_enabled) {
+          const t = Number(bs?.tax_pct);
+          if (Number.isFinite(t) && t > 0) setTaxPct(t);
+        }
+      } catch { /* ignore — no deposit/tax shown */ }
+    })();
+    return () => { active = false; };
+  }, [djType, userId]);
+  // Sort mode for the list: 'date' (default — soonest event first, grouped by
+  // month) or 'recent' (most recently booked first, flat list).
+  const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
+  const canBookings = canAcceptBookings(actingRole);
+  const canContract = canSendContracts(actingRole);
+  const canDeposit = canRequestDeposit(actingRole);
+  const roleBlockedTitle = 'Your account level doesn\u2019t have access to this. Ask an owner or manager.';
+  const [roleMsg, setRoleMsg] = useState<string | null>(null);
+  const roleMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function blockRole() {
+    setRoleMsg(roleBlockedTitle);
+    if (roleMsgTimer.current) clearTimeout(roleMsgTimer.current);
+    roleMsgTimer.current = setTimeout(() => setRoleMsg(null), 4000);
   }
 
-  const settingsDirty = JSON.stringify(bookingSettings) !== savedSnapshot;
-  async function saveBookingSettingsNow() {
-    setAutosaveStatus('saving');
-    try {
-      const snap = JSON.stringify(bookingSettings);
-      const { error } = await supabaseRef.current
-        .from('users')
-        .update({ booking_settings: snap } as unknown as never)
-        .eq('id', initialProfile.id);
-      if (error) throw error;
-      setSavedSnapshot(snap);
-      setAutosaveStatus('saved');
-      setTimeout(() => setAutosaveStatus('idle'), 4000);
-    } catch {
-      setAutosaveStatus('error');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showStory, setShowStory] = useState(false);
+  // Site-uniform confirm dialog — replaces window.confirm() for delete.
+  const { confirm, confirmDialog } = useConfirm();
+  // When set, the modal opens in edit mode prefilled with this booking's data.
+  // Mutually exclusive with showAddModal — opening one closes the other.
+  const [editing, setEditing] = useState<UpcomingBooking | null>(null);
+  /**
+   * The edit modal was opened by "Add host details…", not by the pencil.
+   *
+   * Same modal either way, but the intent is different and the modal opens
+   * scrolled to the top with Host Details below the fold — so arriving from
+   * "Add host details" landed you on a form that looked exactly like the one
+   * you'd have got from the pencil, with no sign of the thing you came for.
+   *
+   * Not derived from "host details are missing": that's true when you click the
+   * pencil to fix a typo in the date too, and yanking the scroll position to a
+   * block you didn't ask about is its own annoyance. The flag records that you
+   * asked.
+   */
+  const [focusHost, setFocusHost] = useState(false);
+  // Optional date to prefill into the add modal when it opens. Set when the
+  // page is loaded with `?addManual=YYYY-MM-DD` (used by the public profile
+  // calendar's "Add Booking Details" button so the date is already populated).
+  const [prefillDate, setPrefillDate] = useState<string>('');
+  // When set, after the modal saves successfully we redirect to this URL
+  // (typically the profile calendar that opened the modal). Lets the owner
+  // edit a booking inline without losing their place on the public profile.
+  const [returnToUrl, setReturnToUrl] = useState<string>('');
+
+  // Read URL params on mount: ?addManual=YYYY-MM-DD opens the add modal with
+  // that date already populated. If a booking already exists on that date,
+  // we open the EDIT modal for it instead so the owner sees their previously
+  // entered details. ?returnTo=/path sends them back to that URL after save.
+  // Existing mount-only flow: ?addManual=<date> + ?returnTo=. Kept as a
+  // one-shot effect because it depends on `initialBookings` snapshot.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const addManual = params.get('addManual');
+    const returnTo = params.get('returnTo');
+    if (returnTo) setReturnToUrl(returnTo);
+    if (addManual) {
+      const existing = initialBookings.find(
+        (b) => b.event_date === addManual && b.is_manual,
+      );
+      if (existing) {
+        setEditing(existing);
+      } else {
+        setPrefillDate(addManual);
+        setShowAddModal(true);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete('addManual');
+      url.searchParams.delete('returnTo');
+      window.history.replaceState(null, '', url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ?add=1 — fired from the header DJ-menu's "Add Booking Manually" option.
+  // Watches the URL via Next's useSearchParams so it fires on EVERY URL
+  // change, including when the user is already on /upcoming-bookings and
+  // taps the dropdown again (which doesn't remount the component).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get('add') === '1') {
+      setShowAddModal(true);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('add');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [searchParams]);
+
+  // Group by month (YYYY-MM). Upcoming: soonest month first, ascending dates.
+  // Archive (Past): most-recent month first, most-recent date first.
+  const grouped = useMemo(() => {
+    const map = new Map<string, UpcomingBooking[]>();
+    for (const b of bookings) {
+      if (!b.event_date) continue;
+      const key = b.event_date.slice(0, 7);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(b);
+    }
+    for (const arr of map.values()) arr.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
+    const entries = Array.from(map.entries());
+    if (archive) {
+      entries.sort((a, b) => b[0].localeCompare(a[0]));
+      for (const [, arr] of entries) arr.reverse();
+      return entries;
+    }
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+  }, [bookings, archive]);
+
+  // Flat list sorted by most recently booked first (created_at desc). Used
+  // when the sort toggle is set to "Recently booked".
+  const recentList = useMemo(() => {
+    return [...bookings]
+      .filter((b) => b.event_date)
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  }, [bookings]);
+
+  // IDs of bookings whose time range overlaps another booking on the SAME
+  // date — CLUB/BAR DJs only (a club DJ can't be in two places at once).
+  // Mobile DJs can accept multiple same-day bookings, so this is empty for
+  // them. Times are "HH:MM"; an end at/before start wraps past midnight.
+  const overlapIds = useMemo(() => {
+    if (djType !== 'club') return new Set<string>();
+    const toRange = (b: UpcomingBooking): [number, number] | null => {
+      if (!b.start_time || !b.end_time) return null;
+      const [sh, sm] = b.start_time.split(':').map(Number);
+      const [eh, em] = b.end_time.split(':').map(Number);
+      if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+      const start = sh * 60 + sm;
+      let end = eh * 60 + em;
+      if (end <= start) end += 24 * 60; // wraps past midnight
+      return [start, end];
+    };
+    const byDate = new Map<string, UpcomingBooking[]>();
+    for (const b of bookings) {
+      if (!b.event_date) continue;
+      if (!byDate.has(b.event_date)) byDate.set(b.event_date, []);
+      byDate.get(b.event_date)!.push(b);
+    }
+    const ids = new Set<string>();
+    for (const sameDay of byDate.values()) {
+      if (sameDay.length < 2) continue;
+      for (let i = 0; i < sameDay.length; i++) {
+        for (let j = i + 1; j < sameDay.length; j++) {
+          const r1 = toRange(sameDay[i]);
+          const r2 = toRange(sameDay[j]);
+          if (!r1 || !r2) continue;
+          // Overlap when one starts before the other ends, both ways.
+          if (r1[0] < r2[1] && r2[0] < r1[1]) {
+            ids.add(sameDay[i].id);
+            ids.add(sameDay[j].id);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [bookings, djType]);
+
+  function monthLabel(key: string): string {
+    const [y, m] = key.split('-').map((s) => parseInt(s, 10));
+    const date = new Date(y, m - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+  }
+
+  async function handleAdded(newBooking: UpcomingBooking) {
+    setBookings((prev) => {
+      const next = [...prev, newBooking];
+      next.sort((a, b) => {
+        const da = (a.event_date || '') + ' ' + (a.start_time || '');
+        const db = (b.event_date || '') + ' ' + (b.start_time || '');
+        return da.localeCompare(db);
+      });
+      return next;
+    });
+    setShowAddModal(false);
+    // If we were opened via ?returnTo (typically from the public calendar),
+    // bounce back so the owner doesn't lose context.
+    if (returnToUrl && typeof window !== 'undefined') {
+      window.location.href = returnToUrl;
     }
   }
 
-  const isPageDirty = hasDirtyPackages || hasDirtyClubRates;
-  // Warn on leave when there are draft edits OR when club booking is on but
-  // no equipment is picked (booking won't be publicly live in that state).
-  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty;
+  // Replace an existing booking in local state with the updated row. Re-sorts
+  // in case the date/time changed and the row needs to move months.
+  async function handleUpdated(updated: UpcomingBooking) {
+    setBookings((prev) => {
+      const next = prev.map((b) => (b.id === updated.id ? updated : b));
+      next.sort((a, b) => {
+        const da = (a.event_date || '') + ' ' + (a.start_time || '');
+        const db = (b.event_date || '') + ' ' + (b.start_time || '');
+        return da.localeCompare(db);
+      });
+      return next;
+    });
+    setEditing(null);
+    if (returnToUrl && typeof window !== 'undefined') {
+      window.location.href = returnToUrl;
+    }
+  }
 
-  const { setDirty: setGlobalDirty } = useUnsavedChanges();
-  useEffect(() => {
-    setGlobalDirty(needsLeaveWarn);
-    return () => setGlobalDirty(false);
-  }, [needsLeaveWarn, setGlobalDirty]);
+  async function handleDelete(id: string) {
+    const ok = await confirm({
+      title: 'Delete this manual booking?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    const supabase = createClient();
+    const { error } = await supabase.from('bookings').delete().eq('id', id).eq('dj_id', userId);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    setBookings((prev) => prev.filter((b) => b.id !== id));
+  }
 
-  const tabs: { id: SecTab; label: string }[] = (isMobile
-    ? [
-        { id: 'settings', label: 'Booking Settings' },
-        { id: 'packages', label: 'Packages' },
-        { id: 'discounts', label: 'Discounts' },
-        { id: 'payments', label: 'Payments' },
-      ]
-    : [
-        { id: 'settings', label: 'Settings' },
-        { id: 'rates', label: 'Equipment & Rates' },
-        { id: 'discounts', label: 'Discounts' },
-        { id: 'rider', label: 'DJ Rider' },
-        { id: 'guests', label: 'Guest List' },
-        { id: 'payments', label: 'Payments' },
-      ]
-  ) as { id: SecTab; label: string }[];
-  const mobileTabs = hasBookingAccess
-    ? [...tabs, { id: 'contracts' as SecTab, label: 'Contracts' }]
-    : tabs;
+  const roleToast = roleMsg ? (
+    <div role="status" style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 100000, background: 'rgba(20,20,28,.98)', border: '1px solid rgba(255,95,95,.5)', color: '#ffd9d9', borderRadius: 10, padding: '.7rem 1.1rem', fontSize: '.82rem', maxWidth: 360, textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,.6)' }} onClick={() => setRoleMsg(null)}>{roleMsg}</div>
+  ) : null;
 
   return (
-    <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
-      <div className={styles.headerRow}>
-        <Link href="/" className={styles.backLink}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to Directory
-        </Link>
-        {autosaveStatus !== 'idle' && (
-          <span
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: '.6rem',
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              color: autosaveStatus === 'error' ? '#ff5f5f'
-                : autosaveStatus === 'saved' ? 'var(--neon)'
-                : 'var(--muted)',
-            }}
-          >
-            {autosaveStatus === 'saving' ? 'Saving…'
-              : autosaveStatus === 'saved' ? '✓ Saved'
-              : '✗ Save failed'}
-          </span>
-        )}
-      </div>
-
+    <div className={styles.page}>
+      {confirmDialog}
+      {roleToast}
       <div className={styles.header}>
-        <h1>Booking Settings</h1>
-        <p>Manage Your Bookings</p>
-      </div>
-
-      {!hasBookingAccess && (
-        <div
-          style={{
-            margin: '0 0 1.25rem',
-            padding: '1rem 1.25rem',
-            borderRadius: 12,
-            border: '1px solid rgba(255,176,32,.4)',
-            background: 'rgba(255,176,32,.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ color: '#ffb020', fontSize: '.9rem', lineHeight: 1.5 }}>
-            <strong>Booking isn&apos;t active on your account.</strong> You can set everything up
-            here, but visitors won&apos;t be able to book you until you subscribe.
-          </div>
-          <Link
-            href="/subscribe"
-            style={{
-              background: 'var(--neon, #00e0a4)',
-              color: '#06231b',
-              padding: '.6rem 1.1rem',
-              borderRadius: 8,
-              fontWeight: 700,
-              fontSize: '.85rem',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Subscribe to activate →
+        <div>
+          <h1 className={styles.title}>{archive ? 'Past Bookings' : 'Upcoming Bookings'}</h1>
+          <Link href={archive ? '/upcoming-bookings' : '/booking-requests'} className={styles.backLink}>
+            {archive ? '← Back to upcoming bookings' : '← Back to booking requests'}
           </Link>
         </div>
-      )}
-
-      {(
-        <>
-          <nav className={styles.secTabNav} role="tablist">
-            {mobileTabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={secTab === t.id}
-                className={`${styles.secTabBtn} ${secTab === t.id ? styles.secTabBtnActive : ''}`}
-                onClick={() => setSecTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-          <select
-            className={styles.secTabSelect}
-            value={secTab}
-            onChange={(e) => setSecTab(e.target.value as SecTab)}
-            aria-label="Booking settings section"
-          >
-            {mobileTabs.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-        </>
-      )}
-
-      {secTab !== 'contracts' && (
-      <div className={styles.card}>
-        {djType === 'club' ? (
-          <ClubBookingTab
-            bookingSettings={bookingSettings}
-            onChange={setBookingSettings}
-            autosaveStatus={autosaveStatus}
-            userId={initialProfile.id}
-            onDirtyChange={setHasDirtyClubRates}
-            masterSaveTrigger={masterSaveTrigger}
-            onActivationIncompleteChange={setClubBookingActivationIncomplete}
-            activeSection={secTab as ('rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments')}
-            onSaveSettings={saveBookingSettingsNow}
-            settingsDirty={settingsDirty}
-          />
-        ) : (
-          <BookingTab
-            djType={djType}
-            selectedEventTypes={selectedEventTypes}
-            customEventTypes={customEventTypes}
-            specialtyTypes={specialtyTypes}
-            onEventTypesSave={saveEventTypes}
-            bookingSettings={bookingSettings}
-            onChange={setBookingSettings}
-            userId={initialProfile.id}
-            onGoToGeneral={() => router.push('/update-dj-profile')}
-            autosaveStatus={autosaveStatus}
-            onDirtyChange={setHasDirtyPackages}
-            externalMasterSaveTrigger={masterSaveTrigger}
-            activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
-            onSaveSettings={saveBookingSettingsNow}
-            settingsDirty={settingsDirty}
-          />
-        )}
-
-      </div>
-      )}
-
-      {hasBookingAccess && secTab === 'contracts' && (
-        <div className={styles.card}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionTitle}>Your Contracts</div>
-          </div>
-          <div className={styles.settingHint} style={{ margin: '0 0 1rem' }}>
-            Build and name the contracts clients sign when they book you — a standard
-            agreement or your own. When a booking is approved, the details fill in for
-            you to review and send.
-          </div>
-          <ContractPortal userId={initialProfile.id} djType={djType} />
+        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          {canAddonSettings && djType === 'club' && (
+            <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
+              Rider &amp; Guest List settings
+            </Link>
+          )}
+          {!archive && (
+            <button type="button" onClick={() => { if (!canBookings) { blockRole(); return; } setShowAddModal(true); }} title={!canBookings ? roleBlockedTitle : undefined} className={styles.addBtn} style={!canBookings ? { opacity: 0.5 } : undefined}>
+              + Add Booking Manually
+            </button>
+          )}
         </div>
+      </div>
+
+      {!archive && bookings.length > 0 && (
+        <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className={styles.sortLabel}>Sort:</span>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${sortMode === 'date' ? styles.sortBtnActive : ''}`}
+            onClick={() => setSortMode('date')}
+          >
+            By date
+          </button>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${sortMode === 'recent' ? styles.sortBtnActive : ''}`}
+            onClick={() => setSortMode('recent')}
+          >
+            Recently booked
+          </button>
+          {!archive && djType === 'club' && isPaid && (
+            <button
+              type="button"
+              onClick={() => setShowStory(true)}
+              style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, letterSpacing: '.03em' }}
+            >
+              📅 Generate graphic of schedule
+            </button>
+          )}
+        </div>
+      )}
+
+      {bookings.length === 0 ? (
+        <div className={styles.empty}>
+          {archive ? (
+            <>
+              <p>No past bookings yet.</p>
+              <p className={styles.emptyHint}>Once an event date passes, the booking moves here so you keep a record of it.</p>
+            </>
+          ) : (
+            <>
+              <p>No upcoming bookings yet.</p>
+              <p className={styles.emptyHint}>
+                Approved booking requests show up here automatically. You can also add bookings
+                manually using the button above.
+              </p>
+            </>
+          )}
+        </div>
+      ) : sortMode === 'recent' ? (
+        <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
+          <ColumnHeaders djType={djType} />
+          <div className={styles.monthItems}>
+            {recentList.map((b) => (
+              <BookingRow
+                key={b.id}
+                booking={b}
+                djType={djType}
+                userId={userId}
+                actingRole={actingRole}
+                clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
+                taxPct={taxPct}
+                requireContract={requireContract}
+                archive={archive}
+                payments={paymentsMap[b.id] || []}
+                onPaymentsChange={handlePaymentsChange}
+                canPro={canPro}
+                planner={plannerMap[b.id]}
+                onPlannerChange={handlePlannerChange}
+                overlaps={overlapIds.has(b.id)}
+                onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
+                onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
+          {grouped.map(([monthKey, items]) => (
+            <section key={monthKey} className={styles.month}>
+              <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
+              {/* Headers under EVERY month, not once at the top. A month of
+                  bookings is taller than a viewport, and a header you've
+                  scrolled past isn't labelling anything. Costs one row. */}
+              <ColumnHeaders djType={djType} />
+              <div className={styles.monthItems}>
+                {items.map((b) => (
+                  <BookingRow
+                    key={b.id}
+                    booking={b}
+                    djType={djType}
+                    userId={userId}
+                actingRole={actingRole}
+                    clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
+                    taxPct={taxPct}
+                    requireContract={requireContract}
+                    archive={archive}
+                    payments={paymentsMap[b.id] || []}
+                    onPaymentsChange={handlePaymentsChange}
+                    canPro={canPro}
+                planner={plannerMap[b.id]}
+                    onPlannerChange={handlePlannerChange}
+                    overlaps={overlapIds.has(b.id)}
+                    onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
+                    onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {showStory && isPaid && (
+        <MonthlyStory
+          bookings={bookings}
+          djName={djName}
+          userId={userId}
+          onClose={() => setShowStory(false)}
+        />
+      )}
+
+      {(showAddModal || editing) && (
+        <AddManualBookingModal
+          userId={userId}
+          djType={djType}
+          djCountry={djCountry}
+          djName={djName}
+          bookingsPerDay={bookingsPerDay}
+          mobPackages={mobPackages}
+          existingBookings={bookings}
+          existing={editing}
+          focusHost={focusHost}
+          prefillDate={prefillDate}
+          taxEnabledDefault={taxPct > 0}
+          taxPctDefault={taxPct}
+          depositPctDefault={djType === 'club' ? clubDepositPct : mobDepositPct}
+          settingsCurrency={settingsCurrency}
+          onClose={() => { setShowAddModal(false); setEditing(null); setPrefillDate(''); setFocusHost(false); }}
+          onAdded={handleAdded}
+          onUpdated={handleUpdated}
+        />
       )}
     </div>
   );
