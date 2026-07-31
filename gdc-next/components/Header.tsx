@@ -12,6 +12,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import { canAcceptBookings } from '@/lib/acting';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
@@ -54,6 +55,10 @@ export default function Header() {
 
   const isDj = user?.role === 'dj';
   const isTeammate = (user?.role as string | undefined) === 'teammate';
+  // Acting role (owner/admin/manager/assistant). Assistants can't accept/deny
+  // bookings, so they don't get the Booking Requests icon or Add-booking nav.
+  const actingRole = ((user as unknown as { actingRole?: string })?.actingRole) || 'owner';
+  const canBookings = canAcceptBookings(actingRole);
   // Whether this DJ has bookings activated — gates the booking-only items in
   // the dropdown (Upcoming Bookings, Add Booking Manually).
   // Booking nav items (Upcoming Bookings, Add Booking Manually) are gated on
@@ -129,10 +134,12 @@ export default function Header() {
                       avatarUrl={user.avatar_url}
                       bookingEnabled={bookingEnabled}
                       isTeammate={isTeammate}
+                      canAddBookings={canBookings}
                     />
                   )}
 
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
+                  {canBookings && (
                   <Link href="/booking-requests" className="inbox-nav-btn inbox-nav-btn--book" title="Booking Requests" style={{ textDecoration: 'none' }}>
                     <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
@@ -146,6 +153,7 @@ export default function Header() {
                       </span>
                     )}
                   </Link>
+                  )}
                   <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
                     <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
