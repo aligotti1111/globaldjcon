@@ -345,7 +345,7 @@ export default function BookingRow({
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
   const NO_ACCESS = 'Your account level doesn\u2019t have access to this. Ask an owner or manager.';
   const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Request balance', 'Cancel request', 'Payment options']);
-  const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract']);
+  const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
   function actionLocked(label: string): boolean {
     if (MONEY_LOCK_LABELS.has(label)) return !roleCanMoney;
     if (CONTRACT_LOCK_LABELS.has(label) || label.includes('Copy link')) return !roleCanContract;
