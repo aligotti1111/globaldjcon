@@ -481,9 +481,9 @@ export default function UpcomingBookingsClient({
                 planner={plannerMap[b.id]}
                 onPlannerChange={handlePlannerChange}
                 overlaps={overlapIds.has(b.id)}
-                onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
-                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
+                onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
+                onEdit={canBookings && !archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={canBookings && !archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
               />
             ))}
           </div>
@@ -515,9 +515,9 @@ export default function UpcomingBookingsClient({
                 planner={plannerMap[b.id]}
                     onPlannerChange={handlePlannerChange}
                     overlaps={overlapIds.has(b.id)}
-                    onDelete={b.is_manual ? () => handleDelete(b.id) : undefined}
-                    onEdit={!archive && b.is_manual ? () => setEditing(b) : undefined}
-                onAddHost={!archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
+                    onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
+                    onEdit={canBookings && !archive && b.is_manual ? () => setEditing(b) : undefined}
+                onAddHost={canBookings && !archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
                   />
                 ))}
               </div>
