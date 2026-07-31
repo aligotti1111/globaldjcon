@@ -31,6 +31,8 @@ interface HeaderDjMenuProps {
   /** Restricted teammate view: hides owner-only items (Booking Settings,
    *  Manage Subscription) and always shows the Bookings nav. */
   isTeammate?: boolean;
+  /** Manager+ can add manual bookings; assistants can't. */
+  canAddBookings?: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -58,7 +60,7 @@ const sectionLabelStyle: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
 };
 
-export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false }: HeaderDjMenuProps) {
+export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false, canAddBookings = true }: HeaderDjMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -187,9 +189,11 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
                 Past Bookings
               </Link>
-              <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Add Booking Manually
-              </Link>
+              {canAddBookings && (
+                <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                  Add Booking Manually
+                </Link>
+              )}
               {/* Booking Settings is owner-only — hidden from teammates. */}
               {!isTeammate && (
                 <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
