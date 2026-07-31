@@ -341,6 +341,21 @@ export default function BookingRow({
   const [contractAction, setContractAction] = useState<ContractAction | null>(null);
   const roleCanContract = canSendContracts(actingRole);
   const roleCanMoney = roleCanRequestDeposit(actingRole); // cancel request + payment options
+  // Role-locking for the step dropdowns: show every option an admin would see,
+  // but grey out (disable) the ones this role can't use, with a hover tooltip.
+  const NO_ACCESS = 'Your account level doesn\u2019t have access to this. Ask an owner or manager.';
+  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Request balance', 'Cancel request', 'Payment options']);
+  const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract']);
+  function actionLocked(label: string): boolean {
+    if (MONEY_LOCK_LABELS.has(label)) return !roleCanMoney;
+    if (CONTRACT_LOCK_LABELS.has(label) || label.includes('Copy link')) return !roleCanContract;
+    return false;
+  }
+  function overrideLockedFor(key: string): boolean {
+    if (key === 'contract') return !roleCanContract;
+    if (key === 'deposit' || key === 'invoice') return !roleCanMoney;
+    return false;
+  }
   function runContract(a: ContractAction) {
     if (!roleCanContract) return;
     setExpanded(true);
@@ -538,9 +553,9 @@ export default function BookingRow({
   // Manual bookings now need host contact instead of the contract gate (they
   // have no contract requirement to satisfy). The other two clauses are
   // untouched, so a real booking's path through here is exactly what it was.
-  const canRequestDeposit = roleCanRequestDeposit(actingRole) && (booking.is_manual
+  const canRequestDeposit = booking.is_manual
     ? hasHostContact
-    : (!needsContract || contractStepComplete));
+    : (!needsContract || contractStepComplete);
   // `color` is per-step, not derived from state alone: Contract goes YELLOW
   // when it's waiting on someone (an action the DJ can take), while Deposit
   // stays grey until it lands. Same state, different urgency — one shared
@@ -723,7 +738,7 @@ export default function BookingRow({
       state: cState,
       icon: 'doc',
       // Overridable only when it isn't genuinely signed (can't un-sign a real one).
-      overridable: !trulySigned && roleCanContract,
+      overridable: !trulySigned,
       done: isDone,
       color: isDone ? NEON : AMBER,
       // ONE vocabulary across all four columns — see PIPE_SLOTS:
@@ -750,7 +765,7 @@ export default function BookingRow({
       //
       // Archive is read-only apart from downloading what was signed. Roles that
       // can't send contracts (assistants) get the same read-only treatment.
-      actions: (archive || !roleCanContract)
+      actions: archive
         ? (trulySigned
             ? [
                 { label: '\u2b07 Download contract', run: () => runContract('download') },
@@ -925,7 +940,7 @@ export default function BookingRow({
       // rows genuinely settled, the dropdown is gone — otherwise a DJ could
       // "mark not complete" on money that actually arrived and the strip would
       // contradict the ledger sitting right beneath it.
-      overridable: !reallySettled && roleCanMoney,
+      overridable: !reallySettled,
       done: allDone,
       // Amber until settled. It was grey on the theory that an unpaid deposit
       // isn't the DJ's problem — but "Request deposit" plainly is their move,
@@ -1033,7 +1048,7 @@ export default function BookingRow({
             // The rails the client will be offered. Reachable from the booking
             // because that's where a DJ realises the client can't pay the way
             // they've set up — not from Booking Settings three pages away.
-            ...(roleCanMoney ? [...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : []),
+            ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) },
           ],
     });
   }
@@ -1248,7 +1263,7 @@ export default function BookingRow({
         label: done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
         state: done ? 'done' : 'todo',
         icon: 'receipt',
-        overridable: !balanceSettled && roleCanMoney,
+        overridable: !balanceSettled,
         done,
         color: done ? NEON : AMBER,
         // Same vocabulary as the rest: Not sent / Pending / check.
@@ -1264,7 +1279,7 @@ export default function BookingRow({
           : depositSettled
             ? undefined
             : undefined,
-        actions: archive ? [] : [...(roleCanMoney && !(balanceRow || done) ? [{ label: 'Request balance', run: () => openRequest('balance') }] : []), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(roleCanMoney ? [...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), { label: 'Payment options', run: () => setMethodsOpen(true) }],
       });
     }
   }
@@ -1469,8 +1484,7 @@ export default function BookingRow({
             // do the thing" still needs a chevron and a menu to say it in —
             // otherwise the explanation exists in the code and nowhere a DJ can
             // reach it, which is the same as not existing.
-            const contractLocked = st.key === 'contract' && !roleCanContract;
-  const hasMenu = (st.actions?.length ?? 0) > 0 || ((st.overridable || !!st.info || !!st.hint) && !contractLocked);
+            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
             // In flight: it exists and it's out there, but it isn't done. This
             // is the state the dot is for — and the reason the caption exists,
             // because a dot alone can't tell "sent, waiting" from "signed".
@@ -1668,35 +1682,45 @@ export default function BookingRow({
                             in the steps array so the menu can't offer something
                             the state doesn't allow (e.g. re-sending over a
                             signed contract). */}
-                        {(st.actions ?? []).map((a) => (
+                        {(st.actions ?? []).map((a) => {
+                          const locked = actionLocked(a.label);
+                          return (
                           <button
                             key={a.label}
                             type="button"
-                            onClick={() => { setMenuOpenKey(null); a.run(); }}
-                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: a.danger ? '#ff7676' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                            disabled={locked}
+                            title={locked ? NO_ACCESS : undefined}
+                            onClick={() => { if (locked) return; setMenuOpenKey(null); a.run(); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1 }}
                           >
-                            {a.label}
+                            {a.label}{locked ? '  \u{1F512}' : ''}
                           </button>
-                        ))}
+                          );
+                        })}
                         {/* "Mark complete" is the escape hatch for work handled
                             outside the app — never offered on something real
                             (a genuine signature, money that actually landed),
                             which is what `overridable` guards. */}
-                        {st.overridable && (
+                        {st.overridable && (() => {
+                          const ovLocked = overrideLockedFor(st.key);
+                          return (
                           <>
                             {(st.actions ?? []).length > 0 && (
                               <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
                             )}
                             <button
                               type="button"
-                              onClick={() => toggleStep(st.key, !st.done)}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: st.done ? '#ff9a9a' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer' }}
+                              disabled={ovLocked}
+                              title={ovLocked ? NO_ACCESS : undefined}
+                              onClick={() => { if (ovLocked) return; toggleStep(st.key, !st.done); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: ovLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: ovLocked ? 'not-allowed' : 'pointer', opacity: ovLocked ? 0.55 : 1 }}
                             >
-                              {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}
+                              {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}{ovLocked ? '  \u{1F512}' : ''}
                             </button>
                             <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
                           </>
-                        )}
+                          );
+                        })()}
                       </div>
                     </>
                   )}
