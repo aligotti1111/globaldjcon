@@ -39,6 +39,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import {
   type BookingSettings,
@@ -114,6 +115,16 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Staff logins (active team members) may not book DJs — booking is for
+  // owners and hosts only. Mirrors the hidden Book Now tab in the UI.
+  const acting = await getActingContext(user.id);
+  if (acting.isMember) {
+    return NextResponse.json(
+      { error: 'Team member accounts cannot book DJs. Use a personal host account to book.' },
+      { status: 403 },
+    );
+  }
 
   let body: Record<string, unknown>;
   try {
