@@ -41,6 +41,9 @@ type UserProfileWithVerified = UserProfile & {
 };
 type CurrentUserWithVerified = CurrentUser & {
   email_verified_at?: string | null;
+  // Acting role resolved via getActingContext (owner/admin/manager/assistant).
+  // Fetched right after the profile so nav can hide items a role can't use.
+  actingRole?: string;
 };
 
 interface AuthContextValue {
@@ -158,6 +161,13 @@ export function AuthProvider({
            */
           email_verified: authUser.email ? profile.email_verified : true,
         });
+        // Resolve the acting role (teammate permissions) and merge it in —
+        // non-blocking, so nav renders immediately and tightens once known.
+        try {
+          const r = await fetch('/api/me/role');
+          const j = (await r.json().catch(() => ({}))) as { role?: string | null };
+          if (mounted && j?.role) setUser((prev) => (prev ? { ...prev, actingRole: j.role as string } : prev));
+        } catch { /* nav just shows the default (owner) set until reload */ }
       } else {
         setUser(null);
       }
