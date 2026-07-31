@@ -114,33 +114,40 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                       </div>
                     )}
                   </div>
-                  {/* Save the role change — its own line under the email, before the
-                      role chart. Always shown for editable members; only clickable
-                      when there's an unsaved change. */}
-                  {!(m.member_id && m.member_id === viewerId) && (() => {
-                    const dirty = !!(pendingRoles[m.id] && pendingRoles[m.id] !== m.role);
-                    const saving = savingRole === m.id;
-                    return (
-                      <button
-                        type="button"
-                        disabled={!dirty || saving}
-                        title={dirty ? undefined : 'No role change to save'}
-                        onClick={async () => {
-                          setSavingRole(m.id);
-                          await changeRole(m.id, pendingRoles[m.id]);
-                          setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
-                          setSavingRole(null);
-                        }}
-                        style={{ alignSelf: 'flex-start', background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.35rem 1rem', fontWeight: 700, fontSize: '.78rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
-                      >
-                        {saving ? 'Saving…' : 'Save role'}
-                      </button>
-                    );
-                  })()}
                 </div>
               ))}
             </div>
           )}
+
+          {/* One Save for all pending role changes — sits under the list, before
+              the chart. Greyed until at least one role has been changed. */}
+          {members.length > 0 && (() => {
+            const dirtyIds = Object.keys(pendingRoles).filter((id) => {
+              const m = members.find((x) => x.id === id);
+              return !!(m && pendingRoles[id] && pendingRoles[id] !== m.role);
+            });
+            const dirty = dirtyIds.length > 0;
+            const saving = savingRole === 'ALL';
+            return (
+              <button
+                type="button"
+                disabled={!dirty || saving}
+                title={dirty ? undefined : 'No role changes to save'}
+                onClick={async () => {
+                  setSavingRole('ALL');
+                  for (const id of dirtyIds) {
+                    await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role: pendingRoles[id] }) });
+                  }
+                  setPendingRoles({});
+                  setSavingRole(null);
+                  load();
+                }}
+                style={{ alignSelf: 'flex-start', display: 'inline-block', margin: '0 0 1rem', background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.4rem 1.1rem', fontWeight: 700, fontSize: '.8rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
+              >
+                {saving ? 'Saving\u2026' : dirty ? `Save role change${dirtyIds.length > 1 ? 's' : ''}` : 'Save role changes'}
+              </button>
+            );
+          })()}
 
           {/* Role breakdown — a matrix so the owner can compare at a glance. */}
           <div style={{ border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '.8rem .9rem', margin: '0 0 1rem', overflowX: 'auto' }}>
