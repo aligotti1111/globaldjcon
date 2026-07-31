@@ -32,7 +32,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit, hasHostContact, onEdit, contractAction, onContractActionHandled,
+  payments, onPaymentsChange, canRequestDeposit, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -49,6 +49,10 @@ export default function BookingDetails({
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
   canRequestDeposit: boolean;
+  /** Manager+ money actions (confirm/waive/cancel). Assistants: false. */
+  canManageMoney?: boolean;
+  /** Manager+ contract actions. Assistants: false. */
+  canManageContract?: boolean;
   /**
    * Does this booking have a host name AND email to send to?
    *
@@ -613,7 +617,7 @@ export default function BookingDetails({
       {/* Shared notes feed — both DJ and host can read + post. Shown for
           club/bar AND mobile (private) bookings — any real two-party
           booking. Manual events with no counterparty are excluded. */}
-      {(bt === 'club' || bt === 'mobile') && (
+      {(bt === 'club' || bt === 'mobile') && canManageContract && (
         <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
           <div className={styles.detailLabel}>Contract</div>
           {!contractCancelled && (contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' && !locallySigned ? (
@@ -693,6 +697,7 @@ export default function BookingDetails({
             bookingId={booking.id}
             currency={booking.currency || 'USD'}
             payments={payments}
+            canManageMoney={canManageMoney}
             onChange={(rows) => onPaymentsChange(booking.id, rows)}
             archive={archive}
             canRequestDeposit={canRequestDeposit}
