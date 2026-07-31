@@ -44,6 +44,9 @@ type CurrentUserWithVerified = CurrentUser & {
   // Acting role resolved via getActingContext (owner/admin/manager/assistant).
   // Fetched right after the profile so nav can hide items a role can't use.
   actingRole?: string;
+  // True when this login is an active team member (a staff login). Owners and
+  // plain hosts are NOT members. Staff logins may not book DJs themselves.
+  isMember?: boolean;
 };
 
 interface AuthContextValue {
@@ -165,8 +168,8 @@ export function AuthProvider({
         // non-blocking, so nav renders immediately and tightens once known.
         try {
           const r = await fetch('/api/me/role');
-          const j = (await r.json().catch(() => ({}))) as { role?: string | null };
-          if (mounted && j?.role) setUser((prev) => (prev ? { ...prev, actingRole: j.role as string } : prev));
+          const j = (await r.json().catch(() => ({}))) as { role?: string | null; isMember?: boolean };
+          if (mounted && j?.role) setUser((prev) => (prev ? { ...prev, actingRole: j.role as string, isMember: !!j.isMember } : prev));
         } catch { /* nav just shows the default (owner) set until reload */ }
       } else {
         setUser(null);
