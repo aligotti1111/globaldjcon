@@ -34,6 +34,10 @@ import {
   type ContractAction,
 } from './shared';
 
+// Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
+// the rest — so acronyms like "DJ" survive. "Request balance" -> "Request Balance".
+const titleCase = (str: string): string => str.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
 // The small brand glyph for each manual rail — the same marks the settings
 // grid and the invoice use, so a DJ sees the exact icons the client will.
 const REQ_METHOD_ICON: Partial<Record<PaymentMethodType, (p: { size?: number }) => React.ReactElement>> = {
@@ -1809,7 +1813,7 @@ export default function BookingRow({
                             onClick={() => { if (locked) return; setMenuOpenKey(null); a.run(); }}
                             style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1 }}
                           >
-                            {a.label}{locked ? '  \u{1F512}' : ''}
+                            {titleCase(a.label)}{locked ? '  \u{1F512}' : ''}
                           </button>
                           );
                         })}
@@ -1831,7 +1835,7 @@ export default function BookingRow({
                               onClick={() => { if (ovLocked) return; confirmAndToggleStep(st.key, !st.done); }}
                               style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: ovLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: ovLocked ? 'not-allowed' : 'pointer', opacity: ovLocked ? 0.55 : 1 }}
                             >
-                              {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}{ovLocked ? '  \u{1F512}' : ''}
+                              {st.done ? '\u2715 Mark Not Complete' : '\u2713 Mark Complete'}{ovLocked ? '  \u{1F512}' : ''}
                             </button>
                             <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
                           </>
