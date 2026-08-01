@@ -56,6 +56,9 @@ interface Props {
   canManageTeam?: boolean;
   /** The owner's DJ type — labels the role matrix for an admin teammate. */
   teamDjType?: string | null;
+  /** This login's team role (admin/manager/assistant) when a staff login.
+   *  Null for owners/hosts. Shown as a badge so a teammate sees their level. */
+  actingRole?: string | null;
 }
 
 // Status object that drives the alert text under each save button.
@@ -65,6 +68,7 @@ export default function AccountSettingsClient({
   initialProfile, currentEmail, initialBlocked,
   currentPhone = '', currentSmsPhone = '',
   canManageTeam = false, teamDjType = null,
+  actingRole = null,
 }: Props) {
   const isVenue = initialProfile.role === 'venue';
   // Notification preferences (email + text) now live on their own page,
@@ -651,6 +655,21 @@ export default function AccountSettingsClient({
       {/* Profile Information */}
       <div className={styles.card}>
         <h2>Profile Information</h2>
+        {/* A staff login's team level, so they can see what kind of account
+            they have (Admin / Manager / Assistant). Owners/hosts see nothing. */}
+        {isTeammate && actingRole && (
+          <div style={{ margin: '2px 0 14px' }}>
+            <span style={{ fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--muted,#9aa)' }}>
+              Account type
+            </span>
+            <div style={{ marginTop: 6 }}>
+              <span style={{ display: 'inline-block', fontSize: '.72rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.12)', border: '1px solid rgba(0,224,164,.35)', borderRadius: 999, padding: '.2rem .7rem' }}>
+                {actingRole === 'admin' ? 'Admin' : actingRole === 'manager' ? 'Manager' : actingRole === 'assistant' ? 'Assistant' : actingRole}
+                {' '}team member
+              </span>
+            </div>
+          </div>
+        )}
         {profileAlert && <AlertBlock alert={profileAlert} />}
 
         <div className={styles.formGroup}>
