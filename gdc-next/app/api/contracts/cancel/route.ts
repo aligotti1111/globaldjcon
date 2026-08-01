@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -17,6 +18,18 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Resolve the account being acted on (owner's id if a teammate) and gate:
+  // cancelling a contract is the same trust level as sending one — manager+.
+  // Filtering on the RESOLVED djId (not user.id) is also what makes cancel
+  // actually work for teammates: a manager's user.id never equals the
+  // booking's dj_id, so the old .eq('dj_id', djId) matched zero rows and
+  // silently cancelled nothing.
+  const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) {
+    return NextResponse.json({ error: 'Your account level cannot cancel contracts.' }, { status: 403 });
+  }
+  const djId = acting.djId;
 
   let body: { bookingId?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -33,7 +46,7 @@ export async function POST(req: Request) {
       .from('bookings')
       .select('contract_submission_id, contract_status')
       .eq('id', bookingId)
-      .eq('dj_id', user.id)
+      .eq('dj_id', djId)
       .maybeSingle();
     const row = data as { contract_submission_id?: string | null; contract_status?: string | null } | null;
     submissionId = row?.contract_submission_id || null;
@@ -82,7 +95,7 @@ export async function POST(req: Request) {
         contract_sent_at: null,
       } as unknown as never)
       .eq('id', bookingId)
-      .eq('dj_id', user.id);
+      .eq('dj_id', djId);
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Could not cancel the contract.' },
