@@ -140,7 +140,7 @@ const BADGE: Record<string, { bg: string; glyph: string }> = {
  * email can't detect the device, so we say so in words here; the booking card
  * (which can detect it) shows a QR instead.
  */
-function optionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, djName: string, paymentId: string, eventDate?: string | null, venueName?: string | null): string {
+function optionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, djName: string, paymentId: string, eventDate?: string | null, venueName?: string | null, isBalance = false): string {
   // One consistent card per method: a brand badge on the left, the details on
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
@@ -177,14 +177,29 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
     }
 
     if (m.type === 'cash') {
-      const inner = `${name}
+      const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
+      const inner = isBalance
+        ? `${name}
+<p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>
+<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        : `${name}
 <p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
       return card('cash', inner);
     }
 
     if (m.type === 'check') {
       const memo = checkMemo(eventDate, venueName, reference);
-      const inner = `${name}
+      const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
+      const inner = isBalance
+        // Balance by check is handed over AT the event, not mailed ahead.
+        ? `${name}
+<p style="margin:6px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
+<p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
+${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
+<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        // Deposit by check is mailed ahead to reserve the date.
+        : `${name}
 <p style="margin:6px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
@@ -353,7 +368,7 @@ ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
 </p>
-${optionsHtml(methods, amount, b.currency || 'USD', reference, djName, payment.id, b.event_date, b.venue_name)}
+${optionsHtml(methods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
 <div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
 <p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
 <p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
