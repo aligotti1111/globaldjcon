@@ -1103,7 +1103,11 @@ export default function BookingRow({
             ? 'Add host email and name to request deposit.'
             : 'Contract must be signed to request deposit.')
         : undefined,
-      actions: archive
+      // A deposit MARKED COMPLETE by hand offers only "Mark not complete" — the
+      // way to undo it. Requesting/skipping/payment-options don't apply to a
+      // stage the DJ has already declared handled; they come back the moment
+      // it's un-marked.
+      actions: (archive || !!overrides.deposit)
         ? []
         : [
             // Only until it's been asked for. A second deposit request on the
