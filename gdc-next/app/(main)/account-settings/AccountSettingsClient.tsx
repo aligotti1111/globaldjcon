@@ -665,7 +665,6 @@ export default function AccountSettingsClient({
             <div style={{ marginTop: 6 }}>
               <span style={{ display: 'inline-block', fontSize: '.72rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.12)', border: '1px solid rgba(0,224,164,.35)', borderRadius: 999, padding: '.2rem .7rem' }}>
                 {actingRole === 'admin' ? 'Admin' : actingRole === 'manager' ? 'Manager' : actingRole === 'assistant' ? 'Assistant' : actingRole}
-                {' '}team member
               </span>
             </div>
           </div>
