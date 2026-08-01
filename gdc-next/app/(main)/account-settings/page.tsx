@@ -144,6 +144,7 @@ export default async function AccountSettingsPage() {
     <AccountSettingsClient
       canManageTeam={canTeam}
       teamDjType={teamDjType}
+      actingRole={acting.isMember ? acting.role : null}
       initialProfile={{
         id: profile.id,
         name: profile.name || '',
