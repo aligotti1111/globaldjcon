@@ -17,6 +17,7 @@ import {
   normalizeNamedRiders, upsertNamedRider, newRiderId, type NamedRider,
 } from '@/lib/rider';
 import { buildRiderPdf } from '@/lib/riderPdf';
+import { emailTags } from '@/lib/emailTracking';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -256,6 +257,7 @@ ${bodyBlocks}
         await resend.emails.send({
           from: FROM, to, subject: `${isTest ? '[TEST] ' : ''}${djName} — DJ rider for ${when}`, html: shell(content),
           attachments: attachment ? [attachment] : undefined,
+          tags: emailTags(bookingId, 'rider'),
         });
       } catch {
         if (isTest) return NextResponse.json({ ok: true, test: true, warning: 'Could not send the test email — try again.' });
