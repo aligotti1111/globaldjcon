@@ -1107,8 +1107,16 @@ export default function BookingRow({
       // way to undo it. Requesting/skipping/payment-options don't apply to a
       // stage the DJ has already declared handled; they come back the moment
       // it's un-marked.
+      // A deposit MARKED COMPLETE by hand offers only "Mark not complete".
+      // A SKIPPED deposit offers only "Undo skip" (and nothing if it was
+      // skipped because a balance is already out — there's no undoing then).
+      // Otherwise the normal request/skip/payment-options set.
       actions: (archive || !!overrides.deposit)
         ? []
+        : depositSkipped
+        ? (balanceRequested
+            ? []
+            : [{ label: 'Undo skip', run: () => toggleStep('deposit_skipped', false) }])
         : [
             // Only until it's been asked for. A second deposit request on the
             // same booking is two rows for one payment, and the ledger would
@@ -1118,30 +1126,16 @@ export default function BookingRow({
               : []),
             // Skip: go straight to the balance, no deposit collected. Only
             // before anything is requested, and (like Request) manager+ only.
-            ...(!depositRow && !depositSkipped && canRequestDeposit && !payments.some((pp) => pp.kind === 'balance')
+            ...(!depositRow && canRequestDeposit && !payments.some((pp) => pp.kind === 'balance')
               ? [{ label: 'Skip deposit', run: () => toggleStep('deposit_skipped', true) }]
               : []),
-            // Undo a skip, back to "Request deposit".
-            ...(depositSkipped && !balanceRequested
-              ? [{ label: 'Undo skip', run: () => toggleStep('deposit_skipped', false) }]
-              : []),
-            // The way out of the gate, next to the reason for it.
-            //
             // Naming a problem without offering the fix just moves the dead end
-            // one click later. This opens the Add/Edit Manual Booking modal —
-            // the same thing the row's pencil opens, which already has Host
-            // Name, Host Email, and a "Send booking details to host" checkbox
-            // wired to the invite email. Nothing new to build and nothing new
-            // to learn; it just needs a door from where the DJ actually is.
-            //
-            // onEdit is only ever passed for manual, non-archive bookings (see
-            // where BookingRow is used), so this can't appear anywhere else.
+            // one click later. This opens the Add/Edit Manual Booking modal.
             ...(blockedNoHost && (onAddHost || onEdit)
               ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
               : []),
-            // The rails the client will be offered. Reachable from the booking
-            // because that's where a DJ realises the client can't pay the way
-            // they've set up — not from Booking Settings three pages away.
+            // The rails the client will be offered — only before a request has
+            // gone out (after that the request already carries them).
             ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), ...(!depositRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : []),
           ],
     });
