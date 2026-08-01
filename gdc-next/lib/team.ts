@@ -27,7 +27,7 @@ export function roleMatrix(djType: string | null | undefined): RoleCap[] {
     { label: sendDocsLabel, admin: true, manager: true, assistant: true },
     { label: 'Send invoices', admin: true, manager: true, assistant: true },
     { label: 'Accept or deny bookings', admin: true, manager: true, assistant: false },
-    { label: 'Send contracts', admin: true, manager: true, assistant: false },
+    { label: 'Send & sign contracts', admin: true, manager: true, assistant: false },
     { label: 'Request deposits', admin: true, manager: true, assistant: false },
     { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false },
     { label: 'Change billing or booking settings', admin: false, manager: false, assistant: false },
