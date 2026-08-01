@@ -1,6 +1,7 @@
 // /guestlist/[id] — the host's read-only guest list. No login; UUID capability.
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { recordStageView } from '@/lib/recordView';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGuests } from '@/lib/guestlist';
 import GuestlistView from './GuestlistView';
@@ -18,6 +19,9 @@ export default async function GuestlistPage({ params }: { params: Promise<{ id: 
   const { data: gData } = await db.from('booking_guestlists').select('id, booking_id, dj_id, guests, logo_hidden').eq('id', id).maybeSingle();
   const gl = gData as unknown as { id: string; booking_id: string; dj_id: string; guests: unknown; logo_hidden: boolean | null } | null;
   if (!gl) notFound();
+
+  // Client opened the guest list — record the view (skips the DJ's own visits).
+  await recordStageView(gl.booking_id, 'guestlist', gl.dj_id);
   const { data: bData } = await db.from('bookings').select('event_date, start_time, end_time, venue_name, venue_address, venue_type').eq('id', gl.booking_id).maybeSingle();
   const b = bData as unknown as { event_date: string | null; start_time: string | null; end_time: string | null; venue_name: string | null; venue_address: string | null; venue_type: string | null } | null;
   const { data: djData } = await db.from('users').select('name, contract_logo_url').eq('id', gl.dj_id).maybeSingle();
