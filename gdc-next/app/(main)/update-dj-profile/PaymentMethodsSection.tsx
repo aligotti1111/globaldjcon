@@ -68,6 +68,7 @@ import {
   TYPE_ORDER,
   displayHandle,
   cleanHandle,
+  isLinkable,
   type PaymentMethod,
   type PaymentMethodType,
 } from '@/lib/paymentMethods';
@@ -1074,6 +1075,19 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
                     style={{ ...field, borderColor: err ? '#ff6b6b' : 'var(--border)' }}
                   />
                   {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+
+                  {/* PayPal only becomes a one-tap button when it's a PayPal.me
+                      link. A plain email is valid but leaves the client to open
+                      PayPal and send by hand — so say which one they've given. */}
+                  {t === 'paypal' && !err && (m.handle || '').trim() && (
+                    isLinkable(m)
+                      ? <p style={{ margin: '.4rem 0 0', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', lineHeight: 1.5 }}>
+                          ✓ Clients get a one-tap <strong>Pay</strong> button with the amount already filled in.
+                        </p>
+                      : <p style={{ margin: '.4rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
+                          This works, but clients must open PayPal and send it by hand. Use your <strong>paypal.me</strong> link (e.g. paypal.me/yourname) to give them a one-tap Pay button instead.
+                        </p>
+                  )}
 
                   {/* Offered, not auto-filled. Silently writing their account
                       number into a field they didn't touch means they can't
