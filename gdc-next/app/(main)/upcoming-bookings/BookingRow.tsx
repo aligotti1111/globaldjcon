@@ -401,6 +401,20 @@ export default function BookingRow({
   // The booking's OWN frozen deposit — never recomputed from today's settings.
   const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
   const depositRow = payments.find((p) => p.kind === 'deposit') || null;
+  // OVERPAYMENT FLAG. The classic case: the DJ skipped an unpaid deposit and
+  // billed the whole balance, the host paid that balance, THEN saw the older
+  // deposit email and paid that too. Money collected now exceeds the event
+  // total. We can't stop it (the deposit link is live in an email already
+  // sent), but we surface it so the DJ refunds or credits the difference.
+  const bookingTotalForFlag = Number(
+    (booking as { total_with_tax?: number | null }).total_with_tax
+    ?? (booking as { counter_rate?: number | null }).counter_rate
+    ?? (booking as { quoted_rate?: number | null }).quoted_rate
+    ?? 0,
+  );
+  const totalCollected = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+  const overpaid = bookingTotalForFlag > 0 && totalCollected > bookingTotalForFlag + 0.01;
+  const overpaidBy = overpaid ? Math.round((totalCollected - bookingTotalForFlag) * 100) / 100 : 0;
 
   function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
     setReqErr(null);
@@ -1446,6 +1460,19 @@ export default function BookingRow({
               title="This booking's time overlaps another booking on the same day"
             >
               ⚠
+            </span>
+          )}
+          {overpaid && (
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                border: '1px solid #ff6b6b', color: '#ff6b6b', borderRadius: 999,
+                padding: '.08rem .5rem', fontSize: '.66rem', fontWeight: 800,
+                letterSpacing: '.03em', whiteSpace: 'nowrap',
+              }}
+              title={`Overpaid by ${fmtMoney(overpaidBy, booking.currency || 'USD')} — collected ${fmtMoney(totalCollected, booking.currency || 'USD')} of a ${fmtMoney(bookingTotalForFlag, booking.currency || 'USD')} total. A deposit was likely paid after the full balance. Refund or credit the client.`}
+            >
+              ⚠ Overpaid {fmtMoney(overpaidBy, booking.currency || 'USD')}
             </span>
           )}
         </div>
