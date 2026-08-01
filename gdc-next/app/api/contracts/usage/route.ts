@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { type AccessFields, contractQuotaFor } from '@/lib/access';
 import { getContractUsage } from '@/lib/contractQuota';
+import { getActingContext } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -18,11 +19,14 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
+  // Teammates see the OWNER's contract allowance, not their own empty one.
+  const acting = await getActingContext(user.id);
+
   const admin = createAdminClient();
   const { data: row } = await admin
     .from('users')
     .select('sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source')
-    .eq('id', user.id)
+    .eq('id', acting.djId)
     .maybeSingle();
 
   const access = (row || {}) as unknown as AccessFields;
@@ -34,7 +38,7 @@ export async function GET() {
     return NextResponse.json({ quota: 0, used: 0, remaining: 0, atLimit: true, cycleEnd: null });
   }
 
-  const usage = await getContractUsage(admin, user.id, access);
+  const usage = await getContractUsage(admin, acting.djId, access);
   return NextResponse.json({
     quota: usage.quota,
     used: usage.used,
