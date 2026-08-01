@@ -35,10 +35,14 @@ function shell(content: string): string {
 }
 
 export async function POST(req: Request) {
-  let body: { paymentId?: unknown };
+  let body: { paymentId?: unknown; mode?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const paymentId = typeof body.paymentId === 'string' && body.paymentId ? body.paymentId : null;
   if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
+  // 'sent'     — a check was mailed ahead (deposit); flag it as claimed-sent.
+  // 'at-event' — cash/check will be handed over at the event (balance); record
+  //              intent only, the DJ collects on the day.
+  const mode = (body as { mode?: unknown }).mode === 'at-event' ? 'at-event' : 'sent';
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
@@ -56,10 +60,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, alreadySettled: true });
   }
 
-  // Record the claim: check is on the way. Never 'paid' — that's the DJ's call.
+  // Record the claim. 'at-event' is an INTENT only (nothing sent yet — the DJ
+  // collects on the day); 'sent' flags a mailed check as claimed-sent. Neither
+  // ever marks 'paid' — that's the DJ's call alone.
+  const patch = mode === 'at-event'
+    ? { client_intent: 'pay_at_event' }
+    : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: 'check', client_intent: 'pay_now' };
   const { error: upErr } = await db
     .from('booking_payments')
-    .update({ status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: 'check', client_intent: 'pay_now' } as unknown as never)
+    .update(patch as unknown as never)
     .eq('id', paymentId);
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 502 });
 
@@ -77,15 +86,23 @@ export async function POST(req: Request) {
       const who = b.requester_name || 'Your client';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = p.kind === 'balance' ? 'balance' : p.kind === 'deposit' ? 'deposit' : 'payment';
-      const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${who} is mailing a check</h1>
-<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${b.event_date ? ` for the ${b.event_date} event` : ''}${b.venue_name ? ` at ${b.venue_name}` : ''}.</p>
-<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>
+      const forWhen = b.event_date ? ` for the ${b.event_date} event` : '';
+      const atVenue = b.venue_name ? ` at ${b.venue_name}` : '';
+      const heading = mode === 'at-event'
+        ? `${who} will pay at the event`
+        : `${who} is mailing a check`;
+      const bodyLines = mode === 'at-event'
+        ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">They plan to pay their ${kindLabel} of <strong>${amt}</strong> in person${forWhen}${atVenue} — by cash or check on the day. Nothing to do now; collect it at the event and confirm what you receive.</p>`
+        : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
+<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
+      const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${heading}</h1>
+${bodyLines}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;">
 <a href="${SITE_URL}/upcoming-bookings" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review booking</a>
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to: djEmail, subject: `${who} is mailing a check — ${amt}`, html: shell(content) });
+        await resend.emails.send({ from: FROM, to: djEmail, subject: mode === 'at-event' ? `${who} will pay at the event — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
       } catch { /* non-fatal */ }
     }
   }
