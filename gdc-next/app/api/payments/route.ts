@@ -58,6 +58,8 @@ interface BookingRow {
   host_email: string | null;
   requester_name: string | null;
   event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   venue_name: string | null;
   currency: string | null;
   deposit_amount: number | null;
@@ -93,6 +95,17 @@ function money(n: number, currency = 'USD'): string {
 }
 
 const round2 = (n: number) => Number(n.toFixed(2));
+
+// "HH:MM" (24h stored) -> "7:30 PM". Blank/invalid returns ''.
+function fmtTime(t?: string | null): string {
+  if (!t) return '';
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (!m) return '';
+  let h = Number(m[1]); const min = m[2];
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}:${min} ${ap}`;
+}
 
 // Cosmetic wrapper only. (send-email has its own copy of this shell; the
 // MONEY logic is shared via lib/paymentMethods so the two can't disagree on
@@ -144,6 +157,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
   // One consistent card per method: a brand badge on the left, the details on
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
+  const amountTag = `<div style="text-align:right;margin:8px 0 0;color:#9a9a9a;font-size:11px;font-weight:700;letter-spacing:.02em;">${money(amount, currency)}</div>`;
   const card = (type: string, inner: string): string => {
     const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
     return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
@@ -152,7 +166,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 <td width="60" valign="top" style="padding:16px 0 16px 16px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
 </td>
-<td valign="middle" style="padding:14px 16px 14px 4px;">${inner}</td>
+<td valign="middle" style="padding:14px 16px 14px 4px;">${inner}${amountTag}</td>
 </tr></table>`;
   };
 
@@ -251,7 +265,7 @@ export async function POST(req: Request) {
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', bookingId)
       .maybeSingle();
     const b = bData as BookingRow | null;
@@ -354,10 +368,19 @@ export async function POST(req: Request) {
       const summary = noun === 'deposit'
         ? (remainingAfter != null ? `Remaining balance after this deposit: <strong style="color:#111;">${money(remainingAfter, cur)}</strong>` : '')
         : (alreadyPaid > 0 ? `Deposit already paid: <strong style="color:#111;">${money(alreadyPaid, cur)}</strong>` : '');
-      const recap = `<div style="background:#f8f8f8;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#666;font-size:13px;line-height:1.7;">
-<strong style="color:#111;">${djName}</strong><br/>${when}${b.venue_name ? ` · ${b.venue_name}` : ''}
-</p></div>`;
+      const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
+      const detailRow = (label: string, value: string) =>
+        `<tr><td style="padding:5px 0;color:#8a8a8a;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;width:74px;vertical-align:top;">${label}</td><td style="padding:5px 0;color:#111;font-size:14px;">${value}</td></tr>`;
+      const recap = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fafafa;border:1px solid #ededed;border-radius:10px;margin:0 0 22px;">
+<tr><td style="padding:14px 18px;">
+<div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#0a8f74;font-weight:700;margin:0 0 8px;">Event details</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+${detailRow('DJ', djName)}
+${detailRow('Date', when)}
+${timeRange ? detailRow('Time', timeRange) : ''}
+${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
+</table>
+</td></tr></table>`;
 
       const content = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
@@ -427,7 +450,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', p.booking_id)
       .maybeSingle();
     const b = bData as BookingRow | null;
@@ -491,7 +514,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', p.booking_id)
       .maybeSingle();
     const b = bData as BookingRow | null;
@@ -586,7 +609,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', bookingId)
       .maybeSingle();
     const b = bData as BookingRow | null;
@@ -716,7 +739,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', p.booking_id)
       .maybeSingle();
     const b = bData as BookingRow | null;
