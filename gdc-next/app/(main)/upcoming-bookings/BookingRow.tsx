@@ -367,6 +367,8 @@ export default function BookingRow({
   // because BookingRow already holds userId, payments and onPaymentsChange —
   // everything needed to post the request and fold the new row into state.
   const [reqOpen, setReqOpen] = useState(false);
+  // Themed confirm dialog (replaces window.confirm so it matches the site).
+  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; onOk: () => void } | null>(null);
   const [reqAmount, setReqAmount] = useState('');
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
@@ -507,14 +509,30 @@ export default function BookingRow({
   // new state (true = marking complete). Only the deposit/balance steps carry
   // a warning; contract/playlist just toggle.
   function confirmAndToggleStep(key: string, done: boolean) {
+    const proceed = () => {
+      toggleStep(key, done);
+      // Marking the balance complete sends the final receipt automatically.
+      if (done && key === 'invoice') { sendReceipt('balance'); }
+    };
     if (done && key === 'deposit') {
-      if (!window.confirm('Mark this deposit as paid outside the app?\n\nIt will be deducted from the balance owed when you request the balance.')) return;
-    } else if (done && key === 'invoice') {
-      if (!window.confirm('Mark the balance as paid outside the app?\n\nThis will send the client their final receipt.')) return;
+      setConfirmModal({
+        title: 'Mark deposit as paid?',
+        body: 'Marking this deposit paid outside the app will deduct it from the balance owed when you request the balance.',
+        okLabel: 'Mark deposit paid',
+        onOk: proceed,
+      });
+      return;
     }
-    toggleStep(key, done);
-    // Marking the balance complete sends the final receipt automatically.
-    if (done && key === 'invoice') { sendReceipt('balance'); }
+    if (done && key === 'invoice') {
+      setConfirmModal({
+        title: 'Mark balance as paid?',
+        body: 'Marking the balance paid outside the app will send the client their final receipt.',
+        okLabel: 'Mark balance paid',
+        onOk: proceed,
+      });
+      return;
+    }
+    proceed();
   }
   // Flyer URL owned here so the row slot and the in-card thumbnail
   // (both rendered for the same booking) stay in sync.
@@ -1896,6 +1914,47 @@ export default function BookingRow({
       {/* Request deposit — the amount, before it goes out, in something you can
           read. It replaced a window.prompt(), which showed the number with no
           currency, no context, and no way to see what it was a deposit ON. */}
+      {confirmModal && (
+        <div
+          onClick={() => setConfirmModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 12, padding: '1.2rem 1.3rem', maxWidth: 420, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.6)',
+            }}
+          >
+            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '1rem', marginBottom: '.55rem' }}>
+              {confirmModal.title}
+            </div>
+            <div style={{ color: 'var(--muted,#b7b7c6)', fontSize: '.85rem', lineHeight: 1.55, marginBottom: '1.1rem' }}>
+              {confirmModal.body}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--white,#fff)', fontWeight: 700, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.1rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => { const ok = confirmModal.onOk; setConfirmModal(null); ok(); }}
+                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}
+              >
+                {confirmModal.okLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {reqOpen && (
         <div
           onClick={() => !reqBusy && setReqOpen(false)}
