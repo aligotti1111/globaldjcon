@@ -42,6 +42,7 @@ import {
 // or a flaky fetch returns null, so the email that carries the live pay buttons
 // always goes out regardless.
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
+import { emailTags } from '@/lib/emailTracking';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -457,6 +458,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
           subject: subjectLine,
           html: shell(content),
           attachments: invoiceAtt ? [invoiceAtt] : undefined,
+          tags: emailTags(bookingId, kind === 'balance' ? 'balance' : 'deposit'),
         });
       } catch {
         // The row exists and the card shows the options — an email failure
