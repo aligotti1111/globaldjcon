@@ -116,6 +116,19 @@ const BRAND: Record<string, string> = {
   venmo: '#3D95CE', cashapp: '#00D632', paypal: '#003087', zelle: '#6D1ED4',
 };
 
+// Branded badge per rail — a brand-coloured rounded tile with the service's
+// mark. Real image logos can't be used reliably in email (Gmail strips SVG and
+// external images are often blocked), so these pure-HTML badges stand in and
+// render identically everywhere.
+const BADGE: Record<string, { bg: string; glyph: string }> = {
+  venmo: { bg: '#3D95CE', glyph: 'V' },
+  cashapp: { bg: '#00D632', glyph: '$' },
+  paypal: { bg: '#003087', glyph: 'P' },
+  zelle: { bg: '#6D1ED4', glyph: 'Z' },
+  cash: { bg: '#2E7D32', glyph: '$' },
+  check: { bg: '#455A64', glyph: '✓' },
+};
+
 /**
  * The payment options, as email HTML. Buttons for rails we can link (amount +
  * recipient preloaded); copyable text for the ones we can't (Zelle always).
@@ -128,65 +141,64 @@ const BRAND: Record<string, string> = {
  * (which can detect it) shows a QR instead.
  */
 function optionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, djName: string, paymentId: string, eventDate?: string | null, venueName?: string | null): string {
+  // One consistent card per method: a brand badge on the left, the details on
+  // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
+  // the rest show copyable handles or mailing details.
+  const card = (type: string, inner: string): string => {
+    const b = BADGE[type] || { bg: '#0a6f61', glyph: '•' };
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #ececec;border-radius:12px;margin:0 0 12px;background:#ffffff;">
+<tr>
+<td width="60" valign="top" style="padding:16px 0 16px 16px;">
+<table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
+</td>
+<td valign="middle" style="padding:14px 16px 14px 4px;">${inner}</td>
+</tr></table>`;
+  };
+
   const rows = methods.map((m) => {
     const cfg = METHOD_TYPES[m.type];
     const link = buildPayLink(m, amount, reference);
     const tint = BRAND[m.type] || '#0a6f61';
+    const labelColor = (BADGE[m.type] && BADGE[m.type].bg) || tint;
+    const name = `<div style="font-weight:700;color:${labelColor};font-size:15px;letter-spacing:.01em;">${cfg.label}</div>`;
 
     if (isLinkable(m) && link) {
-      // VENMO GOES THROUGH OUR PAGE, not straight to venmo.com.
-      //
-      // Venmo blocks payments initiated from their website: on a phone the link
-      // opens the app with the amount loaded; on a laptop it opens a profile the
-      // client cannot pay from. An email cannot tell which device is reading it,
-      // so this button was right for half the recipients and a silent dead end
-      // for the other half — and the DJ's only clue was the money never showing
-      // up.
-      //
-      // /pay/<id>/venmo can tell: phone → into the app, laptop → a QR of the
-      // very same link to scan. One href, correct on both.
-      const href = m.type === 'venmo'
-        ? `${SITE_URL}/pay/${paymentId}/venmo`
-        : link;
+      // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
+      // link straight to the rail with amount + note preloaded.
+      const href = m.type === 'venmo' ? `${SITE_URL}/pay/${paymentId}/venmo` : link;
       const caveat = m.type === 'venmo'
-        ? `<p style="margin:4px 0 0;color:#999;font-size:11px;">On a computer? We'll show a QR to scan — Venmo only takes payments in the app.</p>`
+        ? `<p style="margin:8px 0 0;color:#9a9a9a;font-size:11px;line-height:1.5;">On a computer? We'll show a QR to scan — Venmo only takes payments in the app.</p>`
         : '';
-      return `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px;width:100%;"><tr><td style="background:${tint};border-radius:6px;" align="center">
-<a href="${href}" style="display:block;padding:14px 24px;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;">Pay with ${cfg.label} — ${money(amount, currency)} →</a>
+      const inner = `${name}
+<table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
+<a href="${href}" style="display:block;padding:11px 22px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;">Pay ${money(amount, currency)} &rarr;</a>
 </td></tr></table>${caveat}`;
+      return card(m.type, inner);
     }
 
     if (m.type === 'cash') {
-      // "Pay in person" told the client nothing. Cash now carries a number and
-      // a name, so say them: someone about to hand over $600 at a venue they've
-      // never been to needs to know who to ask for.
-      return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
-<p style="margin:0;font-weight:600;color:#111;font-size:14px;">Cash</p>
-<p style="margin:4px 0 0;color:#666;font-size:13px;">${cashLine(m)}</p></div>`;
+      const inner = `${name}
+<p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
+      return card('cash', inner);
     }
 
-    // Check has two halves plus what to include — an envelope arrives days later
-    // nothing on it but an amount, and the event date + venue are the only
-    // things the client already knows and can't mistype.
     if (m.type === 'check') {
       const memo = checkMemo(eventDate, venueName, reference);
-      return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
-<p style="margin:0;font-weight:600;color:#111;font-size:14px;">Check</p>
-<p style="margin:4px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
-<p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
-${m.contact ? `<p style="margin:6px 0 0;color:#666;font-size:12px;">Mail to:</p>
-<p style="margin:2px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
-${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Please include this with your check:</p>
-<p style="margin:2px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
-</div>`;
+      const inner = `${name}
+<p style="margin:6px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
+<p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
+${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
+<p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
+${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
+      return card('check', inner);
     }
 
-    return `<div style="border:1px solid #e0e0e0;border-left:3px solid ${tint};border-radius:6px;padding:12px 14px;margin:0 0 10px;">
-<p style="margin:0;font-weight:600;color:#111;font-size:14px;">${cfg.label}</p>
-<p style="margin:4px 0 0;color:#666;font-size:12px;">${copyInstruction(m)}</p>
+    const inner = `${name}
+<p style="margin:5px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
 <p style="margin:2px 0 0;font-family:monospace;font-size:15px;color:#111;word-break:break-all;">${displayHandle(m)}</p>
-${m.type === 'zelle' ? `<p style="margin:6px 0 0;color:#999;font-size:11px;">Double-check before sending — Zelle payments can't be reversed.</p>` : ''}
-</div>`;
+${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">Double-check before sending — Zelle payments can't be reversed.</p>` : ''}`;
+    return card(m.type, inner);
   });
 
   return rows.join('');
@@ -312,13 +324,30 @@ export async function POST(req: Request) {
       const when = b.event_date
         ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
         : 'your event';
+      const cur = b.currency || 'USD';
+      // Short date + venue for the subject line the client sees in their inbox.
+      const shortDate = b.event_date
+        ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : 'your event';
+      const venuePart = b.venue_name ? ` | ${b.venue_name}` : '';
+      const subjectLine = noun === 'balance'
+        ? `Balance Request ${shortDate}${venuePart}`
+        : `Deposit Request for ${shortDate}${venuePart}`;
+      // Small context line: a deposit email shows what's left after; a balance
+      // email shows what was already put down.
+      const totalDue = agreed != null ? round2(Number(agreed)) : null;
+      const remainingAfter = totalDue != null ? Math.max(0, round2(totalDue - amount - alreadyPaid)) : null;
+      const summary = noun === 'deposit'
+        ? (remainingAfter != null ? `Remaining balance after this deposit: <strong style="color:#111;">${money(remainingAfter, cur)}</strong>` : '')
+        : (alreadyPaid > 0 ? `Deposit already paid: <strong style="color:#111;">${money(alreadyPaid, cur)}</strong>` : '');
       const recap = `<div style="background:#f8f8f8;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
 <p style="margin:0;color:#666;font-size:13px;line-height:1.7;">
 <strong style="color:#111;">${djName}</strong><br/>${when}${b.venue_name ? ` · ${b.venue_name}` : ''}
 </p></div>`;
 
       const content = `
-<h1 style="margin:0 0 6px;font-size:22px;color:#111;">${noun === 'balance' ? 'Balance due' : 'Deposit required'} — ${money(amount, b.currency || 'USD')}</h1>
+<h1 style="margin:0 0 6px;font-size:22px;color:#111;">${noun === 'balance' ? 'Balance due' : 'Deposit required'} — ${money(amount, cur)}</h1>
+${summary ? `<p style="margin:0 0 16px;color:#888;font-size:13px;">${summary}</p>` : ''}
 ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
@@ -352,7 +381,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         await resend.emails.send({
           from: FROM,
           to,
-          subject: `${noun === 'balance' ? 'Balance due' : 'Deposit required'} — ${money(amount, b.currency || 'USD')} · ${djName}`,
+          subject: subjectLine,
           html: shell(content),
           attachments: invoiceAtt ? [invoiceAtt] : undefined,
         });
