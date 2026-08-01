@@ -428,9 +428,9 @@ export default function BookingRow({
   // mobile.
   const emailOpens = ((booking as { email_opens?: Record<string, string> | null }).email_opens) || {};
   const stageForKey = (key: string): string | null => {
-    if (key === 'contract') return 'contract';
-    if (key === 'deposit') return 'deposit';
-    if (key === 'invoice') return 'balance';
+    // Only stages whose client email links to one of OUR pages, where we can
+    // record a real page view with no email pixel. song_list is rider on club,
+    // planner on mobile. (Contract will join via DocuSeal-viewed later.)
     if (key === 'guestlist') return 'guestlist';
     if (key === 'song_list') return booking.booking_type === 'club' ? 'rider' : 'planner';
     return null;
@@ -441,19 +441,9 @@ export default function BookingRow({
     if (!iso) return null;
     const d = new Date(iso);
     if (isNaN(d.getTime())) return null;
-    return `Likely opened ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    return `Viewed ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
   };
 
-  // Was a client email actually SENT for this stage? Lets the dropdown say
-  // "sent · not opened yet" instead of nothing, so every stage reports one of:
-  // not sent / sent-not-opened / likely-opened.
-  const stageSent = (key: string): boolean => {
-    if (key === 'deposit') return !!depositRow;
-    if (key === 'invoice') return payments.some((p) => p.kind === 'balance');
-    if (key === 'contract') return !!(booking as { contract_sent_at?: string | null }).contract_sent_at;
-    if (key === 'song_list') return booking.booking_type !== 'club' && (booking as { planner_status?: string | null }).planner_status === 'sent';
-    return false;
-  };
 
   function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
     setReqErr(null);
@@ -1809,15 +1799,11 @@ export default function BookingRow({
                         )}
                         {/* Email open hint — a soft "likely opened" line for the
                             stage's client email, when Resend has reported it. */}
-                        {openedLabel(st.key) ? (
+                        {openedLabel(st.key) && (
                           <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.68rem', fontWeight: 600, padding: '.1rem .6rem .35rem', display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: '.8rem' }}>&#9993;</span>{openedLabel(st.key)}
+                            <span style={{ fontSize: '.8rem' }}>&#128065;</span>{openedLabel(st.key)}
                           </div>
-                        ) : stageSent(st.key) ? (
-                          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', fontWeight: 600, padding: '.1rem .6rem .35rem', display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: '.8rem' }}>&#9993;</span>Sent &middot; not opened yet
-                          </div>
-                        ) : null}
+                        )}
                         {/* Why the button you came here for isn't here.
                             whiteSpace:'normal' and an explicit maxWidth because
                             the menu itself is nowrap — a sentence inherits that
