@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +15,13 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Resolve the account being acted on (owner's id when a teammate) and gate:
+  // creating/editing/uploading contracts is manager+ (same as sending).
+  const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) {
+    return NextResponse.json({ error: 'Your account level cannot manage contracts.' }, { status: 403 });
+  }
 
   let body: { templateId?: unknown; name?: unknown; contractId?: unknown };
   try {
@@ -39,13 +47,13 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         } as unknown as never)
         .eq('id', contractId)
-        .eq('dj_id', user.id);
+        .eq('dj_id', acting.djId);
       if (error) throw error;
     } else {
       const { data, error } = await admin
         .from('contracts')
         .insert({
-          dj_id: user.id,
+          dj_id: acting.djId,
           name,
           docuseal_template_id: templateId,
           is_standard: false,
