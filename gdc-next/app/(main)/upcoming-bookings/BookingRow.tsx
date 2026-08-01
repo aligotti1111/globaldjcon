@@ -368,7 +368,7 @@ export default function BookingRow({
   // everything needed to post the request and fold the new row into state.
   const [reqOpen, setReqOpen] = useState(false);
   // Themed confirm dialog (replaces window.confirm so it matches the site).
-  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; onOk: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; cancelLabel?: string; danger?: boolean; onOk: () => void } | null>(null);
   const [reqAmount, setReqAmount] = useState('');
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
@@ -445,7 +445,22 @@ export default function BookingRow({
     setReqOpen(true);
   }
 
-  async function cancelRequest(paymentId: string) { if (!confirm('Cancel this payment request?')) return; try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) }); if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; } onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId)); } catch { alert('Could not cancel the request.'); } } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } } async function submitRequest() {
+  function cancelRequest(paymentId: string) {
+    setConfirmModal({
+      title: 'Cancel this payment request?',
+      body: 'This removes the request from the booking. You can request it again later.',
+      okLabel: 'Cancel request',
+      cancelLabel: 'Keep it',
+      danger: true,
+      onOk: async () => {
+        try {
+          const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) });
+          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; }
+          onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId));
+        } catch { alert('Could not cancel the request.'); }
+      },
+    });
+  } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } } async function submitRequest() {
     const amount = Number(reqAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setReqErr('Enter an amount greater than zero.');
@@ -1940,12 +1955,12 @@ export default function BookingRow({
                 onClick={() => setConfirmModal(null)}
                 style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--white,#fff)', fontWeight: 700, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.1rem', cursor: 'pointer' }}
               >
-                Cancel
+                {confirmModal.cancelLabel ?? 'Cancel'}
               </button>
               <button
                 type="button"
                 onClick={() => { const ok = confirmModal.onOk; setConfirmModal(null); ok(); }}
-                style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}
+                style={{ background: confirmModal.danger ? '#ff6b6b' : NEON, border: 'none', color: confirmModal.danger ? '#2a0a0a' : '#06231b', fontWeight: 800, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}
               >
                 {confirmModal.okLabel}
               </button>
