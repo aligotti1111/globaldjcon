@@ -415,6 +415,11 @@ export default function BookingRow({
       // again. Guarded on the deposit having no real payment, so a deposit paid
       // through the app (already in `paid`) is never double-counted.
       const depositRealPaid = payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+      // The DJ requesting a balance is billing the WHOLE remaining amount —
+      // when a deposit went unpaid, they're overriding it, not netting it out.
+      // So the balance is the full total minus what actually came in. The only
+      // deduction is a deposit collected OFF-APP (marked complete, no payment
+      // row) — that money is real, it just isn't in `paid`.
       const depositMarked = !!overrides.deposit && depositRealPaid <= 0 ? Number(booking.deposit_amount || 0) : 0;
       const remaining = Math.max(0, Math.round((total - paid - depositMarked) * 100) / 100);
       setReqAmount(remaining > 0 ? String(remaining) : '');
@@ -455,6 +460,10 @@ export default function BookingRow({
       // Requesting the balance auto-skips the deposit stage (the server also
       // persists this). Only when no deposit was actually collected.
       if (reqKind === 'balance' && !overrides.deposit_skipped) {
+        // Billing the whole balance means the deposit is being skipped — even
+        // if a deposit request went out unpaid (the DJ is overriding it). Only
+        // when NOTHING was actually collected: a paid or part-paid deposit
+        // stays, since the balance already nets out real payments.
         const depPaid = payments.filter((p) => p.kind === 'deposit').reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
         const depSettled = payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'));
         if (depPaid <= 0 && !depSettled) {
