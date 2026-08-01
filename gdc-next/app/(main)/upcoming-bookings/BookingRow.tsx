@@ -501,6 +501,21 @@ export default function BookingRow({
       });
     } catch { /* keep optimistic UI; will reconcile on next load */ }
   }
+  // "Mark complete" on a MONEY step has downstream impact, so confirm it and
+  // spell out what happens next — a deposit gets deducted from the balance you
+  // later bill; a balance send the client their final receipt. `done` is the
+  // new state (true = marking complete). Only the deposit/balance steps carry
+  // a warning; contract/playlist just toggle.
+  function confirmAndToggleStep(key: string, done: boolean) {
+    if (done && key === 'deposit') {
+      if (!window.confirm('Mark this deposit as paid outside the app?\n\nIt will be deducted from the balance owed when you request the balance.')) return;
+    } else if (done && key === 'invoice') {
+      if (!window.confirm('Mark the balance as paid outside the app?\n\nThis will send the client their final receipt.')) return;
+    }
+    toggleStep(key, done);
+    // Marking the balance complete sends the final receipt automatically.
+    if (done && key === 'invoice') { sendReceipt('balance'); }
+  }
   // Flyer URL owned here so the row slot and the in-card thumbnail
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
@@ -1782,7 +1797,7 @@ export default function BookingRow({
                               type="button"
                               disabled={ovLocked}
                               title={ovLocked ? NO_ACCESS : undefined}
-                              onClick={() => { if (ovLocked) return; toggleStep(st.key, !st.done); }}
+                              onClick={() => { if (ovLocked) return; confirmAndToggleStep(st.key, !st.done); }}
                               style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: ovLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: ovLocked ? 'not-allowed' : 'pointer', opacity: ovLocked ? 0.55 : 1 }}
                             >
                               {st.done ? '\u2715 Mark not complete' : '\u2713 Mark complete'}{ovLocked ? '  \u{1F512}' : ''}
