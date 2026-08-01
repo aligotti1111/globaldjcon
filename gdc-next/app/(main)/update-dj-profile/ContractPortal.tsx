@@ -144,14 +144,11 @@ export default function ContractPortal({
 
   async function load() {
     try {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('contracts')
-        .select('id, name, docuseal_template_id, is_standard, body_text, updated_at')
-        .eq('dj_id', userId)
-        .order('is_standard', { ascending: true })
-        .order('updated_at', { ascending: false });
-      setContracts((data as Contract[]) || []);
+      // Server route (admin client + acting authorization) — a teammate can't
+      // read the owner's contracts directly through RLS.
+      const res = await fetch('/api/contracts');
+      const j = await res.json().catch(() => ({}));
+      setContracts((j?.contracts as Contract[]) || []);
     } catch { /* ignore */ }
     setLoading(false);
   }
@@ -303,16 +300,14 @@ export default function ContractPortal({
     if (!newName || newName === c.name) return;
     setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: newName } : x));
     try {
-      const supabase = createClient();
-      await supabase.from('contracts').update({ name: newName } as never).eq('id', c.id).eq('dj_id', userId);
+      await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: newName }) });
     } catch { /* optimistic */ }
   }
 
   async function deleteContract(c: Contract) {
     if (!confirm(`Delete "${c.name}"? Contracts already sent or signed with it stay intact on those bookings.`)) return;
     try {
-      const supabase = createClient();
-      await supabase.from('contracts').delete().eq('id', c.id).eq('dj_id', userId);
+      await fetch(`/api/contracts?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' });
       await load();
     } catch { /* ignore */ }
   }
@@ -419,7 +414,7 @@ export default function ContractPortal({
             </label>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { const supabase = createClient(); try { if (editingId) await supabase.from('contracts').update({ name } as never).eq('id', editingId).eq('dj_id', userId); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : 'Lock it in'}</button>
+            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : 'Lock it in'}</button>
           </div>
         </div>
       </div>, true, 'Add fields',
