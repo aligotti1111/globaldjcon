@@ -120,13 +120,13 @@ const BRAND: Record<string, string> = {
 // mark. Real image logos can't be used reliably in email (Gmail strips SVG and
 // external images are often blocked), so these pure-HTML badges stand in and
 // render identically everywhere.
-const BADGE: Record<string, { bg: string; glyph: string }> = {
-  venmo: { bg: '#3D95CE', glyph: 'V' },
-  cashapp: { bg: '#00D632', glyph: '$' },
-  paypal: { bg: '#003087', glyph: 'P' },
-  zelle: { bg: '#6D1ED4', glyph: 'Z' },
-  cash: { bg: '#2E7D32', glyph: '$' },
-  check: { bg: '#455A64', glyph: '✓' },
+const BADGE: Record<string, { bg: string; glyph: string; soft: string; border: string }> = {
+  venmo:   { bg: '#3D95CE', glyph: 'V', soft: '#EAF4FB', border: '#BFDCF0' },
+  cashapp: { bg: '#00D632', glyph: '$', soft: '#E7FBEE', border: '#BDEFCC' },
+  paypal:  { bg: '#003087', glyph: 'P', soft: '#EAEEF7', border: '#C5CFE6' },
+  zelle:   { bg: '#6D1ED4', glyph: 'Z', soft: '#F1EAFB', border: '#D8C4F1' },
+  cash:    { bg: '#2E7D32', glyph: '$', soft: '#EBF5EC', border: '#C3E1C5' },
+  check:   { bg: '#455A64', glyph: '✓', soft: '#EEF1F3', border: '#CBD5DA' },
 };
 
 /**
@@ -145,8 +145,9 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
   const card = (type: string, inner: string): string => {
-    const b = BADGE[type] || { bg: '#0a6f61', glyph: '•' };
-    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #ececec;border-radius:12px;margin:0 0 12px;background:#ffffff;">
+    const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
+<tr><td colspan="2" style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr>
 <td width="60" valign="top" style="padding:16px 0 16px 16px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
@@ -166,13 +167,10 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
       const href = m.type === 'venmo' ? `${SITE_URL}/pay/${paymentId}/venmo` : link;
-      const caveat = m.type === 'venmo'
-        ? `<p style="margin:8px 0 0;color:#9a9a9a;font-size:11px;line-height:1.5;">On a computer? We'll show a QR to scan — Venmo only takes payments in the app.</p>`
-        : '';
       const inner = `${name}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
 <a href="${href}" style="display:block;padding:11px 22px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;">Pay ${money(amount, currency)} &rarr;</a>
-</td></tr></table>${caveat}`;
+</td></tr></table>`;
       return card(m.type, inner);
     }
 
