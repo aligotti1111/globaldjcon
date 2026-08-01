@@ -109,6 +109,7 @@ export interface UpcomingBooking {
   // Booking-readiness pipeline: manual step overrides + per-booking snapshot of
   // whether a contract was required at creation time (freezes the flow).
   status_overrides?: Record<string, boolean> | null;
+  email_opens?: Record<string, string> | null;
   requires_contract?: boolean | null;
   // Playlist & Planner. Written ONLY by trg_sync_planner_status, never by the
   // app — so it can't drift from booking_planners.status the way it would with
@@ -204,7 +205,7 @@ export default async function UpcomingBookingsPage() {
   // RLS client returns nothing for a teammate. Scoped hard to djId below.
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status, email_opens')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
