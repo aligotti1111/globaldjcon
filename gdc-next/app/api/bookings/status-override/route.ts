@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 15;
 
 // Only these keys can be overridden — guards against arbitrary JSON writes.
-const ALLOWED_KEYS = new Set(['contract', 'deposit', 'song_list']);
+const ALLOWED_KEYS = new Set(['contract', 'deposit', 'deposit_skipped', 'song_list']);
 
 export async function POST(req: Request) {
   const supabase = await createClient();
