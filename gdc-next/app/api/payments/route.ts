@@ -190,7 +190,8 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
 <p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
+<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>`;
       return card('check', inner);
     }
 
