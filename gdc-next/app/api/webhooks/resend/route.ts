@@ -57,7 +57,9 @@ export async function POST(req: Request) {
   const { bookingId, stage } = readEmailTags(evt?.data?.tags);
   if (!bookingId || !stage || !KNOWN_STAGES.has(stage)) return NextResponse.json({ ok: true });
 
-  const openedAt = evt?.data?.created_at || evt?.created_at || new Date().toISOString();
+  // Open time is the TOP-LEVEL created_at (event time); data.created_at is when
+  // the email was created, not opened.
+  const openedAt = evt?.created_at || evt?.data?.created_at || new Date().toISOString();
 
   const admin = createAdminClient();
   const { data } = await admin.from('bookings').select('email_opens').eq('id', bookingId).maybeSingle();
