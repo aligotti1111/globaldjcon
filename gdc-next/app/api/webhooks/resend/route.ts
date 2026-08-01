@@ -41,6 +41,17 @@ function verifySignature(secret: string, headers: Headers, body: string): boolea
 
 const KNOWN_STAGES = new Set(['contract', 'deposit', 'balance', 'planner', 'guestlist', 'rider']);
 
+// GET — a self-check you can open in a browser. Confirms the route is deployed
+// (not a 404) and whether the signing secret env var is present. It reveals no
+// secret value, just whether one is configured.
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    route: 'resend-webhook',
+    hasSecret: !!process.env.RESEND_WEBHOOK_SECRET,
+  });
+}
+
 export async function POST(req: Request) {
   const raw = await req.text();
 
