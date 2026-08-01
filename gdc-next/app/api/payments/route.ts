@@ -308,6 +308,9 @@ export async function POST(req: Request) {
     const alreadyPaid = ((paidData as { amount_paid?: number }[] | null) || [])
       .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
 
+    // The balance is the WHOLE remaining amount. An unpaid deposit request is
+    // NOT netted out — requesting the balance overrides it (see the auto-skip
+    // below). Only money that actually arrived (alreadyPaid) reduces it.
     let amount: number | null =
       kind === 'deposit'
         ? (b.deposit_amount != null ? Number(b.deposit_amount) : null)
@@ -355,6 +358,9 @@ export async function POST(req: Request) {
           .eq('booking_id', bookingId)
           .eq('kind', 'deposit');
         const depRows = (depRowsData as { amount_paid?: number; status?: string }[] | null) || [];
+        // Billing the whole balance overrides the deposit — skip it whenever
+        // nothing was actually collected, even if a request went out unpaid.
+        // (A paid or part-paid deposit is left alone; the balance nets it out.)
         const depSettled = depRows.some((r) => r.status === 'paid' || r.status === 'waived')
           || depRows.reduce((sum, r) => sum + Number(r.amount_paid || 0), 0) > 0;
         if (!depSettled) {
