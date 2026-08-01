@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { CONTRACT_DATA_FIELDS } from '@/lib/contractText';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -78,6 +79,13 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
+  // Resolve the account being acted on (owner's id when a teammate) and gate:
+  // creating/editing/uploading contracts is manager+ (same as sending).
+  const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) {
+    return NextResponse.json({ error: 'Your account level cannot manage contracts.' }, { status: 403 });
+  }
+
   let body: { text?: unknown; name?: unknown; logoUrl?: unknown; contractId?: unknown };
   try {
     body = await req.json();
@@ -102,7 +110,7 @@ export async function POST(req: Request) {
         .from('contracts')
         .select('docuseal_template_id')
         .eq('id', contractId)
-        .eq('dj_id', user.id)
+        .eq('dj_id', acting.djId)
         .maybeSingle();
       existingTemplateId = (data as { docuseal_template_id?: string | null } | null)?.docuseal_template_id || null;
     } catch { existingTemplateId = null; }
@@ -123,9 +131,9 @@ export async function POST(req: Request) {
       templateId = existingTemplateId;
     } else {
       const template = await docuseal.createTemplateFromHtml({
-        name: `${name} — ${user.id}`,
+        name: `${name} — ${acting.djId}`,
         html,
-        external_id: `dj_${user.id}_${Date.now()}`,
+        external_id: `dj_${acting.djId}_${Date.now()}`,
       });
       templateId = (template as { id?: string | number }).id;
     }
@@ -153,13 +161,13 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         } as unknown as never)
         .eq('id', contractId)
-        .eq('dj_id', user.id);
+        .eq('dj_id', acting.djId);
       if (error) throw error;
     } else {
       const { data, error } = await admin
         .from('contracts')
         .insert({
-          dj_id: user.id,
+          dj_id: acting.djId,
           name,
           docuseal_template_id: String(templateId),
           body_text: text,
