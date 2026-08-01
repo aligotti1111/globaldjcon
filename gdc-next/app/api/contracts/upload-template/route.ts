@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
+import { getActingContext, canSendContracts } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +19,12 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+  // Resolve the account being acted on (owner's id when a teammate) and gate:
+  // creating/editing/uploading contracts is manager+ (same as sending).
+  const acting = await getActingContext(user.id);
+  if (!canSendContracts(acting.role)) {
+    return NextResponse.json({ error: 'Your account level cannot manage contracts.' }, { status: 403 });
   }
 
   // 2. Read the uploaded file.
@@ -76,7 +83,7 @@ export async function POST(req: Request) {
       const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
 
       const template = await docuseal.createTemplateFromPdf({
-        name: `Contract — ${user.id}`,
+        name: `Contract — ${acting.djId}`,
         documents: [{ name: name.replace(/\.(jpe?g|png)$/i, '.pdf'), file: pdfBase64 }],
       });
       templateId = (template as { id?: string | number }).id;
@@ -85,8 +92,8 @@ export async function POST(req: Request) {
       const base64 = Buffer.from(bytes).toString('base64');
       const docs = [{ name, file: base64 }];
       const template = isPdf
-        ? await docuseal.createTemplateFromPdf({ name: `Contract — ${user.id}`, documents: docs })
-        : await docuseal.createTemplateFromDocx({ name: `Contract — ${user.id}`, documents: docs });
+        ? await docuseal.createTemplateFromPdf({ name: `Contract — ${acting.djId}`, documents: docs })
+        : await docuseal.createTemplateFromDocx({ name: `Contract — ${acting.djId}`, documents: docs });
       templateId = (template as { id?: string | number }).id;
     }
 
@@ -106,7 +113,7 @@ export async function POST(req: Request) {
     const { data, error: dbErr } = await admin
       .from('contracts')
       .insert({
-        dj_id: user.id,
+        dj_id: acting.djId,
         name: contractName,
         docuseal_template_id: String(templateId),
         is_standard: false,
