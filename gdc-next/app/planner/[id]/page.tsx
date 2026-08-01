@@ -15,13 +15,15 @@
 // account to tell you their first dance is how you don't get told their first
 // dance.
 //
-// It reads with the ADMIN client because there is no session to read with. Note
-// what it deliberately does NOT do: nothing here treats OPENING the link as
-// evidence of anything. Only the client typing does that.
+// It reads with the ADMIN client because there is no session to read with.
+// Opening the link now records a soft "viewed" timestamp for the DJ (a page
+// view, not an email pixel — no deliverability cost). Only the client TYPING
+// records actual answers.
 
 import { notFound } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { recordStageView } from '@/lib/recordView';
 import { visibleFields, type PlannerField, type PlannerResponses } from '@/lib/planner';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import PlannerForm from './PlannerForm';
@@ -97,6 +99,9 @@ export default async function PlannerPage({
     .maybeSingle();
   const planner = pData as unknown as PlannerRow | null;
   if (!planner) notFound();
+
+  // Client opened their planner — record the view (skips the DJ's own visits).
+  await recordStageView(planner.booking_id, 'planner', planner.dj_id);
 
   const { data: bData } = await admin
     .from('bookings')
