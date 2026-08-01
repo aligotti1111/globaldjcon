@@ -1,13 +1,17 @@
-// POST /api/contracts/standard
+// POST /api/contracts/builder-token
 //
-// Creates or updates one of the DJ's named contracts from the editable standard
-// text. Builds a DocuSeal HTML template and stores it as a row in the
-// `contracts` table. Accepts an optional contractId to edit an existing one.
+// Generates the signed JWT that authorizes the embedded DocuSeal form builder
+// for the current DJ. Optionally reopens a specific existing contract's
+// template (when editing) via a contractId in the request body.
+//
+// Requires env vars:
+//   DOCUSEAL_API_KEY    — used to sign the JWT (same key used for the API)
+//   DOCUSEAL_USER_EMAIL — the admin email of your DocuSeal account (owner of the key)
 
 import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getDocuseal, buildContractHtml } from '@/lib/docuseal';
 import { getActingContext, canSendContracts } from '@/lib/acting';
 
 export const runtime = 'nodejs';
@@ -24,76 +28,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Your account level cannot manage contracts.' }, { status: 403 });
   }
 
-  let body: { text?: unknown; logoUrl?: unknown; name?: unknown; contractId?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  }
-  const text = typeof body.text === 'string' ? body.text : '';
-  const logoUrl = typeof body.logoUrl === 'string' && body.logoUrl ? body.logoUrl : null;
-  const name = (typeof body.name === 'string' && body.name.trim()) ? body.name.trim() : 'Standard contract';
-  const contractId = typeof body.contractId === 'string' && body.contractId ? body.contractId : null;
-  if (!text.trim()) return NextResponse.json({ error: 'Contract text is empty' }, { status: 400 });
-
-  let templateId: string | number | undefined;
-  try {
-    const docuseal = getDocuseal();
-    const html = buildContractHtml(text, logoUrl);
-    const template = await docuseal.createTemplateFromHtml({
-      name: `${name} — ${acting.djId}`,
-      html,
-      external_id: `dj_${acting.djId}_${Date.now()}`,
-    });
-    templateId = (template as { id?: string | number }).id;
-    if (templateId == null) throw new Error('No template id returned');
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Could not build the contract.' },
-      { status: 502 },
-    );
+  const apiKey = process.env.DOCUSEAL_API_KEY;
+  const adminEmail = process.env.DOCUSEAL_USER_EMAIL;
+  if (!apiKey || !adminEmail) {
+    return NextResponse.json({ error: 'Contract builder is not configured.' }, { status: 500 });
   }
 
+  let contractId: string | null = null;
+  let name = 'Booking Contract';
   try {
-    const admin = createAdminClient();
-    let savedId = contractId;
-    if (contractId) {
-      const { error } = await admin
+    const body = await req.json();
+    if (body && typeof body.contractId === 'string') contractId = body.contractId || null;
+    if (body && typeof body.name === 'string' && body.name.trim()) name = body.name.trim();
+  } catch { /* no body — fresh builder */ }
+
+  // If editing an existing contract, reopen its template so the DJ can adjust it.
+  let templateId: string | null = null;
+  if (contractId) {
+    try {
+      const admin = createAdminClient();
+      const { data } = await admin
         .from('contracts')
-        .update({
-          name,
-          docuseal_template_id: String(templateId),
-          logo_url: logoUrl,
-          is_standard: true,
-          // Keep the raw text so per-booking contracts (e.g. the wedding
-          // contract) can be rebuilt fresh with the booking's data baked in.
-          body_text: text,
-          updated_at: new Date().toISOString(),
-        } as unknown as never)
+        .select('docuseal_template_id')
         .eq('id', contractId)
-        .eq('dj_id', acting.djId);
-      if (error) throw error;
-    } else {
-      const { data, error } = await admin
-        .from('contracts')
-        .insert({
-          dj_id: acting.djId,
-          name,
-          docuseal_template_id: String(templateId),
-          logo_url: logoUrl,
-          is_standard: true,
-          body_text: text,
-        } as unknown as never)
-        .select('id')
-        .single();
-      if (error) throw error;
-      savedId = (data as { id?: string } | null)?.id || null;
+        .eq('dj_id', acting.djId)
+        .maybeSingle();
+      templateId = (data as { docuseal_template_id?: string | null } | null)?.docuseal_template_id || null;
+    } catch {
+      templateId = null;
     }
-    return NextResponse.json({ ok: true, contractId: savedId, templateId: String(templateId) });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Built the contract but could not save it.' },
-      { status: 500 },
-    );
   }
+
+  const payload: Record<string, unknown> = {
+    user_email: adminEmail,
+    integration_email: `dj_${acting.djId}@globaldjconnect.com`,
+    external_id: `dj_${acting.djId}_${contractId || Date.now()}`,
+    name,
+  };
+  if (templateId) payload.template_id = Number(templateId) || templateId;
+
+  const token = jwt.sign(payload, apiKey);
+  return NextResponse.json({ token });
 }
