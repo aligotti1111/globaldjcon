@@ -422,6 +422,28 @@ export default function BookingRow({
   const overpaid = bookingTotalForFlag > 0 && totalCollected > bookingTotalForFlag + 0.01;
   const overpaidBy = overpaid ? Math.round((totalCollected - bookingTotalForFlag) * 100) / 100 : 0;
 
+  // Email OPEN hints (soft signal — see the Resend webhook). Maps a pipeline
+  // step's key to the stage its client email was tagged with, then shows when
+  // that email was likely opened. song_list is the rider on club, planner on
+  // mobile.
+  const emailOpens = ((booking as { email_opens?: Record<string, string> | null }).email_opens) || {};
+  const stageForKey = (key: string): string | null => {
+    if (key === 'contract') return 'contract';
+    if (key === 'deposit') return 'deposit';
+    if (key === 'invoice') return 'balance';
+    if (key === 'guestlist') return 'guestlist';
+    if (key === 'song_list') return booking.booking_type === 'club' ? 'rider' : 'planner';
+    return null;
+  };
+  const openedLabel = (key: string): string | null => {
+    const stage = stageForKey(key);
+    const iso = stage ? emailOpens[stage] : null;
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return `Likely opened ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  };
+
   function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
     setReqErr(null);
     setReqKind(kind);
@@ -1773,6 +1795,13 @@ export default function BookingRow({
                             </div>
                             <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
                           </>
+                        )}
+                        {/* Email open hint — a soft "likely opened" line for the
+                            stage's client email, when Resend has reported it. */}
+                        {openedLabel(st.key) && (
+                          <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.68rem', fontWeight: 600, padding: '.1rem .6rem .35rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: '.8rem' }}>&#9993;</span>{openedLabel(st.key)}
+                          </div>
                         )}
                         {/* Why the button you came here for isn't here.
                             whiteSpace:'normal' and an explicit maxWidth because
