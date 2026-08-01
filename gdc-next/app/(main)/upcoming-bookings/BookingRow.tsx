@@ -927,7 +927,14 @@ export default function BookingRow({
     // deposit. Only meaningful while nothing was actually paid — a real payment
     // outranks a skip.
     const depositRealPaidNow = depositPays.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-    const depositSkipped = !!overrides.deposit_skipped && !reallySettled && depositRealPaidNow <= 0;
+    // Skipped is DERIVED, not only stored: once a balance has been requested
+    // and no deposit money was collected, the deposit is effectively skipped —
+    // the DJ billed the whole thing. Deriving it (rather than relying on the
+    // stored flag) also covers bookings whose balance predates the flag. The
+    // manual "Skip deposit" button still sets the override for the no-balance
+    // case. A deposit with real money collected is never auto-skipped.
+    const balanceRequested = payments.some((p) => p.kind === 'balance');
+    const depositSkipped = !reallySettled && depositRealPaidNow <= 0 && (!!overrides.deposit_skipped || balanceRequested);
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
     // any of this existed. The override says "this stage is handled" — it does
@@ -1078,7 +1085,7 @@ export default function BookingRow({
               ? [{ label: 'Skip deposit', run: () => toggleStep('deposit_skipped', true) }]
               : []),
             // Undo a skip, back to "Request deposit".
-            ...(depositSkipped
+            ...(depositSkipped && !balanceRequested
               ? [{ label: 'Undo skip', run: () => toggleStep('deposit_skipped', false) }]
               : []),
             // The way out of the gate, next to the reason for it.
