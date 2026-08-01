@@ -343,6 +343,32 @@ export async function POST(req: Request) {
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 502 });
     const payment = created as unknown as PaymentRow;
 
+    // Requesting the BALANCE auto-skips the deposit stage — the DJ has chosen
+    // to collect in one payment. Only when no deposit was actually collected
+    // (a real/settled deposit outranks a skip). Durable here so it holds no
+    // matter where the balance request came from.
+    if (kind === 'balance') {
+      try {
+        const { data: depRowsData } = await db
+          .from('booking_payments')
+          .select('amount_paid, status')
+          .eq('booking_id', bookingId)
+          .eq('kind', 'deposit');
+        const depRows = (depRowsData as { amount_paid?: number; status?: string }[] | null) || [];
+        const depSettled = depRows.some((r) => r.status === 'paid' || r.status === 'waived')
+          || depRows.reduce((sum, r) => sum + Number(r.amount_paid || 0), 0) > 0;
+        if (!depSettled) {
+          const { data: bkRow } = await admin.from('bookings').select('status_overrides').eq('id', bookingId).maybeSingle();
+          const curOv = ((bkRow as { status_overrides?: Record<string, boolean> } | null)?.status_overrides) || {};
+          if (!curOv.deposit_skipped) {
+            await admin.from('bookings')
+              .update({ status_overrides: { ...curOv, deposit_skipped: true } } as unknown as never)
+              .eq('id', bookingId);
+          }
+        }
+      } catch { /* non-fatal — the balance request itself already succeeded */ }
+    }
+
     // Email the client.
     const to = await clientEmailFor(b);
     if (to && process.env.RESEND_API_KEY) {
