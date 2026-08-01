@@ -114,6 +114,7 @@ interface BookingDocRow {
   ceremony_start_time: string | null;
   ceremony_same_room: boolean | null;
   package_title: string | null;
+  package_details: string | null;
   set_type: string | null;
   equipment: string | null;
   quoted_rate: number | null;
@@ -163,7 +164,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, host_email')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, host_email')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -190,18 +191,35 @@ export async function buildBookingDocAttachment(
 
     const logo = await fetchLogo(dj.contract_logo_url);
 
+    // Package info can carry rich-text HTML — flatten to plain lines for the PDF.
+    const stripHtml = (raw: string): string =>
+      raw
+        .replace(/<\/(p|div|br|li|h[1-6])>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n{2,}/g, '\n')
+        .split('\n').map((l) => l.trim()).filter(Boolean).join('  •  ')
+        .trim();
+
     // ── Details block (differs by DJ type) ──
     const details: { label: string; value?: string | null }[] = [];
     const setTime = (b.start_time || b.end_time)
       ? `${fmtTime(b.start_time)}${b.end_time ? ` – ${fmtTime(b.end_time)}` : ''}`
       : '';
+    // Event type + date + TIME now live in the EVENT block (across from BILL
+    // TO), so they're not repeated here. This column is the PACKAGE: its name
+    // and what it includes, plus any wedding-specific scheduling.
     if (isClub) {
-      if (setTime) details.push({ label: 'Set time', value: setTime });
       if (b.set_type) details.push({ label: 'Set type', value: b.set_type });
       if (b.equipment) details.push({ label: 'Equipment', value: EQUIPMENT_LABEL[b.equipment] || b.equipment });
     } else {
       if (b.package_title) details.push({ label: 'Package', value: b.package_title });
-      details.push({ label: 'Event type', value: eventLabel(b.event_type) });
+      if (b.package_details && b.package_details.trim()) {
+        details.push({ label: 'Includes', value: stripHtml(b.package_details) });
+      }
       const isWedding = (b.event_type || '').includes('wedding');
       if (isWedding && b.ceremony_needed && b.ceremony_start_time) {
         details.push({ label: 'Ceremony', value: `${fmtTime(b.ceremony_start_time)} · ${b.ceremony_same_room ? 'same room as reception' : 'separate room'}` });
@@ -209,7 +227,6 @@ export async function buildBookingDocAttachment(
       if (isWedding && b.cocktail_needed && b.cocktail_start_time) {
         details.push({ label: 'Cocktail hour', value: `${fmtTime(b.cocktail_start_time)} · ${b.cocktail_same_room ? 'same room as reception' : 'separate room'}` });
       }
-      if (setTime) details.push({ label: isWedding ? 'Reception' : 'Event time', value: setTime });
     }
 
     // ── Money lines + headline ──
@@ -329,7 +346,7 @@ export async function buildBookingDocAttachment(
         logo,
       },
       client: { name: b.requester_name, email: args.clientEmail || b.host_email },
-      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), venue: b.venue_name },
+      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: setTime || null, venue: b.venue_name },
       details,
       lines,
       headline,
