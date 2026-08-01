@@ -360,8 +360,12 @@ export async function POST(req: Request) {
 </p></div>`;
 
       const content = `
-<h1 style="margin:0 0 6px;font-size:22px;color:#111;">${noun === 'balance' ? 'Balance due' : 'Deposit required'} — ${money(amount, cur)}</h1>
-${summary ? `<p style="margin:0 0 16px;color:#888;font-size:13px;">${summary}</p>` : ''}
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
+<tr><td style="padding:22px 24px;" align="center">
+<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#0a8f74;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${noun === 'balance' ? 'Balance Due' : 'Deposit Required'}</div>
+<div style="font-size:40px;line-height:1.1;font-weight:800;color:#0b1f1a;margin:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:-.01em;">${money(amount, cur)}</div>
+${summary ? `<div style="margin:10px 0 0;color:#4a6b62;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${summary}</div>` : ''}
+</td></tr></table>
 ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
