@@ -450,7 +450,7 @@ export default function BookingRow({
   const stageSent = (key: string): boolean => {
     if (key === 'deposit') return !!depositRow;
     if (key === 'invoice') return payments.some((p) => p.kind === 'balance');
-    if (key === 'contract') return !!(booking as { contract_status?: string | null }).contract_status;
+    if (key === 'contract') return !!(booking as { contract_sent_at?: string | null }).contract_sent_at;
     if (key === 'song_list') return booking.booking_type !== 'club' && (booking as { planner_status?: string | null }).planner_status === 'sent';
     return false;
   };
