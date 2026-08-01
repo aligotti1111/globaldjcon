@@ -452,6 +452,15 @@ export default function BookingRow({
         throw new Error(json.error || `HTTP ${res.status} — ${raw.slice(0, 120) || 'no response'}`);
       }
       onPaymentsChange(booking.id, [...payments, json.payment]);
+      // Requesting the balance auto-skips the deposit stage (the server also
+      // persists this). Only when no deposit was actually collected.
+      if (reqKind === 'balance' && !overrides.deposit_skipped) {
+        const depPaid = payments.filter((p) => p.kind === 'deposit').reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+        const depSettled = payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'));
+        if (depPaid <= 0 && !depSettled) {
+          setOverrides((prev) => ({ ...prev, deposit_skipped: true }));
+        }
+      }
       setReqOpen(false);
     } catch (e) {
       setReqErr(e instanceof Error ? e.message : 'Could not request the deposit.');
@@ -885,18 +894,23 @@ export default function BookingRow({
   // nothing to do with the deposit. The two columns have to read their own
   // rows or they lie about each other.
   const depositPays = payments.filter((p) => p.kind === 'deposit');
-  if (depositPays.length > 0 || bookingHasDeposit || overrides.deposit) {
+  if (depositPays.length > 0 || bookingHasDeposit || overrides.deposit || overrides.deposit_skipped) {
     const settled = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
     // .every() is true for an empty array — a deposit that exists on the
     // booking but has never been requested would read as PAID. Require a row
     // before anything can be "done".
     const reallySettled = depositPays.length > 0 && depositPays.every(settled);
+    // Skipped: the DJ is going straight to the balance and won't collect a
+    // deposit. Only meaningful while nothing was actually paid — a real payment
+    // outranks a skip.
+    const depositRealPaidNow = depositPays.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const depositSkipped = !!overrides.deposit_skipped && !reallySettled && depositRealPaidNow <= 0;
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
     // any of this existed. The override says "this stage is handled" — it does
     // NOT invent a payment row or an amount, so the ledger stays honest about
     // what it actually saw.
-    const allDone = reallySettled || !!overrides.deposit;
+    const allDone = reallySettled || !!overrides.deposit || depositSkipped;
     // Three states, same shape as Contract: a verb while there's something to
     // do, the stage's name once it's done.
     //
@@ -914,7 +928,9 @@ export default function BookingRow({
     // an edge case. A DJ seeing "Deposit requested" on money that's half in has
     // no idea anything arrived.
     const anyPartial = depositPays.some((p) => Number(p.amount_paid || 0) > 0 && !settled(p));
-    const pLabel = allDone
+    const pLabel = depositSkipped
+      ? 'Deposit skipped'
+      : allDone
       ? 'Deposit'
       : anyPartial
         ? 'Partially paid'
@@ -940,13 +956,13 @@ export default function BookingRow({
       // rows genuinely settled, the dropdown is gone — otherwise a DJ could
       // "mark not complete" on money that actually arrived and the strip would
       // contradict the ledger sitting right beneath it.
-      overridable: !reallySettled,
+      overridable: !reallySettled && !depositSkipped,
       done: allDone,
       // Amber until settled. It was grey on the theory that an unpaid deposit
       // isn't the DJ's problem — but "Request deposit" plainly is their move,
       // and a request sitting unpaid is one they can chase. Grey said "nothing
       // to see here" about the money the booking exists to collect.
-      color: allDone ? NEON : AMBER,
+      color: depositSkipped ? MUTED : allDone ? NEON : AMBER,
       // Same problem the contract had: "asked for and waiting" looks exactly
       // like "never asked" if all you have is an icon. A partial says so
       // outright, because half the money arriving is the normal path here (an
@@ -985,7 +1001,9 @@ export default function BookingRow({
       // Done means done. Show the fraction if there are real amounts to show,
       // otherwise say nothing and let the check carry it — "$0/$0" on a waived
       // deposit would be a lie about money that was never owed.
-      caption: allDone
+      caption: depositSkipped
+        ? 'Skipped'
+        : allDone
         ? (paidSoFar > 0
             ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
             : undefined)
@@ -1030,6 +1048,15 @@ export default function BookingRow({
             // start double-counting what's owed.
             ...(!depositRow && canRequestDeposit && !payments.some((pp) => pp.kind === 'balance')
               ? [{ label: 'Request deposit', run: () => openRequest('deposit') }]
+              : []),
+            // Skip: go straight to the balance, no deposit collected. Only
+            // before anything is requested, and (like Request) manager+ only.
+            ...(!depositRow && !depositSkipped && canRequestDeposit && !payments.some((pp) => pp.kind === 'balance')
+              ? [{ label: 'Skip deposit', run: () => toggleStep('deposit_skipped', true) }]
+              : []),
+            // Undo a skip, back to "Request deposit".
+            ...(depositSkipped
+              ? [{ label: 'Undo skip', run: () => toggleStep('deposit_skipped', false) }]
               : []),
             // The way out of the gate, next to the reason for it.
             //
