@@ -158,7 +158,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
   const amountTag = `<div style="text-align:right;margin:8px 0 0;color:#9a9a9a;font-size:11px;font-weight:700;letter-spacing:.02em;">${money(amount, currency)}</div>`;
-  const card = (type: string, inner: string): string => {
+  const card = (type: string, inner: string, showAmount = true): string => {
     const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
     return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
 <tr><td colspan="2" style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
@@ -166,7 +166,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 <td width="60" valign="top" style="padding:16px 0 16px 16px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
 </td>
-<td valign="middle" style="padding:14px 16px 14px 4px;">${inner}${amountTag}</td>
+<td valign="middle" height="58" style="padding:16px 16px 16px 4px;">${inner}${showAmount ? amountTag : ''}</td>
 </tr></table>`;
   };
 
@@ -185,7 +185,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
 <table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
 <a href="${href}" style="display:block;padding:11px 22px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;">Pay ${money(amount, currency)} &rarr;</a>
 </td></tr></table>`;
-      return card(m.type, inner);
+      return card(m.type, inner, false);
     }
 
     if (m.type === 'cash') {
