@@ -157,76 +157,72 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
   // One consistent card per method: a brand badge on the left, the details on
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
-  const amountTag = `<div style="text-align:right;margin:8px 0 0;color:#9a9a9a;font-size:11px;font-weight:700;letter-spacing:.02em;">${money(amount, currency)}</div>`;
-  const card = (type: string, inner: string, showAmount = true): string => {
+  const amountTag = `<div style="text-align:right;margin:10px 0 0;color:#9a9a9a;font-size:11px;font-weight:700;letter-spacing:.02em;">${money(amount, currency)}</div>`;
+
+  // One clean card: a themed accent bar, then a badge + brand name on ONE row,
+  // then the action (button or handle) full-width below. Same header on every
+  // card keeps them visually consistent and compact.
+  const card = (type: string, body: string, showAmount = true): string => {
     const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
+    const mt = (METHOD_TYPES as Record<string, { label?: string }>)[type];
+    const label = (mt && mt.label) || type;
     return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
-<tr><td colspan="2" style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr>
-<td width="58" valign="middle" style="padding:13px 0 13px 14px;">
-<table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
-</td>
-<td valign="middle" style="padding:13px 16px 13px 4px;">${inner}${showAmount ? amountTag : ''}</td>
-</tr></table>`;
+<tr><td style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="padding:14px 16px 16px;">
+<table cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:${b.bg};border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">${b.glyph}</td></tr></table></td>
+<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:${b.bg};font-size:15px;">${label}</td>
+</tr></table>
+${body}${showAmount ? amountTag : ''}
+</td></tr></table>`;
   };
 
   const rows = methods.map((m) => {
-    const cfg = METHOD_TYPES[m.type];
     const link = buildPayLink(m, amount, reference);
     const tint = BRAND[m.type] || '#0a6f61';
-    const labelColor = (BADGE[m.type] && BADGE[m.type].bg) || tint;
-    const name = `<div style="font-weight:700;color:${labelColor};font-size:15px;letter-spacing:.01em;">${cfg.label}</div>`;
 
     if (isLinkable(m) && link) {
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
       const href = m.type === 'venmo' ? `${SITE_URL}/pay/${paymentId}/venmo` : link;
-      const inner = `${name}
-<table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
-<a href="${href}" style="display:block;padding:11px 22px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;">Pay ${money(amount, currency)} &rarr;</a>
+      const body = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
+<a href="${href}" style="display:block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;">Pay ${money(amount, currency)} &rarr;</a>
 </td></tr></table>`;
-      return card(m.type, inner, false);
+      return card(m.type, body, false);
     }
 
     if (m.type === 'cash') {
       const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
-      const inner = isBalance
-        ? `${name}
-<p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>
-<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
-        : `${name}
-<p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
-      return card('cash', inner);
+      const body = isBalance
+        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>
+<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
+      return card('cash', body);
     }
 
     if (m.type === 'check') {
       const memo = checkMemo(eventDate, venueName, reference);
       const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
-      const inner = isBalance
-        // Balance by check is handed over AT the event, not mailed ahead.
-        ? `${name}
-<p style="margin:6px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
+      const body = isBalance
+        ? `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
 <p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
 <p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
-<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
-        // Deposit by check is mailed ahead to reserve the date.
-        : `${name}
-<p style="margin:6px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
+<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        : `<p style="margin:10px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
 <p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
 <p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
-<p style="margin:10px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>`;
-      return card('check', inner);
+<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>`;
+      return card('check', body);
     }
 
-    const inner = `${name}
-<p style="margin:5px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
+    const body = `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
 <p style="margin:2px 0 0;font-family:monospace;font-size:15px;color:#111;word-break:break-all;">${displayHandle(m)}</p>
 ${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">Double-check before sending — Zelle payments can't be reversed.</p>` : ''}`;
-    return card(m.type, inner);
+    return card(m.type, body);
   });
 
   return rows.join('');
