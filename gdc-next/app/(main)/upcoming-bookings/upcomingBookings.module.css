@@ -1220,10 +1220,10 @@ select.input {
     /* Top line holds date, time, event type and price together (with the
        chevron); the status icons and actions get their own full-width bands
        below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) auto;
+    grid-template-columns: 64px auto minmax(0, 1fr) 22px;
     grid-template-areas:
       "date  toggle  event  chev"
-      "stat  stat    stat   val"
+      "stat  stat    stat   stat"
       "acts  acts    acts   acts";
     column-gap: .5rem;
     row-gap: .4rem;
@@ -1251,6 +1251,7 @@ select.input {
     width: 100%;
     margin-top: .5rem;
     padding-top: .5rem;
+    padding-right: 74px;
     border-top: 1px solid rgba(255, 255, 255, .05);
   }
   /* Center each icon+caption in its column so the four sit as an even,
@@ -1294,7 +1295,7 @@ select.input {
      urgent thing on a phone — you're looking for what's next, not what it pays
      — so it goes last and stays quiet. */
   .rowValue {
-    grid-area: val;
+    grid-area: stat;
     justify-self: end;
     align-self: center;
     text-align: right;
@@ -1302,7 +1303,6 @@ select.input {
     font-size: 12px;
     font-weight: 700;
     color: var(--neon, #00e0a4);
-    padding-left: 8px;
   }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
