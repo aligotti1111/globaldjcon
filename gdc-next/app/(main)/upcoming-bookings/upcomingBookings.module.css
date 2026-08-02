@@ -1220,11 +1220,11 @@ select.input {
     /* Top line holds date, time, event type and price together (with the
        chevron); the status icons and actions get their own full-width bands
        below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) auto auto;
+    grid-template-columns: 64px auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "date  toggle  event  val   chev"
-      "stat  stat    stat   stat  stat"
-      "acts  acts    acts   acts  acts";
+      "date  toggle  event  chev"
+      "stat  stat    stat   val"
+      "acts  acts    acts   acts";
     column-gap: .5rem;
     row-gap: .4rem;
     /* Height is fixed on desktop to keep the caption line from making rows
@@ -1296,11 +1296,13 @@ select.input {
   .rowValue {
     grid-area: val;
     justify-self: end;
+    align-self: center;
     text-align: right;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 700;
     color: var(--neon, #00e0a4);
+    padding-left: 8px;
   }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
