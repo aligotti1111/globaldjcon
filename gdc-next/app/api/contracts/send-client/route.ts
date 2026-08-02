@@ -16,7 +16,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal } from '@/lib/docuseal';
-import { emailTags } from '@/lib/emailTracking';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -143,7 +142,6 @@ export async function POST(req: Request) {
         <div style="margin:24px 0;">${ctaButton(signUrl, 'Review & Sign')}</div>
         <p style="color:#999;font-size:12px;line-height:1.6;">If the button doesn't work, copy and paste this link:<br><a href="${signUrl}" style="color:#0a6f61;">${signUrl}</a></p>
       `),
-      tags: emailTags(bookingId, 'contract'),
     } as unknown as Parameters<typeof resend.emails.send>[0]);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not email the client.' }, { status: 502 });
