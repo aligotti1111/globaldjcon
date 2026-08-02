@@ -163,10 +163,10 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
     return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
 <tr><td colspan="2" style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr>
-<td width="60" valign="top" style="padding:16px 0 16px 16px;">
+<td width="58" valign="middle" style="padding:13px 0 13px 14px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr><td width="42" height="42" align="center" valign="middle" style="background:${b.bg};border-radius:11px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:42px;">${b.glyph}</td></tr></table>
 </td>
-<td valign="middle" height="58" style="padding:16px 16px 16px 4px;">${inner}${showAmount ? amountTag : ''}</td>
+<td valign="middle" style="padding:13px 16px 13px 4px;">${inner}${showAmount ? amountTag : ''}</td>
 </tr></table>`;
   };
 
@@ -417,9 +417,9 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
       const content = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
 <tr><td style="padding:22px 24px;" align="center">
-<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#0a8f74;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${noun === 'balance' ? 'Balance Due' : 'Deposit Required'}</div>
-<div style="font-size:40px;line-height:1.1;font-weight:800;color:#0b1f1a;margin:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:-.01em;">${money(amount, cur)}</div>
-${summary ? `<div style="margin:10px 0 0;color:#4a6b62;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${summary}</div>` : ''}
+<div style="text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#0a8f74;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${noun === 'balance' ? 'Balance Due' : 'Deposit Required'}</div>
+<div style="text-align:center;font-size:34px;line-height:1.15;font-weight:800;color:#0b1f1a;margin:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:-.01em;">${money(amount, cur)}</div>
+${summary ? `<div style="text-align:center;margin:10px 0 0;color:#4a6b62;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${summary}</div>` : ''}
 </td></tr></table>
 ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
