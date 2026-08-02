@@ -79,6 +79,38 @@ export async function POST(req: Request) {
   try { payload = await req.json(); } catch { return NextResponse.json({ ok: true }); }
 
   const eventType = String(payload.event_type || payload.event || '');
+
+  // Contract VIEWED — the client opened the DocuSeal signing page. Record a
+  // soft "viewed" for the contract stage (a real page view on DocuSeal's side,
+  // not an email pixel — zero deliverability cost), then stop. Requires the
+  // DocuSeal webhook to send form.viewed events.
+  if (eventType === 'form.viewed' || eventType === 'submission.viewed') {
+    const vdata = (payload.data || {}) as Record<string, unknown>;
+    const vnested = (vdata.submission || {}) as Record<string, unknown>;
+    const vSubId = vdata.submission_id ?? vnested.id ?? vdata.id;
+    if (vSubId != null) {
+      try {
+        const admin = createAdminClient();
+        const { data: bk } = await admin
+          .from('bookings')
+          .select('id, email_opens')
+          .eq('contract_submission_id' as never, String(vSubId) as never)
+          .maybeSingle();
+        const row = bk as { id?: string; email_opens?: Record<string, string> | null } | null;
+        if (row?.id) {
+          const cur = row.email_opens || {};
+          if (!cur.contract) {
+            await admin
+              .from('bookings')
+              .update({ email_opens: { ...cur, contract: new Date().toISOString() } } as unknown as never)
+              .eq('id', row.id);
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+    return NextResponse.json({ ok: true, viewed: true });
+  }
+
   // Only react to completion-type events; ack everything else so DocuSeal
   // doesn't keep retrying.
   if (eventType !== 'submission.completed' && eventType !== 'form.completed') {
