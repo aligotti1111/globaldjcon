@@ -29,6 +29,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 interface RiderRow {
   id: string; booking_id: string; dj_id: string; items: unknown; logo_hidden: boolean | null;
   rider_mode: unknown; rider_pdf_url: string | null; rider_name: string | null;
+  confirmed_at: string | null;
 }
 
 export default async function RiderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,7 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
   const db = createAdminClient() as unknown as SupabaseClient;
   const { data: rData } = await db
     .from('booking_riders')
-    .select('id, booking_id, dj_id, items, logo_hidden, rider_mode, rider_pdf_url, rider_name')
+    .select('id, booking_id, dj_id, items, logo_hidden, rider_mode, rider_pdf_url, rider_name, confirmed_at')
     .eq('id', id).maybeSingle();
   const rider = rData as unknown as RiderRow | null;
   if (!rider) notFound();
@@ -60,6 +61,8 @@ export default async function RiderPage({ params }: { params: Promise<{ id: stri
 
   return (
     <RiderView
+      riderId={rider.id}
+      confirmedAt={rider.confirmed_at || null}
       items={normalizeRiderItems(rider.items)}
       mode={normalizeRiderMode(rider.rider_mode)}
       pdfUrl={rider.rider_pdf_url || null}
