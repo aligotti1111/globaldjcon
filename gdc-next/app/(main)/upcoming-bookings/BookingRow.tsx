@@ -245,7 +245,7 @@ export default function BookingRow({
   // Which step's mark-complete dropdown is open (by key), or null — plus the
   // viewport position to render it at (fixed, so the card's overflow can't clip it).
   const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   /**
    * The button the open menu belongs to.
    *
@@ -334,7 +334,11 @@ export default function BookingRow({
       const el = menuBtnRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+      {
+          const MENU_W = 210;
+          const left = Math.min(Math.max(8, r.left), window.innerWidth - MENU_W - 8);
+          setMenuPos({ top: r.bottom + 6, left });
+        }
     }
     compute();
     window.addEventListener('scroll', compute, true);
@@ -1761,7 +1765,11 @@ export default function BookingRow({
                         // being true the moment anything scrolls.
                         menuBtnRef.current = e.currentTarget as HTMLElement;
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                        {
+          const MENU_W = 210;
+          const left = Math.min(Math.max(8, r.left), window.innerWidth - MENU_W - 8);
+          setMenuPos({ top: r.bottom + 6, left });
+        }
                         setMenuOpenKey(st.key);
                       }}
                     >
@@ -1796,9 +1804,9 @@ export default function BookingRow({
                         The stop belongs on the floating elements themselves.
                       */}
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); setMenuOpenKey(null); }} />
-                      <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                      <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, maxWidth: 210, whiteSpace: 'nowrap' }}>
                         {/* Stage name — so the DJ knows which column this menu belongs to. */}
-                        <div style={{ color: 'var(--muted,#9a9aae)', fontSize: '.6rem', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', padding: '.35rem .6rem .3rem' }}>
+                        <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.04em', padding: '.5rem .7rem .4rem' }}>
                           {iconName(st.key, djType)}
                         </div>
                         <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
