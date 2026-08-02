@@ -1806,7 +1806,7 @@ export default function BookingRow({
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); setMenuOpenKey(null); }} />
                       <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, maxWidth: 210, whiteSpace: 'nowrap' }}>
                         {/* Stage name — so the DJ knows which column this menu belongs to. */}
-                        <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.04em', padding: '.5rem .7rem .4rem' }}>
+                        <div style={{ color: 'var(--white,#fff)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.02em', padding: '.5rem .7rem .4rem' }}>
                           {iconName(st.key, djType)}
                         </div>
                         <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
