@@ -6,6 +6,7 @@
 //   · custom — the labeled fields (label + value), grouped by section, plus a
 //              Print / Save-PDF button.
 
+import { useState } from 'react';
 import { RIDER_SECTIONS, groupRider, type RiderItem, type RiderMode } from '@/lib/rider';
 
 function fmtDate(d: string | null): string {
@@ -24,8 +25,10 @@ function fmtTime(t: string | null): string {
 }
 
 export default function RiderView({
-  items, mode, pdfUrl, riderName, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress,
+  riderId, confirmedAt, items, mode, pdfUrl, riderName, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress,
 }: {
+  riderId: string;
+  confirmedAt: string | null;
   items: RiderItem[];
   mode: RiderMode;
   pdfUrl: string | null;
@@ -42,6 +45,33 @@ export default function RiderView({
   const g = groupRider(items);
   const when = fmtDate(eventDate);
   const isUpload = mode === 'upload' && !!pdfUrl;
+
+  // Host confirmation — the one host action on this otherwise read-only page.
+  // Stamps booking_riders.confirmed_at, which the DJ's "New activity" sort reads.
+  const [confirmed, setConfirmed] = useState<boolean>(!!confirmedAt);
+  const [saving, setSaving] = useState(false);
+  const [confirmErr, setConfirmErr] = useState<string | null>(null);
+  async function confirmReceived() {
+    if (saving || confirmed) return;
+    setSaving(true);
+    setConfirmErr(null);
+    try {
+      const res = await fetch('/api/rider/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ riderId }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || 'Could not confirm.');
+      }
+      setConfirmed(true);
+    } catch (e) {
+      setConfirmErr(e instanceof Error ? e.message : 'Could not confirm.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d0d14', color: '#fff', padding: '2rem 1rem' }}>
@@ -128,6 +158,32 @@ export default function RiderView({
             </div>
           </>
         )}
+
+        {/* Host confirmation. The rider is the DJ's requirements — the host's
+            one action is to confirm they've received and read it. */}
+        <div style={{ textAlign: 'center', marginTop: '1.6rem' }}>
+          {confirmed ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.95rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              Rider confirmed — thanks!
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={confirmReceived}
+                disabled={saving}
+                style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', border: 'none', borderRadius: 8, padding: '.85rem 1.8rem', fontWeight: 800, fontSize: '.95rem', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}
+              >
+                {saving ? 'Confirming…' : 'Confirm Received'}
+              </button>
+              <div style={{ color: 'rgba(255,255,255,.45)', fontSize: '.75rem', marginTop: '.55rem' }}>
+                Let {djName} know you&rsquo;ve got the rider.
+              </div>
+              {confirmErr && <div style={{ color: '#ff9a9a', fontSize: '.78rem', marginTop: '.5rem' }}>{confirmErr}</div>}
+            </>
+          )}
+        </div>
 
         <p style={{ textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: '.72rem', marginTop: '1.2rem' }}>
           Sent via Global DJ Connect
