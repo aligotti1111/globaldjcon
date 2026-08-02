@@ -145,6 +145,17 @@ const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   guestlist: 'Guest List',
 };
 
+// The stage's display name — used for the hover tooltip and the dropdown
+// header. song_list is the Rider on club, the Planner on mobile.
+function iconName(slotKey: string, djType: 'club' | 'mobile'): string {
+  if (slotKey === 'song_list') return djType === 'club' ? 'Rider' : 'Planner & Playlist';
+  if (slotKey === 'contract') return 'Contract';
+  if (slotKey === 'deposit') return 'Deposit';
+  if (slotKey === 'invoice') return 'Balance';
+  if (slotKey === 'guestlist') return 'Guest List';
+  return '';
+}
+
 // Column order per DJ type. Club/bar puts the Rider (song_list slot) BEFORE
 // Deposit; mobile keeps Planner & Playlist in its original position.
 function pipeSlotsFor(djType: 'club' | 'mobile'): readonly (typeof PIPE_SLOTS)[number][] {
@@ -1734,7 +1745,7 @@ export default function BookingRow({
                     <button
                       type="button"
                       className={`${styles.stBtn} ${open ? styles.stBtnOpen : ''}`}
-                      title={st.label}
+                      title={iconName(st.key, djType)}
                       aria-haspopup="menu"
                       aria-expanded={open}
                       onClick={(e) => {
@@ -1758,7 +1769,7 @@ export default function BookingRow({
                       <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                     </button>
                   ) : (
-                    <div className={styles.stBtn} style={{ cursor: 'default' }} title={st.label}>
+                    <div className={styles.stBtn} style={{ cursor: 'default' }} title={iconName(st.key, djType)}>
                       <span className={styles.stTop}>{inner}</span>
                       <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                     </div>
@@ -1786,6 +1797,11 @@ export default function BookingRow({
                       */}
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); setMenuOpenKey(null); }} />
                       <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap' }}>
+                        {/* Stage name — so the DJ knows which column this menu belongs to. */}
+                        <div style={{ color: 'var(--muted,#9a9aae)', fontSize: '.6rem', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', padding: '.35rem .6rem .3rem' }}>
+                          {iconName(st.key, djType)}
+                        </div>
+                        <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
                         {/* The amounts, when there are any. Two words fit on
                             the strip; "$299.99 of $600.00 received" doesn't —
                             and that's the number a DJ actually wants when they
