@@ -1216,20 +1216,14 @@ select.input {
    */
   .row {
     display: grid;
-    grid-template-columns: 64px auto 1fr auto;
-    /* Event gets its own band rather than sharing "toggle" with the time.
-       Both were assigned grid-area: toggle for a moment, which does not stack
-       them vertically — it puts two elements in the SAME cell, drawn on top of
-       one another. The time was rendering underneath the event name.
-       "acts"/"pill" are gone: the manual pill and edit/delete are children of
-       the event cell now, not of .row, so a grid-area on them is inert — grid
-       placement only applies to direct children. They flow inside the event
-       band instead. */
+    /* Top line holds date, time, event type and price together (with the
+       chevron); the status icons and actions get their own full-width bands
+       below. */
+    grid-template-columns: 64px auto minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "date  flyer  toggle  chev"
-      "event event  event   event"
-      "stat  stat   stat    stat"
-      "val   val    acts    acts";
+      "date  toggle  event  val   chev"
+      "stat  stat    stat   stat  stat"
+      "acts  acts    acts   acts  acts";
     column-gap: .5rem;
     row-gap: .4rem;
     /* Height is fixed on desktop to keep the caption line from making rows
@@ -1268,7 +1262,7 @@ select.input {
     justify-content: flex-start;
     min-width: 0;
   }
-  .flyerInline { grid-area: flyer; }
+  .flyerInline { display: none; }
   .rowToggle {
     grid-area: toggle;
     min-width: 0;
@@ -1295,8 +1289,11 @@ select.input {
      — so it goes last and stays quiet. */
   .rowValue {
     grid-area: val;
-    text-align: left;
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
     font-size: 12px;
+    color: var(--muted, #8a8aa0);
   }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
