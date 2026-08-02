@@ -1254,11 +1254,11 @@ select.input {
     width: 100%;
     margin-top: .15rem;
   }
-  .stCell { justify-content: flex-start; }
-  /* ~87px per cell at 390px. "Requested" is ~50px, so it still fits — but the
-     caption is centred on a 36px icon inside an 87px cell, and left alone it
-     would sit off to one side. Let it use the cell. */
-  .stCap { width: 100%; }
+  /* Center each icon+caption in its column so the four sit as an even,
+     tidy row instead of clustering to the left (the "floating icons" look). */
+  .stCell { justify-content: center; }
+  .stBtn { align-items: center; }
+  .stCap { width: 100%; text-align: center; }
 
   .rowDate {
     grid-area: date;
