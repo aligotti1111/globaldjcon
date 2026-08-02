@@ -185,9 +185,7 @@ ${body}${showAmount ? amountTag : ''}
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
       const href = m.type === 'venmo' ? `${SITE_URL}/pay/${paymentId}/venmo` : link;
-      const body = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0;"><tr><td style="background:${tint};border-radius:8px;" align="center">
-<a href="${href}" style="display:block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;">Pay ${money(amount, currency)} &rarr;</a>
-</td></tr></table>`;
+      const body = `<a href="${href}" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} &rarr;</a>`;
       return card(m.type, body, false);
     }
 
