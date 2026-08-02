@@ -166,9 +166,9 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
     const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
     const mt = (METHOD_TYPES as Record<string, { label?: string }>)[type];
     const label = (mt && mt.label) || type;
-    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;table-layout:fixed;">
 <tr><td style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr><td valign="top" height="104" style="padding:14px 16px 16px;">
+<tr><td style="padding:14px 16px 16px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr>
 <td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:${b.bg};border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">${b.glyph}</td></tr></table></td>
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:${b.bg};font-size:15px;">${label}</td>
