@@ -92,6 +92,25 @@
 .sortBtnActive:hover {
   color: #050507;
 }
+/* Count badge on the "New activity" sort button — how many bookings have a
+   fresh host action waiting. Dark pill + neon text reads on both the inactive
+   (transparent) and active (neon) button states. */
+.sortCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #050507;
+  color: var(--neon, #00f5c4);
+  font-size: .58rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
 
 /* ── Empty state ────────────────────────────────────────────────────── */
 .empty {
@@ -883,6 +902,33 @@ select.input {
   display: flex;
   align-items: center;
   min-width: 0;
+}
+
+/* New-activity highlight. The stage cell whose HOST action is this booking's
+   most recent (last_activity_slot) gets a neon ring + soft fill so the DJ sees
+   WHAT changed. Box-shadow + background only — no size change — so it can't
+   shift the fixed-width status grid. Positioned for the corner NEW tag. */
+.stCellNew {
+  position: relative;
+  border-radius: 9px;
+  background: rgba(0, 245, 196, .10);
+  box-shadow: inset 0 0 0 1px rgba(0, 245, 196, .55), 0 0 10px rgba(0, 245, 196, .22);
+}
+.stNewTag {
+  position: absolute;
+  top: -6px;
+  right: -3px;
+  z-index: 3;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: var(--neon, #00f5c4);
+  color: #050507;
+  font-family: 'Space Mono', monospace;
+  font-size: .46rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1.35;
+  pointer-events: none;
 }
 
 /* The clickable unit: icon + chevron on top, caption underneath.
