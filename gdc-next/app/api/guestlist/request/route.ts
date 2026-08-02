@@ -8,7 +8,6 @@ import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { normalizeGuests, sortGuests, headCount } from '@/lib/guestlist';
-import { emailTags } from '@/lib/emailTracking';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -83,7 +82,7 @@ export async function POST(req: Request) {
 <p style="margin:12px 0 0;color:#999;font-size:12px;word-break:break-all;">Or paste: <a href="${url}" style="color:#999;">${url}</a></p>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to, subject: `${djName} — guest list for ${when}`, html: shell(content), tags: emailTags(bookingId, 'guestlist') });
+        await resend.emails.send({ from: FROM, to, subject: `${djName} — guest list for ${when}`, html: shell(content) });
       } catch {
         return NextResponse.json({ ok: true, id, url, status: 'sent', warning: 'Guest list saved, but the email could not be sent. Copy the link instead.' });
       }
