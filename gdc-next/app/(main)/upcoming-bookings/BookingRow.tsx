@@ -431,6 +431,7 @@ export default function BookingRow({
     // Only stages whose client email links to one of OUR pages, where we can
     // record a real page view with no email pixel. song_list is rider on club,
     // planner on mobile. (Contract will join via DocuSeal-viewed later.)
+    if (key === 'contract') return 'contract';
     if (key === 'guestlist') return 'guestlist';
     if (key === 'song_list') return booking.booking_type === 'club' ? 'rider' : 'planner';
     return null;
