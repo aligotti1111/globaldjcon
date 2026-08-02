@@ -166,7 +166,7 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
     const b = BADGE[type] || { bg: '#0a6f61', glyph: '•', soft: '#f4f7f6', border: '#d7e3e0' };
     const mt = (METHOD_TYPES as Record<string, { label?: string }>)[type];
     const label = (mt && mt.label) || type;
-    return `<table width="536" cellpadding="0" cellspacing="0" border="0" style="width:536px;max-width:100%;border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:1px solid ${b.border};border-radius:12px;margin:0 0 12px;background:${b.soft};overflow:hidden;">
 <tr><td style="height:4px;background:${b.bg};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="padding:14px 16px 16px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr>
@@ -223,7 +223,11 @@ ${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">
     return card(m.type, body);
   });
 
-  return rows.join('');
+  // Wrap every card in ONE fixed-width (536px) parent. A card's width:100% only
+  // resolves to a real width when its PARENT has a pixel width — without this,
+  // iOS Mail shrink-wraps each card to its own content (narrow buttons, wide
+  // text). The fixed parent forces them all to the same 536px.
+  return `<table width="536" cellpadding="0" cellspacing="0" border="0" style="width:536px;max-width:100%;"><tr><td>${rows.join('')}</td></tr></table>`;
 }
 
 async function clientEmailFor(b: BookingRow): Promise<string | null> {
