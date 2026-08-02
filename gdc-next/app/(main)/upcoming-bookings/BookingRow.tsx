@@ -442,6 +442,11 @@ export default function BookingRow({
   // that email was likely opened. song_list is the rider on club, planner on
   // mobile.
   const emailOpens = ((booking as { email_opens?: Record<string, string> | null }).email_opens) || {};
+  // New-activity highlight. The server stamps last_activity_slot with the
+  // pipeline cell of the booking's most recent HOST action (contract signed,
+  // host paid, planner submitted, rider / guest list confirmed). That cell gets
+  // a neon glow so the DJ sees WHAT changed, not just that something did.
+  const newSlot = ((booking as { last_activity_slot?: string | null }).last_activity_slot) || null;
   const stageForKey = (key: string): string | null => {
     // Only stages whose client email links to one of OUR pages, where we can
     // record a real page view with no email pixel. song_list is rider on club,
@@ -1615,13 +1620,14 @@ export default function BookingRow({
         <div className={styles.statusStrip}>
           {pipeSlotsFor(djType).map((slotKey) => {
             const st = steps.find((s) => s.key === slotKey);
+            const isNew = newSlot != null && slotKey === newSlot;
             // Hold the column open. A dash, not a dimmed icon: dimmed implies a
             // stage that exists and hasn't been done, and there's a real
             // difference between "no contract needed on this booking" and "the
             // contract hasn't gone out".
             if (!st) {
               return (
-                <div key={slotKey} className={styles.stCell}>
+                <div key={slotKey} className={`${styles.stCell} ${isNew ? styles.stCellNew : ''}`}>
                   <span className={styles.stDash} aria-hidden="true">—</span>
                 </div>
               );
@@ -1743,7 +1749,8 @@ export default function BookingRow({
               — which is the exact misalignment this page was rebuilt to fix.
             */
             return (
-              <div key={st.key} className={styles.stCell}>
+              <div key={st.key} className={`${styles.stCell} ${isNew ? styles.stCellNew : ''}`}>
+                {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {hasMenu ? (
                     <button

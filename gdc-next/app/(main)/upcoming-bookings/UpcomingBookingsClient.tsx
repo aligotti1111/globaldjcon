@@ -169,8 +169,9 @@ export default function UpcomingBookingsClient({
     return () => { active = false; };
   }, [djType, userId]);
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
-  // month) or 'recent' (most recently booked first, flat list).
-  const [sortMode, setSortMode] = useState<'date' | 'recent'>('date');
+  // month), 'recent' (most recently booked first, flat list), or 'activity'
+  // (most recent HOST action first — see last_activity_at from the server).
+  const [sortMode, setSortMode] = useState<'date' | 'recent' | 'activity'>('date');
   const canBookings = canAcceptBookings(actingRole);
   const canContract = canSendContracts(actingRole);
   const canDeposit = canRequestDeposit(actingRole);
@@ -286,6 +287,21 @@ export default function UpcomingBookingsClient({
       .filter((b) => b.event_date)
       .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   }, [bookings]);
+
+  // Flat list ordered by most recent HOST action (last_activity_at desc).
+  // Bookings the host has touched rise to the top; untouched ones sink below,
+  // still ordered by date so the tail stays readable.
+  const activityList = useMemo(() => {
+    return [...bookings]
+      .filter((b) => b.event_date)
+      .sort((a, b) => {
+        const ta = a.last_activity_at ? Date.parse(a.last_activity_at) : -1;
+        const tb = b.last_activity_at ? Date.parse(b.last_activity_at) : -1;
+        if (tb !== ta) return tb - ta;
+        return (a.event_date || '').localeCompare(b.event_date || '');
+      });
+  }, [bookings]);
+  const activityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
 
   // IDs of bookings whose time range overlaps another booking on the SAME
   // date — CLUB/BAR DJs only (a club DJ can't be in two places at once).
@@ -431,6 +447,15 @@ export default function UpcomingBookingsClient({
           >
             Recently booked
           </button>
+          <button
+            type="button"
+            className={`${styles.sortBtn} ${sortMode === 'activity' ? styles.sortBtnActive : ''}`}
+            onClick={() => setSortMode('activity')}
+            title="Bookings where the host recently did something — signed, paid, submitted or confirmed"
+          >
+            New activity
+            {activityCount > 0 && <span className={styles.sortCount}>{activityCount}</span>}
+          </button>
           {!archive && djType === 'club' && isPaid && (
             <button
               type="button"
@@ -460,11 +485,11 @@ export default function UpcomingBookingsClient({
             </>
           )}
         </div>
-      ) : sortMode === 'recent' ? (
+      ) : (sortMode === 'recent' || sortMode === 'activity') ? (
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
           <ColumnHeaders djType={djType} />
           <div className={styles.monthItems}>
-            {recentList.map((b) => (
+            {(sortMode === 'activity' ? activityList : recentList).map((b) => (
               <BookingRow
                 key={b.id}
                 booking={b}

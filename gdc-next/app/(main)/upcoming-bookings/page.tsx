@@ -109,13 +109,19 @@ export interface UpcomingBooking {
   // Booking-readiness pipeline: manual step overrides + per-booking snapshot of
   // whether a contract was required at creation time (freezes the flow).
   status_overrides?: Record<string, boolean> | null;
-  email_opens?: Record<string, string> | null;
   requires_contract?: boolean | null;
   // Playlist & Planner. Written ONLY by trg_sync_planner_status, never by the
   // app — so it can't drift from booking_planners.status the way it would with
   // two writers (the DJ's Request, the client's autosave on a page with no
   // session). See planner-schema.sql §4.
   planner_status?: 'sent' | 'partial' | 'submitted' | null;
+  // New-activity sort (computed server-side, not stored). last_activity_at is
+  // the newest HOST action on this booking — contract signed, a payment the
+  // host said they paid, the planner submitted, or the rider / guest list
+  // confirmed. last_activity_slot names the pipeline cell that action belongs
+  // to, so the row can highlight it. Both null when the host hasn't acted.
+  last_activity_at?: string | null;
+  last_activity_slot?: 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist' | null;
 }
 
 /**
@@ -205,7 +211,7 @@ export default async function UpcomingBookingsPage() {
   // RLS client returns nothing for a teammate. Scoped hard to djId below.
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status, email_opens')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, planner_status')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -258,17 +264,38 @@ export default async function UpcomingBookingsPage() {
   // .from('booking_payments') on the typed client is a build error — cast to
   // an untyped client for this ONE table (same fix as /api/payments).
   const db = supabase as unknown as SupabaseClient;
+
+  // ── New-activity sort: newest HOST action per booking ──────────────────────
+  // We track the most recent thing the HOST did on each booking — never the
+  // DJ's own actions — plus which pipeline cell it belongs to, so the row can
+  // highlight it. Host signals: contract signed, a payment the host said they
+  // paid (marked_sent_at — the manual rails; the DJ marking money received is
+  // the DJ's action and is deliberately NOT counted), the planner submitted,
+  // and the rider / guest list confirmed. Timestamps are compared as numbers so
+  // signals from different tables order correctly.
+  type ActivitySlot = 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist';
+  const activityByBooking: Record<string, { ts: string; t: number; slot: ActivitySlot }> = {};
+  const noteActivity = (bid: string, ts: string | null | undefined, slot: ActivitySlot) => {
+    if (!ts) return;
+    const t = Date.parse(ts);
+    if (Number.isNaN(t)) return;
+    const cur = activityByBooking[bid];
+    if (!cur || t > cur.t) activityByBooking[bid] = { ts, t, slot };
+  };
+
   const paymentsByBooking: Record<string, BookingPayment[]> = {};
   const bookingIds = bookingRows.map((b) => b.id);
   if (bookingIds.length > 0) {
     const { data: payRows } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at')
+      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at')
       .in('booking_id', bookingIds)
       .order('requested_at', { ascending: true });
-    for (const p of ((payRows as BookingPayment[] | null) || [])) {
+    for (const p of ((payRows as (BookingPayment & { marked_sent_at?: string | null })[] | null) || [])) {
       if (!paymentsByBooking[p.booking_id]) paymentsByBooking[p.booking_id] = [];
       paymentsByBooking[p.booking_id].push(p);
+      // The host said they paid → the deposit cell for a deposit, else Balance.
+      noteActivity(p.booking_id, p.marked_sent_at, p.kind === 'deposit' ? 'deposit' : 'invoice');
     }
   }
 
@@ -284,7 +311,7 @@ export default async function UpcomingBookingsPage() {
   if (bookingIds.length > 0) {
     const { data: planRows } = await db
       .from('booking_planners')
-      .select('id, booking_id, status, fields, responses')
+      .select('id, booking_id, status, fields, responses, submitted_at')
       .in('booking_id', bookingIds);
     for (const p of (((planRows as unknown) as {
       id: string;
@@ -292,11 +319,42 @@ export default async function UpcomingBookingsPage() {
       status: 'sent' | 'partial' | 'submitted';
       fields: PlannerField[] | null;
       responses: PlannerResponses | null;
+      submitted_at: string | null;
     }[] | null) || [])) {
       const { answered, total } = plannerProgress(p.fields || [], p.responses || {});
       plannersByBooking[p.booking_id] = { id: p.id, status: p.status, answered, total };
+      // Host submitted their planner / playlist → the song_list cell.
+      noteActivity(p.booking_id, p.submitted_at, 'song_list');
     }
   }
+
+  // Rider + guest list host confirmations. Both are DJ-authored and sent to the
+  // host to review; confirmed_at is stamped only when the host taps Confirm on
+  // the page (see /api/rider/confirm, /api/guestlist/confirm). Club bookings use
+  // the rider, so it shares the song_list cell; the guest list has its own.
+  if (bookingIds.length > 0) {
+    // Admin client, same as the bookings read above: these tables have no
+    // team-member RLS policy, so the session client returns nothing for a
+    // teammate. Hard-scoped to this owner's bookingIds, so nothing can leak.
+    const [{ data: riderRows }, { data: glRows }] = await Promise.all([
+      admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', bookingIds),
+      admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', bookingIds),
+    ]);
+    for (const r of (((riderRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
+      noteActivity(r.booking_id, r.confirmed_at, 'song_list');
+    }
+    for (const g of (((glRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
+      noteActivity(g.booking_id, g.confirmed_at, 'guestlist');
+    }
+  }
+
+  // Contract signature is already on the booking row. Fold it in, then stamp
+  // each booking with its newest host action for the "New activity" sort.
+  bookingRows = bookingRows.map((b) => {
+    noteActivity(b.id, b.contract_signed_at, 'contract');
+    const a = activityByBooking[b.id];
+    return { ...b, last_activity_at: a?.ts || null, last_activity_slot: a?.slot || null };
+  });
 
   return (
     <UpcomingBookingsClient
