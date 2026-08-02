@@ -34,7 +34,6 @@ import {
   type PlannerField,
   type PlannerResponses,
 } from '@/lib/planner';
-import { emailTags } from '@/lib/emailTracking';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -372,7 +371,6 @@ This link is private to your booking — anyone with it can see and edit your pl
             ? `Reminder: your planner for ${when}`
             : `${djName} — plan the music for ${when}`}`,
           html: shell(content),
-          tags: emailTags(bookingId, 'planner'),
         });
       } catch {
         // The row exists and the link works. A dead Resend key must not make
