@@ -1249,7 +1249,9 @@ select.input {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
-    margin-top: .15rem;
+    margin-top: .5rem;
+    padding-top: .5rem;
+    border-top: 1px solid rgba(255, 255, 255, .05);
   }
   /* Center each icon+caption in its column so the four sit as an even,
      tidy row instead of clustering to the left (the "floating icons" look). */
