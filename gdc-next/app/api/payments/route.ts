@@ -397,7 +397,7 @@ export async function POST(req: Request) {
       const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
       const detailRow = (label: string, value: string) =>
         `<tr><td style="padding:5px 0;color:#8a8a8a;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;width:74px;vertical-align:top;">${label}</td><td style="padding:5px 0;color:#111;font-size:14px;">${value}</td></tr>`;
-      const recap = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fafafa;border:1px solid #ededed;border-radius:10px;margin:0 0 22px;">
+      const recap = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="min-width:100%;background:#fafafa;border:1px solid #ededed;border-radius:10px;margin:0 0 22px;">
 <tr><td style="padding:14px 18px;">
 <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#0a8f74;font-weight:700;margin:0 0 8px;">Event details</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -409,7 +409,7 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 </td></tr></table>`;
 
       const content = `
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="min-width:100%;margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
 <tr><td style="padding:22px 24px;" align="center">
 <div style="text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#0a8f74;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">${noun === 'balance' ? 'Balance Due' : 'Deposit Required'}</div>
 <div style="text-align:center;font-size:34px;line-height:1.15;font-weight:800;color:#0b1f1a;margin:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:-.01em;">${money(amount, cur)}</div>
