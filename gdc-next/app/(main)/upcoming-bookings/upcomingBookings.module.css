@@ -336,7 +336,8 @@
    inclusive snapshot first, then the agreed rate. */
 .rowValue {
   font-size: 13px;
-  color: #c8c8d8;
+  color: var(--neon, #00e0a4);
+  font-weight: 700;
   text-align: right;
   white-space: nowrap;
   /* The only thing separating "$544.38" from the Contract icon was the 13px
@@ -1296,7 +1297,8 @@ select.input {
     text-align: right;
     white-space: nowrap;
     font-size: 12px;
-    color: var(--muted, #8a8aa0);
+    font-weight: 700;
+    color: var(--neon, #00e0a4);
   }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
