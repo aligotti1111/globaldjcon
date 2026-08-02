@@ -1274,6 +1274,9 @@ select.input {
   .rowContext {
     grid-area: event;
     justify-self: start;
+    /* Sit between the time and price, spaced off the time but still leaning
+       toward it (left-aligned with a gap) rather than glued to it. */
+    padding-left: .7rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
