@@ -1373,7 +1373,7 @@ export default function BookingRow({
                   : [])
               // Opens the modal — the whole choose-a-planner, preview, customise
               // and send flow.
-              : [{ label: 'Select and Send Planner & Playlist', run: () => { setPlannerErr(null); setSendOpen(true); } }],
+              : [{ label: 'Select - Send Planner/Playlist', run: () => { setPlannerErr(null); setSendOpen(true); } }],
     });
   }
 
