@@ -1,0 +1,167 @@
+'use client';
+
+// NotificationBell — the header's "new activity" bell (desktop only). Sits
+// between the Booking Requests and Inbox icons. Clicking it opens a small panel
+// listing the most recent HOST actions across the DJ's bookings: each row is
+// the stage icon that changed, plus the event type and date. A "View more"
+// link at the bottom opens the Upcoming Bookings "New activity" view.
+
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+type Item = { bookingId: string; slot: string; at: string; eventDate: string | null; label: string };
+
+// The stage icon that represents each kind of update — same vocabulary as the
+// booking pipeline (contract / deposit / balance / planner-or-rider / guests).
+const EMOJI: Record<string, string> = {
+  contract: '\u{1F4DD}',   // 📝
+  deposit: '\u{1F4B5}',    // 💵
+  invoice: '\u{1F9FE}',    // 🧾
+  song_list: '\u{1F3B5}',  // 🎵
+  guestlist: '\u{1F465}',  // 👥
+};
+const WHAT: Record<string, string> = {
+  contract: 'Contract signed',
+  deposit: 'Deposit paid',
+  invoice: 'Balance paid',
+  song_list: 'Planner submitted',
+  guestlist: 'Guest list confirmed',
+};
+
+function fmtDate(d: string | null): string {
+  if (!d) return '';
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
+const MORE_HREF = '/upcoming-bookings?filter=activity';
+
+export default function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [count, setCount] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Desktop-only, per the design. Render nothing on narrow screens (the burger
+  // menu owns mobile).
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const on = () => setIsDesktop(mq.matches);
+    on();
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+
+  async function load() {
+    try {
+      const r = await fetch('/api/dj/new-activity', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      setItems(Array.isArray(j.items) ? j.items : []);
+      setCount(typeof j.count === 'number' ? j.count : 0);
+    } catch { /* non-fatal — the bell just shows what it last had */ }
+  }
+
+  // Load on mount and poll, so the badge stays current without opening it.
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  if (!isDesktop) return null;
+
+  const shown = items.slice(0, 6);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="inbox-nav-btn"
+        title="New activity"
+        aria-label="New activity"
+        onClick={() => { setOpen((v) => !v); if (!open) load(); }}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+      >
+        <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {count > 0 && (
+          <span className="inbox-badge" aria-label={`${count} new activity`}>
+            {count > 9 ? '9+' : count}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute', right: 0, top: 'calc(100% + 10px)', width: 320,
+            background: '#0d0d14', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12,
+            boxShadow: '0 14px 44px rgba(0,0,0,.6)', zIndex: 1000, overflow: 'hidden',
+          }}
+        >
+          <div style={{ padding: '12px 15px', borderBottom: '1px solid rgba(255,255,255,.08)', fontWeight: 700, fontSize: '.92rem', color: '#fff', letterSpacing: '.01em' }}>
+            New activity
+          </div>
+
+          {shown.length === 0 ? (
+            <div style={{ padding: '22px 15px', color: 'rgba(255,255,255,.5)', fontSize: '.85rem', textAlign: 'center' }}>
+              No new activity yet.
+            </div>
+          ) : (
+            shown.map((it) => (
+              <button
+                key={`${it.bookingId}-${it.at}`}
+                type="button"
+                onClick={() => { setOpen(false); router.push(MORE_HREF); }}
+                style={{
+                  display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
+                  padding: '11px 15px', background: 'transparent', border: 'none',
+                  borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>{EMOJI[it.slot] || '\u{1F514}'}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
+                    {WHAT[it.slot] || 'Update'}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+
+          <button
+            type="button"
+            onClick={() => { setOpen(false); router.push(MORE_HREF); }}
+            style={{
+              display: 'block', width: '100%', textAlign: 'center', padding: '12px',
+              background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,.08)',
+              color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', letterSpacing: '.02em',
+            }}
+          >
+            View more &rarr;
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -16,6 +16,7 @@ import { canAcceptBookings } from '@/lib/acting';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
+import NotificationBell from './NotificationBell';
 import AuthModal from './AuthModal';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -154,6 +155,13 @@ export default function Header() {
                     )}
                   </Link>
                   )}
+
+                  {/* New-activity bell (desktop only) — sits between the
+                      Booking Requests and Inbox icons. Shown for DJ-side
+                      accounts, since it's about the host actions on their
+                      own bookings. */}
+                  {(isDj || isTeammate) && <NotificationBell />}
+
                   <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
                     <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
