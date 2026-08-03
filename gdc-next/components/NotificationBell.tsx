@@ -159,7 +159,7 @@ export default function NotificationBell() {
               <button
                 key={`${it.bookingId}-${it.at}`}
                 type="button"
-                onClick={() => { setOpen(false); router.push(MORE_HREF); }}
+                onClick={() => { setOpen(false); router.push(`/upcoming-bookings?open=${encodeURIComponent(it.bookingId)}`); }}
                 style={{
                   display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
                   padding: '11px 15px', background: 'transparent', border: 'none',
