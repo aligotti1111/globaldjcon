@@ -1256,45 +1256,34 @@ export default function BookingRow({
   // one column the DJ can act on look like the one they can't.
   if (booking.booking_type !== 'club') {
     const pstatus = planner?.status || booking.planner_status || null;
-    const done = pstatus === 'submitted' || !!overrides.song_list;
+    const overridden = !!overrides.song_list;
 
-    // Same gate as the deposit, same reasoning: a manual booking may have no
-    // client attached, and a planner with no recipient goes nowhere. The icon
-    // still shows — a planner always applies to a mobile booking, so a dash
-    // here would be a lie. The dropdown names the problem and hands over the
-    // fix. (Hiding the action and saying nothing was the original bug in BOTH
-    // the contract and deposit columns; it's not being repeated here.)
-    const state: StepState =
-      done ? 'done'
-      : (pstatus === 'sent' || pstatus === 'partial') ? 'pending'
-      : 'todo';
-
-    // The fraction, and it's the whole reason `partial` is worth a state of its
-    // own: "they haven't started" and "they're three questions from done" are
-    // different problems for the DJ, and "Pending" says neither. Same idea as
-    // the deposit's $300/$600.
-    //
-    // total can be 0 if the snapshot somehow has no visible fields — show
-    // Pending rather than "0/0", which reads like a bug because it is one.
+    // The fraction and percent answered. total can be 0 if the snapshot has no
+    // visible fields — then there's no meaningful percent to show.
     const frac = planner && planner.total > 0
       ? `${planner.answered}/${planner.total}`
       : null;
-
-    // Percent complete — what shows under the icon. A planner fills in over
-    // days, so the DJ's real question is "how far along is this?", and "35%"
-    // answers it at a glance where "12/34" makes them do the division. The
-    // exact fraction still rides along in the hover tooltip (info) below.
     const pct = planner && planner.total > 0
       ? Math.round((planner.answered / planner.total) * 100)
       : null;
 
-    // Percent is the caption at every stage, and it's the REAL fraction
-    // answered — a submitted planner with 4 of 6 filled shows 67%, not 100%.
-    // Only reaches 100% when every question is answered. The `done ? '100%'`
-    // fallback is for a DJ manual override with no planner data behind it.
+    // "Done" (green check) means 100% answered, or a DJ manual override. A
+    // SUBMITTED-but-partly-filled planner is NOT done: it stays AMBER — percent
+    // and the yellow dot in yellow — right up until every question is answered,
+    // so the DJ can see there's still info to chase even after the client hit
+    // Send. Only at 100% does it flip to the green check.
+    const done = pct === 100 || overridden;
+
+    const state: StepState =
+      done ? 'done'
+      : (pct !== null || !!pstatus) ? 'pending'
+      : 'todo';
+
+    // Percent is the caption whenever a planner exists (amber until 100%). An
+    // override with no planner behind it reads as 100%. Otherwise Not sent.
     const caption =
-      pct !== null ? `${pct}%`
-      : done ? '100%'
+      overridden ? '100%'
+      : pct !== null ? `${pct}%`
       : pstatus === 'sent' ? 'Pending'
       : 'Not sent';
 
@@ -1317,7 +1306,7 @@ export default function BookingRow({
       caption,
       info: plannerErr
         ? undefined
-        : (planner && pstatus === 'partial' && frac ? `${frac} answered (${pct}%)` : undefined),
+        : (frac && !done ? `${frac} answered (${pct}%)` : undefined),
       // plannerErr wins the hint when there is one — it's the newest thing that
       // happened and the only one the DJ hasn't read yet.
       //
