@@ -1481,7 +1481,7 @@ export default function BookingRow({
 
   return (
     <div
-      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${newSlot ? styles.rowWrapNew : ''}`}
+      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
       // A cancelled row is LIT, not dimmed. Fading it treats the news as less
       // important than the rows around it, when it's the one thing on this
       // screen the DJ most needs to notice — a night they'd otherwise still be
