@@ -198,9 +198,12 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false,
 }: {
   booking: UpcomingBooking;
+  /** Only the "New activity" sort highlights the changed stage; By Date and
+   *  Recently Booked show the row plainly. */
+  showNewActivity?: boolean;
   djType: 'club' | 'mobile';
   userId: string;
   actingRole?: ActingRole;
@@ -446,7 +449,9 @@ export default function BookingRow({
   // pipeline cell of the booking's most recent HOST action (contract signed,
   // host paid, planner submitted, rider / guest list confirmed). That cell gets
   // a neon glow so the DJ sees WHAT changed, not just that something did.
-  const newSlot = ((booking as { last_activity_slot?: string | null }).last_activity_slot) || null;
+  const newSlot = showNewActivity
+    ? (((booking as { last_activity_slot?: string | null }).last_activity_slot) || null)
+    : null;
   const stageForKey = (key: string): string | null => {
     // Only stages whose client email links to one of OUR pages, where we can
     // record a real page view with no email pixel. song_list is rider on club,

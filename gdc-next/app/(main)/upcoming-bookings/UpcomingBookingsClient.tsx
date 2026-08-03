@@ -493,6 +493,7 @@ export default function UpcomingBookingsClient({
               <BookingRow
                 key={b.id}
                 booking={b}
+                showNewActivity={sortMode === 'activity'}
                 djType={djType}
                 userId={userId}
                 actingRole={actingRole}
@@ -527,6 +528,7 @@ export default function UpcomingBookingsClient({
                   <BookingRow
                     key={b.id}
                     booking={b}
+                    showNewActivity={sortMode === 'activity'}
                     djType={djType}
                     userId={userId}
                 actingRole={actingRole}
