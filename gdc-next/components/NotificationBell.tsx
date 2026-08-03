@@ -42,8 +42,23 @@ export default function NotificationBell() {
   const [items, setItems] = useState<Item[]>([]);
   const [count, setCount] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
+  // Fixed viewport position for the panel. The <header> has overflow:hidden,
+  // which would CLIP an absolutely-positioned dropdown hanging below it — so the
+  // panel is position:fixed (viewport-relative, unclipped) and anchored to the
+  // bell's on-screen box, measured when it opens.
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 68, right: 16 });
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: Math.round(r.bottom + 10), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
+      load();
+    }
+    setOpen((v) => !v);
+  }
 
   // Desktop-only, per the design. Render nothing on narrow screens (the burger
   // menu owns mobile).
@@ -89,11 +104,12 @@ export default function NotificationBell() {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        ref={btnRef}
         type="button"
         className="inbox-nav-btn"
         title="New activity"
         aria-label="New activity"
-        onClick={() => { setOpen((v) => !v); if (!open) load(); }}
+        onClick={toggle}
         style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
       >
         <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -111,9 +127,9 @@ export default function NotificationBell() {
         <div
           role="menu"
           style={{
-            position: 'absolute', right: 0, top: 'calc(100% + 10px)', width: 320,
+            position: 'fixed', top: pos.top, right: pos.right, width: 320,
             background: '#0d0d14', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12,
-            boxShadow: '0 14px 44px rgba(0,0,0,.6)', zIndex: 1000, overflow: 'hidden',
+            boxShadow: '0 14px 44px rgba(0,0,0,.6)', zIndex: 100000, overflow: 'hidden',
           }}
         >
           <div style={{ padding: '12px 15px', borderBottom: '1px solid rgba(255,255,255,.08)', fontWeight: 700, fontSize: '.92rem', color: '#fff', letterSpacing: '.01em' }}>
