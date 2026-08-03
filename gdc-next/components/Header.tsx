@@ -17,6 +17,7 @@ import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
 import NotificationBell from './NotificationBell';
+import BookingRequestsMenu from './BookingRequestsMenu';
 import AuthModal from './AuthModal';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -140,32 +141,7 @@ export default function Header() {
                   )}
 
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
-                  {canBookings && (
-                  <Link
-                    href="/booking-requests"
-                    className="inbox-nav-btn inbox-nav-btn--book"
-                    title="Booking Requests"
-                    style={{ textDecoration: 'none' }}
-                    onClick={() => {
-                      // Clear the badge the instant it's clicked — same as the
-                      // notification bell. Marks everything currently pending/
-                      // counter as seen; a fresh request re-alerts later.
-                      try { window.dispatchEvent(new CustomEvent('gdc:mark-bookings-seen')); } catch { /* ignore */ }
-                    }}
-                  >
-                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
-                      <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
-                    </svg>
-                    {/* Badge: pending bookings needing my attention. Same
-                        styling as the inbox badge — visually consistent. */}
-                    {bookingCount > 0 && (
-                      <span className="inbox-badge" aria-label={`${bookingCount} bookings need attention`}>
-                        {bookingCount > 9 ? '9+' : bookingCount}
-                      </span>
-                    )}
-                  </Link>
-                  )}
+                  {canBookings && <BookingRequestsMenu count={bookingCount} />}
 
                   {/* New-activity bell (desktop only) — sits between the
                       Booking Requests and Inbox icons. Shown for DJ-side
