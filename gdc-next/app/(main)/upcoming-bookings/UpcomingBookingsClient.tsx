@@ -180,6 +180,15 @@ export default function UpcomingBookingsClient({
       setSortMode('activity');
     }
   }, []);
+  // Deep link: /upcoming-bookings?open=<bookingId> expands that booking's card
+  // and scrolls to it (from the header notification bell). Read after mount to
+  // avoid an SSR/client mismatch; the matching row opens once this is set.
+  const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOpenId(new URLSearchParams(window.location.search).get('open'));
+    }
+  }, []);
   const canBookings = canAcceptBookings(actingRole);
   const canContract = canSendContracts(actingRole);
   const canDeposit = canRequestDeposit(actingRole);
@@ -506,6 +515,7 @@ export default function UpcomingBookingsClient({
                 key={b.id}
                 booking={b}
                 showNewActivity={sortMode === 'activity'}
+                defaultOpen={!!openId && b.id === openId}
                 djType={djType}
                 userId={userId}
                 actingRole={actingRole}
@@ -541,6 +551,7 @@ export default function UpcomingBookingsClient({
                     key={b.id}
                     booking={b}
                     showNewActivity={false}
+                    defaultOpen={!!openId && b.id === openId}
                     djType={djType}
                     userId={userId}
                 actingRole={actingRole}

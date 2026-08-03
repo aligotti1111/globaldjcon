@@ -198,12 +198,15 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
    *  Recently Booked show the row plainly. */
   showNewActivity?: boolean;
+  /** Deep link (?open=<bookingId>) — expand this row and scroll to it on load.
+   *  Used by the header notification bell when an item is clicked. */
+  defaultOpen?: boolean;
   djType: 'club' | 'mobile';
   userId: string;
   actingRole?: ActingRole;
@@ -236,6 +239,17 @@ export default function BookingRow({
   guestlistEnabled?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Deep link from the notification bell: open this booking's card and scroll
+  // it into view when defaultOpen turns true (set once the ?open= param is read).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!defaultOpen) return;
+    setExpanded(true);
+    const t = setTimeout(() => {
+      wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [defaultOpen]);
   // Set true when the details panel's live DocuSeal check confirms the contract
   // is actually signed (covers rows whose stored status is still 'awaiting').
   const [signedOverride, setSignedOverride] = useState(false);
@@ -1479,6 +1493,7 @@ export default function BookingRow({
 
   return (
     <div
+      ref={wrapRef}
       className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
       // A cancelled row is LIT, not dimmed. Fading it treats the news as less
       // important than the rows around it, when it's the one thing on this
