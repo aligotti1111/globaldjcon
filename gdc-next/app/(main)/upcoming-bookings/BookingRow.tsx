@@ -1288,8 +1288,11 @@ export default function BookingRow({
       ? Math.round((planner.answered / planner.total) * 100)
       : null;
 
+    // Percent is the caption for this column at every stage — including done,
+    // which reads as 100% (submitted = complete, even if they left optional
+    // questions blank). "Not sent" only when there's no planner out at all.
     const caption =
-      done ? undefined
+      done ? '100%'
       : pct !== null ? `${pct}%`
       : pstatus === 'sent' ? 'Pending'
       : 'Not sent';
