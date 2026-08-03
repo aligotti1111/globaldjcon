@@ -288,18 +288,14 @@ export default function UpcomingBookingsClient({
       .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   }, [bookings]);
 
-  // Flat list ordered by most recent HOST action (last_activity_at desc).
-  // Bookings the host has touched rise to the top; untouched ones sink below,
-  // still ordered by date so the tail stays readable.
+  // Flat list of ONLY the bookings a host has recently acted on, most recent
+  // first. This is a FILTER, not just a sort: a booking with no host activity
+  // doesn't belong in the "New activity" view at all, so every row shown here
+  // has a highlighted stage.
   const activityList = useMemo(() => {
     return [...bookings]
-      .filter((b) => b.event_date)
-      .sort((a, b) => {
-        const ta = a.last_activity_at ? Date.parse(a.last_activity_at) : -1;
-        const tb = b.last_activity_at ? Date.parse(b.last_activity_at) : -1;
-        if (tb !== ta) return tb - ta;
-        return (a.event_date || '').localeCompare(b.event_date || '');
-      });
+      .filter((b) => b.event_date && b.last_activity_at)
+      .sort((a, b) => Date.parse(b.last_activity_at || '') - Date.parse(a.last_activity_at || ''));
   }, [bookings]);
   const activityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
 
@@ -484,6 +480,14 @@ export default function UpcomingBookingsClient({
               </p>
             </>
           )}
+        </div>
+      ) : sortMode === 'activity' && activityList.length === 0 ? (
+        <div className={styles.empty}>
+          <p>No new activity.</p>
+          <p className={styles.emptyHint}>
+            When a host signs a contract, pays a deposit or balance, submits their
+            planner, or confirms a rider or guest list, that booking shows up here.
+          </p>
         </div>
       ) : (sortMode === 'recent' || sortMode === 'activity') ? (
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
