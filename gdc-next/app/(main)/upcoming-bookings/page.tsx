@@ -351,7 +351,14 @@ export default async function UpcomingBookingsPage() {
   // Contract signature is already on the booking row. Fold it in, then stamp
   // each booking with its newest host action for the "New activity" sort.
   bookingRows = bookingRows.map((b) => {
-    noteActivity(b.id, b.contract_signed_at, 'contract');
+    // A signed contract is host activity. contract_signed_at is often null even
+    // when the host has signed (the DocuSeal completion sets
+    // contract_status='signed' but not always the timestamp), so detect the
+    // signed STATUS and fall back to contract_sent_at for ordering.
+    const signedAt = b.contract_status === 'signed'
+      ? (b.contract_signed_at || b.contract_sent_at || null)
+      : b.contract_signed_at || null;
+    noteActivity(b.id, signedAt, 'contract');
     const a = activityByBooking[b.id];
     return { ...b, last_activity_at: a?.ts || null, last_activity_slot: a?.slot || null };
   });
