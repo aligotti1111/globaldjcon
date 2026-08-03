@@ -45,7 +45,7 @@ const EVENT_LABELS: Record<string, string> = {
 function fmtDate(d: string | null): string {
   if (!d) return '';
   try {
-    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return ''; }
 }
 
@@ -206,7 +206,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {it.name} — {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
+                    {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </span>
                   <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
                     {it.kind === 'counter' ? 'Countered — your response needed' : 'New booking request'}
