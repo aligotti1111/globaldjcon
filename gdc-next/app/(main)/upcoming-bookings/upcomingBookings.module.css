@@ -904,20 +904,20 @@ select.input {
   min-width: 0;
 }
 
-/* New-activity highlight. The stage cell whose HOST action is this booking's
-   most recent (last_activity_slot) gets a neon ring + soft fill so the DJ sees
-   WHAT changed. Box-shadow + background only — no size change — so it can't
-   shift the fixed-width status grid. Positioned for the corner NEW tag. */
-.stCellNew {
-  position: relative;
-  border-radius: 4px;
+/* New-activity highlight. A tight neon box that hugs JUST the stage ICON that
+   the host acted on (last_activity_slot) — not the whole wide column cell — so
+   the DJ sees exactly WHAT changed. Small padding gives the icon breathing
+   room; box-shadow draws the ring + glow. */
+.stIconBox {
+  border-radius: 6px;
+  padding: 4px 5px;
   background: rgba(0, 245, 196, .10);
   box-shadow: inset 0 0 0 1.5px var(--neon, #00f5c4), 0 0 8px rgba(0, 245, 196, .22);
 }
 .stNewTag {
   position: absolute;
-  top: -6px;
-  right: -3px;
+  top: -8px;
+  right: -8px;
   z-index: 3;
   padding: 1px 4px;
   border-radius: 999px;

@@ -1632,7 +1632,7 @@ export default function BookingRow({
             // contract hasn't gone out".
             if (!st) {
               return (
-                <div key={slotKey} className={`${styles.stCell} ${isNew ? styles.stCellNew : ''}`}>
+                <div key={slotKey} className={styles.stCell}>
                   <span className={styles.stDash} aria-hidden="true">—</span>
                 </div>
               );
@@ -1754,9 +1754,9 @@ export default function BookingRow({
               — which is the exact misalignment this page was rebuilt to fix.
             */
             return (
-              <div key={st.key} className={`${styles.stCell} ${isNew ? styles.stCellNew : ''}`}>
-                {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div key={st.key} className={styles.stCell}>
+                <div className={isNew ? styles.stIconBox : undefined} style={{ position: 'relative', flexShrink: 0 }}>
+                  {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
                   {hasMenu ? (
                     <button
                       type="button"
