@@ -919,14 +919,14 @@ select.input {
   top: -1px;
   right: -12px;
   z-index: 3;
-  padding: 0 3px;
-  border-radius: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
   background: var(--neon, #00f5c4);
   color: #050507;
   font-family: 'Space Mono', monospace;
-  font-size: .4rem;
+  font-size: .52rem;
   font-weight: 700;
-  letter-spacing: .03em;
+  letter-spacing: .04em;
   line-height: 1.5;
   pointer-events: none;
   white-space: nowrap;
