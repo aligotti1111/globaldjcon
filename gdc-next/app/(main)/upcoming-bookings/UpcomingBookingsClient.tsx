@@ -172,6 +172,14 @@ export default function UpcomingBookingsClient({
   // month), 'recent' (most recently booked first, flat list), or 'activity'
   // (most recent HOST action first — see last_activity_at from the server).
   const [sortMode, setSortMode] = useState<'date' | 'recent' | 'activity'>('date');
+  // Deep link: /upcoming-bookings?filter=activity opens straight into the New
+  // activity view — used by the header notification bell's item + "View more".
+  useEffect(() => {
+    if (typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).get('filter') === 'activity') {
+      setSortMode('activity');
+    }
+  }, []);
   const canBookings = canAcceptBookings(actingRole);
   const canContract = canSendContracts(actingRole);
   const canDeposit = canRequestDeposit(actingRole);
