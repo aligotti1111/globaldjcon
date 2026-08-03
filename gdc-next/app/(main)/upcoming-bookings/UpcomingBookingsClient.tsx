@@ -528,7 +528,7 @@ export default function UpcomingBookingsClient({
                   <BookingRow
                     key={b.id}
                     booking={b}
-                    showNewActivity={sortMode === 'activity'}
+                    showNewActivity={false}
                     djType={djType}
                     userId={userId}
                 actingRole={actingRole}
