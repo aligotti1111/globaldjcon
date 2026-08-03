@@ -767,6 +767,17 @@ select.input {
   box-shadow: inset 3px 0 0 var(--neon);
 }
 
+/* New-activity box. Declared AFTER .rowWrapExpanded so that when a booking is
+   both open and freshly touched, the full neon frame wins over the plain left
+   edge. A rounded neon border + soft glow lifts the whole booking out of the
+   flush list so the DJ sees WHICH booking changed at a glance — the per-stage
+   cell glow then says WHAT changed. */
+.rowWrapNew {
+  border-radius: 8px;
+  background: rgba(0, 245, 196, .05);
+  box-shadow: inset 0 0 0 1.5px var(--neon, #00f5c4), 0 0 12px rgba(0, 245, 196, .18);
+}
+
 /*
  * The clickable summary row — one record in a table.
  *
