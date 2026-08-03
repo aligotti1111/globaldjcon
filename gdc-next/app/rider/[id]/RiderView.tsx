@@ -27,8 +27,11 @@ function fmtTime(t: string | null): string {
 export default function RiderView({
   riderId, confirmedAt, items, mode, pdfUrl, riderName, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress,
 }: {
-  riderId: string;
-  confirmedAt: string | null;
+  // Optional: the host page passes them (enabling the Confirm button); the DJ's
+  // own rider-edit preview renders RiderView WITHOUT them, and simply gets no
+  // Confirm button — which is correct, the DJ doesn't confirm their own rider.
+  riderId?: string;
+  confirmedAt?: string | null;
   items: RiderItem[];
   mode: RiderMode;
   pdfUrl: string | null;
@@ -160,7 +163,10 @@ export default function RiderView({
         )}
 
         {/* Host confirmation. The rider is the DJ's requirements — the host's
-            one action is to confirm they've received and read it. */}
+            one action is to confirm they've received and read it. Only on the
+            host's capability-link page (riderId present), never in the DJ's
+            own edit preview. */}
+        {riderId && (
         <div style={{ textAlign: 'center', marginTop: '1.6rem' }}>
           {confirmed ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.95rem' }}>
@@ -184,6 +190,7 @@ export default function RiderView({
             </>
           )}
         </div>
+        )}
 
         <p style={{ textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: '.72rem', marginTop: '1.2rem' }}>
           Sent via Global DJ Connect
