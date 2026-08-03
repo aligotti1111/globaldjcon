@@ -908,31 +908,34 @@ select.input {
    the host acted on (last_activity_slot) — not the whole wide column cell — so
    the DJ sees exactly WHAT changed. Small padding gives the icon breathing
    room; box-shadow draws the ring + glow. */
+/* A clean, tight neon box hugging just the stage ICON the host acted on. In the
+   New-activity view a boxed stage IS the "what changed" signal, so no text tag
+   is needed. margin-left keeps the neon edge off the Value column. */
 .stIconBox {
   border-radius: 6px;
-  /* Extra top padding makes room for the NEW tag INSIDE the box — the row wrap
-     clips overflow, so a tag poking outside gets cut off. margin-left nudges
-     the box right so its neon edge isn't crammed against the Value column. */
-  padding: 11px 5px 4px;
+  padding: 4px 6px;
   margin-left: 8px;
   background: rgba(0, 245, 196, .10);
   box-shadow: inset 0 0 0 1.5px var(--neon, #00f5c4), 0 0 8px rgba(0, 245, 196, .22);
 }
+/* NEW chip to the RIGHT of the box, vertically centered — sits within the row
+   height so it can't be clipped, and clear of the icon. */
 .stNewTag {
   position: absolute;
-  top: 1px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  margin-left: 5px;
   z-index: 3;
-  padding: 0 3px;
+  padding: 1px 4px;
   border-radius: 3px;
   background: var(--neon, #00f5c4);
   color: #050507;
   font-family: 'Space Mono', monospace;
-  font-size: .4rem;
+  font-size: .42rem;
   font-weight: 700;
-  letter-spacing: .03em;
-  line-height: 1.45;
+  letter-spacing: .04em;
+  line-height: 1.4;
   pointer-events: none;
   white-space: nowrap;
 }
