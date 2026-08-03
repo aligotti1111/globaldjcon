@@ -15,7 +15,9 @@ function fmtTime(t: string | null): string {
 }
 
 export default function GuestlistView({ guestlistId, confirmedAt, guests, djName, logoUrl, eventDate, startTime, endTime, eventType, venueName, venueAddress }: {
-  guestlistId: string; confirmedAt: string | null;
+  // Optional — see RiderView: the host page passes them (Confirm button shows);
+  // a DJ-side preview without them simply gets no Confirm button.
+  guestlistId?: string; confirmedAt?: string | null;
   guests: GuestEntry[]; djName: string; logoUrl: string | null;
   eventDate: string | null; startTime: string | null; endTime: string | null; eventType: string | null;
   venueName: string | null; venueAddress: string | null;
@@ -87,7 +89,9 @@ export default function GuestlistView({ guestlistId, confirmedAt, guests, djName
             Print / Save as PDF
           </button>
         </div>
-        {/* Host confirmation — one tap to tell the DJ the list is right. */}
+        {/* Host confirmation — one tap to tell the DJ the list is right. Only on
+            the host's capability-link page (guestlistId present). */}
+        {guestlistId && (
         <div style={{ textAlign: 'center', marginTop: '1.6rem' }}>
           {confirmed ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.95rem' }}>
@@ -107,6 +111,7 @@ export default function GuestlistView({ guestlistId, confirmedAt, guests, djName
             </>
           )}
         </div>
+        )}
 
         <p style={{ textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: '.72rem', marginTop: '1.2rem' }}>Sent via Global DJ Connect</p>
       </div>
