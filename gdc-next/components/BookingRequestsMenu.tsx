@@ -194,7 +194,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
               <button
                 key={`${it.id}-${it.kind}`}
                 type="button"
-                onClick={() => { setOpen(false); router.push(MORE_HREF); }}
+                onClick={() => { setOpen(false); router.push(`${MORE_HREF}?open=${encodeURIComponent(it.id)}`); }}
                 style={{
                   display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
                   padding: '11px 15px', background: 'transparent', border: 'none',
