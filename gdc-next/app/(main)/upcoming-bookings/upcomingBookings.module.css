@@ -911,27 +911,20 @@ select.input {
 /* A clean, tight neon box hugging just the stage ICON the host acted on. In the
    New-activity view a boxed stage IS the "what changed" signal, so no text tag
    is needed. margin-left keeps the neon edge off the Value column. */
-.stIconBox {
-  border-radius: 6px;
-  /* A little top headroom so the NEW chip sits in the top-right corner INSIDE
-     the box without covering the icon. Inside the box = never clipped. */
-  padding: 8px 6px 4px;
-  margin-left: 8px;
-  background: rgba(0, 245, 196, .10);
-  box-shadow: inset 0 0 0 1.5px var(--neon, #00f5c4), 0 0 8px rgba(0, 245, 196, .22);
-}
-/* NEW chip in the top-right corner INSIDE the box. */
+/* No box — just a NEW chip on the stage icon the host acted on. It anchors to
+   the icon wrapper (position:relative) and sits at the top-right corner. */
+.stIconBox { position: relative; }
 .stNewTag {
   position: absolute;
-  top: 1px;
-  right: 2px;
+  top: -6px;
+  right: -8px;
   z-index: 3;
   padding: 0 3px;
   border-radius: 3px;
   background: var(--neon, #00f5c4);
   color: #050507;
   font-family: 'Space Mono', monospace;
-  font-size: .38rem;
+  font-size: .4rem;
   font-weight: 700;
   letter-spacing: .03em;
   line-height: 1.5;
