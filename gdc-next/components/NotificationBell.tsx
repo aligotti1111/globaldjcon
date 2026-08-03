@@ -40,22 +40,33 @@ const MORE_HREF = '/upcoming-bookings?filter=activity';
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
-  const [count, setCount] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   // Fixed viewport position for the panel. The <header> has overflow:hidden,
   // which would CLIP an absolutely-positioned dropdown hanging below it — so the
   // panel is position:fixed (viewport-relative, unclipped) and anchored to the
   // bell's on-screen box, measured when it opens.
   const [pos, setPos] = useState<{ top: number; right: number }>({ top: 68, right: 16 });
+  // The moment the DJ last opened (reviewed) the bell. Persisted, so the badge
+  // stays cleared across reloads and only comes back when NEWER activity lands.
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    try { setLastSeen(localStorage.getItem('gdc_newactivity_seen')); } catch { /* ignore */ }
+  }, []);
 
   function toggle() {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
       setPos({ top: Math.round(r.bottom + 10), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
       load();
+      // Opening the panel IS reviewing it — clear the count. Everything up to
+      // now counts as seen; a later host action bumps the badge again.
+      const seen = new Date().toISOString();
+      setLastSeen(seen);
+      try { localStorage.setItem('gdc_newactivity_seen', seen); } catch { /* ignore */ }
     }
     setOpen((v) => !v);
   }
@@ -76,7 +87,6 @@ export default function NotificationBell() {
       if (!r.ok) return;
       const j = await r.json();
       setItems(Array.isArray(j.items) ? j.items : []);
-      setCount(typeof j.count === 'number' ? j.count : 0);
     } catch { /* non-fatal — the bell just shows what it last had */ }
   }
 
@@ -100,6 +110,10 @@ export default function NotificationBell() {
   if (!isDesktop) return null;
 
   const shown = items.slice(0, 6);
+  // Badge count = items newer than the last time the bell was opened. After a
+  // review it's 0; a fresh host action makes it reappear.
+  const seenT = lastSeen ? Date.parse(lastSeen) : Number.NEGATIVE_INFINITY;
+  const unseen = items.reduce((n, i) => (Date.parse(i.at) > seenT ? n + 1 : n), 0);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -116,9 +130,9 @@ export default function NotificationBell() {
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {count > 0 && (
-          <span className="inbox-badge" aria-label={`${count} new activity`}>
-            {count > 9 ? '9+' : count}
+        {unseen > 0 && (
+          <span className="inbox-badge" aria-label={`${unseen} new activity`}>
+            {unseen > 9 ? '9+' : unseen}
           </span>
         )}
       </button>
@@ -138,7 +152,7 @@ export default function NotificationBell() {
 
           {shown.length === 0 ? (
             <div style={{ padding: '22px 15px', color: 'rgba(255,255,255,.5)', fontSize: '.85rem', textAlign: 'center' }}>
-              No new activity yet.
+              No new updates.
             </div>
           ) : (
             shown.map((it) => (
