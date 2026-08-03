@@ -4,6 +4,11 @@
 // capability urls; this is keyed on a BOOKING id, which turns up in the app's
 // own urls and isn't a secret, so ownership is checked properly.
 //
+// Ownership is resolved through getActingContext — the SAME authorization the
+// rest of the DJ app uses — so it works for the owner AND for a teammate acting
+// on the owner's account. (It used to compare the raw session user id, which
+// 404'd the run-sheet link for every teammate.)
+//
 // The rendering lives in PlannerSheetView — shared with the client's
 // /planner/[id]/print so the two copies are identical. This page only does the
 // DJ-side data fetch, including resolving a BLANK sheet from the template when
@@ -13,6 +18,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import {
   visibleFields,
   pickTemplate,
@@ -49,6 +55,11 @@ export default async function SheetPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  // Resolve the account this session acts on: the owner themselves, or the DJ
+  // owner a teammate is seated on. Compare ownership against THIS, not user.id.
+  const acting = await getActingContext(user.id);
+  const djId = acting.djId;
+
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
 
@@ -75,9 +86,10 @@ export default async function SheetPage({
   const b = bData as unknown as (SheetBooking & { dj_id: string | null }) | null;
 
   // 404 rather than 403 on someone else's booking. Ownership is read from
-  // whichever record we have: the planner if one exists, otherwise the booking.
+  // whichever record we have: the planner if one exists, otherwise the booking,
+  // and checked against the acting DJ (owner or the account a teammate is on).
   const ownerId = planner?.dj_id ?? b?.dj_id ?? null;
-  if (!b || ownerId !== user.id) notFound();
+  if (!b || ownerId !== djId) notFound();
 
   let responses: PlannerResponses;
   let fields: PlannerField[];
