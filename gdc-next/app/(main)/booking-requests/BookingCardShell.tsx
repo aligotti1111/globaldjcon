@@ -13,7 +13,7 @@
 // this shell. New booking-card features should be added HERE if they
 // apply to both types.
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import styles from './bookingRequests.module.css';
 import type { BookingRow } from './page';
 
@@ -71,6 +71,29 @@ export default function BookingCardShell({
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
 }: BookingCardShellProps) {
+  // Deep-link target: when the URL carries ?open=<this booking id> (e.g. from
+  // the header's Booking Requests dropdown), scroll this card into view and
+  // give it a brief highlight so the DJ lands right on it.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open') !== b.id) return;
+    // Strip the param so a later refresh doesn't re-trigger the scroll.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('open');
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    const t = setTimeout(() => {
+      const el = cardRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow .3s ease';
+      el.style.boxShadow = '0 0 0 2px var(--neon,#00e0a4), 0 0 26px rgba(0,224,164,.45)';
+      setTimeout(() => { if (cardRef.current) cardRef.current.style.boxShadow = ''; }, 2800);
+    }, 180);
+    return () => clearTimeout(t);
+  }, [b.id]);
+
   // ── Derived state shared by every card type ────────────────────
   const isQuote = !!b.is_quote;
   const isClub = b.booking_type === 'club';
@@ -147,7 +170,7 @@ export default function BookingCardShell({
   const showMobileQuoteBookerActions = !isIncoming && isMobileQuoteOffer;
 
   return (
-    <div className={`${styles.card} ${styles[`card_${status}`]}`}>
+    <div ref={cardRef} className={`${styles.card} ${styles[`card_${status}`]}`}>
       {/* The colored status accent strip used to render here at the top
           of the card. Removed — status is now communicated by the badge
           inside the Package & Price section, so the strip became
