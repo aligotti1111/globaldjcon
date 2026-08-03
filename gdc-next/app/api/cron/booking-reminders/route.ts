@@ -81,6 +81,9 @@ export async function GET(req: Request) {
   }
 
   const force = url.searchParams.get('force') === '1';
+  // Dry run: compute + report who WOULD be emailed, but send nothing. Handy for
+  // testing the wiring without blasting real DJs. Use ?force=1&dry=1.
+  const dry = url.searchParams.get('dry') === '1';
   const now = new Date();
   if (!force && easternHour(now) !== 8) {
     return NextResponse.json({ ok: true, skipped: true, reason: 'not 8am ET', etHour: easternHour(now) });
@@ -157,6 +160,13 @@ ${waited ? `<div style="font-size:12px;color:#b0791f;margin-top:3px;font-weight:
 <a href="${SITE_URL}/booking-requests" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review requests</a>
 </td></tr></table>`;
 
+    if (dry) {
+      // Report what would be sent, but don't actually send.
+      emails += 1;
+      requests += n;
+      continue;
+    }
+
     try {
       await resend.emails.send({
         from: FROM,
@@ -169,5 +179,5 @@ ${waited ? `<div style="font-size:12px;color:#b0791f;margin-top:3px;font-weight:
     } catch { /* non-fatal — keep going for the other DJs */ }
   }
 
-  return NextResponse.json({ ok: true, djs: byDj.size, emails, requests });
+  return NextResponse.json({ ok: true, dryRun: dry, djs: byDj.size, emails, requests });
 }
