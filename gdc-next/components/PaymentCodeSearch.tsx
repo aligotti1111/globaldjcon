@@ -22,7 +22,6 @@ type Item = {
 };
 
 const DASHBOARD = '/upcoming-bookings';
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 function fmtShort(d: string | null): string {
   if (!d) return '';
@@ -85,24 +84,17 @@ export default function PaymentCodeSearch() {
   // true if a matching row was found on the page.
   function applyFilter(item: Item): boolean {
     restoreFilter();
-    if (!item.eventDate) return false;
-    const day = String(parseInt(item.eventDate.slice(8, 10), 10));
-    const mon = MONTHS[parseInt(item.eventDate.slice(5, 7), 10) - 1] || '';
-    const label = (item.label || '').toLowerCase();
-
-    const rows = Array.from(document.querySelectorAll('[class*="rowWrap"]')) as HTMLElement[];
-    const matched = rows.filter((r) => {
-      const dt = (r.querySelector('[class*="rowDate"]')?.textContent || '').toUpperCase().replace(/\s+/g, '');
-      const dayNum = (dt.match(/^\d+/) || [])[0];
-      const ty = (r.querySelector('[class*="rowEventType"]')?.textContent || '').toLowerCase();
-      return dayNum === day && dt.includes(mon) && (!label || ty.includes(label));
-    });
-    if (matched.length === 0) return false;
+    // Rows now carry data-booking-id (BookingRow refactor phase 0), so we match
+    // the exact row by id instead of guessing from the date + event text.
+    const idSel = (window.CSS && CSS.escape) ? CSS.escape(item.id) : item.id;
+    const target = document.querySelector(`[data-booking-id="${idSel}"]`) as HTMLElement | null;
+    if (!target) return false;
 
     const store: [HTMLElement, string][] = [];
-    rows.forEach((r) => { if (!matched.includes(r)) { store.push([r, r.style.display]); r.style.display = 'none'; } });
+    const rows = Array.from(document.querySelectorAll('[class*="rowWrap"]')) as HTMLElement[];
+    rows.forEach((r) => { if (r !== target) { store.push([r, r.style.display]); r.style.display = 'none'; } });
     const months = Array.from(document.querySelectorAll('[class*="month__"]')) as HTMLElement[];
-    months.forEach((m) => { if (!matched.some((r) => m.contains(r))) { store.push([m, m.style.display]); m.style.display = 'none'; } });
+    months.forEach((m) => { if (!m.contains(target)) { store.push([m, m.style.display]); m.style.display = 'none'; } });
     hiddenRef.current = store;
     setActive(true);
     return true;
