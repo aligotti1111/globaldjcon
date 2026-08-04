@@ -26,7 +26,17 @@ type Item = {
   label: string;
   eventDate: string | null;
   at: string | null;
+  price: string | null;
 };
+
+// Money formatting for the price line — mirrors the reminder email.
+const CUR: Record<string, string> = { USD: '$', CAD: '$', AUD: '$', GBP: '£', EUR: '€' };
+function money(amount: number, currency: string | null): string {
+  const code = (currency || 'USD').toUpperCase();
+  const sym = CUR[code];
+  const n = Number(amount).toLocaleString();
+  return sym ? `${sym}${n}` : `${code} ${n}`;
+}
 
 // Minimal event-type → label map. Falls back to the raw type or the venue type,
 // so club/bar requests (which have no event_type) still read sensibly.
@@ -58,6 +68,10 @@ type Row = {
   venue_type: string | null;
   event_date: string | null;
   created_at: string | null;
+  quoted_rate: number | null;
+  offer_amount: number | null;
+  counter_rate: number | null;
+  currency: string | null;
 };
 
 export default function BookingRequestsMenu({ count }: { count: number }) {
@@ -89,24 +103,29 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
     if (!user?.id) return;
     const db = createClient();
     try {
+      const cols = 'id, requester_name, event_type, venue_type, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency';
       const [pend, ctr] = await Promise.all([
         db.from('bookings')
-          .select('id, requester_name, event_type, venue_type, event_date, created_at')
+          .select(cols)
           .eq('dj_id', user.id).eq('status', 'pending').is('deleted_at', null)
           .order('created_at', { ascending: false }).limit(10),
         db.from('bookings')
-          .select('id, requester_name, event_type, venue_type, event_date, created_at')
+          .select(cols)
           .eq('requester_id', user.id).eq('status', 'counter').is('deleted_at', null)
           .order('created_at', { ascending: false }).limit(10),
       ]);
       const mk = (rows: Row[] | null, kind: 'request' | 'counter'): Item[] =>
-        (rows || []).map((r) => ({
-          id: r.id, kind,
-          name: r.requester_name || 'A client',
-          label: labelFor(r),
-          eventDate: r.event_date,
-          at: r.created_at,
-        }));
+        (rows || []).map((r) => {
+          const rate = r.quoted_rate ?? r.offer_amount ?? r.counter_rate ?? null;
+          return {
+            id: r.id, kind,
+            name: r.requester_name || 'A client',
+            label: labelFor(r),
+            eventDate: r.event_date,
+            at: r.created_at,
+            price: rate != null ? money(Number(rate), r.currency) : null,
+          };
+        });
       const all = [
         ...mk(pend.data as Row[] | null, 'request'),
         ...mk(ctr.data as Row[] | null, 'counter'),
@@ -212,6 +231,11 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                     {it.kind === 'counter' ? 'Countered — your response needed' : 'New booking request'}
                   </span>
                 </span>
+                {it.price && (
+                  <span style={{ flexShrink: 0, marginLeft: 8, color: '#fff', fontSize: '.9rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {it.price}
+                  </span>
+                )}
               </button>
             ))
           )}
