@@ -33,7 +33,8 @@ import {
   fmtMoney, capMoney, getDateParts, formatTimeRange,
   type ContractAction,
 } from './shared';
-import StageMenu from './pipeline/StageMenu';
+import PipelineStrip from './pipeline/PipelineStrip';
+import type { PipelineStep } from './pipeline/types';
 
 // Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
 // the rest — so acronyms like "DJ" survive. "Request balance" -> "Request Balance".
@@ -145,16 +146,6 @@ const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
   guestlist: 'Guest List',
 };
 
-// The stage's display name — used for the hover tooltip and the dropdown
-// header. song_list is the Rider on club, the Planner on mobile.
-function iconName(slotKey: string, djType: 'club' | 'mobile'): string {
-  if (slotKey === 'song_list') return djType === 'club' ? 'Rider' : 'Planner & Playlist';
-  if (slotKey === 'contract') return 'Contract';
-  if (slotKey === 'deposit') return 'Deposit';
-  if (slotKey === 'invoice') return 'Balance';
-  if (slotKey === 'guestlist') return 'Guest List';
-  return '';
-}
 
 // Column order per DJ type. Club/bar puts the Rider (song_list slot) BEFORE
 // Deposit; mobile keeps Planner & Playlist in its original position.
@@ -797,39 +788,7 @@ export default function BookingRow({
     }
   }
 
-  const steps: {
-    key: string; label: string; state: StepState;
-    icon: 'doc' | 'money' | 'music' | 'receipt';
-    overridable: boolean; done: boolean; color: string;
-    /**
-     * The small word under the icon. ONLY for states the icon can't say on its
-     * own — a contract that's been sent but not signed is otherwise identical
-     * to one that's sitting there unsent, and that difference is the whole
-     * question a DJ has when they look at this column.
-     *
-     * Deliberately absent on 'done' and on 'nothing started': the green check
-     * already says done, and a dimmed icon already says untouched. Captioning
-     * every state would put a word under all four icons, which is the version
-     * that read as a control panel.
-     */
-    caption?: string;
-    /** A read-only line at the top of the dropdown — the amounts, for Deposit. */
-    info?: string;
-    /**
-     * Why an action you'd expect isn't offered.
-     *
-     * Separate from `info` because it wraps: `info` is a single bold line and
-     * the menu is white-space:nowrap, so a sentence in there stretches the
-     * dropdown to the width of the sentence.
-     *
-     * This exists because a menu can silently omit an option — Request deposit
-     * vanishes until the contract is signed — and an absent button explains
-     * nothing. The DJ sees "Not sent", opens the menu to send it, and finds it
-     * isn't there. The gate is right; being invisible is not.
-     */
-    hint?: string;
-    actions?: { label: string; run: () => void; danger?: boolean }[];
-  }[] = [];
+  const steps: PipelineStep[] = [];
   /*
     MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,
     full stop, so the step never rendered for one no matter what.
@@ -1629,196 +1588,21 @@ export default function BookingRow({
           else in these columns is inert and should toggle like the rest of the
           row does.
         */}
-        <div className={styles.statusStrip}>
-          {pipeSlotsFor(djType).map((slotKey) => {
-            const st = steps.find((s) => s.key === slotKey);
-            const isNew = newSlot != null && slotKey === newSlot;
-            // Hold the column open. A dash, not a dimmed icon: dimmed implies a
-            // stage that exists and hasn't been done, and there's a real
-            // difference between "no contract needed on this booking" and "the
-            // contract hasn't gone out".
-            if (!st) {
-              return (
-                <div key={slotKey} className={styles.stCell}>
-                  <span className={styles.stDash} aria-hidden="true">—</span>
-                </div>
-              );
-            }
-            // `const c = st.color` used to live here, feeding the old text
-            // label's colour and the chevron's stroke. Both are gone — the
-            // caption uses capColor (below) and the chevron now inherits
-            // currentColor — so it sat declared and never read, which fails the
-            // build on no-unused-vars. st.color is still the source of truth;
-            // it's read directly where it's needed.
-            const open = menuOpenKey === st.key;
-            // A signed contract ISN'T overridable (you can't un-sign a real
-            // one) but it does have Download — so the chevron can't key off
-            // `overridable` any more, or that menu would be unreachable.
-            // `info` counts: a settled deposit in the archive has no actions
-            // and isn't overridable, but it still knows what was paid — and
-            // that's exactly what someone opens an old booking to check.
-            // `hint` counts. A step whose only content is "here's why you can't
-            // do the thing" still needs a chevron and a menu to say it in —
-            // otherwise the explanation exists in the code and nowhere a DJ can
-            // reach it, which is the same as not existing.
-            const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
-            // In flight: it exists and it's out there, but it isn't done. This
-            // is the state the dot is for — and the reason the caption exists,
-            // because a dot alone can't tell "sent, waiting" from "signed".
-            // !st.done leads, same as the caption: the amber "waiting on
-            // someone" dot and the green "done" badge are mutually exclusive by
-            // construction, not by the states happening not to overlap.
-            const waiting = !st.done && (!!st.caption || st.state === 'pending');
-            // The caption takes the step's own colour, softened.
-            //
-            //   done  -> neon   — "$600/$600", the whole ask landed
-            //   muted -> grey   — Playlist: real stage, nothing you can do yet.
-            //                     An amber "Not sent" there would read exactly
-            //                     like the amber "Not sent" on deposit beside it
-            //                     and promise an action the app can't perform.
-            //   else  -> amber  — your move, or waiting on them
-            //
-            // st.done drives the neon, NOT st.color: the two agree today, but
-            // the caption's job is to say whether the thing is finished, and
-            // reading that off a colour is how these two got out of sync in the
-            // first place.
-            //
-            // Both values are dialled back from the icon's NEON/AMBER — at
-            // 9.5px the full-strength ones vibrate against the dark row. Same
-            // hues, sized for the text they're rendering.
-            const capColor = st.done
-              ? '#3fd6ab'
-              : st.color === MUTED
-                ? '#5a5a72'
-                : '#c08a3e';
-            /*
-              INVARIANT: a done step can never say it's waiting.
-              A green check next to the word "Pending" is the cell contradicting
-              itself, and it shipped — a WAIVED deposit is settled with
-              amount_paid still 0, so the badge read the status, the caption read
-              the payments, and the two disagreed with nobody checking.
-              Each step builds its own caption, so this is the one place that can
-              enforce the rule for all four columns at once. Cheap, and it makes
-              the next person's mistake here impossible instead of merely
-              unlikely.
-            */
-            const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
-            const inner = (
-              <>
-                {/*
-                  ALWAYS FULL COLOUR. The icon used to be grayscale+28% until
-                  the step was DONE, which meant a contract that had been sent
-                  and was sitting with the client rendered identically to one
-                  nobody had touched — drained and dim — while the caption right
-                  under it said "Sent". The icon was contradicting the word.
-
-                  The icon's job is only ever "which stage is this". The badge
-                  says done, the caption says the rest. A stage that exists on
-                  this booking is a real stage; greying it out was the picture
-                  saying it wasn't.
-                */}
-                <span className={styles.stIcon}>
-                  {/* The emoji render in their OWN colours — no ring, no tint.
-                      Not reached yet = drained and dimmed, so progress is
-                      legible without reading anything.
-                      NOTE: emoji render differently on every OS — 🧾 on Windows
-                      is not 🧾 on macOS. If these ever matter to the brand, the
-                      real fix is a small custom SVG set, not a bigger emoji. */}
-                  {st.icon === 'money' ? '\u{1F4B5}'
-                    : st.icon === 'music' ? '\u{1F3B5}'
-                    : st.icon === 'receipt' ? '\u{1F9FE}'
-                    : '\u{1F4DD}'}
-                  {/* Done. An SVG stroke rather than a ✓ character: at this size
-                      the glyph renders soft, and differently per platform. */}
-                  {st.done && (
-                    <span className={styles.stBadge}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    </span>
-                  )}
-                  {/* Waiting on someone. Never both — done wins. */}
-                  {!st.done && waiting && <span className={styles.stDot} />}
-                </span>
-                {/* The chevron is the affordance: it's what says this icon
-                    opens something, standing still, without hovering. */}
-                {hasMenu && (
-                  <span className={styles.stChev} aria-hidden="true">
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                  </span>
-                )}
-              </>
-            );
-            /*
-              THE CONNECTORS ARE GONE. They existed to make the icons read as a
-              sequence rather than a set — the column headers do that job now,
-              and better. They also had a bug that only showed once columns were
-              reserved: a connector was drawn for any slot > 0, including ones
-              whose left-hand neighbour was empty, so a deposit with no contract
-              beside it drew a dash hanging off nothing.
-
-              The caption line is rendered even when EMPTY. It has to be: a cell
-              with a caption is 10px taller than one without, and left to
-              themselves the icons would sit at different heights across the row
-              — which is the exact misalignment this page was rebuilt to fix.
-            */
-            return (
-              <div key={st.key} className={styles.stCell}>
-                <div className={isNew ? styles.stIconBox : undefined} style={{ position: 'relative', flexShrink: 0 }}>
-                  {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
-                  {hasMenu ? (
-                    <button
-                      type="button"
-                      className={`${styles.stBtn} ${open ? styles.stBtnOpen : ''}`}
-                      title={iconName(st.key, djType)}
-                      aria-haspopup="menu"
-                      aria-expanded={open}
-                      onClick={(e) => {
-                        // This click opens a menu; it must not ALSO expand the
-                        // row underneath. It used to rely on the statusStrip
-                        // wrapper for this — that wrapper was swallowing clicks
-                        // meant for the row, so the stop lives here now, on the
-                        // one element that actually needs it.
-                        e.stopPropagation();
-                        if (open) { setMenuOpenKey(null); return; }
-                        // Hand the button to the re-anchor effect. Without this
-                        // the menu is positioned once, from a rect that stops
-                        // being true the moment anything scrolls.
-                        menuBtnRef.current = e.currentTarget as HTMLElement;
-                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        {
-          const MENU_W = 210;
-          const left = Math.min(Math.max(8, r.left), window.innerWidth - MENU_W - 8);
-          setMenuPos({ top: r.bottom + 6, left });
-        }
-                        setMenuOpenKey(st.key);
-                      }}
-                    >
-                      <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
-                    </button>
-                  ) : (
-                    <div className={styles.stBtn} style={{ cursor: 'default' }} title={iconName(st.key, djType)}>
-                      <span className={styles.stTop}>{inner}</span>
-                      <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
-                    </div>
-                  )}
-                  {open && hasMenu && menuPos && (
-                    <StageMenu
-                      st={st}
-                      pos={menuPos}
-                      djType={djType}
-                      openedLabelText={openedLabel(st.key)}
-                      actionLocked={actionLocked}
-                      overrideLocked={overrideLockedFor(st.key)}
-                      onClose={() => setMenuOpenKey(null)}
-                      onRunAction={(run) => { setMenuOpenKey(null); run(); }}
-                      onToggleOverride={() => confirmAndToggleStep(st.key, !st.done)}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <PipelineStrip
+          steps={steps}
+          slots={pipeSlotsFor(djType)}
+          djType={djType}
+          newSlot={newSlot}
+          menuOpenKey={menuOpenKey}
+          setMenuOpenKey={setMenuOpenKey}
+          menuPos={menuPos}
+          setMenuPos={setMenuPos}
+          menuBtnRef={menuBtnRef}
+          openedLabel={openedLabel}
+          actionLocked={actionLocked}
+          overrideLockedFor={overrideLockedFor}
+          onToggleOverride={confirmAndToggleStep}
+        />
         {/* 10 — Actions. Right corner, its own track, so nothing it contains
             can squeeze the event name.
             The pill and the buttons occupy the SAME space: pill at rest,
