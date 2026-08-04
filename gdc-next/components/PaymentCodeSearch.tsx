@@ -1,16 +1,19 @@
 'use client';
 
 // PaymentCodeSearch — "find a booking by its payment code" search, shown ONLY
-// on the Upcoming Bookings dashboard, as an in-page search bar (not a header
-// icon). Every deposit/invoice link carries a reference code (GDC-1A2B-D) the
-// client includes with their payment; when a Venmo/Zelle/etc. lands the DJ
-// pastes that code here to see which booking it belongs to and where the money
-// stands.
+// on the Upcoming Bookings dashboard. Renders as a magnifier icon sitting on
+// the SAME LINE as the sort buttons; clicking it expands into an input inline.
+// Running a search shows just the matched booking below the sort row and hides
+// the rest of the list; Clear (or collapsing) restores it.
 //
-// It's mounted from the header (so it exists on the dashboard), but it renders
-// itself into the PAGE via a portal, dropped in just above the sort row. That
-// keeps it on the dashboard body without having to edit the large
-// UpcomingBookingsClient — the search hosts its own slot in the DOM.
+// Every deposit/invoice link carries a reference code (GDC-1A2B-D) the client
+// includes with their payment; the DJ pastes it here to see which booking it
+// belongs to and where the money stands.
+//
+// Mounted from the header (so it exists on the dashboard) but it renders itself
+// into the PAGE via portals — one inline slot in the sort row for the icon/
+// input, one slot just below for results — so we never touch the large
+// UpcomingBookingsClient.
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -68,47 +71,52 @@ function kindLabel(kind: string | null): string {
   return 'Payment';
 }
 
-// Find (or create) the in-page slot the search bar renders into: a div dropped
-// right before the SORT row. Falls back to just under the page title, then to
-// the top of <main>. Polls briefly because the dashboard hydrates the sort row
-// after mount.
-function findAnchorParentAndBefore(): { parent: HTMLElement; before: Node | null } | null {
-  const buttons = Array.from(document.querySelectorAll('button'));
-  const byDate = buttons.find((b) => /by date/i.test(b.textContent || ''));
-  if (byDate) {
-    // Walk up to the smallest block that holds the whole sort row.
-    let row: HTMLElement | null = byDate;
-    for (let i = 0; i < 4 && row; i++) {
-      const t = row.textContent || '';
-      if (/by date/i.test(t) && /recently/i.test(t) && row.parentElement) {
-        return { parent: row.parentElement, before: row };
-      }
-      row = row.parentElement;
-    }
-    if (byDate.parentElement?.parentElement) {
-      return { parent: byDate.parentElement.parentElement, before: byDate.parentElement };
-    }
+// The sort row = the smallest element containing both "By date" and
+// "Recently"; that's where the magnifier lives, and results go right after it.
+function findSortRow(): HTMLElement | null {
+  const byDate = Array.from(document.querySelectorAll('button')).find((b) => /by date/i.test(b.textContent || ''));
+  let row: HTMLElement | null = byDate || null;
+  for (let i = 0; i < 5 && row; i++) {
+    const t = row.textContent || '';
+    if (/by date/i.test(t) && /recently/i.test(t)) return row;
+    row = row.parentElement;
   }
-  const heading = Array.from(document.querySelectorAll('h1, h2, h3'))
-    .find((h) => /upcoming bookings/i.test(h.textContent || ''));
-  if (heading?.parentElement) {
-    return { parent: heading.parentElement, before: heading.nextSibling };
-  }
-  const main = document.querySelector('main');
-  if (main) return { parent: main, before: main.firstChild };
   return null;
 }
+
+const MagnifierBtn = ({ onClick, title }: { onClick: () => void; title: string }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    title={title}
+    aria-label={title}
+    style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 34, height: 30, flexShrink: 0, background: 'transparent',
+      border: '1px solid rgba(255,255,255,.2)', borderRadius: 8,
+      color: 'var(--neon,#00e0a4)', cursor: 'pointer', padding: 0,
+    }}
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  </button>
+);
 
 export default function PaymentCodeSearch() {
   const [code, setCode] = useState('');
   const [items, setItems] = useState<Item[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [iconHost, setIconHost] = useState<HTMLElement | null>(null);
+  const [resultHost, setResultHost] = useState<HTMLElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const hostRef = useRef<HTMLElement | null>(null);
-  // Elements (the sort row + month sections) we hide while a result is shown,
-  // so the page shows ONLY the matched booking. Restored on clear/unmount.
+  const iconHostRef = useRef<HTMLElement | null>(null);
+  const resultHostRef = useRef<HTMLElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  // Month sections we hide while a result is shown, so only the match shows.
   const hiddenRef = useRef<HTMLElement[]>([]);
 
   function restoreList() {
@@ -116,20 +124,32 @@ export default function PaymentCodeSearch() {
     hiddenRef.current = [];
   }
 
-  // Create + place the host slot on the dashboard; tear it down on leave.
+  // Create + place the two slots on the dashboard; tear down on leave.
   useEffect(() => {
     if (pathname !== DASHBOARD) return;
     let cancelled = false;
     let tries = 0;
     const place = () => {
       if (cancelled) return;
-      const spot = findAnchorParentAndBefore();
-      if (spot) {
-        const el = document.createElement('div');
-        el.setAttribute('data-gdc', 'paycode-search');
-        spot.parent.insertBefore(el, spot.before);
-        hostRef.current = el;
-        setHost(el);
+      const sortRow = findSortRow();
+      const fallback = (document.querySelector('main') as HTMLElement | null);
+      const anchorParent = sortRow?.parentElement || fallback;
+      if (sortRow && anchorParent) {
+        const icon = document.createElement('span');
+        icon.setAttribute('data-gdc', 'paycode-icon');
+        icon.style.display = 'inline-flex';
+        icon.style.alignItems = 'center';
+        icon.style.marginLeft = '10px';
+        sortRow.appendChild(icon); // same line as the sort buttons
+
+        const res = document.createElement('div');
+        res.setAttribute('data-gdc', 'paycode-result');
+        anchorParent.insertBefore(res, sortRow.nextSibling); // just below the sort row
+
+        iconHostRef.current = icon;
+        resultHostRef.current = res;
+        setIconHost(icon);
+        setResultHost(res);
         return;
       }
       tries += 1;
@@ -139,27 +159,34 @@ export default function PaymentCodeSearch() {
     return () => {
       cancelled = true;
       restoreList();
-      const el = hostRef.current;
-      if (el && el.parentElement) el.parentElement.removeChild(el);
-      hostRef.current = null;
-      setHost(null);
+      [iconHostRef, resultHostRef].forEach((r) => {
+        if (r.current && r.current.parentElement) r.current.parentElement.removeChild(r.current);
+        r.current = null;
+      });
+      setIconHost(null);
+      setResultHost(null);
     };
   }, [pathname]);
 
-  // When a booking is found, collapse the rest of the dashboard (sort row +
-  // month sections) so only the matched booking box shows. Restore otherwise.
+  // Focus the input when it expands.
   useEffect(() => {
-    const el = hostRef.current;
-    if (!el) return;
+    if (expanded) setTimeout(() => inputRef.current?.focus(), 40);
+  }, [expanded]);
+
+  // When a booking is found, collapse the rest of the list (month sections)
+  // so only the matched booking box shows. Restore otherwise.
+  useEffect(() => {
+    const res = resultHostRef.current;
+    if (!res) return;
     restoreList();
     if (Array.isArray(items) && items.length > 0) {
       const sibs: HTMLElement[] = [];
-      let n = el.nextElementSibling as HTMLElement | null;
+      let n = res.nextElementSibling as HTMLElement | null;
       while (n) { sibs.push(n); n = n.nextElementSibling as HTMLElement | null; }
       sibs.forEach((s) => { s.style.display = 'none'; });
       hiddenRef.current = sibs;
     }
-  }, [items, host]);
+  }, [items, resultHost]);
 
   async function run() {
     const q = code.trim();
@@ -177,120 +204,120 @@ export default function PaymentCodeSearch() {
     }
   }
 
-  if (pathname !== DASHBOARD || !host) return null;
+  function collapse() {
+    setExpanded(false);
+    setItems(null);
+    setCode('');
+  }
 
-  const bar = (
-    <div style={{ margin: '0 0 22px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ color: 'rgba(255,255,255,.55)', fontSize: '.72rem', letterSpacing: '.14em', textTransform: 'uppercase' }}>
-          Find by payment code
-        </span>
-        <div style={{ display: 'flex', gap: 8, flex: '1 1 260px', maxWidth: 420 }}>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') run(); }}
-            placeholder="e.g. GDC-1A2B-D"
-            style={{
-              flex: 1, minWidth: 0, background: '#16161f', color: '#fff',
-              border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '9px 12px',
-              fontSize: '.85rem', outline: 'none', letterSpacing: '.02em',
-            }}
-          />
-          <button
-            type="button"
-            onClick={run}
-            style={{
-              flexShrink: 0, background: 'var(--neon,#00e0a4)', color: '#04241c', border: 'none',
-              borderRadius: 8, padding: '0 16px', fontWeight: 700, fontSize: '.82rem', cursor: 'pointer',
-            }}
+  if (pathname !== DASHBOARD || !iconHost || !resultHost) return null;
+
+  const inputStyle: React.CSSProperties = {
+    width: 190, minWidth: 0, background: '#16161f', color: '#fff',
+    border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '7px 11px',
+    fontSize: '.82rem', outline: 'none', letterSpacing: '.02em',
+  };
+  const pillBtn: React.CSSProperties = {
+    flexShrink: 0, background: 'var(--neon,#00e0a4)', color: '#04241c', border: 'none',
+    borderRadius: 8, padding: '0 14px', height: 30, fontWeight: 700, fontSize: '.8rem', cursor: 'pointer',
+  };
+  const ghostBtn: React.CSSProperties = {
+    flexShrink: 0, background: 'transparent', color: 'rgba(255,255,255,.55)',
+    border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '0 11px', height: 30,
+    fontSize: '.8rem', cursor: 'pointer',
+  };
+
+  const iconUI = expanded ? (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <MagnifierBtn onClick={collapse} title="Close search" />
+      <input
+        ref={inputRef}
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') run(); else if (e.key === 'Escape') collapse(); }}
+        placeholder="GDC-1A2B-D"
+        style={inputStyle}
+      />
+      <button type="button" onClick={run} style={pillBtn}>{loading ? '…' : 'Find'}</button>
+      {items != null && (
+        <button type="button" onClick={() => { setItems(null); setCode(''); }} style={ghostBtn}>Clear</button>
+      )}
+    </span>
+  ) : (
+    <MagnifierBtn onClick={() => setExpanded(true)} title="Find by payment code" />
+  );
+
+  const resultUI = items == null ? null : (
+    <div style={{ margin: '14px 0 22px', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 }}>
+      {items.length === 0 ? (
+        <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.85rem' }}>
+          No booking matches that code.
+        </div>
+      ) : (
+        items.map((it) => (
+          <div
+            key={it.id}
+            style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '12px 14px', background: '#0d0d14' }}
           >
-            {loading ? '…' : 'Find'}
-          </button>
-          {items != null && (
+            <div style={{ color: '#fff', fontSize: '.95rem', fontWeight: 700 }}>
+              {it.label}{it.price != null ? ` · ${money(it.price, it.currency)}` : ''}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,.65)', fontSize: '.78rem', marginTop: 2 }}>
+              {fmtDate(it.eventDate)}{it.venueName ? ` · ${it.venueName}` : ''}
+            </div>
+            {it.requesterName && (
+              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.76rem', marginTop: 1 }}>{it.requesterName}</div>
+            )}
+
+            {it.payments.length > 0 ? (
+              <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {it.payments.map((p, i) => {
+                  const chip = p.status === 'paid' ? '#00e0a4'
+                    : (p.status === 'partial' || p.status === 'pending_confirmation') ? '#f5c451'
+                    : 'rgba(255,255,255,.55)';
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem' }}>
+                      <span style={{ color: 'rgba(255,255,255,.8)' }}>
+                        {kindLabel(p.kind)}{p.amount != null ? ` · ${money(p.amount, p.currency)}` : ''}
+                      </span>
+                      <span style={{ color: chip, fontWeight: 600 }}>
+                        {PAY_STATUS[p.status || ''] || p.status || '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ marginTop: 9, color: 'rgba(255,255,255,.45)', fontSize: '.76rem' }}>
+                No payment requested yet.
+              </div>
+            )}
+
+            <div style={{ marginTop: 7, color: 'rgba(255,255,255,.4)', fontSize: '.68rem', fontFamily: 'monospace' }}>
+              {it.depositCode} · {it.balanceCode}
+            </div>
+
             <button
               type="button"
-              onClick={() => { setItems(null); setCode(''); }}
+              onClick={() => router.push(`/upcoming-bookings?open=${encodeURIComponent(it.id)}`)}
               style={{
-                flexShrink: 0, background: 'transparent', color: 'rgba(255,255,255,.55)',
-                border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '0 12px',
-                fontSize: '.82rem', cursor: 'pointer',
+                marginTop: 10, padding: '8px 14px',
+                background: 'transparent', border: '1px solid rgba(0,224,164,.45)', borderRadius: 7,
+                color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
               }}
             >
-              Clear
+              Open booking →
             </button>
-          )}
-        </div>
-      </div>
-
-      {items != null && (
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 }}>
-          {items.length === 0 ? (
-            <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.85rem' }}>
-              No booking matches that code.
-            </div>
-          ) : (
-            items.map((it) => (
-              <div
-                key={it.id}
-                style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '12px 14px', background: '#0d0d14' }}
-              >
-                <div style={{ color: '#fff', fontSize: '.95rem', fontWeight: 700 }}>
-                  {it.label}{it.price != null ? ` · ${money(it.price, it.currency)}` : ''}
-                </div>
-                <div style={{ color: 'rgba(255,255,255,.65)', fontSize: '.78rem', marginTop: 2 }}>
-                  {fmtDate(it.eventDate)}{it.venueName ? ` · ${it.venueName}` : ''}
-                </div>
-                {it.requesterName && (
-                  <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.76rem', marginTop: 1 }}>{it.requesterName}</div>
-                )}
-
-                {it.payments.length > 0 ? (
-                  <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {it.payments.map((p, i) => {
-                      const chip = p.status === 'paid' ? '#00e0a4'
-                        : (p.status === 'partial' || p.status === 'pending_confirmation') ? '#f5c451'
-                        : 'rgba(255,255,255,.55)';
-                      return (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem' }}>
-                          <span style={{ color: 'rgba(255,255,255,.8)' }}>
-                            {kindLabel(p.kind)}{p.amount != null ? ` · ${money(p.amount, p.currency)}` : ''}
-                          </span>
-                          <span style={{ color: chip, fontWeight: 600 }}>
-                            {PAY_STATUS[p.status || ''] || p.status || '—'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 9, color: 'rgba(255,255,255,.45)', fontSize: '.76rem' }}>
-                    No payment requested yet.
-                  </div>
-                )}
-
-                <div style={{ marginTop: 7, color: 'rgba(255,255,255,.4)', fontSize: '.68rem', fontFamily: 'monospace' }}>
-                  {it.depositCode} · {it.balanceCode}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => router.push(`/upcoming-bookings?open=${encodeURIComponent(it.id)}`)}
-                  style={{
-                    marginTop: 10, padding: '8px 14px',
-                    background: 'transparent', border: '1px solid rgba(0,224,164,.45)', borderRadius: 7,
-                    color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
-                  }}
-                >
-                  Open booking →
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+          </div>
+        ))
       )}
     </div>
   );
 
-  return createPortal(bar, host);
+  return (
+    <>
+      {createPortal(iconUI, iconHost)}
+      {createPortal(resultUI, resultHost)}
+    </>
+  );
 }
