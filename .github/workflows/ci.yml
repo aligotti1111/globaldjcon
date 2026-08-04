@@ -1,0 +1,32 @@
+name: CI
+
+# Runs on every push to main and on pull requests. Type-checks the app with the
+# same TypeScript compiler your editor uses. No secrets required — this only
+# checks types, it doesn't build or deploy. A red X here means a type error
+# reached the repo; a green check means the code is type-sound.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gdc-next
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gdc-next/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (tsc --noEmit)
+        run: npm run type-check
