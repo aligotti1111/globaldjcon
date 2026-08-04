@@ -31,7 +31,7 @@ const WHAT: Record<string, string> = {
 function fmtDate(d: string | null): string {
   if (!d) return '';
   try {
-    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return ''; }
 }
 
