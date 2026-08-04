@@ -10,7 +10,7 @@
 // input and inline results. Each result links to the booking on the dashboard.
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 type Payment = {
   kind: string | null;
@@ -74,6 +74,7 @@ export default function PaymentCodeSearch() {
   const btnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   function toggle() {
     if (!open && btnRef.current) {
@@ -113,6 +114,11 @@ export default function PaymentCodeSearch() {
       setLoading(false);
     }
   }
+
+  // Dashboard-only: the payment-code search belongs on the Upcoming Bookings
+  // page (where the DJ manages bookings + payments), not in the global header
+  // on every page. Hooks above run unconditionally; this gate is safe here.
+  if (pathname !== '/upcoming-bookings') return null;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
