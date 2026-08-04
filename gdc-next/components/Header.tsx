@@ -18,6 +18,7 @@ import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
 import NotificationBell from './NotificationBell';
 import BookingRequestsMenu from './BookingRequestsMenu';
+import PaymentCodeSearch from './PaymentCodeSearch';
 import AuthModal from './AuthModal';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -141,6 +142,10 @@ export default function Header() {
                   )}
 
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
+                  {/* Payment-code search — find a booking by the reference
+                      code on its payment link. DJ-side only. */}
+                  {(isDj || isTeammate) && <PaymentCodeSearch />}
+
                   {canBookings && <BookingRequestsMenu count={bookingCount} />}
 
                   {/* New-activity bell (desktop only) — sits between the
