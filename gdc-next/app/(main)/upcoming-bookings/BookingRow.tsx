@@ -18,7 +18,7 @@ import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
 import ContractPortal from '../update-dj-profile/ContractPortal';
-import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
+import { ConfirmDialog, PaymentMethodsModal } from './RowModals';
 import RequestPaymentModal from './RequestPaymentModal';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import PlannerSendModal from './PlannerSendModal';
@@ -1608,45 +1608,7 @@ export default function BookingRow({
           read. It replaced a window.prompt(), which showed the number with no
           currency, no context, and no way to see what it was a deposit ON. */}
       {confirmModal && (
-        <div
-          onClick={() => setConfirmModal(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,.65)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
-              borderRadius: 12, padding: '1.2rem 1.3rem', maxWidth: 420, width: '100%',
-              boxShadow: '0 12px 40px rgba(0,0,0,.6)',
-            }}
-          >
-            <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '1rem', marginBottom: '.55rem' }}>
-              {confirmModal.title}
-            </div>
-            <div style={{ color: 'var(--muted,#b7b7c6)', fontSize: '.85rem', lineHeight: 1.55, marginBottom: '1.1rem' }}>
-              {confirmModal.body}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
-              <button
-                type="button"
-                onClick={() => setConfirmModal(null)}
-                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--white,#fff)', fontWeight: 700, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.1rem', cursor: 'pointer' }}
-              >
-                {confirmModal.cancelLabel ?? 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { const ok = confirmModal.onOk; setConfirmModal(null); ok(); }}
-                style={{ background: confirmModal.danger ? '#ff6b6b' : NEON, border: 'none', color: confirmModal.danger ? '#2a0a0a' : '#06231b', fontWeight: 800, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}
-              >
-                {confirmModal.okLabel}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog confirm={confirmModal} onClose={() => setConfirmModal(null)} />
       )}
       {reqOpen && (
         <RequestPaymentModal
@@ -1671,41 +1633,7 @@ export default function BookingRow({
           as Booking Settings, so a rail added here is added everywhere and
           there's one place for this logic to be wrong. */}
       {methodsOpen && (
-        <div
-          onClick={() => setMethodsOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)',
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            padding: '2rem 1rem', overflowY: 'auto',
-          }}
-        >
-          {/* position:relative so the close button can pin to the card's own
-              top-right corner. The old "Done" button lived UNDER the card, and
-              the card is taller than the viewport — so on most screens Done was
-              below the fold and the only apparent way out was the dark
-              backdrop, which isn't obviously clickable. An X in the corner is
-              where every modal keeps its exit, and it rides the top of the card
-              so it's on screen the moment the modal opens. */}
-          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', maxWidth: 620, width: '100%' }}>
-            <button
-              type="button"
-              onClick={() => setMethodsOpen(false)}
-              aria-label="Close"
-              style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 1,
-                width: 32, height: 32, borderRadius: '50%',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.2)',
-                color: 'var(--white,#fff)', cursor: 'pointer', lineHeight: 1,
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-            <PaymentMethodsSection userId={userId} />
-          </div>
-        </div>
+        <PaymentMethodsModal userId={userId} onClose={() => setMethodsOpen(false)} />
       )}
 
       {expanded && (
