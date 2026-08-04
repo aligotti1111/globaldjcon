@@ -1,78 +1,37 @@
 'use client';
 
-// PaymentCodeSearch — "find a booking by its payment code" search, shown ONLY
-// on the Upcoming Bookings dashboard. Renders as a magnifier icon sitting on
-// the SAME LINE as the sort buttons; clicking it expands into an input inline.
-// Running a search shows just the matched booking below the sort row and hides
-// the rest of the list; Clear (or collapsing) restores it.
+// PaymentCodeSearch — "find a booking by its payment code", shown ONLY on the
+// Upcoming Bookings dashboard as a magnifier on the SAME LINE as the sort
+// buttons. Clicking it expands into an inline input; running a code filters the
+// REAL bookings list down to the matching booking (its native row stays, every
+// other row + month is hidden). Clear/close restores the full list.
 //
-// Every deposit/invoice link carries a reference code (GDC-1A2B-D) the client
-// includes with their payment; the DJ pastes it here to see which booking it
-// belongs to and where the money stands.
-//
-// Mounted from the header (so it exists on the dashboard) but it renders itself
-// into the PAGE via portals — one inline slot in the sort row for the icon/
-// input, one slot just below for results — so we never touch the large
-// UpcomingBookingsClient.
+// No custom result card — the match is shown exactly as the page renders it.
+// We find the row by matching the booking's date + event type against the real
+// rows' cells (rows carry no id in the DOM), so we never touch the large
+// UpcomingBookingsClient / BookingRow files.
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
-type Payment = {
-  kind: string | null;
-  amount: number | null;
-  amountPaid: number;
-  status: string | null;
-  currency: string;
-};
 type Item = {
   id: string;
   label: string;
-  venueName: string | null;
   eventDate: string | null;
-  requesterName: string | null;
-  status: string | null;
-  currency: string;
-  price: number | null;
-  depositCode: string;
-  balanceCode: string;
-  payments: Payment[];
 };
 
 const DASHBOARD = '/upcoming-bookings';
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-function money(n: number, currency = 'USD'): string {
+function fmtShort(d: string | null): string {
+  if (!d) return '';
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
-  } catch {
-    return `$${n.toFixed(2)}`;
-  }
-}
-
-function fmtDate(d: string | null): string {
-  if (!d) return 'Date TBD';
-  try {
-    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return d; }
 }
 
-const PAY_STATUS: Record<string, string> = {
-  requested: 'Requested',
-  pending_confirmation: 'Client says sent',
-  partial: 'Partly paid',
-  paid: 'Paid',
-  waived: 'Waived',
-};
-
-function kindLabel(kind: string | null): string {
-  if (kind === 'deposit') return 'Deposit';
-  if (kind === 'balance') return 'Balance';
-  return 'Payment';
-}
-
-// The sort row = the smallest element containing both "By date" and
-// "Recently"; that's where the magnifier lives, and results go right after it.
+// The sort row = the smallest element containing both "By date" and "Recently".
 function findSortRow(): HTMLElement | null {
   const byDate = Array.from(document.querySelectorAll('button')).find((b) => /by date/i.test(b.textContent || ''));
   let row: HTMLElement | null = byDate || null;
@@ -106,25 +65,50 @@ const MagnifierBtn = ({ onClick, title }: { onClick: () => void; title: string }
 
 export default function PaymentCodeSearch() {
   const [code, setCode] = useState('');
-  const [items, setItems] = useState<Item[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [active, setActive] = useState(false); // a filter is currently applied
   const [iconHost, setIconHost] = useState<HTMLElement | null>(null);
-  const [resultHost, setResultHost] = useState<HTMLElement | null>(null);
-  const router = useRouter();
   const pathname = usePathname();
   const iconHostRef = useRef<HTMLElement | null>(null);
-  const resultHostRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  // Month sections we hide while a result is shown, so only the match shows.
-  const hiddenRef = useRef<HTMLElement[]>([]);
+  const hiddenRef = useRef<[HTMLElement, string][]>([]);
 
-  function restoreList() {
-    hiddenRef.current.forEach((s) => { s.style.display = ''; });
+  function restoreFilter() {
+    hiddenRef.current.forEach(([el, disp]) => { el.style.display = disp || ''; });
     hiddenRef.current = [];
+    setActive(false);
   }
 
-  // Create + place the two slots on the dashboard; tear down on leave.
+  // Hide every real row + month except the one matching this booking. Returns
+  // true if a matching row was found on the page.
+  function applyFilter(item: Item): boolean {
+    restoreFilter();
+    if (!item.eventDate) return false;
+    const day = String(parseInt(item.eventDate.slice(8, 10), 10));
+    const mon = MONTHS[parseInt(item.eventDate.slice(5, 7), 10) - 1] || '';
+    const label = (item.label || '').toLowerCase();
+
+    const rows = Array.from(document.querySelectorAll('[class*="rowWrap"]')) as HTMLElement[];
+    const matched = rows.filter((r) => {
+      const dt = (r.querySelector('[class*="rowDate"]')?.textContent || '').toUpperCase().replace(/\s+/g, '');
+      const dayNum = (dt.match(/^\d+/) || [])[0];
+      const ty = (r.querySelector('[class*="rowEventType"]')?.textContent || '').toLowerCase();
+      return dayNum === day && dt.includes(mon) && (!label || ty.includes(label));
+    });
+    if (matched.length === 0) return false;
+
+    const store: [HTMLElement, string][] = [];
+    rows.forEach((r) => { if (!matched.includes(r)) { store.push([r, r.style.display]); r.style.display = 'none'; } });
+    const months = Array.from(document.querySelectorAll('[class*="month__"]')) as HTMLElement[];
+    months.forEach((m) => { if (!matched.some((r) => m.contains(r))) { store.push([m, m.style.display]); m.style.display = 'none'; } });
+    hiddenRef.current = store;
+    setActive(true);
+    return true;
+  }
+
+  // Create + place the magnifier slot on the sort row; tear down on leave.
   useEffect(() => {
     if (pathname !== DASHBOARD) return;
     let cancelled = false;
@@ -132,24 +116,15 @@ export default function PaymentCodeSearch() {
     const place = () => {
       if (cancelled) return;
       const sortRow = findSortRow();
-      const fallback = (document.querySelector('main') as HTMLElement | null);
-      const anchorParent = sortRow?.parentElement || fallback;
-      if (sortRow && anchorParent) {
+      if (sortRow) {
         const icon = document.createElement('span');
         icon.setAttribute('data-gdc', 'paycode-icon');
         icon.style.display = 'inline-flex';
         icon.style.alignItems = 'center';
         icon.style.marginLeft = '10px';
-        sortRow.appendChild(icon); // same line as the sort buttons
-
-        const res = document.createElement('div');
-        res.setAttribute('data-gdc', 'paycode-result');
-        anchorParent.insertBefore(res, sortRow.nextSibling); // just below the sort row
-
+        sortRow.appendChild(icon);
         iconHostRef.current = icon;
-        resultHostRef.current = res;
         setIconHost(icon);
-        setResultHost(res);
         return;
       }
       tries += 1;
@@ -158,59 +133,52 @@ export default function PaymentCodeSearch() {
     place();
     return () => {
       cancelled = true;
-      restoreList();
-      [iconHostRef, resultHostRef].forEach((r) => {
-        if (r.current && r.current.parentElement) r.current.parentElement.removeChild(r.current);
-        r.current = null;
-      });
+      restoreFilter();
+      if (iconHostRef.current && iconHostRef.current.parentElement) {
+        iconHostRef.current.parentElement.removeChild(iconHostRef.current);
+      }
+      iconHostRef.current = null;
       setIconHost(null);
-      setResultHost(null);
     };
   }, [pathname]);
 
-  // Focus the input when it expands.
   useEffect(() => {
     if (expanded) setTimeout(() => inputRef.current?.focus(), 40);
   }, [expanded]);
-
-  // When a booking is found, collapse the rest of the list (month sections)
-  // so only the matched booking box shows. Restore otherwise.
-  useEffect(() => {
-    const res = resultHostRef.current;
-    if (!res) return;
-    restoreList();
-    if (Array.isArray(items) && items.length > 0) {
-      const sibs: HTMLElement[] = [];
-      let n = res.nextElementSibling as HTMLElement | null;
-      while (n) { sibs.push(n); n = n.nextElementSibling as HTMLElement | null; }
-      sibs.forEach((s) => { s.style.display = 'none'; });
-      hiddenRef.current = sibs;
-    }
-  }, [items, resultHost]);
 
   async function run() {
     const q = code.trim();
     if (!q) return;
     setLoading(true);
-    setItems(null);
+    setNotice(null);
+    restoreFilter();
     try {
       const r = await fetch(`/api/dj/find-by-code?code=${encodeURIComponent(q)}`, { cache: 'no-store' });
       const j = await r.json();
-      setItems(Array.isArray(j.items) ? j.items : []);
+      const list: Item[] = Array.isArray(j.items) ? j.items : [];
+      if (list.length === 0) { setNotice('No booking found for that code.'); return; }
+      const item = list[0];
+      const ok = applyFilter(item);
+      if (!ok) setNotice(`${item.label} · ${fmtShort(item.eventDate)} isn't in your upcoming list.`);
     } catch {
-      setItems([]);
+      setNotice('Search failed — try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  function collapse() {
-    setExpanded(false);
-    setItems(null);
+  function clear() {
+    restoreFilter();
+    setNotice(null);
     setCode('');
   }
 
-  if (pathname !== DASHBOARD || !iconHost || !resultHost) return null;
+  function collapse() {
+    clear();
+    setExpanded(false);
+  }
+
+  if (pathname !== DASHBOARD || !iconHost) return null;
 
   const inputStyle: React.CSSProperties = {
     width: 190, minWidth: 0, background: '#16161f', color: '#fff',
@@ -228,7 +196,7 @@ export default function PaymentCodeSearch() {
   };
 
   const iconUI = expanded ? (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
       <MagnifierBtn onClick={collapse} title="Close search" />
       <input
         ref={inputRef}
@@ -239,85 +207,16 @@ export default function PaymentCodeSearch() {
         style={inputStyle}
       />
       <button type="button" onClick={run} style={pillBtn}>{loading ? '…' : 'Find'}</button>
-      {items != null && (
-        <button type="button" onClick={() => { setItems(null); setCode(''); }} style={ghostBtn}>Clear</button>
+      {(active || notice || code) && (
+        <button type="button" onClick={clear} style={ghostBtn}>Clear</button>
+      )}
+      {notice && (
+        <span style={{ color: 'rgba(255,255,255,.6)', fontSize: '.76rem' }}>{notice}</span>
       )}
     </span>
   ) : (
     <MagnifierBtn onClick={() => setExpanded(true)} title="Find by payment code" />
   );
 
-  const resultUI = items == null ? null : (
-    <div style={{ margin: '14px 0 22px', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 }}>
-      {items.length === 0 ? (
-        <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.85rem' }}>
-          No booking matches that code.
-        </div>
-      ) : (
-        items.map((it) => (
-          <div
-            key={it.id}
-            style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '12px 14px', background: '#0d0d14' }}
-          >
-            <div style={{ color: '#fff', fontSize: '.95rem', fontWeight: 700 }}>
-              {it.label}{it.price != null ? ` · ${money(it.price, it.currency)}` : ''}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,.65)', fontSize: '.78rem', marginTop: 2 }}>
-              {fmtDate(it.eventDate)}{it.venueName ? ` · ${it.venueName}` : ''}
-            </div>
-            {it.requesterName && (
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.76rem', marginTop: 1 }}>{it.requesterName}</div>
-            )}
-
-            {it.payments.length > 0 ? (
-              <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {it.payments.map((p, i) => {
-                  const chip = p.status === 'paid' ? '#00e0a4'
-                    : (p.status === 'partial' || p.status === 'pending_confirmation') ? '#f5c451'
-                    : 'rgba(255,255,255,.55)';
-                  return (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem' }}>
-                      <span style={{ color: 'rgba(255,255,255,.8)' }}>
-                        {kindLabel(p.kind)}{p.amount != null ? ` · ${money(p.amount, p.currency)}` : ''}
-                      </span>
-                      <span style={{ color: chip, fontWeight: 600 }}>
-                        {PAY_STATUS[p.status || ''] || p.status || '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ marginTop: 9, color: 'rgba(255,255,255,.45)', fontSize: '.76rem' }}>
-                No payment requested yet.
-              </div>
-            )}
-
-            <div style={{ marginTop: 7, color: 'rgba(255,255,255,.4)', fontSize: '.68rem', fontFamily: 'monospace' }}>
-              {it.depositCode} · {it.balanceCode}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => router.push(`/upcoming-bookings?open=${encodeURIComponent(it.id)}`)}
-              style={{
-                marginTop: 10, padding: '8px 14px',
-                background: 'transparent', border: '1px solid rgba(0,224,164,.45)', borderRadius: 7,
-                color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
-              }}
-            >
-              Open booking →
-            </button>
-          </div>
-        ))
-      )}
-    </div>
-  );
-
-  return (
-    <>
-      {createPortal(iconUI, iconHost)}
-      {createPortal(resultUI, resultHost)}
-    </>
-  );
+  return createPortal(iconUI, iconHost);
 }
