@@ -56,6 +56,16 @@ function fmtDate(d: string | null): string {
   } catch { return d; }
 }
 
+// Money formatting for the price line. Most bookings are USD; a few carry a
+// currency code, so map the common ones to a symbol and fall back to the code.
+const CUR: Record<string, string> = { USD: '$', CAD: '$', AUD: '$', GBP: '£', EUR: '€' };
+function money(amount: number, currency: string | null): string {
+  const code = (currency || 'USD').toUpperCase();
+  const sym = CUR[code];
+  const n = Number(amount).toLocaleString();
+  return sym ? `${sym}${n}` : `${code} ${n}`;
+}
+
 type Booking = {
   id: string;
   dj_id: string | null;
@@ -65,6 +75,10 @@ type Booking = {
   venue_name: string | null;
   event_date: string | null;
   created_at: string | null;
+  quoted_rate: number | null;
+  offer_amount: number | null;
+  counter_rate: number | null;
+  currency: string | null;
 };
 
 export async function GET(req: Request) {
@@ -98,7 +112,7 @@ export async function GET(req: Request) {
   // naturally.
   const { data, error } = await db
     .from('bookings')
-    .select('id, dj_id, requester_name, event_type, venue_type, venue_name, event_date, created_at')
+    .select('id, dj_id, requester_name, event_type, venue_type, venue_name, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency')
     .eq('status', 'pending')
     .is('deleted_at', null)
     .limit(2000);
@@ -140,11 +154,16 @@ export async function GET(req: Request) {
     const rowsHtml = list.map((b) => {
       const label = esc(b.event_type ? (MOB_EVENT_LABELS[b.event_type] || b.event_type) : (b.venue_type || 'Booking'));
       const when = fmtDate(b.event_date);
+      // The price the booker put on the table (package price, their offer, or
+      // an in-flight counter). Null on quote requests with no rate yet.
+      const rate = b.quoted_rate ?? b.offer_amount ?? b.counter_rate ?? null;
+      const price = rate != null ? money(Number(rate), b.currency) : null;
       const days = b.created_at ? Math.max(0, Math.floor((nowMs - Date.parse(b.created_at)) / 86400000)) : null;
       const waited = days === null ? '' : days === 0 ? 'Received today' : days === 1 ? 'Waiting 1 day' : `Waiting ${days} days`;
       return `<tr><td style="padding:14px 0;border-bottom:1px solid #eee;">
 <div style="font-size:15px;color:#111;font-weight:700;">${label}</div>
 <div style="font-size:13px;color:#555;margin-top:3px;">${when}</div>
+${price ? `<div style="font-size:15px;color:#0a6f61;font-weight:700;margin-top:4px;">${price}</div>` : ''}
 ${waited ? `<div style="font-size:12px;color:#b0791f;margin-top:3px;font-weight:600;">${waited}</div>` : ''}
 </td></tr>`;
     }).join('');
