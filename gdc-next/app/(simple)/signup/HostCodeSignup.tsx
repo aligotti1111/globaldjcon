@@ -92,6 +92,9 @@ export default function HostCodeSignup({
   /** Hover/focus state for the switch link's underline. Focus is included so
    *  it reacts to a keyboard the same way it reacts to a mouse. */
   const [switchHover, setSwitchHover] = useState(false);
+  // True once we detect the identifier already had an account and Supabase
+  // signed them in rather than creating a new one — shows a 'welcome back' notice.
+  const [welcomeBack, setWelcomeBack] = useState(false);
 
   /**
    * Whitespace collapsed once, here, so "Jane   Smith" doesn't reach the
@@ -240,43 +243,71 @@ export default function HostCodeSignup({
         .eq('id', data.user.id)
         .maybeSingle<{ id: string }>();
 
-      if (!existingRow) {
-        // Written AFTER the session exists — RLS policies check auth.uid(), so
-        // an insert sent before the session is live is rejected and the
-        // account ends up with no users row at all.
-        const e164 = isPhone ? (toE164(phone) as string) : null;
-        const { error: rowErr } = await supabase.from('users').insert({
-          id: data.user.id,
-          role: 'host',
-          name: cleanName,
-          country,
-          // Email path: they just typed a code sent to that address, which is
-          // exactly what the old verification link was proving. Phone path: no
-          // email yet — they're asked at their first booking.
-          email_verified: !isPhone,
-          phone_verified: isPhone,
-          signup_method: method,
-          // Prefilled from the number they proved they own so notifications
-          // work without asking twice. A preference, not the credential.
-          ...(e164 ? { sms_phone: e164 } : {}),
-        } as unknown as never);
-        if (rowErr) console.error('[signup] profile row failed:', rowErr);
-      }
+      // Embedded in the booking modal, onDone closes it and lets the form open;
+      // a full page load would throw away everything the visitor already typed.
+      const finishUp = () => {
+        if (onDone) { onDone(); return; }
+        window.location.href = destination || '/';
+      };
 
-      // Ends signed in — no "check your email" step to wait on.
-      //
-      // Embedded in the booking modal, onDone closes it and lets the form
-      // open. A full page load there would throw away everything the visitor
-      // had already typed, which is the entire point of doing this inline.
-      if (onDone) {
-        onDone();
+      if (existingRow) {
+        // The identifier already had an account — Supabase signed them into it
+        // rather than creating a duplicate. Without a word, "Create My Account"
+        // looks like it did nothing. Tell them what happened, then continue.
+        setWelcomeBack(true);
+        setTimeout(finishUp, 2000);
         return;
       }
-      window.location.href = destination || '/';
+
+      // Genuinely new — write the profile row AFTER the session exists (RLS
+      // policies check auth.uid(), so an insert sent before the session is live
+      // is rejected and the account ends up with no users row at all).
+      const e164 = isPhone ? (toE164(phone) as string) : null;
+      const { error: rowErr } = await supabase.from('users').insert({
+        id: data.user.id,
+        role: 'host',
+        name: cleanName,
+        country,
+        // Email path: they just typed a code sent to that address, which is
+        // exactly what the old verification link was proving. Phone path: no
+        // email yet — they're asked at their first booking.
+        email_verified: !isPhone,
+        phone_verified: isPhone,
+        signup_method: method,
+        // Prefilled from the number they proved they own so notifications
+        // work without asking twice. A preference, not the credential.
+        ...(e164 ? { sms_phone: e164 } : {}),
+      } as unknown as never);
+      if (rowErr) console.error('[signup] profile row failed:', rowErr);
+
+      finishUp();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
       setSubmitting(false);
     }
+  }
+
+  // ── Already-registered notice ─────────────────────────────────────
+  // Shown for a beat when the identifier turned out to belong to an existing
+  // account, so being signed in doesn't look like nothing happened.
+  if (welcomeBack) {
+    return (
+      <div
+        style={{
+          textAlign: 'center', padding: '1.4rem 1.1rem',
+          border: '1px solid var(--neon,#00e0a4)', borderRadius: 10,
+          background: 'rgba(0,224,164,.06)',
+        }}
+      >
+        <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '1rem', marginBottom: '.4rem' }}>
+          You already have an account
+        </div>
+        <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0, lineHeight: 1.5 }}>
+          This {isPhone ? 'number' : 'email address'} is already registered, so we&apos;ve signed you
+          in instead of creating a new account. One moment&hellip;
+        </p>
+      </div>
+    );
   }
 
   // ── Code entry ────────────────────────────────────────────────────
