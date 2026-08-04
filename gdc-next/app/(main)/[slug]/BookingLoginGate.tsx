@@ -34,7 +34,9 @@ export default function BookingLoginGate({
   const redirectTarget = `/${encodeURIComponent(djSlug)}?date=${encodeURIComponent(dateKey)}&book=1`;
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
+    // Backdrop does NOT close — a stray click outside shouldn't discard a
+    // half-filled sign-in / create-account form. Only the ✕ closes it.
+    <div className={styles.backdrop}>
       <div
         className={styles.box}
         onClick={(e) => e.stopPropagation()}
