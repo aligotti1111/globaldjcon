@@ -16,6 +16,7 @@ import { canAcceptBookings } from '@/lib/acting';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
+import HeaderHostMenu from './HeaderHostMenu';
 import NotificationBell from './NotificationBell';
 import BookingRequestsMenu from './BookingRequestsMenu';
 import PaymentCodeSearch from './PaymentCodeSearch';
@@ -58,6 +59,8 @@ export default function Header() {
 
   const isDj = user?.role === 'dj';
   const isTeammate = (user?.role as string | undefined) === 'teammate';
+  // Plain host accounts (booked a DJ) — get their own desktop dropdown.
+  const isHost = (user?.role as string | undefined) === 'host';
   // Acting role (owner/admin/manager/assistant). Assistants can't accept/deny
   // bookings, so they don't get the Booking Requests icon or Add-booking nav.
   const actingRole = ((user as unknown as { actingRole?: string })?.actingRole) || 'owner';
@@ -141,6 +144,13 @@ export default function Header() {
                     />
                   )}
 
+                  {/* Host accounts get a matching avatar dropdown with their two
+                      destinations (Upcoming Events, Account Settings) + Sign Out,
+                      instead of a lone Log Out button. */}
+                  {isHost && (
+                    <HeaderHostMenu name={user.name} avatarUrl={user.avatar_url} />
+                  )}
+
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
                   {/* Payment-code search — find a booking by the reference
                       code on its payment link. DJ-side only. */}
@@ -176,7 +186,7 @@ export default function Header() {
               {/* Log Out — shown for everyone EXCEPT non-admin DJ accounts,
                   who reach Sign Out via the avatar dropdown above. Admins
                   keep the standalone button regardless of their stored role. */}
-              {((!isDj && !isTeammate) || isAdmin) && (
+              {((!isDj && !isTeammate && !isHost) || isAdmin) && (
                 <button onClick={handleSignOut} className="btn btn-outline" type="button">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
