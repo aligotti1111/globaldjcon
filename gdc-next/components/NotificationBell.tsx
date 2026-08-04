@@ -166,7 +166,6 @@ export default function NotificationBell() {
                   borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer',
                 }}
               >
-                <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>{EMOJI[it.slot] || '\u{1F514}'}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
@@ -175,6 +174,7 @@ export default function NotificationBell() {
                     {WHAT[it.slot] || 'Update'}
                   </span>
                 </span>
+                <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0, marginLeft: 10 }}>{EMOJI[it.slot] || '\u{1F514}'}</span>
               </button>
             ))
           )}

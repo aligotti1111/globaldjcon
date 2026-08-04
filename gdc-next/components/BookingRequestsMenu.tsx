@@ -220,20 +220,17 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                   borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer',
                 }}
               >
-                <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>
-                  {it.kind === 'counter' ? '\u{1F501}' : '\u{1F4E9}'}
-                </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </span>
-                  <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
-                    {it.kind === 'counter' ? 'Countered — your response needed' : 'New booking request'}
+                  <span style={{ display: 'block', color: '#f5c451', fontSize: '.72rem', marginTop: 1 }}>
+                    {it.kind === 'counter' ? 'Counter pending' : 'Booking request pending'}
                   </span>
                 </span>
                 <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right' }}>
                   {it.price
-                    ? <span style={{ color: '#fff', fontSize: '.9rem', fontWeight: 700 }}>{it.price}</span>
+                    ? <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700 }}>{it.price}</span>
                     : <span style={{ color: 'rgba(255,255,255,.45)', fontSize: '.7rem', fontStyle: 'italic' }}>Awaiting quote</span>}
                 </span>
               </button>
