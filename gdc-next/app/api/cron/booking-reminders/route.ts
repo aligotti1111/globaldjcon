@@ -160,12 +160,16 @@ export async function GET(req: Request) {
       const price = rate != null ? money(Number(rate), b.currency) : null;
       const days = b.created_at ? Math.max(0, Math.floor((nowMs - Date.parse(b.created_at)) / 86400000)) : null;
       const waited = days === null ? '' : days === 0 ? 'Received today' : days === 1 ? 'Waiting 1 day' : `Waiting ${days} days`;
-      return `<tr><td style="padding:14px 0;border-bottom:1px solid #eee;">
+      return `<tr>
+<td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;">
 <div style="font-size:15px;color:#111;font-weight:700;">${label}</div>
 <div style="font-size:13px;color:#555;margin-top:3px;">${when}</div>
-${price ? `<div style="font-size:15px;color:#0a6f61;font-weight:700;margin-top:4px;">${price}</div>` : ''}
 ${waited ? `<div style="font-size:12px;color:#b0791f;margin-top:3px;font-weight:600;">${waited}</div>` : ''}
-</td></tr>`;
+</td>
+<td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;text-align:right;white-space:nowrap;">
+${price ? `<div style="font-size:16px;color:#0a6f61;font-weight:700;">${price}</div>` : ''}
+</td>
+</tr>`;
     }).join('');
 
     const n = list.length;
