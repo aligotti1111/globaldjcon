@@ -33,7 +33,7 @@ import {
   type MobileDayData,
   windowLabel,
 } from './bookingSettings';
-import MobileBookingForm from './MobileBookingForm';
+import MobileBookingForm from './MobileBookingFormView';
 import BookingLoginGate from './BookingLoginGate';
 
 const MONTH_NAMES = [
