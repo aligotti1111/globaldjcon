@@ -20,3 +20,14 @@ export type PipelineStep = {
   hint?: string;
   actions?: { label: string; run: () => void; danger?: boolean }[];
 };
+
+// Stage display name shared by the strip tooltip and the menu header
+// (song_list = Rider on club, Planner & Playlist on mobile).
+export function stageLabel(slotKey: string, djType: 'club' | 'mobile'): string {
+  if (slotKey === 'song_list') return djType === 'club' ? 'Rider' : 'Planner & Playlist';
+  if (slotKey === 'contract') return 'Contract';
+  if (slotKey === 'deposit') return 'Deposit';
+  if (slotKey === 'invoice') return 'Balance';
+  if (slotKey === 'guestlist') return 'Guest List';
+  return '';
+}

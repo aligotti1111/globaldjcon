@@ -10,7 +10,6 @@ import type { NamedRider } from '@/lib/rider';
 
 export interface BuildStepsCtx {
   booking: UpcomingBooking;
-  djType: 'club' | 'mobile';
   taxPct: number;
   archive: boolean;
   payments: BookingPayment[];
@@ -23,7 +22,6 @@ export interface BuildStepsCtx {
   overrides: Record<string, boolean>;
   signedOverride: boolean;
   isCancelled: boolean;
-  suggestedDeposit: number | null;
   depositRow: BookingPayment | null;
   cstatus: string | null;
   needsContract: boolean;
@@ -47,11 +45,10 @@ export interface BuildStepsCtx {
   resendRider: () => Promise<void> | void;
   sendNamedRider: (r: NamedRider) => Promise<void> | void;
   bookingTotalWithTax: (b: UpcomingBooking, taxPct: number) => number | null;
-  PIPE_SLOTS: readonly string[];
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, djType, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, suggestedDeposit, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax, PIPE_SLOTS } = ctx;
+  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
   const steps: PipelineStep[] = [];
   /*
     MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,

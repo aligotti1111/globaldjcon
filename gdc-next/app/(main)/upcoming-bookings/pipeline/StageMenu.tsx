@@ -10,6 +10,7 @@
 // stopPropagation because, being position:fixed, they're still DOM children of
 // the row and their clicks would otherwise bubble into the row's expand toggle.
 
+import { stageLabel } from './types';
 import { NEON } from '../shared';
 
 // Only the fields the menu reads — BookingRow's richer step object is
@@ -28,14 +29,6 @@ const titleCase = (str: string): string => str.replace(/\b[a-z]/g, (c) => c.toUp
 
 // Stage display name — mirrors BookingRow.iconName (song_list is the Rider on
 // club, the Planner on mobile).
-function stageName(slotKey: string, djType: 'club' | 'mobile'): string {
-  if (slotKey === 'song_list') return djType === 'club' ? 'Rider' : 'Planner & Playlist';
-  if (slotKey === 'contract') return 'Contract';
-  if (slotKey === 'deposit') return 'Deposit';
-  if (slotKey === 'invoice') return 'Balance';
-  if (slotKey === 'guestlist') return 'Guest List';
-  return '';
-}
 
 interface Props {
   st: StageMenuStep;
@@ -63,7 +56,7 @@ export default function StageMenu({
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, maxWidth: 210, whiteSpace: 'nowrap' }}>
         <div style={{ color: 'var(--white,#fff)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.02em', padding: '.5rem .7rem .4rem' }}>
-          {stageName(st.key, djType)}
+          {stageLabel(st.key, djType)}
         </div>
         <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
         {st.info && (

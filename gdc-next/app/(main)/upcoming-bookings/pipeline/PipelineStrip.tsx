@@ -10,18 +10,8 @@ import type { MutableRefObject } from 'react';
 import styles from '../upcomingBookings.module.css';
 import { MUTED } from '../shared';
 import StageMenu from './StageMenu';
-import type { PipelineStep } from './types';
+import { stageLabel, type PipelineStep } from './types';
 
-// Stage display name for the cell tooltip (song_list = Rider on club, Planner
-// on mobile). Mirrors BookingRow's former local helper.
-function iconName(slotKey: string, djType: 'club' | 'mobile'): string {
-  if (slotKey === 'song_list') return djType === 'club' ? 'Rider' : 'Planner & Playlist';
-  if (slotKey === 'contract') return 'Contract';
-  if (slotKey === 'deposit') return 'Deposit';
-  if (slotKey === 'invoice') return 'Balance';
-  if (slotKey === 'guestlist') return 'Guest List';
-  return '';
-}
 
 interface Props {
   steps: PipelineStep[];
@@ -95,7 +85,7 @@ export default function PipelineStrip({
                 <button
                   type="button"
                   className={`${styles.stBtn} ${open ? styles.stBtnOpen : ''}`}
-                  title={iconName(st.key, djType)}
+                  title={stageLabel(st.key, djType)}
                   aria-haspopup="menu"
                   aria-expanded={open}
                   onClick={(e) => {
@@ -115,7 +105,7 @@ export default function PipelineStrip({
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </button>
               ) : (
-                <div className={styles.stBtn} style={{ cursor: 'default' }} title={iconName(st.key, djType)}>
+                <div className={styles.stBtn} style={{ cursor: 'default' }} title={stageLabel(st.key, djType)}>
                   <span className={styles.stTop}>{inner}</span>
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </div>
