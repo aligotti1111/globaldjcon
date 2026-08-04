@@ -27,13 +27,12 @@ import { useSendActions } from './hooks/useSendActions';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
 import {
-  MOBILE_EVENT_TYPES, NEON, AMBER, MUTED,
-  fmtMoney, capMoney, getDateParts, formatTimeRange,
+  MOBILE_EVENT_TYPES, NEON,
+  fmtMoney, getDateParts, formatTimeRange,
   type ContractAction,
 } from './shared';
 import PipelineStrip from './pipeline/PipelineStrip';
 import { buildBookingSteps } from './pipeline/buildSteps';
-import type { PipelineStep } from './pipeline/types';
 
 // Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
 // the rest — so acronyms like "DJ" survive. "Request balance" -> "Request Balance".
@@ -634,7 +633,6 @@ export default function BookingRow({
   // Accepted always shows; Contract shows when the DJ requires it (or a contract
   // already exists). Deposit / Song-list steps slot in here later. Manual
   // add-ins (no counterparty) only ever show Accepted.
-  type StepState = 'done' | 'pending' | 'void' | 'todo';
   const cstatus = (booking.contract_status as string | null | undefined) || null;
   // Use the booking's OWN snapshot of the requirement (frozen at creation) so
   // changing the DJ's setting later never re-shapes existing bookings. Falls
@@ -711,7 +709,7 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, djType, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, suggestedDeposit, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax, PIPE_SLOTS });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
