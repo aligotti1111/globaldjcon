@@ -107,6 +107,14 @@ export default function PaymentCodeSearch() {
   const router = useRouter();
   const pathname = usePathname();
   const hostRef = useRef<HTMLElement | null>(null);
+  // Elements (the sort row + month sections) we hide while a result is shown,
+  // so the page shows ONLY the matched booking. Restored on clear/unmount.
+  const hiddenRef = useRef<HTMLElement[]>([]);
+
+  function restoreList() {
+    hiddenRef.current.forEach((s) => { s.style.display = ''; });
+    hiddenRef.current = [];
+  }
 
   // Create + place the host slot on the dashboard; tear it down on leave.
   useEffect(() => {
@@ -130,12 +138,28 @@ export default function PaymentCodeSearch() {
     place();
     return () => {
       cancelled = true;
+      restoreList();
       const el = hostRef.current;
       if (el && el.parentElement) el.parentElement.removeChild(el);
       hostRef.current = null;
       setHost(null);
     };
   }, [pathname]);
+
+  // When a booking is found, collapse the rest of the dashboard (sort row +
+  // month sections) so only the matched booking box shows. Restore otherwise.
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    restoreList();
+    if (Array.isArray(items) && items.length > 0) {
+      const sibs: HTMLElement[] = [];
+      let n = el.nextElementSibling as HTMLElement | null;
+      while (n) { sibs.push(n); n = n.nextElementSibling as HTMLElement | null; }
+      sibs.forEach((s) => { s.style.display = 'none'; });
+      hiddenRef.current = sibs;
+    }
+  }, [items, host]);
 
   async function run() {
     const q = code.trim();
