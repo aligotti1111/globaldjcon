@@ -167,7 +167,7 @@ export async function GET(req: Request) {
 ${waited ? `<div style="font-size:12px;color:#b0791f;margin-top:3px;font-weight:600;">${waited}</div>` : ''}
 </td>
 <td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;text-align:right;white-space:nowrap;">
-${price ? `<div style="font-size:16px;color:#0a6f61;font-weight:700;">${price}</div>` : ''}
+${price ? `<div style="font-size:16px;color:#0a6f61;font-weight:700;">${price}</div>` : `<div style="font-size:12px;color:#999;font-style:italic;">Awaiting quote</div>`}
 </td>
 </tr>`;
     }).join('');
