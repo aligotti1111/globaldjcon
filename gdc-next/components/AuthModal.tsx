@@ -50,8 +50,10 @@ export default function AuthModal({
   }
 
   return (
+    // Backdrop does NOT close the modal — account creation is deliberate, so a
+    // stray click outside the box shouldn't discard a half-filled form. Only
+    // the ✕ button closes it.
     <div
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 6000,
         background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(4px)',
