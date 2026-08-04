@@ -33,10 +33,10 @@ import {
   fmtMoney, capMoney, getDateParts, formatTimeRange,
   type ContractAction,
 } from './shared';
+import StageMenu from './pipeline/StageMenu';
 
 // Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
 // the rest — so acronyms like "DJ" survive. "Request balance" -> "Request Balance".
-const titleCase = (str: string): string => str.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 
 // The small brand glyph for each manual rail — the same marks the settings
 // grid and the invoice use, so a DJ sees the exact icons the client will.
@@ -379,7 +379,6 @@ export default function BookingRow({
   const roleCanMoney = roleCanRequestDeposit(actingRole); // cancel request + payment options
   // Role-locking for the step dropdowns: show every option an admin would see,
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
-  const NO_ACCESS = 'Your account level doesn\u2019t have access to this. Ask an owner or manager.';
   const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Request balance', 'Cancel request', 'Payment options']);
   const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
   function actionLocked(label: string): boolean {
@@ -1803,121 +1802,17 @@ export default function BookingRow({
                     </div>
                   )}
                   {open && hasMenu && menuPos && (
-                    <>
-                      {/*
-                        BOTH OF THESE MUST STOP THEIR CLICKS.
-
-                        position:fixed moves them on screen; it does NOT move
-                        them in the DOM. They're still children of the row, so
-                        every click in the menu — and every click on the
-                        dismiss backdrop, which is the whole viewport — bubbles
-                        into .row's onClick and toggles it.
-
-                        That's how "Review & send contract" broke: runContract
-                        does setExpanded(true), then the same click reached the
-                        row and flipped it straight back shut. The portal opened
-                        and the row closed on top of it, in one tick.
-
-                        These used to be covered by a blanket stopPropagation on
-                        the statusStrip wrapper — which also swallowed every
-                        click on the row's dead space, so removing it was right.
-                        The stop belongs on the floating elements themselves.
-                      */}
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); setMenuOpenKey(null); }} />
-                      <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, maxWidth: 210, whiteSpace: 'nowrap' }}>
-                        {/* Stage name — so the DJ knows which column this menu belongs to. */}
-                        <div style={{ color: 'var(--white,#fff)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.02em', padding: '.5rem .7rem .4rem' }}>
-                          {iconName(st.key, djType)}
-                        </div>
-                        <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
-                        {/* The amounts, when there are any. Two words fit on
-                            the strip; "$299.99 of $600.00 received" doesn't —
-                            and that's the number a DJ actually wants when they
-                            tap a half-paid deposit. */}
-                        {st.info && (
-                          <>
-                            <div style={{ color: 'var(--white,#fff)', fontSize: '.78rem', fontWeight: 700, padding: '.45rem .6rem .35rem' }}>
-                              {st.info}
-                            </div>
-                            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
-                          </>
-                        )}
-                        {/* Email open hint — a soft "likely opened" line for the
-                            stage's client email, when Resend has reported it. */}
-                        {openedLabel(st.key) && (
-                          <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.68rem', fontWeight: 600, padding: '.1rem .6rem .35rem', display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: '.8rem' }}>&#128065;</span>{openedLabel(st.key)}
-                          </div>
-                        )}
-                        {/* Why the button you came here for isn't here.
-                            whiteSpace:'normal' and an explicit maxWidth because
-                            the menu itself is nowrap — a sentence inherits that
-                            and stretches the dropdown to the width of the
-                            sentence, which is how you get a 600px menu. */}
-                        {/*
-                          Red, not muted: this is the one line in the menu that
-                          says you CAN'T do the thing you opened it for. In grey
-                          it read as a footnote and got skipped, which is how you
-                          end up hunting for a button that was never going to be
-                          there.
-
-                          NO DIVIDER after it, and the bottom padding is gone.
-                          A rule between the problem and its fix filed them as
-                          two unrelated things — "here's a message" / "here's a
-                          menu" — when they're one sentence: what's wrong, and
-                          the way out. Dividers separate; these two belong
-                          together.
-                        */}
-                        {st.hint && (
-                          <div style={{ color: '#ff8a8a', fontSize: '.7rem', lineHeight: 1.45, padding: '.5rem .6rem .1rem', whiteSpace: 'normal', maxWidth: 190 }}>
-                            {st.hint}
-                          </div>
-                        )}
-                        {/* The real options for this step, right now — built
-                            in the steps array so the menu can't offer something
-                            the state doesn't allow (e.g. re-sending over a
-                            signed contract). */}
-                        {(st.actions ?? []).map((a) => {
-                          const locked = actionLocked(a.label);
-                          return (
-                          <button
-                            key={a.label}
-                            type="button"
-                            disabled={locked}
-                            title={locked ? NO_ACCESS : undefined}
-                            onClick={() => { if (locked) return; setMenuOpenKey(null); a.run(); }}
-                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1 }}
-                          >
-                            {titleCase(a.label)}{locked ? '  \u{1F512}' : ''}
-                          </button>
-                          );
-                        })}
-                        {/* "Mark complete" is the escape hatch for work handled
-                            outside the app — never offered on something real
-                            (a genuine signature, money that actually landed),
-                            which is what `overridable` guards. */}
-                        {st.overridable && (() => {
-                          const ovLocked = overrideLockedFor(st.key);
-                          return (
-                          <>
-                            {(st.actions ?? []).length > 0 && (
-                              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
-                            )}
-                            <button
-                              type="button"
-                              disabled={ovLocked}
-                              title={ovLocked ? NO_ACCESS : undefined}
-                              onClick={() => { if (ovLocked) return; confirmAndToggleStep(st.key, !st.done); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: ovLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: ovLocked ? 'not-allowed' : 'pointer', opacity: ovLocked ? 0.55 : 1 }}
-                            >
-                              {st.done ? '\u2715 Mark Not Complete' : '\u2713 Mark Complete'}{ovLocked ? '  \u{1F512}' : ''}
-                            </button>
-                            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
-                          </>
-                          );
-                        })()}
-                      </div>
-                    </>
+                    <StageMenu
+                      st={st}
+                      pos={menuPos}
+                      djType={djType}
+                      openedLabelText={openedLabel(st.key)}
+                      actionLocked={actionLocked}
+                      overrideLocked={overrideLockedFor(st.key)}
+                      onClose={() => setMenuOpenKey(null)}
+                      onRunAction={(run) => { setMenuOpenKey(null); run(); }}
+                      onToggleOverride={() => confirmAndToggleStep(st.key, !st.done)}
+                    />
                   )}
                 </div>
               </div>
