@@ -231,11 +231,11 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                     {it.kind === 'counter' ? 'Countered — your response needed' : 'New booking request'}
                   </span>
                 </span>
-                {it.price && (
-                  <span style={{ flexShrink: 0, marginLeft: 8, color: '#fff', fontSize: '.9rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    {it.price}
-                  </span>
-                )}
+                <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  {it.price
+                    ? <span style={{ color: '#fff', fontSize: '.9rem', fontWeight: 700 }}>{it.price}</span>
+                    : <span style={{ color: 'rgba(255,255,255,.45)', fontSize: '.7rem', fontStyle: 'italic' }}>Awaiting quote</span>}
+                </span>
               </button>
             ))
           )}
