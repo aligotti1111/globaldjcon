@@ -24,8 +24,7 @@ import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib
 import { currencySymbol } from '@/lib/constants';
 import PlannerSendModal from './PlannerSendModal';
 import RiderSendModal from './RiderSendModal';
-import type { NamedRider } from '@/lib/rider';
-import { normalizeRiderMode } from '@/lib/rider';
+import { useSendActions } from './hooks/useSendActions';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
 import {
@@ -708,85 +707,13 @@ export default function BookingRow({
   // exists is never rebuilt, only re-emailed, because `fields` is a snapshot
   // and `responses` is keyed to it. Resending is most likely exactly when the
   // client is halfway through, and recomposing would orphan their answers.
-  const [plannerBusy, setPlannerBusy] = useState(false);
-  const [plannerErr, setPlannerErr] = useState<string | null>(null);
-  // Request opens the modal; the modal does the sending. Resend still fires
-  // directly — there's nothing to confirm about "send that same link again".
-  const [sendOpen, setSendOpen] = useState(false);
-  const [riderChooserOpen, setRiderChooserOpen] = useState(false);
-  // The DJ's saved NAMED riders → one quick-send action each in the Rider slot.
-  const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
-  const [riderSent, setRiderSent] = useState(false); // Resend only appears once a rider was sent
-  useEffect(() => {
-    if (booking.booking_type !== 'club' || !riderEnabled || archive) return;
-    let alive = true;
-    (async () => {
-      try {
-        const r = await fetch('/api/rider/library');
-        const d = (await r.json().catch(() => ({}))) as { ok?: boolean; riders?: NamedRider[] };
-        if (alive && d.ok && Array.isArray(d.riders)) setSavedRiders(d.riders);
-        const rb = await fetch(`/api/rider/for-booking/${booking.id}`);
-        const db = (await rb.json().catch(() => ({}))) as { ok?: boolean; status?: string };
-        if (alive && db.ok && db.status === 'sent') setRiderSent(true);
-      } catch { /* no saved riders — the Rider portal still opens */ }
-    })();
-    return () => { alive = false; };
-  }, [booking.booking_type, riderEnabled, archive]);
-  async function resendRider() {
-    try {
-      const rb = await fetch(`/api/rider/for-booking/${booking.id}`);
-      const db = (await rb.json().catch(() => ({}))) as { ok?: boolean; items?: unknown; mode?: unknown; pdfUrl?: string | null; name?: string | null };
-      if (!rb.ok || !db.ok) return;
-      const m = normalizeRiderMode(db.mode);
-      const items = Array.isArray(db.items) ? db.items : [];
-      const pdfUrl = db.pdfUrl || null;
-      if ((m === 'upload' ? !!pdfUrl : items.length > 0) === false) return;
-      await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl, name: db.name || undefined }) });
-    } catch { /* ignore */ }
-  }
-  async function sendNamedRider(r: NamedRider) {
-    try {
-      await fetch('/api/rider/request', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, items: r.items, mode: r.mode, pdfUrl: r.pdfUrl, name: r.name }),
-      });
-    } catch { /* best-effort quick send */ }
-  }
-
-  async function requestPlanner() {
-    if (plannerBusy) return;
-    setPlannerBusy(true);
-    setPlannerErr(null);
-    try {
-      const res = await fetch('/api/planner/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setPlannerErr(j?.error || 'Could not send the planner.');
-        return;
-      }
-      // The server returns the row's status. Trust it rather than assuming
-      // 'sent': a resend on a half-filled planner is still 'partial', and
-      // optimistically writing 'sent' would walk the fraction backwards on
-      // screen until the next reload.
-      onPlannerChange(booking.id, {
-        id: j.id,
-        status: (j.status as BookingPlannerSummary['status']) || 'sent',
-        answered: planner?.answered ?? 0,
-        total: planner?.total ?? 0,
-      });
-      // Created, but Resend is down or unkeyed. The link works — say so rather
-      // than claiming it was emailed.
-      if (j.warning) setPlannerErr(j.warning);
-    } catch {
-      setPlannerErr('Could not send the planner.');
-    } finally {
-      setPlannerBusy(false);
-    }
-  }
+  const {
+    plannerBusy, plannerErr, setPlannerErr,
+    sendOpen, setSendOpen,
+    riderChooserOpen, setRiderChooserOpen,
+    savedRiders, riderSent,
+    requestPlanner, resendRider, sendNamedRider,
+  } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
   const steps: PipelineStep[] = [];
   /*
