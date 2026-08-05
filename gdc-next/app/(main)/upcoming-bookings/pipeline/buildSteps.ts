@@ -661,7 +661,11 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
           : depositSettled
             ? undefined
             : undefined,
-        actions: archive ? [] : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+        // Past Bookings: no "Request balance" workflow — just let the DJ send
+        // or resend the invoice if the balance was never paid.
+        actions: archive
+          ? (done ? [] : [{ label: balanceRow ? 'Resend invoice' : 'Send invoice', run: () => openRequest('balance') }])
+          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
       });
     }
   }
@@ -679,6 +683,14 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
    * `hint` deliberately survive: the DJ can still open a cancelled row and read
    * what was paid or what stage it reached. Reading is not acting.
    */
+  // Past Bookings (archive): the night has happened. Balance is the ONLY stage
+  // still markable — the DJ may have been paid outside the app, so they can
+  // mark the balance complete. Every other stage is read-only (no "Mark
+  // complete"); its download / open / send-invoice actions still stand.
+  if (archive) {
+    for (const st of steps) { if (st.key !== 'invoice') st.overridable = false; }
+  }
+
   if (isCancelled) {
     for (const st of steps) {
       // DOWNLOADS SURVIVE. Everything else on a cancelled booking is an action
