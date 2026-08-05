@@ -255,7 +255,18 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
         </div>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.85rem', color: '#fff', cursor: 'pointer', marginBottom: applyTax ? '.55rem' : '.8rem' }}>
-          <input type="checkbox" checked={applyTax} onChange={(e) => { setApplyTax(e.target.checked); if (!e.target.checked) setTaxEdited(false); }} />
+          <input
+            type="checkbox"
+            checked={applyTax}
+            onChange={(e) => {
+              setApplyTax(e.target.checked);
+              // Turning tax back ON always re-applies the booked-rate auto amount
+              // (drops any stale typed/saved override). Turning it off clears the
+              // override too, so re-checking is always a clean auto calculation.
+              setTaxEdited(false);
+              setTaxStr('');
+            }}
+          />
           Apply tax{taxPct > 0 ? ` (${taxPct}%)` : ''}
         </label>
         {applyTax && (
@@ -265,7 +276,9 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
               style={{ ...input, maxWidth: 170 }}
               inputMode="decimal"
               value={taxEdited ? taxStr : (valid ? String(autoTax) : '')}
-              onChange={(e) => { setTaxEdited(true); setTaxStr(e.target.value); }}
+              // Clearing the field reverts to the auto (booked-rate) amount rather
+              // than sticking at an empty override.
+              onChange={(e) => { const v = e.target.value; if (v.trim() === '') { setTaxEdited(false); setTaxStr(''); } else { setTaxEdited(true); setTaxStr(v); } }}
               placeholder="0.00"
             />
           </label>
@@ -284,8 +297,8 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
             </>
           ) : (
             <>
-              <button type="button" style={primaryBtn} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Send invoice'}</button>
-              <button type="button" style={ghostBtn} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
+              <button type="button" style={{ ...primaryBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Send invoice'}</button>
+              <button type="button" style={{ ...ghostBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
             </>
           )}
           {hasSaved && (
