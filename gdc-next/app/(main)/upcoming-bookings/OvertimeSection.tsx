@@ -1,10 +1,11 @@
 'use client';
 
-// OvertimeSection — day-of overtime for a MOBILE booking, shown in the expanded
-// booking details panel (mobile bookings only). Overtime is added last-minute:
-// the DJ enters the extra hours and a per-hour rate (defaulting to the contract's
-// overtime rate), optionally applies tax (the saved rate, editable or removable),
-// and then either:
+// OvertimeSection — day-of overtime for a MOBILE booking. Shown in the expanded
+// booking details panel as a single "Add overtime to event" button; clicking it
+// opens a popup to enter the hours + rate and act on them. Overtime is added
+// last-minute: the DJ enters the extra hours and a per-hour rate (defaulting to
+// the contract's overtime rate), optionally applies tax (the saved rate,
+// editable or removable), then either:
 //   • Send invoice          — bills the overtime ALONE (what's owed right now), or
 //   • Mark paid & send receipt — records it paid and emails a COMBINED receipt
 //                                (event total + overtime, one grand total).
@@ -15,6 +16,7 @@
 // server-side; this is just the entry + status UI.
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const NEON = 'var(--neon,#00e0a4)';
 
@@ -50,11 +52,16 @@ function money(n: number, currency: string): string {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage }: Props) {
-  const hasSaved = initial.amount != null && Number(initial.amount) > 0;
+  const [savedHours, setSavedHours] = useState<number | null>(initial.hours);
+  const [savedRate, setSavedRate] = useState<number | null>(initial.rate);
+  const [savedTax, setSavedTax] = useState<number | null>(initial.tax);
+  const [savedAmount, setSavedAmount] = useState<number | null>(initial.amount);
+  const hasSaved = savedAmount != null && Number(savedAmount) > 0;
 
-  // Form state. Seeded from any saved overtime so "Edit" reopens with the same
-  // numbers.
-  const [editing, setEditing] = useState(!hasSaved);
+  const [open, setOpen] = useState(false);
+
+  // Form state — seeded from any saved overtime so the popup reopens with the
+  // same numbers.
   const [hours, setHours] = useState(initial.hours != null ? String(initial.hours) : '');
   const [rate, setRate] = useState(
     initial.rate != null ? String(initial.rate) : (defaultRate != null ? String(defaultRate) : ''),
@@ -78,37 +85,35 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   const taxVal = applyTax ? (taxEdited ? round2(Math.max(0, parseFloat(taxStr) || 0)) : autoTax) : 0;
   const total = round2(sub + taxVal);
 
-  async function post(action: string): Promise<Record<string, unknown> | null> {
+  function rememberSaved() {
+    setSavedHours(h); setSavedRate(r); setSavedTax(taxVal); setSavedAmount(total);
+  }
+
+  async function post(action: string): Promise<boolean> {
     const res = await fetch('/api/payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, bookingId, hours: h, rate: r, tax: taxVal }),
     });
-    if (!res.ok) {
-      const raw = await res.text();
-      setErr(raw.slice(0, 180) || 'Something went wrong.');
-      return null;
-    }
-    return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) { setErr((await res.text()).slice(0, 180) || 'Something went wrong.'); return false; }
+    return true;
   }
 
   async function sendInvoice() {
     if (!valid) { setErr('Enter hours and a rate greater than zero.'); return; }
     setBusy('invoice'); setErr(null); setMsg(null);
-    const ok = await post('overtime-invoice');
-    if (ok) { setInvoicedAt(new Date().toISOString()); setEditing(false); setMsg('Overtime invoice sent.'); }
+    if (await post('overtime-invoice')) { setInvoicedAt(new Date().toISOString()); rememberSaved(); setMsg('Overtime invoice sent.'); }
     setBusy('');
   }
 
   async function markPaid() {
     if (!valid) { setErr('Enter hours and a rate greater than zero.'); return; }
     setBusy('receipt'); setErr(null); setMsg(null);
-    const ok = await post('overtime-receipt');
-    if (ok) {
+    if (await post('overtime-receipt')) {
       const now = new Date().toISOString();
       setPaidAt(now);
       if (!invoicedAt) setInvoicedAt(now);
-      setEditing(false);
+      rememberSaved();
       setMsg('Marked paid — receipt sent.');
     }
     setBusy('');
@@ -146,9 +151,10 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
     if (!res.ok) { setErr((await res.text()).slice(0, 180) || 'Could not remove overtime.'); }
     else {
       setInvoicedAt(null); setPaidAt(null);
+      setSavedHours(null); setSavedRate(null); setSavedTax(null); setSavedAmount(null);
       setHours(''); setRate(defaultRate != null ? String(defaultRate) : '');
       setTaxEdited(false); setTaxStr(''); setApplyTax(taxPct > 0);
-      setEditing(true); setMsg(null);
+      setMsg(null); setOpen(false);
     }
     setBusy('');
   }
@@ -158,112 +164,144 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
 
   const input: React.CSSProperties = {
     width: '100%', background: '#16161f', color: '#fff', border: '1px solid rgba(255,255,255,.16)',
-    borderRadius: 8, padding: '8px 10px', fontSize: '.85rem', outline: 'none',
+    borderRadius: 8, padding: '9px 11px', fontSize: '.88rem', outline: 'none',
   };
   const primaryBtn: React.CSSProperties = {
-    background: NEON, border: 'none', color: '#06231b', fontWeight: 800, fontSize: '.82rem',
-    borderRadius: 8, padding: '.55rem 1rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
+    background: NEON, border: 'none', color: '#06231b', fontWeight: 800, fontSize: '.85rem',
+    borderRadius: 8, padding: '.6rem 1.1rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
   };
   const ghostBtn: React.CSSProperties = {
     background: 'transparent', border: '1px solid rgba(255,255,255,.22)', color: '#fff', fontWeight: 700,
-    fontSize: '.8rem', borderRadius: 8, padding: '.5rem .9rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
+    fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
   };
 
-  return (
+  // ── Trigger shown in the details panel ──
+  const trigger = (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
-        <div style={{ fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', fontWeight: 700 }}>
-          Overtime
-        </div>
-        {statusLabel && (
-          <span style={{ fontSize: '.7rem', fontWeight: 800, color: paidAt ? NEON : '#ffb020', letterSpacing: '.04em' }}>
-            {statusLabel}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
+          disabled={!canManage}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '.5rem',
+            background: 'transparent', border: `1px solid ${NEON}`, color: NEON,
+            borderRadius: 8, padding: '.55rem 1rem', fontWeight: 700, fontSize: '.85rem',
+            cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
+          }}
+        >
+          <span style={{ fontSize: '1.1em', lineHeight: 1 }}>+</span>
+          {hasSaved ? 'Manage overtime' : 'Add overtime to event'}
+        </button>
+        {hasSaved && (
+          <span style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.7)' }}>
+            {money(Number(savedAmount), currency)}
+            {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
           </span>
         )}
       </div>
+    </div>
+  );
 
-      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.09)', borderRadius: 12, padding: '.9rem 1rem' }}>
-        {!canManage ? (
-          <div style={{ fontSize: '.8rem', color: 'rgba(255,255,255,.6)' }}>
-            {hasSaved
-              ? `Overtime: ${money(Number(initial.amount), currency)}${paidAt ? ' · paid' : invoicedAt ? ' · invoiced' : ''}`
-              : 'No overtime added.'}
-          </div>
-        ) : !editing ? (
-          // ── Saved summary + actions ──
-          <>
-            <div style={{ fontSize: '.9rem', color: '#fff', fontWeight: 700, marginBottom: '.15rem' }}>
-              {hours || initial.hours} hr{Number(hours || initial.hours) === 1 ? '' : 's'} × {money(r || Number(initial.rate) || 0, currency)}
-              {taxVal > 0 || (initial.tax != null && Number(initial.tax) > 0) ? ` + ${money(taxVal || Number(initial.tax) || 0, currency)} tax` : ''}
-            </div>
-            <div style={{ fontSize: '1.05rem', color: NEON, fontWeight: 800, marginBottom: '.7rem' }}>
-              {money(total || Number(initial.amount) || 0, currency)}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
-              {paidAt ? (
-                <>
-                  <button type="button" style={ghostBtn} disabled={anyBusy} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Resend receipt'}</button>
-                  <button type="button" style={ghostBtn} disabled={anyBusy} onClick={downloadReceipt}>{busy === 'download' ? 'Preparing…' : 'Download receipt'}</button>
-                </>
-              ) : (
-                <>
-                  <button type="button" style={primaryBtn} disabled={anyBusy} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
-                  <button type="button" style={ghostBtn} disabled={anyBusy} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Resend invoice'}</button>
-                </>
-              )}
-              <button type="button" style={ghostBtn} disabled={anyBusy} onClick={() => { setEditing(true); setMsg(null); setErr(null); }}>Edit</button>
-              <button type="button" style={{ ...ghostBtn, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.4)' }} disabled={anyBusy} onClick={remove}>{busy === 'clear' ? 'Removing…' : 'Remove'}</button>
-            </div>
-          </>
-        ) : (
-          // ── Entry form ──
-          <>
-            <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.6rem', flexWrap: 'wrap' }}>
-              <label style={{ flex: '1 1 120px', minWidth: 0 }}>
-                <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.25rem', letterSpacing: '.04em' }}>HOURS</div>
-                <input style={input} inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="1" />
-              </label>
-              <label style={{ flex: '1 1 120px', minWidth: 0 }}>
-                <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.25rem', letterSpacing: '.04em' }}>RATE / HR</div>
-                <input style={input} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="150" />
-              </label>
-            </div>
+  if (!open) return trigger;
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.82rem', color: '#fff', cursor: 'pointer', marginBottom: applyTax ? '.5rem' : '.7rem' }}>
-              <input type="checkbox" checked={applyTax} onChange={(e) => { setApplyTax(e.target.checked); if (!e.target.checked) { setTaxEdited(false); } }} />
-              Apply tax{taxPct > 0 ? ` (${taxPct}%)` : ''}
-            </label>
-            {applyTax && (
-              <label style={{ display: 'block', marginBottom: '.7rem' }}>
-                <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.25rem', letterSpacing: '.04em' }}>TAX AMOUNT</div>
-                <input
-                  style={{ ...input, maxWidth: 160 }}
-                  inputMode="decimal"
-                  value={taxEdited ? taxStr : (valid ? String(autoTax) : '')}
-                  onChange={(e) => { setTaxEdited(true); setTaxStr(e.target.value); }}
-                  placeholder="0.00"
-                />
-              </label>
-            )}
+  // ── Popup ──
+  const modal = (
+    <div
+      onClick={() => { if (!anyBusy) setOpen(false); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(0,0,0,.65)',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2.5rem 1rem', overflowY: 'auto',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative', width: '100%', maxWidth: 440,
+          background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)',
+          borderRadius: 14, padding: '1.3rem 1.4rem', boxShadow: '0 16px 50px rgba(0,0,0,.6)',
+        }}
+      >
+        <button
+          type="button" onClick={() => setOpen(false)} aria-label="Close"
+          style={{
+            position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: '50%',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.18)', color: '#fff', cursor: 'pointer',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 0 .8rem', paddingTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              <span style={{ fontSize: '.8rem', color: 'rgba(255,255,255,.6)' }}>Overtime total</span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: NEON }}>{valid ? money(total, currency) : '—'}</span>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1rem' }}>
+          <div style={{ fontWeight: 800, color: '#fff', fontSize: '1.05rem' }}>Overtime</div>
+          {statusLabel && (
+            <span style={{ fontSize: '.7rem', fontWeight: 800, color: paidAt ? NEON : '#ffb020', letterSpacing: '.04em', textTransform: 'uppercase' }}>{statusLabel}</span>
+          )}
+        </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
-              <button type="button" style={primaryBtn} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Send invoice'}</button>
-              <button type="button" style={ghostBtn} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
-              {hasSaved && (
-                <button type="button" style={ghostBtn} disabled={anyBusy} onClick={() => { setEditing(false); setErr(null); }}>Cancel</button>
-              )}
-            </div>
-          </>
+        <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.7rem', flexWrap: 'wrap' }}>
+          <label style={{ flex: '1 1 120px', minWidth: 0 }}>
+            <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.3rem', letterSpacing: '.04em' }}>HOURS</div>
+            <input style={input} inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="1" />
+          </label>
+          <label style={{ flex: '1 1 120px', minWidth: 0 }}>
+            <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.3rem', letterSpacing: '.04em' }}>RATE / HR</div>
+            <input style={input} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="150" />
+          </label>
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.85rem', color: '#fff', cursor: 'pointer', marginBottom: applyTax ? '.55rem' : '.8rem' }}>
+          <input type="checkbox" checked={applyTax} onChange={(e) => { setApplyTax(e.target.checked); if (!e.target.checked) setTaxEdited(false); }} />
+          Apply tax{taxPct > 0 ? ` (${taxPct}%)` : ''}
+        </label>
+        {applyTax && (
+          <label style={{ display: 'block', marginBottom: '.8rem' }}>
+            <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.3rem', letterSpacing: '.04em' }}>TAX AMOUNT</div>
+            <input
+              style={{ ...input, maxWidth: 170 }}
+              inputMode="decimal"
+              value={taxEdited ? taxStr : (valid ? String(autoTax) : '')}
+              onChange={(e) => { setTaxEdited(true); setTaxStr(e.target.value); }}
+              placeholder="0.00"
+            />
+          </label>
         )}
 
-        {err && <div style={{ color: '#ff7676', fontSize: '.76rem', fontWeight: 600, marginTop: '.6rem' }}>{err}</div>}
-        {msg && <div style={{ color: NEON, fontSize: '.76rem', fontWeight: 600, marginTop: '.6rem' }}>{msg}</div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 0 1rem', paddingTop: '.6rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+          <span style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.6)' }}>Overtime total</span>
+          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: NEON }}>{valid ? money(total, currency) : '—'}</span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+          {paidAt ? (
+            <>
+              <button type="button" style={primaryBtn} disabled={anyBusy} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Resend receipt'}</button>
+              <button type="button" style={ghostBtn} disabled={anyBusy} onClick={downloadReceipt}>{busy === 'download' ? 'Preparing…' : 'Download receipt'}</button>
+            </>
+          ) : (
+            <>
+              <button type="button" style={primaryBtn} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Send invoice'}</button>
+              <button type="button" style={ghostBtn} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
+            </>
+          )}
+          {hasSaved && (
+            <button type="button" style={{ ...ghostBtn, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.4)' }} disabled={anyBusy} onClick={remove}>{busy === 'clear' ? 'Removing…' : 'Remove'}</button>
+          )}
+        </div>
+
+        {err && <div style={{ color: '#ff7676', fontSize: '.78rem', fontWeight: 600, marginTop: '.7rem' }}>{err}</div>}
+        {msg && <div style={{ color: NEON, fontSize: '.78rem', fontWeight: 600, marginTop: '.7rem' }}>{msg}</div>}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {trigger}
+      {typeof document !== 'undefined' ? createPortal(modal, document.body) : null}
+    </>
   );
 }
