@@ -263,8 +263,8 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                   </span>
                   <span style={{ display: 'block', color: tab === 'awaiting' ? 'rgba(255,255,255,.55)' : '#f5c451', fontSize: '.72rem', marginTop: 1 }}>
                     {tab === 'awaiting'
-                      ? 'Awaiting response'
-                      : (it.kind === 'counter' ? 'Counter pending' : 'Booking request pending')}
+                      ? (it.kind === 'counter' ? 'Awaiting response from host' : 'Awaiting response from DJ')
+                      : 'Pending your response'}
                   </span>
                 </span>
                 <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right' }}>
