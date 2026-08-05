@@ -158,6 +158,12 @@ function statusColor(status: string): string {
   return '#ffb347';
 }
 
+// Host-facing wording for a booking status. The internal value for a declined
+// request is 'denied'; hosts see "declined".
+function statusLabel(status: string): string {
+  return status === 'denied' ? 'declined' : status;
+}
+
 function currencySymbol(code: string | null | undefined): string {
   const map: Record<string, string> = {
     USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', AUD: 'A$',
@@ -1712,10 +1718,10 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [requesterEmail],
-      subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
+      subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(status)}</span>.</p>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
@@ -1727,7 +1733,7 @@ export async function POST(req: Request) {
 
     if (body.requesterUserId) {
       const smsLines = [
-        `Your booking with ${djName || 'the DJ'} was ${status}.`,
+        `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}.`,
         `${dateStr}${venueName ? ` · ${venueName}` : ''}`,
         `View: ${SITE_URL}/booking-requests`,
       ].join('\n');
@@ -1771,10 +1777,10 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [requesterEmail],
-      subject: `Your booking with ${djName || 'the DJ'} was ${status}`,
+      subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
       html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(status)}</span>.</p>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
@@ -1786,7 +1792,7 @@ export async function POST(req: Request) {
 
     if (body.requesterUserId) {
       const smsLines = [
-        `Your booking with ${djName || 'the DJ'} was ${status}.`,
+        `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}.`,
         `${dateStr}${venueName ? ` · ${venueName}` : ''}`,
         `View: ${SITE_URL}/booking-requests`,
       ].join('\n');
