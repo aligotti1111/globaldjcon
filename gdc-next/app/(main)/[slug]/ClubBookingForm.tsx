@@ -93,6 +93,9 @@ export default function ClubBookingForm({
   // { id, email, name } from the calendar; the stored phone (sms_phone) isn't
   // in it, so — same as MobileBookingForm — it has to come from here.
   const { user: authUser } = useAuth();
+  // Old DJ accounts may have a legacy/blank role — key off the profile slug
+  // (DJs/venues have one; hosts don't). Venues may still book.
+  const viewerCannotBook = !!authUser?.isMember || (!!authUser?.slug && authUser?.role !== 'venue');
 
   // ── Form state ────────────────────────────────────────────────────
   const [venueType, setVenueType] = useState<'' | 'bar' | 'club' | 'other'>('');
@@ -418,7 +421,7 @@ export default function ClubBookingForm({
 
     // DJs can't book other DJs (hosts + venue accounts can). Pop a message
     // instead of proceeding — the create route enforces this server-side too.
-    if (authUser?.role === 'dj' || authUser?.isMember) {
+    if (viewerCannotBook) {
       setError("You need a host account to book a DJ. DJ accounts can't book other DJs.");
       return;
     }
@@ -693,6 +696,12 @@ export default function ClubBookingForm({
             ✕
           </button>
         </div>
+
+        {viewerCannotBook && (
+          <div className={styles.errorMsg}>
+            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
+          </div>
+        )}
 
         {/* Top-of-form summary for missing-required-fields validation.
             The booker needs to see this BEFORE scrolling through the

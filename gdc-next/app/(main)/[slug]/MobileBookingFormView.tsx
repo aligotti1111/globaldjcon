@@ -128,6 +128,9 @@ export default function MobileBookingForm({
   // { id, email, name } from the calendar; anything outside those three fields
   // has to come from here.
   const { user: authUser } = useAuth();
+  // "Old" DJ accounts can have a legacy/blank role, so key off the profile
+  // slug (every DJ/venue has one; hosts don't). Venues may still book.
+  const viewerCannotBook = !!authUser?.isMember || (!!authUser?.slug && authUser?.role !== 'venue');
 
   // ── Form state ────────────────────────────────────────────────────
   /**
@@ -484,7 +487,7 @@ export default function MobileBookingForm({
 
     // DJs can't book other DJs (hosts + venue accounts can). Pop a message
     // instead of proceeding — the create route enforces this server-side too.
-    if (authUser?.role === 'dj' || authUser?.isMember) {
+    if (viewerCannotBook) {
       setErrorMsg("You need a host account to book a DJ. DJ accounts can't book other DJs.");
       return;
     }
@@ -891,6 +894,11 @@ export default function MobileBookingForm({
 
         {/* id is what the submit handler scrolls to when the server rejects
             something that doesn't map to a single field. */}
+        {viewerCannotBook && (
+          <div className={`${styles.alert} ${styles.alertError}`}>
+            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
+          </div>
+        )}
         {errorMsg && <div id="mpf-error" className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
 
         {/* Your Name — the DJ's contract needs a first AND a last name, and
