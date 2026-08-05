@@ -320,6 +320,20 @@ export async function POST(req: Request) {
     // planner_status on the booking is NOT written here. trg_sync_planner_status
     // owns it — one writer, so the strip can't go stale (schema, §4).
 
+    // Stamp the SEND time on the booking for the booking log. `is('planner_sent_at', null)`
+    // means only the FIRST send records a time — resends don't overwrite it — and a
+    // planner that predates this column gets its time on the next resend. Best-effort;
+    // a real send must never fail because the log couldn't be stamped.
+    if (!isTest) {
+      try {
+        await admin
+          .from('bookings')
+          .update({ planner_sent_at: new Date().toISOString() } as unknown as never)
+          .eq('id', bookingId)
+          .is('planner_sent_at' as never, null);
+      } catch { /* non-fatal — the planner still sent */ }
+    }
+
     // A test with no saved planner has no /planner/[id] yet — link the DJ to the
     // DJ-only preview (they are the recipient) instead of a dead URL.
     const url = (isTest && !planner.id)
