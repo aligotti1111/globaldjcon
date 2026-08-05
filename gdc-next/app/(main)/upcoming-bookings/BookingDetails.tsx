@@ -18,6 +18,7 @@ import type { NamedRider } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import PaymentsBlock from './PaymentsBlock';
+import OvertimeSection from './OvertimeSection';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -708,6 +709,28 @@ export default function BookingDetails({
           />
         </div>
       )}
+
+      {/* Overtime — mobile bookings only. Last-minute extra hours added on the
+          day, billed on their own invoice/receipt, independent of the event
+          balance above. Hidden for club/bar (they have no overtime concept). */}
+      {bt === 'mobile' && (
+        <OvertimeSection
+          bookingId={booking.id}
+          currency={booking.currency || 'USD'}
+          taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
+          defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
+          initial={{
+            hours: booking.overtime_hours ?? null,
+            rate: booking.overtime_charge_rate ?? null,
+            tax: booking.overtime_tax ?? null,
+            amount: booking.overtime_amount ?? null,
+            invoicedAt: booking.overtime_invoiced_at ?? null,
+            paidAt: booking.overtime_paid_at ?? null,
+          }}
+          canManage={canManageMoney}
+        />
+      )}
+
       {/* Planner & Playlist panel intentionally NOT shown on the booking card.
           The planner status + % lives in the status strip up top, and the full
           answers open from there (Open planner / Run sheet). Keeping the whole
