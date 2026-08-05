@@ -93,6 +93,8 @@ export async function POST(req: Request) {
         contract_status: 'cancelled',
         contract_submission_id: null,
         contract_sent_at: null,
+        // Timestamp the cancellation so the booking log can show it.
+        contract_cancelled_at: new Date().toISOString(),
       } as unknown as never)
       .eq('id', bookingId)
       .eq('dj_id', djId);
