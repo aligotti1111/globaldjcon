@@ -1700,7 +1700,14 @@ export async function POST(req: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
-    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
+    // Declined bookings DON'T show the price breakdown — instead, the DJ's
+    // optional decline reason (if any). Any other status keeps the breakdown.
+    const isDenied = status === 'denied';
+    const declineReason = typeof body.declineReason === 'string' ? (body.declineReason as string).trim() : '';
+    const reasonBox = declineReason
+      ? `<div style="background:#fff5f5;border:1px solid #ffd5d5;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><p style="margin:0 0 6px;color:#b42318;font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;">Note from ${escHtml(djName || 'the DJ')}</p><p style="margin:0;color:#333;font-size:14px;line-height:1.5;white-space:pre-line;">${escHtml(declineReason)}</p></div>`
+      : '';
+    const billBox = isDenied ? reasonBox : await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1752,7 +1759,14 @@ export async function POST(req: Request) {
     const eventDate = body.eventDate as string | undefined;
     const venueName = body.venueName as string | undefined;
     const dateStr = fmtDate(eventDate);
-    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
+    // Declined bookings DON'T show the price breakdown — instead, the DJ's
+    // optional decline reason (if any). Any other status keeps the breakdown.
+    const isDenied = status === 'denied';
+    const declineReason = typeof body.declineReason === 'string' ? (body.declineReason as string).trim() : '';
+    const reasonBox = declineReason
+      ? `<div style="background:#fff5f5;border:1px solid #ffd5d5;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><p style="margin:0 0 6px;color:#b42318;font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;">Note from ${escHtml(djName || 'the DJ')}</p><p style="margin:0;color:#333;font-size:14px;line-height:1.5;white-space:pre-line;">${escHtml(declineReason)}</p></div>`
+      : '';
+    const billBox = isDenied ? reasonBox : await billBreakdownForBooking(body.bookingId as string | undefined, 'USD');
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
