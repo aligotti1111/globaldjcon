@@ -1,18 +1,19 @@
 'use client';
 
-// BookingRequestsMenu — the header's Booking Requests icon, now with a
-// notification-style dropdown (mirrors NotificationBell). Clicking it opens a
-// small panel listing the most recent requests that need the DJ's response:
-//   • incoming requests still 'pending' (a client requested this DJ)
-//   • outgoing bookings the DJ 'counter'ed that the client bounced back
-// A "View more" link opens the full /booking-requests page.
+// BookingRequestsMenu — the header's Booking Requests icon with a
+// notification-style dropdown (mirrors NotificationBell). Two tabs:
+//   • Respond  — requests that need YOUR response: an incoming 'pending'
+//                request, or one you made that was 'counter'ed back to you.
+//   • Awaiting — requests you're waiting on the OTHER side for: a request you
+//                made that's still 'pending', or one you 'counter'ed.
+// Opens on Respond when something needs you; otherwise defaults to Awaiting so
+// the panel isn't empty when you're only waiting on replies (the common case
+// for a host who's requested DJs and is waiting to hear back).
 //
 // Behavior parity with the rest of the header:
 //   • Badge count comes from the parent (useUnreadBookingCount) via `count`.
-//   • Opening the panel clears the badge — it fires 'gdc:mark-bookings-seen',
-//     the same event the count hook listens for.
-//   • Desktop only for the dropdown; on mobile the icon just navigates to the
-//     full page (the panel would be cramped, and mobile has its own patterns).
+//   • Opening the panel clears the badge — it fires 'gdc:mark-bookings-seen'.
+//   • Desktop only for the dropdown; on mobile the icon navigates to the page.
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -74,10 +75,14 @@ type Row = {
   currency: string | null;
 };
 
+type Tab = 'respond' | 'awaiting';
+
 export default function BookingRequestsMenu({ count }: { count: number }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
+  const [respondItems, setRespondItems] = useState<Item[]>([]);
+  const [awaitingItems, setAwaitingItems] = useState<Item[]>([]);
+  const [tab, setTab] = useState<Tab>('respond');
   const [isDesktop, setIsDesktop] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number }>({ top: 68, right: 16 });
   const ref = useRef<HTMLDivElement>(null);
@@ -104,15 +109,17 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
     const db = createClient();
     try {
       const cols = 'id, requester_name, event_type, venue_type, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency';
-      const [pend, ctr] = await Promise.all([
+      const q = (col: 'dj_id' | 'requester_id', status: 'pending' | 'counter') =>
         db.from('bookings')
           .select(cols)
-          .eq('dj_id', user.id).eq('status', 'pending').is('deleted_at', null)
-          .order('created_at', { ascending: false }).limit(10),
-        db.from('bookings')
-          .select(cols)
-          .eq('requester_id', user.id).eq('status', 'counter').is('deleted_at', null)
-          .order('created_at', { ascending: false }).limit(10),
+          .eq(col, user.id).eq('status', status).is('deleted_at', null)
+          .order('created_at', { ascending: false }).limit(10);
+      // Respond: things that owe YOUR reply. Awaiting: things you're waiting on.
+      const [djPend, reqCtr, reqPend, djCtr] = await Promise.all([
+        q('dj_id', 'pending'),        // respond  — incoming request to you
+        q('requester_id', 'counter'), // respond  — a request you made, countered back
+        q('requester_id', 'pending'), // awaiting — your request, still with the DJ
+        q('dj_id', 'counter'),        // awaiting — you countered, waiting on them
       ]);
       const mk = (rows: Row[] | null, kind: 'request' | 'counter'): Item[] =>
         (rows || []).map((r) => {
@@ -126,11 +133,20 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
             price: rate != null ? money(Number(rate), r.currency) : null,
           };
         });
-      const all = [
-        ...mk(pend.data as Row[] | null, 'request'),
-        ...mk(ctr.data as Row[] | null, 'counter'),
-      ].sort((a, b) => Date.parse(b.at || '') - Date.parse(a.at || ''));
-      setItems(all);
+      const byAt = (a: Item, b: Item) => Date.parse(b.at || '') - Date.parse(a.at || '');
+      const respond = [
+        ...mk(djPend.data as Row[] | null, 'request'),
+        ...mk(reqCtr.data as Row[] | null, 'counter'),
+      ].sort(byAt);
+      const awaiting = [
+        ...mk(reqPend.data as Row[] | null, 'request'),
+        ...mk(djCtr.data as Row[] | null, 'counter'),
+      ].sort(byAt);
+      setRespondItems(respond);
+      setAwaitingItems(awaiting);
+      // Land on Respond when something needs you; otherwise open on Awaiting so
+      // the panel shows what you're waiting on instead of "nothing here".
+      setTab(respond.length > 0 ? 'respond' : 'awaiting');
     } catch { /* non-fatal */ }
   }
 
@@ -140,15 +156,12 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
       setPos({ top: Math.round(r.bottom + 10), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
     }
     load();
-    // Opening the list counts as reviewing it — clear the badge (same event the
-    // count hook listens for).
     try { window.dispatchEvent(new CustomEvent('gdc:mark-bookings-seen')); } catch { /* ignore */ }
     setOpen(true);
   }
 
   function onIconClick() {
     if (!isDesktop) {
-      // Mobile: keep the simple navigate behavior, but still clear the badge.
       try { window.dispatchEvent(new CustomEvent('gdc:mark-bookings-seen')); } catch { /* ignore */ }
       router.push(MORE_HREF);
       return;
@@ -167,7 +180,8 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const shown = items.slice(0, 6);
+  const activeItems = tab === 'respond' ? respondItems : awaitingItems;
+  const shown = activeItems.slice(0, 6);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -204,9 +218,32 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
             Booking requests
           </div>
 
+          {/* Respond / Awaiting tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+            {(['respond', 'awaiting'] as const).map((t) => {
+              const activeTab = tab === t;
+              const n = t === 'respond' ? respondItems.length : awaitingItems.length;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  style={{
+                    flex: 1, padding: '9px 8px', background: 'transparent', border: 'none',
+                    borderBottom: activeTab ? '2px solid var(--neon,#00e0a4)' : '2px solid transparent',
+                    color: activeTab ? '#fff' : 'rgba(255,255,255,.55)',
+                    fontWeight: 700, fontSize: '.76rem', cursor: 'pointer', letterSpacing: '.02em',
+                  }}
+                >
+                  {t === 'respond' ? 'Respond' : 'Awaiting'}{n > 0 ? ` (${n})` : ''}
+                </button>
+              );
+            })}
+          </div>
+
           {shown.length === 0 ? (
             <div style={{ padding: '22px 15px', color: 'rgba(255,255,255,.5)', fontSize: '.85rem', textAlign: 'center' }}>
-              No new requests.
+              {tab === 'respond' ? 'Nothing needs your response.' : 'Nothing awaiting a response.'}
             </div>
           ) : (
             shown.map((it) => (
@@ -224,8 +261,10 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                   <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </span>
-                  <span style={{ display: 'block', color: '#f5c451', fontSize: '.72rem', marginTop: 1 }}>
-                    {it.kind === 'counter' ? 'Counter pending' : 'Booking request pending'}
+                  <span style={{ display: 'block', color: tab === 'awaiting' ? 'rgba(255,255,255,.55)' : '#f5c451', fontSize: '.72rem', marginTop: 1 }}>
+                    {tab === 'awaiting'
+                      ? 'Awaiting response'
+                      : (it.kind === 'counter' ? 'Counter pending' : 'Booking request pending')}
                   </span>
                 </span>
                 <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right' }}>
