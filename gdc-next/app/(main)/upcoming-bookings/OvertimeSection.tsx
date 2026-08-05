@@ -189,7 +189,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
           cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
         }}
       >
-        {hasSaved ? 'Manage overtime' : '+ Add overtime'}
+        {hasSaved ? 'Manage invoice / receipt' : 'Send invoice / receipt'}
       </button>
       {hasSaved && (
         <span style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.65)' }}>
