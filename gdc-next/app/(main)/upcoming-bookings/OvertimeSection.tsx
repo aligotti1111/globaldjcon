@@ -15,7 +15,7 @@
 // columns, so it can't move the event balance. All the money math is mirrored
 // server-side; this is just the entry + status UI.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const NEON = 'var(--neon,#00e0a4)';
@@ -76,6 +76,19 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   const [busy, setBusy] = useState<'' | 'invoice' | 'receipt' | 'download' | 'clear'>('');
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // The "Manage" dropdown shown (in place of the entry link) once an invoice /
+  // receipt exists.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuWrapRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [menuOpen]);
 
   const h = parseFloat(hours);
   const r = parseFloat(rate);
@@ -175,32 +188,90 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
     fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
   };
 
-  // ── Trigger — a compact inline link, shown right next to the Overtime Rate
-  // in the details grid. Opens the entry popup. ──
-  const trigger = (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+  const linkStyle: React.CSSProperties = {
+    background: 'none', border: 'none', padding: 0, color: NEON, fontWeight: 700,
+    fontSize: '.8rem', textDecoration: 'underline', textUnderlineOffset: 2,
+    cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
+  };
+
+  const menuItem: React.CSSProperties = {
+    display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
+    color: '#fff', fontSize: '.82rem', padding: '.5rem .8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+  };
+  const dangerItem: React.CSSProperties = { ...menuItem, color: '#ff8a8a' };
+
+  function runMenu(fn: () => void) { setMenuOpen(false); fn(); }
+
+  // ── Trigger — sits next to the Overtime Rate in the details grid. Before an
+  // invoice exists it's a "Send invoice / receipt" link that opens the entry
+  // popup; once sent it's a "Manage" dropdown of quick actions. ──
+  const trigger = !hasSaved ? (
+    <button
+      type="button"
+      onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
+      disabled={!canManage}
+      style={linkStyle}
+    >
+      Send invoice / receipt
+    </button>
+  ) : (
+    <span ref={menuWrapRef} style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', position: 'relative' }}>
       <button
         type="button"
-        onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
-        disabled={!canManage}
+        onClick={() => { if (canManage) { setErr(null); setMsg(null); setMenuOpen((v) => !v); } }}
+        disabled={!canManage || anyBusy}
         style={{
-          background: 'none', border: 'none', padding: 0, color: NEON, fontWeight: 700,
-          fontSize: '.8rem', textDecoration: 'underline', textUnderlineOffset: 2,
+          display: 'inline-flex', alignItems: 'center', gap: '.3rem',
+          background: 'transparent', border: `1px solid ${NEON}`, color: NEON,
+          borderRadius: 8, padding: '.4rem .7rem', fontWeight: 700, fontSize: '.8rem',
           cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
         }}
       >
-        {hasSaved ? 'Manage invoice / receipt' : 'Send invoice / receipt'}
+        {anyBusy ? 'Working…' : 'Manage'}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
       </button>
-      {hasSaved && (
-        <span style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.65)' }}>
-          {money(Number(savedAmount), currency)}
-          {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
-        </span>
+      <span style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.65)' }}>
+        {money(Number(savedAmount), currency)}
+        {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
+      </span>
+
+      {menuOpen && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40, minWidth: 210,
+            background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.16)',
+            borderRadius: 10, padding: '.3rem', boxShadow: '0 12px 34px rgba(0,0,0,.55)',
+          }}
+        >
+          {paidAt ? (
+            <>
+              <button type="button" style={menuItem} onClick={() => runMenu(markPaid)}>Resend receipt</button>
+              <button type="button" style={menuItem} onClick={() => runMenu(downloadReceipt)}>Download receipt</button>
+            </>
+          ) : (
+            <>
+              <button type="button" style={menuItem} onClick={() => runMenu(markPaid)}>Mark paid &amp; send receipt</button>
+              <button type="button" style={menuItem} onClick={() => runMenu(sendInvoice)}>Resend invoice</button>
+            </>
+          )}
+          <button type="button" style={menuItem} onClick={() => runMenu(() => { setMenuOpen(false); setOpen(true); })}>Edit details…</button>
+          <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '.3rem 0' }} />
+          <button type="button" style={dangerItem} onClick={() => runMenu(remove)}>Cancel invoice</button>
+        </div>
       )}
     </span>
   );
 
-  if (!open) return trigger;
+  if (!open) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+        {trigger}
+        {err && <span style={{ color: '#ff7676', fontSize: '.74rem', fontWeight: 600 }}>{err}</span>}
+        {msg && <span style={{ color: NEON, fontSize: '.74rem', fontWeight: 600 }}>{msg}</span>}
+      </span>
+    );
+  }
 
   // ── Popup ──
   const modal = (
