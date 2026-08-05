@@ -23,14 +23,12 @@ const SEARCH_PATHS = [DASHBOARD, PAST];
 
 // Where to hang the magnifier. Upcoming has a sort row ("By date" + "Recently")
 // on the same line; Past Bookings has no sort bar, so we hang it in the page
-// header next to the "Past Bookings" title.
+// header, inline next to the "Past Bookings" title text.
 function findAnchor(isPast: boolean): HTMLElement | null {
   if (isPast) {
+    // Right next to the "Past Bookings" title text (inline after it).
     const h1 = Array.from(document.querySelectorAll('h1')).find((h) => /past bookings/i.test(h.textContent || ''));
-    if (!h1) return null;
-    const titleBlock = h1.closest('div');
-    const controls = (titleBlock?.nextElementSibling as HTMLElement | null) || null;
-    return controls || (titleBlock?.parentElement as HTMLElement | null) || (h1.parentElement as HTMLElement | null);
+    return h1 || null;
   }
   const byDate = Array.from(document.querySelectorAll('button')).find((b) => /by date/i.test(b.textContent || ''));
   let row: HTMLElement | null = byDate || null;
