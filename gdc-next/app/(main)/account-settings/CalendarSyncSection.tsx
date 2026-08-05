@@ -28,7 +28,8 @@ export default function CalendarSyncSection() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [googleNote, setGoogleNote] = useState(false);
+  const [googleStep, setGoogleStep] = useState(false);
+  const [googleCopied, setGoogleCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -59,10 +60,15 @@ export default function CalendarSyncSection() {
     try { await navigator.clipboard.writeText(httpsUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
   }
 
+  // Google gives no way to pre-fill its "URL of calendar" box from outside, so
+  // the flow is: copy the link, SHOW the steps here (so the DJ knows it's
+  // copied) BEFORE sending them off — otherwise the "copied" note would sit on
+  // this tab while they're staring at an empty box in Google's new tab.
   async function addToGoogle() {
-    try { await navigator.clipboard.writeText(httpsUrl); } catch { /* clipboard may be blocked; the ?url= prefill still covers it */ }
-    setGoogleNote(true);
-    window.open(googleUrl, '_blank', 'noopener,noreferrer');
+    let ok = false;
+    try { await navigator.clipboard.writeText(httpsUrl); ok = true; } catch { /* blocked — the panel's copy button is the fallback */ }
+    setGoogleCopied(ok);
+    setGoogleStep(true);
   }
 
   async function reset() {
@@ -114,9 +120,28 @@ export default function CalendarSyncSection() {
         </button>
       </div>
 
-      {googleNote && (
-        <div style={{ margin: '.2rem 0 .6rem', padding: '.6rem .8rem', background: 'rgba(0,224,164,.08)', border: `1px solid ${NEON}`, borderRadius: 8, fontSize: '.8rem', color: 'rgba(255,255,255,.85)', lineHeight: 1.6 }}>
-          Opened Google Calendar&apos;s <strong>Add-by-URL</strong> box in a new tab. If the link isn&apos;t already filled in, paste it (we copied it for you — ⌘V / Ctrl-V) and press <strong>Add calendar</strong>.
+      {googleStep && (
+        <div style={{ margin: '.2rem 0 .7rem', padding: '.8rem .9rem', background: 'rgba(0,224,164,.08)', border: `1px solid ${NEON}`, borderRadius: 8, fontSize: '.82rem', color: 'rgba(255,255,255,.9)', lineHeight: 1.65 }}>
+          <div style={{ fontWeight: 800, color: NEON, marginBottom: '.35rem' }}>
+            {googleCopied ? '✓ Calendar link copied to your clipboard' : 'Copy your calendar link (button below), then:'}
+          </div>
+          <div style={{ marginBottom: '.6rem' }}>
+            1. Click <strong>Open Google Calendar</strong> below.<br />
+            2. In the <strong>&ldquo;URL of calendar&rdquo;</strong> box that opens, paste the link — <strong>⌘V</strong> (Mac) or <strong>Ctrl-V</strong>.<br />
+            3. Press <strong>Add calendar</strong>. Done.
+          </div>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <a href={googleUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: NEON, color: '#06231b', fontWeight: 800, fontSize: '.8rem', padding: '.5rem .95rem', borderRadius: 8, textDecoration: 'none' }}>
+              Open Google Calendar
+            </a>
+            <button
+              type="button"
+              onClick={copy}
+              style={{ background: 'transparent', color: NEON, border: `1px solid ${NEON}`, borderRadius: 8, padding: '.45rem .8rem', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer' }}
+            >
+              {copied ? 'Copied ✓' : 'Copy link again'}
+            </button>
+          </div>
         </div>
       )}
 
