@@ -230,9 +230,20 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
         {anyBusy ? 'Working…' : 'Manage'}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
       </button>
+      {statusLabel && (
+        <span
+          style={{
+            fontSize: '.66rem', fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase',
+            padding: '.16rem .5rem', borderRadius: 999, lineHeight: 1.4,
+            color: paidAt ? '#06231b' : '#332400',
+            background: paidAt ? NEON : '#ffb020',
+          }}
+        >
+          {statusLabel}
+        </span>
+      )}
       <span style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.65)' }}>
         {money(Number(savedAmount), currency)}
-        {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
       </span>
 
       {menuOpen && (
