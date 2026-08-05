@@ -13,6 +13,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildDocumentPdf, type DocMoneyLine } from './receiptPdf';
+import { isFullName, normalizeName } from './fullName';
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
@@ -121,6 +122,7 @@ interface BookingDocRow {
   tax_amount: number | null;
   total_with_tax: number | null;
   requester_name: string | null;
+  requester_id: string | null;
   host_email: string | null;
 }
 
@@ -164,7 +166,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, host_email')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, requester_id, host_email')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -177,6 +179,23 @@ export async function buildBookingDocAttachment(
       .maybeSingle();
     const dj = dData as DjDocRow | null;
     if (!dj) return null;
+
+    // BILL TO must be the host's FULL name. The booking's requester_name is the
+    // name captured on the form and is normally full — but older/manual rows can
+    // hold just a first name (or nothing). When it isn't a full name, fall back
+    // to the host account's name, which the full-name gate enforces at signup.
+    const bookingName = normalizeName(b.requester_name);
+    let billToName = bookingName;
+    if (!isFullName(bookingName) && b.requester_id) {
+      const { data: hData } = await admin
+        .from('users')
+        .select('name')
+        .eq('id', b.requester_id)
+        .maybeSingle();
+      const hostName = normalizeName((hData as { name: string | null } | null)?.name);
+      // Prefer whichever is an actual full name; otherwise keep whatever we have.
+      if (isFullName(hostName) || (!bookingName && hostName)) billToName = hostName;
+    }
 
     const currency = args.currency || b.currency || 'USD';
     const isReceipt = args.docKind === 'receipt';
@@ -226,6 +245,10 @@ export async function buildBookingDocAttachment(
     // Wedding ceremony + cocktail-hour times → EVENT block (under the venue).
     const eventExtra: string[] = [];
     const isWedding = (b.event_type || '').includes('wedding');
+    // For a wedding the main start/end IS the reception — label it so it reads
+    // clearly next to the ceremony + cocktail-hour lines below it. Other events
+    // keep the plain time.
+    const weddingTimeText = (!isClub && isWedding && setTime) ? `Reception ${setTime}` : '';
     if (!isClub && isWedding && b.ceremony_needed && b.ceremony_start_time) {
       eventExtra.push(`Ceremony ${fmtTime(b.ceremony_start_time)} · ${b.ceremony_same_room ? 'same room as reception' : 'separate room'}`);
     }
@@ -349,8 +372,8 @@ export async function buildBookingDocAttachment(
         phone: dj.phone,
         logo,
       },
-      client: { name: b.requester_name, email: args.clientEmail || b.host_email },
-      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: setTime || null, venue: b.venue_name, extra: eventExtra },
+      client: { name: billToName || b.requester_name, email: args.clientEmail || b.host_email },
+      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: weddingTimeText || setTime || null, venue: b.venue_name, extra: eventExtra },
       details,
       lines,
       headline,
