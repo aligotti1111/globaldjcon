@@ -15,6 +15,13 @@
 import { useState, useCallback } from 'react';
 import styles from './confirmModal.module.css';
 
+// Optional free-text field rendered inside the confirm box (e.g. a decline
+// reason). When present, the entered text comes back via confirmWithReason.
+interface ReasonInput {
+  label?: string;
+  placeholder?: string;
+}
+
 interface ConfirmOptions {
   title: string;
   message?: string;
@@ -23,10 +30,11 @@ interface ConfirmOptions {
   // 'danger' variant uses red Confirm button (Deny / Cancel / Block).
   // 'primary' (default) uses the neon brand color (Approve / Accept).
   variant?: 'primary' | 'danger';
+  reasonInput?: ReasonInput;
 }
 
 interface PendingState extends ConfirmOptions {
-  resolve: (value: boolean) => void;
+  resolve: (value: { ok: boolean; reason: string }) => void;
 }
 
 export function useConfirm() {
@@ -34,13 +42,21 @@ export function useConfirm() {
 
   const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
     return new Promise<boolean>((resolve) => {
+      setPending({ ...opts, resolve: (r) => resolve(r.ok) });
+    });
+  }, []);
+
+  // Same modal, but with an optional text field; resolves with the entered
+  // reason alongside the yes/no result.
+  const confirmWithReason = useCallback((opts: ConfirmOptions): Promise<{ ok: boolean; reason: string }> => {
+    return new Promise<{ ok: boolean; reason: string }>((resolve) => {
       setPending({ ...opts, resolve });
     });
   }, []);
 
-  const handleClose = (result: boolean) => {
+  const handleClose = (ok: boolean, reason = '') => {
     if (!pending) return;
-    pending.resolve(result);
+    pending.resolve({ ok, reason });
     setPending(null);
   };
 
@@ -53,12 +69,13 @@ export function useConfirm() {
       confirmLabel={pending.confirmLabel || 'Confirm'}
       cancelLabel={pending.cancelLabel || 'Cancel'}
       variant={pending.variant || 'primary'}
-      onConfirm={() => handleClose(true)}
+      reasonInput={pending.reasonInput}
+      onConfirm={(reason) => handleClose(true, reason)}
       onCancel={() => handleClose(false)}
     />
   ) : null;
 
-  return { confirm, confirmDialog };
+  return { confirm, confirmWithReason, confirmDialog };
 }
 
 // ── The modal itself ───────────────────────────────────────────────────
@@ -68,13 +85,15 @@ interface Props {
   confirmLabel: string;
   cancelLabel: string;
   variant: 'primary' | 'danger';
-  onConfirm: () => void;
+  reasonInput?: ReasonInput;
+  onConfirm: (reason: string) => void;
   onCancel: () => void;
 }
 
 function ConfirmModal({
-  title, message, confirmLabel, cancelLabel, variant, onConfirm, onCancel,
+  title, message, confirmLabel, cancelLabel, variant, reasonInput, onConfirm, onCancel,
 }: Props) {
+  const [reason, setReason] = useState('');
   // Backdrop click cancels (matches CounterModal / ComposeMessageModal).
   // Clicking the box itself is stopped from bubbling to backdrop.
   return (
@@ -82,6 +101,26 @@ function ConfirmModal({
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.title}>{title}</div>
         {message && <div className={styles.message}>{message}</div>}
+        {reasonInput && (
+          <div style={{ margin: '0 0 1rem' }}>
+            {reasonInput.label && (
+              <div style={{ fontSize: '.72rem', letterSpacing: '.03em', color: 'rgba(255,255,255,.6)', marginBottom: '.4rem' }}>
+                {reasonInput.label}
+              </div>
+            )}
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={reasonInput.placeholder || ''}
+              rows={3}
+              style={{
+                width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                background: '#16161f', color: '#fff', border: '1px solid rgba(255,255,255,.18)',
+                borderRadius: 8, padding: '9px 11px', fontSize: '.88rem', outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+          </div>
+        )}
         <div className={styles.actionsRow}>
           <button
             type="button"
@@ -92,7 +131,7 @@ function ConfirmModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(reason.trim())}
             className={
               variant === 'danger' ? styles.confirmBtnDanger : styles.confirmBtn
             }
