@@ -323,9 +323,16 @@ export default function BookingRequestsClient({
     }
     const supabase = createClient();
     try {
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('bookings')
-        .update({ status, updated_at: new Date().toISOString() } as unknown as never)
+        // Stamp accepted_at only on approve so the booking log has a real
+        // "Booking accepted" moment (distinct from contract sent).
+        .update({
+          status,
+          updated_at: now,
+          ...(isApprove ? { accepted_at: now } : {}),
+        } as unknown as never)
         .eq('id', bookingId)
         .eq('dj_id', currentUser.id);
       if (error) throw error;
@@ -607,9 +614,10 @@ export default function BookingRequestsClient({
           throw new Error(j.error || 'Approval failed');
         }
       } else {
+        const now = new Date().toISOString();
         const { error } = await supabase
           .from('bookings')
-          .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
+          .update({ status: 'approved', updated_at: now, accepted_at: now } as unknown as never)
           .eq('id', bookingId)
           .eq('requester_id', currentUser.id);
         if (error) throw error;
