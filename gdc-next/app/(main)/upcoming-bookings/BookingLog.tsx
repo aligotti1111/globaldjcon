@@ -57,7 +57,7 @@ export default function BookingLog({ booking, payments }: Props) {
 
   // ── Contract ── (DJ sends; host signs)
   add(booking.contract_sent_at, 'Contract sent to host', 'dj');
-  add(booking.contract_signed_at, 'Contract signed', 'host');
+  add(booking.contract_signed_at, 'Contract signed by host', 'host');
 
   // ── Payments ledger (deposit / balance) ──
   for (const p of payments) {
