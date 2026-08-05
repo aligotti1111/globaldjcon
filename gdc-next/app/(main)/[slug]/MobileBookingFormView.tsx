@@ -482,6 +482,13 @@ export default function MobileBookingForm({
     setErrorMsg(null);
     setErrorFieldId(null);
 
+    // DJs can't book other DJs (hosts + venue accounts can). Pop a message
+    // instead of proceeding — the create route enforces this server-side too.
+    if (authUser?.role === 'dj' || authUser?.isMember) {
+      setErrorMsg("You need a host account to book a DJ. DJ accounts can't book other DJs.");
+      return;
+    }
+
     // Validation. fail() sets the message, then scrolls the offending
     // field into view and focuses it — errorFieldId drives a red ring
     // highlight via the .fieldError class.

@@ -416,6 +416,13 @@ export default function ClubBookingForm({
     e.preventDefault();
     setError(null);
 
+    // DJs can't book other DJs (hosts + venue accounts can). Pop a message
+    // instead of proceeding — the create route enforces this server-side too.
+    if (authUser?.role === 'dj' || authUser?.isMember) {
+      setError("You need a host account to book a DJ. DJ accounts can't book other DJs.");
+      return;
+    }
+
     // Collect ALL missing required fields up front so the booker sees
     // every problem at once instead of having to fix → submit → fix
     // each one. The set drives both the top-of-form summary and the

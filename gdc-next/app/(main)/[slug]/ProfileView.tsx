@@ -103,11 +103,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // owners and hosts only. Hiding the tab also hides Book Now and stops the
   // form from defaulting open.
   const viewerIsStaff = !!currentUser?.isMember;
-  // DJs can't book other DJs (hosts + venue accounts still can) — hide the
-  // Book / Availability tab for them, same as it's hidden for staff.
-  const viewerCannotBook = viewerIsStaff || currentUser?.role === 'dj';
-  const showClubAvailabilityTab = isClubDJ && bookingEnabled && !viewerCannotBook;
-  const showMobileBookingTab = isMobileDJBooking && bookingEnabled && !viewerCannotBook;
+  const showClubAvailabilityTab = isClubDJ && bookingEnabled && !viewerIsStaff;
+  const showMobileBookingTab = isMobileDJBooking && bookingEnabled && !viewerIsStaff;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
 
   // If the URL has ?date=YYYY-MM-DD (visitor came from the embed
