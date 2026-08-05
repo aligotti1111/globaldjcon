@@ -874,6 +874,27 @@ export default function MobileBookingForm({
   const startTimeValid = startTime !== '';
   const endTimeValid = endTime !== '';
 
+  // DJ-side accounts can't book DJs — show only the message, not the form.
+  if (viewerCannotBook) {
+    return createPortal(
+      <div className={styles.formWrap}>
+        <div className={styles.formCard}>
+          <div className={styles.formHeaderRow}>
+            <div>
+              <div className={styles.formHeaderEyebrow}>Booking Request</div>
+              <div className={styles.formHeaderDate}>{dateLabel}</div>
+            </div>
+            <button type="button" onClick={onClose} className={styles.formCloseBtn} aria-label="Close booking form">✕</button>
+          </div>
+          <div className={`${styles.alert} ${styles.alertError}`}>
+            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
   return createPortal(
     <div className={styles.formWrap}>
       <div ref={rootRef} className={styles.formCard}>
@@ -894,11 +915,6 @@ export default function MobileBookingForm({
 
         {/* id is what the submit handler scrolls to when the server rejects
             something that doesn't map to a single field. */}
-        {viewerCannotBook && (
-          <div className={`${styles.alert} ${styles.alertError}`}>
-            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
-          </div>
-        )}
         {errorMsg && <div id="mpf-error" className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
 
         {/* Your Name — the DJ's contract needs a first AND a last name, and

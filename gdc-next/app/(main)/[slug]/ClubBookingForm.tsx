@@ -678,6 +678,27 @@ export default function ClubBookingForm({
 
   // ── Form UI ──────────────────────────────────────────────────────
   if (!mounted) return null;
+  // DJ-side accounts can't book DJs — show only the message, not the form.
+  if (viewerCannotBook) {
+    return createPortal(
+      <div className={styles.formWrap}>
+        <div className={styles.formCard}>
+          <div className={styles.formHeader}>
+            <div>
+              <div className={styles.formHeaderEyebrow}>Booking Request</div>
+              <div className={styles.formHeaderDate}>{formatLongDate(dateKey)}</div>
+            </div>
+            <button type="button" onClick={onClose} className={styles.formCloseBtn} aria-label="Close booking form">✕</button>
+          </div>
+          <div className={styles.errorMsg}>
+            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
   return createPortal(
     <form onSubmit={handleSubmit} className={styles.formWrap}>
       <div className={styles.formCard}>
@@ -697,11 +718,6 @@ export default function ClubBookingForm({
           </button>
         </div>
 
-        {viewerCannotBook && (
-          <div className={styles.errorMsg}>
-            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
-          </div>
-        )}
 
         {/* Top-of-form summary for missing-required-fields validation.
             The booker needs to see this BEFORE scrolling through the
