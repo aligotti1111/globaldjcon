@@ -785,10 +785,10 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, booking_type, requester_id, host_email, requester_name, event_date, venue_name, currency')
+      .select('id, dj_id, booking_type, requester_id, host_email, requester_name, event_date, venue_name, currency, overtime_invoiced_at')
       .eq('id', bookingId)
       .maybeSingle();
-    const b = bData as (BookingRow & { booking_type: string | null }) | null;
+    const b = bData as (BookingRow & { booking_type: string | null; overtime_invoiced_at: string | null }) | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
@@ -801,6 +801,9 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       await admin.from('bookings').update({
         overtime_hours: null, overtime_charge_rate: null, overtime_tax: null,
         overtime_amount: null, overtime_invoiced_at: null, overtime_paid_at: null,
+        // Only a cancellation worth logging if an invoice had actually gone
+        // out. Clearing an un-invoiced draft is just tidying up — nothing to log.
+        overtime_cancelled_at: b.overtime_invoiced_at ? new Date().toISOString() : null,
       } as unknown as never).eq('id', bookingId);
       return NextResponse.json({ ok: true });
     }
