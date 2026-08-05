@@ -226,6 +226,36 @@ ${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">
   return rows.join('');
 }
 
+// Payment options for the OVERTIME invoice email. Overtime has no ledger row
+// (it lives on the booking, independent of the deposit/balance flow), so it
+// can't use the /pay tracking pages the deposit/balance options do — instead it
+// renders direct pay links (Venmo/Cash App/PayPal.me) and copyable handles for
+// the rest, all tagged with the overtime reference.
+function overtimeOptionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, eventDate: string | null, venueName: string | null): string {
+  const rows = methods.map((m) => {
+    const meta = (METHOD_TYPES as Record<string, { label?: string }>)[m.type];
+    const label = (meta && meta.label) || m.type;
+    const link = buildPayLink(m, amount, reference);
+    let body: string;
+    if (isLinkable(m) && link) {
+      body = `<a href="${link}" style="display:inline-block;background:#0a6f61;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:8px;">Pay ${money(amount, currency)} with ${label}</a>`;
+    } else if (m.type === 'cash') {
+      body = `<p style="margin:0;color:#333;font-size:14px;">${cashLine(m)}</p>`;
+    } else if (m.type === 'check') {
+      body = `<p style="margin:0;color:#333;font-size:14px;">Memo: ${checkMemo(eventDate, venueName, reference)}</p>`;
+    } else {
+      body = `<p style="margin:0;color:#333;font-size:14px;font-family:monospace;word-break:break-all;">${displayHandle(m)}</p><p style="margin:5px 0 0;color:#888;font-size:12px;">${copyInstruction(m)}</p>`;
+    }
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;border:1px solid #e0e0e0;border-radius:10px;background:#fafafa;"><tr><td style="padding:12px 14px;"><div style="font-weight:700;color:#0a6f61;font-size:13px;margin:0 0 6px;">${label}</div>${body}</td></tr></table>`;
+  }).join('');
+  if (!rows) return '';
+  return `<div style="margin:20px 0 0;">
+<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0a8f74;font-weight:700;margin:0 0 10px;">Payment options</div>
+${rows}
+<div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:6px 0 0;"><p style="margin:0;color:#666;font-size:12px;">Reference — include in the payment note:</p><p style="margin:3px 0 0;font-family:monospace;font-size:15px;color:#111;font-weight:700;">${reference}</p></div>
+</div>`;
+}
+
 async function clientEmailFor(b: BookingRow): Promise<string | null> {
   if (b.host_email) return b.host_email;
   if (b.requester_id) return await resolveUserEmail(b.requester_id);
@@ -779,7 +809,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, booking_type, requester_id, host_email, requester_name, event_date, currency')
+      .select('id, dj_id, booking_type, requester_id, host_email, requester_name, event_date, venue_name, currency')
       .eq('id', bookingId)
       .maybeSingle();
     const b = bData as (BookingRow & { booking_type: string | null }) | null;
@@ -850,9 +880,26 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     });
 
     const hrLabel = `${hours} hr${hours === 1 ? '' : 's'}`;
+    // Overtime invoice carries the DJ's payment options (pay links + handles),
+    // just like a balance invoice — so the host can pay it directly, not only
+    // "on the night."
+    let optionsBlock = '';
+    if (isInv) {
+      const { data: djData } = await admin
+        .from('users')
+        .select('payment_methods')
+        .eq('id', acting.djId)
+        .maybeSingle();
+      const methods = usableMethods((Array.isArray((djData as { payment_methods?: unknown } | null)?.payment_methods)
+        ? (djData as { payment_methods?: unknown }).payment_methods
+        : []) as PaymentMethod[]);
+      const reference = referenceCode(bookingId, 'overtime');
+      optionsBlock = overtimeOptionsHtml(methods, amount, cur, reference, b.event_date, b.venue_name);
+    }
     const content = isInv
       ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Overtime — ${money(amount, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. It can be paid on the night or by any method your DJ accepts.</p>`
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. Pay it below, or on the night by any method your DJ accepts.</p>
+${optionsBlock}`
       : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — paid in full</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your receipt including ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached.</p>`;
 
