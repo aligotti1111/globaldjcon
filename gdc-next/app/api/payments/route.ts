@@ -699,6 +699,68 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     return NextResponse.json({ ok: true });
   }
 
+  // ───────────────── download-receipt (DJ only) ─────────────────
+  // Same receipt PDF as send-receipt, but returned for download instead of
+  // emailed — so the DJ can keep a copy or hand it over themselves. No client
+  // email required (nothing is sent).
+  if (action === 'download-receipt') {
+    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
+    const kind = typeof body.kind === 'string' && KINDS.has(body.kind) ? body.kind : 'balance';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+
+    const cur = b.currency || 'USD';
+    const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
+    const { data: paidData } = await db
+      .from('booking_payments')
+      .select('amount_paid')
+      .eq('booking_id', bookingId);
+    const paidSoFar = ((paidData as { amount_paid?: number }[] | null) || [])
+      .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+
+    let received: number;
+    let paidToDate: number;
+    if (kind === 'deposit') {
+      received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
+      paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
+    } else {
+      received = round2(Math.max(0, agreed - paidSoFar));
+      paidToDate = round2(agreed);
+    }
+
+    const receiptAtt = await buildBookingDocAttachment(db, {
+      docKind: 'receipt',
+      bookingId,
+      djId: acting.djId,
+      currency: cur,
+      paymentKind: kind as 'deposit' | 'balance' | 'other',
+      receivedNow: received,
+      method: null,
+      paidToDate,
+      clientEmail: await clientEmailFor(b),
+    });
+    if (!receiptAtt) return NextResponse.json({ error: 'Could not build the receipt.' }, { status: 500 });
+
+    const pdf = Buffer.from(receiptAtt.content, 'base64');
+    return new NextResponse(pdf, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${receiptAtt.filename}"`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+
   // ───────────────── cancel-request (DJ only) ─────────────────
   // Withdraw a deposit/balance request that was never paid. Deletes the row so
   // the column returns to "Not sent" and the DJ can request again cleanly.
