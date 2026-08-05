@@ -67,6 +67,7 @@ export default function BookingLog({ booking, payments }: Props) {
     add(booking.contract_sent_at, 'Contract sent to host', 'dj');
   }
   add(booking.contract_signed_at, 'Contract signed by host', 'host');
+  add(booking.contract_cancelled_at, 'Contract cancelled', 'dj');
 
   // ── Payments ledger (deposit / balance) ──
   for (const p of payments) {
@@ -75,6 +76,27 @@ export default function BookingLog({ booking, payments }: Props) {
     if (p.marked_sent_at) add(p.marked_sent_at, `${k}: host said they'd pay`, 'host');
     if (p.status === 'paid' || p.status === 'waived') {
       add(p.confirmed_at ?? p.marked_sent_at ?? p.requested_at, `${k} received · receipt sent`, 'dj');
+    }
+  }
+
+  // ── Deposit skip ── The DJ can skip the deposit and go straight to the
+  // balance. A manual skip / undo carries its own timestamp. It can ALSO be
+  // auto-skipped: requesting a balance while no deposit money was collected
+  // effectively skips it — that one is derived from the ledger (timestamped at
+  // the balance request), and suppressed if a manual skip was recorded so the
+  // same event isn't logged twice.
+  add(booking.deposit_skipped_at, 'Deposit skipped', 'dj');
+  add(booking.deposit_skip_undone_at, 'Deposit skip undone', 'dj');
+  if (!booking.deposit_skipped_at) {
+    const depositRealPaid = payments
+      .filter((p) => p.kind === 'deposit')
+      .reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const depositSettled = payments.some(
+      (p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'),
+    );
+    const balance = payments.find((p) => p.kind === 'balance');
+    if (balance && !depositSettled && depositRealPaid <= 0) {
+      add(balance.requested_at, 'Deposit auto-skipped — balance requested', 'dj');
     }
   }
 
@@ -91,6 +113,7 @@ export default function BookingLog({ booking, payments }: Props) {
   // ── Overtime (DJ-driven) ──
   add(booking.overtime_invoiced_at, 'Overtime invoice sent', 'dj');
   add(booking.overtime_paid_at, 'Overtime paid · receipt sent', 'dj');
+  add(booking.overtime_cancelled_at, 'Overtime invoice cancelled', 'dj');
 
   // ── Cancellation ── the request is attributed to whoever asked; an
   // accept/decline is the OTHER party responding.
