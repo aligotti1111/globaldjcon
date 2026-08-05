@@ -134,12 +134,16 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
           };
         });
       const byAt = (a: Item, b: Item) => Date.parse(b.at || '') - Date.parse(a.at || '');
+      // DJs and teammates no longer book DJs — never surface the requester-side
+      // (outgoing) items for them. Hosts and venue accounts keep them.
+      const role = (user as { role?: string } | null)?.role;
+      const djSide = role === 'dj' || role === 'teammate';
       const respond = [
         ...mk(djPend.data as Row[] | null, 'request'),
-        ...mk(reqCtr.data as Row[] | null, 'counter'),
+        ...(djSide ? [] : mk(reqCtr.data as Row[] | null, 'counter')),
       ].sort(byAt);
       const awaiting = [
-        ...mk(reqPend.data as Row[] | null, 'request'),
+        ...(djSide ? [] : mk(reqPend.data as Row[] | null, 'request')),
         ...mk(djCtr.data as Row[] | null, 'counter'),
       ].sort(byAt);
       setRespondItems(respond);
