@@ -232,12 +232,16 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
           </svg>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.7rem' }}>
           <div style={{ fontWeight: 800, color: '#fff', fontSize: '1.05rem' }}>Overtime</div>
           {statusLabel && (
             <span style={{ fontSize: '.7rem', fontWeight: 800, color: paidAt ? NEON : '#ffb020', letterSpacing: '.04em', textTransform: 'uppercase' }}>{statusLabel}</span>
           )}
         </div>
+
+        <p style={{ fontSize: '.76rem', color: 'rgba(255,255,255,.6)', lineHeight: 1.5, margin: '0 0 1rem' }}>
+          The overtime invoice acts independently from the event balance. After it&rsquo;s paid — or you mark it paid — a receipt showing the total cost of the event is sent to the host.
+        </p>
 
         <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.7rem', flexWrap: 'wrap' }}>
           <label style={{ flex: '1 1 120px', minWidth: 0 }}>
