@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
+import { buildSingleEventCalendar, googleCalendarLink, icsDateTime, icsEndDateTime } from '@/lib/ics';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
@@ -1961,6 +1962,33 @@ export async function POST(req: Request) {
     const sym = currencySymbol(currency);
     const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
     const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
+
+    // ── Add to Calendar ── A one-tap Google Calendar link + a .ics attachment
+    // (which Apple Mail / Outlook / Gmail all offer "Add to Calendar" for), so
+    // this single booking lands on a calendar without waiting on the feed. Same
+    // floating-time model as the subscription feed (lib/ics).
+    let addToCalHtml = '';
+    const calAttachments: { filename: string; content: string }[] = [];
+    if (eventDate && startTime) {
+      const calSummary = `${eventType ? eventTypeLabel(eventType) : 'DJ Booking'}${venueName ? ` @ ${venueName}` : ''}`;
+      const calLocation = [venueName, venueAddress].filter(Boolean).join(', ') || null;
+      const calDetails = [
+        otherPartyName ? `${otherLabel}: ${otherPartyName}` : null,
+        agreedPrice ? `Agreed: ${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : null,
+        `${SITE_URL}/booking-requests`,
+      ].filter(Boolean).join('\n');
+      const gLink = googleCalendarLink({ summary: calSummary, date: eventDate, startTime, endTime, location: calLocation, details: calDetails });
+      addToCalHtml = `<div style="margin:0 0 22px;"><a href="${gLink}" style="display:inline-block;padding:11px 22px;background:#0a6f61;color:#ffffff;text-decoration:none;font-weight:600;font-size:13px;border-radius:6px;">Add to Google Calendar</a><p style="margin:8px 0 0;color:#999;font-size:12px;">Apple or Outlook? Use the <strong>.ics</strong> file attached to this email.</p></div>`;
+      const ics = buildSingleEventCalendar({
+        uid: `booking-${(body.bookingId as string) || eventDate}@globaldjconnect.com`,
+        start: icsDateTime(eventDate, startTime),
+        end: icsEndDateTime(eventDate, startTime, endTime || null),
+        summary: calSummary,
+        location: calLocation,
+        description: calDetails,
+      });
+      calAttachments.push({ filename: 'booking.ics', content: Buffer.from(ics, 'utf-8').toString('base64') });
+    }
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1990,7 +2018,9 @@ export async function POST(req: Request) {
           : ''}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
+        ${addToCalHtml}
       `),
+      attachments: calAttachments.length ? calAttachments : undefined,
     };
 
     // Approval fires booking_approved to BOTH parties (DJ + booker), each
