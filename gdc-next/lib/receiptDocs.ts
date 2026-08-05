@@ -17,6 +17,16 @@ import { isFullName, normalizeName } from './fullName';
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
+// Currency formatter for inline labels (e.g. the per-hour overtime rate). The
+// money COLUMN is formatted by the PDF itself; this is only for label text.
+function fmtCur(n: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+  } catch {
+    return `$${Number(n).toLocaleString()}`;
+  }
+}
+
 // Brand colours for the accepted-method badges — the same palette the payment
 // emails use, so paper and email match.
 const METHOD_META: Record<string, { label: string; hex: string; inPerson?: boolean }> = {
@@ -153,6 +163,16 @@ export interface BuildDocArgs {
   paidToDate?: number;
   /** Client email, so the receipt/invoice can address them if we have it. */
   clientEmail?: string | null;
+  /**
+   * Overtime charge, added on the day. When present the document is about
+   * overtime, not the event balance:
+   *   • invoice  → bills the overtime ONLY (hours × rate, plus optional tax).
+   *   • receipt  → shows the event total AND the overtime, TOTALED into one
+   *                grand total marked paid in full.
+   * `tax` is the tax amount already computed (0 when none); `amount` is the
+   * overtime total including that tax.
+   */
+  overtime?: { hours: number; rate: number; tax: number; amount: number };
 }
 
 /**
@@ -266,7 +286,59 @@ export async function buildBookingDocAttachment(
     let acceptedMethods: { label: string; hex?: string | null }[] | undefined;
     let methodsNote: string | undefined;
 
-    if (isReceipt) {
+    // Accepted-method badges, built from what the DJ actually has. Shared by the
+    // deposit/balance invoice and the overtime invoice.
+    const buildMethods = (): { badges: { label: string; hex: string; key: string }[]; hasOnline: boolean; hasInPerson: boolean } => {
+      const raw = Array.isArray(dj.payment_methods) ? dj.payment_methods : [];
+      const seen = new Set<string>();
+      const badges: { label: string; hex: string; key: string }[] = [];
+      let hasOnline = false;
+      let hasInPerson = false;
+      for (const m of raw as { type?: string }[]) {
+        const meta = m?.type ? METHOD_META[m.type] : undefined;
+        if (!meta || seen.has(m.type as string)) continue;
+        seen.add(m.type as string);
+        // `key` lets the PDF look up the real brand logo (venmo/cashapp/…);
+        // cash/check have no brand mark and fall through to a text-only chip.
+        badges.push({ label: meta.label, hex: meta.hex, key: m.type as string });
+        if (meta.inPerson) hasInPerson = true; else hasOnline = true;
+      }
+      if (dj.stripe_connect_ready) { badges.push({ label: 'Card', hex: '#0A6F61', key: 'card' }); hasOnline = true; }
+      return { badges, hasOnline, hasInPerson };
+    };
+
+    const ot = args.overtime;
+    if (ot) {
+      // ── Overtime document ──
+      // Invoice bills the overtime alone (it's what's owed right now). Receipt
+      // shows the event total AND the overtime, totaled into one grand total.
+      const otSub = round2(Number(ot.hours) * Number(ot.rate));
+      const otTax = round2(Number(ot.tax || 0));
+      const otAmount = round2(Number(ot.amount ?? otSub + otTax));
+      const hrs = Number(ot.hours);
+      const hrLabel = `${hrs} hr${hrs === 1 ? '' : 's'}`;
+      const otLine = `Overtime — ${hrLabel} × ${fmtCur(Number(ot.rate), currency)}`;
+      if (isReceipt) {
+        lines.push({ label: 'Event total', amount: total });
+        lines.push({ label: otLine, amount: otSub });
+        if (otTax > 0) lines.push({ label: 'Overtime tax', amount: otTax });
+        lines.push({ label: 'Total', amount: round2(total + otAmount), emphasis: 'bold', ruleAbove: true });
+        headline = { label: 'Paid in Full', amount: 0, hideAmount: true };
+      } else {
+        lines.push({ label: otLine, amount: otSub });
+        if (otTax > 0) lines.push({ label: 'Sales Tax', amount: otTax });
+        lines.push({ label: 'Overtime total', amount: otAmount, emphasis: 'bold' });
+        headline = { label: 'Overtime Due', amount: otAmount };
+        const { badges, hasOnline, hasInPerson } = buildMethods();
+        if (badges.length) {
+          acceptedMethods = badges;
+          const parts: string[] = [];
+          if (hasInPerson) parts.push('Cash or check can be paid on the night.');
+          if (hasOnline) parts.push('Or pay by any method shown above — include the reference on this invoice in the note.');
+          methodsNote = parts.join(' ');
+        }
+      }
+    } else if (isReceipt) {
       const received = round2(Number(args.receivedNow ?? 0));
       const methodLbl = prettyMethod(args.method);
       lines.push({ label: `Payment received${methodLbl ? ` (${methodLbl})` : ''}`, amount: received });
@@ -306,22 +378,7 @@ export async function buildBookingDocAttachment(
         amount: dueNow,
       };
 
-      // Accepted methods, as brand badges, built from what the DJ actually has.
-      const raw = Array.isArray(dj.payment_methods) ? dj.payment_methods : [];
-      const seen = new Set<string>();
-      const badges: { label: string; hex: string; key: string }[] = [];
-      let hasOnline = false;
-      let hasInPerson = false;
-      for (const m of raw as { type?: string }[]) {
-        const meta = m?.type ? METHOD_META[m.type] : undefined;
-        if (!meta || seen.has(m.type as string)) continue;
-        seen.add(m.type as string);
-        // `key` lets the PDF look up the real brand logo (venmo/cashapp/…);
-        // cash/check have no brand mark and fall through to a text-only chip.
-        badges.push({ label: meta.label, hex: meta.hex, key: m.type as string });
-        if (meta.inPerson) hasInPerson = true; else hasOnline = true;
-      }
-      if (dj.stripe_connect_ready) { badges.push({ label: 'Card', hex: '#0A6F61', key: 'card' }); hasOnline = true; }
+      const { badges, hasOnline, hasInPerson } = buildMethods();
       if (badges.length) {
         acceptedMethods = badges;
         const parts: string[] = [];
@@ -348,11 +405,14 @@ export async function buildBookingDocAttachment(
     // the paper reads the same word as the column and email (DEPOSIT / BALANCE
     // / RECEIPT), never a generic "INVOICE". ──
     const isDeposit = !isReceipt && args.paymentKind === 'deposit';
-    const stage = isReceipt ? 'receipt' : isDeposit ? 'deposit' : 'balance';
+    // An overtime INVOICE reads OVERTIME; an overtime RECEIPT is still a RECEIPT
+    // (it's the whole event, paid in full, with the overtime folded in).
+    const stage = isReceipt ? 'receipt' : (args.overtime ? 'overtime' : (isDeposit ? 'deposit' : 'balance'));
     const STAGE_META = {
       deposit: { title: 'DEPOSIT', prefix: 'DEP', file: 'Deposit' },
       balance: { title: 'BALANCE', prefix: 'BAL', file: 'Balance' },
       receipt: { title: 'RECEIPT', prefix: 'RCPT', file: 'Receipt' },
+      overtime: { title: 'OVERTIME', prefix: 'OT', file: 'Overtime' },
     }[stage];
 
     // ── Document number + date ──
