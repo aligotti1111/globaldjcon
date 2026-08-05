@@ -67,6 +67,10 @@ export default function BookingLog({ booking, payments }: Props) {
     add(booking.contract_sent_at, 'Contract sent to host', 'dj');
   }
   add(booking.contract_signed_at, 'Contract signed by host', 'host');
+  // Marked complete by hand (contract handled outside the app) — distinct from
+  // the host signing it in-app above.
+  add(booking.contract_completed_at, 'Contract marked complete', 'dj');
+  add(booking.contract_completion_undone_at, 'Contract completion undone', 'dj');
   add(booking.contract_cancelled_at, 'Contract cancelled', 'dj');
 
   // ── Payments ledger (deposit / balance) ──
