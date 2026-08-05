@@ -66,7 +66,9 @@ export default function BookingLog({ booking, payments }: Props) {
   } else {
     add(booking.contract_sent_at, 'Contract sent to host', 'dj');
   }
-  add(booking.contract_signed_at, 'Contract signed by host', 'host');
+  // Set when the DocuSeal contract is fully signed (all parties). You're the
+  // signer in this flow, so attribute it to You.
+  add(booking.contract_signed_at, 'Contract signed', 'dj');
   // Marked complete by hand (contract handled outside the app) — distinct from
   // the host signing it in-app above.
   add(booking.contract_completed_at, 'Contract marked complete', 'dj');
