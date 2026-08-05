@@ -40,6 +40,9 @@ interface Props {
   initial: OvertimeInitial;
   /** Manager+ money permission. Assistants can't send. */
   canManage: boolean;
+  /** The contract per-hour rate label (e.g. "$400.00/hr"), shown ONLY before an
+   *  invoice is sent. Once sent, the Manage control is the sole centerpiece. */
+  rateLabel?: string | null;
 }
 
 function money(n: number, currency: string): string {
@@ -51,7 +54,7 @@ function money(n: number, currency: string): string {
 }
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage }: Props) {
+export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage, rateLabel }: Props) {
   const [savedHours, setSavedHours] = useState<number | null>(initial.hours);
   const [savedRate, setSavedRate] = useState<number | null>(initial.rate);
   const [savedTax, setSavedTax] = useState<number | null>(initial.tax);
@@ -206,14 +209,17 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   // invoice exists it's a "Send invoice / receipt" link that opens the entry
   // popup; once sent it's a "Manage" dropdown of quick actions. ──
   const trigger = !hasSaved ? (
-    <button
-      type="button"
-      onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
-      disabled={!canManage}
-      style={linkStyle}
-    >
-      Send invoice / receipt
-    </button>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+      {rateLabel && <span>{rateLabel}</span>}
+      <button
+        type="button"
+        onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
+        disabled={!canManage}
+        style={linkStyle}
+      >
+        Send invoice / receipt
+      </button>
+    </span>
   ) : (
     <span ref={menuWrapRef} style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', position: 'relative' }}>
       <button

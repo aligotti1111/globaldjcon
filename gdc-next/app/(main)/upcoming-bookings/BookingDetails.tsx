@@ -475,14 +475,14 @@ export default function BookingDetails({
       { label: 'Agreed Rate', value: agreedRateWithDiscount },
       {
         label: 'Overtime Rate',
-        // Club: just the rate (or nothing). Mobile: the rate PLUS an inline
-        // "Add overtime" link that opens the day-of overtime popup, so the
-        // control sits right next to the rate it's based on.
+        // Club: just the per-hour rate (or nothing). Mobile: the overtime
+        // control IS the value here — the "Send invoice / receipt" link or the
+        // "Manage" dropdown once sent. The per-hour rate isn't repeated (it's
+        // shown in the entry popup); the control is the centerpiece.
         value: djType === 'club'
           ? (booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : null)
           : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-              <span>{booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}</span>
               <OvertimeSection
                 bookingId={booking.id}
                 currency={booking.currency || 'USD'}
@@ -501,6 +501,7 @@ export default function BookingDetails({
                   paidAt: booking.overtime_paid_at ?? null,
                 }}
                 canManage={canManageMoney}
+                rateLabel={booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}
               />
             </span>
           ),
