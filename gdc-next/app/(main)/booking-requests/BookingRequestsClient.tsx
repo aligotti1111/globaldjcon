@@ -176,7 +176,9 @@ export default function BookingRequestsClient({
   const showIncoming = isDj;
   // Outgoing section: shown if user has any outgoing bookings, OR if the user
   // isn't a DJ (DJs don't typically book other DJs but they can).
-  const showOutgoing = !isDj || outgoing.length > 0;
+  // DJs and teammates don't book DJs anymore, so they have no outgoing
+  // section. Hosts and venue accounts still do.
+  const showOutgoing = currentUser.role !== 'dj' && currentUser.role !== 'teammate';
 
   // ── Tab counts (recomputed on each render) ─────────────────────
   // For each section a booking falls into exactly one of:
