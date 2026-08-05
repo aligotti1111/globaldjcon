@@ -163,7 +163,10 @@ export async function POST(req: Request) {
     try {
       const { data: rows, error: claimErr } = await admin
         .from('bookings')
-        .update({ contract_status: 'signed' } as unknown as never)
+        // Stamp when it became fully signed so the booking log has a real
+        // "Contract signed" moment. (Was only setting the status — the log had
+        // no timestamp to show, so a signed contract never appeared as signed.)
+        .update({ contract_status: 'signed', contract_signed_at: new Date().toISOString() } as unknown as never)
         .eq('id', booking.id)
         .neq('contract_status' as never, 'signed' as never)
         .select('id');
