@@ -157,6 +157,12 @@ function optionsHtml(methods: PaymentMethod[], amount: number, currency: string,
   // One consistent card per method: a brand badge on the left, the details on
   // the right. Linkable rails (Venmo/Cash App/PayPal.me) get a pay button;
   // the rest show copyable handles or mailing details.
+  //
+  // paymentId may be EMPTY for invoices that have no ledger row (overtime): in
+  // that case Venmo links straight to the rail (no /pay QR page) and the "let
+  // your DJ know" tracking links are omitted. Everything else is identical, so
+  // the overtime invoice email matches the deposit/balance ones.
+  const hasId = !!paymentId;
   const amountTag = `<div style="text-align:right;margin:10px 0 0;color:#9a9a9a;font-size:11px;font-weight:700;letter-spacing:.02em;">${money(amount, currency)}</div>`;
 
   // One clean card: a themed accent bar, then a badge + brand name on ONE row,
@@ -184,16 +190,18 @@ ${body}${showAmount ? amountTag : ''}
     if (isLinkable(m) && link) {
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
-      const href = m.type === 'venmo' ? `${SITE_URL}/pay/${paymentId}/venmo` : link;
+      const href = m.type === 'venmo' ? (hasId ? `${SITE_URL}/pay/${paymentId}/venmo` : link) : link;
       const body = `<a href="${href}" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} &rarr;</a>`;
       return card(m.type, body, false);
     }
 
     if (m.type === 'cash') {
       const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
+      const cashNote = hasId
+        ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        : '';
       const body = isBalance
-        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>
-<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>${cashNote}`
         : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
       return card('cash', body);
     }
@@ -205,15 +213,13 @@ ${body}${showAmount ? amountTag : ''}
         ? `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
 <p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
-<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${hasId ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>` : ''}`
         : `<p style="margin:10px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
 <p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
-<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>`;
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${hasId ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>` : ''}`;
       return card('check', body);
     }
 
@@ -224,36 +230,6 @@ ${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">
   });
 
   return rows.join('');
-}
-
-// Payment options for the OVERTIME invoice email. Overtime has no ledger row
-// (it lives on the booking, independent of the deposit/balance flow), so it
-// can't use the /pay tracking pages the deposit/balance options do — instead it
-// renders direct pay links (Venmo/Cash App/PayPal.me) and copyable handles for
-// the rest, all tagged with the overtime reference.
-function overtimeOptionsHtml(methods: PaymentMethod[], amount: number, currency: string, reference: string, eventDate: string | null, venueName: string | null): string {
-  const rows = methods.map((m) => {
-    const meta = (METHOD_TYPES as Record<string, { label?: string }>)[m.type];
-    const label = (meta && meta.label) || m.type;
-    const link = buildPayLink(m, amount, reference);
-    let body: string;
-    if (isLinkable(m) && link) {
-      body = `<a href="${link}" style="display:inline-block;background:#0a6f61;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:8px;">Pay ${money(amount, currency)} with ${label}</a>`;
-    } else if (m.type === 'cash') {
-      body = `<p style="margin:0;color:#333;font-size:14px;">${cashLine(m)}</p>`;
-    } else if (m.type === 'check') {
-      body = `<p style="margin:0;color:#333;font-size:14px;">Memo: ${checkMemo(eventDate, venueName, reference)}</p>`;
-    } else {
-      body = `<p style="margin:0;color:#333;font-size:14px;font-family:monospace;word-break:break-all;">${displayHandle(m)}</p><p style="margin:5px 0 0;color:#888;font-size:12px;">${copyInstruction(m)}</p>`;
-    }
-    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;border:1px solid #e0e0e0;border-radius:10px;background:#fafafa;"><tr><td style="padding:12px 14px;"><div style="font-weight:700;color:#0a6f61;font-size:13px;margin:0 0 6px;">${label}</div>${body}</td></tr></table>`;
-  }).join('');
-  if (!rows) return '';
-  return `<div style="margin:20px 0 0;">
-<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0a8f74;font-weight:700;margin:0 0 10px;">Payment options</div>
-${rows}
-<div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:6px 0 0;"><p style="margin:0;color:#666;font-size:12px;">Reference — include in the payment note:</p><p style="margin:3px 0 0;font-family:monospace;font-size:15px;color:#111;font-weight:700;">${reference}</p></div>
-</div>`;
 }
 
 async function clientEmailFor(b: BookingRow): Promise<string | null> {
@@ -887,18 +863,24 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     if (isInv) {
       const { data: djData } = await admin
         .from('users')
-        .select('payment_methods')
+        .select('name, payment_methods')
         .eq('id', acting.djId)
         .maybeSingle();
-      const methods = usableMethods((Array.isArray((djData as { payment_methods?: unknown } | null)?.payment_methods)
-        ? (djData as { payment_methods?: unknown }).payment_methods
-        : []) as PaymentMethod[]);
+      const djRow = djData as { name?: string | null; payment_methods?: unknown } | null;
+      const methods = usableMethods((Array.isArray(djRow?.payment_methods) ? djRow.payment_methods : []) as PaymentMethod[]);
       const reference = referenceCode(bookingId, 'overtime');
-      optionsBlock = overtimeOptionsHtml(methods, amount, cur, reference, b.event_date, b.venue_name);
+      // Same layout as the deposit/balance invoice emails — the shared
+      // optionsHtml, with an empty paymentId (overtime has no ledger row) so it
+      // links Venmo directly and drops the "let your DJ know" tracking links.
+      const cards = optionsHtml(methods, amount, cur, reference, djRow?.name || 'Your DJ', '', b.event_date, b.venue_name, true);
+      optionsBlock = cards
+        ? `${cards}
+<div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;"><p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p><p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p></div>`
+        : '';
     }
     const content = isInv
       ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Overtime — ${money(amount, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. Pay it below, or on the night by any method your DJ accepts.</p>
+<p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. Pay it below, or on the night by any method your DJ accepts.</p>
 ${optionsBlock}`
       : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — paid in full</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your receipt including ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached.</p>`;
