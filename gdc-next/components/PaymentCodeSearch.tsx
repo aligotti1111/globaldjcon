@@ -197,7 +197,7 @@ export default function PaymentCodeSearch() {
         value={code}
         onChange={(e) => setCode(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Escape') collapse(); }}
-        placeholder="Name, event, or code"
+        placeholder="Name, event, or payment code"
         style={inputStyle}
       />
       {(active || notice || code) && (
