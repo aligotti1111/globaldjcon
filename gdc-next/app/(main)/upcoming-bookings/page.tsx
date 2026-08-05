@@ -166,6 +166,8 @@ export interface BookingPayment {
   client_intent: string | null; // 'pay_now' | 'pay_at_event' | null
   due_date: string | null;
   requested_at?: string | null;
+  marked_sent_at?: string | null;
+  confirmed_at?: string | null;
 }
 
 interface ProfileRow {
@@ -298,7 +300,7 @@ export default async function UpcomingBookingsPage() {
   if (bookingIds.length > 0) {
     const { data: payRows } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at')
+      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at, confirmed_at')
       .in('booking_id', bookingIds)
       .order('requested_at', { ascending: true });
     for (const p of ((payRows as (BookingPayment & { marked_sent_at?: string | null })[] | null) || [])) {

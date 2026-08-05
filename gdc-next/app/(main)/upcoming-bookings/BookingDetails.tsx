@@ -19,6 +19,7 @@ import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import PaymentsBlock from './PaymentsBlock';
 import OvertimeSection from './OvertimeSection';
+import BookingLog from './BookingLog';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -832,6 +833,9 @@ export default function BookingDetails({
           </div>
         </div>
       )}
+      {/* Booking log — the full timeline, at the very bottom of the card. */}
+      <BookingLog booking={booking} payments={payments} />
+
       {contractOpen && (
         <ContractPortal
           userId={userId}
