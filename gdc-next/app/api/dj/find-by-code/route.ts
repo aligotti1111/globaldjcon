@@ -64,8 +64,12 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   const url = new URL(req.url);
-  const prefix = parsePrefix(url.searchParams.get('code') || '');
-  if (!prefix) return NextResponse.json({ items: [], error: 'Enter a code like GDC-1A2B-D.' }, { status: 200 });
+  // Free-text query: matches host name, event type, or the payment code.
+  // `code` kept for backward compatibility with older links.
+  const raw = (url.searchParams.get('q') || url.searchParams.get('code') || '').trim();
+  if (!raw) return NextResponse.json({ items: [] });
+  const needle = raw.toLowerCase();
+  const prefix = parsePrefix(raw);
 
   const acting = await getActingContext(user.id);
   const djId = acting.djId;
@@ -79,9 +83,18 @@ export async function GET(req: Request) {
     .limit(3000);
   const bookings = (rows || []) as unknown as Booking[];
 
-  // The code's prefix is the first four characters of the booking id (the id's
-  // first group is 8 hex chars, so no dash sits inside the first four).
-  const matched = bookings.filter((b) => b.id.slice(0, 4).toUpperCase() === prefix);
+  // Match on the payment code (first 4 chars of the id), the host/requester
+  // name, or the event type / venue. Whatever the DJ typed.
+  const matched = bookings.filter((b) => {
+    if (prefix && b.id.slice(0, 4).toUpperCase() === prefix) return true;
+    if (b.requester_name && b.requester_name.toLowerCase().includes(needle)) return true;
+    const label = (b.event_type ? (MOB_EVENT_LABELS[b.event_type] || b.event_type) : (b.venue_type || '')).toLowerCase();
+    if (label.includes(needle)) return true;
+    if (b.event_type && b.event_type.toLowerCase().includes(needle)) return true;
+    if (b.venue_type && b.venue_type.toLowerCase().includes(needle)) return true;
+    if (b.venue_name && b.venue_name.toLowerCase().includes(needle)) return true;
+    return false;
+  }).slice(0, 100);
   if (matched.length === 0) {
     return NextResponse.json({ items: [] });
   }
