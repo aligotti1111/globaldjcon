@@ -18,9 +18,20 @@ import { usePathname } from 'next/navigation';
 type Item = { id: string };
 
 const DASHBOARD = '/upcoming-bookings';
+const PAST = '/past-bookings';
+const SEARCH_PATHS = [DASHBOARD, PAST];
 
-// The sort row = the smallest element containing both "By date" and "Recently".
-function findSortRow(): HTMLElement | null {
+// Where to hang the magnifier. Upcoming has a sort row ("By date" + "Recently")
+// on the same line; Past Bookings has no sort bar, so we hang it in the page
+// header next to the "Past Bookings" title.
+function findAnchor(isPast: boolean): HTMLElement | null {
+  if (isPast) {
+    const h1 = Array.from(document.querySelectorAll('h1')).find((h) => /past bookings/i.test(h.textContent || ''));
+    if (!h1) return null;
+    const titleBlock = h1.closest('div');
+    const controls = (titleBlock?.nextElementSibling as HTMLElement | null) || null;
+    return controls || (titleBlock?.parentElement as HTMLElement | null) || (h1.parentElement as HTMLElement | null);
+  }
   const byDate = Array.from(document.querySelectorAll('button')).find((b) => /by date/i.test(b.textContent || ''));
   let row: HTMLElement | null = byDate || null;
   for (let i = 0; i < 5 && row; i++) {
@@ -97,19 +108,19 @@ export default function PaymentCodeSearch() {
 
   // Create + place the magnifier slot on the sort row; tear down on leave.
   useEffect(() => {
-    if (pathname !== DASHBOARD) return;
+    if (!SEARCH_PATHS.includes(pathname)) return;
     let cancelled = false;
     let tries = 0;
     const place = () => {
       if (cancelled) return;
-      const sortRow = findSortRow();
-      if (sortRow) {
+      const anchor = findAnchor(pathname === PAST);
+      if (anchor) {
         const icon = document.createElement('span');
         icon.setAttribute('data-gdc', 'paycode-icon');
         icon.style.display = 'inline-flex';
         icon.style.alignItems = 'center';
         icon.style.marginLeft = '10px';
-        sortRow.appendChild(icon);
+        anchor.appendChild(icon);
         iconHostRef.current = icon;
         setIconHost(icon);
         return;
@@ -150,7 +161,7 @@ export default function PaymentCodeSearch() {
         const ids = list.map((it) => it.id);
         const shown = applyFilterMany(ids);
         if (shown === 0) {
-          setNotice(list.length ? 'Matches aren’t in your upcoming list.' : 'No match.');
+          setNotice(list.length ? 'Matches aren’t on this page.' : 'No match.');
         } else {
           setNotice(shown === 1 ? null : `${shown} matches`);
         }
@@ -176,7 +187,7 @@ export default function PaymentCodeSearch() {
     setExpanded(false);
   }
 
-  if (pathname !== DASHBOARD || !iconHost) return null;
+  if (!SEARCH_PATHS.includes(pathname) || !iconHost) return null;
 
   const inputStyle: React.CSSProperties = {
     width: 210, minWidth: 0, background: '#16161f', color: '#fff',
