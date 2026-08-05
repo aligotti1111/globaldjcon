@@ -133,6 +133,8 @@ export default function BookingRequestsClient({
   const [payments, setPayments] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
   const [incomingTab, setIncomingTab] = useState<BookingFilter>('respond');
   const [outgoingTab, setOutgoingTab] = useState<BookingFilter>('respond');
+  // Deep-link target from ?open=<id> (e.g. the header booking-requests dropdown).
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   // Modal state — only one is ever open at a time.
   // counterModal: which booking we're countering, and from which side
@@ -225,6 +227,28 @@ export default function BookingRequestsClient({
 
   const filteredIncoming = incoming.filter((b) => matchesTab(b, incomingTab, 'dj'));
   const filteredOutgoing = outgoing.filter((b) => matchesTab(b, outgoingTab, 'booker'));
+
+  // Deep-link: ?open=<bookingId> (header dropdown, emails, notifications).
+  // Selects the section + tab that booking lives on, expands it, and scrolls
+  // to it — otherwise an "Awaiting" item lands on a page defaulted to the
+  // Respond tab and looks like the click did nothing.
+  useEffect(() => {
+    const openId = new URLSearchParams(window.location.search).get('open');
+    if (!openId) return;
+    const out = outgoing.find((b) => b.id === openId);
+    const inc = incoming.find((b) => b.id === openId);
+    const target = out || inc;
+    if (!target) return;
+    const side: 'dj' | 'booker' = out ? 'booker' : 'dj';
+    const order: BookingFilter[] = ['respond', 'awaiting', 'approved', 'denied'];
+    const t = order.find((tb) => matchesTab(target, tb, side)) || 'all';
+    if (out) setOutgoingTab(t); else setIncomingTab(t);
+    setFocusId(openId);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('open');
+    window.history.replaceState({}, '', url.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Mutators (optimistic updates + DB write) ───────────────────
   function updateIncomingStatus(bookingId: string, status: string) {
@@ -1068,6 +1092,7 @@ export default function BookingRequestsClient({
             ) : (
               <FlatList
                 bookings={filteredIncoming}
+                focusId={focusId}
                 isIncoming={true}
                 blocked={blocked}
                 currentUser={currentUser}
@@ -1120,6 +1145,7 @@ export default function BookingRequestsClient({
           <div>
             <FlatList
               bookings={filteredOutgoing}
+              focusId={focusId}
               isIncoming={false}
               renderPayments={renderOutgoingPayments}
               blocked={blocked}
@@ -1263,10 +1289,12 @@ interface ListProps {
   // Only supplied for the OUTGOING list — payment handles must never render
   // outside the host's own booking card.
   renderPayments?: (b: BookingRow) => React.ReactNode;
+  /** Deep-link target — expand + scroll to this booking on mount. */
+  focusId?: string | null;
 }
 
 function FlatList({
-  bookings, isIncoming, blocked, currentUser, currentTab,
+  bookings, isIncoming, blocked, currentUser, currentTab, focusId,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage, renderPayments,
@@ -1298,6 +1326,17 @@ function FlatList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab]);
 
+  // Deep-link focus: if the ?open target lives in this list, make sure it's
+  // expanded and scroll it into view.
+  useEffect(() => {
+    if (!focusId || !bookings.some((b) => b.id === focusId)) return;
+    setExpandedIds((prev) => (prev.has(focusId) ? prev : new Set(prev).add(focusId)));
+    const t = setTimeout(() => {
+      document.querySelector(`[data-booking-id="${focusId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 220);
+    return () => clearTimeout(t);
+  }, [focusId, bookings]);
+
   function toggle(id: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -1325,7 +1364,7 @@ function FlatList({
         // legacy rows (vanilla didn't always set booking_type early on).
         const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
         return (
-          <div key={b.id} className={styles.expandableWrap}>
+          <div key={b.id} data-booking-id={b.id} className={styles.expandableWrap}>
             <div
               className={styles.collapseBar}
               onClick={() => toggle(b.id)}
