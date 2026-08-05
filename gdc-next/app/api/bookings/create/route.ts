@@ -131,10 +131,12 @@ export async function POST(req: Request) {
   {
     const { data: me } = await supabase
       .from('users')
-      .select('role')
+      .select('role, slug')
       .eq('id', user.id)
-      .maybeSingle<{ role: string | null }>();
-    if (me?.role === 'dj') {
+      .maybeSingle<{ role: string | null; slug: string | null }>();
+    // A DJ/venue profile has a slug; hosts don't. Block anyone with a slug
+    // that isn't a venue (catches old DJ accounts with a legacy/blank role).
+    if (me?.slug && me.role !== 'venue') {
       return NextResponse.json(
         { error: "DJ accounts can't book other DJs. Use a host account to book." },
         { status: 403 },
