@@ -147,6 +147,10 @@ export interface UpcomingBooking {
   // Club/bar host confirmations, folded in server-side for the booking log.
   rider_confirmed_at?: string | null;
   guestlist_confirmed_at?: string | null;
+  // Planner & Playlist send (created_at) + host submission (submitted_at),
+  // folded in server-side for the booking log.
+  planner_sent_at?: string | null;
+  planner_submitted_at?: string | null;
 }
 
 /**
@@ -335,10 +339,14 @@ export default async function UpcomingBookingsPage() {
   // client's answers to the DJ's row to render "12/34" would be a payload for
   // nothing and would put a stranger's notes in the page source.
   const plannersByBooking: Record<string, BookingPlannerSummary> = {};
+  // Planner send (created_at) + host submission (submitted_at), kept per booking
+  // so the booking log can show "Planner & Playlist sent" / "submitted".
+  const plannerSentByBooking: Record<string, string | null> = {};
+  const plannerSubmittedByBooking: Record<string, string | null> = {};
   if (bookingIds.length > 0) {
     const { data: planRows } = await db
       .from('booking_planners')
-      .select('id, booking_id, status, fields, responses, submitted_at')
+      .select('id, booking_id, status, fields, responses, submitted_at, created_at')
       .in('booking_id', bookingIds);
     for (const p of (((planRows as unknown) as {
       id: string;
@@ -347,9 +355,14 @@ export default async function UpcomingBookingsPage() {
       fields: PlannerField[] | null;
       responses: PlannerResponses | null;
       submitted_at: string | null;
+      created_at: string | null;
     }[] | null) || [])) {
       const { answered, total } = plannerProgress(p.fields || [], p.responses || {});
       plannersByBooking[p.booking_id] = { id: p.id, status: p.status, answered, total };
+      // The planner row is created the moment it's sent, so created_at IS the
+      // send time. submitted_at is stamped when the host hits Send on the form.
+      plannerSentByBooking[p.booking_id] = p.created_at;
+      plannerSubmittedByBooking[p.booking_id] = p.submitted_at;
       // Host submitted their planner / playlist → the song_list cell.
       noteActivity(p.booking_id, p.submitted_at, 'song_list');
     }
@@ -399,6 +412,8 @@ export default async function UpcomingBookingsPage() {
       last_activity_slot: a?.slot || null,
       rider_confirmed_at: riderConfirmedByBooking[b.id] || null,
       guestlist_confirmed_at: glConfirmedByBooking[b.id] || null,
+      planner_sent_at: plannerSentByBooking[b.id] || null,
+      planner_submitted_at: plannerSubmittedByBooking[b.id] || null,
     };
   });
 

@@ -106,10 +106,13 @@ export default function BookingLog({ booking, payments }: Props) {
     }
   }
 
-  // ── Planner & Playlist (mobile) — host submission. Club shares the song_list
-  // slot for the rider, so gate this to non-club. ──
-  if (booking.booking_type !== 'club' && booking.last_activity_slot === 'song_list') {
-    add(booking.last_activity_at, 'Planner & Playlist submitted by host', 'host');
+  // ── Planner & Playlist (mobile) — one stage, two moments: you send it, the
+  // host submits it. Both carry their own timestamp (the planner row's
+  // created_at / submitted_at), folded onto the booking server-side. Club
+  // shares the song_list slot for the rider, so gate this to non-club. ──
+  if (booking.booking_type !== 'club') {
+    add(booking.planner_sent_at, 'Planner & Playlist sent to host', 'dj');
+    add(booking.planner_submitted_at, 'Planner & Playlist submitted by host', 'host');
   }
 
   // ── Club / bar: rider + guest list host confirmations. ──
