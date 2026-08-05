@@ -28,6 +28,7 @@ export default function CalendarSyncSection() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [googleNote, setGoogleNote] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -44,14 +45,24 @@ export default function CalendarSyncSection() {
     return () => { alive = false; };
   }, []);
 
-  // Google's own "add calendar from URL" screen, pre-pointed at the feed — so
-  // Google users never touch the raw link either.
+  // Google Calendar's actual "Add calendar → From URL" screen. (The old
+  // ?cid= trick only works for Google-HOSTED calendars, not an external .ics
+  // feed — Google just ignored it and opened the normal view.) We also copy the
+  // link to the clipboard so it's a one-paste job: the addbyurl page has a
+  // single URL box, and ?url= prefills it in most cases; if it doesn't, the DJ
+  // just pastes.
   const googleUrl = httpsUrl
-    ? `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsUrl)}`
+    ? `https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=${encodeURIComponent(httpsUrl)}`
     : '';
 
   async function copy() {
     try { await navigator.clipboard.writeText(httpsUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
+  }
+
+  async function addToGoogle() {
+    try { await navigator.clipboard.writeText(httpsUrl); } catch { /* clipboard may be blocked; the ?url= prefill still covers it */ }
+    setGoogleNote(true);
+    window.open(googleUrl, '_blank', 'noopener,noreferrer');
   }
 
   async function reset() {
@@ -92,7 +103,7 @@ export default function CalendarSyncSection() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginBottom: '.5rem' }}>
         <a href={webcalUrl} style={btnPrimary}>Subscribe on iPhone / Mac</a>
         {googleUrl && (
-          <a href={googleUrl} target="_blank" rel="noopener noreferrer" style={btnOutline}>Add to Google Calendar</a>
+          <button type="button" onClick={addToGoogle} style={{ ...btnOutline, cursor: 'pointer' }}>Add to Google Calendar</button>
         )}
         <button
           type="button"
@@ -103,10 +114,16 @@ export default function CalendarSyncSection() {
         </button>
       </div>
 
+      {googleNote && (
+        <div style={{ margin: '.2rem 0 .6rem', padding: '.6rem .8rem', background: 'rgba(0,224,164,.08)', border: `1px solid ${NEON}`, borderRadius: 8, fontSize: '.8rem', color: 'rgba(255,255,255,.85)', lineHeight: 1.6 }}>
+          Opened Google Calendar&apos;s <strong>Add-by-URL</strong> box in a new tab. If the link isn&apos;t already filled in, paste it (we copied it for you — ⌘V / Ctrl-V) and press <strong>Add calendar</strong>.
+        </div>
+      )}
+
       {howto && (
         <div style={{ marginTop: '.6rem', fontSize: '.82rem', color: 'rgba(255,255,255,.8)', lineHeight: 1.7 }}>
           <p style={{ margin: '0 0 .5rem' }}><strong style={{ color: '#fff' }}>iPhone / iPad / Mac:</strong> tap <strong>Subscribe on iPhone / Mac</strong> — your Calendar app opens and asks you to confirm. Done.</p>
-          <p style={{ margin: '0 0 .5rem' }}><strong style={{ color: '#fff' }}>Google Calendar:</strong> tap <strong>Add to Google Calendar</strong> — it opens Google&apos;s &ldquo;add calendar&rdquo; screen with your feed filled in; press Add. It then shows up in the Google Calendar app on your phone too.</p>
+          <p style={{ margin: '0 0 .5rem' }}><strong style={{ color: '#fff' }}>Google Calendar:</strong> tap <strong>Add to Google Calendar</strong> — it opens Google&apos;s &ldquo;Add calendar from URL&rdquo; box in a new tab. Your link is copied automatically; if the box is empty, paste it and press Add. It then shows up in the Google Calendar app on your phone too.</p>
           <p style={{ margin: 0, color: MUTED }}>Calendars refresh on the app&apos;s own schedule (often a few hours), so new bookings can take a little while to appear.</p>
         </div>
       )}
