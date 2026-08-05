@@ -301,10 +301,22 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
               <button type="button" style={{ ...ghostBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
             </>
           )}
-          {hasSaved && (
-            <button type="button" style={{ ...ghostBtn, color: '#ff8a8a', borderColor: 'rgba(255,120,120,.4)' }} disabled={anyBusy} onClick={remove}>{busy === 'clear' ? 'Removing…' : 'Remove'}</button>
-          )}
         </div>
+
+        {hasSaved && (
+          <button
+            type="button"
+            onClick={remove}
+            disabled={anyBusy}
+            style={{
+              display: 'inline-block', marginTop: '.8rem', background: 'none', border: 'none', padding: 0,
+              color: '#ff8a8a', fontSize: '.8rem', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2,
+              cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
+            }}
+          >
+            {busy === 'clear' ? 'Cancelling…' : 'Cancel invoice'}
+          </button>
+        )}
 
         {err && <div style={{ color: '#ff7676', fontSize: '.78rem', fontWeight: 600, marginTop: '.7rem' }}>{err}</div>}
         {msg && <div style={{ color: NEON, fontSize: '.78rem', fontWeight: 600, marginTop: '.7rem' }}>{msg}</div>}
