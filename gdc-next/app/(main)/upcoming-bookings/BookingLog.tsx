@@ -52,6 +52,9 @@ export default function BookingLog({ booking, payments }: Props) {
   // ── Request / creation ── (host requested it, or the DJ added it manually)
   add(booking.created_at, booking.is_manual ? 'Booking added (manual)' : 'Booking requested', booking.is_manual ? 'dj' : 'host');
 
+  // ── Accepted ── (you approved the request; stamped at approval time)
+  add(booking.accepted_at, 'Booking accepted', 'dj');
+
   // ── Contract ── (DJ sends; host signs)
   add(booking.contract_sent_at, 'Contract sent to host', 'dj');
   add(booking.contract_signed_at, 'Contract signed', 'host');
@@ -106,7 +109,7 @@ export default function BookingLog({ booking, payments }: Props) {
         background: actor === 'dj' ? NEON : HOST_COLOR,
       }}
     >
-      {actor === 'dj' ? 'DJ' : 'Host'}
+      {actor === 'dj' ? 'You' : 'Host'}
     </span>
   );
 
@@ -118,7 +121,7 @@ export default function BookingLog({ booking, payments }: Props) {
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.7rem' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', fontSize: '.66rem', color: 'rgba(255,255,255,.55)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: NEON }} /> DJ
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: NEON }} /> You
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', fontSize: '.66rem', color: 'rgba(255,255,255,.55)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: HOST_COLOR }} /> Host
