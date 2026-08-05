@@ -156,7 +156,10 @@ export default function Header() {
                       code on its payment link. DJ-side only. */}
                   {(isDj || isTeammate) && <PaymentCodeSearch />}
 
-                  {canBookings && <BookingRequestsMenu count={bookingCount} />}
+                  {/* Booking-requests dropdown: DJ-side accounts AND hosts.
+                      Hosts see their own outgoing requests — mostly the
+                      Awaiting tab (waiting on a DJ to respond). */}
+                  {(canBookings || isHost) && <BookingRequestsMenu count={bookingCount} />}
 
                   {/* New-activity bell (desktop only) — sits between the
                       Booking Requests and Inbox icons. Shown for DJ-side
