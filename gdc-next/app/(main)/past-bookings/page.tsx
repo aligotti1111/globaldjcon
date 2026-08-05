@@ -132,6 +132,28 @@ export default async function PastBookingsPage() {
     }
   }
 
+  // Club/bar host confirmations (rider + guest list), folded onto each booking
+  // so the booking log can show them on past club bookings too.
+  if (bookingIds.length > 0) {
+    const [{ data: riderRows }, { data: glRows }] = await Promise.all([
+      admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', bookingIds),
+      admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', bookingIds),
+    ]);
+    const riderMap: Record<string, string | null> = {};
+    const glMap: Record<string, string | null> = {};
+    for (const r of (((riderRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
+      if (r.confirmed_at) riderMap[r.booking_id] = r.confirmed_at;
+    }
+    for (const g of (((glRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
+      if (g.confirmed_at) glMap[g.booking_id] = g.confirmed_at;
+    }
+    bookingRows = bookingRows.map((b) => ({
+      ...b,
+      rider_confirmed_at: riderMap[b.id] || null,
+      guestlist_confirmed_at: glMap[b.id] || null,
+    }));
+  }
+
   return (
     <UpcomingBookingsClient
       userId={djId}
