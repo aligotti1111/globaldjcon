@@ -761,6 +761,117 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     });
   }
 
+  // ───────────────── overtime (mobile DJ only) ─────────────────
+  // Last-minute extra hours added on the day. Stored on the booking's OWN
+  // columns, independent of the deposit/balance ledger, so it can never move the
+  // event balance. Two terminal actions: send an OVERTIME invoice (the extra
+  // hours billed alone — what's owed right now), or mark it paid and send a
+  // combined RECEIPT (event total + overtime, one grand total). Plus a download
+  // of that receipt, and a clear. Mobile bookings only.
+  if (
+    action === 'overtime-invoice' ||
+    action === 'overtime-receipt' ||
+    action === 'overtime-download-receipt' ||
+    action === 'overtime-clear'
+  ) {
+    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, booking_type, requester_id, host_email, requester_name, event_date, currency')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as (BookingRow & { booking_type: string | null }) | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+    if ((b.booking_type || '') === 'club') return NextResponse.json({ error: 'Overtime applies to mobile bookings only.' }, { status: 400 });
+
+    const cur = b.currency || 'USD';
+
+    // Remove the overtime entirely — back to no overtime on the booking.
+    if (action === 'overtime-clear') {
+      await admin.from('bookings').update({
+        overtime_hours: null, overtime_charge_rate: null, overtime_tax: null,
+        overtime_amount: null, overtime_invoiced_at: null, overtime_paid_at: null,
+      } as unknown as never).eq('id', bookingId);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Overtime numbers come from the DJ (their hours, their rate). Validated as
+    // sane positives; tax is whatever the DJ set (0 when removed).
+    const hours = round2(Number(body.hours));
+    const rate = round2(Number(body.rate));
+    if (!(hours > 0) || !(rate > 0)) {
+      return NextResponse.json({ error: 'Enter hours and a rate greater than zero.' }, { status: 400 });
+    }
+    const sub = round2(hours * rate);
+    const tax = round2(Math.max(0, Number(body.tax || 0)));
+    const amount = round2(sub + tax);
+    const overtime = { hours, rate, tax, amount };
+
+    // Download: build the combined receipt PDF and return it — no email, no
+    // persistence (it's a copy of what's already there).
+    if (action === 'overtime-download-receipt') {
+      const att = await buildBookingDocAttachment(db, {
+        docKind: 'receipt', bookingId, djId: acting.djId, currency: cur,
+        paymentKind: 'other', clientEmail: await clientEmailFor(b), overtime,
+      });
+      if (!att) return NextResponse.json({ error: 'Could not build the receipt.' }, { status: 500 });
+      const pdf = Buffer.from(att.content, 'base64');
+      return new NextResponse(pdf, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${att.filename}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    // Persist onto the booking so it survives reload and drives the card.
+    const nowIso = new Date().toISOString();
+    const isInv = action === 'overtime-invoice';
+    const patch: Record<string, unknown> = {
+      overtime_hours: hours, overtime_charge_rate: rate, overtime_tax: tax, overtime_amount: amount,
+    };
+    if (isInv) patch.overtime_invoiced_at = nowIso;
+    else patch.overtime_paid_at = nowIso;
+    await admin.from('bookings').update(patch as unknown as never).eq('id', bookingId);
+
+    const to = await clientEmailFor(b);
+    if (!to) return NextResponse.json({ error: 'No client email on this booking.' }, { status: 400 });
+    if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email is not configured.' }, { status: 500 });
+
+    const att = await buildBookingDocAttachment(db, {
+      docKind: isInv ? 'invoice' : 'receipt', bookingId, djId: acting.djId, currency: cur,
+      paymentKind: 'other', clientEmail: to, overtime,
+    });
+
+    const hrLabel = `${hours} hr${hours === 1 ? '' : 's'}`;
+    const content = isInv
+      ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Overtime — ${money(amount, cur)}</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. It can be paid on the night or by any method your DJ accepts.</p>`
+      : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — paid in full</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your receipt including ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached.</p>`;
+
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: FROM,
+        to,
+        subject: isInv ? `Overtime Invoice — ${money(amount, cur)}` : 'Receipt — paid in full',
+        html: shell(content),
+        attachments: att ? [att] : undefined,
+      });
+    } catch {
+      return NextResponse.json({ error: isInv ? 'Could not send the invoice email.' : 'Could not send the receipt email.' }, { status: 502 });
+    }
+
+    return NextResponse.json({ ok: true, overtime });
+  }
+
   // ───────────────── cancel-request (DJ only) ─────────────────
   // Withdraw a deposit/balance request that was never paid. Deletes the row so
   // the column returns to "Not sent" and the DJ can request again cleanly.
