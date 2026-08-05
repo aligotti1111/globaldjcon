@@ -34,7 +34,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled,
+  payments, onPaymentsChange, canRequestDeposit, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -71,6 +71,8 @@ export default function BookingDetails({
   // them lives a component up, on a row that may not even be expanded yet.
   contractAction?: ContractAction | null;
   onContractActionHandled?: () => void;
+  /** Account owner only — gates the Booking log (owner-only feature). */
+  isOwner?: boolean;
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
@@ -833,8 +835,9 @@ export default function BookingDetails({
           </div>
         </div>
       )}
-      {/* Booking log — the full timeline, at the very bottom of the card. */}
-      <BookingLog booking={booking} payments={payments} />
+      {/* Booking log — the full timeline, at the very bottom of the card.
+          Owner-only feature. */}
+      {isOwner && <BookingLog booking={booking} payments={payments} />}
 
       {contractOpen && (
         <ContractPortal

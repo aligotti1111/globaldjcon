@@ -132,6 +132,9 @@ export interface UpcomingBooking {
   // to, so the row can highlight it. Both null when the host hasn't acted.
   last_activity_at?: string | null;
   last_activity_slot?: 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist' | null;
+  // Club/bar host confirmations, folded in server-side for the booking log.
+  rider_confirmed_at?: string | null;
+  guestlist_confirmed_at?: string | null;
 }
 
 /**
@@ -344,6 +347,10 @@ export default async function UpcomingBookingsPage() {
   // host to review; confirmed_at is stamped only when the host taps Confirm on
   // the page (see /api/rider/confirm, /api/guestlist/confirm). Club bookings use
   // the rider, so it shares the song_list cell; the guest list has its own.
+  // Confirmation times, kept per booking so the booking log can show "Rider
+  // confirmed" / "Guest list confirmed" for club bookings.
+  const riderConfirmedByBooking: Record<string, string | null> = {};
+  const glConfirmedByBooking: Record<string, string | null> = {};
   if (bookingIds.length > 0) {
     // Admin client, same as the bookings read above: these tables have no
     // team-member RLS policy, so the session client returns nothing for a
@@ -354,9 +361,11 @@ export default async function UpcomingBookingsPage() {
     ]);
     for (const r of (((riderRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
       noteActivity(r.booking_id, r.confirmed_at, 'song_list');
+      if (r.confirmed_at) riderConfirmedByBooking[r.booking_id] = r.confirmed_at;
     }
     for (const g of (((glRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
       noteActivity(g.booking_id, g.confirmed_at, 'guestlist');
+      if (g.confirmed_at) glConfirmedByBooking[g.booking_id] = g.confirmed_at;
     }
   }
 
@@ -372,7 +381,13 @@ export default async function UpcomingBookingsPage() {
       : b.contract_signed_at || null;
     noteActivity(b.id, signedAt, 'contract');
     const a = activityByBooking[b.id];
-    return { ...b, last_activity_at: a?.ts || null, last_activity_slot: a?.slot || null };
+    return {
+      ...b,
+      last_activity_at: a?.ts || null,
+      last_activity_slot: a?.slot || null,
+      rider_confirmed_at: riderConfirmedByBooking[b.id] || null,
+      guestlist_confirmed_at: glConfirmedByBooking[b.id] || null,
+    };
   });
 
   return (

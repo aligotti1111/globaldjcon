@@ -1026,6 +1026,7 @@ export default function BookingRow({
           canManageContract={roleCanContract}
           hasHostContact={hasHostContact}
           onEdit={onAddHost || onEdit}
+          isOwner={actingRole === 'owner'}
         />
       )}
 

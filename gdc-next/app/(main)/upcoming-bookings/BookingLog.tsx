@@ -61,11 +61,16 @@ export default function BookingLog({ booking, payments }: Props) {
     }
   }
 
-  // ── Planner & Playlist — only the submission has an available time (the newest
-  // host action, when that action was the planner). ──
-  if (booking.last_activity_slot === 'song_list') {
+  // ── Planner & Playlist (mobile) — only the submission has an available time
+  // (the newest host action, when that action was the planner). Club bookings
+  // share the song_list slot for the rider, so gate this to non-club. ──
+  if (booking.booking_type !== 'club' && booking.last_activity_slot === 'song_list') {
     add(booking.last_activity_at, 'Planner & Playlist submitted by host');
   }
+
+  // ── Club / bar: rider + guest list host confirmations. ──
+  add(booking.rider_confirmed_at, 'Rider confirmed by host');
+  add(booking.guestlist_confirmed_at, 'Guest list confirmed by host');
 
   // ── Overtime ──
   add(booking.overtime_invoiced_at, 'Overtime invoice sent');
