@@ -475,9 +475,31 @@ export default function BookingDetails({
       { label: 'Agreed Rate', value: agreedRateWithDiscount },
       {
         label: 'Overtime Rate',
-        value: booking.overtime_rate != null
-          ? `${money(booking.overtime_rate)}/hr`
-          : (djType === 'club' ? null : 'DJ has not listed overtime rate'),
+        // Club: just the rate (or nothing). Mobile: the rate PLUS an inline
+        // "Add overtime" link that opens the day-of overtime popup, so the
+        // control sits right next to the rate it's based on.
+        value: djType === 'club'
+          ? (booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : null)
+          : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+              <span>{booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}</span>
+              <OvertimeSection
+                bookingId={booking.id}
+                currency={booking.currency || 'USD'}
+                taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
+                defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
+                initial={{
+                  hours: booking.overtime_hours ?? null,
+                  rate: booking.overtime_charge_rate ?? null,
+                  tax: booking.overtime_tax ?? null,
+                  amount: booking.overtime_amount ?? null,
+                  invoicedAt: booking.overtime_invoiced_at ?? null,
+                  paidAt: booking.overtime_paid_at ?? null,
+                }}
+                canManage={canManageMoney}
+              />
+            </span>
+          ),
       },
     ],
     // Row 7: Deposit
@@ -708,27 +730,6 @@ export default function BookingDetails({
             }
           />
         </div>
-      )}
-
-      {/* Overtime — mobile bookings only. Last-minute extra hours added on the
-          day, billed on their own invoice/receipt, independent of the event
-          balance above. Hidden for club/bar (they have no overtime concept). */}
-      {bt === 'mobile' && (
-        <OvertimeSection
-          bookingId={booking.id}
-          currency={booking.currency || 'USD'}
-          taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
-          defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
-          initial={{
-            hours: booking.overtime_hours ?? null,
-            rate: booking.overtime_charge_rate ?? null,
-            tax: booking.overtime_tax ?? null,
-            amount: booking.overtime_amount ?? null,
-            invoicedAt: booking.overtime_invoiced_at ?? null,
-            paidAt: booking.overtime_paid_at ?? null,
-          }}
-          canManage={canManageMoney}
-        />
       )}
 
       {/* Planner & Playlist panel intentionally NOT shown on the booking card.

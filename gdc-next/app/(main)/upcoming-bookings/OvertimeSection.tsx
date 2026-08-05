@@ -175,32 +175,29 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
     fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1rem', cursor: anyBusy ? 'default' : 'pointer', opacity: anyBusy ? 0.6 : 1,
   };
 
-  // ── Trigger shown in the details panel ──
+  // ── Trigger — a compact inline link, shown right next to the Overtime Rate
+  // in the details grid. Opens the entry popup. ──
   const trigger = (
-    <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
-          disabled={!canManage}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '.5rem',
-            background: 'transparent', border: `1px solid ${NEON}`, color: NEON,
-            borderRadius: 8, padding: '.55rem 1rem', fontWeight: 700, fontSize: '.85rem',
-            cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
-          }}
-        >
-          <span style={{ fontSize: '1.1em', lineHeight: 1 }}>+</span>
-          {hasSaved ? 'Manage overtime' : 'Add overtime to event'}
-        </button>
-        {hasSaved && (
-          <span style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.7)' }}>
-            {money(Number(savedAmount), currency)}
-            {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
-          </span>
-        )}
-      </div>
-    </div>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
+        disabled={!canManage}
+        style={{
+          background: 'none', border: 'none', padding: 0, color: NEON, fontWeight: 700,
+          fontSize: '.8rem', textDecoration: 'underline', textUnderlineOffset: 2,
+          cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
+        }}
+      >
+        {hasSaved ? 'Manage overtime' : '+ Add overtime'}
+      </button>
+      {hasSaved && (
+        <span style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.65)' }}>
+          {money(Number(savedAmount), currency)}
+          {statusLabel && <span style={{ color: paidAt ? NEON : '#ffb020', fontWeight: 700 }}> · {statusLabel}</span>}
+        </span>
+      )}
+    </span>
   );
 
   if (!open) return trigger;
