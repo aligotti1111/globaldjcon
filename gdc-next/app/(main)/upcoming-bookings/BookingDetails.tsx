@@ -486,7 +486,11 @@ export default function BookingDetails({
               <OvertimeSection
                 bookingId={booking.id}
                 currency={booking.currency || 'USD'}
-                taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
+                // Overtime is a NEW charge billed today, so it uses the DJ's
+                // CURRENT standard tax rate — not the booking's frozen snapshot
+                // (which is 0/null on manual + no-package bookings, the exact
+                // ones where the DJ types the overtime rate by hand).
+                taxPct={taxPct}
                 defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
                 initial={{
                   hours: booking.overtime_hours ?? null,
