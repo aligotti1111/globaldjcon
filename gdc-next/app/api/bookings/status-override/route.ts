@@ -46,8 +46,17 @@ export async function POST(req: Request) {
     row.status_overrides && typeof row.status_overrides === 'object' ? { ...row.status_overrides } : {};
   if (done) overrides[key] = true; else delete overrides[key];
 
+  // Skipping the deposit is a discrete action the booking log should show, so
+  // stamp the moment it's skipped / un-skipped. (status_overrides is a boolean
+  // map with no history of its own.)
+  const patch: Record<string, unknown> = { status_overrides: overrides };
+  if (key === 'deposit_skipped') {
+    if (done) patch.deposit_skipped_at = new Date().toISOString();
+    else patch.deposit_skip_undone_at = new Date().toISOString();
+  }
+
   try {
-    await admin.from('bookings').update({ status_overrides: overrides } as unknown as never).eq('id', bookingId);
+    await admin.from('bookings').update(patch as unknown as never).eq('id', bookingId);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not save.' }, { status: 502 });
   }
