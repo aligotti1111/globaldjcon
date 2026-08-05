@@ -32,6 +32,9 @@ export interface BuildStepsCtx {
   openRequest: (kind?: 'deposit' | 'balance') => void;
   cancelRequest: (paymentId: string) => void;
   sendReceipt: (kind: 'deposit' | 'balance') => Promise<void> | void;
+  // Optional so this module and BookingRow can be committed in either order
+  // without a red build (the site deploys only on green).
+  downloadReceipt?: (kind: 'deposit' | 'balance') => Promise<void> | void;
   toggleStep: (key: string, next: boolean) => Promise<void> | void;
   setMethodsOpen: (v: boolean) => void;
   plannerBusy: boolean;
@@ -48,7 +51,7 @@ export interface BuildStepsCtx {
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
   const steps: PipelineStep[] = [];
   /*
     MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,
@@ -666,11 +669,20 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // "Send invoice" stays available even after the balance is marked
         // complete — the DJ may have been paid in cash but still owes the client
         // a receipt. Once an invoice exists, "Resend invoice" only shows while
-        // it's still unpaid.
+        // it's still unpaid. Once the balance is settled (marked complete),
+        // the DJ can resend or download the paid-in-full receipt.
         actions: archive
-          ? (!balanceRow
-              ? [{ label: 'Send invoice', run: () => openRequest('balance') }]
-              : (done ? [] : [{ label: 'Resend invoice', run: () => openRequest('balance') }]))
+          ? [
+              ...(!balanceRow
+                  ? [{ label: 'Send invoice', run: () => openRequest('balance') }]
+                  : (!done ? [{ label: 'Resend invoice', run: () => openRequest('balance') }] : [])),
+              ...(done
+                  ? [
+                      { label: 'Resend receipt', run: () => sendReceipt('balance') },
+                      { label: 'Download receipt', run: () => downloadReceipt?.('balance') },
+                    ]
+                  : []),
+            ]
           : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
       });
     }
