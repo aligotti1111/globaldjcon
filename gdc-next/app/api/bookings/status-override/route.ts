@@ -46,13 +46,19 @@ export async function POST(req: Request) {
     row.status_overrides && typeof row.status_overrides === 'object' ? { ...row.status_overrides } : {};
   if (done) overrides[key] = true; else delete overrides[key];
 
-  // Skipping the deposit is a discrete action the booking log should show, so
-  // stamp the moment it's skipped / un-skipped. (status_overrides is a boolean
-  // map with no history of its own.)
+  // Manual overrides are discrete actions the booking log should show, so stamp
+  // the moment they're toggled. (status_overrides is a boolean map with no
+  // history of its own.)
+  const now = new Date().toISOString();
   const patch: Record<string, unknown> = { status_overrides: overrides };
   if (key === 'deposit_skipped') {
-    if (done) patch.deposit_skipped_at = new Date().toISOString();
-    else patch.deposit_skip_undone_at = new Date().toISOString();
+    if (done) patch.deposit_skipped_at = now;
+    else patch.deposit_skip_undone_at = now;
+  } else if (key === 'contract') {
+    // "Mark Complete" on a contract handled outside the app (signed on paper,
+    // etc.) — distinct from the host signing in-app (contract_signed_at).
+    if (done) patch.contract_completed_at = now;
+    else patch.contract_completion_undone_at = now;
   }
 
   try {
