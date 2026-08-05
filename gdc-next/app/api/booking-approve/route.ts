@@ -78,9 +78,10 @@ export async function POST(req: Request) {
   }
 
   // 1. Mark the booking approved.
+  const nowIso = new Date().toISOString();
   const { error: updErr } = await admin
     .from('bookings')
-    .update({ status: 'approved', updated_at: new Date().toISOString() } as unknown as never)
+    .update({ status: 'approved', updated_at: nowIso, accepted_at: nowIso } as unknown as never)
     .eq('id', bookingId);
   if (updErr) {
     return NextResponse.json({ error: 'Update failed: ' + updErr.message }, { status: 500 });
