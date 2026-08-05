@@ -126,6 +126,22 @@ export async function POST(req: Request) {
     );
   }
 
+  // DJs can't book other DJs — booking is for hosts (and venue/club accounts).
+  // Only role 'dj' is blocked here; teammates are already stopped above.
+  {
+    const { data: me } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle<{ role: string | null }>();
+    if (me?.role === 'dj') {
+      return NextResponse.json(
+        { error: "DJ accounts can't book other DJs. Use a host account to book." },
+        { status: 403 },
+      );
+    }
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
