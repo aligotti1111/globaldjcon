@@ -1,34 +1,23 @@
 'use client';
 
-// PaymentCodeSearch — "find a booking by its payment code", shown ONLY on the
+// PaymentCodeSearch — dynamic "find a booking" search, shown ONLY on the
 // Upcoming Bookings dashboard as a magnifier on the SAME LINE as the sort
-// buttons. Clicking it expands into an inline input; running a code filters the
-// REAL bookings list down to the matching booking (its native row stays, every
-// other row + month is hidden). Clear/close restores the full list.
+// buttons. Clicking it expands into an inline input that filters the REAL
+// bookings list LIVE as you type — matching host name, event type, or the
+// payment code, all in one box. Matching rows stay; every other row + month
+// hides. Clear/close restores the full list.
 //
-// No custom result card — the match is shown exactly as the page renders it.
-// We find the row by matching the booking's date + event type against the real
-// rows' cells (rows carry no id in the DOM), so we never touch the large
-// UpcomingBookingsClient / BookingRow files.
+// No custom result card — matches are shown exactly as the page renders them.
+// Rows carry data-booking-id (BookingRow refactor), so we hide by id and never
+// touch the large UpcomingBookingsClient / BookingRow files.
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 
-type Item = {
-  id: string;
-  label: string;
-  eventDate: string | null;
-};
+type Item = { id: string };
 
 const DASHBOARD = '/upcoming-bookings';
-
-function fmtShort(d: string | null): string {
-  if (!d) return '';
-  try {
-    return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch { return d; }
-}
 
 // The sort row = the smallest element containing both "By date" and "Recently".
 function findSortRow(): HTMLElement | null {
@@ -80,24 +69,30 @@ export default function PaymentCodeSearch() {
     setActive(false);
   }
 
-  // Hide every real row + month except the one matching this booking. Returns
-  // true if a matching row was found on the page.
-  function applyFilter(item: Item): boolean {
+  // Hide every real row + month whose booking id isn't in `ids`. Returns how
+  // many matching rows are actually visible on the page.
+  function applyFilterMany(ids: string[]): number {
     restoreFilter();
-    // Rows now carry data-booking-id (BookingRow refactor phase 0), so we match
-    // the exact row by id instead of guessing from the date + event text.
-    const idSel = (window.CSS && CSS.escape) ? CSS.escape(item.id) : item.id;
-    const target = document.querySelector(`[data-booking-id="${idSel}"]`) as HTMLElement | null;
-    if (!target) return false;
-
+    const idSet = new Set(ids);
     const store: [HTMLElement, string][] = [];
+    let shown = 0;
     const rows = Array.from(document.querySelectorAll('[class*="rowWrap"]')) as HTMLElement[];
-    rows.forEach((r) => { if (r !== target) { store.push([r, r.style.display]); r.style.display = 'none'; } });
+    rows.forEach((r) => {
+      const id = r.getAttribute('data-booking-id');
+      const keep = !!id && idSet.has(id);
+      if (keep) shown += 1;
+      else { store.push([r, r.style.display]); r.style.display = 'none'; }
+    });
+    // Hide a month header only if none of its rows survived.
     const months = Array.from(document.querySelectorAll('[class*="month__"]')) as HTMLElement[];
-    months.forEach((m) => { if (!m.contains(target)) { store.push([m, m.style.display]); m.style.display = 'none'; } });
+    months.forEach((m) => {
+      const anyKept = Array.from(m.querySelectorAll('[data-booking-id]'))
+        .some((el) => idSet.has(el.getAttribute('data-booking-id') || ''));
+      if (!anyKept) { store.push([m, m.style.display]); m.style.display = 'none'; }
+    });
     hiddenRef.current = store;
     setActive(true);
-    return true;
+    return shown;
   }
 
   // Create + place the magnifier slot on the sort row; tear down on leave.
@@ -138,26 +133,37 @@ export default function PaymentCodeSearch() {
     if (expanded) setTimeout(() => inputRef.current?.focus(), 40);
   }, [expanded]);
 
-  async function run() {
+  // Live search: debounce the query, fetch matches, filter the rows. Empty
+  // query restores the full list.
+  useEffect(() => {
+    if (!expanded) return;
     const q = code.trim();
-    if (!q) return;
+    if (!q) { restoreFilter(); setNotice(null); setLoading(false); return; }
+    let cancelled = false;
     setLoading(true);
-    setNotice(null);
-    restoreFilter();
-    try {
-      const r = await fetch(`/api/dj/find-by-code?code=${encodeURIComponent(q)}`, { cache: 'no-store' });
-      const j = await r.json();
-      const list: Item[] = Array.isArray(j.items) ? j.items : [];
-      if (list.length === 0) { setNotice('No booking found for that code.'); return; }
-      const item = list[0];
-      const ok = applyFilter(item);
-      if (!ok) setNotice(`${item.label} · ${fmtShort(item.eventDate)} isn't in your upcoming list.`);
-    } catch {
-      setNotice('Search failed — try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/dj/find-by-code?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+        const j = await r.json();
+        if (cancelled) return;
+        const list: Item[] = Array.isArray(j.items) ? j.items : [];
+        const ids = list.map((it) => it.id);
+        const shown = applyFilterMany(ids);
+        if (shown === 0) {
+          setNotice(list.length ? 'Matches aren’t in your upcoming list.' : 'No match.');
+        } else {
+          setNotice(shown === 1 ? null : `${shown} matches`);
+        }
+      } catch {
+        if (!cancelled) setNotice('Search failed — try again.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 220);
+    return () => { cancelled = true; clearTimeout(t); };
+    // applyFilterMany/restoreFilter are stable enough for this UI helper.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, expanded]);
 
   function clear() {
     restoreFilter();
@@ -173,13 +179,9 @@ export default function PaymentCodeSearch() {
   if (pathname !== DASHBOARD || !iconHost) return null;
 
   const inputStyle: React.CSSProperties = {
-    width: 190, minWidth: 0, background: '#16161f', color: '#fff',
+    width: 210, minWidth: 0, background: '#16161f', color: '#fff',
     border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '7px 11px',
     fontSize: '.82rem', outline: 'none', letterSpacing: '.02em',
-  };
-  const pillBtn: React.CSSProperties = {
-    flexShrink: 0, background: 'var(--neon,#00e0a4)', color: '#04241c', border: 'none',
-    borderRadius: 8, padding: '0 14px', height: 30, fontWeight: 700, fontSize: '.8rem', cursor: 'pointer',
   };
   const ghostBtn: React.CSSProperties = {
     flexShrink: 0, background: 'transparent', color: 'rgba(255,255,255,.55)',
@@ -194,20 +196,19 @@ export default function PaymentCodeSearch() {
         ref={inputRef}
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') run(); else if (e.key === 'Escape') collapse(); }}
-        placeholder="GDC-1A2B-D"
+        onKeyDown={(e) => { if (e.key === 'Escape') collapse(); }}
+        placeholder="Name, event, or code"
         style={inputStyle}
       />
-      <button type="button" onClick={run} style={pillBtn}>{loading ? '…' : 'Find'}</button>
       {(active || notice || code) && (
         <button type="button" onClick={clear} style={ghostBtn}>Clear</button>
       )}
-      {notice && (
-        <span style={{ color: 'rgba(255,255,255,.6)', fontSize: '.76rem' }}>{notice}</span>
-      )}
+      <span style={{ color: 'rgba(255,255,255,.6)', fontSize: '.76rem', minHeight: 14 }}>
+        {loading ? 'Searching…' : (notice || '')}
+      </span>
     </span>
   ) : (
-    <MagnifierBtn onClick={() => setExpanded(true)} title="Find by payment code" />
+    <MagnifierBtn onClick={() => setExpanded(true)} title="Search bookings" />
   );
 
   return createPortal(iconUI, iconHost);
