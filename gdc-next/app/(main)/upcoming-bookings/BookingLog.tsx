@@ -55,8 +55,17 @@ export default function BookingLog({ booking, payments }: Props) {
   // ── Accepted ── (you approved the request; stamped at approval time)
   add(booking.accepted_at, 'Booking accepted', 'dj');
 
-  // ── Contract ── (DJ sends; host signs)
-  add(booking.contract_sent_at, 'Contract sent to host', 'dj');
+  // ── Contract ── contract_sent_at is stamped when the contract is PREPARED,
+  // which in the DJ-signs-first flow means status 'awaiting_dj': the contract
+  // exists but hasn't gone to the host yet — the DJ still has to sign. Only
+  // once it's past that (awaiting_client / signed) has it actually reached the
+  // host. Mirror the pipeline strip, which reads awaiting_dj as "Not sent" and
+  // must not claim the host has it.
+  if (booking.contract_status === 'awaiting_dj') {
+    add(booking.contract_sent_at, 'Contract prepared — awaiting your signature', 'dj');
+  } else {
+    add(booking.contract_sent_at, 'Contract sent to host', 'dj');
+  }
   add(booking.contract_signed_at, 'Contract signed by host', 'host');
 
   // ── Payments ledger (deposit / balance) ──
