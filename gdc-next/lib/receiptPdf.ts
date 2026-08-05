@@ -91,8 +91,10 @@ export interface ReceiptDocOptions {
   // put here — for a receipt it's usually the payment + running totals; for an
   // invoice it's the charge, tax, deposit, and balance.
   lines: DocMoneyLine[];
-  /** The single number the reader cares about, boxed at the bottom. */
-  headline: { label: string; amount: number };
+  /** The single number the reader cares about, boxed at the bottom. When
+   *  `hideAmount` is set (e.g. "Paid in Full"), the box shows the label only,
+   *  centred, with no figure — "$0.00 due" reads wrong on a settled receipt. */
+  headline: { label: string; amount: number; hideAmount?: boolean };
   /**
    * Payment methods the DJ accepts, drawn as brand-coloured badges — logos,
    * not handles. Shown only when money is due (invoices).
@@ -347,8 +349,16 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     x: MARGIN, y: y - boxH + 12, width: rightX - MARGIN, height: boxH,
     color: rgb(0.96, 0.98, 0.97), borderColor: ACCENT, borderWidth: 1,
   });
-  drawL(opts.headline.label.toUpperCase(), MARGIN + 14, y - 8, 11, bold, INK);
-  drawR(money(opts.headline.amount, opts.currency), rightX - 14, y - 12, 18, bold, ACCENT);
+  if (opts.headline.hideAmount) {
+    // Label only, centred in the box — no figure.
+    const hl = opts.headline.label.toUpperCase();
+    const hlSize = 13;
+    const hlW = bold.widthOfTextAtSize(hl, hlSize);
+    page.drawText(hl, { x: MARGIN + (rightX - MARGIN - hlW) / 2, y: y - 13, size: hlSize, font: bold, color: ACCENT });
+  } else {
+    drawL(opts.headline.label.toUpperCase(), MARGIN + 14, y - 8, 11, bold, INK);
+    drawR(money(opts.headline.amount, opts.currency), rightX - 14, y - 12, 18, bold, ACCENT);
+  }
   y -= boxH + 18;
 
   // ── Payment methods accepted — brand badges (invoices only) ──

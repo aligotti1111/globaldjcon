@@ -262,7 +262,7 @@ export async function buildBookingDocAttachment(
     const total = round2(Number(b.total_with_tax ?? services + tax));
     const paidToDate = round2(Number(args.paidToDate ?? 0));
     const lines: DocMoneyLine[] = [];
-    let headline: { label: string; amount: number };
+    let headline: { label: string; amount: number; hideAmount?: boolean };
     let acceptedMethods: { label: string; hex?: string | null }[] | undefined;
     let methodsNote: string | undefined;
 
@@ -274,7 +274,7 @@ export async function buildBookingDocAttachment(
       lines.push({ label: 'Paid to date', amount: paidToDate, emphasis: 'muted' });
       const remaining = round2(Math.max(0, total - paidToDate));
       headline = remaining <= 0.005
-        ? { label: 'Paid in Full', amount: 0 }
+        ? { label: 'Paid in Full', amount: 0, hideAmount: true }
         : { label: 'Balance Remaining', amount: remaining };
     } else {
       // Invoice — tell the WHOLE story so the client never has to do the math:
