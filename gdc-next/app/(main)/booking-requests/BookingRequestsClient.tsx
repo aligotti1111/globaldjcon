@@ -167,7 +167,7 @@ export default function BookingRequestsClient({
   // Site-uniform confirm dialog — replaces window.confirm() for Approve /
   // Deny / Cancel / Decline counter / Block actions. Hook returns the
   // imperative async helper + a JSX element to render at top level.
-  const { confirm, confirmDialog } = useConfirm();
+  const { confirm, confirmWithReason, confirmDialog } = useConfirm();
 
   // ── Section visibility — vanilla br-core.js + br-load-render.js ─
   const isDj = currentUser.role === 'dj';
@@ -297,15 +297,30 @@ export default function BookingRequestsClient({
       }
     }
 
-    const ok = await confirm({
-      title: isApprove ? 'Approve this booking?' : 'Decline this booking?',
-      message: isApprove
-        ? `${requesterName} will be notified by email and the date will be marked as booked on your calendar.`
-        : `${requesterName} will be notified by email that you cannot accept this booking.`,
-      confirmLabel: isApprove ? 'Approve' : 'Decline',
-      variant: isApprove ? 'primary' : 'danger',
-    });
-    if (!ok) return;
+    // Decline gets an optional reason box; the reason is emailed to the host.
+    let declineReason = '';
+    if (isApprove) {
+      const ok = await confirm({
+        title: 'Approve this booking?',
+        message: `${requesterName} will be notified by email and the date will be marked as booked on your calendar.`,
+        confirmLabel: 'Approve',
+        variant: 'primary',
+      });
+      if (!ok) return;
+    } else {
+      const { ok, reason } = await confirmWithReason({
+        title: 'Decline this booking?',
+        message: `${requesterName} will be notified by email that you cannot accept this booking.`,
+        confirmLabel: 'Decline',
+        variant: 'danger',
+        reasonInput: {
+          label: 'Reason for declining (optional — shared with the host)',
+          placeholder: 'e.g. Already booked that date',
+        },
+      });
+      if (!ok) return;
+      declineReason = reason;
+    }
     const supabase = createClient();
     try {
       const { error } = await supabase
@@ -404,6 +419,7 @@ export default function BookingRequestsClient({
                 eventDate: b.event_date,
                 venueName: b.venue_name,
                 packageTitle: b.package_title,
+                declineReason: declineReason || null,
               }),
             });
           } catch (e) {
