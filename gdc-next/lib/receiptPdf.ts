@@ -70,6 +70,9 @@ export interface ReceiptDocOptions {
     dateText?: string | null; // friendly event date
     timeText?: string | null; // e.g. "7:30 PM – 11:30 PM"
     venue?: string | null;
+    /** Extra event lines (e.g. wedding ceremony + cocktail-hour times), printed
+     *  under the venue. Blank entries are dropped. */
+    extra?: (string | null | undefined)[] | null;
   };
 
   /**
@@ -283,6 +286,7 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   if (opts.event.dateText) evLines.push(opts.event.dateText);
   if (opts.event.timeText) evLines.push(opts.event.timeText);
   if (opts.event.venue) evLines.push(opts.event.venue);
+  for (const e of opts.event.extra || []) { if (e && String(e).trim()) evLines.push(String(e)); }
   for (const raw of evLines) {
     for (const ln of wrap(raw, reg, 10.5, colW)) {
       drawL(ln, rightColX, ry, 10.5, reg);

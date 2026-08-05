@@ -205,13 +205,14 @@ export async function buildBookingDocAttachment(
         .trim();
 
     // ── Details block (differs by DJ type) ──
+    // DETAILS is the PACKAGE only: its name and what it includes (or, for a club
+    // DJ, set type + equipment). Event-schedule facts — the reception time and,
+    // for weddings, the ceremony + cocktail-hour times — live in the EVENT block
+    // across from BILL TO, so they read as "when/where", not "what you bought".
     const details: { label: string; value?: string | null }[] = [];
     const setTime = (b.start_time || b.end_time)
       ? `${fmtTime(b.start_time)}${b.end_time ? ` – ${fmtTime(b.end_time)}` : ''}`
       : '';
-    // Event type + date + TIME now live in the EVENT block (across from BILL
-    // TO), so they're not repeated here. This column is the PACKAGE: its name
-    // and what it includes, plus any wedding-specific scheduling.
     if (isClub) {
       if (b.set_type) details.push({ label: 'Set type', value: b.set_type });
       if (b.equipment) details.push({ label: 'Equipment', value: EQUIPMENT_LABEL[b.equipment] || b.equipment });
@@ -220,13 +221,16 @@ export async function buildBookingDocAttachment(
       if (b.package_details && b.package_details.trim()) {
         details.push({ label: 'Includes', value: stripHtml(b.package_details) });
       }
-      const isWedding = (b.event_type || '').includes('wedding');
-      if (isWedding && b.ceremony_needed && b.ceremony_start_time) {
-        details.push({ label: 'Ceremony', value: `${fmtTime(b.ceremony_start_time)} · ${b.ceremony_same_room ? 'same room as reception' : 'separate room'}` });
-      }
-      if (isWedding && b.cocktail_needed && b.cocktail_start_time) {
-        details.push({ label: 'Cocktail hour', value: `${fmtTime(b.cocktail_start_time)} · ${b.cocktail_same_room ? 'same room as reception' : 'separate room'}` });
-      }
+    }
+
+    // Wedding ceremony + cocktail-hour times → EVENT block (under the venue).
+    const eventExtra: string[] = [];
+    const isWedding = (b.event_type || '').includes('wedding');
+    if (!isClub && isWedding && b.ceremony_needed && b.ceremony_start_time) {
+      eventExtra.push(`Ceremony ${fmtTime(b.ceremony_start_time)} · ${b.ceremony_same_room ? 'same room as reception' : 'separate room'}`);
+    }
+    if (!isClub && isWedding && b.cocktail_needed && b.cocktail_start_time) {
+      eventExtra.push(`Cocktail hour ${fmtTime(b.cocktail_start_time)} · ${b.cocktail_same_room ? 'same room as reception' : 'separate room'}`);
     }
 
     // ── Money lines + headline ──
@@ -346,7 +350,7 @@ export async function buildBookingDocAttachment(
         logo,
       },
       client: { name: b.requester_name, email: args.clientEmail || b.host_email },
-      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: setTime || null, venue: b.venue_name },
+      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: setTime || null, venue: b.venue_name, extra: eventExtra },
       details,
       lines,
       headline,
