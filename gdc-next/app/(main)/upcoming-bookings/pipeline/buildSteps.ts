@@ -662,9 +662,15 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             ? undefined
             : undefined,
         // Past Bookings: no "Request balance" workflow — just let the DJ send
-        // or resend the invoice if the balance was never paid.
+        // or resend the invoice. If an invoice was NEVER sent (no balanceRow),
+        // "Send invoice" stays available even after the balance is marked
+        // complete — the DJ may have been paid in cash but still owes the client
+        // a receipt. Once an invoice exists, "Resend invoice" only shows while
+        // it's still unpaid.
         actions: archive
-          ? (done ? [] : [{ label: balanceRow ? 'Resend invoice' : 'Send invoice', run: () => openRequest('balance') }])
+          ? (!balanceRow
+              ? [{ label: 'Send invoice', run: () => openRequest('balance') }]
+              : (done ? [] : [{ label: 'Resend invoice', run: () => openRequest('balance') }]))
           : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(overrides.invoice ? [{ label: 'Send receipt', run: () => sendReceipt('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
       });
     }
