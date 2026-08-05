@@ -284,8 +284,10 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   const evLines: string[] = [];
   if (opts.event.title) evLines.push(opts.event.title);
   if (opts.event.dateText) evLines.push(opts.event.dateText);
-  if (opts.event.timeText) evLines.push(opts.event.timeText);
+  // Venue sits above the time lines — place first, then the reception time and
+  // any ceremony / cocktail-hour times below it.
   if (opts.event.venue) evLines.push(opts.event.venue);
+  if (opts.event.timeText) evLines.push(opts.event.timeText);
   for (const e of opts.event.extra || []) { if (e && String(e).trim()) evLines.push(String(e)); }
   for (const raw of evLines) {
     for (const ln of wrap(raw, reg, 10.5, colW)) {
