@@ -430,8 +430,8 @@ export default function UpcomingBookingsClient({
             {archive ? '← Back to upcoming bookings' : '← Back to booking requests'}
           </Link>
         </div>
-        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          <CalendarSyncButton className={styles.addBtn} />
+        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <CalendarSyncButton />
           {canAddonSettings && djType === 'club' && (
             <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
               Rider &amp; Guest List settings

@@ -25,7 +25,17 @@ export default function CalendarSyncButton({ className }: { className?: string }
 
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)}>
+      {/* A text link (not a filled button) — opens the sync popup. */}
+      <button
+        type="button"
+        className={className}
+        onClick={() => setOpen(true)}
+        style={{
+          background: 'transparent', border: 'none', padding: 0, font: 'inherit',
+          fontWeight: 600, color: 'var(--neon,#00e0a4)', textDecoration: 'underline',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
         Sync to Calendar
       </button>
 
