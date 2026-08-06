@@ -28,6 +28,7 @@ import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './p
 import { canUsePro, type AccessFields } from '@/lib/access';
 import MonthlyStory from './MonthlyStory';
 import AddManualBookingModal from './AddManualBookingModal';
+import CalendarSyncButton from './CalendarSyncButton';
 import BookingRow, { ColumnHeaders } from './BookingRow';
 import { useConfirm } from '@/components/ConfirmModal';
 
@@ -430,6 +431,7 @@ export default function UpcomingBookingsClient({
           </Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          <CalendarSyncButton className={styles.addBtn} />
           {canAddonSettings && djType === 'club' && (
             <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
               Rider &amp; Guest List settings
