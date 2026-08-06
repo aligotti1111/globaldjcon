@@ -431,7 +431,6 @@ export default function UpcomingBookingsClient({
           </Link>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <CalendarSyncButton />
           {canAddonSettings && djType === 'club' && (
             <Link href="/team-settings" className={styles.addBtn} style={{ textDecoration: 'none' }}>
               Rider &amp; Guest List settings
@@ -510,6 +509,9 @@ export default function UpcomingBookingsClient({
         </div>
       ) : (sortMode === 'recent' || sortMode === 'activity') ? (
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.4rem' }}>
+            <CalendarSyncButton />
+          </div>
           <ColumnHeaders djType={djType} />
           <div className={styles.monthItems}>
             {(sortMode === 'activity' ? activityList : recentList).map((b) => (
@@ -540,9 +542,12 @@ export default function UpcomingBookingsClient({
         </div>
       ) : (
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
-          {grouped.map(([monthKey, items]) => (
+          {grouped.map(([monthKey, items], mi) => (
             <section key={monthKey} className={styles.month}>
-              <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', flexWrap: 'wrap' }}>
+                <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
+                {mi === 0 && <CalendarSyncButton />}
+              </div>
               {/* Headers under EVERY month, not once at the top. A month of
                   bookings is taller than a viewport, and a header you've
                   scrolled past isn't labelling anything. Costs one row. */}
