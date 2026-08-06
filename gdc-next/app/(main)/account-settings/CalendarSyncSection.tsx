@@ -105,7 +105,7 @@ export default function CalendarSyncSection() {
   const btnApple: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: '.5rem',
     background: '#000', color: '#fff', fontWeight: 600, fontSize: '.85rem',
-    padding: '.58rem 1.1rem', borderRadius: 8, textDecoration: 'none', border: '1px solid #000',
+    padding: '.58rem 1.1rem', borderRadius: 8, textDecoration: 'none', border: '1px solid rgba(255,255,255,.35)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cursor: 'pointer',
   };
   const btnGoogle: CSSProperties = {
