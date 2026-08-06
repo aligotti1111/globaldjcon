@@ -120,6 +120,15 @@ export default function CalendarSyncSection() {
         </button>
       </div>
 
+      {/* Add-once warning: two subscriptions to the same feed are two separate
+          calendars in the phone/computer, so they DON'T merge — every booking
+          shows twice. There's no server-side dedupe across calendars; the only
+          fix is removing the extra one. */}
+      <p style={{ color: MUTED, fontSize: '.76rem', lineHeight: 1.5, margin: '0 0 .9rem' }}>
+        Add it once per device. If every booking shows up <strong>twice</strong>, you&apos;ve added the
+        calendar more than once — remove the extra one in your calendar app (they don&apos;t merge).
+      </p>
+
       {googleStep && (
         <div style={{ margin: '.2rem 0 .7rem', padding: '.8rem .9rem', background: 'rgba(0,224,164,.08)', border: `1px solid ${NEON}`, borderRadius: 8, fontSize: '.82rem', color: 'rgba(255,255,255,.9)', lineHeight: 1.65 }}>
           <div style={{ fontWeight: 800, color: NEON, marginBottom: '.35rem' }}>
@@ -211,7 +220,7 @@ export default function CalendarSyncSection() {
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-            <span style={{ color: '#ffb4b4', fontSize: '.8rem' }}>Reset the link? Any device using the old one stops updating and must re-subscribe.</span>
+            <span style={{ color: '#ffb4b4', fontSize: '.8rem' }}>Reset makes a NEW link — it can&apos;t remove calendars you already added. First remove the old calendar from each device, THEN re-add with the new link. Skipping that first step is what makes every booking show twice.</span>
             <button type="button" onClick={reset} disabled={busy} style={{ background: '#c0392b', color: '#fff', border: 'none', borderRadius: 6, padding: '.4rem .8rem', fontWeight: 700, fontSize: '.78rem', cursor: busy ? 'default' : 'pointer' }}>
               {busy ? 'Resetting…' : 'Yes, reset'}
             </button>
