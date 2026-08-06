@@ -30,6 +30,19 @@ export default function CalendarSyncSection() {
   const [err, setErr] = useState<string | null>(null);
   const [googleStep, setGoogleStep] = useState(false);
   const [googleCopied, setGoogleCopied] = useState(false);
+  // Reset only makes sense once the DJ has actually used the link. We can't see
+  // the subscribe (it happens inside their calendar app), so we treat clicking
+  // Subscribe / Add to Google / Copy as "started using it" and remember it.
+  const [linkUsed, setLinkUsed] = useState(false);
+
+  useEffect(() => {
+    try { if (localStorage.getItem('gdcCalendarLinkUsed') === '1') setLinkUsed(true); } catch { /* ignore */ }
+  }, []);
+
+  function markUsed() {
+    setLinkUsed(true);
+    try { localStorage.setItem('gdcCalendarLinkUsed', '1'); } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -57,6 +70,7 @@ export default function CalendarSyncSection() {
     : '';
 
   async function copy() {
+    markUsed();
     try { await navigator.clipboard.writeText(httpsUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
   }
 
@@ -65,6 +79,7 @@ export default function CalendarSyncSection() {
   // copied) BEFORE sending them off — otherwise the "copied" note would sit on
   // this tab while they're staring at an empty box in Google's new tab.
   async function addToGoogle() {
+    markUsed();
     let ok = false;
     try { await navigator.clipboard.writeText(httpsUrl); ok = true; } catch { /* blocked — the panel's copy button is the fallback */ }
     setGoogleCopied(ok);
@@ -107,7 +122,7 @@ export default function CalendarSyncSection() {
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginBottom: '.5rem' }}>
-        <a href={webcalUrl} style={btnPrimary}>Subscribe on iPhone / Mac</a>
+        <a href={webcalUrl} onClick={markUsed} style={btnPrimary}>Subscribe on iPhone / Mac</a>
         {googleUrl && (
           <button type="button" onClick={addToGoogle} style={{ ...btnOutline, cursor: 'pointer' }}>Add to Google Calendar</button>
         )}
@@ -208,7 +223,9 @@ export default function CalendarSyncSection() {
       </div>
 
       {/* Reset — rotates the token so the old links stop working (use if it ever
-          leaks). Existing subscriptions must be re-added afterward. */}
+          leaks). Only shown once the DJ has actually used the link (subscribe /
+          add / copy); existing subscriptions must be re-added afterward. */}
+      {linkUsed && (
       <div style={{ marginTop: '1.1rem', paddingTop: '.9rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
         {!confirmReset ? (
           <button
@@ -230,6 +247,7 @@ export default function CalendarSyncSection() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
