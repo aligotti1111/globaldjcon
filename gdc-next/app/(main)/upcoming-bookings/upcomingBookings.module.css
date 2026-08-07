@@ -1297,13 +1297,16 @@ select.input {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     margin-top: .5rem;
-    /* On mobile the pipeline gets its own subtly-shaded band so it reads as a
-       distinct section from the date/event line above and the actions below. */
-    padding: .6rem .4rem;
-    padding-right: 74px;
-    background: rgba(255, 255, 255, .05);
-    border: 1px solid rgba(255, 255, 255, .06);
-    border-radius: 10px;
+    /* On mobile the pipeline gets its own shaded band so it reads as a distinct
+       section from the date/event line above and the actions below. The band
+       spans the full row (bleeds to the row's edges) and the icons stretch
+       across it — the price still sits at the right. Lighter than before. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    padding: .7rem .9rem;
+    padding-right: 84px;
+    background: rgba(255, 255, 255, .085);
+    border-radius: 12px;
   }
   /* Center each icon+caption in its column so the four sit as an even,
      tidy row instead of clustering to the left (the "floating icons" look). */
