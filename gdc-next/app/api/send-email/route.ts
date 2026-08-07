@@ -665,16 +665,23 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
     // (frozen per-booking flag), or one already exists. A DJ who doesn't use
     // contracts never sees the step. Same rule for club/bar and mobile.
     const hasContract = b.contract_status != null && b.contract_status !== '';
-    if (b.requires_contract === true || hasContract) {
-      // "Contract sent" only once it actually has been — before that (e.g. in
-      // the booking-approved email) it hasn't gone out yet, so read it as the
-      // upcoming stage: just "Contract".
-      steps.push({ left: hasContract ? 'Contract sent' : 'Contract', right: 'Signed', done: b.contract_status === 'signed' });
+    // A cancelled/voided contract is no longer "sent" — treat it like nothing's
+    // gone out, so the step reads "Contract" (upcoming) rather than claiming a
+    // dead one was sent. It still shows if the DJ requires a contract.
+    const contractCancelled = b.contract_status === 'cancelled' || b.contract_status === 'voided';
+    const contractSent = hasContract && !contractCancelled;
+    if (b.requires_contract === true || contractSent) {
+      steps.push({ left: contractSent ? 'Contract sent' : 'Contract', right: 'Signed', done: b.contract_status === 'signed' });
     }
     // Deposit step — only when a deposit is genuinely part of this booking: a
     // NON-ZERO percentage or amount was set at creation, or money's already
     // been requested. A DJ who doesn't take deposits (null OR 0) never sees it.
-    const includeDeposit = !ov.deposit_skipped
+    // Skipped hides it — both the explicit "Skip deposit" override AND the
+    // derived skip (a balance was billed with no deposit money collected, so
+    // the DJ chose to take it in one payment). A settled deposit is never
+    // skipped. Mirrors buildSteps' depositSkipped rule.
+    const depositSkipped = !!ov.deposit_skipped || (requestedOf('balance') && !paidOf('deposit'));
+    const includeDeposit = !depositSkipped
       && (requestedOf('deposit')
         || (b.deposit_amount != null && Number(b.deposit_amount) > 0)
         || (b.deposit_pct != null && Number(b.deposit_pct) > 0));
