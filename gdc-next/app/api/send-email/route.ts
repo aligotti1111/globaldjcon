@@ -512,7 +512,8 @@ function billBreakdownBox(
     // Visual break so the payment schedule reads as its own section, not
     // as more line items rolling into the Total above it.
     rows.push('<tr><td colspan="2" style="height:14px;line-height:14px;font-size:0;">&nbsp;</td></tr>');
-    rows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt), { top: true }));
+    rows.push('<tr><td colspan="2" style="border-top:1px solid #e0e0e0;padding:12px 0 8px;text-align:center;color:#1a1a2e;font-size:14px;font-weight:700;">Payment Schedule</td></tr>');
+    rows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt)));
     rows.push(row('Balance due day of event', money(balance), { bold: true }));
   }
   return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
