@@ -28,6 +28,10 @@ export interface BookingCardShellProps {
   eventLabel: string;          // Header big text (e.g. "Wedding" / "Club · Headliner")
   detailsSlot: ReactNode;      // Date+venue/equipment/etc — replaces the unique middle
   pricingSlot: ReactNode;      // Package&Price (mobile) or Rate (club)
+  // Optional pill rendered at the very top of the card body (e.g. the
+  // "Expires in N days" countdown on pending requests). Sits inside the card
+  // so it reads as part of the request, not floating above it.
+  expirySlot?: ReactNode;
   // Manual payments (host side) — PaymentOptions block(s) built by
   // BookingRequestsClient for OUTGOING bookings with booking_payments rows.
   // Optional and flows through both card variants untouched (it isn't in
@@ -67,6 +71,7 @@ export default function BookingCardShell({
   detailsSlot,
   pricingSlot,
   paymentsSlot,
+  expirySlot,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
@@ -171,6 +176,12 @@ export default function BookingCardShell({
 
   return (
     <div ref={cardRef} className={`${styles.card} ${styles[`card_${status}`]}`}>
+      {/* Expiry countdown pill (pending requests) — inside the card so it
+          reads as part of the request, not floating above it. */}
+      {expirySlot && (
+        <div style={{ padding: '4px 4px 0' }}>{expirySlot}</div>
+      )}
+
       {/* The colored status accent strip used to render here at the top
           of the card. Removed — status is now communicated by the badge
           inside the Package & Price section, so the strip became

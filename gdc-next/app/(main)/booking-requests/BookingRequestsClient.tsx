@@ -1408,11 +1408,11 @@ function FlatList({
                 <polyline points="18 15 12 9 6 15" />
               </svg>
             </div>
-            <ExpiryBadge booking={b} tz={currentUser.timezone} />
             <Card
               booking={b}
               isIncoming={isIncoming}
               orderNum={null}
+              expirySlot={<ExpiryBadge booking={b} tz={currentUser.timezone} />}
               isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
               djZip={currentUser.zip}
               djCity={currentUser.city}
@@ -1558,32 +1558,31 @@ function SameDayGrouped({
         const cards = group.map((b, idx) => {
           const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
           return (
-            <div key={b.id}>
-              <ExpiryBadge booking={b} tz={currentUser.timezone} />
-              <Card
-                booking={b}
-                isIncoming={isIncoming}
-                orderNum={hasMultiple ? idx + 1 : null}
-                isBlocked={blocked.includes(b.requester_id)}
-                djZip={currentUser.zip}
-                djCity={currentUser.city}
-                djState={currentUser.state}
-                djTravelDistance={currentUser.travelDistance}
-                onApprove={onApprove}
-                onDeny={onDeny}
-                onCancel={onCancel}
-                onCancelIncoming={onCancelIncoming}
-                onBlock={onBlock}
-                onUnblock={onUnblock}
-                onCounter={onCounter}
-                onSendQuote={onSendQuote}
-                onSendDraftQuote={onSendDraftQuote}
-                onViewHistory={onViewHistory}
-                onAcceptCounter={onAcceptCounter}
-                onDeclineCounter={onDeclineCounter}
-                onMessage={onMessage}
-              />
-            </div>
+            <Card
+              key={b.id}
+              booking={b}
+              isIncoming={isIncoming}
+              orderNum={hasMultiple ? idx + 1 : null}
+              isBlocked={blocked.includes(b.requester_id)}
+              djZip={currentUser.zip}
+              djCity={currentUser.city}
+              djState={currentUser.state}
+              djTravelDistance={currentUser.travelDistance}
+              expirySlot={<ExpiryBadge booking={b} tz={currentUser.timezone} />}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              onCancel={onCancel}
+              onCancelIncoming={onCancelIncoming}
+              onBlock={onBlock}
+              onUnblock={onUnblock}
+              onCounter={onCounter}
+              onSendQuote={onSendQuote}
+              onSendDraftQuote={onSendDraftQuote}
+              onViewHistory={onViewHistory}
+              onAcceptCounter={onAcceptCounter}
+              onDeclineCounter={onDeclineCounter}
+              onMessage={onMessage}
+            />
           );
         });
 
