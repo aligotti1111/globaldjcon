@@ -1295,16 +1295,17 @@ select.input {
     grid-area: stat;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: 100%;
     margin-top: .5rem;
-    /* On mobile the pipeline gets its own shaded band so it reads as a distinct
-       section. It bleeds to the row's edges (negative margins cancel the row
-       padding) so the shade runs all the way to the ends; square corners so it
-       fills fully with no dark gaps. */
-    margin-left: -.7rem;
-    margin-right: -.7rem;
-    padding: .7rem .9rem;
-    padding-right: 84px;
+    /* The pipeline band bleeds edge-to-edge to the SCREEN — canonical full-bleed
+       (100vw, centred) so no page/row padding leaves black beside it. The icons
+       are padded back to 2.2rem (page 1.5rem + row .7rem) so they still line up
+       with the date/event content above. Square corners, no black gaps. */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    margin-left: -50vw;
+    padding: .7rem 2.2rem;
+    padding-right: calc(2.2rem + 74px);
     background: rgba(255, 255, 255, .085);
     border-radius: 0;
   }
