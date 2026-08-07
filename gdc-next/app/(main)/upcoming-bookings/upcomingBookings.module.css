@@ -1316,9 +1316,18 @@ select.input {
        details panel directly. Top/side padding unchanged. */
     padding: 1rem .7rem 0;
     align-items: center;
-    /* Stronger divider + more top padding so each booking reads as its own
-       block on the dark background instead of blending into the next. */
-    border-top: 1px solid rgba(255, 255, 255, .16);
+    /* No top divider — each card is now enclosed by its own frame (see
+       .rowWrap below), so the row-to-row hairline is redundant. */
+    border-top: none;
+  }
+  /* Each booking is a FRAMED CARD on mobile: a rounded hairline border around
+     the whole thing (date line + icon band + price strip, and the details
+     panel when expanded), with a gap between cards. overflow:hidden clips the
+     full-width bands to the rounded corners. */
+  .rowWrap {
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: 12px;
+    margin-bottom: 12px;
   }
   /* On mobile the expanded row must NOT take the desktop #16161f "open header"
      surface. If it does, the card's whole top (date line + the gaps around the
@@ -1345,15 +1354,13 @@ select.input {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-top: .5rem;
-    /* The pipeline band bleeds edge-to-edge to the SCREEN — canonical full-bleed
-       (100vw, centred) so no page/row padding leaves black beside it. The icons
-       are padded back to 2.2rem (page 1.5rem + row .7rem) so they still line up
-       with the date/event content above. Square corners, no black gaps. */
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    margin-left: -50vw;
-    padding: .7rem 2.2rem;
+    /* Span the full width of the framed card: pull out past the row's .7rem
+       side padding so the band meets the card border on both sides (rowWrap's
+       overflow:hidden + radius round the corners). No longer a viewport-wide
+       full-bleed — the card has a frame now. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    padding: .7rem 1rem;
     /* SOLID, not rgba white. A translucent overlay composites against whatever
        is behind it — pure black on a collapsed row, but the lighter #16161f
        card surface on an EXPANDED row — so the same band read as two different
@@ -1408,10 +1415,9 @@ select.input {
      so it butts flush against the icon band above. */
   .rowValue {
     grid-area: val;
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    margin-left: -50vw;
+    /* Match the icon band: pull out to the card's side borders. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
     /* row-gap is 0, so the price band already butts against the icon band with
        no negative pull needed. */
     margin-top: 0;
@@ -1423,7 +1429,7 @@ select.input {
        .16 white over black, keeping the price strip a touch lighter than the
        icon band so the two still read as distinct. */
     background: #2b2b2b;
-    padding: 5px 2.2rem;
+    padding: 6px 1rem;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 700;
