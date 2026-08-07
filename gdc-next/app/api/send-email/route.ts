@@ -681,9 +681,12 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
           ? '<span style="color:#0a6f61;font-size:11px;font-weight:700;">NOW</span>'
           : '';
       if (!s.right) {
-        return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};">${s.left}</td><td width="30" style="text-align:right;">${badge}</td></tr></table></div>`;
+        return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};">${s.left}</td><td align="right" style="padding-left:10px;white-space:nowrap;">${badge}</td></tr></table></div>`;
       }
-      return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};white-space:nowrap;">${s.left}</td><td style="padding:0 12px;"><div style="height:2px;background:${lineBg};line-height:2px;font-size:0;">&nbsp;</div></td><td style="font-size:14px;color:${rightColor};white-space:nowrap;text-align:right;">${s.right}</td><td width="30" style="text-align:right;">${badge}</td></tr></table></div>`;
+      // width="100%" on the line cell makes it claim all the slack (email tables
+      // won't stretch an empty cell otherwise — it collapses to a dot). The
+      // badge cell has padding-left so "Signed" and the check/NOW don't touch.
+      return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};white-space:nowrap;padding-right:12px;">${s.left}</td><td width="100%" style="padding-right:12px;"><div style="height:3px;line-height:3px;font-size:1px;background:${lineBg};border-radius:2px;">&nbsp;</div></td><td style="font-size:14px;color:${rightColor};white-space:nowrap;">${s.right}</td><td align="right" style="padding-left:10px;white-space:nowrap;">${badge}</td></tr></table></div>`;
     }).join('');
 
     return `<div style="background:#fbfbfb;border:1px solid #ececec;border-radius:10px;padding:16px 18px 8px;margin:0 0 24px;"><p style="margin:0 0 12px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Booking Progress</p>${capsules}</div>`;
@@ -2070,7 +2073,11 @@ export async function POST(req: Request) {
         `${SITE_URL}/booking-requests`,
       ].filter(Boolean).join('\n');
       const gLink = googleCalendarLink({ summary: calSummary, date: eventDate, startTime, endTime, location: calLocation, details: calDetails });
-      addToCalHtml = `<div style="margin:0 0 22px;"><a href="${gLink}" style="display:inline-block;padding:11px 22px;background:#0a6f61;color:#ffffff;text-decoration:none;font-weight:600;font-size:13px;border-radius:6px;">Add to Google Calendar</a><p style="margin:8px 0 0;color:#999;font-size:12px;">Apple or Outlook? Use the <strong>.ics</strong> file attached to this email.</p></div>`;
+      // Google's own button styling — white, hairline grey border, Roboto grey
+      // text with the 4-colour "G" — instead of the site's teal, so it reads as
+      // a trusted Google control. The G is a hosted PNG (SVG doesn't render in
+      // Gmail); if a client blocks the image the button still reads correctly.
+      addToCalHtml = `<div style="margin:0 0 22px;"><a href="${gLink}" style="display:inline-block;padding:10px 20px;background:#ffffff;color:#3c4043;text-decoration:none;font-weight:600;font-size:13px;border-radius:6px;border:1px solid #dadce0;font-family:Roboto,Arial,sans-serif;"><img src="https://developers.google.com/identity/images/g-logo.png" alt="" width="18" height="18" style="vertical-align:middle;margin-right:10px;">Add to Google Calendar</a><p style="margin:8px 0 0;color:#999;font-size:12px;">Apple or Outlook? Use the <strong>.ics</strong> file attached to this email.</p></div>`;
       const ics = buildSingleEventCalendar({
         uid: `booking-${(body.bookingId as string) || eventDate}@globaldjconnect.com`,
         start: icsDateTime(eventDate, startTime),
