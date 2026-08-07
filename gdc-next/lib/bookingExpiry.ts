@@ -41,6 +41,51 @@ export function isValidTimezone(tz: string): boolean {
   return VALID_TZ.has(tz);
 }
 
+// Best-effort US ZIP → IANA timezone, by the ZIP's first three digits (ZIP3).
+// Ranges are the dominant zone for that block — a handful of states straddle a
+// time-zone line (west TX, the FL panhandle, north ID, etc.), so a border ZIP
+// can be one zone off; the DJ can always override in settings. Returns null for
+// non-US / unrecognized ZIPs so the caller can fall back to the default.
+export function timezoneFromZip(zip: string | null | undefined): string | null {
+  if (!zip) return null;
+  const m = /^(\d{3})/.exec(String(zip).trim());
+  if (!m) return null;
+  const p = Number(m[1]);
+  const r = (a: number, b: number) => p >= a && p <= b;
+
+  // Pacific / Alaska / Hawaii (high ZIP3s first)
+  if (r(995, 999)) return 'America/Anchorage';   // AK
+  if (r(967, 968)) return 'Pacific/Honolulu';    // HI
+  if (r(970, 994)) return 'America/Los_Angeles'; // OR, WA
+  if (r(900, 961)) return 'America/Los_Angeles'; // CA
+  if (r(889, 898)) return 'America/Los_Angeles'; // NV
+  // Mountain
+  if (r(870, 884) || p === 885) return 'America/Denver';   // NM, El Paso TX
+  if (r(850, 865)) return 'America/Phoenix';               // AZ (no DST)
+  if (r(800, 847)) return 'America/Denver';                // CO, WY, ID, UT
+  if (r(590, 599)) return 'America/Denver';                // MT
+  // Central
+  if (r(500, 588)) return 'America/Chicago';   // IA, WI, MN, ND, SD
+  if (r(600, 693)) return 'America/Chicago';   // IL, MO, KS, NE
+  if (r(700, 799)) return 'America/Chicago';   // LA, AR, OK, TX
+  if (r(350, 397)) return 'America/Chicago';   // AL, MS, TN
+  // Eastern (the rest of the continental east)
+  if (r(6, 349) || p === 398 || p === 399) return 'America/New_York'; // NE→FL, GA
+  if (r(400, 499)) return 'America/New_York';                          // KY, OH, IN, MI
+  return null;
+}
+
+// The timezone to actually use: an explicit saved choice wins; otherwise derive
+// it from the DJ's ZIP; otherwise fall back to US Eastern. A null/empty stored
+// value means "no manual choice" — so changing ZIP moves the zone automatically.
+export function effectiveTimezone(
+  stored: string | null | undefined,
+  zip: string | null | undefined,
+): string {
+  if (stored && isValidTimezone(stored)) return stored;
+  return timezoneFromZip(zip) || DEFAULT_TZ;
+}
+
 // The UTC epoch (ms) of local midnight (00:00) on `dateStr` in `tz`.
 // Works without a timezone library: take a UTC guess at that wall-clock time,
 // read what wall-clock it actually maps to in `tz`, and correct by the offset.
