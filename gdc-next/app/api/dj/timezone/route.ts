@@ -13,7 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
-import { DEFAULT_TZ, isValidTimezone } from '@/lib/bookingExpiry';
+import { isValidTimezone, effectiveTimezone, timezoneFromZip } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
 
@@ -32,9 +32,18 @@ export async function GET() {
   const admin = createAdminClient();
   // timezone postdates the generated types — untyped cast to read/write it.
   const db = admin as unknown as SupabaseClient;
-  const { data } = await db.from('users').select('timezone').eq('id', djId).maybeSingle();
-  const timezone = (data as { timezone?: string | null } | null)?.timezone || DEFAULT_TZ;
-  return NextResponse.json({ ok: true, timezone });
+  const { data } = await db.from('users').select('timezone, zip').eq('id', djId).maybeSingle();
+  const row = data as { timezone?: string | null; zip?: string | null } | null;
+  const stored = row?.timezone ?? null;   // null = automatic (from ZIP)
+  const zip = row?.zip ?? null;
+  return NextResponse.json({
+    ok: true,
+    // What's saved (null when on automatic) and what's actually in effect.
+    timezone: stored,
+    effective: effectiveTimezone(stored, zip),
+    fromZip: timezoneFromZip(zip),   // the zone the ZIP maps to, if any
+    isAuto: !stored,
+  });
 }
 
 export async function POST(req: Request) {
@@ -43,15 +52,19 @@ export async function POST(req: Request) {
 
   let body: { timezone?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
-  const tz = typeof body.timezone === 'string' ? body.timezone : '';
-  if (!isValidTimezone(tz)) {
+  const raw = typeof body.timezone === 'string' ? body.timezone : '';
+  // 'auto' (or empty) clears the override → back to ZIP-derived. Anything else
+  // must be one of the offered zones.
+  const isAuto = raw === '' || raw === 'auto';
+  if (!isAuto && !isValidTimezone(raw)) {
     return NextResponse.json({ error: 'Unsupported timezone.' }, { status: 400 });
   }
+  const value: string | null = isAuto ? null : raw;
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
-  const { error } = await db.from('users').update({ timezone: tz }).eq('id', djId);
+  const { error } = await db.from('users').update({ timezone: value }).eq('id', djId);
   if (error) return NextResponse.json({ error: 'Could not save your timezone.' }, { status: 500 });
 
-  return NextResponse.json({ ok: true, timezone: tz });
+  return NextResponse.json({ ok: true, timezone: value });
 }
