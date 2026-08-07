@@ -11,6 +11,7 @@ import { Resend } from 'resend';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
 import { googleCalendarLink } from '@/lib/ics';
+import { canUsePro, type AccessFields } from '@/lib/access';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
@@ -615,17 +616,32 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
     const admin = createAdminClient();
     const { data: b } = await admin
       .from('bookings')
-      .select('booking_type, contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('dj_id, booking_type, contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount, planner_status, planner_sent_at')
       .eq('id', bookingId)
       .maybeSingle<{
-        booking_type: string | null; contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
+        dj_id: string | null; booking_type: string | null; contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
         deposit_amount: number | null; deposit_pct: number | null;
         status_overrides: Record<string, boolean> | null; total_with_tax: number | null;
         counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null;
+        planner_status: string | null; planner_sent_at: string | null;
       }>();
     if (!b) return '';
     // Mobile bookings only — club/bar DJs don't get the progress tracker.
     if (b.booking_type === 'club') return '';
+
+    // Does this DJ use the Planner & Playlist? It's part of the paid pro suite,
+    // so only show the step for DJs who actually have it — a free DJ never
+    // sends one, and a perpetually-"next" step they can't complete would be
+    // noise. Reads the DJ's live access the same way the rest of the app does.
+    let usesPlanners = false;
+    if (b.dj_id) {
+      const { data: dj } = await admin
+        .from('users')
+        .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+        .eq('id', b.dj_id)
+        .maybeSingle();
+      if (dj) usesPlanners = canUsePro(dj as unknown as AccessFields);
+    }
     // booking_payments isn't in this client's generated types — cast for the read.
     const payClient = admin as unknown as {
       from: (t: string) => { select: (c: string) => { eq: (c: string, v: string) => PromiseLike<{ data: unknown }> } };
@@ -661,6 +677,14 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
     const includeDeposit = !ov.deposit_skipped
       && (requestedOf('deposit') || b.deposit_amount != null || b.deposit_pct != null);
     if (includeDeposit) steps.push({ left: 'Deposit', right: 'Paid', done: paidOf('deposit') });
+
+    // Planner & Playlist — the host fills out the run-of-show + song picks.
+    // Only for DJs on the pro suite. "Planner sent" once it's gone out;
+    // done when the host submits it (planner_status === 'submitted').
+    if (usesPlanners) {
+      const plannerSent = b.planner_status != null || b.planner_sent_at != null;
+      steps.push({ left: plannerSent ? 'Planner sent' : 'Planner', right: 'Submitted', done: b.planner_status === 'submitted' });
+    }
 
     steps.push({ left: 'Balance', right: 'Paid', done: paidOf('balance') || paidInFull });
 
