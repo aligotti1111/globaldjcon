@@ -34,7 +34,13 @@ function findAnchor(isPast: boolean): HTMLElement | null {
   let row: HTMLElement | null = byDate || null;
   for (let i = 0; i < 5 && row; i++) {
     const t = row.textContent || '';
-    if (/by date/i.test(t) && /recently/i.test(t)) return row;
+    if (/by date/i.test(t) && /recently/i.test(t)) {
+      // The sort BUTTONS live in their own wrapper that is hidden on mobile
+      // (where the buttons collapse into a dropdown). Hang the magnifier on the
+      // wrapper's PARENT — the always-visible sort bar — so it keeps showing
+      // next to the dropdown instead of disappearing with the buttons.
+      return (row.parentElement as HTMLElement) || row;
+    }
     row = row.parentElement;
   }
   return null;
