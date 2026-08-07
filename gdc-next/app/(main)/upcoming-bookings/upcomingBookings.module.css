@@ -92,6 +92,29 @@
 .sortBtnActive:hover {
   color: #050507;
 }
+/* The three sort options as a button group (desktop) OR a native dropdown
+   (mobile). Only one is visible at a time — see the mobile media query, where
+   .sortBtns hides and .sortSelect shows. */
+.sortBtns {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.sortSelect {
+  display: none;
+  background: var(--deep, #0a0a10);
+  color: var(--white, #fff);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .5rem .7rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sortSelect:focus { outline: none; border-color: var(--neon); }
 /* Count badge on the "New activity" sort button — how many bookings have a
    fresh host action waiting. Dark pill + neon text reads on both the inactive
    (transparent) and active (neon) button states. */
@@ -729,6 +752,10 @@ select.input {
 @media (max-width: 600px) {
   .header { flex-direction: column; align-items: stretch; }
   .addBtn { width: 100%; }
+  /* Sort options become a dropdown on mobile: the button group wraps onto two
+     rows on a narrow screen, so swap it for a native select. */
+  .sortBtns { display: none; }
+  .sortSelect { display: block; }
 }
 
 /* ── Inline expand on click ────────────────────────────────────────── */

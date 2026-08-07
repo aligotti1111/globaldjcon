@@ -428,9 +428,14 @@ export default function UpcomingBookingsClient({
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>{archive ? 'Past Bookings' : 'Upcoming Bookings'}</h1>
-          <Link href={archive ? '/upcoming-bookings' : '/booking-requests'} className={styles.backLink}>
-            {archive ? '← Back to upcoming bookings' : '← Back to booking requests'}
-          </Link>
+          {/* Past Bookings keeps its "Back to upcoming bookings" link; the main
+              Upcoming Bookings page no longer shows the "Back to booking
+              requests" link. */}
+          {archive && (
+            <Link href="/upcoming-bookings" className={styles.backLink}>
+              ← Back to upcoming bookings
+            </Link>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {canAddonSettings && djType === 'club' && (
@@ -453,29 +458,46 @@ export default function UpcomingBookingsClient({
       {!archive && bookings.length > 0 && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
-          <button
-            type="button"
-            className={`${styles.sortBtn} ${sortMode === 'date' ? styles.sortBtnActive : ''}`}
-            onClick={() => setSortMode('date')}
+          {/* Desktop: the three sort options as a button group. */}
+          <div className={styles.sortBtns}>
+            <button
+              type="button"
+              className={`${styles.sortBtn} ${sortMode === 'date' ? styles.sortBtnActive : ''}`}
+              onClick={() => setSortMode('date')}
+            >
+              By date
+            </button>
+            <button
+              type="button"
+              className={`${styles.sortBtn} ${sortMode === 'recent' ? styles.sortBtnActive : ''}`}
+              onClick={() => setSortMode('recent')}
+            >
+              Recently booked
+            </button>
+            <button
+              type="button"
+              className={`${styles.sortBtn} ${sortMode === 'activity' ? styles.sortBtnActive : ''}`}
+              onClick={() => setSortMode('activity')}
+              title="Bookings where the host recently did something — signed, paid, submitted or confirmed"
+            >
+              New activity
+              {activityCount > 0 && <span className={styles.sortCount}>{activityCount}</span>}
+            </button>
+          </div>
+          {/* Mobile: the same three options collapse into a native dropdown so
+              they don't wrap onto two rows on a narrow screen. */}
+          <select
+            className={styles.sortSelect}
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as 'date' | 'recent' | 'activity')}
+            aria-label="Sort bookings"
           >
-            By date
-          </button>
-          <button
-            type="button"
-            className={`${styles.sortBtn} ${sortMode === 'recent' ? styles.sortBtnActive : ''}`}
-            onClick={() => setSortMode('recent')}
-          >
-            Recently booked
-          </button>
-          <button
-            type="button"
-            className={`${styles.sortBtn} ${sortMode === 'activity' ? styles.sortBtnActive : ''}`}
-            onClick={() => setSortMode('activity')}
-            title="Bookings where the host recently did something — signed, paid, submitted or confirmed"
-          >
-            New activity
-            {activityCount > 0 && <span className={styles.sortCount}>{activityCount}</span>}
-          </button>
+            <option value="date">By date</option>
+            <option value="recent">Recently booked</option>
+            <option value="activity">
+              {activityCount > 0 ? `New activity (${activityCount})` : 'New activity'}
+            </option>
+          </select>
           {!archive && djType === 'club' && isPaid && (
             <button
               type="button"
