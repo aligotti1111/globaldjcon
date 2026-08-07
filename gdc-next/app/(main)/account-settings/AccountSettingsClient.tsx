@@ -22,6 +22,7 @@ import { COUNTRIES, makeSlug, searchAddresses, type AddressSuggestion } from './
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import HostPhoneCard from './HostPhoneCard';
 import TeamSection from './TeamSection';
+import TimezoneSection from './TimezoneSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
@@ -968,6 +969,10 @@ export default function AccountSettingsClient({
           </div>
         </div>
       )}
+
+      {/* Timezone — the clock the "Expires in" countdown on the requests this
+          user sends is measured in. Defaults to automatic (from their ZIP). */}
+      <TimezoneSection audience="host" />
 
       {/* Delete account — teammates only. A staff login has no standalone value,
           and deleting it frees the email for a real account later. */}

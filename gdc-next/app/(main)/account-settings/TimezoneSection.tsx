@@ -22,7 +22,7 @@ function labelFor(tz: string | null): string {
   return o ? o.label : (tz || 'US Eastern');
 }
 
-export default function TimezoneSection() {
+export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' | 'host' } = {}) {
   const [sel, setSel] = useState<string>(AUTO);   // 'auto' or an IANA zone
   const [fromZip, setFromZip] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,10 +78,16 @@ export default function TimezoneSection() {
     <div className={styles.card}>
       <h2>Your timezone</h2>
       <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
-        Booking requests you don&apos;t answer expire automatically — after 10 days, or at
-        midnight going into the event day, whichever comes first. This sets the clock those
-        deadlines (and the &ldquo;Expires in&rdquo; countdown on each request) are measured in.
-        By default it follows your ZIP code.
+        {audience === 'host' ? (
+          <>Sets the timezone your booking times and deadlines show in — like the
+          &ldquo;Expires in&rdquo; countdown on requests you send. By default it follows
+          your ZIP code.</>
+        ) : (
+          <>Booking requests you don&apos;t answer expire automatically — after 10 days, or at
+          midnight going into the event day, whichever comes first. This sets the clock those
+          deadlines (and the &ldquo;Expires in&rdquo; countdown on each request) are measured in.
+          By default it follows your ZIP code.</>
+        )}
       </p>
 
       {err && <p style={{ color: '#ff9a9a', fontSize: '.82rem', margin: '0 0 .7rem' }}>{err}</p>}
