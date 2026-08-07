@@ -137,6 +137,8 @@ export default function BookingRequestsClient({
   const [payments, setPayments] = useState<Record<string, BookingPayment[]>>(initialPayments || {});
   const [incomingTab, setIncomingTab] = useState<BookingFilter>('respond');
   const [outgoingTab, setOutgoingTab] = useState<BookingFilter>('respond');
+  // Sort order for the request lists — newest first by default.
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   // Deep-link target from ?open=<id> (e.g. the header booking-requests dropdown).
   const [focusId, setFocusId] = useState<string | null>(null);
 
@@ -231,8 +233,30 @@ export default function BookingRequestsClient({
     return false;
   }
 
-  const filteredIncoming = incoming.filter((b) => matchesTab(b, incomingTab, 'dj'));
-  const filteredOutgoing = outgoing.filter((b) => matchesTab(b, outgoingTab, 'booker'));
+  // Newest / oldest by when the request came in.
+  const byOrder = (a: BookingRow, b: BookingRow) => {
+    const da = new Date(a.created_at).getTime();
+    const db = new Date(b.created_at).getTime();
+    return sortOrder === 'newest' ? db - da : da - db;
+  };
+  const filteredIncoming = incoming.filter((b) => matchesTab(b, incomingTab, 'dj')).sort(byOrder);
+  const filteredOutgoing = outgoing.filter((b) => matchesTab(b, outgoingTab, 'booker')).sort(byOrder);
+
+  // Newest / oldest sort control — one shared order across both sections.
+  const sortBtnStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? 'var(--neon,#00e0a4)' : 'transparent',
+    color: active ? '#06231b' : 'var(--muted,#8a8aa0)',
+    border: `1px solid ${active ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`,
+    borderRadius: 6, padding: '.32rem .8rem', fontSize: '.74rem', fontWeight: 700,
+    cursor: 'pointer', letterSpacing: '.03em',
+  });
+  const sortControl = (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, margin: '0 0 .7rem' }}>
+      <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', letterSpacing: '.06em', marginRight: 2 }}>SORT:</span>
+      <button type="button" onClick={() => setSortOrder('newest')} style={sortBtnStyle(sortOrder === 'newest')}>Newest</button>
+      <button type="button" onClick={() => setSortOrder('oldest')} style={sortBtnStyle(sortOrder === 'oldest')}>Oldest</button>
+    </div>
+  );
 
   // Deep-link: ?open=<bookingId> (header dropdown, emails, notifications).
   // Selects the section + tab that booking lives on, expands it, and scrolls
@@ -1093,6 +1117,7 @@ export default function BookingRequestsClient({
               Declined ({inCounts.denied})
             </TabButton>
           </div>
+          {sortControl}
           <div>
             {/* Same-day grouping for the action tab (Response Required) only */}
             {incomingTab === 'respond' ? (
@@ -1102,6 +1127,7 @@ export default function BookingRequestsClient({
                 blocked={blocked}
                 currentUser={currentUser}
                 currentTab={incomingTab}
+                sortOrder={sortOrder}
                 onApprove={(id) => djUpdateStatus(id, 'approved')}
                 onDeny={(id) => djUpdateStatus(id, 'denied')}
                 onCancel={cancelOutgoing}
@@ -1169,6 +1195,7 @@ export default function BookingRequestsClient({
               Declined ({outCounts.denied})
             </TabButton>
           </div>
+          {sortControl}
           <div>
             <FlatList
               bookings={filteredOutgoing}
@@ -1318,6 +1345,8 @@ interface ListProps {
   renderPayments?: (b: BookingRow) => React.ReactNode;
   /** Deep-link target — expand + scroll to this booking on mount. */
   focusId?: string | null;
+  /** Sort order for the day-groups (newest = most recently received first). */
+  sortOrder?: 'newest' | 'oldest';
 }
 
 function FlatList({
@@ -1451,7 +1480,7 @@ function SameDayGrouped({
   bookings, isIncoming, blocked, currentUser, currentTab,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory, onAcceptCounter, onDeclineCounter,
-  onMessage,
+  onMessage, sortOrder = 'newest',
 }: ListProps) {
   // Group by event_date. Sort within group by created_at (oldest first
   // = first-come-first-served visual order).
@@ -1464,11 +1493,13 @@ function SameDayGrouped({
   Object.values(groups).forEach((g) =>
     g.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
   );
-  // Sort groups by their first item's created_at — so the most recent group
-  // shows up at the top.
-  const sortedGroups = Object.values(groups).sort(
-    (a, b) => new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime()
-  );
+  // Sort groups by their first item's created_at, honoring the newest/oldest
+  // toggle (newest group at the top by default).
+  const sortedGroups = Object.values(groups).sort((a, b) => {
+    const ta = new Date(a[0].created_at).getTime();
+    const tb = new Date(b[0].created_at).getTime();
+    return sortOrder === 'newest' ? tb - ta : ta - tb;
+  });
 
   // Group-level expansion state. Keyed by event_date (the group key).
   // SameDayGrouped is only rendered on the incoming "pending" tab, so all
