@@ -22,7 +22,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { responseDeadlineMs, DEFAULT_TZ } from '@/lib/bookingExpiry';
+import { responseDeadlineMs, effectiveTimezone } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -83,16 +83,17 @@ export async function GET(req: Request) {
   if (djIds.length > 0) {
     const { data: djs } = await db
       .from('users')
-      .select('id, timezone')
+      .select('id, timezone, zip')
       .in('id', djIds);
-    for (const u of (djs as unknown as { id: string; timezone: string | null }[] | null) || []) {
-      tzById.set(u.id, u.timezone || DEFAULT_TZ);
+    for (const u of (djs as unknown as { id: string; timezone: string | null; zip: string | null }[] | null) || []) {
+      // Explicit choice wins; otherwise derive from the DJ's ZIP; else Eastern.
+      tzById.set(u.id, effectiveTimezone(u.timezone, u.zip));
     }
   }
 
   // Which requests are past their deadline right now.
   const expired = rows.filter((b) => {
-    const tz = (b.dj_id && tzById.get(b.dj_id)) || DEFAULT_TZ;
+    const tz = (b.dj_id && tzById.get(b.dj_id)) || effectiveTimezone(null, null);
     const deadline = responseDeadlineMs(b.created_at, b.event_date, tz);
     return deadline != null && now >= deadline;
   });
