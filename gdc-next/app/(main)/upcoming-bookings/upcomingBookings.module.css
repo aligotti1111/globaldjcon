@@ -1349,25 +1349,38 @@ select.input {
   /* Bottom band: value on the left, actions on the right. Value is the least
      urgent thing on a phone — you're looking for what's next, not what it pays
      — so it goes last and stays quiet. */
+  /* Price gets its OWN full-bleed strip directly under the icon band, in a
+     LIGHTER shade than the icons so it reads as a distinct band. "TOTAL VALUE"
+     label on the left, amount on the right. margin-top cancels the grid row-gap
+     so it butts flush against the icon band above. */
   .rowValue {
-    /* Price row: a full-width shaded band that butts up against the icon band
-       above (negative top margin closes the grid row-gap) so the two read as
-       one continuous shaded area. Short height, price right-aligned to content. */
     grid-area: val;
     width: 100vw;
     position: relative;
     left: 50%;
     margin-left: -50vw;
     margin-top: -.4rem;
-    background: rgba(255, 255, 255, .085);
-    text-align: right;
-    padding: 2px 2.2rem 3px;
-    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, .16);
+    padding: 5px 2.2rem;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 700;
     color: var(--neon, #00e0a4);
   }
+  .rowValue::before {
+    content: "Total Value";
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #8a8a9a;
+  }
+  /* No agreed value on this booking → no strip at all, rather than a bare
+     "Total Value" label with nothing beside it. */
+  .rowValue:empty { display: none; }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
    * touch device would show the pill and never the buttons, and editing a
