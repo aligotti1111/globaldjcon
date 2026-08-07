@@ -1284,6 +1284,18 @@ select.input {
        block on the dark background instead of blending into the next. */
     border-top: 1px solid rgba(255, 255, 255, .16);
   }
+  /* On mobile the expanded row must NOT take the desktop #16161f "open header"
+     surface. If it does, the card's whole top (date line + the gaps around the
+     icon/price bands) lightens, so an OPEN card reads a different shade than a
+     CLOSED one even though the bands themselves are now solid. Keeping it black
+     means the bands sit on the same background open or closed — identical
+     shades. The expand is still obvious from the details panel + neon edge.
+     Same selector + later source order beats the desktop rule (media queries
+     add no specificity). */
+  .rowWrapExpanded .row,
+  .rowWrapExpanded .row:hover {
+    background: transparent;
+  }
   /* The column headers are the one thing that cannot survive the trip. They
      label tracks, and there are no tracks down here. */
   .colHeads { display: none; }
