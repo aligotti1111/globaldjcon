@@ -89,8 +89,8 @@ export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' |
       <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
         {audience === 'host' ? (
           <>Sets the timezone your booking times and deadlines show in — like the
-          &ldquo;Expires in&rdquo; countdown on requests you send. By default it follows
-          your ZIP code.</>
+          &ldquo;Expires in&rdquo; countdown on requests you send. By default it uses
+          your device&apos;s timezone.</>
         ) : (
           <>Booking requests you don&apos;t answer expire automatically — after 10 days, or at
           midnight going into the event day, whichever comes first. This sets the clock those
