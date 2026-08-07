@@ -1271,6 +1271,7 @@ select.input {
     grid-template-areas:
       "date  toggle  event  chev"
       "stat  stat    stat   stat"
+      "val   val     val    val"
       "acts  acts    acts   acts";
     column-gap: .5rem;
     row-gap: .4rem;
@@ -1305,7 +1306,6 @@ select.input {
     left: 50%;
     margin-left: -50vw;
     padding: .7rem 2.2rem;
-    padding-right: calc(2.2rem + 74px);
     background: rgba(255, 255, 255, .085);
     border-radius: 0;
   }
@@ -1350,16 +1350,16 @@ select.input {
      urgent thing on a phone — you're looking for what's next, not what it pays
      — so it goes last and stays quiet. */
   .rowValue {
-    grid-area: stat;
+    /* Price on its own line just under the shaded icon band, right-aligned to
+       the content — so the band keeps its full width for the icons. */
+    grid-area: val;
     justify-self: end;
-    align-self: center;
     text-align: right;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--neon, #00e0a4);
-    /* Keep the price off the shaded band's rounded right edge. */
-    padding-right: 12px;
+    padding-top: 8px;
   }
   /*
    * There is no hover on a phone, so the pill/buttons swap can't work — a
