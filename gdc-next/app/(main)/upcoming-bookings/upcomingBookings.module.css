@@ -1274,11 +1274,20 @@ select.input {
       "val   val     val    val"
       "acts  acts    acts   acts";
     column-gap: .5rem;
-    row-gap: .4rem;
+    /* row-gap 0: the bands manage their OWN vertical spacing (icon band has
+       margin-top, price band butts flush against it). A uniform grid row-gap
+       used to drop .4rem BELOW the price band too — which, together with the
+       1rem bottom padding, left a dead black gap between the price strip and
+       the details panel on an expanded card (the actions row below is empty on
+       non-manual bookings). Zeroed here; spacing is added back only where a
+       band needs it. */
+    row-gap: 0;
     /* Height is fixed on desktop to keep the caption line from making rows
        uneven. Here the row genuinely has four bands, so it has to grow. */
     height: auto;
-    padding: 1rem .7rem;
+    /* No bottom padding: the price strip is the last band and should meet the
+       details panel directly. Top/side padding unchanged. */
+    padding: 1rem .7rem 0;
     align-items: center;
     /* Stronger divider + more top padding so each booking reads as its own
        block on the dark background instead of blending into the next. */
@@ -1376,7 +1385,9 @@ select.input {
     position: relative;
     left: 50%;
     margin-left: -50vw;
-    margin-top: -.4rem;
+    /* row-gap is 0, so the price band already butts against the icon band with
+       no negative pull needed. */
+    margin-top: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1413,6 +1424,13 @@ select.input {
     grid-area: acts;
     justify-content: flex-end;
   }
+  /* Non-manual bookings render an EMPTY actions cell. Left in place it still
+     reserves its grid row, re-opening the very gap under the price strip we
+     just closed. Drop it entirely when empty. When it DOES hold the
+     edit/delete/MANUAL controls, give them breathing room above and below so
+     they don't kiss the price strip or the details panel (row-gap is 0 now). */
+  .rowActionsCell:empty { display: none; }
+  .rowActionsCell:not(:empty) { padding: .6rem 0; }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
   .row .rowActionsCell .editBtn,
