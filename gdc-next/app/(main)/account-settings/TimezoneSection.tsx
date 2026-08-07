@@ -25,10 +25,17 @@ function labelFor(tz: string | null): string {
 export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' | 'host' } = {}) {
   const [sel, setSel] = useState<string>(AUTO);   // 'auto' or an IANA zone
   const [fromZip, setFromZip] = useState<string | null>(null);
+  // Hosts don't enter a ZIP, so "automatic" for them means the timezone their
+  // device reports (the same clock their countdown will display in).
+  const [browserTz, setBrowserTz] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    try { setBrowserTz(Intl.DateTimeFormat().resolvedOptions().timeZone || null); } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -70,9 +77,11 @@ export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' |
 
   if (loading) return null;
 
-  const autoLabel = fromZip
-    ? `Automatic — from your ZIP (${labelFor(fromZip)})`
-    : 'Automatic — from your ZIP (US Eastern)';
+  const autoLabel = audience === 'host'
+    ? `Automatic — from your device${browserTz ? ` (${labelFor(browserTz)})` : ''}`
+    : fromZip
+      ? `Automatic — from your ZIP (${labelFor(fromZip)})`
+      : 'Automatic — from your ZIP (US Eastern)';
 
   return (
     <div className={styles.card}>
