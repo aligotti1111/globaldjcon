@@ -19,7 +19,12 @@ export default function ExpiryBadge({
   const status = booking.status || 'pending';
   if (status !== 'pending') return null;
 
-  const info = expiryInfo(booking.created_at, booking.event_date, tz);
+  // No explicit tz (e.g. a host, who enters no ZIP) → use the device's zone.
+  let resolvedTz = tz || null;
+  if (!resolvedTz && typeof Intl !== 'undefined') {
+    try { resolvedTz = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* ignore */ }
+  }
+  const info = expiryInfo(booking.created_at, booking.event_date, resolvedTz);
   if (info.deadlineMs == null || !info.label) return null;
 
   const urgent = info.expired || info.daysLeft <= 2;

@@ -28,7 +28,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveUserEmail, createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import type { PaymentMethod } from '@/lib/paymentMethods';
-import { effectiveTimezone } from '@/lib/bookingExpiry';
+import { timezoneFromZip } from '@/lib/bookingExpiry';
 import BookingRequestsClient from './BookingRequestsClient';
 
 export const dynamic = 'force-dynamic';
@@ -371,8 +371,10 @@ export default async function BookingRequestsPage() {
         depositPct,
         taxEnabled,
         taxPct,
-        // Explicit choice if saved, else derived from the DJ's ZIP, else Eastern.
-        timezone: effectiveTimezone((me as { timezone?: string | null }).timezone ?? null, me.zip),
+        // Explicit choice if saved, else the DJ's ZIP-derived zone. Left NULL
+        // when there's neither (e.g. a host, who enters no ZIP) so the client
+        // badge falls back to the viewer's own device timezone.
+        timezone: ((me as { timezone?: string | null }).timezone ?? null) || timezoneFromZip(me.zip),
       }}
       initialIncoming={incoming}
       initialOutgoing={outgoing}
