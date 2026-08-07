@@ -1081,7 +1081,6 @@ export default function BookingRequestsClient({
       {/* INCOMING — DJs only */}
       {showIncoming && (
         <div className={styles.section}>
-          <div className={styles.sectionLabelIn}>Incoming Booking Requests</div>
           <div className={styles.tabs}>
             <TabButton active={incomingTab === 'respond'} onClick={() => setIncomingTab('respond')}>
               Response Required ({inCounts.respond})
@@ -1089,9 +1088,7 @@ export default function BookingRequestsClient({
             <TabButton active={incomingTab === 'awaiting'} onClick={() => setIncomingTab('awaiting')}>
               Awaiting Response ({inCounts.awaiting})
             </TabButton>
-            <TabButton active={incomingTab === 'approved'} onClick={() => setIncomingTab('approved')}>
-              Approved ({inCounts.approved})
-            </TabButton>
+            {/* Approved tab removed — approved bookings live on Upcoming Bookings. */}
             <TabButton active={incomingTab === 'denied'} onClick={() => setIncomingTab('denied')}>
               Declined ({inCounts.denied})
             </TabButton>
