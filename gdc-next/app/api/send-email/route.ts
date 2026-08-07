@@ -602,6 +602,94 @@ async function billBreakdownForBooking(
   }
 }
 
+// ── Booking progress tracker ── Paired step "capsules" showing where a booking
+// stands: Booking requested → Accepted, Contract sent → Signed, Deposit → Paid,
+// Balance → Paid, Event day. Each pair is done (green + ✓), current (outlined +
+// NOW) or pending (grey), computed live from the booking row and its payments,
+// so the host sees updated progress in every email after each step. Table-based
+// for email-client safety. Returns '' if the booking can't be read.
+async function bookingProgressBox(bookingId: string | undefined | null): Promise<string> {
+  if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return '';
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data: b } = await admin
+      .from('bookings')
+      .select('contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .eq('id', bookingId)
+      .maybeSingle<{
+        contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
+        deposit_amount: number | null; deposit_pct: number | null;
+        status_overrides: Record<string, boolean> | null; total_with_tax: number | null;
+        counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null;
+      }>();
+    if (!b) return '';
+    // booking_payments isn't in this client's generated types — cast for the read.
+    const payClient = admin as unknown as {
+      from: (t: string) => { select: (c: string) => { eq: (c: string, v: string) => PromiseLike<{ data: unknown }> } };
+    };
+    const { data: payData } = await payClient.from('booking_payments').select('kind, status, amount_paid').eq('booking_id', bookingId);
+    const pays = (payData as { kind: string; status: string; amount_paid: number | null }[] | null) || [];
+    const ov = b.status_overrides || {};
+
+    const paidOf = (kind: string) =>
+      pays.some((p) => p.kind === kind && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid || 0) > 0));
+    const requestedOf = (kind: string) => pays.some((p) => p.kind === kind);
+    const total = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
+    const totalPaid = pays.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+    const paidInFull = total > 0 && totalPaid >= total - 0.01;
+
+    type Step = { left: string; right: string; done: boolean };
+    const steps: Step[] = [];
+    steps.push({ left: 'Booking requested', right: 'Accepted', done: true });
+
+    // Contract step — only when this DJ requires a contract on this booking
+    // (frozen per-booking flag), or one already exists. A DJ who doesn't use
+    // contracts never sees the step. Same rule for club/bar and mobile.
+    const hasContract = b.contract_status != null && b.contract_status !== '';
+    if (b.requires_contract === true || hasContract) {
+      steps.push({ left: 'Contract sent', right: 'Signed', done: b.contract_status === 'signed' });
+    }
+    // Deposit step — only when a deposit is part of this booking (a percentage
+    // or amount was set at creation, or money's already been requested) and it
+    // wasn't skipped. A DJ who doesn't take deposits never sees it.
+    const includeDeposit = !ov.deposit_skipped
+      && (requestedOf('deposit') || b.deposit_amount != null || b.deposit_pct != null);
+    if (includeDeposit) steps.push({ left: 'Deposit', right: 'Paid', done: paidOf('deposit') });
+
+    steps.push({ left: 'Balance', right: 'Paid', done: paidOf('balance') || paidInFull });
+
+    const today = new Date().toISOString().slice(0, 10);
+    steps.push({ left: 'Event day', right: '', done: !!b.event_date && b.event_date < today });
+
+    const currentIdx = steps.findIndex((s) => !s.done);
+
+    const capsules = steps.map((s, i) => {
+      const state = s.done ? 'done' : i === currentIdx ? 'current' : 'pending';
+      const bg = state === 'done' ? '#eafaf4' : state === 'current' ? '#ffffff' : '#fafafa';
+      const border = state === 'done' ? '1px solid #cdeae0' : state === 'current' ? '2px solid #0a6f61' : '1px solid #eeeeee';
+      const pad = state === 'current' ? '11px 15px' : '12px 16px';
+      const leftColor = state === 'pending' ? '#aaaaaa' : state === 'current' ? '#0a6f61' : '#1a1a2e';
+      const leftWeight = state === 'pending' ? '400' : state === 'current' ? '700' : '600';
+      const lineBg = state === 'done' ? '#0a6f61' : '#e0e0e0';
+      const rightColor = state === 'done' ? '#1a1a2e' : '#999999';
+      const badge = state === 'done'
+        ? '<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:#0a6f61;color:#ffffff;font-size:12px;line-height:20px;text-align:center;">&#10003;</span>'
+        : state === 'current'
+          ? '<span style="color:#0a6f61;font-size:11px;font-weight:700;">NOW</span>'
+          : '';
+      if (!s.right) {
+        return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};">${s.left}</td><td width="30" style="text-align:right;">${badge}</td></tr></table></div>`;
+      }
+      return `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin-bottom:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;font-weight:${leftWeight};color:${leftColor};white-space:nowrap;">${s.left}</td><td style="padding:0 12px;"><div style="height:2px;background:${lineBg};line-height:2px;font-size:0;">&nbsp;</div></td><td style="font-size:14px;color:${rightColor};white-space:nowrap;text-align:right;">${s.right}</td><td width="30" style="text-align:right;">${badge}</td></tr></table></div>`;
+    }).join('');
+
+    return `<div style="background:#fbfbfb;border:1px solid #ececec;border-radius:10px;padding:16px 18px 8px;margin:0 0 24px;"><p style="margin:0 0 12px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Booking Progress</p>${capsules}</div>`;
+  } catch {
+    return '';
+  }
+}
+
 // ── POST handler ───────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -1963,6 +2051,7 @@ export async function POST(req: Request) {
     const sym = currencySymbol(currency);
     const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
     const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
+    const progressBox = await bookingProgressBox(body.bookingId as string | undefined);
 
     // ── Add to Calendar ── A one-tap Google Calendar link + a .ics attachment
     // (which Apple Mail / Outlook / Gmail all offer "Add to Calendar" for), so
@@ -2020,6 +2109,7 @@ export async function POST(req: Request) {
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
         ${addToCalHtml}
+        ${progressBox}
       `),
       attachments: calAttachments.length ? calAttachments : undefined,
     };
