@@ -3,18 +3,28 @@
 // TimezoneSection — "Your timezone" card in DJ Settings. Sets the clock used
 // for the booking-request response window: a request auto-declines at the
 // earlier of 10 days after it arrives, or midnight entering the event day, in
-// THIS timezone. Also what the "Expires in N days" countdown counts against.
-// Defaults to US Eastern until changed.
+// this timezone. Also what the "Expires in N days" countdown counts against.
+//
+// Default is AUTOMATIC — derived from the DJ's ZIP (falling back to US Eastern).
+// Picking a specific zone overrides that; picking "Automatic" clears it back.
 
 import { useEffect, useState } from 'react';
 import styles from './accountSettings.module.css';
-import { TIMEZONE_OPTIONS, DEFAULT_TZ } from '@/lib/bookingExpiry';
+import { TIMEZONE_OPTIONS } from '@/lib/bookingExpiry';
 
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
 
+const AUTO = 'auto';
+
+function labelFor(tz: string | null): string {
+  const o = TIMEZONE_OPTIONS.find((x) => x.value === tz);
+  return o ? o.label : (tz || 'US Eastern');
+}
+
 export default function TimezoneSection() {
-  const [tz, setTz] = useState(DEFAULT_TZ);
+  const [sel, setSel] = useState<string>(AUTO);   // 'auto' or an IANA zone
+  const [fromZip, setFromZip] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -25,8 +35,13 @@ export default function TimezoneSection() {
     (async () => {
       try {
         const res = await fetch('/api/dj/timezone');
-        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; timezone?: string };
-        if (alive && res.ok && d.ok && d.timezone) setTz(d.timezone);
+        const d = (await res.json().catch(() => ({}))) as {
+          ok?: boolean; timezone?: string | null; fromZip?: string | null;
+        };
+        if (alive && res.ok && d.ok) {
+          setSel(d.timezone || AUTO);
+          setFromZip(d.fromZip ?? null);
+        }
       } catch { /* keep default */ }
       finally { if (alive) setLoading(false); }
     })();
@@ -34,7 +49,7 @@ export default function TimezoneSection() {
   }, []);
 
   async function save(next: string) {
-    setTz(next);
+    setSel(next);
     setSaving(true); setSaved(false); setErr(null);
     try {
       const res = await fetch('/api/dj/timezone', {
@@ -55,6 +70,10 @@ export default function TimezoneSection() {
 
   if (loading) return null;
 
+  const autoLabel = fromZip
+    ? `Automatic — from your ZIP (${labelFor(fromZip)})`
+    : 'Automatic — from your ZIP (US Eastern)';
+
   return (
     <div className={styles.card}>
       <h2>Your timezone</h2>
@@ -62,21 +81,23 @@ export default function TimezoneSection() {
         Booking requests you don&apos;t answer expire automatically — after 10 days, or at
         midnight going into the event day, whichever comes first. This sets the clock those
         deadlines (and the &ldquo;Expires in&rdquo; countdown on each request) are measured in.
+        By default it follows your ZIP code.
       </p>
 
       {err && <p style={{ color: '#ff9a9a', fontSize: '.82rem', margin: '0 0 .7rem' }}>{err}</p>}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', flexWrap: 'wrap' }}>
         <select
-          value={tz}
+          value={sel}
           onChange={(e) => save(e.target.value)}
           disabled={saving}
           style={{
             background: '#16161f', color: '#fff', border: '1px solid rgba(255,255,255,.18)',
             borderRadius: 8, padding: '10px 12px', fontSize: '.85rem', outline: 'none',
-            minWidth: 260, cursor: saving ? 'default' : 'pointer',
+            minWidth: 280, cursor: saving ? 'default' : 'pointer',
           }}
         >
+          <option value={AUTO}>{autoLabel}</option>
           {TIMEZONE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
