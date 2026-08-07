@@ -930,6 +930,11 @@ select.input {
   align-items: center;
   min-width: 0;
 }
+/* Per-icon stage name shown ABOVE the icon on the mobile framed cards. Hidden
+   on desktop, which already carries column headers across the whole table. */
+.stLabel {
+  display: none;
+}
 
 /* New-activity highlight. A tight neon box that hugs JUST the stage ICON that
    the host acted on (last_activity_slot) — not the whole wide column cell — so
@@ -1361,6 +1366,8 @@ select.input {
     margin-left: -.7rem;
     margin-right: -.7rem;
     padding: .7rem 1rem;
+    /* Gap between the framed icon cells. */
+    gap: 7px;
     /* SOLID, not rgba white. A translucent overlay composites against whatever
        is behind it — pure black on a collapsed row, but the lighter #16161f
        card surface on an EXPANDED row — so the same band read as two different
@@ -1369,11 +1376,30 @@ select.input {
     background: #191919;
     border-radius: 0;
   }
-  /* Center each icon+caption in its column so the four sit as an even,
-     tidy row instead of clustering to the left (the "floating icons" look). */
-  .stCell { justify-content: center; }
-  .stBtn { align-items: center; }
+  /* Each stage is its OWN framed box inside the band: label on top, icon,
+     status caption below. A darker fill than the band so the box reads as a
+     tile, not a division of the band. */
+  .stCell {
+    justify-content: center;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 8px;
+    background: #141414;
+    padding: 8px 3px;
+  }
+  .stBtn { align-items: center; width: 100%; }
   .stCap { width: 100%; text-align: center; }
+  .stLabel {
+    display: block;
+    font-size: 8.5px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #75758d;
+    margin-bottom: 4px;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1;
+  }
 
   .rowDate {
     grid-area: date;
