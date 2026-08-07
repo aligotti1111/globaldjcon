@@ -671,19 +671,21 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
       // upcoming stage: just "Contract".
       steps.push({ left: hasContract ? 'Contract sent' : 'Contract', right: 'Signed', done: b.contract_status === 'signed' });
     }
-    // Deposit step — only when a deposit is part of this booking (a percentage
-    // or amount was set at creation, or money's already been requested) and it
-    // wasn't skipped. A DJ who doesn't take deposits never sees it.
+    // Deposit step — only when a deposit is genuinely part of this booking: a
+    // NON-ZERO percentage or amount was set at creation, or money's already
+    // been requested. A DJ who doesn't take deposits (null OR 0) never sees it.
     const includeDeposit = !ov.deposit_skipped
-      && (requestedOf('deposit') || b.deposit_amount != null || b.deposit_pct != null);
+      && (requestedOf('deposit')
+        || (b.deposit_amount != null && Number(b.deposit_amount) > 0)
+        || (b.deposit_pct != null && Number(b.deposit_pct) > 0));
     if (includeDeposit) steps.push({ left: 'Deposit', right: 'Paid', done: paidOf('deposit') });
 
     // Planner & Playlist — the host fills out the run-of-show + song picks.
     // Only for DJs on the pro suite. "Planner sent" once it's gone out;
     // done when the host submits it (planner_status === 'submitted').
-    if (usesPlanners) {
-      const plannerSent = b.planner_status != null || b.planner_sent_at != null;
-      steps.push({ left: plannerSent ? 'Planner sent' : 'Planner', right: 'Submitted', done: b.planner_status === 'submitted' });
+    const plannerActive = b.planner_status != null || b.planner_sent_at != null;
+    if (usesPlanners || plannerActive) {
+      steps.push({ left: plannerActive ? 'Planner sent' : 'Planner', right: 'Submitted', done: b.planner_status === 'submitted' });
     }
 
     steps.push({ left: 'Balance', right: 'Paid', done: paidOf('balance') || paidInFull });
