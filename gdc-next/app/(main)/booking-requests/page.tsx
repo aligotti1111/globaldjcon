@@ -29,6 +29,7 @@ import { resolveUserEmail, createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import { timezoneFromZip } from '@/lib/bookingExpiry';
+import { canBook, type AccessFields } from '@/lib/access';
 import BookingRequestsClient from './BookingRequestsClient';
 
 export const dynamic = 'force-dynamic';
@@ -164,7 +165,7 @@ export default async function BookingRequestsPage() {
   // booking_settings so we can extract depositPct for the Quote modal.
   const { data: me } = await admin
     .from('users')
-    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings, timezone')
+    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings, timezone, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', actingId)
     .single<{
       id: string;
@@ -177,6 +178,13 @@ export default async function BookingRequestsPage() {
       travel_distance: string | null;
       blocked_users: string[] | null;
       booking_settings: string | null;
+      sub_tier: number | null;
+      sub_status: string | null;
+      sub_period_start: string | null;
+      sub_period_end: string | null;
+      comp_tier: number | null;
+      comp_expires_at: string | null;
+      comp_source: string | null;
     }>();
 
   if (!me) redirect('/login?redirect=/booking-requests');
@@ -356,11 +364,18 @@ export default async function BookingRequestsPage() {
     }
   }
 
+  // Can this DJ ACT on incoming requests right now? Only when their
+  // subscription is live (active or grace) at a booking-capable tier. A lapsed
+  // DJ still sees every request but the card replaces its action buttons with a
+  // renew prompt. Same gate the booking engine uses — one source of truth.
+  const canAct = canBook(me as unknown as AccessFields);
+
   return (
     <BookingRequestsClient
       currentUser={{
         id: me.id,
         name: me.name || '',
+        canAct,
         email: authUser.email || null,
         role: me.role,
         djType: me.dj_type,

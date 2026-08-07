@@ -54,6 +54,11 @@ interface CurrentUser {
   // DJ's timezone (users.timezone, default US Eastern) — the clock the
   // request-expiry countdown and auto-decline deadline are measured in.
   timezone?: string | null;
+  // Whether this DJ has an active/grace subscription that lets them ACT on
+  // incoming requests (approve / decline / counter / send offer). False when
+  // the subscription has lapsed: the request stays visible but every DJ-side
+  // action is replaced by a renew prompt. Computed server-side via canBook().
+  canAct: boolean;
 }
 
 interface Props {
@@ -1440,6 +1445,7 @@ function FlatList({
               orderNum={null}
               expirySlot={<ExpiryBadge booking={b} tz={currentUser.timezone} />}
               isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
+              canAct={currentUser.canAct}
               djZip={currentUser.zip}
               djCity={currentUser.city}
               djState={currentUser.state}
@@ -1592,6 +1598,7 @@ function SameDayGrouped({
               isIncoming={isIncoming}
               orderNum={hasMultiple ? idx + 1 : null}
               isBlocked={blocked.includes(b.requester_id)}
+              canAct={currentUser.canAct}
               djZip={currentUser.zip}
               djCity={currentUser.city}
               djState={currentUser.state}

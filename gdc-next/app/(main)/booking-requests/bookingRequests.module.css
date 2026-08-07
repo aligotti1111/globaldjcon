@@ -536,6 +536,38 @@
   gap: .5rem;
   flex-wrap: wrap;
 }
+/* Subscription-lapsed notice — replaces the DJ action buttons on an incoming
+   request when the account has no active subscription. The DJ can still read
+   the request; this explains why they can't respond and links to renew. */
+.lapsedNotice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .5rem;
+  max-width: 340px;
+  padding: .65rem .8rem;
+  background: rgba(247, 201, 72, .08);
+  border: 1px solid rgba(247, 201, 72, .35);
+  border-radius: 6px;
+  color: var(--white);
+  font-size: .74rem;
+  line-height: 1.45;
+}
+.lapsedRenewBtn {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: .4rem .75rem;
+  border-radius: 6px;
+  background: var(--neon);
+  color: var(--black);
+  text-decoration: none;
+  transition: opacity .2s;
+}
+.lapsedRenewBtn:hover { opacity: .85; }
 .actionsRight {
   display: flex;
   flex-direction: column;

@@ -39,6 +39,13 @@ export interface BookingCardShellProps {
   // client only ever supplies it on the outgoing list — a DJ's payment
   // handles must never render outside the host's own booking card.
   paymentsSlot?: ReactNode;
+  // Whether this account can act on an INCOMING request (approve / decline /
+  // counter / send offer). False when the DJ's subscription has lapsed: they
+  // can still SEE the request but every DJ-side action is replaced by a
+  // "renew to respond" notice. Booker-side actions (cancel, accept counter)
+  // are never gated by this — they belong to the host, not the paid DJ.
+  // Defaults true so existing call sites are unaffected.
+  canAct?: boolean;
   // Action callbacks (same set across both card types)
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
@@ -72,6 +79,7 @@ export default function BookingCardShell({
   pricingSlot,
   paymentsSlot,
   expirySlot,
+  canAct = true,
   onApprove, onDeny, onCancel, onCancelIncoming, onBlock, onUnblock,
   onCounter, onSendQuote, onSendDraftQuote, onViewHistory: _onViewHistory, onAcceptCounter, onDeclineCounter,
   onMessage,
@@ -292,7 +300,21 @@ export default function BookingCardShell({
           section of the card, not in this row. */}
       <div className={styles.actionsRow}>
         <div className={styles.actionsLeft}>
-          {showIncomingActions && (
+          {/* Subscription lapsed — the DJ can view this incoming request but
+              can't act on it. Replaces every DJ-side action button with a
+              renew prompt. Only shown where DJ actions would otherwise be
+              (pending request, or a quote offer they'd cancel). Booker-side
+              controls below are untouched. */}
+          {!canAct && (showIncomingActions || showMobileQuoteDjCancel) && (
+            <div className={styles.lapsedNotice}>
+              <span>
+                Your subscription has expired. Renew to approve, decline, or
+                respond to booking requests.
+              </span>
+              <a href="/subscribe" className={styles.lapsedRenewBtn}>Renew subscription</a>
+            </div>
+          )}
+          {showIncomingActions && canAct && (
             <>
               {/* Phase 2: Send Quote. Only when DJ has a draft to release.
                   Sets quote_sent_at on the booking, exposing the price to
@@ -415,7 +437,7 @@ export default function BookingCardShell({
           {/* Mobile quote offer sent — DJ side. The DJ has sent their
               offer; their only action is to pull it back before the
               booker responds. */}
-          {showMobileQuoteDjCancel && (
+          {showMobileQuoteDjCancel && canAct && (
             <button
               type="button"
               onClick={() => onCancelIncoming(b.id)}
