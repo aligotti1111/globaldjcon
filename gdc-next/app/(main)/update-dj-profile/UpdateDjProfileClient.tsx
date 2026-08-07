@@ -22,6 +22,7 @@ import styles from './updateDjProfile.module.css';
 import GeneralTab from './GeneralTab';
 import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
+import TimezoneSection from '../account-settings/TimezoneSection';
 // Booking configuration moved to its own page (/booking-settings); the
 // BookingTab / ClubBookingTab components live in this folder still but are
 // mounted there now. Socials/Mixes/Photos/Video/Testimonials are managed
@@ -505,6 +506,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       {/* Team seats — DJs render THIS component (not AccountSettingsClient), so
           the Team card lives here. Self-contained + Pro-gated. */}
       <TeamSection djType={initialProfile.dj_type} />
+
+      {/* Timezone — the clock the booking-request auto-decline deadline and the
+          "Expires in N days" countdown are measured in. Defaults to Eastern. */}
+      <TimezoneSection />
     </div>
   );
 }
