@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import MobileBookingCard from './MobileBookingCard';
 import ClubBookingCard from './ClubBookingCard';
+import ExpiryBadge from './ExpiryBadge';
 import PaymentOptions from './PaymentOptions';
 import CounterModal from './CounterModal';
 import QuoteModal from './QuoteModal';
@@ -50,6 +51,9 @@ interface CurrentUser {
   // overtime rate (by package_category + package_index) when it wasn't
   // snapshotted onto the booking row, so the approval email can include it.
   mobPackages?: Record<string, Array<{ overtime?: number | string | null }>> | null;
+  // DJ's timezone (users.timezone, default US Eastern) — the clock the
+  // request-expiry countdown and auto-decline deadline are measured in.
+  timezone?: string | null;
 }
 
 interface Props {
@@ -1404,6 +1408,7 @@ function FlatList({
                 <polyline points="18 15 12 9 6 15" />
               </svg>
             </div>
+            <ExpiryBadge booking={b} tz={currentUser.timezone} />
             <Card
               booking={b}
               isIncoming={isIncoming}
@@ -1553,30 +1558,32 @@ function SameDayGrouped({
         const cards = group.map((b, idx) => {
           const Card = b.booking_type === 'club' ? ClubBookingCard : MobileBookingCard;
           return (
-            <Card
-              key={b.id}
-              booking={b}
-              isIncoming={isIncoming}
-              orderNum={hasMultiple ? idx + 1 : null}
-              isBlocked={blocked.includes(b.requester_id)}
-              djZip={currentUser.zip}
-              djCity={currentUser.city}
-              djState={currentUser.state}
-              djTravelDistance={currentUser.travelDistance}
-              onApprove={onApprove}
-              onDeny={onDeny}
-              onCancel={onCancel}
-              onCancelIncoming={onCancelIncoming}
-              onBlock={onBlock}
-              onUnblock={onUnblock}
-              onCounter={onCounter}
-              onSendQuote={onSendQuote}
-              onSendDraftQuote={onSendDraftQuote}
-              onViewHistory={onViewHistory}
-              onAcceptCounter={onAcceptCounter}
-              onDeclineCounter={onDeclineCounter}
-              onMessage={onMessage}
-            />
+            <div key={b.id}>
+              <ExpiryBadge booking={b} tz={currentUser.timezone} />
+              <Card
+                booking={b}
+                isIncoming={isIncoming}
+                orderNum={hasMultiple ? idx + 1 : null}
+                isBlocked={blocked.includes(b.requester_id)}
+                djZip={currentUser.zip}
+                djCity={currentUser.city}
+                djState={currentUser.state}
+                djTravelDistance={currentUser.travelDistance}
+                onApprove={onApprove}
+                onDeny={onDeny}
+                onCancel={onCancel}
+                onCancelIncoming={onCancelIncoming}
+                onBlock={onBlock}
+                onUnblock={onUnblock}
+                onCounter={onCounter}
+                onSendQuote={onSendQuote}
+                onSendDraftQuote={onSendDraftQuote}
+                onViewHistory={onViewHistory}
+                onAcceptCounter={onAcceptCounter}
+                onDeclineCounter={onDeclineCounter}
+                onMessage={onMessage}
+              />
+            </div>
           );
         });
 

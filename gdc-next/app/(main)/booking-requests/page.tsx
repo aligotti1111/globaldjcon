@@ -163,7 +163,7 @@ export default async function BookingRequestsPage() {
   // booking_settings so we can extract depositPct for the Quote modal.
   const { data: me } = await admin
     .from('users')
-    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings')
+    .select('id, name, role, dj_type, zip, city, state, travel_distance, blocked_users, booking_settings, timezone')
     .eq('id', actingId)
     .single<{
       id: string;
@@ -370,6 +370,7 @@ export default async function BookingRequestsPage() {
         depositPct,
         taxEnabled,
         taxPct,
+        timezone: (me as { timezone?: string | null }).timezone ?? null,
       }}
       initialIncoming={incoming}
       initialOutgoing={outgoing}
