@@ -1298,11 +1298,13 @@ select.input {
     width: 100%;
     margin-top: .5rem;
     /* On mobile the pipeline gets its own shaded band so it reads as a distinct
-       section from the date/event line above and the actions below. Aligned to
-       the row's content (no full-bleed) so it lines up with everything else;
-       square corners so the shade fills the whole band with no dark gaps. */
-    padding: .7rem .5rem;
-    padding-right: 76px;
+       section. It bleeds to the row's edges (negative margins cancel the row
+       padding) so the shade runs all the way to the ends; square corners so it
+       fills fully with no dark gaps. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    padding: .7rem .9rem;
+    padding-right: 84px;
     background: rgba(255, 255, 255, .085);
     border-radius: 0;
   }
