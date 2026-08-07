@@ -615,15 +615,17 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
     const admin = createAdminClient();
     const { data: b } = await admin
       .from('bookings')
-      .select('contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('booking_type, contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', bookingId)
       .maybeSingle<{
-        contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
+        booking_type: string | null; contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
         deposit_amount: number | null; deposit_pct: number | null;
         status_overrides: Record<string, boolean> | null; total_with_tax: number | null;
         counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null;
       }>();
     if (!b) return '';
+    // Mobile bookings only — club/bar DJs don't get the progress tracker.
+    if (b.booking_type === 'club') return '';
     // booking_payments isn't in this client's generated types — cast for the read.
     const payClient = admin as unknown as {
       from: (t: string) => { select: (c: string) => { eq: (c: string, v: string) => PromiseLike<{ data: unknown }> } };
