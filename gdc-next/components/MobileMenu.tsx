@@ -269,14 +269,14 @@ export default function MobileMenu() {
             >
               Manage
             </div>
-            {canBookings && (
-              <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
-                <IconCalendar />Booking Requests
-              </Link>
-            )}
             {showDjBookings && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Dashboard{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
+              </Link>
+            )}
+            {canBookings && (
+              <Link href="/booking-requests" onClick={close} className="mobile-menu-item">
+                <IconCalendar />Booking Requests
               </Link>
             )}
             {showDjBookings && (
