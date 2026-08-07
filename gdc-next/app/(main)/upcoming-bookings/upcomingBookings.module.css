@@ -1306,7 +1306,12 @@ select.input {
     left: 50%;
     margin-left: -50vw;
     padding: .7rem 2.2rem;
-    background: rgba(255, 255, 255, .085);
+    /* SOLID, not rgba white. A translucent overlay composites against whatever
+       is behind it — pure black on a collapsed row, but the lighter #16161f
+       card surface on an EXPANDED row — so the same band read as two different
+       greys depending on whether the card was open. A solid value renders
+       identically in both states. #191919 ≈ the old .085 white over black. */
+    background: #191919;
     border-radius: 0;
   }
   /* Center each icon+caption in its column so the four sit as an even,
@@ -1363,7 +1368,11 @@ select.input {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255, 255, 255, .16);
+    /* SOLID for the same reason as the icon band above — a translucent value
+       shifts when the card expands onto a lighter surface. #2b2b2b ≈ the old
+       .16 white over black, keeping the price strip a touch lighter than the
+       icon band so the two still read as distinct. */
+    background: #2b2b2b;
     padding: 5px 2.2rem;
     white-space: nowrap;
     font-size: 12px;
