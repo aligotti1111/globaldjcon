@@ -28,6 +28,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveUserEmail, createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import type { PaymentMethod } from '@/lib/paymentMethods';
+import { effectiveTimezone } from '@/lib/bookingExpiry';
 import BookingRequestsClient from './BookingRequestsClient';
 
 export const dynamic = 'force-dynamic';
@@ -370,7 +371,8 @@ export default async function BookingRequestsPage() {
         depositPct,
         taxEnabled,
         taxPct,
-        timezone: (me as { timezone?: string | null }).timezone ?? null,
+        // Explicit choice if saved, else derived from the DJ's ZIP, else Eastern.
+        timezone: effectiveTimezone((me as { timezone?: string | null }).timezone ?? null, me.zip),
       }}
       initialIncoming={incoming}
       initialOutgoing={outgoing}
