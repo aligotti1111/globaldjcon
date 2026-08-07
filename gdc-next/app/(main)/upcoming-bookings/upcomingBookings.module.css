@@ -1298,16 +1298,12 @@ select.input {
     width: 100%;
     margin-top: .5rem;
     /* On mobile the pipeline gets its own shaded band so it reads as a distinct
-       section from the date/event line above and the actions below. The band
-       spans the full row (bleeds to the row's edges) and the icons stretch
-       across it — the price still sits at the right. Lighter than before. */
-    margin-left: -.7rem;
-    margin-right: -.7rem;
-    padding: .7rem .9rem;
-    padding-right: 84px;
+       section from the date/event line above and the actions below. Aligned to
+       the row's content (no full-bleed) so it lines up with everything else;
+       square corners so the shade fills the whole band with no dark gaps. */
+    padding: .7rem .5rem;
+    padding-right: 76px;
     background: rgba(255, 255, 255, .085);
-    /* Square corners so the shade fills the full band edge-to-edge — rounded
-       corners let the dark page show through at the four corners. */
     border-radius: 0;
   }
   /* Center each icon+caption in its column so the four sit as an even,
