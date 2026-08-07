@@ -269,14 +269,16 @@ export default function UpcomingBookingsClient({
   const searchParams = useSearchParams();
   useEffect(() => {
     if (searchParams?.get('add') === '1') {
-      setShowAddModal(true);
+      // Only open for active subscribers — a lapsed DJ can't create new
+      // bookings, so ?add=1 (deep-link) is a no-op for them.
+      if (isPaid) setShowAddModal(true);
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('add');
         window.history.replaceState(null, '', url.toString());
       }
     }
-  }, [searchParams]);
+  }, [searchParams, isPaid]);
 
   // Group by month (YYYY-MM). Upcoming: soonest month first, ascending dates.
   // Archive (Past): most-recent month first, most-recent date first.
@@ -436,7 +438,11 @@ export default function UpcomingBookingsClient({
               Rider &amp; Guest List settings
             </Link>
           )}
-          {!archive && (
+          {/* Manual add is a NEW booking — a paid action. A DJ whose
+              subscription lapsed can still see and manage their existing
+              bookings, but can't create new ones, so the button is hidden
+              once they're no longer active/grace (isPaid === false). */}
+          {!archive && isPaid && (
             <button type="button" onClick={() => { if (!canBookings) { blockRole(); return; } setShowAddModal(true); }} title={!canBookings ? roleBlockedTitle : undefined} className={styles.addBtn} style={!canBookings ? { opacity: 0.5 } : undefined}>
               + Add Booking Manually
             </button>
