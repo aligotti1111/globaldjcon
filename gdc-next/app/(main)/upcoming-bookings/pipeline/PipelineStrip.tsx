@@ -34,6 +34,17 @@ export default function PipelineStrip({
   menuOpenKey, setMenuOpenKey, menuPos, setMenuPos, menuBtnRef,
   openedLabel, actionLocked, overrideLockedFor, onToggleOverride,
 }: Props) {
+  // Short stage name shown ABOVE each icon (mobile framed cards only; hidden on
+  // desktop, which already has column headers). Shorter than stageLabel so it
+  // fits a narrow phone column — "Playlist" not "Planner & Playlist".
+  const shortLabel = (k: string): string =>
+    k === 'song_list' ? (djType === 'club' ? 'Rider' : 'Playlist')
+      : k === 'contract' ? 'Contract'
+      : k === 'deposit' ? 'Deposit'
+      : k === 'invoice' ? 'Balance'
+      : k === 'guestlist' ? 'Guests'
+      : '';
+
   return (
     <div className={styles.statusStrip}>
       {slots.map((slotKey) => {
@@ -42,6 +53,7 @@ export default function PipelineStrip({
         if (!st) {
           return (
             <div key={slotKey} className={styles.stCell}>
+              <span className={styles.stLabel}>{shortLabel(slotKey)}</span>
               <span className={styles.stDash} aria-hidden="true">—</span>
             </div>
           );
@@ -101,11 +113,13 @@ export default function PipelineStrip({
                     setMenuOpenKey(st.key);
                   }}
                 >
+                  <span className={styles.stLabel}>{shortLabel(st.key)}</span>
                   <span className={styles.stTop}>{inner}</span>
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </button>
               ) : (
                 <div className={styles.stBtn} style={{ cursor: 'default' }} title={stageLabel(st.key, djType)}>
+                  <span className={styles.stLabel}>{shortLabel(st.key)}</span>
                   <span className={styles.stTop}>{inner}</span>
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </div>
