@@ -1306,7 +1306,9 @@ select.input {
     padding: .7rem .9rem;
     padding-right: 84px;
     background: rgba(255, 255, 255, .085);
-    border-radius: 12px;
+    /* Square corners so the shade fills the full band edge-to-edge — rounded
+       corners let the dark page show through at the four corners. */
+    border-radius: 0;
   }
   /* Center each icon+caption in its column so the four sit as an even,
      tidy row instead of clustering to the left (the "floating icons" look). */
