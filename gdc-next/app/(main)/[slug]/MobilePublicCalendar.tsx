@@ -1116,6 +1116,10 @@ function OwnerDayEditModal({
   // No packages at all (pure-quote DJ) or all "by request" → nothing to adjust.
   const pkgs = previewPackages || [];
   const canAdjust = pkgs.some((p) => !p.byRequest);
+  // A day that hit its booking CAPACITY (real approvals filled it) is already
+  // closed to new bookings on its own, so the manual "mark booked" toggle would
+  // be redundant/confusing — hide it and just say the day is full.
+  const naturallyFull = dayData.bookings_available != null && dayData.bookings_available <= 0;
 
   // Format the date label e.g. "Friday, April 24, 2026"
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1258,7 +1262,19 @@ function OwnerDayEditModal({
           </div>
         )}
 
-        {/* Booked = close the date to NEW bookings. Single toggle, no fields. */}
+        {/* A day already at capacity is full on its own — no manual toggle,
+            just a status line. */}
+        {naturallyFull && (
+          <div className={styles.ownerModalField}>
+            <span className={styles.ownerModalHint}>
+              This date has reached its booking capacity — it’s already full and closed to new requests, so there’s nothing to mark here.
+            </span>
+          </div>
+        )}
+
+        {/* Booked = close the date to NEW bookings. Single toggle, no fields.
+            Hidden once the day fills naturally. */}
+        {!naturallyFull && (
         <div className={styles.ownerModalField}>
           <button
             type="button"
@@ -1291,6 +1307,7 @@ function OwnerDayEditModal({
               : 'Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.'}
           </span>
         </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.2rem 0 .9rem', color: 'var(--muted)', fontSize: '.68rem', lineHeight: 1.4 }}>
           <span aria-hidden="true">🔒</span>
