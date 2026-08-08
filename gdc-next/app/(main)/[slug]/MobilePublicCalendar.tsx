@@ -576,7 +576,6 @@ export default function MobilePublicCalendar({
         <OwnerDayEditModal
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
-          defaultPerDay={defaultBookingsPerDay}
           onClose={() => setOwnerEditKey(null)}
           onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
         />
@@ -1025,13 +1024,11 @@ type DayStatus = 'available' | 'unavailable' | 'booked';
 function OwnerDayEditModal({
   dateKey,
   dayData,
-  defaultPerDay,
   onClose,
   onSave,
 }: {
   dateKey: string;
   dayData: MobileDayData;
-  defaultPerDay: number;
   onClose: () => void;
   // Pass null to delete this day's override (default capacity), otherwise
   // the new MobileDayData to write.
@@ -1045,10 +1042,9 @@ function OwnerDayEditModal({
     : 'available';
   const [status, setStatus] = useState<DayStatus>(initialStatus);
 
-  // Available-day fields
-  const [perDay, setPerDay] = useState<number>(
-    dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay
-  );
+  // Available-day setting: the signed per-date price nudge (0 = normal price).
+  const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
+  const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
 
   // Booked-day fields
   const [eventName, setEventName] = useState(dayData.eventName || '');
@@ -1080,15 +1076,13 @@ function OwnerDayEditModal({
         endTime,
       });
     } else {
-      // Available — only persist a per-day override if it differs from default.
-      // Setting per-day to 0 collapses to "unavailable" (vanilla parity).
-      if (perDay <= 0) {
-        onSave({ unavailable: true });
-      } else if (perDay !== defaultPerDay) {
-        onSave({ bookings_available: perDay });
-      } else {
-        onSave(null); // delete override
-      }
+      // Available — MERGE, don't replace: preserve any bookings_available count
+      // that real approvals have decremented, and only set/clear the price
+      // nudge. Drop the whole entry when nothing is left to store.
+      const next: MobileDayData = {};
+      if (dayData.bookings_available != null) next.bookings_available = dayData.bookings_available;
+      if (adjustPct !== 0) next.price_adjust_pct = clampPct(adjustPct);
+      onSave(Object.keys(next).length > 0 ? next : null);
     }
   }
 
@@ -1143,17 +1137,43 @@ function OwnerDayEditModal({
         {status === 'available' && (
           <div className={styles.ownerModalField}>
             <label className={styles.ownerModalLabel}>
-              Bookings available this day
+              Price for this day
             </label>
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={perDay}
-              onChange={(e) => setPerDay(parseInt(e.target.value || '0', 10))}
-              className={styles.ownerModalNumberInput}
-            />
-            <span className={styles.ownerModalHint}>Set to 0 to block day</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setAdjustPct((v) => clampPct(v - 5))}
+                aria-label="Lower the price for this day"
+                style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >−</button>
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min={-100}
+                  max={500}
+                  step={5}
+                  value={adjustPct}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setAdjustPct(Number.isFinite(n) ? clampPct(n) : 0);
+                  }}
+                  className={styles.ownerModalNumberInput}
+                  style={{ width: 90, textAlign: 'center', paddingRight: '1.4rem' }}
+                />
+                <span style={{ position: 'absolute', right: '.6rem', color: 'var(--muted)', fontSize: '.85rem', pointerEvents: 'none' }}>%</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setAdjustPct((v) => clampPct(v + 5))}
+                aria-label="Raise the price for this day"
+                style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >+</button>
+            </div>
+            <span className={styles.ownerModalHint}>
+              {adjustPct === 0
+                ? 'Charge more or less for a booking on this date. Folded silently into the price — never shown as a discount or surcharge.'
+                : `${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
+            </span>
           </div>
         )}
 

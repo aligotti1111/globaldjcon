@@ -182,14 +182,18 @@ export interface PriceResult {
 // is a no-op and returns the result untouched.
 export function applyDayPriceAdjust(pr: PriceResult | null, pct: number | null | undefined): PriceResult | null {
   if (!pr || pr.price == null || !pct || !Number.isFinite(pct)) return pr;
-  const factor = 1 + pct / 100;
-  const round2 = (n: number) => Number((n * factor).toFixed(2));
+  // Clamp defensively to the same range the editor enforces (-100…+500), so a
+  // hand-edited or legacy stored value can't produce a negative or absurd quote.
+  // The clamp is identical on client and server, so parity is preserved.
+  const safePct = Math.max(-100, Math.min(500, pct));
+  const factor = 1 + safePct / 100;
+  const scale2 = (n: number) => Number((n * factor).toFixed(2));
   return {
     ...pr,
-    price: round2(pr.price),
-    depositAmount: pr.depositAmount == null ? pr.depositAmount : round2(pr.depositAmount),
-    cocktailAddon: round2(pr.cocktailAddon || 0),
-    ceremonyAddon: round2(pr.ceremonyAddon || 0),
+    price: scale2(pr.price),
+    depositAmount: pr.depositAmount == null ? pr.depositAmount : scale2(pr.depositAmount),
+    cocktailAddon: scale2(pr.cocktailAddon || 0),
+    ceremonyAddon: scale2(pr.ceremonyAddon || 0),
   };
 }
 
