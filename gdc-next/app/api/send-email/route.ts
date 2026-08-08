@@ -709,7 +709,6 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
       const pad = state === 'current' ? '11px 15px' : '12px 16px';
       const leftColor = state === 'pending' ? '#aaaaaa' : state === 'current' ? '#0a6f61' : '#1a1a2e';
       const leftWeight = state === 'pending' ? '400' : state === 'current' ? '700' : '600';
-      const lineBg = state === 'done' ? '#0a6f61' : '#e0e0e0';
       const rightColor = state === 'done' ? '#1a1a2e' : '#999999';
       const badge = state === 'done'
         ? '<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#0a6f61;color:#ffffff;font-size:11px;line-height:18px;text-align:center;">&#10003;</span>'
@@ -720,17 +719,15 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
       // as visually separate from what's still to come.
       const topGap = (currentIdx > 0 && i === currentIdx) ? '18px' : '0';
       const wrapOpen = `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin:${topGap} 0 8px;">`;
-      if (!s.right) {
-        return `${wrapOpen}<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:13px;font-weight:${leftWeight};color:${leftColor};">${s.left}</td><td align="right" style="padding-left:10px;white-space:nowrap;">${badge}</td></tr></table></div>`;
-      }
-      // The connecting line is a NESTED full-width table cell with a background
-      // colour — Gmail strips/reflows a bare <div> (it was collapsing to a dot),
-      // but a nested table reliably fills its parent cell.
-      const line = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td height="3" style="height:3px;line-height:3px;font-size:1px;background:${lineBg};border-radius:2px;">&#160;</td></tr></table>`;
-      // Fixed left / right / badge column widths so the right-hand words
-      // ("Accepted", "Signed", "Paid") and the badges line up in columns down
-      // every row; only the middle line cell flexes.
-      return `${wrapOpen}<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="44%" style="width:44%;font-size:13px;font-weight:${leftWeight};color:${leftColor};white-space:nowrap;padding-right:10px;">${s.left}</td><td valign="middle" style="padding:0 6px;">${line}</td><td width="66" style="width:66px;font-size:13px;color:${rightColor};white-space:nowrap;padding-left:4px;">${s.right}</td><td width="34" align="right" style="width:34px;white-space:nowrap;">${badge}</td></tr></table></div>`;
+      // Simple, email-robust two-column row: step name on the LEFT, its status
+      // + (NEXT / check) badge right-aligned. The old flexing connector line
+      // collapsed to a stray dot in iOS Gmail and jammed the badge against the
+      // status word ("SignedNEXT"); dropping it fixes both. Two &nbsp; keep the
+      // badge clear of the status.
+      const right = s.right
+        ? `<span style="color:${rightColor};">${s.right}</span>${badge ? '&nbsp;&nbsp;' + badge : ''}`
+        : badge;
+      return `${wrapOpen}<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" style="font-size:13px;white-space:nowrap;">${right}</td></tr></table></div>`;
     }).join('');
 
     return `<div style="background:#fbfbfb;border:1px solid #ececec;border-radius:10px;padding:16px 18px 8px;margin:0 0 24px;"><p style="margin:0 0 12px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Booking Progress</p>${capsules}</div>`;
