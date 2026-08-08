@@ -83,18 +83,25 @@ export default function PipelineStrip({
         const open = menuOpenKey === st.key;
         const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
         const waiting = !st.done && (!!st.caption || st.state === 'pending');
-        const capColor = st.done
-          ? '#3fd6ab'
+        // Skipped = a muted step that still counts as "done" (e.g. a skipped
+        // deposit): resolved, not completed. It reads WHITE — neutral, with no
+        // green anywhere on it (no green caption, icon or check).
+        const skipped = st.done && st.color === MUTED;
+        const positiveDone = st.done && !skipped;
+        const capColor = skipped
+          ? '#f2f2f7'
           : st.color === MUTED
             ? '#5a5a72'
-            : '#c08a3e';
+            : st.done
+              ? '#3fd6ab'
+              : '#c08a3e';
         // INVARIANT: a done step can never say it's waiting.
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
         const inner = (
           <>
-            <span className={styles.stIcon} style={{ color: st.done ? 'var(--neon,#00e0a4)' : '#c2c2ce' }}>
+            <span className={styles.stIcon} style={{ color: positiveDone ? 'var(--neon,#00e0a4)' : skipped ? '#f2f2f7' : '#c2c2ce' }}>
               {stageIcon(st.icon)}
-              {st.done && (
+              {positiveDone && (
                 <span className={styles.stBadge}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 </span>
