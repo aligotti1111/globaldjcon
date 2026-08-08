@@ -710,24 +710,25 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
       const leftColor = state === 'pending' ? '#aaaaaa' : state === 'current' ? '#0a6f61' : '#1a1a2e';
       const leftWeight = state === 'pending' ? '400' : state === 'current' ? '700' : '600';
       const rightColor = state === 'done' ? '#1a1a2e' : '#999999';
-      const badge = state === 'done'
-        ? '<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#0a6f61;color:#ffffff;font-size:11px;line-height:18px;text-align:center;">&#10003;</span>'
-        : state === 'current'
-          ? '<span style="color:#0a6f61;font-size:10px;font-weight:700;">NEXT</span>'
-          : '';
-      // Extra space above the FIRST not-yet-done step, so the done group reads
-      // as visually separate from what's still to come.
-      const topGap = (currentIdx > 0 && i === currentIdx) ? '18px' : '0';
-      const wrapOpen = `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin:${topGap} 0 8px;">`;
-      // Simple, email-robust two-column row: step name on the LEFT, its status
-      // + (NEXT / check) badge right-aligned. The old flexing connector line
-      // collapsed to a stray dot in iOS Gmail and jammed the badge against the
-      // status word ("SignedNEXT"); dropping it fixes both. Two &nbsp; keep the
-      // badge clear of the status.
-      const right = s.right
-        ? `<span style="color:${rightColor};">${s.right}</span>${badge ? '&nbsp;&nbsp;' + badge : ''}`
-        : badge;
-      return `${wrapOpen}<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" style="font-size:13px;white-space:nowrap;">${right}</td></tr></table></div>`;
+      // A green ✓ chip after the status word on completed steps only.
+      const check = state === 'done'
+        ? '&nbsp;&nbsp;<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#0a6f61;color:#ffffff;font-size:11px;line-height:18px;text-align:center;vertical-align:middle;">&#10003;</span>'
+        : '';
+      // "NEXT" is now a little tab that sits ABOVE the current step's box,
+      // outside it — marking which step is up next. The negative bottom margin
+      // nudges it to overlap the box's top edge; if a client ignores negative
+      // margins it just sits in the gap above, which still reads fine.
+      const nextTab = state === 'current'
+        ? '<div style="margin:18px 0 -8px 14px;line-height:1;"><span style="display:inline-block;background:#0a6f61;color:#ffffff;font-size:9px;font-weight:700;letter-spacing:0.06em;padding:3px 8px;border-radius:6px;">NEXT</span></div>'
+        : '';
+      const wrapOpen = `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin:0 0 8px;">`;
+      // Two columns: step name on the LEFT, its status word (+ ✓ on done)
+      // right-aligned so "Signed / Paid / Submitted" line up down the right edge.
+      const rightCell = s.right ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
+      const inner = (s.right || check)
+        ? `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" style="font-size:13px;white-space:nowrap;">${rightCell}</td></tr></table>`
+        : `<span style="font-size:13px;font-weight:${leftWeight};color:${leftColor};">${s.left}</span>`;
+      return `${nextTab}${wrapOpen}${inner}</div>`;
     }).join('');
 
     return `<div style="background:#fbfbfb;border:1px solid #ececec;border-radius:10px;padding:16px 18px 8px;margin:0 0 24px;"><p style="margin:0 0 12px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Booking Progress</p>${capsules}</div>`;
