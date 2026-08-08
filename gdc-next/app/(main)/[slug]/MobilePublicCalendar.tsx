@@ -763,6 +763,26 @@ function SingleMonthView({
           >
             ✏️
           </button>
+          {/* Owner-only markers: a manual "booked" block the DJ set themselves
+              (no real booking behind it) and a per-date price edit. */}
+          {(() => {
+            const manualBooked = isBooked && dayData.bookings_available == null && !dayData.eventName;
+            const pct = dayData.price_adjust_pct;
+            const priceEdited = pct != null && pct !== 0;
+            if (!manualBooked && !priceEdited) return null;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, marginTop: 2, pointerEvents: 'none' }}>
+                {manualBooked && (
+                  <span style={{ fontSize: 8, lineHeight: 1.15, color: '#ff8a8a', fontWeight: 600 }}>Manually booked</span>
+                )}
+                {priceEdited && (
+                  <span style={{ fontSize: 9, lineHeight: 1.15, color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
+                    {pct > 0 ? '+' : ''}{pct}% price
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       );
     } else if (!isOwnProfile && isAvail) {
@@ -947,11 +967,13 @@ function RollingMonthsView({
       if (isToday) cellClasses.push(styles.miniCellToday);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
 
+      const miniManualBooked = isOwnProfile && isBooked && dayData.bookings_available == null && !dayData.eventName;
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
           onClick={onCellClick}
+          title={miniManualBooked ? 'Manually marked booked' : undefined}
         >
           {d}
           {/* Public visitor: show "Book" label on available days so
@@ -996,6 +1018,11 @@ function RollingMonthsView({
               >
                 ✏️
               </button>
+              {dayData.price_adjust_pct != null && dayData.price_adjust_pct !== 0 && (
+                <span style={{ fontSize: 7, lineHeight: 1, color: 'var(--neon,#00e0a4)', fontWeight: 700 }} title="Price edited for this day">
+                  {dayData.price_adjust_pct > 0 ? '+' : ''}{dayData.price_adjust_pct}%
+                </span>
+              )}
             </div>
           )}
         </div>
