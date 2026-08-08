@@ -773,7 +773,7 @@ function SingleMonthView({
             return (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, marginTop: 2, pointerEvents: 'none' }}>
                 {manualBooked && (
-                  <span style={{ fontSize: 8, lineHeight: 1.15, color: '#ff8a8a', fontWeight: 600 }}>Manually booked</span>
+                  <span style={{ fontSize: 8, lineHeight: 1.2, color: '#fff', fontWeight: 700, background: 'rgba(0,0,0,.45)', padding: '1px 4px', borderRadius: 3, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>Manually booked</span>
                 )}
                 {priceEdited && (
                   <span style={{ fontSize: 9, lineHeight: 1.15, color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
@@ -1268,9 +1268,11 @@ function OwnerDayEditModal({
               width: '100%',
               padding: '.7rem',
               borderRadius: 8,
-              border: `1px solid ${booked ? '#ff5f5f' : 'rgba(255,95,95,.5)'}`,
-              background: booked ? 'rgba(255,95,95,.16)' : 'rgba(255,95,95,.06)',
-              color: '#ff5f5f',
+              // Booked → the button OPENS the day (green, make-available). Not
+              // booked → the button CLOSES it (red, mark-as-booked).
+              border: `1px solid ${booked ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
+              background: booked ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
+              color: booked ? 'var(--neon,#00e0a4)' : '#ff5f5f',
               fontWeight: 600,
               fontSize: '.85rem',
               cursor: 'pointer',
@@ -1280,11 +1282,13 @@ function OwnerDayEditModal({
               gap: '.45rem',
             }}
           >
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ff5f5f', display: 'inline-block' }} />
-            {booked ? 'Booked — closed to new bookings (tap to reopen)' : 'Mark this day as booked'}
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: booked ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
+            {booked ? 'Make this day available for booking' : 'Mark this day as booked'}
           </button>
           <span className={styles.ownerModalHint}>
-            Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.
+            {booked
+              ? 'This date is currently BOOKED — closed to new requests and shown red. Tap the button above to reopen it, then Save Day.'
+              : 'Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.'}
           </span>
         </div>
 
