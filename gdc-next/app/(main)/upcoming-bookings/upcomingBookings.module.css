@@ -1393,6 +1393,18 @@ select.input {
   }
   .stBtn { align-items: center; width: 100%; }
   .stCap { width: 100%; text-align: center; }
+  /* Centre the ICON under its label, not the icon+chevron pair. The chevron is
+     taken out of the row's flow (absolutely placed just to the right of the
+     icon) so only the icon counts toward centering — nudging it right onto the
+     label's axis while the ▾ still sits beside it. */
+  .stTop { position: relative; }
+  .stChev {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 1px;
+  }
   .stLabel {
     display: block;
     position: absolute;
