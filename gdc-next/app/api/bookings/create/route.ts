@@ -51,6 +51,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import {
   calcPrice,
+  applyDayPriceAdjust,
   getPackageCategory,
   resolvePackage,
   buildEventDetails,
@@ -343,10 +344,18 @@ export async function POST(req: Request) {
       (selectedPkg?.details || pkgFallback.details) || null;
     const pkgMainPhoto = selectedPkg?.photo || pkgFallback.photo || null;
 
+    // The DJ's per-date price nudge (signed %, 0 when unset). Applied via the
+    // SAME helper the client uses, so the authoritative quoted_rate matches the
+    // client's previewed total and never trips the drift guard below.
+    const dayAdjustPct = settings.mob_booking_days?.[dateKey]?.price_adjust_pct ?? 0;
+
     // Recompute EVERYTHING money-related server-side — same helpers, same
     // order, same rounding as the client's submit handler.
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony)
+      ? applyDayPriceAdjust(
+          calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
+          dayAdjustPct,
+        )!
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
     const finalDiscount: DiscountResult =
