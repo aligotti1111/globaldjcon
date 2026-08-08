@@ -1384,7 +1384,9 @@ select.input {
     flex-direction: column;
     border: 1px solid rgba(255, 255, 255, .14);
     border-radius: 8px;
-    background: #141414;
+    /* No separate fill — the box is just an outline on the band, same shade
+       inside as out. */
+    background: transparent;
     padding: 8px 3px;
   }
   .stBtn { align-items: center; width: 100%; }
