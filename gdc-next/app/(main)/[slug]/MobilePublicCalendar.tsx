@@ -1292,6 +1292,11 @@ function OwnerDayEditModal({
           </span>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.2rem 0 .9rem', color: 'var(--muted)', fontSize: '.68rem', lineHeight: 1.4 }}>
+          <span aria-hidden="true">🔒</span>
+          <span>Only visible to account operators (you and your teammates). Clients never see these settings — just the date’s price and availability.</span>
+        </div>
+
         <div className={styles.ownerModalBtns}>
           <button
             type="button"
