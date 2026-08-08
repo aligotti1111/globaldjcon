@@ -393,11 +393,16 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
               : 'Pending')
           : 'Not sent',
-      // Shown at the top of the dropdown, above the actions. Only once money
-      // has actually been asked for — before that there's nothing to report.
-      info: depositRow
-        ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
-        : undefined,
+      // Shown at the top of the dropdown, above the actions. When the deposit
+      // was auto-skipped because the balance was requested for the whole amount,
+      // the menu is otherwise empty (no actions) — so this note is the only thing
+      // that explains WHY the stage says "Skipped". Otherwise, once money has
+      // been asked for, report received/asked.
+      info: (depositSkipped && balanceRequested)
+        ? 'Skipped automatically — the balance was requested for the full amount, so there’s no separate deposit to collect.'
+        : depositRow
+          ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
+          : undefined,
       // The gate, said out loud — and there are TWO of them now, so it has to
       // say the right one. Telling a DJ to sign a contract on a manual booking
       // that has no contract is worse than saying nothing.
