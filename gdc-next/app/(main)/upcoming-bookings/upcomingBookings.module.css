@@ -1405,6 +1405,14 @@ select.input {
     transform: translateY(-50%);
     margin-left: 1px;
   }
+  /* The "not applicable" dash: drop the desktop-table left padding (which shoved
+     it off-centre) and centre it in its cell, under the label, like every other
+     stage. */
+  .stDash {
+    padding-left: 0;
+    width: 100%;
+    text-align: center;
+  }
   .stLabel {
     display: block;
     position: absolute;
