@@ -297,13 +297,14 @@ function DayEditorModal({
         endTime,
       });
     } else {
-      // available — the only per-day setting now is the price nudge. A non-zero
-      // % stores the adjustment; zero clears the entry back to a normal day.
-      if (adjustPct !== 0) {
-        onSave({ price_adjust_pct: clampPct(adjustPct) });
-      } else {
-        onSave(null);
-      }
+      // available — MERGE, don't replace. This date may already carry a
+      // bookings_available count that real approvals have decremented; editing
+      // the price nudge here must not wipe it. Keep that field, set/clear the
+      // %, and drop the whole entry only when nothing is left to store.
+      const next: MobileDayData = {};
+      if (dayData.bookings_available != null) next.bookings_available = dayData.bookings_available;
+      if (adjustPct !== 0) next.price_adjust_pct = clampPct(adjustPct);
+      onSave(Object.keys(next).length > 0 ? next : null);
     }
   }
 
