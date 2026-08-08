@@ -32,7 +32,9 @@ import {
   type MobileBookingDays,
   type MobileDayData,
   windowLabel,
+  packageTiers,
 } from './bookingSettings';
+import { currencySymbol } from '@/lib/constants';
 import MobileBookingForm from './MobileBookingFormView';
 import BookingLoginGate from './BookingLoginGate';
 
@@ -113,6 +115,26 @@ function isInRange(y: number, m: number, windowMonths: number): boolean {
   return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
 }
 
+// One package's price picture for the day-editor preview: its duration tiers,
+// or a "by request" flag when it has no fixed price. Deduped by title across
+// event-type categories so the DJ sees each package once.
+type PreviewPkg = { title: string; byRequest: boolean; tiers: { hours: number; price: number }[] };
+function buildPreviewPackages(mobPackages: Record<string, unknown[]> | undefined | null): PreviewPkg[] {
+  if (!mobPackages) return [];
+  const seen = new Set<string>();
+  const out: PreviewPkg[] = [];
+  for (const cat of Object.keys(mobPackages)) {
+    for (const pkg of (mobPackages[cat] || []) as Array<{ title?: string; reqAll?: boolean }>) {
+      const title = (pkg?.title || '').trim();
+      if (!title || seen.has(title)) continue;
+      seen.add(title);
+      const tiers = packageTiers(pkg as never);
+      out.push({ title, byRequest: !!pkg?.reqAll || tiers.length === 0, tiers });
+    }
+  }
+  return out;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────
@@ -137,6 +159,14 @@ export default function MobilePublicCalendar({
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
   const defaultBookingsPerDay = bookingSettings.mob_bookings_per_day || 1;
+
+  // Package price picture + currency for the owner day-editor's "See new prices"
+  // preview. Computed once from the DJ's packages.
+  const previewPackages = useMemo(
+    () => buildPreviewPackages((bookingSettings as { mob_packages?: Record<string, unknown[]> }).mob_packages),
+    [bookingSettings],
+  );
+  const previewCur = currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency);
 
   // bookingDays is local state so owners can mutate it (quick-mark + edit).
   // For non-owners this never changes — initialized once from props.
@@ -576,6 +606,8 @@ export default function MobilePublicCalendar({
         <OwnerDayEditModal
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
+          previewPackages={previewPackages}
+          cur={previewCur}
           onClose={() => setOwnerEditKey(null)}
           onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
         />
@@ -1013,47 +1045,41 @@ function RollingMonthsView({
 
 // ─────────────────────────────────────────────────────────────────────────
 // OwnerDayEditModal — opens when the profile owner clicks the ✏️ pencil
-// on a calendar cell. Lets them set the day's status (Available / Unavailable /
-// Booked) and configure capacity (avail) or event details (booked).
-//
-// Faithful port of vanilla djp-mob-public.js mobPubOwnerEdit + mobPubOwnerSaveDay.
+// on a calendar cell. Sets the day's price nudge, or marks it "booked" (closed
+// to new bookings). Available/Unavailable are the cell's own ✕/✓ toggle.
 // ─────────────────────────────────────────────────────────────────────────
-
-type DayStatus = 'available' | 'unavailable' | 'booked';
 
 function OwnerDayEditModal({
   dateKey,
   dayData,
+  previewPackages,
+  cur,
   onClose,
   onSave,
 }: {
   dateKey: string;
   dayData: MobileDayData;
+  previewPackages: PreviewPkg[];
+  cur: string;
   onClose: () => void;
   // Pass null to delete this day's override (default capacity), otherwise
   // the new MobileDayData to write.
   onSave: (update: MobileDayData | null) => void;
 }) {
   // Initial status derived from current dayData
-  const initialStatus: DayStatus = dayData.booked
-    ? 'booked'
-    : dayData.unavailable
-    ? 'unavailable'
-    : 'available';
-  const [status, setStatus] = useState<DayStatus>(initialStatus);
+  // OPEN (optional price nudge) or BOOKED (closed to new bookings, red).
+  // Available/Unavailable are the ✕/✓ toggle on the calendar cell, not here.
+  const [booked, setBooked] = useState<boolean>(!!dayData.booked);
 
-  // Available-day setting: the signed per-date price nudge (0 = normal price).
+  // Signed per-date price nudge (0 = normal price), clamped like the input.
   const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
   const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
-
-  // Booked-day fields
-  const [eventName, setEventName] = useState(dayData.eventName || '');
-  const [isPrivate, setIsPrivate] = useState(dayData.location === 'Private');
-  const [location, setLocation] = useState(
-    dayData.location && dayData.location !== 'Private' ? dayData.location : ''
-  );
-  const [startTime, setStartTime] = useState(dayData.startTime || '');
-  const [endTime, setEndTime] = useState(dayData.endTime || '');
+  // "See new prices" box is CLOSED until the DJ opens it.
+  const [showPrices, setShowPrices] = useState(false);
+  // If every package is "by request" (no fixed price), there's nothing to raise
+  // or lower — hide the % control and say so instead.
+  const pkgs = previewPackages || [];
+  const canAdjust = !(pkgs.length > 0 && pkgs.every((p) => p.byRequest));
 
   // Format the date label e.g. "Friday, April 24, 2026"
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1065,22 +1091,18 @@ function OwnerDayEditModal({
   });
 
   function handleSave() {
-    if (status === 'unavailable') {
-      onSave({ unavailable: true });
-    } else if (status === 'booked') {
-      onSave({
-        booked: true,
-        eventName: eventName.trim(),
-        location: isPrivate ? 'Private' : location.trim(),
-        startTime,
-        endTime,
-      });
+    if (booked) {
+      // Close the date to NEW bookings + mark it red. Existing bookings and
+      // pending requests are untouched — the DJ still confirms those from their
+      // Booking Requests at their discretion.
+      onSave({ booked: true });
     } else {
-      // Available — MERGE, don't replace: preserve any bookings_available count
-      // that real approvals have decremented, and only set/clear the price
-      // nudge. Drop the whole entry when nothing is left to store.
+      // Open — MERGE, don't replace: preserve any bookings_available count that
+      // real approvals decremented and any unavailable flag from the calendar
+      // cell; only set/clear the price nudge. Drop the entry when nothing's left.
       const next: MobileDayData = {};
       if (dayData.bookings_available != null) next.bookings_available = dayData.bookings_available;
+      if (dayData.unavailable) next.unavailable = true;
       if (adjustPct !== 0) next.price_adjust_pct = clampPct(adjustPct);
       onSave(Object.keys(next).length > 0 ? next : null);
     }
@@ -1091,6 +1113,7 @@ function OwnerDayEditModal({
       <div
         className={styles.ownerModalInner}
         onClick={(e) => e.stopPropagation()}
+        style={{ background: '#000', border: '1px solid rgba(255,255,255,.16)' }}
       >
         <div className={styles.ownerModalHeader}>
           <div className={styles.ownerModalDate}>{dateLabel}</div>
@@ -1104,37 +1127,7 @@ function OwnerDayEditModal({
           </button>
         </div>
 
-        <div className={styles.ownerModalRadios}>
-          <label className={styles.ownerModalRadio}>
-            <input
-              type="radio"
-              name="ownerEditStatus"
-              checked={status === 'available'}
-              onChange={() => setStatus('available')}
-            />
-            <span className={styles.ownerModalRadioAvail}>Available</span>
-          </label>
-          <label className={styles.ownerModalRadio}>
-            <input
-              type="radio"
-              name="ownerEditStatus"
-              checked={status === 'unavailable'}
-              onChange={() => setStatus('unavailable')}
-            />
-            <span className={styles.ownerModalRadioUnavail}>Unavailable</span>
-          </label>
-          <label className={styles.ownerModalRadio}>
-            <input
-              type="radio"
-              name="ownerEditStatus"
-              checked={status === 'booked'}
-              onChange={() => setStatus('booked')}
-            />
-            <span className={styles.ownerModalRadioBooked}>Booked</span>
-          </label>
-        </div>
-
-        {status === 'available' && (
+        {!booked && canAdjust && (
           <div className={styles.ownerModalField}>
             <label className={styles.ownerModalLabel}>
               Price for this day
@@ -1171,66 +1164,87 @@ function OwnerDayEditModal({
             </div>
             <span className={styles.ownerModalHint}>
               {adjustPct === 0
-                ? 'Charge more or less for a booking on this date. Folded silently into the price — never shown as a discount or surcharge.'
+                ? 'Charge more or less for a booking on this date — 0% is your normal rate. Built straight into the price the client sees, never shown as a discount or surcharge.'
                 : `${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
+            </span>
+
+            {pkgs.some((p) => !p.byRequest) && (
+              <div style={{ marginTop: '.6rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPrices((s) => !s)}
+                  aria-expanded={showPrices}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.5rem .7rem', background: 'rgba(255,255,255,.04)', border: 'none', color: '#c9c9d4', fontSize: '.72rem', letterSpacing: '.04em', cursor: 'pointer' }}
+                >
+                  <span>See new prices</span>
+                  <span style={{ color: 'var(--muted)', fontSize: '.7rem' }}>{showPrices ? '▴' : '▾'}</span>
+                </button>
+                {showPrices && (
+                  <div style={{ padding: '.35rem .7rem .55rem' }}>
+                    {pkgs.map((p) => (
+                      p.byRequest ? (
+                        <div key={p.title} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                          <span style={{ color: '#e6e6ee' }}>{p.title}</span>
+                          <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>By request</span>
+                        </div>
+                      ) : (
+                        p.tiers.map((t) => (
+                          <div key={`${p.title}-${t.hours}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                            <span style={{ color: '#e6e6ee' }}>{p.title} · {t.hours}hr</span>
+                            <span>
+                              <span style={{ color: 'var(--muted)', textDecoration: adjustPct !== 0 ? 'line-through' : 'none' }}>{cur}{t.price.toLocaleString()}</span>
+                              {adjustPct !== 0 && (
+                                <span style={{ color: 'var(--neon,#00e0a4)' }}> {cur}{Number((t.price * (1 + adjustPct / 100)).toFixed(2)).toLocaleString()}</span>
+                              )}
+                            </span>
+                          </div>
+                        ))
+                      )
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!booked && !canAdjust && (
+          <div className={styles.ownerModalField}>
+            <span className={styles.ownerModalHint}>
+              Your packages are all “by request”, so there’s no set price to raise or lower for this date — clients still send a request and you quote them.
             </span>
           </div>
         )}
 
-        {status === 'booked' && (
-          <>
-            <div className={styles.ownerModalField}>
-              <label className={styles.ownerModalLabel}>Event Name</label>
-              <input
-                type="text"
-                placeholder="Wedding Reception..."
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                className={styles.ownerModalTextInput}
-              />
-            </div>
-            <div className={styles.ownerModalField}>
-              <label className={styles.ownerModalRadio} style={{ marginBottom: '.35rem' }}>
-                <input
-                  type="checkbox"
-                  checked={isPrivate}
-                  onChange={(e) => setIsPrivate(e.target.checked)}
-                />
-                <span className={styles.ownerModalLabel} style={{ margin: 0 }}>
-                  Private Location
-                </span>
-              </label>
-              <input
-                type="text"
-                placeholder="Location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={isPrivate}
-                className={styles.ownerModalTextInput}
-              />
-            </div>
-            <div className={styles.ownerModalTimeRow}>
-              <div>
-                <label className={styles.ownerModalLabel}>Start Time</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className={styles.ownerModalTextInput}
-                />
-              </div>
-              <div>
-                <label className={styles.ownerModalLabel}>End Time</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={styles.ownerModalTextInput}
-                />
-              </div>
-            </div>
-          </>
-        )}
+        {/* Booked = close the date to NEW bookings. Single toggle, no fields. */}
+        <div className={styles.ownerModalField}>
+          <button
+            type="button"
+            onClick={() => setBooked((b) => !b)}
+            aria-pressed={booked}
+            style={{
+              width: '100%',
+              padding: '.7rem',
+              borderRadius: 8,
+              border: `1px solid ${booked ? '#ff5f5f' : 'rgba(255,95,95,.5)'}`,
+              background: booked ? 'rgba(255,95,95,.16)' : 'rgba(255,95,95,.06)',
+              color: '#ff5f5f',
+              fontWeight: 600,
+              fontSize: '.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '.45rem',
+            }}
+          >
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ff5f5f', display: 'inline-block' }} />
+            {booked ? 'Booked — closed to new bookings (tap to reopen)' : 'Mark this day as booked'}
+          </button>
+          <span className={styles.ownerModalHint}>
+            Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.
+          </span>
+        </div>
 
         <div className={styles.ownerModalBtns}>
           <button
