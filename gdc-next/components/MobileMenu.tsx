@@ -188,6 +188,11 @@ export default function MobileMenu() {
   // so we do NOT gate on bookingEnabled (the owner's plan is what grants access).
   const isStaff = (user?.role as string | undefined) === 'teammate';
   const showDjBookings = (isDj && bookingEnabled) || isStaff;
+  // The booking DASHBOARD (Upcoming + Past Bookings) stays reachable for ANY DJ,
+  // subscribed or not — a lapsed DJ still has to service the bookings they
+  // already took. Only starting a NEW booking (Add Booking Manually) needs an
+  // active plan, so that one keeps the stricter showDjBookings gate below.
+  const showDjDashboard = isDj || isStaff;
   // Show a count next to the "Upcoming Bookings" / "Upcoming Events" link
   // so the user can see at a glance how many events they have queued.
   const upcomingCount = useUpcomingBookingCount(
@@ -269,7 +274,7 @@ export default function MobileMenu() {
             >
               Manage
             </div>
-            {showDjBookings && (
+            {showDjDashboard && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
                 <IconClock />Dashboard{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
@@ -279,7 +284,7 @@ export default function MobileMenu() {
                 <IconCalendar />Booking Requests
               </Link>
             )}
-            {showDjBookings && (
+            {showDjDashboard && (
               <Link href="/past-bookings" onClick={close} className="mobile-menu-item">
                 <IconArchive />Past Bookings
               </Link>
