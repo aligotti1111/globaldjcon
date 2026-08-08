@@ -171,16 +171,25 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               // "Review & send" here walks the DJ through picking a template
               // and signing it, and only then does prepare come back with
               // NO_CLIENT_EMAIL. All that work to be told there's no recipient.
-              : blockedNoHost
-                ? (onAddHost || onEdit
-                    ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
-                    : [])
-                : [{ label: 'Review & send contract', run: () => runContract('open') }],
+              : !canPro
+                // Subscription lapsed → no NEW contracts. Everything above this
+                // branch (download, audit log, resend, copy link) still runs, so
+                // a contract already sent stays fully obtainable — only creating
+                // and sending a fresh one needs an active plan. Renewing restores
+                // sending.
+                ? [{ label: 'Renew to send contracts', run: () => { window.location.href = '/subscribe'; } }]
+                : blockedNoHost
+                  ? (onAddHost || onEdit
+                      ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                      : [])
+                  : [{ label: 'Review & send contract', run: () => runContract('open') }],
       // Named here rather than left to an absent button. The step is visible
       // precisely so it CAN say this.
-      hint: blockedNoHost && !archive
-        ? 'Add host email and name to send contract.'
-        : undefined,
+      hint: (!canPro && !archive && !trulySigned && !isDone && !awaiting)
+        ? 'Renew your subscription to send new contracts. Contracts already sent stay downloadable.'
+        : blockedNoHost && !archive
+          ? 'Add host email and name to send contract.'
+          : undefined,
     });
   }
   // Payment step — shown when a deposit is part of THIS booking's pipeline,
@@ -556,13 +565,11 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // the wrong problem.
       hint: plannerErr
         ? plannerErr
-        : !canPro
-          ? 'Planners are a Pro feature.'
-          : blockedNoHost
-            ? (planner
-                ? 'Add host email and name to resend. The link still works.'
-                : 'Add host email and name to send planner.')
-            : undefined,
+        : blockedNoHost
+          ? (planner
+              ? 'Add host email and name to resend. The link still works.'
+              : 'Add host email and name to send planner.')
+          : undefined,
       // Two buttons, one name. It's the Planner & Playlist throughout — "Open"
       // to view/fill it, "Download" to get the PDF. No "run sheet" jargon.
       //
@@ -593,20 +600,16 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                   navigator.clipboard?.writeText(abs).catch(() => {});
                 },
               },
-              // A lapsed DJ keeps Open, Download and Copy. The planner is their
-              // client's answers on their booking — a subscription buys SENDING
-              // one, not seeing the ones already in.
-              ...(!canPro
-                ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
-                : blockedNoHost
-                  ? (onAddHost || onEdit
-                      ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
-                      : [])
-                  : [{ label: plannerBusy ? 'Sending…' : 'Send reminder email', run: requestPlanner }]),
+              // Sending the planner stays available on an existing booking even
+              // after the subscription lapses (alongside Open, Download and Copy)
+              // — only NEW contracts are gated by an active plan.
+              ...(blockedNoHost
+                ? (onAddHost || onEdit
+                    ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
+                    : [])
+                : [{ label: plannerBusy ? 'Sending…' : 'Send reminder email', run: requestPlanner }]),
             ]
-          : !canPro
-            ? [{ label: 'See Pro plans', run: () => { window.location.href = '/subscribe'; } }]
-            : blockedNoHost
+          : blockedNoHost
               ? (onAddHost || onEdit
                   ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                   : [])
