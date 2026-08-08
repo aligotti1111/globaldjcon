@@ -232,7 +232,6 @@ export default function MobileOwnerCalendar({
         <DayEditorModal
           dateKey={editorKey}
           dayData={bookingDays[editorKey] || {}}
-          defaultPerDay={defaultBookingsPerDay}
           onClose={() => setEditorKey(null)}
           onSave={(data) => saveDayEditor(editorKey, data)}
         />
@@ -249,13 +248,11 @@ export default function MobileOwnerCalendar({
 function DayEditorModal({
   dateKey,
   dayData,
-  defaultPerDay,
   onClose,
   onSave,
 }: {
   dateKey: string;
   dayData: MobileDayData;
-  defaultPerDay: number;
   onClose: () => void;
   onSave: (data: MobileDayData | null) => void;
 }) {
@@ -263,9 +260,10 @@ function DayEditorModal({
   const initialMode: Mode = dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available';
 
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [perDay, setPerDay] = useState<number>(
-    dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay
-  );
+  // Signed % this date's price is nudged by (0 = normal price). Bounded to
+  // -100 (free) … +500 so a fat-fingered value can't blow up the quote.
+  const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
+  const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
   const [eventName, setEventName] = useState(dayData.eventName || '');
   const [isPrivate, setIsPrivate] = useState(dayData.location === 'Private');
   const [location, setLocation] = useState(dayData.location !== 'Private' ? (dayData.location || '') : '');
@@ -277,6 +275,15 @@ function DayEditorModal({
   const formattedDate = dateObj.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
+
+  // The − / + steppers next to the % input.
+  const stepBtnStyle: React.CSSProperties = {
+    width: 36, height: 36, flexShrink: 0,
+    borderRadius: 6, border: '1px solid var(--border)',
+    background: 'var(--deep)', color: 'var(--white)',
+    fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  };
 
   function handleSave() {
     if (mode === 'unavailable') {
@@ -290,13 +297,12 @@ function DayEditorModal({
         endTime,
       });
     } else {
-      // available
-      if (perDay <= 0) {
-        onSave({ unavailable: true });
-      } else if (perDay !== defaultPerDay) {
-        onSave({ bookings_available: perDay });
+      // available — the only per-day setting now is the price nudge. A non-zero
+      // % stores the adjustment; zero clears the entry back to a normal day.
+      if (adjustPct !== 0) {
+        onSave({ price_adjust_pct: clampPct(adjustPct) });
       } else {
-        onSave(null); // delete the entry — back to default
+        onSave(null);
       }
     }
   }
@@ -345,18 +351,42 @@ function DayEditorModal({
         {mode === 'available' && (
           <div className={styles.modalField}>
             <label className={`${styles.modalLabel} ${styles.modalLabelNeon}`}>
-              Bookings available this day
+              Price for this day
             </label>
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={perDay}
-              onChange={(e) => setPerDay(parseInt(e.target.value, 10) || 0)}
-              className={styles.modalNumberInput}
-            />
-            <span style={{ fontSize: '.75rem', color: 'var(--muted)', marginLeft: '.5rem' }}>
-              Set to 0 to mark as unavailable
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setAdjustPct((v) => clampPct(v - 5))}
+                aria-label="Lower the price for this day"
+                style={stepBtnStyle}
+              >−</button>
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min={-100}
+                  max={500}
+                  step={5}
+                  value={adjustPct}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setAdjustPct(Number.isFinite(n) ? clampPct(n) : 0);
+                  }}
+                  className={styles.modalNumberInput}
+                  style={{ width: 90, textAlign: 'center', paddingRight: '1.4rem' }}
+                />
+                <span style={{ position: 'absolute', right: '.6rem', color: 'var(--muted)', fontSize: '.85rem', pointerEvents: 'none' }}>%</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setAdjustPct((v) => clampPct(v + 5))}
+                aria-label="Raise the price for this day"
+                style={stepBtnStyle}
+              >+</button>
+            </div>
+            <span style={{ display: 'block', marginTop: '.45rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+              {adjustPct === 0
+                ? 'Charge more or less for a booking on this date. It’s folded silently into the price — the client never sees it as a discount or surcharge.'
+                : `${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal. The client just sees the adjusted price.`}
             </span>
           </div>
         )}
