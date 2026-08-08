@@ -777,7 +777,7 @@ function SingleMonthView({
                 )}
                 {priceEdited && (
                   <span style={{ fontSize: 9, lineHeight: 1.15, color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
-                    {pct > 0 ? '+' : ''}{pct}% price
+                    {pct > 0 ? `+${pct}% increase` : `${pct}% decrease`}
                   </span>
                 )}
               </div>
