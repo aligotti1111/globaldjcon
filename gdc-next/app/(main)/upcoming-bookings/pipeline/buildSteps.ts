@@ -399,7 +399,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // that explains WHY the stage says "Skipped". Otherwise, once money has
       // been asked for, report received/asked.
       info: (depositSkipped && balanceRequested)
-        ? 'Skipped automatically — the balance was requested for the full amount, so there’s no separate deposit to collect.'
+        ? 'Skipped — the full balance was requested, so no separate deposit is being collected.'
         : depositRow
           ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
           : undefined,

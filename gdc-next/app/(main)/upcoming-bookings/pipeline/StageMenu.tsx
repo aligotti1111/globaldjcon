@@ -61,7 +61,7 @@ export default function StageMenu({
         <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
         {st.info && (
           <>
-            <div style={{ color: 'var(--white,#fff)', fontSize: '.78rem', fontWeight: 700, padding: '.45rem .6rem .35rem' }}>
+            <div style={{ color: 'var(--white,#fff)', fontSize: '.75rem', fontWeight: 600, lineHeight: 1.4, whiteSpace: 'normal', maxWidth: 190, padding: '.45rem .6rem .35rem' }}>
               {st.info}
             </div>
             <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
