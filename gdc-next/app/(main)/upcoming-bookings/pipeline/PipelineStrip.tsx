@@ -91,6 +91,10 @@ export default function PipelineStrip({
         );
         return (
           <div key={st.key} className={styles.stCell}>
+            {/* Label sits on the cell's top edge (mobile) — a direct child of
+                the cell so it can be absolutely positioned on the border line,
+                not tucked inside the icon button. Hidden on desktop. */}
+            <span className={styles.stLabel}>{shortLabel(st.key)}</span>
             <div className={isNew ? styles.stIconBox : undefined} style={{ position: 'relative', flexShrink: 0 }}>
               {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
               {hasMenu ? (
@@ -113,13 +117,11 @@ export default function PipelineStrip({
                     setMenuOpenKey(st.key);
                   }}
                 >
-                  <span className={styles.stLabel}>{shortLabel(st.key)}</span>
                   <span className={styles.stTop}>{inner}</span>
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </button>
               ) : (
                 <div className={styles.stBtn} style={{ cursor: 'default' }} title={stageLabel(st.key, djType)}>
-                  <span className={styles.stLabel}>{shortLabel(st.key)}</span>
                   <span className={styles.stTop}>{inner}</span>
                   <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
                 </div>
