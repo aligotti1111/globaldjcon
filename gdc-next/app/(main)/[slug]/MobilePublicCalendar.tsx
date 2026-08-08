@@ -124,10 +124,12 @@ function buildPreviewPackages(mobPackages: Record<string, unknown[]> | undefined
   const seen = new Set<string>();
   const out: PreviewPkg[] = [];
   for (const cat of Object.keys(mobPackages)) {
-    for (const pkg of (mobPackages[cat] || []) as Array<{ title?: string; reqAll?: boolean }>) {
+    const list = mobPackages[cat];
+    if (!Array.isArray(list)) continue;
+    for (const pkg of list as Array<{ title?: string; reqAll?: boolean }>) {
       const title = (pkg?.title || '').trim();
-      if (!title || seen.has(title)) continue;
-      seen.add(title);
+      if (!title || seen.has(title.toLowerCase())) continue;
+      seen.add(title.toLowerCase());
       const tiers = packageTiers(pkg as never);
       out.push({ title, byRequest: !!pkg?.reqAll || tiers.length === 0, tiers });
     }
@@ -307,9 +309,16 @@ export default function MobilePublicCalendar({
     if (cur && cur.booked) return;
     const next: MobileBookingDays = { ...bookingDays };
     if (cur && cur.unavailable) {
-      delete next[key];
+      // Marking available again: drop only the unavailable flag, keep any price
+      // nudge / capacity the day carries. Delete the entry only if nothing's left.
+      const rest = { ...cur };
+      delete rest.unavailable;
+      if (Object.keys(rest).length > 0) next[key] = rest;
+      else delete next[key];
     } else {
-      next[key] = { unavailable: true };
+      // MERGE the flag on so an existing price_adjust_pct / bookings_available
+      // survives being marked unavailable.
+      next[key] = { ...cur, unavailable: true };
     }
     setBookingDays(next);
     await persistBookingDays(next);
@@ -1076,10 +1085,10 @@ function OwnerDayEditModal({
   const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
   // "See new prices" box is CLOSED until the DJ opens it.
   const [showPrices, setShowPrices] = useState(false);
-  // If every package is "by request" (no fixed price), there's nothing to raise
-  // or lower — hide the % control and say so instead.
+  // The % control only makes sense when at least one package has a FIXED price.
+  // No packages at all (pure-quote DJ) or all "by request" → nothing to adjust.
   const pkgs = previewPackages || [];
-  const canAdjust = !(pkgs.length > 0 && pkgs.every((p) => p.byRequest));
+  const canAdjust = pkgs.some((p) => !p.byRequest);
 
   // Format the date label e.g. "Friday, April 24, 2026"
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1091,21 +1100,22 @@ function OwnerDayEditModal({
   });
 
   function handleSave() {
+    // MERGE from the existing record — never clobber fields other writers set
+    // (approval capacity in bookings_available, an event name written when a
+    // request was approved, an unavailable flag from the ✕ toggle). This modal
+    // only OWNS `booked` and `price_adjust_pct`.
+    const next: MobileDayData = { ...dayData };
     if (booked) {
-      // Close the date to NEW bookings + mark it red. Existing bookings and
-      // pending requests are untouched — the DJ still confirms those from their
-      // Booking Requests at their discretion.
-      onSave({ booked: true });
+      // Close to new bookings + red. Existing bookings and pending requests are
+      // untouched — the DJ still confirms those from Booking Requests.
+      next.booked = true;
+      delete next.unavailable; // booked supersedes an unavailable flag
     } else {
-      // Open — MERGE, don't replace: preserve any bookings_available count that
-      // real approvals decremented and any unavailable flag from the calendar
-      // cell; only set/clear the price nudge. Drop the entry when nothing's left.
-      const next: MobileDayData = {};
-      if (dayData.bookings_available != null) next.bookings_available = dayData.bookings_available;
-      if (dayData.unavailable) next.unavailable = true;
+      delete next.booked;
       if (adjustPct !== 0) next.price_adjust_pct = clampPct(adjustPct);
-      onSave(Object.keys(next).length > 0 ? next : null);
+      else delete next.price_adjust_pct;
     }
+    onSave(Object.keys(next).length > 0 ? next : null);
   }
 
   return (
@@ -1181,6 +1191,9 @@ function OwnerDayEditModal({
                 </button>
                 {showPrices && (
                   <div style={{ padding: '.35rem .7rem .55rem' }}>
+                    <div style={{ fontSize: '.64rem', color: 'var(--muted)', padding: '.2rem 0 .3rem', lineHeight: 1.4 }}>
+                      Base package prices. Add-ons, deposit, tax and any active sale/promo are applied on top at booking.
+                    </div>
                     {pkgs.map((p) => (
                       p.byRequest ? (
                         <div key={p.title} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
@@ -1188,8 +1201,8 @@ function OwnerDayEditModal({
                           <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>By request</span>
                         </div>
                       ) : (
-                        p.tiers.map((t) => (
-                          <div key={`${p.title}-${t.hours}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                        p.tiers.map((t, ti) => (
+                          <div key={`${p.title}-${t.hours}-${ti}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
                             <span style={{ color: '#e6e6ee' }}>{p.title} · {t.hours}hr</span>
                             <span>
                               <span style={{ color: 'var(--muted)', textDecoration: adjustPct !== 0 ? 'line-through' : 'none' }}>{cur}{t.price.toLocaleString()}</span>
@@ -1211,7 +1224,9 @@ function OwnerDayEditModal({
         {!booked && !canAdjust && (
           <div className={styles.ownerModalField}>
             <span className={styles.ownerModalHint}>
-              Your packages are all “by request”, so there’s no set price to raise or lower for this date — clients still send a request and you quote them.
+              {pkgs.length === 0
+                ? 'You don’t have fixed-price packages, so bookings are quote-only — there’s no set price to raise or lower for this date.'
+                : 'Your packages are all “by request”, so there’s no set price to raise or lower for this date — clients still send a request and you quote them.'}
             </span>
           </div>
         )}
