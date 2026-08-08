@@ -369,10 +369,14 @@ export default function BookingTab({
         (prev) => {
           const prevDays = (prev.mob_booking_days || {}) as MobileBookingDays;
           const recomputed: MobileBookingDays = {};
-          // Preserve manual unavailable blocks and owner-marked events
-          // (eventName set, no real bookings on that date).
+          // Preserve owner-set flags that this recompute doesn't own: manual
+          // unavailable blocks, manually-booked days, per-date price nudges, and
+          // owner-marked events. Without this, changing bookings-per-day would
+          // silently un-block booked days and wipe every price adjustment.
           for (const [date, day] of Object.entries(prevDays) as [string, MobileBookingDays[string]][]) {
             if (day.unavailable) { recomputed[date] = day; continue; }
+            if (day.booked) { recomputed[date] = day; continue; }
+            if (day.price_adjust_pct != null && day.price_adjust_pct !== 0) { recomputed[date] = day; continue; }
             if (day.eventName && !countByDate[date]) { recomputed[date] = day; continue; }
             // else: dropped; re-added below if it has real bookings.
           }
