@@ -51,6 +51,7 @@ import {
   getPackageCategory,
   resolvePackage,
   calcPrice,
+  applyDayPriceAdjust,
   hoursBetween,
   halfHoursBetween,
   durationLabel,
@@ -358,12 +359,16 @@ export default function MobileBookingForm({
       ? (resolvePackage(packagesAll, eventType, selectedPkgIdx) as unknown as MobilePackage | null)
       : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
+  // Signed % the DJ set on THIS date (0 when none). Folded silently into every
+  // price shown for the date so the client sees only the adjusted number.
+  const dayAdjustPct = bookingSettings.mob_booking_days?.[dateKey]?.price_adjust_pct ?? 0;
   const wantsCocktail = isWedding && cocktailNeeded === true;
   const wantsCeremony = isWedding && ceremonyNeeded === true;
   const priceResult = useMemo(() => {
     if (!selectedPkg || !formReadyForPackages) return null;
-    return calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
-  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart, wantsCeremony]);
+    const base = calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
+    return applyDayPriceAdjust(base, dayAdjustPct);
+  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart, wantsCeremony, dayAdjustPct]);
 
   // Discount layer — applied on top of the computed price. Better of an active
   // sale and the applied promo code wins (no stacking). Deposit is taken from
@@ -549,7 +554,10 @@ export default function MobileBookingForm({
     // the booking is a pure quote request, same shape vanilla uses for
     // is_quote bookings (price null, deposit null, package_title null).
     const finalPrice = hasAnyPackages && selectedPkg
-      ? calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony)
+      ? applyDayPriceAdjust(
+          calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
+          dayAdjustPct,
+        )!
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
     // Apply the discount to the final total; deposit comes off the discounted
@@ -1497,6 +1505,7 @@ export default function MobileBookingForm({
               wantsCocktail={wantsCocktail}
               cocktailStart={cocktailStart}
               wantsCeremony={wantsCeremony}
+              dayAdjustPct={dayAdjustPct}
               cur={cur}
             />
           </div>
@@ -1741,6 +1750,7 @@ function PackagesSection({
   wantsCocktail,
   cocktailStart,
   wantsCeremony,
+  dayAdjustPct,
   cur,
 }: {
   formReady: boolean;
@@ -1756,6 +1766,7 @@ function PackagesSection({
   wantsCocktail: boolean;
   cocktailStart: string;
   wantsCeremony: boolean;
+  dayAdjustPct: number;
   cur: string;
 }) {
   if (!formReady) {
@@ -1817,7 +1828,10 @@ function PackagesSection({
           if (pkg.reqAll) {
             priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
           } else {
-            const cardPrice = calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
+            const cardPrice = applyDayPriceAdjust(
+              calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
+              dayAdjustPct,
+            )!;
             if (cardPrice.isQuote || cardPrice.price == null) {
               if (packageTiers(pkg).length > 0) {
                 priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;

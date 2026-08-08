@@ -173,6 +173,26 @@ export interface PriceResult {
   ceremonyAddon?: number;    // wedding ceremony-music charge added to price (0 if none)
 }
 
+// Per-date price nudge. The DJ can set a signed percentage on a specific
+// calendar date (MobileDayData.price_adjust_pct); it scales the whole computed
+// quote for a booking on that date — price and its parts — with NO discount
+// label anywhere. The SAME function runs on the client (for the live preview)
+// and in the create route (authoritative quoted_rate), so the two totals match
+// to the cent and never trip the create-route drift guard. A pct of 0 / missing
+// is a no-op and returns the result untouched.
+export function applyDayPriceAdjust(pr: PriceResult | null, pct: number | null | undefined): PriceResult | null {
+  if (!pr || pr.price == null || !pct || !Number.isFinite(pct)) return pr;
+  const factor = 1 + pct / 100;
+  const round2 = (n: number) => Number((n * factor).toFixed(2));
+  return {
+    ...pr,
+    price: round2(pr.price),
+    depositAmount: pr.depositAmount == null ? pr.depositAmount : round2(pr.depositAmount),
+    cocktailAddon: round2(pr.cocktailAddon || 0),
+    ceremonyAddon: round2(pr.ceremonyAddon || 0),
+  };
+}
+
 // A package may carry the ceremony-music add-on fields alongside the cocktail
 // ones. They live in the package JSON (set in PackageEditor) but aren't on the
 // public MobilePackage type, so read them through this narrow cast.

@@ -46,6 +46,11 @@ export interface MobileDayData {
   endTime?: string;
   location?: string;        // 'Private' hides eventName publicly
   bookings_available?: number; // remaining capacity for this date
+  // Signed percentage the DJ nudges THIS date's booking price by (e.g. +20 or
+  // -10). Folded silently into the quoted price for bookings on this date — it
+  // is deliberately NOT a discount/sale (no code, label, or strike-through), so
+  // the client just sees the adjusted number as the price.
+  price_adjust_pct?: number;
 }
 
 export type MobileBookingDays = Record<string, MobileDayData>;
