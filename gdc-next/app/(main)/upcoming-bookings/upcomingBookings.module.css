@@ -1366,8 +1366,10 @@ select.input {
     margin-left: -.7rem;
     margin-right: -.7rem;
     padding: .7rem 1rem;
-    /* Gap between the framed icon cells. */
-    gap: 7px;
+    /* NO column gap: each cell's top line must butt against its neighbour's so
+       the ledge reads as ONE continuous line across the band, broken only where
+       a label knocks it out — not a row of separate dashes. */
+    gap: 0;
     /* SOLID, not rgba white. A translucent overlay composites against whatever
        is behind it — pure black on a collapsed row, but the lighter #16161f
        card surface on an EXPANDED row — so the same band read as two different
