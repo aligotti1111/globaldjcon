@@ -122,7 +122,10 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // 'awaiting' is awaiting_client ONLY. awaiting_dj means the contract
       // exists but the DJ hasn't signed it — it has NOT gone out, so it reads
       // "Not sent" and must not claim to be pending on someone else.
-      caption: isDone ? undefined : awaiting ? 'Pending' : 'Not sent',
+      // Contract shows the word "Complete" under the icon once it's done (the
+      // other columns let the green check speak for itself, but the DJ asked for
+      // the contract to say it outright).
+      caption: isDone ? 'Complete' : awaiting ? 'Pending' : 'Not sent',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
