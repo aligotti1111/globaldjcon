@@ -1376,29 +1376,34 @@ select.input {
     background: #191919;
     border-radius: 0;
   }
-  /* Each stage is its OWN framed box inside the band: label on top, icon,
-     status caption below. A darker fill than the band so the box reads as a
-     tile, not a division of the band. */
+  /* No box — each stage just gets a top line (a ledge) with its label sitting
+     on it, then the icon + status below. position:relative anchors the label;
+     the label's knockout background cuts the line behind the text. */
   .stCell {
     justify-content: center;
     flex-direction: column;
-    border: 1px solid rgba(255, 255, 255, .14);
-    border-radius: 8px;
-    /* No separate fill — the box is just an outline on the band, same shade
-       inside as out. */
+    position: relative;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 0;
     background: transparent;
-    padding: 8px 3px;
+    padding: 12px 3px 0;
   }
   .stBtn { align-items: center; width: 100%; }
   .stCap { width: 100%; text-align: center; }
   .stLabel {
     display: block;
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Knockout matching the band so the label appears to sit ON the line. */
+    background: #191919;
+    padding: 0 6px;
     font-size: 8.5px;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #75758d;
-    margin-bottom: 4px;
-    text-align: center;
+    color: #8a8a9a;
     white-space: nowrap;
     line-height: 1;
   }
