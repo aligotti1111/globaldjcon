@@ -25,6 +25,7 @@ import { getStripe } from '@/lib/stripe/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import {
   usableMethods,
   buildPayLink,
@@ -610,13 +611,19 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         clientEmail: to,
       });
 
+      // Booking progress tracker at the bottom of the confirmation. The ledger
+      // update above has already committed, so the box reflects this payment —
+      // the deposit (or balance) now shows Paid ✓ with the next step flagged.
+      // Same shared box the contract email uses; '' for club bookings.
+      const progressBox = await bookingProgressBox(p.booking_id);
+
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
           from: FROM,
           to,
           subject: status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`,
-          html: shell(content),
+          html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
           attachments: receiptAtt ? [receiptAtt] : undefined,
         });
       } catch { /* non-fatal */ }
