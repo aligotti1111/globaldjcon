@@ -288,13 +288,22 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         admin.auth.admin.getUserById(String(b.requester_id)) as unknown as Promise<{ data: { user: { email?: string } | null } }>,
         5000, 'getUserById',
       ),
-      withTimeout<{ data: { name?: string | null } | null }>(
-        admin.from('users').select('name').eq('id', String(b.requester_id)).maybeSingle() as unknown as Promise<{ data: { name?: string | null } | null }>,
+      withTimeout<{ data: { name?: string | null; contact_email?: string | null } | null }>(
+        admin.from('users').select('name, contact_email').eq('id', String(b.requester_id)).maybeSingle() as unknown as Promise<{ data: { name?: string | null; contact_email?: string | null } | null }>,
         5000, 'requester-name',
       ),
     ]);
+    // Email priority: the auth account email first, then the profile's
+    // contact_email. A host who signed up by PHONE has no auth email but DOES
+    // have a delivery address saved on users.contact_email (the "Email Address"
+    // shown in their account settings) — that's where booking documents go.
+    // Missing this fallback is what wrongly triggered the "we couldn't find a
+    // client email" prompt for phone-signup accounts that had an email on file.
     if (!clientEmail && emailRes.status === 'fulfilled') clientEmail = emailRes.value?.data?.user?.email || '';
-    if (nameRes.status === 'fulfilled') accountName = (nameRes.value?.data?.name || '').trim();
+    if (nameRes.status === 'fulfilled') {
+      accountName = (nameRes.value?.data?.name || '').trim();
+      if (!clientEmail) clientEmail = (nameRes.value?.data?.contact_email || '').trim();
+    }
   }
   // Remember whether the DJ typed this email into the contract modal's
   // "we couldn't find a client email" prompt, rather than it coming from the
