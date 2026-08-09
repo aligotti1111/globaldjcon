@@ -40,7 +40,6 @@ const MORE_HREF = '/upcoming-bookings?filter=activity';
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
-  const [isDesktop, setIsDesktop] = useState(false);
   // Fixed viewport position for the panel. The <header> has overflow:hidden,
   // which would CLIP an absolutely-positioned dropdown hanging below it — so the
   // panel is position:fixed (viewport-relative, unclipped) and anchored to the
@@ -71,16 +70,6 @@ export default function NotificationBell() {
     setOpen((v) => !v);
   }
 
-  // Desktop-only, per the design. Render nothing on narrow screens (the burger
-  // menu owns mobile).
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
-    const on = () => setIsDesktop(mq.matches);
-    on();
-    mq.addEventListener?.('change', on);
-    return () => mq.removeEventListener?.('change', on);
-  }, []);
-
   async function load() {
     try {
       const r = await fetch('/api/dj/new-activity', { cache: 'no-store' });
@@ -106,8 +95,6 @@ export default function NotificationBell() {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
-
-  if (!isDesktop) return null;
 
   const shown = items.slice(0, 6);
   // Badge count = items newer than the last time the bell was opened. After a
@@ -141,7 +128,7 @@ export default function NotificationBell() {
         <div
           role="menu"
           style={{
-            position: 'fixed', top: pos.top, right: pos.right, width: 320,
+            position: 'fixed', top: pos.top, right: pos.right, width: 'min(320px, calc(100vw - 16px))',
             background: '#0d0d14', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12,
             boxShadow: '0 14px 44px rgba(0,0,0,.6)', zIndex: 100000, overflow: 'hidden',
           }}
