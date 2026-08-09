@@ -329,6 +329,9 @@
 
 /* Inbox nav icon */
 .inbox-nav-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:45px; height:45px; border-radius:8px; border:none; color:var(--white); cursor:pointer; background:transparent; transition:all .2s; text-decoration:none; flex-shrink:0; }
+/* DJ toolbar Inbox is hidden on mobile — it lives in the burger menu there,
+   and the notification bell takes the toolbar slot instead. */
+@media(max-width:600px){ .inbox-hide-mobile{ display:none !important; } }
 .inbox-nav-btn:hover { color:var(--neon); }
 .inbox-nav-btn--book { color: var(--neon); }
 .inbox-nav-btn--book:hover { opacity: .8; color: var(--neon); }
