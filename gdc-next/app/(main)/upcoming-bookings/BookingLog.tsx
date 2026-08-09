@@ -91,6 +91,10 @@ export default function BookingLog({ booking, payments }: Props) {
   // effectively skips it — that one is derived from the ledger (timestamped at
   // the balance request), and suppressed if a manual skip was recorded so the
   // same event isn't logged twice.
+  // Marked complete by hand (cash on the night, a transfer outside the app) —
+  // distinct from a confirmed payment in the ledger above.
+  add(booking.deposit_completed_at, 'Deposit marked complete', 'dj');
+  add(booking.deposit_completion_undone_at, 'Deposit completion undone', 'dj');
   add(booking.deposit_skipped_at, 'Deposit skipped', 'dj');
   add(booking.deposit_skip_undone_at, 'Deposit skip undone', 'dj');
   if (!booking.deposit_skipped_at) {
