@@ -374,7 +374,7 @@ export default function PlannerForm({
                 onClick={() => void submit()}
                 disabled={submitting}
               >
-                {submitting ? 'Sending…' : `Send to ${djName}`}
+                {submitting ? 'Sending…' : `✓ Mark finished — notify ${djName}`}
               </button>
             )}
           </footer>
@@ -412,11 +412,34 @@ function Field({
 }) {
   const na = isNa(response);
   const v = responseValue(response);
+  // A question counts as DONE when it's marked N/A or has a real value —
+  // the same rule the progress counter uses. Blank = still incomplete. The
+  // little status dot lets the client see, per question, what's left to fill.
+  const answered = na
+    || (v !== null && v !== undefined
+        && !(typeof v === 'string' && v.trim() === '')
+        && !(Array.isArray(v) && v.length === 0));
 
   return (
     <div className={`${styles.field} ${na ? styles.fieldNa : ''}`}>
       <div className={styles.fieldHead}>
-        <label className={styles.label}>{titleCaseLabel(field.label)}</label>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span
+            aria-hidden="true"
+            title={answered ? 'Done' : 'Still needs an answer'}
+            style={{
+              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, lineHeight: 1,
+              background: answered ? 'var(--neon,#00e0a4)' : 'transparent',
+              color: answered ? '#06231b' : 'transparent',
+              border: answered ? 'none' : '2px solid #d9a441',
+            }}
+          >
+            {answered ? '✓' : ''}
+          </span>
+          <label className={styles.label}>{titleCaseLabel(field.label)}</label>
+        </span>
         {/* Every field gets this. A client can't delete a question the DJ asked
             (spec §7) — but "doesn't apply to us" is a real answer and they need
             a way to give it. */}
