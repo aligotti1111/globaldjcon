@@ -220,8 +220,9 @@ export async function POST(req: Request) {
     try {
       let clientEmail = (booking.host_email || '').trim();
       if (!clientEmail && booking.requester_id) {
-        const { data: au } = await admin.auth.admin.getUserById(String(booking.requester_id));
-        clientEmail = au?.user?.email || '';
+        // Use the shared resolver so phone-signup hosts (no auth email, but an
+        // address saved on users.contact_email) still get the completed contract.
+        clientEmail = (await resolveUserEmail(String(booking.requester_id))) || '';
       }
       if (clientEmail && process.env.RESEND_API_KEY) {
         const cAtt: { filename: string; content: string }[] = [];
