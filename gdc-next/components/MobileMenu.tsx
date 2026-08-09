@@ -111,6 +111,14 @@ function IconMessage() {
     </svg>
   );
 }
+function IconInbox() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
 function IconBell() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
@@ -302,6 +310,11 @@ export default function MobileMenu() {
             {isDj && (
               <Link href="/booking-settings" onClick={close} className="mobile-menu-item">
                 <IconGear />Booking Settings
+              </Link>
+            )}
+            {(isDj || isStaff) && (
+              <Link href="/inbox" onClick={close} className="mobile-menu-item">
+                <IconInbox />Inbox
               </Link>
             )}
             {isDj && (

@@ -167,7 +167,10 @@ export default function Header() {
                       own bookings. */}
                   {(isDj || isTeammate) && <NotificationBell />}
 
-                  <Link href="/inbox" className="inbox-nav-btn" title="Inbox" style={{ textDecoration: 'none' }}>
+                  {/* DJ-side accounts get the bell on the toolbar; their Inbox
+                      moves into the burger menu on mobile, so hide this toolbar
+                      Inbox below the mobile breakpoint for them (hosts keep it). */}
+                  <Link href="/inbox" className={`inbox-nav-btn${(isDj || isTeammate) ? ' inbox-hide-mobile' : ''}`} title="Inbox" style={{ textDecoration: 'none' }}>
                     <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
