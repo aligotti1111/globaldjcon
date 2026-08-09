@@ -725,11 +725,12 @@ async function bookingProgressBox(bookingId: string | undefined | null): Promise
       // Two columns: step name on the LEFT, its status word (+ ✓ on done)
       // right-aligned so "Signed / Paid / Submitted" line up down the right edge.
       const rightCell = s.right ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
-      // width:100% (attr AND style) + a full-width right cell force the status
-      // word to the RIGHT edge of the box; align + text-align both set so every
-      // email client honours it. Left cell shrinks to the step name.
+      // The reliable email trick for left/right on one line in iOS Gmail:
+      // make the LEFT cell greedy (width:100%) so it expands and shoves the
+      // status cell to the far RIGHT edge. The right cell has no width and
+      // just nowraps, so "Signed / Paid / Submitted" all sit against the edge.
       const inner = (s.right || check)
-        ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td align="left" style="font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" width="50%" style="width:50%;font-size:13px;white-space:nowrap;text-align:right;">${rightCell}</td></tr></table>`
+        ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td align="left" width="100%" style="width:100%;font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" style="font-size:13px;white-space:nowrap;text-align:right;">${rightCell}</td></tr></table>`
         : `<span style="font-size:13px;font-weight:${leftWeight};color:${leftColor};">${s.left}</span>`;
       return `${nextTab}${wrapOpen}${inner}</div>`;
     }).join('');
