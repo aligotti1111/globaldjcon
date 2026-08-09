@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
+import { bookingProgressBox } from '@/lib/bookingProgressBox';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -231,6 +232,10 @@ export async function POST(req: Request) {
         const clientName = (booking.requester_name || '').trim() || 'there';
         const dateStr = fmtDate(booking.event_date);
         const where = [booking.venue_name, dateStr].filter(Boolean).join(' — ');
+        // Booking progress tracker at the bottom, so the host sees where the
+        // booking stands (contract now signed → deposit/planner/balance next).
+        // Same shared box the other host emails use; '' for club bookings.
+        const progressBox = await bookingProgressBox(booking.id);
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
           from: FROM,
@@ -242,6 +247,7 @@ export async function POST(req: Request) {
             <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email for your records.</p>
             <p style="color:#666;margin-bottom:24px;">Thanks for booking through Global DJ Connect.</p>
             ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
+            ${progressBox ? `<div style="margin-top:28px;">${progressBox}</div>` : ''}
           `),
           attachments: cAtt.length ? cAtt : undefined,
         } as unknown as Parameters<typeof resend.emails.send>[0]);
