@@ -85,6 +85,12 @@ export async function POST(req: Request) {
     // etc.) — distinct from the host signing in-app (contract_signed_at).
     if (done) patch.contract_completed_at = now;
     else patch.contract_completion_undone_at = now;
+  } else if (key === 'deposit') {
+    // "Mark Complete" on a deposit taken outside the app (cash, a transfer) —
+    // distinct from a payment confirmed in the ledger. Stamped so the booking
+    // log can show the action, mirroring the contract case above.
+    if (done) patch.deposit_completed_at = now;
+    else patch.deposit_completion_undone_at = now;
   }
 
   try {
