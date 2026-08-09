@@ -571,7 +571,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       caption,
       info: plannerErr
         ? undefined
-        : (frac && !done ? `${frac} answered (${pct}%)` : undefined),
+        : (pct !== null && !done ? `${pct}% complete` : undefined),
       // plannerErr wins the hint when there is one — it's the newest thing that
       // happened and the only one the DJ hasn't read yet.
       //
