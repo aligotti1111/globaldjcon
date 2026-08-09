@@ -11,6 +11,8 @@ export type PipelineStep = {
   icon: 'doc' | 'money' | 'music' | 'receipt';
   overridable: boolean;
   done: boolean;
+  /** Done because the DJ hit "Mark Complete" by hand (not signed/paid in-app). */
+  manualComplete?: boolean;
   color: string;
   /** The small word under the icon — only for states the icon can't say alone. */
   caption?: string;

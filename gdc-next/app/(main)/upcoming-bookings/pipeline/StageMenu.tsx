@@ -19,6 +19,8 @@ export type StageMenuStep = {
   key: string;
   done: boolean;
   overridable: boolean;
+  /** Done via the DJ's manual "Mark Complete" toggle, not signed/paid in-app. */
+  manualComplete?: boolean;
   info?: string;
   hint?: string;
   actions?: { label: string; run: () => void; danger?: boolean }[];
@@ -59,6 +61,11 @@ export default function StageMenu({
           {stageLabel(st.key, djType)}
         </div>
         <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
+        {st.manualComplete && (
+          <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 700, padding: '.35rem .7rem .4rem', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'normal', maxWidth: 190 }}>
+            <span style={{ fontSize: '.82rem' }}>&#10003;</span> Manually marked complete
+          </div>
+        )}
         {st.info && (
           <>
             <div style={{ color: 'var(--white,#fff)', fontSize: '.75rem', fontWeight: 600, lineHeight: 1.4, whiteSpace: 'normal', maxWidth: 190, padding: '.45rem .6rem .35rem' }}>

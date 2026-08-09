@@ -109,6 +109,8 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // Overridable only when it isn't genuinely signed (can't un-sign a real one).
       overridable: !trulySigned,
       done: isDone,
+      // Done via the manual "Mark Complete" toggle rather than a real signature.
+      manualComplete: !!overrides.contract && !trulySigned,
       color: isDone ? NEON : AMBER,
       // ONE vocabulary across all four columns — see PIPE_SLOTS:
       //   not sent -> "Not sent"
@@ -337,6 +339,9 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // contradict the ledger sitting right beneath it.
       overridable: !reallySettled && !depositSkipped,
       done: allDone,
+      // Done via the manual "Mark Complete" toggle — not a real (or partial)
+      // payment in the ledger, and not the skip state.
+      manualComplete: !!overrides.deposit && !reallySettled && !depositSkipped,
       // Amber until settled. It was grey on the theory that an unpaid deposit
       // isn't the DJ's problem — but "Request deposit" plainly is their move,
       // and a request sitting unpaid is one they can chase. Grey said "nothing
@@ -560,6 +565,8 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       icon: 'music',
       overridable: true,
       done,
+      // Marked complete by hand rather than the host actually finishing it 100%.
+      manualComplete: overridden && pct !== 100,
       color: done ? NEON : AMBER,
       caption,
       info: plannerErr
