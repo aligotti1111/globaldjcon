@@ -73,8 +73,13 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     // dead one was sent. It still shows if the DJ requires a contract.
     const contractCancelled = b.contract_status === 'cancelled' || b.contract_status === 'voided';
     const contractSent = hasContract && !contractCancelled;
-    if (b.requires_contract === true || contractSent) {
-      steps.push({ left: contractSent ? 'Contract sent' : 'Contract', right: 'Signed', done: b.contract_status === 'signed' });
+    // Done when the contract was signed in-app OR the DJ marked it complete by
+    // hand (signed on paper, handled off-platform) — status_overrides.contract.
+    // Without the override the step wrongly stayed "next" even after later steps
+    // (deposit, etc.) were already done.
+    const contractDone = b.contract_status === 'signed' || !!ov.contract;
+    if (b.requires_contract === true || contractSent || !!ov.contract) {
+      steps.push({ left: contractSent ? 'Contract sent' : 'Contract', right: 'Signed', done: contractDone });
     }
     // Deposit step — only when a deposit is genuinely part of this booking: a
     // NON-ZERO percentage or amount was set at creation, or money's already
