@@ -60,7 +60,7 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     const totalPaid = pays.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
     const paidInFull = total > 0 && totalPaid >= total - 0.01;
 
-    type Step = { left: string; right: string; done: boolean };
+    type Step = { left: string; right: string; done: boolean; skipped?: boolean };
     const steps: Step[] = [];
     steps.push({ left: 'Booking requested', right: 'Accepted', done: true });
 
@@ -84,11 +84,24 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     // the DJ chose to take it in one payment). A settled deposit is never
     // skipped. Mirrors buildSteps' depositSkipped rule.
     const depositSkipped = !!ov.deposit_skipped || (requestedOf('balance') && !paidOf('deposit'));
-    const includeDeposit = !depositSkipped
-      && (requestedOf('deposit')
-        || (b.deposit_amount != null && Number(b.deposit_amount) > 0)
-        || (b.deposit_pct != null && Number(b.deposit_pct) > 0));
-    if (includeDeposit) steps.push({ left: 'Deposit', right: 'Paid', done: paidOf('deposit') });
+    // Show the deposit step when it's genuinely part of this booking: money was
+    // requested, a non-zero deposit was configured, or the DJ explicitly marked
+    // it complete or skipped by hand. (Same rule the on-screen pipeline uses.)
+    const depositConfigured = (b.deposit_amount != null && Number(b.deposit_amount) > 0)
+      || (b.deposit_pct != null && Number(b.deposit_pct) > 0);
+    const showDeposit = requestedOf('deposit') || depositConfigured || !!ov.deposit || !!ov.deposit_skipped;
+    if (showDeposit) {
+      if (depositSkipped) {
+        // Skipped is its own state — LABELLED, not hidden, and never treated as
+        // the "next" step. Two ways to skip: the DJ hits Skip deposit, or they
+        // request the whole balance so no separate deposit is collected.
+        steps.push({ left: 'Deposit', right: 'Skipped', done: false, skipped: true });
+      } else {
+        // paidOf covers a real payment; ov.deposit covers a deposit the DJ
+        // marked complete by hand (cash, a transfer that never touched the app).
+        steps.push({ left: 'Deposit', right: 'Paid', done: paidOf('deposit') || !!ov.deposit });
+      }
+    }
 
     // Planner & Playlist — the host fills out the run-of-show + song picks.
     // Only for DJs on the pro suite. "Planner sent" once it's gone out;
@@ -103,15 +116,17 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     const today = new Date().toISOString().slice(0, 10);
     steps.push({ left: 'Event day', right: '', done: !!b.event_date && b.event_date < today });
 
-    const currentIdx = steps.findIndex((s) => !s.done);
+    // A skipped step is neither done nor "next" — it's settled by being passed
+    // over, so it must not become the current step.
+    const currentIdx = steps.findIndex((s) => !s.done && !s.skipped);
 
     const capsules = steps.map((s, i) => {
-      const state = s.done ? 'done' : i === currentIdx ? 'current' : 'pending';
+      const state = s.skipped ? 'skipped' : s.done ? 'done' : i === currentIdx ? 'current' : 'pending';
       const bg = state === 'done' ? '#eafaf4' : state === 'current' ? '#ffffff' : '#fafafa';
       const border = state === 'done' ? '1px solid #cdeae0' : state === 'current' ? '2px solid #0a6f61' : '1px solid #eeeeee';
       const pad = state === 'current' ? '11px 15px' : '12px 16px';
-      const leftColor = state === 'pending' ? '#aaaaaa' : state === 'current' ? '#0a6f61' : '#1a1a2e';
-      const leftWeight = state === 'pending' ? '400' : state === 'current' ? '700' : '600';
+      const leftColor = (state === 'pending' || state === 'skipped') ? '#aaaaaa' : state === 'current' ? '#0a6f61' : '#1a1a2e';
+      const leftWeight = (state === 'pending' || state === 'skipped') ? '400' : state === 'current' ? '700' : '600';
       const rightColor = state === 'done' ? '#1a1a2e' : '#999999';
       // A green ✓ chip after the status word on completed steps only.
       const check = state === 'done'
