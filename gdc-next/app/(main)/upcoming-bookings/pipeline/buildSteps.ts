@@ -383,9 +383,14 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       caption: depositSkipped
         ? 'Skipped'
         : allDone
-        ? (paidSoFar > 0
-            ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
-            : undefined)
+        ? (overrides.deposit && paidSoFar <= 0
+            // Marked complete by hand, no app payment behind it — say so, the
+            // same way the Contract step reads 'Complete'. (A real payment still
+            // shows the amount fraction below, which is more informative.)
+            ? 'Complete'
+            : paidSoFar > 0
+              ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
+              : undefined)
         : depositRow
           // Show received/asked from the moment it's requested — "$0/$600"
           // before anything lands, "$300/$600" once part is in. The DJ sees the
