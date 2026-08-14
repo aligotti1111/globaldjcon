@@ -30,6 +30,7 @@ import {
   composeFields,
   applyPrefill,
   visibleFields,
+  dropFieldsAnsweredByBooking,
   type PlannerTemplate,
   type PlannerField,
   type PlannerResponses,
@@ -274,7 +275,14 @@ export async function POST(req: Request) {
       const overrideFields = forcedTpl
         ? (forcedTpl.id === base.id ? [] : forcedTpl.fields || [])
         : (override?.fields || []);
-      const fields = composeFields(base.fields || [], overrideFields);
+      // The booking already told us about the ceremony and cocktail hour, so
+      // strip the questions it answers (the "ceremony music needed?" toggle
+      // always; the ceremony / cocktail fields when that part of the day
+      // doesn't exist). Works for stock AND the DJ's own template.
+      const fields = dropFieldsAnsweredByBooking(
+        composeFields(base.fields || [], overrideFields),
+        b,
+      );
       // Prefill runs ONCE, here, and is stored. Not recomputed per page load:
       // if the DJ edits the booking tomorrow the client's form must not shift
       // under them mid-answer.
