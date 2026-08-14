@@ -81,20 +81,22 @@
   margin-bottom: 1rem;
 }
 .brandLeft { flex: 0 1 auto; min-width: 0; }
-.brandRight { flex: 0 1 auto; display: flex; flex-direction: column; align-items: flex-end; }
-.addrPhone { margin-top: .15rem; font-size: .82rem; line-height: 1.4; color: #c9c9de; text-align: right; }
+/* The block sits on the right, but every line inside starts at the SAME left
+   edge (flush-left), so street / city / phone line up. */
+.brandRight { flex: 0 1 auto; display: flex; flex-direction: column; align-items: flex-start; }
+.addrPhone { margin-top: .15rem; font-size: .82rem; line-height: 1.4; color: #c9c9de; text-align: left; }
 
 /* ── Business address ─────────────────────────────────────────────────── */
 /* When it's set: the address (stacked) + a pencil, click to edit. */
 .addrShow {
-  display: inline-flex; align-items: flex-start; gap: .4rem;
+  display: inline-flex; align-items: center; gap: .4rem;
   max-width: 100%; background: none; border: none; padding: .1rem 0;
   color: #c9c9de; font-family: inherit; font-size: .82rem; line-height: 1.4;
   cursor: pointer;
 }
 .addrShow:hover { color: #fff; }
 .addrShow:hover :global(svg) { color: #00e0a4; }
-.addrText { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.addrText { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .addrText span { display: block; }
 /* When it's empty: a dashed add button, matching + Add your logo. */
 .addrAdd {
