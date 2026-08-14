@@ -72,18 +72,29 @@
 }
 .logoMsg { font-size: .8rem; color: #8a8aa0; margin: -.4rem 0 1rem; }
 
+/* ── Brand row: logo left, business address stacked on the right ───────── */
+.brandTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.brandLeft { flex: 0 1 auto; min-width: 0; }
+.brandRight { flex: 0 1 auto; display: flex; justify-content: flex-end; }
+
 /* ── Business address ─────────────────────────────────────────────────── */
-.addrBlock { margin: -.2rem 0 1rem; }
-/* When it's set: the address text + a pencil, click to edit. */
+/* When it's set: the address (stacked) + a pencil, click to edit. */
 .addrShow {
-  display: inline-flex; align-items: center; gap: .5rem;
+  display: inline-flex; align-items: flex-start; gap: .4rem;
   max-width: 100%; background: none; border: none; padding: .1rem 0;
   color: #c9c9de; font-family: inherit; font-size: .82rem; line-height: 1.4;
-  text-align: left; cursor: pointer;
+  cursor: pointer;
 }
 .addrShow:hover { color: #fff; }
 .addrShow:hover :global(svg) { color: #00e0a4; }
-.addrText { white-space: pre-line; }
+.addrText { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.addrText span { display: block; }
 /* When it's empty: a dashed add button, matching + Add your logo. */
 .addrAdd {
   align-self: flex-start; padding: .5rem .8rem;
