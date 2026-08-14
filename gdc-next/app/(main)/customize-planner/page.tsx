@@ -41,11 +41,18 @@ export default function CustomizePlannerPage() {
     setEventType(et && et.trim() ? et : null);
     if (q.get('name')) setName(q.get('name') as string);
 
-    if (!/^[0-9a-f-]{36}$/i.test(bId)) { setErr('Missing booking.'); setLoaded(true); return; }
     (async () => {
       try {
-        const qs = et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : '';
-        const res = await fetch(`/api/planners?bookingId=${bId}${qs}`);
+        // Two ways in:
+        //   · from a booking (send modal)      → ?bookingId=… (marks prefilled fields)
+        //   · from Booking Settings' library   → no booking; compose by event type
+        // With no booking we ALWAYS pass eventType (empty = the base planner) so
+        // the API composes fields to edit rather than returning the template list.
+        const hasBooking = /^[0-9a-f-]{36}$/i.test(bId);
+        const apiUrl = hasBooking
+          ? `/api/planners?bookingId=${bId}${et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : ''}`
+          : `/api/planners?eventType=${encodeURIComponent(et && et.trim() ? et.trim() : '')}`;
+        const res = await fetch(apiUrl);
         const j = await res.json().catch(() => ({}));
         if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); setLoaded(true); return; }
         setFields(j.fields || []);
