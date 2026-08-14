@@ -384,30 +384,45 @@ export function composeFields(
   // Non-sectioned templates keep the original order — honoree hoisted first.
   const sectioned = override.some(isSection);
   if (sectioned) {
-    // Some base questions are LOGISTICS, not part of the ceremony or the
-    // reception — the DJ's setup time is answered before either happens, so it
-    // stays at the very top, outside the section banners. Everything else from
-    // the base (must-plays, genres…) belongs UNDER the reception, where the
-    // party — and most of the music decisions — actually are.
-    const TOP_BASE_IDS = new Set(['setup_time']);
-    const topBase = keptRest.filter((f) => TOP_BASE_IDS.has(f.id));
-    const receptionBase = keptRest.filter((f) => !TOP_BASE_IDS.has(f.id));
+    // Some questions have a FIXED home relative to the ceremony/reception split,
+    // and it must hold no matter where they physically sit in the template —
+    // whether they come from the base or were baked into a DJ's saved copy (a
+    // fork stores the base questions inside itself, so keptRest is empty and the
+    // ordering can't lean on base-vs-override alone). So we pull these by id from
+    // WHEREVER they are and re-place them:
+    //   · setup_time  → the very top, before the ceremony (it's logistics)
+    //   · must_play, genres → the end of the reception (general music choices)
+    const TOP_IDS = new Set(['setup_time']);
+    const TAIL_IDS = new Set(['must_play', 'genres']);
+    const isMover = (f: PlannerField) => TOP_IDS.has(f.id) || TAIL_IDS.has(f.id);
+
+    // The section flow (ceremony heading → songs → reception heading → …) and
+    // the base extras, each with the movers taken out.
+    const flow = overrideRest.filter((f) => !isMover(f));
+    const baseExtras = keptRest.filter((f) => !isMover(f));
+
+    // Resolve each mover once, from either source (a fork keeps its own copy).
+    const moverById = new Map<string, PlannerField>();
+    for (const f of [...keptRest, ...overrideRest]) {
+      if (isMover(f) && !moverById.has(f.id)) moverById.set(f.id, f);
+    }
+    const pick = (ids: Set<string>) =>
+      [...ids].map((id) => moverById.get(id)).filter((f): f is PlannerField => !!f);
+    const topOnes = pick(TOP_IDS);
+    const tailOnes = pick(TAIL_IDS);
 
     // The honoree ("couple's names" — the grand-entrance announcement) drops in
     // right after the last section heading (Reception).
     let lastSectionIdx = -1;
-    overrideRest.forEach((f, idx) => { if (isSection(f)) lastSectionIdx = idx; });
-    const withHonoree = lastSectionIdx >= 0
-      ? [
-          ...overrideRest.slice(0, lastSectionIdx + 1),
-          ...honoree,
-          ...overrideRest.slice(lastSectionIdx + 1),
-        ]
-      : [...honoree, ...overrideRest];
+    flow.forEach((f, idx) => { if (isSection(f)) lastSectionIdx = idx; });
+    const flowWithHonoree = lastSectionIdx >= 0
+      ? [...flow.slice(0, lastSectionIdx + 1), ...honoree, ...flow.slice(lastSectionIdx + 1)]
+      : [...honoree, ...flow];
 
-    // Setup (top) → ceremony questions → Reception heading → couple's names,
-    // reception questions, then the base music questions → pins last.
-    return [...topBase, ...withHonoree, ...receptionBase, ...pinned];
+    // Setup (top) → ceremony → Reception → couple's names, reception questions →
+    // any other base questions → must-plays + genres at the end of reception →
+    // pins last.
+    return [...topOnes, ...flowWithHonoree, ...baseExtras, ...tailOnes, ...pinned];
   }
 
   return [...honoree, ...keptRest, ...overrideRest, ...pinned];
