@@ -528,26 +528,29 @@
 
 .addMenu {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: .35rem;
-  align-items: center;
   border: 1px dashed rgba(255, 255, 255, .2);
   border-radius: 8px;
   padding: .6rem;
 }
 .addPick {
+  width: 100%;
+  text-align: left;
   background: rgba(255, 255, 255, .04);
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 5px;
   color: #9d9db5;
   font-family: inherit;
   font-size: .76rem;
-  padding: .3rem .55rem;
+  padding: .45rem .6rem;
   cursor: pointer;
 }
 .addPick:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
 .addCancel {
-  margin-left: auto;
+  align-self: flex-end;
+  margin-top: .1rem;
   background: none;
   border: none;
   color: #6c6c86;
