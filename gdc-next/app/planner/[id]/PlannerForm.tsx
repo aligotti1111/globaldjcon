@@ -290,7 +290,14 @@ export default function PlannerForm({
                 <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
               ) : null}
               {djAddress ? (
-                <address className={styles.djAddress}>{djAddress}</address>
+                <address className={styles.djAddress}>
+                  {djAddress.split(',').map((s) => s.trim()).filter(Boolean).reduce<string[]>((lines, part, i, arr) => {
+                    // Street on line one, "City, ST ZIP" under it.
+                    if (i === 0) lines.push(part);
+                    else if (i === 1) lines.push(arr.slice(1).join(', '));
+                    return lines;
+                  }, []).map((line, i) => <span key={i}>{line}</span>)}
+                </address>
               ) : null}
             </div>
           ) : null}
