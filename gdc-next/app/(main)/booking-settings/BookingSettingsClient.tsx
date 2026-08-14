@@ -20,6 +20,7 @@ import BookingTab from '../update-dj-profile/BookingTab';
 import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
 import ContractPortal from '../update-dj-profile/ContractPortal';
+import PlannerLibrarySection from './PlannerLibrarySection';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
 
 interface InitialProfile {
@@ -41,7 +42,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const router = useRouter();
   const djType = initialProfile.dj_type;
   const isMobile = djType === 'mobile';
-  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'rates' | 'rider' | 'guests';
+  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
 
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
@@ -189,9 +190,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         { id: 'payments', label: 'Payments' },
       ]
   ) as { id: SecTab; label: string }[];
-  const mobileTabs = hasBookingAccess
-    ? [...tabs, { id: 'contracts' as SecTab, label: 'Contracts' }]
-    : tabs;
+  const extraTabs: { id: SecTab; label: string }[] = [];
+  // Planner & Playlist library — mobile DJs manage the planners clients fill
+  // out. Club DJs use the DJ Rider tab instead, so it's mobile-only.
+  if (isMobile && hasBookingAccess) extraTabs.push({ id: 'planners', label: 'Planner & Playlist' });
+  if (hasBookingAccess) extraTabs.push({ id: 'contracts', label: 'Contracts' });
+  const mobileTabs = [...tabs, ...extraTabs];
 
   return (
     <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -292,7 +296,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         </>
       )}
 
-      {secTab !== 'contracts' && (
+      {secTab !== 'contracts' && secTab !== 'planners' && (
       <div className={styles.card}>
         {djType === 'club' ? (
           <ClubBookingTab
@@ -328,6 +332,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         )}
 
       </div>
+      )}
+
+      {isMobile && hasBookingAccess && secTab === 'planners' && (
+        <div className={styles.card}>
+          <PlannerLibrarySection />
+        </div>
       )}
 
       {hasBookingAccess && secTab === 'contracts' && (
