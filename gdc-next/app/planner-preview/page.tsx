@@ -118,21 +118,29 @@ export default async function PlannerPreviewPage({
     const wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
     const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
     if (!baseNB) notFound();
-    // Auto-fill (PREFILL) fields — music start/end, cocktail/ceremony start,
-    // day-of contact — come from the booking on a real send; here there's no
-    // booking so they're blank. Group them at the TOP, right under the header,
-    // so the DJ sees what the booking fills in as one block, separate from the
-    // questions the client actually answers (which follow below).
-    // No booking here, so treat it as no ceremony / no cocktail: the
-    // "ceremony music needed?" toggle drops (always answered at booking) and the
-    // ceremony / cocktail fields drop too, matching a plain event's questions.
-    const composedNB = dropFieldsAnsweredByBooking(
+    // The QUESTIONS a client actually answers: drop the fields the booking
+    // fills in — the ceremony toggle/start & cocktail (dropFieldsAnsweredByBooking)
+    // and every prefill field (music start/end, day-of contact). These show in
+    // the "Your booking" panel instead, exactly like the live planner.
+    const fieldsNB = dropFieldsAnsweredByBooking(
       visibleFields(composeFields(baseNB.fields || [], overNB?.fields || [])),
       { ceremony_needed: false, cocktail_needed: false },
-    );
-    const fieldsNB = [
-      ...composedNB.filter((f) => f.prefill),
-      ...composedNB.filter((f) => !f.prefill),
+    ).filter((f) => !f.prefill);
+    // The "Your booking" panel at the top, under the logo — the same facts the
+    // live planner shows, with placeholder values since this template preview
+    // has no booking attached. Weddings label the window "Reception" and carry
+    // the Ceremony + Cocktail rows.
+    const isWeddingNB = wantTypeNB === 'weddings';
+    const knownNB: { k: string; v: string }[] = [
+      { k: 'Event', v: wantTypeNB ? (MOB_EVENT_LABELS[wantTypeNB] || '—') : '—' },
+      { k: 'Date', v: '—' },
+      ...(isWeddingNB ? [{ k: 'Ceremony', v: '—' }, { k: 'Cocktail hour', v: '—' }] : []),
+      { k: isWeddingNB ? 'Reception start' : 'Start time', v: '—' },
+      { k: isWeddingNB ? 'Reception end' : 'End time', v: '—' },
+      { k: 'Venue', v: '—' },
+      { k: 'Guests', v: '—' },
+      { k: 'Booked by', v: '—' },
+      { k: 'Your number', v: '—' },
     ];
     return (
       <PlannerForm
@@ -145,7 +153,7 @@ export default async function PlannerPreviewPage({
         eventDateLabel=""
         venueName={null}
         logoUrl={logoUrl}
-        known={[]}
+        known={knownNB}
         preview
       />
     );
