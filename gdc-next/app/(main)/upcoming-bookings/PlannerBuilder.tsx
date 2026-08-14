@@ -298,66 +298,35 @@ export default function PlannerBuilder({
           const dragging = dragI === i;
           const over = overI === i && dragI !== null && dragI !== i;
 
-          // A SECTION HEADING — not a question. Renders as a divider row: drag
-          // to move it (so the DJ can decide where the break falls), a pencil to
-          // rename it, but no control, no help, no Enable/Disable. It just marks
-          // where one part of the form ends and the next begins (e.g. Reception).
+          // A SECTION HEADING — not a question, and not a row you shuffle. It's a
+          // full-width HERO BANNER that splits the form into parts (e.g. the
+          // ceremony questions above, the reception below). Fixed in place; the
+          // questions reorder around it. Rename via the pencil — nothing else.
           if (isSection(f)) {
             return (
-              <div
-                key={f.id}
-                className={[styles.field, styles.sectionRow, dragging ? styles.dragging : '', over ? styles.over : ''].join(' ')}
-                onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
-                onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
-              >
-                <div className={styles.rail}>
-                  <span
-                    className={styles.grip}
-                    draggable
-                    onDragStart={() => setDragI(i)}
-                    onDragEnd={() => { setDragI(null); setOverI(null); }}
-                    aria-hidden="true"
-                  >⠿</span>
-                  <div className={styles.arrows}>
-                    <button type="button" className={styles.arrow} aria-label="Move up" disabled={i === 0}
-                      onClick={() => reorderEditable(i, i - 1)}>↑</button>
-                    <button type="button" className={styles.arrow} aria-label="Move down" disabled={i === editable.length - 1}
-                      onClick={() => reorderEditable(i, i + 1)}>↓</button>
-                  </div>
-                </div>
-                <div className={styles.body}>
-                  <div className={styles.labelRow}>
-                    {editing === f.id ? (
-                      <input
-                        className={styles.labelEdit}
-                        // eslint-disable-next-line jsx-a11y/no-autofocus
-                        autoFocus
-                        value={f.label}
-                        onChange={(e) => onPatch(f.id, { label: e.target.value })}
-                        onBlur={() => setEditing(null)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.sectionLabel}
-                        style={{ flex: '0 1 auto' }}
-                        onClick={() => setEditing(f.id)}
-                        title="Click to rename this section"
-                      >{f.label || 'Section'}</button>
-                    )}
-                    {editing !== f.id ? (
-                      <button
-                        type="button"
-                        className={styles.editPencil}
-                        title="Rename this section"
-                        aria-label={`Rename the "${f.label || 'section'}" heading`}
-                        onClick={() => setEditing(f.id)}
-                      ><PencilIcon /></button>
-                    ) : null}
-                    <span className={styles.sectionTag} style={{ marginLeft: 'auto' }}>Section</span>
-                  </div>
-                </div>
+              <div key={f.id} className={styles.sectionBanner}>
+                {editing === f.id ? (
+                  <input
+                    className={styles.sectionBannerEdit}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                    value={f.label}
+                    onChange={(e) => onPatch(f.id, { label: e.target.value })}
+                    onBlur={() => setEditing(null)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
+                  />
+                ) : (
+                  <>
+                    <span className={styles.sectionBannerText}>{f.label || 'Section'}</span>
+                    <button
+                      type="button"
+                      className={styles.sectionBannerEditBtn}
+                      title="Rename this section"
+                      aria-label={`Rename the "${f.label || 'section'}" heading`}
+                      onClick={() => setEditing(f.id)}
+                    ><PencilIcon /></button>
+                  </>
+                )}
               </div>
             );
           }
