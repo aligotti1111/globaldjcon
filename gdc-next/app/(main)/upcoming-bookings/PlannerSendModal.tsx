@@ -225,14 +225,28 @@ export default function PlannerSendModal({
     }
   }
 
-  // The planner rows, resolved-first. The resolved one is the "auto" pick;
-  // selecting it means forcedId = null (the one-click path).
-  const rows: TemplateLite[] = data
-    ? [
-        ...data.templates.filter((t) => t.id === data.resolved.id),
-        ...data.templates.filter((t) => t.id !== data.resolved.id),
-      ]
-    : [];
+  // Only show the planner(s) that FIT this booking's event type — not every
+  // template. Most event types have exactly one (their Global DJ Connect
+  // template, or the DJ's customised version of it); a wedding has two (with /
+  // without ceremony music), so the DJ chooses. Event types with no template of
+  // their own fall back to the base planner (eventType === null).
+  // Resolved-first so the auto pick sits at the top and is pre-selected.
+  const rows: TemplateLite[] = (() => {
+    if (!data) return [];
+    const et = data.eventType;
+    const forType = data.templates.filter((t) => t.eventType === et);
+    const relevant = forType.length > 0
+      ? forType
+      : data.templates.filter((t) => t.eventType === null);
+    // Guarantee the resolved (auto) row is present even if the filter missed it.
+    const withResolved = relevant.some((t) => t.id === data.resolved.id)
+      ? relevant
+      : [...data.templates.filter((t) => t.id === data.resolved.id), ...relevant];
+    return [
+      ...withResolved.filter((t) => t.id === data.resolved.id),
+      ...withResolved.filter((t) => t.id !== data.resolved.id),
+    ];
+  })();
 
   function rowSelected(t: TemplateLite): boolean {
     return t.id === data?.resolved.id ? forcedId === null : forcedId === t.id;
